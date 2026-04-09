@@ -1,0 +1,16 @@
+{
+  "name": "courseintellect-project",
+  "private": true,
+  "scripts": {
+    "backend:dev": "dotnet run --project backend/CourseIntellect.Api/CourseIntellect.Api.csproj",
+    "desktop:start": "npm --prefix desktop run start",
+    "desktop:dev": "npm --prefix desktop run desktop:dev",
+    "desktop:build": "npm --prefix desktop run build",
+    "dev:web": "zsh -lc 'npm run backend:dev & npm run desktop:start'",
+    "dev:all": "zsh -lc 'npm run backend:dev & npm run desktop:dev'",
+    "mobile:analyze": "flutter analyze",
+    "mobile:ios": "flutter run -d ios",
+    "mobile:xcode": "xed mobile/ios/Runner.xcworkspace",
+    "mobile:sim": "zsh mobile/scripts/run_ios_sim.sh"
+  }
+}

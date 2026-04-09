@@ -1,0 +1,58 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "CourseIntellect",
+  "version": "0.1.0",
+  "identifier": "com.courseintellect.desktop",
+  "build": {
+    "devUrl": "http://127.0.0.1:3001",
+    "beforeDevCommand": "PORT=3001 npm run start",
+    "frontendDist": "../build",
+    "beforeBuildCommand": "npm run build"
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": [
+        { "schemes": ["courseintellect"] }
+      ]
+    }
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "CourseIntellect",
+        "center": true,
+        "decorations": false,
+        "resizable": true,
+        "maximized": true,
+        "minWidth": 1280,
+        "minHeight": 800
+      }
+    ],
+    "withGlobalTauri": true,
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "nsis",
+    "publisher": "CourseIntellect",
+    "shortDescription": "CourseIntellect masaüstü uygulaması",
+    "longDescription": "CourseIntellect, kurumlar için eğitim süreçlerini yönetmeye yardımcı olan bir masaüstü uygulamasıdır.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer/header.bmp",
+        "sidebarImage": "installer/sidebar.bmp",
+        "startMenuFolder": "CourseIntellect"
+      }
+    }
+  }
+}

@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <RestoreFallbackFolders></RestoreFallbackFolders>
+    <DisableImplicitNuGetFallbackFolder>true</DisableImplicitNuGetFallbackFolder>
+    <NuGetPackageFolders>$(HOME)/.nuget/packages</NuGetPackageFolders>
+  </PropertyGroup>
+</Project>

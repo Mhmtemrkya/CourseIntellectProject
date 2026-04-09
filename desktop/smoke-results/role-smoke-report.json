@@ -1,0 +1,1820 @@
+{
+  "generatedAt": "2026-03-30T20:05:11.189Z",
+  "baseUrl": "http://127.0.0.1:3000",
+  "roles": [
+    {
+      "role": "admin",
+      "loginOk": true,
+      "loginError": null,
+      "pages": [
+        {
+          "route": "/dashboard",
+          "ok": false,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [
+            "FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED"
+          ],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/students",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/parents",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/teachers",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/classes",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/schedule",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/attendance",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/kiosk-qr",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/content",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/questions",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/exams",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/reports",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/settings",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/chat",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/operations",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/task-center",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/kpi",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/global-search",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/personnel-approvals",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/finance-approvals",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/role-management",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/records",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/notifications",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/documents",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/student-registration",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/staff-registration",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/branch-comparison",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/dashboard",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/tenants",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/plans",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/billing",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/system",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/limits",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/support",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Yönetici"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/ai",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/sa/customization",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "role": "administrative",
+      "loginOk": true,
+      "loginError": null,
+      "pages": [
+        {
+          "route": "/dashboard",
+          "ok": false,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [
+            "FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED"
+          ],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/operations",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/task-center",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/kpi",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/records",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/notifications",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/documents",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/student-registration",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/admin/staff-registration",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Dashboard",
+          "buttonCount": 7,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "role": "finance",
+      "loginOk": true,
+      "loginError": null,
+      "pages": [
+        {
+          "route": "/finance/dashboard",
+          "ok": false,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [
+            "FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED"
+          ],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/student-accounts",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/collections",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/installments",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Muhasebe"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/late-payments",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/invoices-receipts",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/discounts-scholarships",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/export",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/audit-log",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/collection-calendar",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/reconciliation",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/bulk-actions",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/detail-hub",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/salary",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/cash-report",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/overdue-rules",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/finance/ledger",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/finance/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Muhasebe",
+          "buttonCount": 6,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "role": "teacher",
+      "loginOk": true,
+      "loginError": null,
+      "pages": [
+        {
+          "route": "/t/dashboard",
+          "ok": false,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [
+            "FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED"
+          ],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/schedule",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/attendance",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/content",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/questions",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/exams",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/assignments",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/submissions",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/live-lessons",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/live-room",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Öğretmen"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/reports",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/question-bank",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/content-studio",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/question-workflow",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/exam-workbench",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/meeting-approvals",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/profile",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/t/chat",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/t/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz, Hasan Ogretmen",
+          "buttonCount": 11,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "role": "student",
+      "loginOk": true,
+      "loginError": null,
+      "pages": [
+        {
+          "route": "/s/dashboard",
+          "ok": false,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [
+            "FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED"
+          ],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/schedule",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/content",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/exams",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/questions",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Öğrenci"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/live",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/assignments",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Öğrenci"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/study-plan",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/attendance-qr",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/wrong-answers",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/content-detail",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/question-practice",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/profile",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Öğrenci"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/ai",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/notifications",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/settings",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Öğrenci"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/s/chat",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/s/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş geldin, Ali",
+          "buttonCount": 10,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Öğrenci"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        }
+      ]
+    },
+    {
+      "role": "parent",
+      "loginOk": true,
+      "loginError": null,
+      "pages": [
+        {
+          "route": "/p/dashboard",
+          "ok": false,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [
+            "FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED"
+          ],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/attendance",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/exams",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/payments",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Veli"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/children",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/weekly-report",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/feedback",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/meetings",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/receipts",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/announcements",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/excuse-request",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Veli"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/profile",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        },
+        {
+          "route": "/p/chat",
+          "ok": true,
+          "finalUrl": "http://127.0.0.1:3000/p/dashboard",
+          "title": "CourseIntellect Desktop",
+          "heading": "Hoş Geldiniz",
+          "buttonCount": 8,
+          "clickedButtons": [
+            "Ara... ⌘ K",
+            "Şifremi unuttum"
+          ],
+          "consoleErrors": [],
+          "requestFailures": [],
+          "pageErrors": [],
+          "notes": []
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "roles": 6,
+    "pagesVisited": 110,
+    "failedPages": 6,
+    "consoleErrors": 0,
+    "requestFailures": 6,
+    "pageErrors": 0
+  }
+}
