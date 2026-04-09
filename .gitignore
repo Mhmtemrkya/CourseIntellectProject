@@ -65,6 +65,7 @@ coverage/
 
 # Claude Code
 .mcp.json
+mcp.json
 .claude/
 
 # Embedded repos
