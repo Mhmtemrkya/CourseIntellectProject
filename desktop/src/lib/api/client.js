@@ -4,7 +4,6 @@ import { desktopAppEnv } from '../appEnv';
 // Lazy singleton: Tauri HTTP plugin import'unu ilk kullanımda await eder
 let _tauriFetchPromise = null;
 async function getTauriFetch() {
-  if (desktopAppEnv.isDevelopment) return null;
   if (typeof window === 'undefined' || !(window.__TAURI__ || window.__TAURI_INTERNALS__)) return null;
   if (!_tauriFetchPromise) {
     _tauriFetchPromise = import('@tauri-apps/plugin-http')

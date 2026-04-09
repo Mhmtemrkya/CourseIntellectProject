@@ -106,7 +106,6 @@ export function clearDesktopSession() {
 // Lazy singleton: import'u ilk kullanımda await eder, sonraki çağrılarda cache'den döner
 let _tauriFetchPromise = null;
 async function getTauriFetch() {
-  if (desktopAppEnv.isDevelopment) return null;
   if (typeof window === 'undefined' || !(window.__TAURI__ || window.__TAURI_INTERNALS__)) return null;
   if (!_tauriFetchPromise) {
     _tauriFetchPromise = import('@tauri-apps/plugin-http')

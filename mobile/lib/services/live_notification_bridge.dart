@@ -42,10 +42,16 @@ class LiveNotificationBridge {
 
     const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
     const iosSettings = DarwinInitializationSettings();
+    const windowsSettings = WindowsInitializationSettings(
+      appName: 'CourseIntellect',
+      appUserModelId: 'com.courseintellect.student',
+      guid: 'd3b0a5e2-7c1f-4b8e-9a6d-2f5e8c3b1a04',
+    );
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
       macOS: iosSettings,
+      windows: windowsSettings,
     );
 
     await _plugin.initialize(settings);
