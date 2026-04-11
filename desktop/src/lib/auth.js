@@ -29,6 +29,7 @@ function unwrapBackendPayload(payload) {
 export function mapBackendRoleToDesktopRole(role) {
   switch ((role || "").toLowerCase()) {
     case "admin":
+    case "developer":
       return "admin";
     case "accounting":
       return "finance";
@@ -46,9 +47,13 @@ export function mapBackendRoleToDesktopRole(role) {
 }
 
 export function getRoleHomePath(role) {
+  return getHomePathForRole(role);
+}
+
+export function getHomePathForRole(role, options = {}) {
   switch (role) {
     case "admin":
-      return "/dashboard";
+      return options?.isPlatformAdmin ? "/sa/dashboard" : "/dashboard";
     case "finance":
       return "/finance/dashboard";
     case "teacher":
@@ -64,10 +69,16 @@ export function getRoleHomePath(role) {
   }
 }
 
+export function getUserHomePath(user) {
+  return getHomePathForRole(user?.role, { isPlatformAdmin: user?.isPlatformAdmin });
+}
+
 export function createDesktopUser(payload) {
   const data = unwrapBackendPayload(payload);
   const backendRole = data?.user?.primaryRole || data?.user?.role || "";
   const role = mapBackendRoleToDesktopRole(backendRole);
+  const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin);
+  const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "CourseIntellect Desktop");
 
   return {
     id: data?.user?.id || "",
@@ -75,11 +86,15 @@ export function createDesktopUser(payload) {
     email: data?.user?.email || `${data?.user?.username || "user"}@courseintellect.local`,
     role,
     backendRole,
+    isPlatformAdmin,
     username: data?.user?.username || data?.user?.email?.split("@")[0] || "",
-    tenant: "CourseIntellect Desktop",
+    tenantId: data?.user?.tenantId || null,
+    tenantSlug: data?.user?.tenantSlug || "",
+    tenant: tenantName,
     branch: data?.user?.campus || "Merkez Kampus",
     department: data?.user?.departmentOrBranch || "",
     extraRoles: data?.user?.extraRoles || [],
+    homePath: getHomePathForRole(role, { isPlatformAdmin }),
   };
 }
 

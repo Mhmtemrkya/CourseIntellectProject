@@ -4,18 +4,21 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class UserDirectoryService(
     CourseIntellectDbContext dbContext,
-    IPasswordHasher passwordHasher) : IUserDirectoryService
+    IPasswordHasher passwordHasher,
+    IHttpContextAccessor httpContextAccessor) : IUserDirectoryService
 {
     public async Task<IReadOnlyList<UserSummaryDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
-        var users = await dbContext.Users
+        var users = await ApplyTenantScope(dbContext.Users)
             .OrderBy(x => x.FullName)
             .ToListAsync(cancellationToken);
 
@@ -34,7 +37,7 @@ public sealed class UserDirectoryService(
 
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.Users.OrderBy(x => x.FullName);
+        var query = ApplyTenantScope(dbContext.Users).OrderBy(x => x.FullName);
         var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
@@ -54,6 +57,7 @@ public sealed class UserDirectoryService(
 
         var user = new AppUser
         {
+            TenantId = ResolveCurrentTenantId(),
             FullName = request.Name,
             Username = request.Email,
             PasswordHash = passwordHasher.Hash(request.Password),
@@ -70,7 +74,8 @@ public sealed class UserDirectoryService(
 
     public async Task<AdminUserListItemDto?> UpdateUserAsync(Guid id, AdminUpdateUserRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await dbContext.Users.FindAsync([id], cancellationToken);
+        var user = await ApplyTenantScope(dbContext.Users)
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null) return null;
 
         if (request.Name is not null) user.FullName = request.Name;
@@ -89,7 +94,8 @@ public sealed class UserDirectoryService(
 
     public async Task<bool> DeleteUserAsync(Guid id, CancellationToken cancellationToken = default)
     {
-        var user = await dbContext.Users.FindAsync([id], cancellationToken);
+        var user = await ApplyTenantScope(dbContext.Users)
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (user is null) return false;
 
         dbContext.Users.Remove(user);
@@ -99,7 +105,7 @@ public sealed class UserDirectoryService(
 
     public async Task<PagedResult<RegistrationListItemDto>> GetRegistrationsAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.Users.OrderByDescending(x => x.CreatedAtUtc);
+        var query = ApplyTenantScope(dbContext.Users).OrderByDescending(x => x.CreatedAtUtc);
         var totalItems = await query.CountAsync(cancellationToken);
         var totalPages = (int)Math.Ceiling(totalItems / (double)pageSize);
 
@@ -123,11 +129,12 @@ public sealed class UserDirectoryService(
 
     public async Task<IReadOnlyList<RoleSummaryDto>> GetRolesAsync(CancellationToken cancellationToken = default)
     {
-        var users = await dbContext.Users.ToListAsync(cancellationToken);
+        var users = await ApplyTenantScope(dbContext.Users).ToListAsync(cancellationToken);
         var policies = await dbContext.RolePolicies.ToDictionaryAsync(x => x.RoleName, cancellationToken);
 
         return
         [
+            CreateRole(UserRole.Developer, false, "Platform", ["Platform", "Kurumlar", "Icerik", "Ayarlar"], users, policies),
             CreateRole(UserRole.Admin, false, "Tum roller", ["Akademik", "Finans", "Operasyon", "Onaylar"], users, policies),
             CreateRole(UserRole.Teacher, false, "Ogrenci, veli, yonetici", ["Akademik", "Icerik", "Sinavlar"], users, policies),
             CreateRole(UserRole.Accounting, true, "Veli, yonetici", ["Finans", "Tahsilatlar", "Taksitler"], users, policies),
@@ -162,7 +169,7 @@ public sealed class UserDirectoryService(
 
     public async Task UpdateUserStatusAsync(string username, UserStatusUpdateRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
+        var user = await ApplyTenantScope(dbContext.Users).SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
             ?? throw new InvalidOperationException("Kullanici bulunamadi.");
 
         user.Status = request.Status.Equals("Passive", StringComparison.OrdinalIgnoreCase) ||
@@ -175,7 +182,7 @@ public sealed class UserDirectoryService(
 
     public async Task AssignPrimaryRoleAsync(string username, UserRoleAssignmentRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
+        var user = await ApplyTenantScope(dbContext.Users).SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
             ?? throw new InvalidOperationException("Kullanici bulunamadi.");
         var staff = await dbContext.Staff.SingleOrDefaultAsync(x => x.UserId == user.Id, cancellationToken);
 
@@ -201,7 +208,7 @@ public sealed class UserDirectoryService(
 
     public async Task AddExtraRoleAsync(string username, UserExtraRoleRequest request, CancellationToken cancellationToken = default)
     {
-        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
+        var user = await ApplyTenantScope(dbContext.Users).SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
             ?? throw new InvalidOperationException("Kullanici bulunamadi.");
         if (!Enum.TryParse<UserRole>(request.RoleName, true, out var parsedRole))
         {
@@ -222,7 +229,7 @@ public sealed class UserDirectoryService(
 
     public async Task<bool> UndoLastRoleAssignmentAsync(string username, CancellationToken cancellationToken = default)
     {
-        var user = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
+        var user = await ApplyTenantScope(dbContext.Users).SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
             ?? throw new InvalidOperationException("Kullanici bulunamadi.");
         var staff = await dbContext.Staff.SingleOrDefaultAsync(x => x.UserId == user.Id, cancellationToken);
 
@@ -299,5 +306,17 @@ public sealed class UserDirectoryService(
             policy.RequiresCriticalApproval,
             policy.MessagingScope,
             policyModules);
+    }
+
+    private IQueryable<AppUser> ApplyTenantScope(IQueryable<AppUser> query)
+    {
+        var tenantId = ResolveCurrentTenantId();
+        return tenantId.HasValue ? query.Where(x => x.TenantId == tenantId.Value) : query;
+    }
+
+    private Guid? ResolveCurrentTenantId()
+    {
+        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("tenant_id");
+        return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
     }
 }

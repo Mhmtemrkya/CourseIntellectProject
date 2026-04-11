@@ -14,6 +14,7 @@ import {
   Calculator,
   Shield,
   Edit,
+  Code2,
   RefreshCw,
 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card"
@@ -27,7 +28,11 @@ import type { LoginAttempt, UserRole } from "@/types/user"
 import { cn } from "@/lib/utils"
 import { apiRequest } from "@/lib/api-client"
 
-const roleIcons: Record<UserRole, typeof GraduationCap> = {
+type AdminPanelRole = UserRole | "developer"
+type AdminPanelLoginAttempt = Omit<LoginAttempt, "role"> & { role: AdminPanelRole }
+
+const roleIcons: Record<AdminPanelRole, typeof GraduationCap> = {
+  developer: Code2,
   student: GraduationCap,
   parent: Users,
   teacher: BookOpen,
@@ -36,7 +41,8 @@ const roleIcons: Record<UserRole, typeof GraduationCap> = {
   editor: Edit,
 }
 
-const roleColors: Record<UserRole, string> = {
+const roleColors: Record<AdminPanelRole, string> = {
+  developer: "bg-slate-900 text-white",
   student: "bg-blue-100 text-blue-700",
   parent: "bg-green-100 text-green-700",
   teacher: "bg-purple-100 text-purple-700",
@@ -45,13 +51,36 @@ const roleColors: Record<UserRole, string> = {
   editor: "bg-yellow-100 text-yellow-700",
 }
 
-const roleLabels: Record<UserRole, { tr: string; en: string }> = {
+const roleLabels: Record<AdminPanelRole, { tr: string; en: string }> = {
+  developer: { tr: "Geliştirici", en: "Developer" },
   student: { tr: "Öğrenci", en: "Student" },
   parent: { tr: "Veli", en: "Parent" },
   teacher: { tr: "Öğretmen", en: "Teacher" },
   accountant: { tr: "Muhasebeci", en: "Accountant" },
   admin: { tr: "Admin", en: "Admin" },
   editor: { tr: "Editör", en: "Editor" },
+}
+
+function normalizeRole(role: string): AdminPanelRole {
+  switch (role.toLowerCase()) {
+    case "developer":
+      return "developer"
+    case "admin":
+      return "admin"
+    case "editor":
+      return "editor"
+    case "teacher":
+      return "teacher"
+    case "student":
+      return "student"
+    case "parent":
+      return "parent"
+    case "accounting":
+    case "accountant":
+      return "accountant"
+    default:
+      return "student"
+  }
 }
 
 interface LoginAttemptResponse {
@@ -85,7 +114,7 @@ interface PagedResponse<T> {
 
 export default function LoginAttemptsPage() {
   const { language } = useLanguage()
-  const [loginAttempts, setLoginAttempts] = useState<LoginAttempt[]>([])
+  const [loginAttempts, setLoginAttempts] = useState<AdminPanelLoginAttempt[]>([])
   const [stats, setStats] = useState<LoginAttemptStatsResponse>({
     total: 0,
     successCount: 0,
@@ -132,7 +161,7 @@ export default function LoginAttemptsPage() {
         id: attempt.id,
         userId: attempt.userId || "",
         email: attempt.email,
-        role: attempt.role.toLowerCase() as UserRole,
+        role: normalizeRole(attempt.role),
         timestamp: attempt.timestamp,
         success: attempt.success,
         ipAddress: attempt.ipAddress || undefined,

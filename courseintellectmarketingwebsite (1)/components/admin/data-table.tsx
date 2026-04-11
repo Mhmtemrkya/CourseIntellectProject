@@ -31,6 +31,7 @@ export interface Action<T> {
   icon?: React.ReactNode
   onClick: (row: T) => void
   variant?: "default" | "destructive"
+  hidden?: (row: T) => boolean
 }
 
 interface DataTableProps<T> {
@@ -149,49 +150,55 @@ export function DataTable<T extends { id: string | number }>({
             <tbody className="divide-y divide-border">
               <AnimatePresence mode="popLayout">
                 {paginatedData.length > 0 ? (
-                  paginatedData.map((row, index) => (
-                    <motion.tr
-                      key={row.id}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ delay: index * 0.02 }}
-                      className="hover:bg-muted/30 transition-colors"
-                    >
-                      {columns.map((col) => (
-                        <td key={String(col.key)} className={cn("px-4 py-3 text-sm", col.className)}>
-                          {col.render
-                            ? col.render(row[col.key as keyof T], row)
-                            : String(row[col.key as keyof T] ?? "")}
-                        </td>
-                      ))}
-                      {actions && actions.length > 0 && (
-                        <td className="px-4 py-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                <MoreHorizontal className="w-4 h-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              {actions.map((action) => (
-                                <DropdownMenuItem
-                                  key={action.label}
-                                  onClick={() => action.onClick(row)}
-                                  className={cn(
-                                    action.variant === "destructive" && "text-destructive focus:text-destructive",
-                                  )}
-                                >
-                                  {action.icon && <span className="mr-2">{action.icon}</span>}
-                                  {action.label}
-                                </DropdownMenuItem>
-                              ))}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      )}
-                    </motion.tr>
-                  ))
+                  paginatedData.map((row, index) => {
+                    const rowActions = actions?.filter((action) => !action.hidden?.(row)) ?? []
+
+                    return (
+                      <motion.tr
+                        key={row.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        transition={{ delay: index * 0.02 }}
+                        className="hover:bg-muted/30 transition-colors"
+                      >
+                        {columns.map((col) => (
+                          <td key={String(col.key)} className={cn("px-4 py-3 text-sm", col.className)}>
+                            {col.render
+                              ? col.render(row[col.key as keyof T], row)
+                              : String(row[col.key as keyof T] ?? "")}
+                          </td>
+                        ))}
+                        {actions && actions.length > 0 && (
+                          <td className="px-4 py-3 text-right">
+                            {rowActions.length > 0 && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  {rowActions.map((action) => (
+                                    <DropdownMenuItem
+                                      key={action.label}
+                                      onClick={() => action.onClick(row)}
+                                      className={cn(
+                                        action.variant === "destructive" && "text-destructive focus:text-destructive",
+                                      )}
+                                    >
+                                      {action.icon && <span className="mr-2">{action.icon}</span>}
+                                      {action.label}
+                                    </DropdownMenuItem>
+                                  ))}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
+                          </td>
+                        )}
+                      </motion.tr>
+                    )
+                  })
                 ) : (
                   <tr>
                     <td

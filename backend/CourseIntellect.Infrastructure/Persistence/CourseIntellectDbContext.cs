@@ -1,10 +1,31 @@
 using CourseIntellect.Domain.Entities;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using System.Security.Claims;
 
 namespace CourseIntellect.Infrastructure.Persistence;
 
-public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbContext> options) : DbContext(options)
+public sealed class CourseIntellectDbContext : DbContext
 {
+    private readonly IHttpContextAccessor? httpContextAccessor;
+
+    public CourseIntellectDbContext(
+        DbContextOptions<CourseIntellectDbContext> options,
+        IHttpContextAccessor? httpContextAccessor = null) : base(options)
+    {
+        this.httpContextAccessor = httpContextAccessor;
+    }
+
+    public Guid? CurrentTenantId
+    {
+        get
+        {
+            var raw = httpContextAccessor?.HttpContext?.User?.FindFirstValue("tenant_id");
+            return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
+        }
+    }
+
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<StudentProfile> Students => Set<StudentProfile>();
     public DbSet<StaffProfile> Staff => Set<StaffProfile>();
@@ -43,12 +64,37 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
     public DbSet<LoginAttemptItem> LoginAttempts => Set<LoginAttemptItem>();
     public DbSet<AuthorizationCode> AuthorizationCodes => Set<AuthorizationCode>();
 
+    public override int SaveChanges()
+    {
+        ApplyTenantContext();
+        return base.SaveChanges();
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ApplyTenantContext();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        ApplyTenantContext();
+        return base.SaveChangesAsync(cancellationToken);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ApplyTenantContext();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AppUser>(entity =>
         {
             entity.ToTable("users");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Username).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Username).IsUnique();
@@ -63,6 +109,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("student_profiles");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.HasIndex(x => x.UserId).IsUnique();
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.TcNo).HasMaxLength(11).IsRequired();
@@ -74,6 +121,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("staff_profiles");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.HasIndex(x => x.UserId).IsUnique();
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.TcNo).HasMaxLength(11).IsRequired();
@@ -86,6 +134,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("announcements");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Audience).HasMaxLength(80).IsRequired();
             entity.Property(x => x.DateLabel).HasMaxLength(40).IsRequired();
@@ -95,6 +144,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("exam_results");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.ExamTitle).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
@@ -105,6 +155,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("meeting_requests");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.ParentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Advisor).HasMaxLength(150).IsRequired();
@@ -117,6 +168,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("message_threads");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.ParticipantOneName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ParticipantOneRole).HasMaxLength(50).IsRequired();
             entity.Property(x => x.ParticipantTwoName).HasMaxLength(150).IsRequired();
@@ -128,6 +180,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("message_items");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.SenderName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.SenderRole).HasMaxLength(50).IsRequired();
             entity.Property(x => x.Text).HasMaxLength(2000).IsRequired();
@@ -138,6 +191,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("content_items");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Teacher).HasMaxLength(150).IsRequired();
@@ -155,6 +209,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("question_bank_items");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
             entity.Property(x => x.Topic).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Difficulty).HasMaxLength(40).IsRequired();
@@ -175,6 +230,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("question_practice_attempts");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.HasIndex(x => new { x.QuestionId, x.StudentUsername });
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.StudentUsername).HasMaxLength(80).IsRequired();
@@ -185,6 +241,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("student_question_threads");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
@@ -202,6 +259,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("student_question_replies");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.HasIndex(x => x.ThreadId);
             entity.Property(x => x.SenderName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.SenderRole).HasMaxLength(50).IsRequired();
@@ -214,6 +272,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_invoices");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Subtitle).HasMaxLength(120).IsRequired();
@@ -225,6 +284,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_salaries");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Employee).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Role).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
@@ -236,6 +296,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_approvals");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
@@ -247,6 +308,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("homework_assignments");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
@@ -261,6 +323,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("homework_submissions");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.HasIndex(x => x.AssignmentId);
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(4000).IsRequired();
@@ -272,6 +335,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("attendance_entries");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
@@ -283,11 +347,12 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("platform_configurations");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.ConfigurationType).HasMaxLength(80).IsRequired();
             entity.Property(x => x.ScopeKey).HasMaxLength(180).IsRequired();
             entity.Property(x => x.DisplayName).HasMaxLength(180).IsRequired();
             entity.Property(x => x.PayloadJson).HasColumnName("payload_json").HasMaxLength(12000).IsRequired();
-            entity.HasIndex(x => new { x.ConfigurationType, x.ScopeKey }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.ConfigurationType, x.ScopeKey }).IsUnique();
         });
 
         modelBuilder.Entity<TenantWorkspace>(entity =>
@@ -297,12 +362,20 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
             entity.Property(x => x.Name).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Slug).HasMaxLength(180).IsRequired();
             entity.Property(x => x.ContactEmail).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ContactName).HasMaxLength(150);
+            entity.Property(x => x.ContactPhone).HasMaxLength(40);
+            entity.Property(x => x.PendingAdminPasswordHash).HasMaxLength(300);
             entity.Property(x => x.Plan).HasMaxLength(60).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.MonthlyFee).HasColumnType("numeric(18,2)");
             entity.Property(x => x.CollectedAmount).HasColumnType("numeric(18,2)");
             entity.Property(x => x.StorageUsedGb).HasColumnType("numeric(18,2)");
             entity.HasIndex(x => x.Slug).IsUnique();
+            entity.HasIndex(x => x.AdminUserId);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.AdminUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SupportTicket>(entity =>
@@ -326,7 +399,8 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("study_plan_states");
             entity.HasKey(x => x.Id);
-            entity.HasIndex(x => x.StudentName).IsUnique();
+            ConfigureTenantScope(entity);
+            entity.HasIndex(x => new { x.TenantId, x.StudentName }).IsUnique();
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.PlanItemsSerialized).HasColumnName("plan_items").HasMaxLength(12000).IsRequired();
         });
@@ -335,6 +409,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_collections");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
@@ -347,6 +422,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_installments");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Student).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
@@ -358,6 +434,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_notifications");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Message).HasMaxLength(500).IsRequired();
             entity.Property(x => x.Time).HasMaxLength(40).IsRequired();
@@ -367,6 +444,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("accounting_audit_logs");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Detail).HasMaxLength(500).IsRequired();
             entity.Property(x => x.Time).HasMaxLength(60).IsRequired();
@@ -386,6 +464,7 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("notifications");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Message).HasMaxLength(600).IsRequired();
             entity.Property(x => x.TimeLabel).HasMaxLength(60).IsRequired();
@@ -406,11 +485,12 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
         {
             entity.ToTable("site_content_items");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.SectionKey).HasMaxLength(120).IsRequired();
             entity.Property(x => x.ContentJson).HasMaxLength(12000).IsRequired();
             entity.Property(x => x.Language).HasMaxLength(10).IsRequired();
             entity.Property(x => x.UpdatedBy).HasMaxLength(150).IsRequired();
-            entity.HasIndex(x => new { x.SectionKey, x.Language, x.Version }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.SectionKey, x.Language, x.Version }).IsUnique();
         });
 
         modelBuilder.Entity<ContactMessage>(entity =>
@@ -485,5 +565,34 @@ public sealed class CourseIntellectDbContext(DbContextOptions<CourseIntellectDbC
             entity.Property(x => x.RedirectUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CodeChallengeHash).HasMaxLength(200).IsRequired();
         });
+    }
+
+    private void ConfigureTenantScope<TEntity>(EntityTypeBuilder<TEntity> entity)
+        where TEntity : class, ITenantScopedEntity
+    {
+        entity.Property(x => x.TenantId).HasColumnName("tenant_id");
+        entity.HasIndex(x => x.TenantId);
+        entity.HasOne<TenantWorkspace>()
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.SetNull);
+        entity.HasQueryFilter(x => CurrentTenantId == null || x.TenantId == CurrentTenantId);
+    }
+
+    private void ApplyTenantContext()
+    {
+        var tenantId = CurrentTenantId;
+        if (!tenantId.HasValue)
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<ITenantScopedEntity>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.TenantId is null)
+            {
+                entry.Entity.TenantId = tenantId;
+            }
+        }
     }
 }

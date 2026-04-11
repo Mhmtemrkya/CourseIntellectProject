@@ -1,8 +1,9 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class MeetingRequest
+public sealed class MeetingRequest : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
     public string ParentName { get; set; } = string.Empty;
     public string StudentName { get; set; } = string.Empty;
     public string Advisor { get; set; } = string.Empty;

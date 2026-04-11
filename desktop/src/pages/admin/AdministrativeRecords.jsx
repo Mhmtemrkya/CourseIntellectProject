@@ -132,7 +132,7 @@ export default function AdministrativeRecords() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="administrative-records-page">
-      <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(14,165,233,0.16),_transparent_36%),linear-gradient(135deg,#0f172a_0%,#12324a_55%,#1d4d63_100%)] p-7 text-white shadow-xl">
+      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(14,165,233,0.16)), transparent 36%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 55%, var(--brand-p-700, #1d4d63) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-white/20 bg-white/10 text-white">İdari Operasyon</Badge>
@@ -185,22 +185,22 @@ export default function AdministrativeRecords() {
       </Card>
       <div className="grid gap-4">
         {filteredRecords.slice(0, 20).map((item) => (
-          <Card key={item.id} className="overflow-hidden border-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
+          <Card key={item.id} className="overflow-hidden border-border shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
             <CardContent className="p-0">
               <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between">
                 <div className="flex items-start gap-4">
-                  <div className="rounded-2xl bg-slate-900 p-3 text-white shadow">
+                  <div className="rounded-2xl bg-brand-primary p-3 text-white shadow">
                     {item.type === 'Öğrenci' ? <School className="h-5 w-5" /> : item.type === 'Personel' ? <BriefcaseBusiness className="h-5 w-5" /> : <Users className="h-5 w-5" />}
                   </div>
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <p className="font-semibold text-slate-900">{item.title}</p>
-                      <Badge className="bg-slate-100 text-slate-700">{item.type}</Badge>
+                      <p className="font-semibold text-foreground">{item.title}</p>
+                      <Badge className="bg-muted text-muted-foreground">{item.type}</Badge>
                     </div>
                     <p className="mt-2 text-sm text-muted-foreground">{item.detail}</p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs text-muted-foreground">
-                      <span className="rounded-full bg-slate-100 px-3 py-1">Kayıt aktif</span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1">{item.payload.username || item.payload.email || item.payload.parentEmail || 'Hesap bilgisi yok'}</span>
+                      <span className="rounded-full bg-muted px-3 py-1">Kayıt aktif</span>
+                      <span className="rounded-full bg-muted px-3 py-1">{item.payload.username || item.payload.email || item.payload.parentEmail || 'Hesap bilgisi yok'}</span>
                     </div>
                   </div>
                 </div>
@@ -228,7 +228,7 @@ export default function AdministrativeRecords() {
           </DialogHeader>
           {selectedRecord && selectedPayload ? (
             <div className="space-y-5">
-              <div className="rounded-[28px] border bg-[radial-gradient(circle_at_top_left,_rgba(251,191,36,0.18),_transparent_34%),linear-gradient(135deg,#0f172a_0%,#12324a_45%,#115e59_100%)] p-6 text-white">
+              <div className="rounded-[28px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(251,191,36,0.18)), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 45%, var(--brand-p-700, #115e59) 100%)' }}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <Badge className="border-white/10 bg-white/15 text-white">{selectedRecord.type}</Badge>
@@ -294,7 +294,7 @@ export default function AdministrativeRecords() {
                       <div className="flex items-center justify-between gap-3">
                         <div>
                           <p className="text-sm text-muted-foreground">{title}</p>
-                          <p className="mt-1 text-sm font-medium text-slate-800">{value}</p>
+                          <p className="mt-1 text-sm font-medium text-foreground">{value}</p>
                         </div>
                         <Icon className="h-4 w-4 text-brand-primary" />
                       </div>

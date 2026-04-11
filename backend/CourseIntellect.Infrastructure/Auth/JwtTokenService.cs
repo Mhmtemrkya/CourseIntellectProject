@@ -16,6 +16,8 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
     private const string RoleClaim = "role";
     private const string NameClaim = "name";
     private const string NameIdClaim = "nameid";
+    private const string TenantIdClaim = "tenant_id";
+    private const string PlatformAdminClaim = "platform_admin";
 
     // .NET 8+'da token OKUMA tarafında JsonWebTokenHandler kullanılır.
     // Token YAZMA tarafında da aynı handler'ı kullanmak tutarlılık sağlar
@@ -34,11 +36,23 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             [JwtRegisteredClaimNames.UniqueName] = user.Username,
             [NameIdClaim] = user.Id.ToString(),
             [NameClaim] = user.FullName,
+            [PlatformAdminClaim] = user.PrimaryRole == Domain.Enums.UserRole.Developer && user.TenantId is null,
         };
+
+        if (user.TenantId.HasValue)
+        {
+            claims[TenantIdClaim] = user.TenantId.Value.ToString();
+        }
 
         // Rol claim'leri — tek rol varsa string, birden fazla varsa array olarak ekle
         var allRoles = new List<string> { user.PrimaryRole.ToString() };
         allRoles.AddRange(user.ExtraRoles.Select(r => r.ToString()));
+        if (user.PrimaryRole == Domain.Enums.UserRole.Developer)
+        {
+            // Developer ayrı primary role'dür; mevcut Admin korumalı platform endpointleriyle uyum için yetki alias'ı taşır.
+            allRoles.Add(Domain.Enums.UserRole.Admin.ToString());
+        }
+        allRoles = allRoles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();
 
         if (allRoles.Count == 1)
         {

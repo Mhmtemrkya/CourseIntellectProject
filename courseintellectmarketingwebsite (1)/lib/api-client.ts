@@ -27,12 +27,14 @@ export type ApiRequestOptions = {
   headers?: Record<string, string>
 }
 
+const AUTH_STORAGE_KEY = "courseintellect_auth"
+
 const DEFAULT_API_URL =
   typeof window !== "undefined"
     ? window.location.hostname === "localhost" && (window.location.port === "3000" || window.location.port === "3001")
-      ? "http://localhost:5199"
+      ? "http://localhost:5206"
       : window.location.origin
-    : "http://localhost:5199"
+    : "http://localhost:5206"
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
 
@@ -47,8 +49,29 @@ function buildUrl(path: string, query?: ApiRequestOptions["query"]) {
   return url.toString()
 }
 
+function readStoredAccessToken(): string | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
+    if (!raw) {
+      return null
+    }
+
+    const parsed = JSON.parse(raw) as { accessToken?: string | null }
+    const storedToken = parsed?.accessToken
+    return storedToken && storedToken !== "demo-token" ? storedToken : null
+  } catch {
+    return null
+  }
+}
+
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {
   const { method = "GET", body, token, language, query, headers } = options
+  const hasExplicitToken = Object.prototype.hasOwnProperty.call(options, "token")
+  const effectiveToken = hasExplicitToken ? token : readStoredAccessToken()
 
   const requestHeaders: Record<string, string> = {
     ...(headers || {}),
@@ -58,8 +81,8 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     requestHeaders["Accept-Language"] = language
   }
 
-  if (token) {
-    requestHeaders.Authorization = `Bearer ${token}`
+  if (effectiveToken && !requestHeaders.Authorization) {
+    requestHeaders.Authorization = `Bearer ${effectiveToken}`
   }
 
   const isJsonBody = body !== undefined && !(body instanceof FormData)

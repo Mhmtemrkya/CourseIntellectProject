@@ -142,6 +142,7 @@ public sealed class MessageService(
 
         var item = new MessageItem
         {
+            TenantId = thread.TenantId,
             ThreadId = threadId,
             SenderName = Normalize(currentUserName),
             SenderRole = currentUserRole,

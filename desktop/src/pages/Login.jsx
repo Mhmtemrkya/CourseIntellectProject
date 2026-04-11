@@ -21,7 +21,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
-import { getRoleHomePath } from "../lib/auth";
+import { getUserHomePath } from "../lib/auth";
 import { desktopAppEnv } from "../lib/appEnv";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -47,8 +47,17 @@ const features = [
 
 const quickUsers = [
   {
-    username: "admin.ece",
+    username: "admin@courseintlecct.com",
     password: "Admin2026!",
+    role: "admin",
+    name: "Geliştirici",
+    icon: Zap,
+    color: "from-purple-600 to-pink-500",
+    homePath: "/sa/dashboard",
+  },
+  {
+    username: "kurum.admin",
+    password: "KRM2026A",
     role: "admin",
     name: "Kurum Yöneticisi",
     icon: Shield,
@@ -234,7 +243,7 @@ export default function Login() {
 
   useEffect(() => {
     if (isAuthenticated && user?.role) {
-      navigate(getRoleHomePath(user.role), { replace: true });
+      navigate(getUserHomePath(user), { replace: true });
     }
   }, [isAuthenticated, navigate, user]);
 
@@ -246,7 +255,7 @@ export default function Login() {
     try {
       const loggedUser = await login({ username, password });
       refreshBranding();
-      navigate(getRoleHomePath(loggedUser.role), { replace: true });
+      navigate(getUserHomePath(loggedUser), { replace: true });
     } catch (err) {
       setError(err?.message || "Giriş başarısız oldu");
     } finally {
@@ -260,7 +269,7 @@ export default function Login() {
     try {
       const loggedUser = await loginWithBrowser();
       refreshBranding();
-      navigate(getRoleHomePath(loggedUser.role), { replace: true });
+      navigate(getUserHomePath(loggedUser), { replace: true });
     } catch (err) {
       setError(err?.message || "Tarayıcı ile giriş başarısız oldu");
     } finally {
@@ -268,17 +277,17 @@ export default function Login() {
     }
   };
 
-  const handleQuickLogin = async (user) => {
-    setUsername(user.username);
-    setPassword(user.password);
+  const handleQuickLogin = async (quickUser) => {
+    setUsername(quickUser.username);
+    setPassword(quickUser.password);
     try {
       setLoading(true);
       const loggedUser = await login({
-        username: user.username,
-        password: user.password,
+        username: quickUser.username,
+        password: quickUser.password,
       });
       refreshBranding();
-      navigate(getRoleHomePath(loggedUser.role), { replace: true });
+      navigate(quickUser.homePath || getUserHomePath(loggedUser), { replace: true });
     } catch (err) {
       setError(err?.message || "Giriş başarısız oldu");
     } finally {

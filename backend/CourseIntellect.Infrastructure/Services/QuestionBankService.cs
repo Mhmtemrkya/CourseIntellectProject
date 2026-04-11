@@ -115,6 +115,7 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
 
         var attempt = new QuestionPracticeAttempt
         {
+            TenantId = item.TenantId,
             QuestionId = id,
             StudentName = request.StudentName.Trim(),
             StudentUsername = request.StudentUsername.Trim(),

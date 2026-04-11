@@ -28,6 +28,7 @@ public sealed class PlatformConfigurationService(CourseIntellectDbContext dbCont
     {
         var type = request.ConfigurationType.Trim();
         var scopeKey = request.ScopeKey.Trim();
+        var explicitTenantId = ResolveExplicitTenantId(type, scopeKey);
 
         if (string.IsNullOrWhiteSpace(type))
         {
@@ -48,8 +49,13 @@ public sealed class PlatformConfigurationService(CourseIntellectDbContext dbCont
             {
                 ConfigurationType = type,
                 ScopeKey = scopeKey,
+                TenantId = explicitTenantId,
             };
             await dbContext.Set<PlatformConfiguration>().AddAsync(entity, cancellationToken);
+        }
+        else if (explicitTenantId.HasValue)
+        {
+            entity.TenantId = explicitTenantId;
         }
 
         entity.DisplayName = request.DisplayName.Trim();
@@ -58,6 +64,14 @@ public sealed class PlatformConfigurationService(CourseIntellectDbContext dbCont
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToDto(entity);
+    }
+
+    private static Guid? ResolveExplicitTenantId(string configurationType, string scopeKey)
+    {
+        return string.Equals(configurationType, "tenant-customization", StringComparison.OrdinalIgnoreCase)
+               && Guid.TryParse(scopeKey, out var tenantId)
+            ? tenantId
+            : null;
     }
 
     private static PlatformConfigurationDto ToDto(PlatformConfiguration entity) => new(

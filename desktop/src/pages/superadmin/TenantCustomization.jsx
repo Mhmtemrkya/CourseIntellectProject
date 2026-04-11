@@ -18,8 +18,6 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { GlowingOrb } from '../../components/animations/AnimatedBackground';
 import { fetchPlatformConfigurations, fetchPlatformTenants, upsertPlatformConfiguration } from '../../lib/api/modules';
-import { useTheme } from '../../context/ThemeContext';
-import { generateBrandCSSVariables, applyBrandVariables } from '../../lib/colorPalette';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -58,7 +56,7 @@ function buildDefaultCustomization(tenant) {
     accentColor: preset.accent,
     logoUrl: '',
     faviconUrl: '',
-    appName: tenant.name,
+    appName: tenant.name || tenant.displayName || tenant.schoolName || 'CourseIntellect',
     darkModeDefault: tenant.plan === 'Enterprise',
     customFonts: tenant.plan !== 'Starter',
     headerFont: tenant.plan === 'Enterprise' ? 'Montserrat' : 'Poppins',
@@ -69,7 +67,7 @@ function buildDefaultCustomization(tenant) {
 
 export default function TenantCustomization() {
   const { toast } = useToast();
-  const { refreshBranding } = useTheme();
+
   const [platform, setPlatform] = useState({ tenants: [] });
   const [selectedTenantId, setSelectedTenantId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -131,17 +129,7 @@ export default function TenantCustomization() {
   const selectedTenant = useMemo(() => tenants.find((tenant) => tenant.id === selectedTenantId) || tenants[0] || null, [tenants, selectedTenantId]);
   const customization = selectedTenant ? customizations[selectedTenant.id] : null;
 
-  // Renk değiştiğinde sidebar'ı ANLIK güncelle (CSS variables)
-  // Unmount olduğunda ThemeContext'in brandingini geri yükle
-  useEffect(() => {
-    if (!customization) return;
-    const vars = generateBrandCSSVariables(customization.primaryColor, customization.accentColor);
-    applyBrandVariables(vars);
-    return () => {
-      // Sayfadan çıkınca global branding'i geri yükle
-      refreshBranding();
-    };
-  }, [customization, customization?.primaryColor, customization?.accentColor, refreshBranding]);
+  // Live preview sadece önizleme box'ında gösterilir; global CSS değişkenlerine dokunmuyoruz
 
   const handleColorChange = (type, color) => {
     if (!selectedTenant) return;
@@ -170,23 +158,13 @@ export default function TenantCustomization() {
   const handleSave = () => {
     if (!selectedTenant) return;
     const payload = customizations[selectedTenant.id];
-    // Hem tenant bazlı hem global olarak kaydet (GetBranding global'den okur)
-    Promise.all([
-      upsertPlatformConfiguration({
-        configurationType: 'tenant-customization',
-        scopeKey: selectedTenant.id,
-        displayName: customizationMarker(selectedTenant.id),
-        payloadJson: JSON.stringify(payload),
-      }),
-      upsertPlatformConfiguration({
-        configurationType: 'tenant-customization',
-        scopeKey: 'global',
-        displayName: 'SA_TENANT_CUSTOMIZATION::global',
-        payloadJson: JSON.stringify(payload),
-      }),
-    ]).then(() => {
-      // Sidebar renklerini anında güncelle
-      refreshBranding();
+    // Sadece kuruma özel olarak kaydet — global'i değiştirme
+    upsertPlatformConfiguration({
+      configurationType: 'tenant-customization',
+      scopeKey: selectedTenant.id,
+      displayName: customizationMarker(selectedTenant.id),
+      payloadJson: JSON.stringify(payload),
+    }).then(() => {
       toast({
         title: "Özelleştirmeler Kaydedildi",
         description: `${selectedTenant.name} için branding ayarları kaydedildi.`,
@@ -197,7 +175,7 @@ export default function TenantCustomization() {
       toast({
         title: is403 ? "Yetki Hatası (403)" : "Özelleştirmeler kaydedilemedi",
         description: is403
-          ? 'Bu işlem için Admin yetkisi gerekli. Lütfen admin.ece hesabıyla giriş yapın.'
+          ? 'Bu işlem için geliştirici yetkisi gerekli. Lütfen admin@courseintlecct.com hesabıyla giriş yapın.'
           : msg || 'Lütfen tekrar deneyin.',
         variant: 'destructive',
       });
@@ -272,7 +250,7 @@ export default function TenantCustomization() {
           <Card className="border-0 shadow-lg h-fit">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5 text-[#D9790B]" />
+                <Building2 className="h-5 w-5 text-brand-accent" />
                 Kurum Seçimi
               </CardTitle>
             </CardHeader>
@@ -285,8 +263,8 @@ export default function TenantCustomization() {
                   onClick={() => setSelectedTenantId(tenant.id)}
                   className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
                     selectedTenant?.id === tenant.id
-                      ? 'border-[#D9790B] bg-[#D9790B]/10'
-                      : 'border-border hover:border-[#D9790B]/50'
+                      ? 'border-brand-accent bg-brand-accent/10'
+                      : 'border-border hover:border-brand-accent/50'
                   }`}
                 >
                   <div className="flex items-center gap-3">
@@ -303,7 +281,7 @@ export default function TenantCustomization() {
                       </div>
                     </div>
                     {selectedTenant?.id === tenant.id && (
-                      <Check className="h-5 w-5 text-[#D9790B]" />
+                      <Check className="h-5 w-5 text-brand-accent" />
                     )}
                   </div>
                 </motion.div>
@@ -317,7 +295,7 @@ export default function TenantCustomization() {
           <Card className="border-0 shadow-lg">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Paintbrush className="h-5 w-5 text-[#D9790B]" />
+                <Paintbrush className="h-5 w-5 text-brand-accent" />
                 {selectedTenant.name} - Özelleştirme
               </CardTitle>
               <CardDescription>Logo, renk ve görünüm ayarlarını düzenleyin</CardDescription>
@@ -479,7 +457,7 @@ export default function TenantCustomization() {
                   <div className="grid grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <Label>Logo (Tam Boyut)</Label>
-                      <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-[#D9790B] transition-colors cursor-pointer" onClick={() => handleLogoUpload('logoUrl')}>
+                      <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-brand-accent transition-colors cursor-pointer" onClick={() => handleLogoUpload('logoUrl')}>
                         <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">Logo yüklemek için tıklayın</p>
                         <p className="text-xs text-muted-foreground mt-1">PNG, JPG veya SVG (max 2MB)</p>
@@ -487,7 +465,7 @@ export default function TenantCustomization() {
                     </div>
                     <div className="space-y-4">
                       <Label>Favicon</Label>
-                      <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-[#D9790B] transition-colors cursor-pointer" onClick={() => handleLogoUpload('faviconUrl')}>
+                      <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-brand-accent transition-colors cursor-pointer" onClick={() => handleLogoUpload('faviconUrl')}>
                         <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">Favicon yüklemek için tıklayın</p>
                         <p className="text-xs text-muted-foreground mt-1">ICO veya PNG (32x32px)</p>

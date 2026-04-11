@@ -4,18 +4,35 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class AcademicQueryService(
     CourseIntellectDbContext dbContext,
-    IPasswordHasher passwordHasher) : IAcademicQueryService
+    IPasswordHasher passwordHasher,
+    IHttpContextAccessor httpContextAccessor) : IAcademicQueryService
 {
     public async Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default)
     {
-        var users = await dbContext.Users.ToDictionaryAsync(x => x.Id, cancellationToken);
-        var students = await dbContext.Students
+        var currentTenantId = ResolveCurrentTenantId();
+        var usersQuery = dbContext.Users.AsQueryable();
+        if (currentTenantId.HasValue)
+        {
+            usersQuery = usersQuery.Where(x => x.TenantId == currentTenantId.Value);
+        }
+
+        var users = await usersQuery.ToDictionaryAsync(x => x.Id, cancellationToken);
+        var userIds = users.Keys.ToList();
+        var studentsQuery = dbContext.Students.AsQueryable();
+        if (currentTenantId.HasValue)
+        {
+            studentsQuery = studentsQuery.Where(x => userIds.Contains(x.UserId));
+        }
+
+        var students = await studentsQuery
             .OrderBy(x => x.FullName)
             .ToListAsync(cancellationToken);
 
@@ -106,6 +123,7 @@ public sealed class AcademicQueryService(
 
         var user = new AppUser
         {
+            TenantId = ResolveCurrentTenantId(),
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
@@ -116,6 +134,7 @@ public sealed class AcademicQueryService(
 
         var student = new StudentProfile
         {
+            TenantId = user.TenantId,
             UserId = user.Id,
             FullName = request.FullName,
             TcNo = request.TcNo,
@@ -182,5 +201,11 @@ public sealed class AcademicQueryService(
             "Quiz" => ExamType.Quiz,
             _ => ExamType.Written
         };
+    }
+
+    private Guid? ResolveCurrentTenantId()
+    {
+        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("tenant_id");
+        return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
     }
 }

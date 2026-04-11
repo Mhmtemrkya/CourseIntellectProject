@@ -180,7 +180,7 @@ function roleTone(role) {
     Parent: 'bg-fuchsia-100 text-fuchsia-700',
     Accounting: 'bg-rose-100 text-rose-700',
   };
-  return tones[role] || 'bg-slate-100 text-slate-700';
+  return tones[role] || 'bg-muted text-muted-foreground';
 }
 
 function roleMeta(role) {
@@ -188,52 +188,52 @@ function roleMeta(role) {
     Admin: {
       icon: Crown,
       accent: 'from-blue-500 via-cyan-500 to-sky-400',
-      surface: 'from-blue-50 via-cyan-50 to-sky-100',
-      ring: 'border-blue-200',
+      surface: 'from-blue-950/80 via-cyan-950/60 to-sky-950/80',
+      ring: 'border-blue-800/50',
       copy: 'Platform ve kurum yönetiminde tam erişim',
     },
     Administrative: {
       icon: BriefcaseBusiness,
       accent: 'from-teal-500 via-emerald-500 to-green-400',
-      surface: 'from-teal-50 via-emerald-50 to-green-100',
-      ring: 'border-teal-200',
+      surface: 'from-teal-950/80 via-emerald-950/60 to-green-950/80',
+      ring: 'border-teal-800/50',
       copy: 'Operasyon, kayıt ve onay süreçleri',
     },
     Teacher: {
       icon: GraduationCap,
       accent: 'from-emerald-500 via-lime-500 to-yellow-400',
-      surface: 'from-emerald-50 via-lime-50 to-yellow-100',
-      ring: 'border-emerald-200',
+      surface: 'from-emerald-950/80 via-lime-950/60 to-yellow-950/80',
+      ring: 'border-emerald-800/50',
       copy: 'Ders, sınav ve akademik akış yönetimi',
     },
     Student: {
       icon: UserRound,
       accent: 'from-amber-500 via-orange-500 to-rose-400',
-      surface: 'from-amber-50 via-orange-50 to-rose-100',
-      ring: 'border-amber-200',
+      surface: 'from-amber-950/80 via-orange-950/60 to-rose-950/80',
+      ring: 'border-amber-800/50',
       copy: 'Öğrenme, sınav ve içerik deneyimi',
     },
     Parent: {
       icon: Users,
       accent: 'from-fuchsia-500 via-pink-500 to-rose-400',
-      surface: 'from-fuchsia-50 via-pink-50 to-rose-100',
-      ring: 'border-fuchsia-200',
+      surface: 'from-fuchsia-950/80 via-pink-950/60 to-rose-950/80',
+      ring: 'border-fuchsia-800/50',
       copy: 'Takip, rapor ve iletişim görünümü',
     },
     Accounting: {
       icon: Wallet,
       accent: 'from-rose-500 via-red-500 to-orange-400',
-      surface: 'from-rose-50 via-red-50 to-orange-100',
-      ring: 'border-rose-200',
+      surface: 'from-rose-950/80 via-red-950/60 to-orange-950/80',
+      ring: 'border-rose-800/50',
       copy: 'Tahsilat, mutabakat ve finans ekranları',
     },
   };
 
   return map[role] || {
     icon: Shield,
-    accent: 'from-slate-500 via-slate-600 to-slate-700',
-    surface: 'from-slate-50 via-slate-100 to-slate-200',
-    ring: 'border-slate-200',
+    accent: 'from-gray-500 via-gray-600 to-gray-700',
+    surface: 'from-muted/50 via-muted to-muted',
+    ring: 'border-border',
     copy: 'Genel erişim profili',
   };
 }
@@ -399,7 +399,7 @@ export default function AdminRoleManagement() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-role-management-page">
-      <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(129,140,248,0.18),_transparent_30%),linear-gradient(135deg,#0f172a_0%,#14213d_50%,#312e81_100%)] p-7 text-white shadow-xl">
+      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(129,140,248,0.18)), transparent 30%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #14213d) 50%, var(--brand-p-700, #312e81) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-white/20 bg-white/10 text-white">Yetki Tasarımı</Badge>
@@ -438,11 +438,11 @@ export default function AdminRoleManagement() {
                       <Badge className={roleTone(role)}>{role}</Badge>
                     </div>
                     <div className="mt-5">
-                      <p className="text-3xl font-bold tracking-tight text-slate-900">{count}</p>
-                      <p className="mt-1 text-sm font-semibold text-slate-800">{role} Profili</p>
-                      <p className="mt-2 text-sm leading-6 text-slate-600">{meta.copy}</p>
+                      <p className="text-3xl font-bold tracking-tight text-foreground">{count}</p>
+                      <p className="mt-1 text-sm font-semibold text-foreground">{role} Profili</p>
+                      <p className="mt-2 text-sm leading-6 text-muted-foreground">{meta.copy}</p>
                     </div>
-                    <div className="mt-5 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-slate-500">
+                    <div className="mt-5 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-muted-foreground">
                       <span>{isActive ? 'Aktif filtre' : 'Filtrele'}</span>
                       <ArrowRight className="h-4 w-4" />
                     </div>
@@ -457,22 +457,22 @@ export default function AdminRoleManagement() {
           onClick={() => setSelectedRole('')}
           className="text-left"
         >
-          <Card className={`group overflow-hidden border border-slate-200 bg-gradient-to-br from-slate-50 via-white to-slate-100 shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${selectedRole === '' ? 'ring-2 ring-brand-primary/40' : ''}`}>
+          <Card className={`group overflow-hidden border border-border bg-gradient-to-br from-muted/50 via-card to-muted shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${selectedRole === '' ? 'ring-2 ring-brand-primary/40' : ''}`}>
             <CardContent className="p-0">
-              <div className="h-2 bg-gradient-to-r from-slate-700 via-slate-500 to-slate-400" />
+              <div className="h-2 bg-gradient-to-r from-gray-700 via-gray-500 to-gray-400" />
               <div className="p-5">
                 <div className="flex items-start justify-between gap-4">
-                  <div className="rounded-2xl bg-slate-900 p-3 text-white shadow-lg">
+                  <div className="rounded-2xl bg-brand-primary p-3 text-white shadow-lg">
                     <Users className="h-5 w-5" />
                   </div>
                   <Badge variant="outline">Tümü</Badge>
                 </div>
                 <div className="mt-5">
-                  <p className="text-3xl font-bold tracking-tight text-slate-900">{people.length}</p>
-                  <p className="mt-1 text-sm font-semibold text-slate-800">Tüm Kişiler</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">Tüm rolleri tek görünümde aç ve filtreyi temizle.</p>
+                  <p className="text-3xl font-bold tracking-tight text-foreground">{people.length}</p>
+                  <p className="mt-1 text-sm font-semibold text-foreground">Tüm Kişiler</p>
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">Tüm rolleri tek görünümde aç ve filtreyi temizle.</p>
                 </div>
-                <div className="mt-5 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-slate-500">
+                <div className="mt-5 flex items-center justify-between text-xs uppercase tracking-[0.16em] text-muted-foreground">
                   <span>{selectedRole === '' ? 'Genel görünüm' : 'Filtreyi kaldır'}</span>
                   <ArrowRight className="h-4 w-4" />
                 </div>
@@ -483,7 +483,7 @@ export default function AdminRoleManagement() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(320px,0.75fr)]">
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle>{selectedRole ? `${selectedRole} Rolündeki Kayıtlar` : 'Kişi Bazlı Yetki Yönetimi'}</CardTitle>
           </CardHeader>
@@ -501,7 +501,7 @@ export default function AdminRoleManagement() {
                   <button
                     type="button"
                     key={item.id}
-                    className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md"
+                    className="w-full rounded-2xl border border-border bg-card p-4 text-left transition-all hover:-translate-y-0.5 hover:bg-muted/50 hover:shadow-md"
                     onClick={() => openPerson(item)}
                   >
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -525,7 +525,7 @@ export default function AdminRoleManagement() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LayoutGrid className="h-5 w-5 text-brand-primary" />
@@ -538,7 +538,7 @@ export default function AdminRoleManagement() {
               const modules = Object.values(preset.modules).filter(Boolean).length;
               const actions = Object.values(preset.actions).filter(Boolean).length;
               return (
-                <div key={role} className="rounded-xl border border-slate-200 p-4">
+                <div key={role} className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between">
                     <Badge className={roleTone(role)}>{role}</Badge>
                     <Shield className="h-4 w-4 text-brand-primary" />

@@ -10,7 +10,7 @@ const destructivePattern = /sil|delete|remove|logout|cikis|çıkış|reddet|ipta
 const roles = [
   {
     key: 'admin',
-    username: 'admin.ece',
+    username: 'admin@courseintlecct.com',
     password: 'Admin2026!',
     home: '/dashboard',
     routes: [

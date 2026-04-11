@@ -125,7 +125,9 @@ export default function Schedule() {
         fetchScheduleEntries().catch(() => []),
       ]);
 
-      const nextClasses = [...new Set((classItems || []).filter(Boolean))];
+      const scheduleClassNames = (scheduleItems || []).map((item) => item.className).filter(Boolean);
+      const teacherClasses = (teacherItems || []).flatMap((t) => t.assignedClasses || []).filter(Boolean);
+      const nextClasses = [...new Set([...(classItems || []).filter(Boolean), ...scheduleClassNames, ...teacherClasses])];
       setClasses(nextClasses);
       setTeachers(teacherItems || []);
       setEntries(scheduleItems || []);
@@ -236,7 +238,7 @@ export default function Schedule() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="schedule-page">
-      <div className="rounded-[30px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.16),_transparent_34%),linear-gradient(135deg,#0f172a_0%,#12324a_52%,#0f766e_100%)] p-7 text-white shadow-xl">
+      <div className="rounded-[30px] border border-border p-7 text-white shadow-xl" style={{ background: `radial-gradient(circle at top left, var(--brand-a-400, #D9790B33) 0%, transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 52%, var(--brand-p-700, #0f766e) 100%)` }}>
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-white/20 bg-white/10 text-white">{roleTitle(window.location.pathname)}</Badge>
@@ -263,15 +265,15 @@ export default function Schedule() {
 
       {error ? <ErrorBanner title="Ders programı alınamadı" message={error} onRetry={loadSchedule} /> : null}
 
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardContent className="flex flex-col gap-4 p-5 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="rounded-2xl bg-slate-100 p-3 text-slate-700">
+            <div className="rounded-2xl bg-muted p-3 text-muted-foreground">
               <Calendar className="h-5 w-5" />
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Program Görünümü</p>
-              <p className="font-semibold text-slate-900">{selectedClass || 'Sınıf seçin'}</p>
+              <p className="font-semibold text-foreground">{selectedClass || 'Sınıf seçin'}</p>
             </div>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -289,28 +291,28 @@ export default function Schedule() {
         </CardContent>
       </Card>
 
-      <Card className="overflow-hidden border-slate-200 shadow-sm">
+      <Card className="overflow-hidden border-border shadow-sm">
         <CardContent className="overflow-x-auto p-0">
           <div className="min-w-[920px]">
-            <div className="grid grid-cols-6 border-b bg-slate-50">
-              <div className="border-r p-4 text-sm font-semibold text-slate-700">Saat</div>
+            <div className="grid grid-cols-6 border-b bg-muted/50">
+              <div className="border-r p-4 text-sm font-semibold text-muted-foreground">Saat</div>
               {days.map((day) => (
-                <div key={day} className="border-r p-4 text-center font-semibold text-slate-800 last:border-r-0">
+                <div key={day} className="border-r p-4 text-center font-semibold text-foreground last:border-r-0">
                   {day}
                 </div>
               ))}
             </div>
             {timeSlots.map((time) => (
               <div key={time} className="grid grid-cols-6 border-b last:border-b-0">
-                <div className="border-r bg-slate-50/80 p-4 text-sm">
-                  <p className="font-semibold text-slate-900">{time.split('-')[0]}</p>
+                <div className="border-r bg-muted/40 p-4 text-sm">
+                  <p className="font-semibold text-foreground">{time.split('-')[0]}</p>
                   <p className="text-muted-foreground">{time.split('-')[1]}</p>
                 </div>
                 {days.map((day) => {
                   const lesson = lessonMap.get(`${day}-${time}`);
                   return (
                     <div key={`${day}-${time}`} className="border-r p-2 last:border-r-0">
-                      {lesson ? <LessonBlock lesson={lesson} onSelect={setSelectedLesson} /> : <div className="flex h-full min-h-[92px] items-center justify-center rounded-2xl border border-dashed border-slate-200 text-xs text-slate-400">Boş slot</div>}
+                      {lesson ? <LessonBlock lesson={lesson} onSelect={setSelectedLesson} /> : <div className="flex h-full min-h-[92px] items-center justify-center rounded-2xl border border-dashed border-border text-xs text-muted-foreground/60">Boş slot</div>}
                     </div>
                   );
                 })}
@@ -321,7 +323,7 @@ export default function Schedule() {
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="border-slate-200 shadow-sm xl:col-span-2">
+        <Card className="border-border shadow-sm xl:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5 text-brand-primary" />Planlama Kuralları</CardTitle>
           </CardHeader>
@@ -331,15 +333,15 @@ export default function Schedule() {
               ['Öğretmen çakışması yok', 'Aynı öğretmen aynı gün-saatte iki farklı sınıfa atanamaz.', User],
               ['Gerçek kayıt', 'Program doğrudan backend üstünde saklanır, sayfa türetmesi yapılmaz.', BookOpen],
             ].map(([title, copy, Icon]) => (
-              <div key={title} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+              <div key={title} className="rounded-2xl border border-border bg-muted/50 p-4">
                 <Icon className="h-5 w-5 text-brand-primary" />
-                <p className="mt-3 font-semibold text-slate-900">{title}</p>
-                <p className="mt-1 text-sm text-slate-600">{copy}</p>
+                <p className="mt-3 font-semibold text-foreground">{title}</p>
+                <p className="mt-1 text-sm text-muted-foreground">{copy}</p>
               </div>
             ))}
           </CardContent>
         </Card>
-        <Card className="border-slate-200 shadow-sm">
+        <Card className="border-border shadow-sm">
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-brand-primary" />Öğretmen Dağılımı</CardTitle>
           </CardHeader>
@@ -347,9 +349,9 @@ export default function Schedule() {
             {Array.from(new Set(currentLessons.map((item) => item.teacher))).slice(0, 6).map((teacher) => {
               const lessonCount = currentLessons.filter((item) => item.teacher === teacher).length;
               return (
-                <div key={teacher} className="flex items-center justify-between rounded-2xl border border-slate-200 p-3">
+                <div key={teacher} className="flex items-center justify-between rounded-2xl border border-border p-3">
                   <div>
-                    <p className="font-medium text-slate-900">{teacher}</p>
+                    <p className="font-medium text-foreground">{teacher}</p>
                     <p className="text-xs text-muted-foreground">Bu sınıfta {lessonCount} slot</p>
                   </div>
                   <Badge variant="outline">{lessonCount}</Badge>

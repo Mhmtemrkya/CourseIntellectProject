@@ -44,7 +44,7 @@ class _LoginPageState extends State<LoginPage> {
       case "Muhasebeci":
         return const {'username': 'muhasebe.selim', 'password': 'MHS2026A'};
       case "Yönetici":
-        return const {'username': 'admin.ece', 'password': 'Admin2026!'};
+        return const {'username': 'kurum.admin', 'password': 'KRM2026A'};
       case "İdari Birimler":
         return const {'username': 'idari.ceren', 'password': 'CRN2026B'};
       default:

@@ -15,8 +15,12 @@ class BrandingService {
       final session = await AuthSessionStore.instance.load();
       if (session == null) return;
 
+      final brandingUrl = session.tenantId != null && session.tenantId!.isNotEmpty
+          ? '${ApiConfig.baseUrl}/api/platformconfigurations/branding?tenantId=${Uri.encodeQueryComponent(session.tenantId!)}'
+          : '${ApiConfig.baseUrl}/api/platformconfigurations/branding';
+
       final response = await http.get(
-        Uri.parse('${ApiConfig.baseUrl}/api/platformconfigurations/branding'),
+        Uri.parse(brandingUrl),
         headers: {
           'Authorization': 'Bearer ${session.accessToken}',
           'Content-Type': 'application/json',

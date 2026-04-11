@@ -1,8 +1,9 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class HomeworkAssignment
+public sealed class HomeworkAssignment : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
     public string Title { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;

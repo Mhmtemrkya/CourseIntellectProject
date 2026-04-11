@@ -7,12 +7,15 @@ import { useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { motion } from "framer-motion"
-import { Eye, EyeOff, Lock, Mail, AlertCircle } from "lucide-react"
+import { Eye, EyeOff, Lock, User, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useAuth } from "@/context/auth-context"
+
+const DEVELOPER_ADMIN_USERNAME = process.env.NEXT_PUBLIC_DEVELOPER_ADMIN_USERNAME || "admin@courseintlecct.com"
+const DEVELOPER_ADMIN_PASSWORD = process.env.NEXT_PUBLIC_DEVELOPER_ADMIN_PASSWORD || "Admin2026!"
 
 export default function AdminLoginPage() {
   const router = useRouter()
@@ -36,12 +39,27 @@ export default function AdminLoginPage() {
     setError("")
     setIsLoading(true)
 
-    const success = await login(email, password)
+    const result = await login(email, password)
 
-    if (success) {
+    if (result.success) {
       router.push("/admin")
     } else {
-      setError("E-posta veya şifre hatalı")
+      setError(result.error || "Kullanıcı adı veya şifre hatalı")
+    }
+
+    setIsLoading(false)
+  }
+
+  const handleDeveloperDirectLogin = async () => {
+    setError("")
+    setIsLoading(true)
+
+    const result = await login(DEVELOPER_ADMIN_USERNAME, DEVELOPER_ADMIN_PASSWORD)
+
+    if (result.success) {
+      router.push("/admin")
+    } else {
+      setError(result.error || "Geliştirici paneline giriş yapılamadı")
     }
 
     setIsLoading(false)
@@ -96,7 +114,7 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.3 }}
             className="text-4xl font-bold mb-4 text-center"
           >
-            Admin Paneli
+            Geliştirici Paneli
           </motion.h1>
 
           <motion.p
@@ -105,26 +123,8 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.4 }}
             className="text-lg text-white/70 text-center max-w-md"
           >
-            CourseIntellect yönetim paneline hoş geldiniz. Site içeriklerinizi kolayca yönetin.
+            CourseIntellect platform yönetimi. Bu alan sadece geliştirici ekibi kullanımı içindir.
           </motion.p>
-
-          {/* Demo credentials */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="mt-12 p-6 bg-white/10 rounded-xl backdrop-blur-sm"
-          >
-            <p className="text-sm text-white/70 mb-3">Demo Giriş Bilgileri:</p>
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="text-white/50">E-posta:</span> admin@courseintellect.com
-              </p>
-              <p>
-                <span className="text-white/50">Şifre:</span> admin123
-              </p>
-            </div>
-          </motion.div>
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export default function AdminLoginPage() {
 
           <div>
             <h2 className="text-2xl font-bold text-foreground">Giriş Yap</h2>
-            <p className="text-muted-foreground mt-2">Yönetim paneline erişmek için giriş yapın</p>
+            <p className="text-muted-foreground mt-2">Geliştirici yönetim paneline erişmek için giriş yapın</p>
           </div>
 
           {/* Error Message */}
@@ -162,17 +162,35 @@ export default function AdminLoginPage() {
             </motion.div>
           )}
 
+          <Button
+            type="button"
+            onClick={handleDeveloperDirectLogin}
+            disabled={isLoading}
+            className="w-full bg-accent hover:bg-accent/90 text-accent-foreground"
+          >
+            Geliştirici Paneline Direkt Gir
+          </Button>
+
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs">
+              <span className="bg-background px-2 text-muted-foreground">veya yetkili hesapla gir</span>
+            </div>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="email">E-posta</Label>
+              <Label htmlFor="email">Kullanıcı adı</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
                 <Input
                   id="email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@courseintellect.com"
+                  placeholder="Geliştirici kullanıcı adı"
                   className="pl-10"
                   required
                 />

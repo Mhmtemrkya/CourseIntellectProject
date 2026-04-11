@@ -9,7 +9,7 @@ interface User {
   id: string
   name: string
   email: string
-  role: "admin" | "editor"
+  role: "developer" | "admin" | "editor"
   avatar?: string
 }
 
@@ -22,6 +22,8 @@ interface AuthApiUser {
   status: string
   campus: string
   departmentOrBranch: string
+  tenantId?: string | null
+  isPlatformAdmin?: boolean
 }
 
 interface AuthResponse {
@@ -39,14 +41,20 @@ interface StoredAuth {
   expiresAt: string
 }
 
+interface LoginResult {
+  success: boolean
+  error?: string
+}
+
 interface AuthContextValue {
   user: User | null
   isAuthenticated: boolean
   isLoading: boolean
+  accessToken: string | null
   extraRoles: string[]
   activeRole: string | null
   switchRole: (role: string) => void
-  login: (email: string, password: string) => Promise<boolean>
+  login: (email: string, password: string) => Promise<LoginResult>
   logout: () => void
 }
 
@@ -54,9 +62,14 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 const STORAGE_KEY = "courseintellect_auth"
 
+function isDeveloperPanelUser(apiUser: AuthApiUser) {
+  const role = apiUser.primaryRole?.toLowerCase()
+  return role === "developer" && apiUser.isPlatformAdmin === true
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
+  const [accessToken, setAccessToken] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [extraRoles, setExtraRoles] = useState<string[]>([])
   const [activeRole, setActiveRole] = useState<string | null>(null)
@@ -75,12 +88,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
+        // Eski demo oturumları platform admin panelinde geçerli sayılmaz.
+        if (parsed.accessToken === "demo-token") {
+          localStorage.removeItem(STORAGE_KEY)
+          return
+        }
+
         try {
           const apiUser = await apiRequest<AuthApiUser>("/api/auth/me", {
             token: parsed.accessToken,
           })
           const role = apiUser.primaryRole?.toLowerCase()
-          if (role !== "admin" && role !== "editor") {
+          if (!isDeveloperPanelUser(apiUser)) {
             throw new Error("Unauthorized role")
           }
 
@@ -88,9 +107,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             id: apiUser.id,
             name: apiUser.fullName,
             email: apiUser.username,
-            role: role as "admin" | "editor",
+            role: role as "developer",
           }
           setUser(mappedUser)
+          setAccessToken(parsed.accessToken)
+          setExtraRoles(apiUser.extraRoles ?? [])
+          setActiveRole(role)
           localStorage.setItem(
             STORAGE_KEY,
             JSON.stringify({
@@ -107,13 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         const refreshed = await apiRequest<AuthResponse>("/api/auth/refresh", {
           method: "POST",
+          token: null,
           body: {
             refreshToken: parsed.refreshToken,
           },
         })
 
         const refreshRole = refreshed.user.primaryRole?.toLowerCase()
-        if (refreshRole !== "admin" && refreshRole !== "editor") {
+        if (!isDeveloperPanelUser(refreshed.user)) {
           throw new Error("Unauthorized role")
         }
 
@@ -121,10 +144,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           id: refreshed.user.id,
           name: refreshed.user.fullName,
           email: refreshed.user.username,
-          role: refreshRole as "admin" | "editor",
+          role: refreshRole as "developer",
         }
 
         setUser(refreshedUser)
+        setAccessToken(refreshed.accessToken)
+        setExtraRoles(refreshed.user.extraRoles ?? [])
+        setActiveRole(refreshRole)
         localStorage.setItem(
           STORAGE_KEY,
           JSON.stringify({
@@ -137,6 +163,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (error) {
         localStorage.removeItem(STORAGE_KEY)
         setUser(null)
+        setAccessToken(null)
+        setExtraRoles([])
+        setActiveRole(null)
       } finally {
         setIsLoading(false)
       }
@@ -145,29 +174,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     void initialize()
   }, [])
 
-  const login = useCallback(async (email: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (email: string, password: string): Promise<LoginResult> => {
     try {
       const response = await apiRequest<AuthResponse>("/api/auth/login", {
         method: "POST",
+        token: null,
         body: {
-          username: email,
+          username: email.trim(),
           password,
         },
       })
 
       const role = response.user.primaryRole?.toLowerCase()
-      if (role !== "admin" && role !== "editor") {
-        return false
+      if (!isDeveloperPanelUser(response.user)) {
+        void apiRequest("/api/auth/logout", {
+          method: "POST",
+          token: response.accessToken,
+          body: {
+            refreshToken: response.refreshToken,
+          },
+        }).catch(() => undefined)
+
+        return {
+          success: false,
+          error: "Bu hesap geliştirici/platform paneline erişim yetkisine sahip değil.",
+        }
       }
 
       const mappedUser: User = {
         id: response.user.id,
         name: response.user.fullName,
         email: response.user.username,
-        role: role as "admin" | "editor",
+        role: role as "developer",
       }
 
       setUser(mappedUser)
+      setAccessToken(response.accessToken)
       setExtraRoles(response.user.extraRoles ?? [])
       setActiveRole(role)
       localStorage.setItem(
@@ -180,9 +222,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }),
       )
 
-      return true
+      return { success: true }
     } catch (error) {
-      return false
+      return { success: false, error: "Kullanıcı adı veya şifre hatalı." }
     }
   }, [])
 
@@ -206,6 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     setUser(null)
+    setAccessToken(null)
     setExtraRoles([])
     setActiveRole(null)
     localStorage.removeItem(STORAGE_KEY)
@@ -222,6 +265,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user,
         isAuthenticated: !!user,
         isLoading,
+        accessToken,
         extraRoles,
         activeRole,
         switchRole,

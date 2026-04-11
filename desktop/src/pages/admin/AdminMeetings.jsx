@@ -80,7 +80,7 @@ export default function AdminMeetings() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <section className="rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#334155_48%,#0f766e_100%)] p-7 text-white shadow-xl">
+      <section className="rounded-[32px] border border-border p-7 text-white shadow-xl" style={{ background: 'linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #334155) 48%, var(--brand-p-700, #0f766e) 100%)' }}>
         <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
           <div>
             <Badge className="bg-white/12 text-white hover:bg-white/12">Yönetici Görüşme Denetimi</Badge>
@@ -113,17 +113,17 @@ export default function AdminMeetings() {
         ))}
       </div>
 
-      <Card className="border-slate-200 shadow-sm">
+      <Card className="border-border shadow-sm">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><CalendarFold className="h-5 w-5 text-emerald-600" />Görüşme Akışı</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           {items.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-sm text-slate-500">
+            <div className="rounded-2xl border border-dashed border-border bg-muted/50 p-8 text-center text-sm text-muted-foreground">
               Bu filtrede görüşme kaydı yok.
             </div>
           ) : items.map((item) => (
-            <div key={item.id} className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm">
+            <div key={item.id} className="rounded-[28px] border border-border bg-card p-5 shadow-sm">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
                 <div className="space-y-3">
                   <div className="flex items-center gap-3">
@@ -131,8 +131,8 @@ export default function AdminMeetings() {
                       <UserRound className="h-5 w-5" />
                     </div>
                     <div>
-                      <p className="font-semibold text-slate-900">{item.parentName}</p>
-                      <p className="text-sm text-slate-500">{item.studentName} • {item.topic}</p>
+                      <p className="font-semibold text-foreground">{item.parentName}</p>
+                      <p className="text-sm text-muted-foreground">{item.studentName} • {item.topic}</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -141,7 +141,7 @@ export default function AdminMeetings() {
                     <Badge variant="outline">{item.slotInfo.timeLabel}</Badge>
                     <Badge variant="outline">{item.onlineMeeting ? <><Video className="mr-2 h-3 w-3" />Online</> : <><Building2 className="mr-2 h-3 w-3" />Yüz yüze</>}</Badge>
                   </div>
-                  {item.note ? <p className="text-sm leading-6 text-slate-600">{item.note}</p> : null}
+                  {item.note ? <p className="text-sm leading-6 text-muted-foreground">{item.note}</p> : null}
                 </div>
                 {badge(item.status)}
               </div>

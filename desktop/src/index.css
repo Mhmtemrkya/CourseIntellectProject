@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Unlayered = higher cascade priority than Tailwind utilities (e.g. text-primary-foreground) */
+.bg-brand-primary { color: #fff; }
+.bg-brand-accent { color: #fff; }
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700&display=swap');
 
 body {

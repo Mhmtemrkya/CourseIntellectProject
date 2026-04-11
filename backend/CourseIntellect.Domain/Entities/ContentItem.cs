@@ -1,8 +1,9 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class ContentItem
+public sealed class ContentItem : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
     public string Subject { get; set; } = string.Empty;
     public string Title { get; set; } = string.Empty;
     public string Teacher { get; set; } = string.Empty;

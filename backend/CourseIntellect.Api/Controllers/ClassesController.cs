@@ -33,6 +33,37 @@ public sealed class ClassesController(CourseIntellectDbContext dbContext) : Cont
         AddMany(await dbContext.HomeworkAssignments.AsNoTracking().Select(item => item.ClassName).ToListAsync(cancellationToken));
         AddMany(await dbContext.AccountingCollections.AsNoTracking().Select(item => item.ClassName).ToListAsync(cancellationToken));
 
+        // Staff assigned classes (comma-separated)
+        var staffClassCsvs = await dbContext.Staff
+            .AsNoTracking()
+            .Select(item => item.AssignedClassesSerialized)
+            .ToListAsync(cancellationToken);
+
+        foreach (var csv in staffClassCsvs)
+        {
+            if (!string.IsNullOrWhiteSpace(csv))
+            {
+                AddMany(csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+            }
+        }
+
+        // Schedule entries
+        var schedulePayloads = await dbContext.PlatformConfigurations
+            .AsNoTracking()
+            .Where(item => item.ConfigurationType == "class-schedule-entry")
+            .Select(item => item.DisplayName)
+            .ToListAsync(cancellationToken);
+
+        foreach (var displayName in schedulePayloads)
+        {
+            // DisplayName format: "SCHEDULE::ClassName::Day::Time"
+            var parts = (displayName ?? "").Split("::", StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length >= 2)
+            {
+                AddMany(new[] { parts[1] });
+            }
+        }
+
         var targetJsons = await dbContext.QuestionBankItems
             .AsNoTracking()
             .Select(item => item.ClassTargetsSerialized)

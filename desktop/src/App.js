@@ -136,7 +136,7 @@ import OverdueRules from "./pages/finance/OverdueRules";
 import Ledger from "./pages/finance/Ledger";
 
 import { useApp } from "./context/AppContext";
-import { getRoleHomePath } from "./lib/auth";
+import { getUserHomePath } from "./lib/auth";
 
 function RootRedirect() {
   const { isAuthenticated, isAuthLoading, user } = useApp();
@@ -149,7 +149,7 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Navigate to={getRoleHomePath(user.role)} replace />;
+  return <Navigate to={getUserHomePath(user)} replace />;
 }
 
 function App() {

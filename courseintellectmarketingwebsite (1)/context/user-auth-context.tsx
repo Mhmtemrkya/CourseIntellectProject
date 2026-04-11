@@ -38,6 +38,8 @@ interface AuthApiUser {
   status: string
   campus: string
   departmentOrBranch: string
+  tenantId?: string | null
+  isPlatformAdmin?: boolean
 }
 
 interface AuthResponse {
@@ -98,7 +100,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
           })
 
           const role = apiUser.primaryRole?.toLowerCase()
-          if (!role || role === "admin" || role === "editor") {
+          if (!role || role === "developer" || role === "editor" || (role === "admin" && (apiUser.isPlatformAdmin === true || !apiUser.tenantId))) {
             throw new Error("Unauthorized role")
           }
 
@@ -129,13 +131,14 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
         const refreshed = await apiRequest<AuthResponse>("/api/auth/refresh", {
           method: "POST",
+          token: null,
           body: {
             refreshToken: parsed.refreshToken,
           },
         })
 
         const refreshRole = refreshed.user.primaryRole?.toLowerCase()
-        if (!refreshRole || refreshRole === "admin" || refreshRole === "editor") {
+        if (!refreshRole || refreshRole === "developer" || refreshRole === "editor" || (refreshRole === "admin" && (refreshed.user.isPlatformAdmin === true || !refreshed.user.tenantId))) {
           throw new Error("Unauthorized role")
         }
 
@@ -207,14 +210,19 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const response = await apiRequest<AuthResponse>("/api/auth/login", {
           method: "POST",
+          token: null,
           body: {
-            username: email,
+            username: email.trim(),
             password,
           },
         })
 
         const normalizedRole = response.user.primaryRole?.toLowerCase()
-        if (!normalizedRole || normalizedRole === "admin" || normalizedRole === "editor") {
+        if (!normalizedRole ||
+            normalizedRole === "developer" ||
+            normalizedRole === "editor" ||
+            (normalizedRole === "admin" && (response.user.isPlatformAdmin === true || !response.user.tenantId)) ||
+            normalizedRole !== role.toLowerCase()) {
           return { success: false, error: "Unauthorized role" }
         }
 
@@ -283,6 +291,7 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
       try {
         await apiRequest<AuthResponse>("/api/auth/register", {
           method: "POST",
+          token: null,
           body: {
             fullName: name,
             username: email,

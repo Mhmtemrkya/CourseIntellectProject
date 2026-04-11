@@ -11,6 +11,10 @@ class AuthSession {
   final String username;
   final String primaryRole;
   final List<String> extraRoles;
+  final String? tenantId;
+  final String tenantName;
+  final String tenantSlug;
+  final bool isPlatformAdmin;
 
   const AuthSession({
     required this.accessToken,
@@ -21,6 +25,10 @@ class AuthSession {
     required this.username,
     required this.primaryRole,
     required this.extraRoles,
+    required this.tenantId,
+    required this.tenantName,
+    required this.tenantSlug,
+    required this.isPlatformAdmin,
   });
 
   factory AuthSession.fromMap(Map<String, dynamic> map) {
@@ -33,6 +41,10 @@ class AuthSession {
       username: map['username'] as String,
       primaryRole: map['primaryRole'] as String,
       extraRoles: (map['extraRoles'] as List<dynamic>? ?? const []).cast<String>(),
+      tenantId: map['tenantId'] as String?,
+      tenantName: (map['tenantName'] as String?) ?? '',
+      tenantSlug: (map['tenantSlug'] as String?) ?? '',
+      isPlatformAdmin: map['isPlatformAdmin'] == true,
     );
   }
 
@@ -45,6 +57,10 @@ class AuthSession {
         'username': username,
         'primaryRole': primaryRole,
         'extraRoles': extraRoles,
+        'tenantId': tenantId,
+        'tenantName': tenantName,
+        'tenantSlug': tenantSlug,
+        'isPlatformAdmin': isPlatformAdmin,
       };
 }
 

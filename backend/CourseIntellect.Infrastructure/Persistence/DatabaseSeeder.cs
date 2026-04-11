@@ -1,20 +1,37 @@
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Application.Interfaces;
+using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
 namespace CourseIntellect.Infrastructure.Persistence;
 
 public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPasswordHasher passwordHasher)
 {
+    private const string DeveloperAdminUsername = "admin@courseintlecct.com";
+    private const string DeveloperAdminPassword = "Admin2026!";
+    private const string LegacyPlatformAdminUsername = "admin.ece";
+
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
+        var demoTenant = await EnsureDemoTenantAsync(cancellationToken);
+        if (dbContext.Entry(demoTenant).State == EntityState.Added)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         if (dbContext.Users.Any())
         {
+            await EnsurePlatformAndTenantAdminsAsync(demoTenant, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await AssignLegacyUsersToDemoTenantAsync(demoTenant, cancellationToken);
+            await AssignLegacyTenantDataToDemoTenantAsync(demoTenant, cancellationToken);
+
             if (!dbContext.Users.Any(x => x.PrimaryRole == UserRole.Accounting && x.Username == "muhasebe.selim"))
             {
                 var seededAccountingUser = new AppUser
                 {
+                    TenantId = demoTenant.Id,
                     FullName = "Selim Kara",
                     Username = "muhasebe.selim",
                     PasswordHash = passwordHasher.Hash("MHS2026A"),
@@ -40,6 +57,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
                     MaritalStatus = "Evli",
                     ChildCount = 1,
                     Note = "Tahsilat ve fatura operasyonlarindan sorumlu.",
+                    TenantId = demoTenant.Id,
                     Role = UserRole.Accounting
                 }, cancellationToken);
             }
@@ -48,6 +66,15 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             {
                 await dbContext.RolePolicies.AddRangeAsync(
                 [
+                    new RolePolicy
+                    {
+                        RoleName = UserRole.Developer.ToString(),
+                        IsActive = true,
+                        LoginEnabled = true,
+                        RequiresCriticalApproval = false,
+                        MessagingScope = "Platform",
+                        ModuleAccessSerialized = JsonSerializer.Serialize(new[] { "Platform", "Kurumlar", "Icerik", "Ayarlar" })
+                    },
                     new RolePolicy
                     {
                         RoleName = UserRole.Admin.ToString(),
@@ -142,21 +169,36 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
                 ], cancellationToken);
             }
 
+            AssignTrackedTenantScopedEntitiesToDemoTenant(demoTenant.Id);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await AssignLegacyUsersToDemoTenantAsync(demoTenant, cancellationToken);
+            await AssignLegacyTenantDataToDemoTenantAsync(demoTenant, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             return;
         }
 
-        var adminUser = new AppUser
+        var developerUser = new AppUser
         {
-            FullName = "Ece Arslan",
-            Username = "admin.ece",
-            PasswordHash = passwordHasher.Hash("Admin2026!"),
+            FullName = "CourseIntellect Developer Admin",
+            Username = DeveloperAdminUsername,
+            PasswordHash = passwordHasher.Hash(DeveloperAdminPassword),
+            PrimaryRole = UserRole.Developer,
+            Campus = "Platform",
+            DepartmentOrBranch = "Development"
+        };
+        var tenantAdminUser = new AppUser
+        {
+            TenantId = demoTenant.Id,
+            FullName = "Demo Kurum Yonetici",
+            Username = "kurum.admin",
+            PasswordHash = passwordHasher.Hash("KRM2026A"),
             PrimaryRole = UserRole.Admin,
-            Campus = "Merkez Kampus",
+            Campus = demoTenant.Name,
             DepartmentOrBranch = "Yonetim"
         };
         var teacherUser = new AppUser
         {
+            TenantId = demoTenant.Id,
             FullName = "Hasan Yildiz",
             Username = "ogrt.hasan",
             PasswordHash = passwordHasher.Hash("HYN2026A"),
@@ -166,6 +208,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         };
         var administrativeUser = new AppUser
         {
+            TenantId = demoTenant.Id,
             FullName = "Ceren Aksoy",
             Username = "idari.ceren",
             PasswordHash = passwordHasher.Hash("CRN2026B"),
@@ -176,6 +219,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         };
         var accountingUser = new AppUser
         {
+            TenantId = demoTenant.Id,
             FullName = "Selim Kara",
             Username = "muhasebe.selim",
             PasswordHash = passwordHasher.Hash("MHS2026A"),
@@ -185,6 +229,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         };
         var studentUser = new AppUser
         {
+            TenantId = demoTenant.Id,
             FullName = "Ali Yilmaz",
             Username = "ali10a241",
             PasswordHash = passwordHasher.Hash("ALI2026A"),
@@ -194,6 +239,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         };
         var parentUser = new AppUser
         {
+            TenantId = demoTenant.Id,
             FullName = "Ayse Yilmaz",
             Username = "veli.ayse",
             PasswordHash = passwordHasher.Hash("VLI2026A"),
@@ -202,10 +248,27 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             DepartmentOrBranch = "10-A Velisi"
         };
 
-        await dbContext.Users.AddRangeAsync([adminUser, teacherUser, administrativeUser, accountingUser, studentUser, parentUser], cancellationToken);
+        demoTenant.AdminUserId = tenantAdminUser.Id;
+        demoTenant.Status = "active";
+        demoTenant.ApprovedAtUtc ??= DateTime.UtcNow;
+        demoTenant.UserCount = 6;
+        demoTenant.BranchCount = 1;
+        demoTenant.StudentCount = 1;
+        demoTenant.StaffCount = 3;
+
+        await dbContext.Users.AddRangeAsync([developerUser, tenantAdminUser, teacherUser, administrativeUser, accountingUser, studentUser, parentUser], cancellationToken);
 
         await dbContext.RolePolicies.AddRangeAsync(
         [
+            new RolePolicy
+            {
+                RoleName = UserRole.Developer.ToString(),
+                IsActive = true,
+                LoginEnabled = true,
+                RequiresCriticalApproval = false,
+                MessagingScope = "Platform",
+                ModuleAccessSerialized = JsonSerializer.Serialize(new[] { "Platform", "Kurumlar", "Icerik", "Ayarlar" })
+            },
             new RolePolicy
             {
                 RoleName = UserRole.Admin.ToString(),
@@ -634,6 +697,258 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             }
         ], cancellationToken);
 
+        AssignTrackedTenantScopedEntitiesToDemoTenant(demoTenant.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<TenantWorkspace> EnsureDemoTenantAsync(CancellationToken cancellationToken)
+    {
+        var tenant = await dbContext.TenantWorkspaces
+            .SingleOrDefaultAsync(x => x.Slug == "demo.kurum", cancellationToken);
+
+        if (tenant is not null)
+        {
+            tenant.Status = string.IsNullOrWhiteSpace(tenant.Status) ? "active" : tenant.Status;
+            tenant.ContactEmail = string.IsNullOrWhiteSpace(tenant.ContactEmail) ? "kurum.admin@courseintellect.local" : tenant.ContactEmail;
+            tenant.ContactName = string.IsNullOrWhiteSpace(tenant.ContactName) ? "Demo Kurum Yonetimi" : tenant.ContactName;
+            tenant.Plan = string.IsNullOrWhiteSpace(tenant.Plan) ? "Business" : tenant.Plan;
+            tenant.BranchCount = Math.Max(tenant.BranchCount, 1);
+            return tenant;
+        }
+
+        tenant = new TenantWorkspace
+        {
+            Name = "Demo Kurum",
+            Slug = "demo.kurum",
+            ContactEmail = "kurum.admin@courseintellect.local",
+            ContactName = "Demo Kurum Yonetimi",
+            ContactPhone = "+90 555 100 20 20",
+            Plan = "Business",
+            Status = "active",
+            BranchCount = 1,
+            CreatedAtUtc = DateTime.UtcNow,
+            ApprovedAtUtc = DateTime.UtcNow
+        };
+
+        await dbContext.TenantWorkspaces.AddAsync(tenant, cancellationToken);
+        return tenant;
+    }
+
+    private async Task EnsurePlatformAndTenantAdminsAsync(TenantWorkspace demoTenant, CancellationToken cancellationToken)
+    {
+        var developerAdmin = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == DeveloperAdminUsername, cancellationToken);
+        var legacyPlatformAdmin = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == LegacyPlatformAdminUsername, cancellationToken);
+
+        if (developerAdmin is null)
+        {
+            if (legacyPlatformAdmin is not null)
+            {
+                developerAdmin = legacyPlatformAdmin;
+                developerAdmin.Username = DeveloperAdminUsername;
+            }
+            else
+            {
+                developerAdmin = new AppUser { Username = DeveloperAdminUsername };
+                await dbContext.Users.AddAsync(developerAdmin, cancellationToken);
+            }
+        }
+
+        developerAdmin.TenantId = null;
+        developerAdmin.FullName = "CourseIntellect Developer Admin";
+        developerAdmin.PasswordHash = passwordHasher.Hash(DeveloperAdminPassword);
+        developerAdmin.PrimaryRole = UserRole.Developer;
+        developerAdmin.Status = UserStatus.Active;
+        developerAdmin.Campus = "Platform";
+        developerAdmin.DepartmentOrBranch = "Development";
+
+        var tenantAdmin = await dbContext.Users.SingleOrDefaultAsync(x => x.Username == "kurum.admin", cancellationToken);
+        if (tenantAdmin is null)
+        {
+            tenantAdmin = new AppUser
+            {
+                TenantId = demoTenant.Id,
+                FullName = "Demo Kurum Yonetici",
+                Username = "kurum.admin",
+                PasswordHash = passwordHasher.Hash("KRM2026A"),
+                PrimaryRole = UserRole.Admin,
+                Campus = demoTenant.Name,
+                DepartmentOrBranch = "Yonetim"
+            };
+            await dbContext.Users.AddAsync(tenantAdmin, cancellationToken);
+        }
+        else
+        {
+            tenantAdmin.TenantId = demoTenant.Id;
+            tenantAdmin.Campus = string.IsNullOrWhiteSpace(tenantAdmin.Campus) ? demoTenant.Name : tenantAdmin.Campus;
+            tenantAdmin.DepartmentOrBranch = string.IsNullOrWhiteSpace(tenantAdmin.DepartmentOrBranch) ? "Yonetim" : tenantAdmin.DepartmentOrBranch;
+        }
+
+        demoTenant.AdminUserId = tenantAdmin.Id;
+        demoTenant.Status = "active";
+        demoTenant.ApprovedAtUtc ??= DateTime.UtcNow;
+    }
+
+    private async Task AssignLegacyUsersToDemoTenantAsync(TenantWorkspace demoTenant, CancellationToken cancellationToken)
+    {
+        var tenantCount = await dbContext.TenantWorkspaces.CountAsync(cancellationToken);
+        if (tenantCount != 1)
+        {
+            return;
+        }
+
+        var usersToAssign = await dbContext.Users
+            .Where(x => x.TenantId == null && x.PrimaryRole != UserRole.Developer)
+            .ToListAsync(cancellationToken);
+
+        foreach (var user in usersToAssign)
+        {
+            user.TenantId = demoTenant.Id;
+            if (string.IsNullOrWhiteSpace(user.Campus))
+            {
+                user.Campus = demoTenant.Name;
+            }
+        }
+
+        demoTenant.UserCount = await dbContext.Users.CountAsync(x => x.TenantId == demoTenant.Id, cancellationToken);
+        demoTenant.StudentCount = await (
+            from student in dbContext.Students
+            join user in dbContext.Users on student.UserId equals user.Id
+            where user.TenantId == demoTenant.Id
+            select student.Id
+        ).CountAsync(cancellationToken);
+        demoTenant.StaffCount = await (
+            from staff in dbContext.Staff
+            join user in dbContext.Users on staff.UserId equals user.Id
+            where user.TenantId == demoTenant.Id
+            select staff.Id
+        ).CountAsync(cancellationToken);
+        demoTenant.BranchCount = Math.Max(demoTenant.BranchCount, 1);
+    }
+
+    private async Task AssignLegacyTenantDataToDemoTenantAsync(TenantWorkspace demoTenant, CancellationToken cancellationToken)
+    {
+        var tenantCount = await dbContext.TenantWorkspaces.CountAsync(cancellationToken);
+        if (tenantCount != 1)
+        {
+            return;
+        }
+
+        await AssignNullTenantEntitiesAsync(dbContext.Students, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.Staff, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.Announcements, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.ExamResults, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.MeetingRequests, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.MessageThreads, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.MessageItems, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.ContentItems, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.QuestionBankItems, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.QuestionPracticeAttempts, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.StudentQuestionThreads, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.StudentQuestionReplies, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingInvoices, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingSalaries, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingApprovals, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingCollections, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingInstallments, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingNotifications, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AccountingAuditLogs, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.AttendanceEntries, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.HomeworkAssignments, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.HomeworkSubmissions, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.StudyPlanStates, demoTenant.Id, cancellationToken);
+        await AssignNullTenantEntitiesAsync(dbContext.Notifications, demoTenant.Id, cancellationToken);
+        await AssignTenantScopedPlatformConfigurationsAsync(demoTenant.Id, cancellationToken);
+        await AssignTenantScopedSiteContentItemsAsync(demoTenant.Id, cancellationToken);
+
+        demoTenant.UserCount = await dbContext.Users.CountAsync(x => x.TenantId == demoTenant.Id, cancellationToken);
+        demoTenant.StudentCount = await dbContext.Students.CountAsync(x => x.TenantId == demoTenant.Id, cancellationToken);
+        demoTenant.StaffCount = await dbContext.Staff.CountAsync(x => x.TenantId == demoTenant.Id, cancellationToken);
+        demoTenant.BranchCount = Math.Max(demoTenant.BranchCount, 1);
+    }
+
+    private async Task AssignNullTenantEntitiesAsync<TEntity>(
+        DbSet<TEntity> set,
+        Guid demoTenantId,
+        CancellationToken cancellationToken)
+        where TEntity : class, ITenantScopedEntity
+    {
+        var items = await set
+            .Where(x => x.TenantId == null)
+            .ToListAsync(cancellationToken);
+
+        foreach (var item in items)
+        {
+            item.TenantId = demoTenantId;
+        }
+    }
+
+    private async Task AssignTenantScopedPlatformConfigurationsAsync(Guid demoTenantId, CancellationToken cancellationToken)
+    {
+        var tenantConfigurationTypes = new[]
+        {
+            "admin-task-center",
+            "class-management",
+            "class-schedule",
+            "class-schedule-entry",
+            "personnel-approvals",
+            "role-management"
+        };
+
+        var configurations = await dbContext.PlatformConfigurations
+            .Where(x => x.TenantId == null && tenantConfigurationTypes.Contains(x.ConfigurationType))
+            .ToListAsync(cancellationToken);
+
+        foreach (var configuration in configurations)
+        {
+            configuration.TenantId = demoTenantId;
+        }
+
+        var tenantCustomizations = await dbContext.PlatformConfigurations
+            .Where(x => x.TenantId == null && x.ConfigurationType == "tenant-customization")
+            .ToListAsync(cancellationToken);
+
+        foreach (var customization in tenantCustomizations)
+        {
+            if (Guid.TryParse(customization.ScopeKey, out var tenantId))
+            {
+                customization.TenantId = tenantId;
+            }
+        }
+    }
+
+    private async Task AssignTenantScopedSiteContentItemsAsync(Guid demoTenantId, CancellationToken cancellationToken)
+    {
+        var tenantSectionKeys = new[]
+        {
+            "accounting-benefits",
+            "exam-sessions",
+            "live-room-sessions",
+            "meeting-availability-slots",
+            "planned-exams",
+            "push-device-registrations",
+            "teacher-weekly-reports"
+        };
+
+        var items = await dbContext.SiteContentItems
+            .Where(x => x.TenantId == null && tenantSectionKeys.Contains(x.SectionKey))
+            .ToListAsync(cancellationToken);
+
+        foreach (var item in items)
+        {
+            item.TenantId = demoTenantId;
+        }
+    }
+
+    private void AssignTrackedTenantScopedEntitiesToDemoTenant(Guid demoTenantId)
+    {
+        foreach (var entry in dbContext.ChangeTracker.Entries<ITenantScopedEntity>())
+        {
+            if (entry.State == EntityState.Added &&
+                entry.Entity is not AppUser &&
+                entry.Entity.TenantId is null)
+            {
+                entry.Entity.TenantId = demoTenantId;
+            }
+        }
     }
 }

@@ -3,16 +3,20 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class StaffManagementService(
     CourseIntellectDbContext dbContext,
-    IPasswordHasher passwordHasher) : IStaffManagementService
+    IPasswordHasher passwordHasher,
+    IHttpContextAccessor httpContextAccessor) : IStaffManagementService
 {
     public async Task<IReadOnlyList<StaffSummaryDto>> GetStaffAsync(string? role, CancellationToken cancellationToken = default)
     {
+        var currentTenantId = ResolveCurrentTenantId();
         var query = dbContext.Staff.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(role) && Enum.TryParse<UserRole>(role, true, out var parsedRole))
@@ -20,7 +24,19 @@ public sealed class StaffManagementService(
             query = query.Where(x => x.Role == parsedRole);
         }
 
-        var users = await dbContext.Users.ToDictionaryAsync(x => x.Id, cancellationToken);
+        var usersQuery = dbContext.Users.AsQueryable();
+        if (currentTenantId.HasValue)
+        {
+            usersQuery = usersQuery.Where(x => x.TenantId == currentTenantId.Value);
+        }
+
+        var users = await usersQuery.ToDictionaryAsync(x => x.Id, cancellationToken);
+        var userIds = users.Keys.ToList();
+        if (currentTenantId.HasValue)
+        {
+            query = query.Where(x => userIds.Contains(x.UserId));
+        }
+
         var staffList = await query
             .OrderBy(x => x.FullName)
             .ToListAsync(cancellationToken);
@@ -35,7 +51,17 @@ public sealed class StaffManagementService(
                 staff.Campus,
                 users[staff.UserId].Status.ToString(),
                 users[staff.UserId].ExtraRoles.Select(x => x.ToString()).ToList(),
-                users[staff.UserId].RoleHistory.Count > 0))
+                users[staff.UserId].RoleHistory.Count > 0,
+                staff.AssignedClasses,
+                staff.Email,
+                staff.Phone,
+                staff.HomeroomClass,
+                staff.Education,
+                staff.TcNo,
+                staff.MaritalStatus,
+                staff.ChildCount,
+                staff.Note,
+                staff.StartDate))
             .ToList();
     }
 
@@ -54,6 +80,7 @@ public sealed class StaffManagementService(
         var password = GeneratePassword();
         var user = new AppUser
         {
+            TenantId = ResolveCurrentTenantId(),
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
@@ -64,6 +91,7 @@ public sealed class StaffManagementService(
 
         var staff = new StaffProfile
         {
+            TenantId = user.TenantId,
             UserId = user.Id,
             FullName = request.FullName,
             TcNo = request.TcNo,
@@ -94,6 +122,7 @@ public sealed class StaffManagementService(
         var password = GeneratePassword();
         var user = new AppUser
         {
+            TenantId = ResolveCurrentTenantId(),
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
@@ -104,6 +133,7 @@ public sealed class StaffManagementService(
 
         var staff = new StaffProfile
         {
+            TenantId = user.TenantId,
             UserId = user.Id,
             FullName = request.FullName,
             TcNo = request.TcNo,
@@ -155,5 +185,59 @@ public sealed class StaffManagementService(
         const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
         var random = new Random();
         return new string(Enumerable.Range(0, 8).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+    }
+
+    public async Task<StaffSummaryDto> UpdateStaffAsync(Guid staffId, UpdateStaffRequest request, CancellationToken cancellationToken = default)
+    {
+        var staff = await dbContext.Staff.FirstOrDefaultAsync(x => x.Id == staffId, cancellationToken)
+            ?? throw new InvalidOperationException("Personel bulunamadı.");
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == staff.UserId, cancellationToken)
+            ?? throw new InvalidOperationException("Kullanıcı bulunamadı.");
+
+        staff.FullName = request.FullName;
+        staff.DepartmentOrBranch = request.DepartmentOrBranch;
+        staff.Phone = request.Phone;
+        staff.Email = request.Email;
+        staff.Education = request.Education;
+        staff.Campus = request.Campus;
+        staff.HomeroomClass = request.HomeroomClass;
+        staff.AssignedClasses = request.AssignedClasses.ToList();
+        staff.MaritalStatus = request.MaritalStatus;
+        staff.ChildCount = request.ChildCount;
+        staff.Note = request.Note;
+
+        user.FullName = request.FullName;
+        user.Campus = request.Campus;
+        user.DepartmentOrBranch = request.DepartmentOrBranch;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new StaffSummaryDto(
+            staff.Id,
+            staff.FullName,
+            user.Username,
+            staff.Role.ToString(),
+            staff.DepartmentOrBranch,
+            staff.Campus,
+            user.Status.ToString(),
+            user.ExtraRoles.Select(x => x.ToString()).ToList(),
+            user.RoleHistory.Count > 0,
+            staff.AssignedClasses,
+            staff.Email,
+            staff.Phone,
+            staff.HomeroomClass,
+            staff.Education,
+            staff.TcNo,
+            staff.MaritalStatus,
+            staff.ChildCount,
+            staff.Note,
+            staff.StartDate);
+    }
+
+    private Guid? ResolveCurrentTenantId()
+    {
+        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("tenant_id");
+        return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
     }
 }

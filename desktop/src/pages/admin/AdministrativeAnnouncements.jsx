@@ -62,7 +62,7 @@ export default function AdministrativeAnnouncements() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <section className="rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#111827_0%,#1d4ed8_55%,#06b6d4_100%)] p-7 text-white shadow-xl">
+      <section className="rounded-[32px] border border-border p-7 text-white shadow-xl" style={{ background: 'linear-gradient(135deg, var(--brand-p-900, #111827) 0%, var(--brand-p-800, #1d4ed8) 55%, var(--brand-p-700, #06b6d4) 100%)' }}>
         <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
           <div className="space-y-3">
             <Badge className="bg-white/12 text-white hover:bg-white/12">Yönetici Duyuru Denetimi</Badge>
@@ -93,8 +93,8 @@ export default function AdministrativeAnnouncements() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         {announcements.map((item) => (
-          <Card key={item.id || item.title} className="overflow-hidden border-slate-200 shadow-sm">
-            <div className="bg-[linear-gradient(135deg,#0f172a_0%,#334155_100%)] px-6 py-5 text-white">
+          <Card key={item.id || item.title} className="overflow-hidden border-border shadow-sm">
+            <div className="px-6 py-5 text-white" style={{ background: 'linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #334155) 100%)' }}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex flex-wrap gap-2">
@@ -108,24 +108,24 @@ export default function AdministrativeAnnouncements() {
               </div>
             </div>
             <CardContent className="space-y-5 p-6">
-              <p className="text-sm leading-7 text-slate-600">{item.detail}</p>
+              <p className="text-sm leading-7 text-muted-foreground">{item.detail}</p>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Yayınlayan</p>
-                  <p className="mt-2 font-semibold text-slate-900">{publisherLabel(item)}</p>
-                  <p className="text-xs text-slate-500">{roleLabel(item.createdByRole)}</p>
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Yayınlayan</p>
+                  <p className="mt-2 font-semibold text-foreground">{publisherLabel(item)}</p>
+                  <p className="text-xs text-muted-foreground">{roleLabel(item.createdByRole)}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Kime Gitti</p>
-                  <p className="mt-2 font-semibold text-slate-900">{item.targetRecipientType || item.audience}</p>
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Kime Gitti</p>
+                  <p className="mt-2 font-semibold text-foreground">{item.targetRecipientType || item.audience}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Seçili Kişi</p>
-                  <p className="mt-2 font-semibold text-slate-900">{item.recipientCount || 0}</p>
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Seçili Kişi</p>
+                  <p className="mt-2 font-semibold text-foreground">{item.recipientCount || 0}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
-                  <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Tarih</p>
-                  <p className="mt-2 font-semibold text-slate-900">{item.dateLabel || item.date || 'Bugün'}</p>
+                <div className="rounded-2xl bg-muted/50 p-4">
+                  <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Tarih</p>
+                  <p className="mt-2 font-semibold text-foreground">{item.dateLabel || item.date || 'Bugün'}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between gap-3">
@@ -149,7 +149,7 @@ export default function AdministrativeAnnouncements() {
         <DialogContent className="sm:max-w-3xl overflow-hidden p-0">
           {selectedAnnouncement ? (
             <div>
-              <div className="bg-[linear-gradient(135deg,#111827_0%,#0f766e_55%,#14b8a6_100%)] px-8 py-8 text-white">
+              <div className="px-8 py-8 text-white" style={{ background: 'linear-gradient(135deg, var(--brand-p-900, #111827) 0%, var(--brand-p-800, #0f766e) 55%, var(--brand-p-700, #14b8a6) 100%)' }}>
                 <div className="flex flex-wrap gap-2">
                   <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedAnnouncement.audience}</Badge>
                   {selectedAnnouncement.targetClassName ? <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedAnnouncement.targetClassName}</Badge> : null}
@@ -163,26 +163,26 @@ export default function AdministrativeAnnouncements() {
                 </DialogHeader>
               </div>
               <div className="space-y-6 px-8 py-7">
-                <div className="rounded-[28px] bg-slate-50 p-6">
-                  <p className="text-sm uppercase tracking-[0.18em] text-slate-400">Duyuru içeriği</p>
-                  <p className="mt-3 text-base leading-8 text-slate-700">{selectedAnnouncement.detail}</p>
+                <div className="rounded-[28px] bg-muted/50 p-6">
+                  <p className="text-sm uppercase tracking-[0.18em] text-muted-foreground">Duyuru içeriği</p>
+                  <p className="mt-3 text-base leading-8 text-muted-foreground">{selectedAnnouncement.detail}</p>
                 </div>
                 <div className="grid gap-4 lg:grid-cols-3">
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-semibold text-slate-900">Yayınlayan Hesap</p>
-                    <p className="mt-3 text-sm text-slate-600">{selectedAnnouncement.createdByUsername || '-'}</p>
+                  <div className="rounded-[24px] border border-border bg-card p-5">
+                    <p className="text-sm font-semibold text-foreground">Yayınlayan Hesap</p>
+                    <p className="mt-3 text-sm text-muted-foreground">{selectedAnnouncement.createdByUsername || '-'}</p>
                   </div>
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-semibold text-slate-900">Seçili Kişi Sayısı</p>
-                    <p className="mt-3 text-sm text-slate-600">{selectedAnnouncement.recipientCount || 0}</p>
+                  <div className="rounded-[24px] border border-border bg-card p-5">
+                    <p className="text-sm font-semibold text-foreground">Seçili Kişi Sayısı</p>
+                    <p className="mt-3 text-sm text-muted-foreground">{selectedAnnouncement.recipientCount || 0}</p>
                   </div>
-                  <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-                    <p className="text-sm font-semibold text-slate-900">Hedef Kanal</p>
-                    <p className="mt-3 text-sm text-slate-600">{selectedAnnouncement.targetRecipientType || selectedAnnouncement.audience}</p>
+                  <div className="rounded-[24px] border border-border bg-card p-5">
+                    <p className="text-sm font-semibold text-foreground">Hedef Kanal</p>
+                    <p className="mt-3 text-sm text-muted-foreground">{selectedAnnouncement.targetRecipientType || selectedAnnouncement.audience}</p>
                   </div>
                 </div>
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Gönderilen kişiler</h4>
+                  <h4 className="text-sm font-semibold uppercase tracking-[0.18em] text-muted-foreground">Gönderilen kişiler</h4>
                   <div className="flex flex-wrap gap-2">
                     {(selectedAnnouncement.recipientLabels || []).map((label) => (
                       <Badge key={label} variant="outline" className="px-3 py-1">
@@ -191,7 +191,7 @@ export default function AdministrativeAnnouncements() {
                       </Badge>
                     ))}
                     {!selectedAnnouncement.recipientLabels?.length ? (
-                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-500">
+                      <div className="rounded-2xl border border-dashed border-border bg-muted/50 px-4 py-5 text-sm text-muted-foreground">
                         Bu duyuru genel hedef kitleye açık yayınlanmış.
                       </div>
                     ) : null}

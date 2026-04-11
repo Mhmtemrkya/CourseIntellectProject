@@ -1,8 +1,9 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class QuestionPracticeAttempt
+public sealed class QuestionPracticeAttempt : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
     public Guid QuestionId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string StudentUsername { get; set; } = string.Empty;

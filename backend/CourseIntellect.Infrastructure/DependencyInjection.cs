@@ -29,6 +29,7 @@ public static class DependencyInjection
         };
 
         services.AddSingleton<IOptions<JwtOptions>>(Options.Create(jwtOptions));
+        services.AddHttpContextAccessor();
         services.AddDbContext<CourseIntellectDbContext>(options =>
             options.UseNpgsql(connectionString));
 

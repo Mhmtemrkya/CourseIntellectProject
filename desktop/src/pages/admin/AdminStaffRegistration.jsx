@@ -150,8 +150,29 @@ export default function AdminStaffRegistration() {
                   <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="05XX XXX XX XX" />
                 </div>
                 <div>
-                  <Label>Brans / Bolum</Label>
-                  <Input value={form.departmentOrBranch} onChange={(e) => handleChange('departmentOrBranch', e.target.value)} placeholder="Orn: Matematik" />
+                  <Label>Branş / Bölüm</Label>
+                  <Select value={form.departmentOrBranch} onValueChange={(v) => handleChange('departmentOrBranch', v)}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Branş seçin..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[
+                        'Matematik', 'Fizik', 'Kimya', 'Biyoloji',
+                        'Türkçe / Edebiyat', 'Tarih', 'Coğrafya',
+                        'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca',
+                        'Felsefe', 'Din Kültürü ve Ahlak Bilgisi',
+                        'Beden Eğitimi', 'Müzik', 'Görsel Sanatlar',
+                        'Bilgisayar / Bilişim Teknolojileri',
+                        'Matematik (İlkokul)', 'Türkçe (İlkokul)',
+                        'Hayat Bilgisi', 'Fen Bilimleri',
+                        'Sosyal Bilgiler', 'Rehberlik',
+                        'Okul Öncesi', 'Özel Eğitim',
+                        'Diğer',
+                      ].map((b) => (
+                        <SelectItem key={b} value={b}>{b}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div>
                   <Label>Kampus</Label>

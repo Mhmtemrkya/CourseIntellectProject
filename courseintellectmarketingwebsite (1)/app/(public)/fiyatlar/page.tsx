@@ -123,7 +123,7 @@ export default function PricingPage() {
                     </ul>
 
                     {/* CTA */}
-                    <Link href={plan.name === "Kurumsal" ? "/iletisim" : "/indir"} className="block">
+                    <Link href={plan.name === "Kurumsal" ? "/iletisim" : "/kurum-kaydi"} className="block">
                       <Button
                         className={cn(
                           "w-full",

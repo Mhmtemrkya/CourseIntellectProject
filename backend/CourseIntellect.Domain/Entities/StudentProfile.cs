@@ -1,8 +1,9 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class StudentProfile
+public sealed class StudentProfile : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
     public Guid UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string TcNo { get; set; } = string.Empty;

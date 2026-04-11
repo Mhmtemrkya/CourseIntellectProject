@@ -1,12 +1,15 @@
 using CourseIntellect.Application.DTOs.PlatformOperations;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext) : IPlatformOperationsService
+public sealed class PlatformOperationsService(
+    CourseIntellectDbContext dbContext,
+    IPasswordHasher passwordHasher) : IPlatformOperationsService
 {
     public async Task<PlatformOverviewDto> GetOverviewAsync(CancellationToken cancellationToken = default)
     {
@@ -24,7 +27,7 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
         var totalRequests = notifications.Count * 8 + threads.Count * 12 + contents.Count * 6 + homework.Count * 5;
         var errorCount = installments.Count(x =>
             !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(x.Status, "ödendi", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(x.Status, "odendi", StringComparison.OrdinalIgnoreCase)
             && ParseDate(x.Due) < DateTime.Today);
 
         var aiModels = BuildAiModels(notifications.Count, threads.Count, homework.Count, contents.Count, meetings.Count);
@@ -34,8 +37,8 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
             tenants.Count(x => string.Equals(x.Status, "active", StringComparison.OrdinalIgnoreCase)),
             tenants.Sum(x => x.Users),
             collections.Sum(x => ParseDecimal(x.Amount)),
-            invoices.Where(x => !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(x.Status, "onaylandı", StringComparison.OrdinalIgnoreCase)).Sum(x => ParseDecimal(x.Amount)),
-            installments.Where(x => ParseDate(x.Due) < DateTime.Today && !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(x.Status, "ödendi", StringComparison.OrdinalIgnoreCase)).Sum(x => ParseDecimal(x.Amount)),
+            invoices.Where(x => !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(x.Status, "onaylandi", StringComparison.OrdinalIgnoreCase)).Sum(x => ParseDecimal(x.Amount)),
+            installments.Where(x => ParseDate(x.Due) < DateTime.Today && !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(x.Status, "odendi", StringComparison.OrdinalIgnoreCase)).Sum(x => ParseDecimal(x.Amount)),
             tenants.Sum(x => x.Storage),
             tenants.Sum(x => x.Api),
             tickets.Count(x => string.Equals(x.Status, "open", StringComparison.OrdinalIgnoreCase)),
@@ -58,11 +61,10 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
             .AsNoTracking()
             .OrderBy(x => x.Name)
             .ToListAsync(cancellationToken);
-        var stored = storedEntities.Select(ToTenantDto).ToList();
 
-        if (stored.Count > 0)
+        if (storedEntities.Count > 0)
         {
-            return stored;
+            return await MapTenantDtosAsync(storedEntities, cancellationToken);
         }
 
         var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
@@ -92,11 +94,12 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
 
             var fee = invoices.Where((_, invoiceIndex) => invoiceIndex % campuses.Count == index).Sum(x => ParseDecimal(x.Amount));
             var collected = collections.Where((_, collectionIndex) => collectionIndex % campuses.Count == index).Sum(x => ParseDecimal(x.Amount));
+            var slug = NormalizeSlug(campus);
 
             return new TenantWorkspaceDto(
                 Guid.NewGuid(),
                 campus,
-                $"{NormalizeSlug(campus)}@courseintellect.local",
+                $"{slug}@courseintellect.local",
                 campusStudents.Count > 300 ? "Enterprise" : campusStudents.Count > 120 ? "Business" : "Starter",
                 "active",
                 campusStudents.Count + campusStaff.Count,
@@ -107,7 +110,14 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
                 collected,
                 Math.Max(1, decimal.Round((decimal)(campusStudents.Count * 0.03 + campusStaff.Count * 0.02), 1)),
                 (campusStudents.Count + campusStaff.Count) * 180,
-                DateTime.UtcNow);
+                DateTime.UtcNow,
+                slug,
+                string.Empty,
+                string.Empty,
+                null,
+                null,
+                null,
+                null);
         }).ToList();
     }
 
@@ -124,7 +134,7 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
         }
 
         entity.Name = request.Name;
-        entity.Slug = NormalizeSlug(request.Name);
+        entity.Slug = await GenerateUniqueSlugAsync(request.Name, id, cancellationToken);
         entity.ContactEmail = request.Email;
         entity.Plan = request.Plan;
         entity.Status = request.Status;
@@ -233,7 +243,185 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
         return ToTicketDto(entity);
     }
 
-    private static TenantWorkspaceDto ToTenantDto(TenantWorkspace entity) => new(
+    public async Task<TenantWorkspaceDto> RegisterTenantAsync(RegisterTenantRequest request, CancellationToken cancellationToken = default)
+    {
+        var entity = new TenantWorkspace
+        {
+            Name = request.InstitutionName.Trim(),
+            Slug = await GenerateUniqueSlugAsync(request.InstitutionName, null, cancellationToken),
+            ContactEmail = request.Email.Trim(),
+            ContactName = request.ContactName.Trim(),
+            ContactPhone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
+            PendingAdminPasswordHash = passwordHasher.Hash(request.Password),
+            Plan = request.Plan,
+            Status = "pending",
+            UserCount = request.EstimatedStudents,
+            BranchCount = 1,
+            StudentCount = request.EstimatedStudents,
+            StaffCount = 0,
+            MonthlyFee = 0,
+            CollectedAmount = 0,
+            StorageUsedGb = 0,
+            ApiUsage = 0,
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+
+        await dbContext.Set<TenantWorkspace>().AddAsync(entity, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToTenantDto(entity);
+    }
+
+    public async Task<TenantWorkspaceDto?> ApproveTenantAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entity = await dbContext.Set<TenantWorkspace>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+        {
+            return null;
+        }
+
+        entity.Status = "active";
+        entity.ApprovedAtUtc ??= DateTime.UtcNow;
+
+        AppUser? adminUser = null;
+        if (entity.AdminUserId.HasValue)
+        {
+            adminUser = await dbContext.Users.SingleOrDefaultAsync(x => x.Id == entity.AdminUserId.Value, cancellationToken);
+        }
+
+        string? temporaryPassword = null;
+        if (adminUser is null)
+        {
+            var created = await CreateTenantAdminUserAsync(entity, cancellationToken);
+            adminUser = created.User;
+            temporaryPassword = created.TemporaryPassword;
+            entity.AdminUserId = adminUser.Id;
+            entity.UserCount = Math.Max(entity.UserCount, 1);
+            entity.PendingAdminPasswordHash = null;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToTenantDto(entity, adminUser.Username, temporaryPassword);
+    }
+
+    public async Task<TenantWorkspaceDto?> RejectTenantAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entity = await dbContext.Set<TenantWorkspace>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entity is null)
+        {
+            return null;
+        }
+
+        entity.Status = "rejected";
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return ToTenantDto(entity);
+    }
+
+    private async Task<IReadOnlyList<TenantWorkspaceDto>> MapTenantDtosAsync(IReadOnlyList<TenantWorkspace> entities, CancellationToken cancellationToken)
+    {
+        var adminUserIds = entities
+            .Where(x => x.AdminUserId.HasValue)
+            .Select(x => x.AdminUserId!.Value)
+            .Distinct()
+            .ToList();
+
+        Dictionary<Guid, string> adminUsernames = [];
+        if (adminUserIds.Count > 0)
+        {
+            adminUsernames = await dbContext.Users
+                .AsNoTracking()
+                .Where(x => adminUserIds.Contains(x.Id))
+                .ToDictionaryAsync(x => x.Id, x => x.Username, cancellationToken);
+        }
+
+        return entities
+            .Select(entity =>
+            {
+                var adminUsername = entity.AdminUserId.HasValue && adminUsernames.TryGetValue(entity.AdminUserId.Value, out var resolvedUsername)
+                    ? resolvedUsername
+                    : null;
+                return ToTenantDto(entity, adminUsername);
+            })
+            .ToList();
+    }
+
+    private async Task<(AppUser User, string TemporaryPassword)> CreateTenantAdminUserAsync(TenantWorkspace tenant, CancellationToken cancellationToken)
+    {
+        var username = await GenerateUniqueTenantAdminUsernameAsync(tenant, cancellationToken);
+        var temporaryPassword = string.Empty;
+        var passwordHash = tenant.PendingAdminPasswordHash;
+        if (string.IsNullOrWhiteSpace(passwordHash))
+        {
+            temporaryPassword = GenerateTemporaryPassword();
+            passwordHash = passwordHasher.Hash(temporaryPassword);
+        }
+        var fullName = string.IsNullOrWhiteSpace(tenant.ContactName)
+            ? $"{tenant.Name} Yonetici"
+            : tenant.ContactName.Trim();
+
+        var user = new AppUser
+        {
+            TenantId = tenant.Id,
+            FullName = fullName,
+            Username = username,
+            PasswordHash = passwordHash,
+            PrimaryRole = UserRole.Admin,
+            Status = UserStatus.Active,
+            Phone = tenant.ContactPhone,
+            IsEmailVerified = false,
+            Campus = tenant.Name,
+            DepartmentOrBranch = "Yonetim",
+            CreatedAtUtc = DateTime.UtcNow
+        };
+
+        await dbContext.Users.AddAsync(user, cancellationToken);
+        return (user, temporaryPassword);
+    }
+
+    private async Task<string> GenerateUniqueSlugAsync(string value, Guid? currentId, CancellationToken cancellationToken)
+    {
+        var baseSlug = NormalizeSlug(value);
+        var slug = baseSlug;
+        var suffix = 2;
+
+        while (await dbContext.Set<TenantWorkspace>()
+            .AnyAsync(x => x.Slug == slug && (!currentId.HasValue || x.Id != currentId.Value), cancellationToken))
+        {
+            slug = $"{baseSlug}.{suffix++}";
+        }
+
+        return slug;
+    }
+
+    private async Task<string> GenerateUniqueTenantAdminUsernameAsync(TenantWorkspace tenant, CancellationToken cancellationToken)
+    {
+        var emailCandidate = tenant.ContactEmail.Trim().ToLowerInvariant();
+        var baseUsername = string.IsNullOrWhiteSpace(emailCandidate)
+            ? $"{tenant.Slug}.admin"
+            : emailCandidate;
+
+        if (!await dbContext.Users.AnyAsync(x => x.Username == baseUsername, cancellationToken))
+        {
+            return baseUsername;
+        }
+
+        var atIndex = baseUsername.IndexOf('@');
+        var localPart = atIndex > 0 ? baseUsername[..atIndex] : baseUsername;
+        var domainPart = atIndex > 0 ? baseUsername[atIndex..] : string.Empty;
+        var counter = 2;
+
+        while (true)
+        {
+            var candidate = $"{localPart}{counter}{domainPart}";
+            if (!await dbContext.Users.AnyAsync(x => x.Username == candidate, cancellationToken))
+            {
+                return candidate;
+            }
+
+            counter++;
+        }
+    }
+
+    private static TenantWorkspaceDto ToTenantDto(TenantWorkspace entity, string? adminUsername = null, string? temporaryPassword = null) => new(
         entity.Id,
         entity.Name,
         entity.ContactEmail,
@@ -247,7 +435,14 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
         entity.CollectedAmount,
         entity.StorageUsedGb,
         entity.ApiUsage,
-        entity.CreatedAtUtc);
+        entity.CreatedAtUtc,
+        entity.Slug,
+        entity.ContactName,
+        entity.ContactPhone ?? string.Empty,
+        entity.AdminUserId,
+        adminUsername,
+        temporaryPassword,
+        entity.ApprovedAtUtc);
 
     private static SupportTicketDto ToTicketDto(SupportTicket entity) => new(
         entity.Id,
@@ -270,10 +465,10 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
         var total = Math.Max(1, notifications + threads + homework + contents + meetings);
         return
         [
-            new PlatformAiModelDto("learning-copilot", "Öğrenme Copilot", "OpenAI", threads > 0 ? "active" : "standby", (int)Math.Round((double)threads / total * 100), 0.03m),
-            new PlatformAiModelDto("content-insight", "İçerik Analizi", "OpenAI", contents > 0 ? "active" : "standby", (int)Math.Round((double)contents / total * 100), 0.018m),
-            new PlatformAiModelDto("ops-summary", "Operasyon Özetleyici", "Internal", notifications > 0 ? "active" : "standby", (int)Math.Round((double)notifications / total * 100), 0.004m),
-            new PlatformAiModelDto("parent-assist", "Veli Destek Asistanı", "OpenAI", meetings > 0 || homework > 0 ? "active" : "inactive", (int)Math.Round((double)(meetings + homework) / total * 100), 0.009m),
+            new PlatformAiModelDto("learning-copilot", "Ogrenme Copilot", "OpenAI", threads > 0 ? "active" : "standby", (int)Math.Round((double)threads / total * 100), 0.03m),
+            new PlatformAiModelDto("content-insight", "Icerik Analizi", "OpenAI", contents > 0 ? "active" : "standby", (int)Math.Round((double)contents / total * 100), 0.018m),
+            new PlatformAiModelDto("ops-summary", "Operasyon Ozetleyici", "Internal", notifications > 0 ? "active" : "standby", (int)Math.Round((double)notifications / total * 100), 0.004m),
+            new PlatformAiModelDto("parent-assist", "Veli Destek Asistani", "OpenAI", meetings > 0 || homework > 0 ? "active" : "inactive", (int)Math.Round((double)(meetings + homework) / total * 100), 0.009m),
         ];
     }
 
@@ -284,7 +479,7 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
             DateTime.Now.ToString("HH:mm"),
             item.TargetRole,
             "Platform",
-            "Operasyon Özetleyici",
+            "Operasyon Ozetleyici",
             400 + index * 120,
             "1.1s",
             item.IsRead ? "success" : "queued"));
@@ -294,7 +489,7 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
             DateTime.Now.ToString("HH:mm"),
             item.StudentName,
             item.Subject,
-            "Öğrenme Copilot",
+            "Ogrenme Copilot",
             900 + index * 160,
             "1.8s",
             "success"));
@@ -302,10 +497,37 @@ public sealed class PlatformOperationsService(CourseIntellectDbContext dbContext
         return threadLogs.Concat(notificationLogs).Take(7).ToList();
     }
 
-    private static string NormalizeSlug(string value) => string.Join(
-        '.',
-        value.ToLowerInvariant()
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+    private static string GenerateTemporaryPassword()
+    {
+        const string chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+        var random = new Random();
+        return new string(Enumerable.Range(0, 10).Select(_ => chars[random.Next(chars.Length)]).ToArray());
+    }
+
+    private static string NormalizeSlug(string value)
+    {
+        var normalized = new string(value
+            .Trim()
+            .ToLowerInvariant()
+            .Select(ch => ch switch
+            {
+                '\u00E7' => 'c',
+                '\u011F' => 'g',
+                '\u0131' => 'i',
+                '\u00F6' => 'o',
+                '\u015F' => 's',
+                '\u00FC' => 'u',
+                _ => ch
+            })
+            .ToArray());
+
+        var parts = normalized
+            .Split([' ', '/', '\\', '-', '_'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(part => new string(part.Where(char.IsLetterOrDigit).ToArray()))
+            .Where(part => !string.IsNullOrWhiteSpace(part));
+
+        return string.Join('.', parts);
+    }
 
     private static decimal ParseDecimal(string? raw)
     {

@@ -14,5 +14,12 @@ public sealed record TenantWorkspaceDto(
     decimal Collected,
     decimal Storage,
     int Api,
-    DateTime CreatedAtUtc
+    DateTime CreatedAtUtc,
+    string Slug,
+    string ContactName,
+    string ContactPhone,
+    Guid? AdminUserId,
+    string? AdminUsername,
+    string? TemporaryPassword,
+    DateTime? ApprovedAtUtc
 );

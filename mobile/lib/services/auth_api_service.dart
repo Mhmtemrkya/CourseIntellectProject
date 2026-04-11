@@ -90,6 +90,9 @@ class AuthApiService {
       final normalizedUsername = _asString(user['username']).isNotEmpty
           ? _asString(user['username'])
           : _usernameFromEmail(_asString(user['email']));
+      final tenantId = _asString(user['tenantId']);
+      final tenantName = _asString(user['tenantName']);
+      final tenantSlug = _asString(user['tenantSlug']);
 
       if (accessToken.isEmpty || refreshToken.isEmpty || normalizedRole.isEmpty) {
         throw const AuthApiException('Giriş cevabı eksik geldi. Lütfen tekrar dene.');
@@ -104,6 +107,10 @@ class AuthApiService {
         username: normalizedUsername,
         primaryRole: normalizedRole,
         extraRoles: _asStringList(user['extraRoles']),
+        tenantId: tenantId.isEmpty ? null : tenantId,
+        tenantName: tenantName,
+        tenantSlug: tenantSlug,
+        isPlatformAdmin: user['isPlatformAdmin'] == true,
       );
       await AuthSessionStore.instance.save(session);
       return session;
@@ -119,6 +126,8 @@ class AuthApiService {
     switch (value) {
       case 'admin':
         return 'Admin';
+      case 'developer':
+        return 'Developer';
       case 'administrative':
         return 'Administrative';
       case 'teacher':

@@ -69,6 +69,7 @@ public sealed class HomeworkService(CourseIntellectDbContext dbContext) : IHomew
         {
             existing = new HomeworkSubmission
             {
+                TenantId = entity.TenantId,
                 AssignmentId = id,
                 StudentName = request.StudentName.Trim(),
             };

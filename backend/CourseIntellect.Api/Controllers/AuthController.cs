@@ -63,6 +63,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
             RoleClaimType = identity?.RoleClaimType,
             NameClaimType = identity?.NameClaimType,
             IsInRoleAdmin = User.IsInRole("Admin"),
+            IsInRoleDeveloper = User.IsInRole("Developer"),
             IsInRoleStudent = User.IsInRole("Student"),
             IsInRoleTeacher = User.IsInRole("Teacher"),
             Claims = identity?.Claims.Select(c => new { c.Type, c.Value }).ToList()

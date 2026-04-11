@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
-import { GraduationCap, Users, BookOpen, Calculator, Eye, EyeOff, ArrowLeft, Loader2 } from "lucide-react"
+import { GraduationCap, Users, BookOpen, Calculator, Eye, EyeOff, ArrowLeft, Loader2, Building2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -83,7 +83,7 @@ export default function LoginPage() {
     hasAccount: { tr: "Zaten hesabınız var mı?", en: "Already have an account?" },
     back: { tr: "Geri", en: "Back" },
     forgotPassword: { tr: "Şifremi Unuttum", en: "Forgot Password" },
-    adminLogin: { tr: "Admin Girişi", en: "Admin Login" },
+    adminLogin: { tr: "Platform Admin Girişi", en: "Platform Admin Login" },
     demoCredentials: { tr: "Demo Hesap", en: "Demo Account" },
   }
 
@@ -96,6 +96,11 @@ export default function LoginPage() {
 
     try {
       if (isRegister) {
+        if (selectedRole === "admin") {
+          router.push("/kurum-kaydi")
+          return
+        }
+
         const result = await register(email, password, name, selectedRole, phone)
         if (result.success) {
           setError("Site sahibi onayı bekleniyor.")
@@ -125,7 +130,7 @@ export default function LoginPage() {
       parent: { email: "veli@courseintellect.com", password: "veli123" },
       teacher: { email: "ogretmen@courseintellect.com", password: "ogretmen123" },
       accountant: { email: "muhasebe@courseintellect.com", password: "muhasebe123" },
-      admin: { email: "admin@courseintellect.com", password: "admin123" },
+      admin: { email: "kurum.admin", password: "KRM2026A" },
       editor: { email: "editor@courseintellect.com", password: "editor123" },
     }
     return demos[role]
@@ -208,7 +213,10 @@ export default function LoginPage() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 }}
-                        onClick={() => setSelectedRole(type.role)}
+                        onClick={() => {
+                          setIsRegister(false)
+                          setSelectedRole(type.role)
+                        }}
                         className="group relative p-6 rounded-xl border-2 border-border hover:border-primary transition-all bg-card hover:shadow-lg"
                       >
                         <div className="flex flex-col items-center gap-3">
@@ -225,13 +233,57 @@ export default function LoginPage() {
                   })}
                 </div>
 
-                <div className="pt-4 text-center">
-                  <Link
-                    href="/admin/login"
-                    className="text-sm text-muted-foreground hover:text-primary transition-colors"
+                <div className="pt-2 space-y-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full border-t border-border" />
+                    </div>
+                    <div className="relative flex justify-center text-xs">
+                      <span className="bg-background px-2 text-muted-foreground">
+                        {language === "tr" ? "Kurum" : "Institution"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <motion.button
+                    whileHover={{ scale: 1.01 }}
+                    onClick={() => {
+                      setIsRegister(false)
+                      setSelectedRole("admin")
+                    }}
+                    className="w-full flex items-center justify-between p-4 rounded-xl border-2 border-border hover:border-primary transition-all bg-card hover:shadow-md"
                   >
-                    {t.adminLogin[language]} →
-                  </Link>
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-full bg-indigo-500 text-white">
+                        <Building2 className="w-5 h-5" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-semibold text-foreground text-sm">
+                          {language === "tr" ? "Kurum Girişi" : "Institution Login"}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {language === "tr" ? "Kurum yöneticisi olarak giriş yapın" : "Sign in as institution admin"}
+                        </p>
+                      </div>
+                    </div>
+                    <span className="text-muted-foreground text-sm">→</span>
+                  </motion.button>
+
+                  <p className="text-center text-xs text-muted-foreground">
+                    {language === "tr" ? "Kurumunuz kayıtlı değil mi?" : "Institution not registered?"}{" "}
+                    <Link href="/kurum-kaydi" className="text-primary hover:underline font-medium">
+                      {language === "tr" ? "Kayıt Ol" : "Register"}
+                    </Link>
+                  </p>
+
+                  <div className="text-center pt-1">
+                    <Link
+                      href="/admin/login"
+                      className="text-xs text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                    >
+                      {t.adminLogin[language]} →
+                    </Link>
+                  </div>
                 </div>
               </motion.div>
             ) : (
@@ -251,7 +303,9 @@ export default function LoginPage() {
                       <div>
                         <CardTitle>{isRegister ? t.register[language] : t.login[language]}</CardTitle>
                         <CardDescription>
-                          {userTypes.find((ut) => ut.role === selectedRole)?.label[language]}
+                          {selectedRole === "admin"
+                            ? language === "tr" ? "Kurum Yöneticisi" : "Institution Admin"
+                            : userTypes.find((ut) => ut.role === selectedRole)?.label[language]}
                         </CardDescription>
                       </div>
                     </div>
@@ -285,14 +339,16 @@ export default function LoginPage() {
                       )}
 
                       <div className="space-y-2">
-                        <Label htmlFor="email">{t.email[language]}</Label>
+                        <Label htmlFor="email">
+                          {selectedRole === "admin" ? language === "tr" ? "Kullanıcı adı" : "Username" : t.email[language]}
+                        </Label>
                         <Input
                           id="email"
-                          type="email"
+                          type={selectedRole === "admin" ? "text" : "email"}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          placeholder="ornek@email.com"
+                          placeholder={selectedRole === "admin" ? "kurum.admin" : "ornek@email.com"}
                         />
                       </div>
 
@@ -345,18 +401,29 @@ export default function LoginPage() {
                         </div>
                       )}
 
-                      <div className="text-center text-sm">
-                        <span className="text-muted-foreground">
-                          {isRegister ? t.hasAccount[language] : t.noAccount[language]}{" "}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => setIsRegister(!isRegister)}
-                          className="text-primary hover:underline font-medium"
-                        >
-                          {isRegister ? t.login[language] : t.register[language]}
-                        </button>
-                      </div>
+                      {selectedRole === "admin" ? (
+                        <div className="text-center text-sm">
+                          <span className="text-muted-foreground">
+                            {language === "tr" ? "Kurumunuz henüz onaylanmadı mı?" : "Institution not approved yet?"}{" "}
+                          </span>
+                          <Link href="/kurum-kaydi" className="text-primary hover:underline font-medium">
+                            {language === "tr" ? "Kurum Kaydı" : "Institution Registration"}
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="text-center text-sm">
+                          <span className="text-muted-foreground">
+                            {isRegister ? t.hasAccount[language] : t.noAccount[language]}{" "}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setIsRegister(!isRegister)}
+                            className="text-primary hover:underline font-medium"
+                          >
+                            {isRegister ? t.login[language] : t.register[language]}
+                          </button>
+                        </div>
+                      )}
 
                       {!isRegister && (
                         <div className="text-center">

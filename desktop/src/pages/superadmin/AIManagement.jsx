@@ -18,31 +18,53 @@ import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { GlowingOrb, FloatingParticles } from '../../components/animations/AnimatedBackground';
-import { fetchPlatformOverview } from '../../lib/api/modules';
+import { fetchPlatformOverview, fetchPlatformConfigurations, upsertPlatformConfiguration } from '../../lib/api/modules';
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0 } };
+
+const AI_SETTINGS_MARKER = 'SA_AI_SETTINGS';
+
+const defaultAiSettings = {
+  enabled: true,
+  maxTokens: 2048,
+  temperature: 0.7,
+  rateLimitPerUser: 100,
+  rateLimitPerTenant: 10000,
+  contentFilter: true,
+  logging: true,
+  disabledModels: [],
+};
 
 export default function AIManagement() {
   const { toast } = useToast();
   const [platform, setPlatform] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [aiSettings, setAiSettings] = useState({
-    enabled: true,
-    maxTokens: 2048,
-    temperature: 0.7,
-    rateLimitPerUser: 100,
-    rateLimitPerTenant: 10000,
-    contentFilter: true,
-    logging: true,
-  });
+  const [aiSettings, setAiSettings] = useState(defaultAiSettings);
 
   const loadAiData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setPlatform(await fetchPlatformOverview());
+      const [overview, savedConfigs] = await Promise.all([
+        fetchPlatformOverview(),
+        fetchPlatformConfigurations('ai-settings').catch(() => []),
+      ]);
+      setPlatform(overview);
+
+      const savedRecord = savedConfigs
+        .filter((item) => item.scopeKey === 'global')
+        .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
+
+      if (savedRecord?.payloadJson) {
+        try {
+          const parsed = JSON.parse(savedRecord.payloadJson);
+          setAiSettings((prev) => ({ ...prev, ...parsed }));
+        } catch {
+          // ignore invalid saved config
+        }
+      }
     } catch (err) {
       setError(err.message || 'AI yönetim verileri alınamadı.');
     } finally {
@@ -66,24 +88,56 @@ export default function AIManagement() {
 
   const logs = useMemo(() => platform?.aiLogs || [], [platform]);
 
-  const handleSave = () => {
-    toast({
-      title: "Ayarlar Kaydedildi",
-      description: "AI yapılandırmaları başarıyla güncellendi.",
+  const persistSettings = async (settings) => {
+    await upsertPlatformConfiguration({
+      configurationType: 'ai-settings',
+      scopeKey: 'global',
+      displayName: AI_SETTINGS_MARKER,
+      payloadJson: JSON.stringify(settings),
     });
   };
 
-  const toggleModel = (modelId) => {
-    toast({
-      title: "Model Durumu Güncellendi",
-      description: `${modelId} için görünüm güncellendi.`,
-    });
+  const handleSave = async () => {
+    try {
+      await persistSettings(aiSettings);
+      toast({
+        title: "Ayarlar Kaydedildi",
+        description: "AI yapılandırmaları veritabanına yazıldı.",
+      });
+    } catch (err) {
+      toast({
+        title: "Ayarlar kaydedilemedi",
+        description: err.message || "Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const toggleModel = async (modelId) => {
+    const nextDisabled = aiSettings.disabledModels?.includes(modelId)
+      ? aiSettings.disabledModels.filter((id) => id !== modelId)
+      : [...(aiSettings.disabledModels || []), modelId];
+    const nextSettings = { ...aiSettings, disabledModels: nextDisabled };
+    setAiSettings(nextSettings);
+    try {
+      await persistSettings(nextSettings);
+      toast({
+        title: "Model Durumu Güncellendi",
+        description: `${modelId} durumu veritabanına kaydedildi.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Model durumu kaydedilemedi",
+        description: err.message || "Lütfen tekrar deneyin.",
+        variant: "destructive",
+      });
+    }
   };
 
   const openModelSettings = (model) => {
     toast({
       title: 'Model ayarları',
-      description: `${model.name} için ayrıntılı yapılandırma görünümü bir sonraki panel adımına hazır.`,
+      description: `${model.name} için ayrıntılı yapılandırma bir sonraki panel adımına hazır.`,
     });
   };
 
@@ -99,21 +153,22 @@ export default function AIManagement() {
     >
       {/* Background */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10">
-        <GlowingOrb color="#D9790B" size={300} className="top-20 right-20 opacity-20" />
-        <GlowingOrb color="#8b5cf6" size={250} className="bottom-20 left-20 opacity-20" />
-        <FloatingParticles count={10} colors={['#D9790B', '#8b5cf6', '#3b82f6']} />
+        <GlowingOrb color="var(--brand-accent-hex, #D9790B)" size={300} className="top-20 right-20 opacity-20" />
+        <GlowingOrb color="var(--brand-p-700, #8b5cf6)" size={250} className="bottom-20 left-20 opacity-20" />
+        <FloatingParticles count={10} colors={['var(--brand-accent-hex, #D9790B)', 'var(--brand-p-700, #8b5cf6)', 'var(--brand-p-400, #3b82f6)']} />
       </div>
 
       {/* Header */}
       <motion.div variants={itemVariants}>
         <div className="flex items-center gap-4">
           <motion.div
-            className="p-4 rounded-2xl bg-gradient-to-br from-[#D9790B] to-purple-500 shadow-lg shadow-orange-500/30"
-            animate={{ 
+            className="p-4 rounded-2xl shadow-lg"
+            style={{ background: 'linear-gradient(to bottom right, var(--brand-accent-hex, #D9790B), var(--brand-p-500, #6b21a8))' }}
+            animate={{
               boxShadow: [
-                '0 10px 30px rgba(217, 121, 11, 0.3)',
-                '0 10px 40px rgba(217, 121, 11, 0.5)',
-                '0 10px 30px rgba(217, 121, 11, 0.3)'
+                '0 10px 30px var(--brand-a-500, rgba(217, 121, 11, 0.3))',
+                '0 10px 40px var(--brand-a-500, rgba(217, 121, 11, 0.5))',
+                '0 10px 30px var(--brand-a-500, rgba(217, 121, 11, 0.3))'
               ]
             }}
             transition={{ duration: 2, repeat: Infinity }}
@@ -176,7 +231,7 @@ export default function AIManagement() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Cpu className="h-5 w-5 text-[#D9790B]" />
+                  <Cpu className="h-5 w-5 text-brand-accent" />
                   AI Model Yönetimi
                 </CardTitle>
                 <CardDescription>Platformda kullanılan AI modellerini yönetin</CardDescription>
@@ -217,8 +272,8 @@ export default function AIManagement() {
                           <div className="w-32">
                             <Progress value={model.usage} className="h-2" />
                           </div>
-                          <Switch 
-                            checked={model.status !== 'inactive'}
+                          <Switch
+                            checked={!aiSettings.disabledModels?.includes(model.id) && model.status !== 'inactive'}
                             onCheckedChange={() => toggleModel(model.id)}
                           />
                           <Button variant="outline" size="sm" onClick={() => openModelSettings(model)}>
@@ -239,7 +294,7 @@ export default function AIManagement() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Sliders className="h-5 w-5 text-[#D9790B]" />
+                  <Sliders className="h-5 w-5 text-brand-accent" />
                   Genel Ayarlar
                 </CardTitle>
                 <CardDescription>AI sisteminin genel yapılandırması</CardDescription>
@@ -321,7 +376,7 @@ export default function AIManagement() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Shield className="h-5 w-5 text-[#D9790B]" />
+                  <Shield className="h-5 w-5 text-brand-accent" />
                   Kullanım Limitleri
                 </CardTitle>
                 <CardDescription>Kullanıcı ve kurum bazlı limitler</CardDescription>
@@ -359,7 +414,7 @@ export default function AIManagement() {
                 </div>
 
                 <Button onClick={handleSave} className="w-full bg-brand-primary hover:bg-brand-primary/90 text-white">
-                  Limitleri Güncelle
+                  Limitleri Kaydet
                 </Button>
               </CardContent>
             </Card>
@@ -371,7 +426,7 @@ export default function AIManagement() {
             <Card className="border-0 shadow-lg">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <Database className="h-5 w-5 text-[#D9790B]" />
+                  <Database className="h-5 w-5 text-brand-accent" />
                   AI Kullanım Logları
                 </CardTitle>
                 <CardDescription>Son AI etkileşimleri</CardDescription>

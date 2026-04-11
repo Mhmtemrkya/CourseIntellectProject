@@ -1,8 +1,9 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class QuestionBankItem
+public sealed class QuestionBankItem : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
     public string Subject { get; set; } = string.Empty;
     public string Topic { get; set; } = string.Empty;
     public string Difficulty { get; set; } = string.Empty;

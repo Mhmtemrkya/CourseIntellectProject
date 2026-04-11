@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.Auth;
 using CourseIntellect.Application.DTOs.LoginAttempts;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
@@ -88,20 +89,14 @@ public sealed class AuthService(
         });
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        var currentUser = await CreateCurrentUserDtoAsync(user, cancellationToken);
+
         return new LoginResponse(
             accessToken,
             expiresAtUtc,
             refreshToken,
             refreshTokenExpiresAtUtc,
-            new CurrentUserDto(
-                user.Id,
-                user.FullName,
-                user.Username,
-                user.PrimaryRole.ToString(),
-                user.ExtraRoles.Select(x => x.ToString()).ToList(),
-                user.Status.ToString(),
-                user.Campus,
-                user.DepartmentOrBranch));
+            currentUser);
     }
 
     public async Task<LoginResponse?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
@@ -112,6 +107,8 @@ public sealed class AuthService(
         if (exists) return null;
 
         if (!Enum.TryParse<Domain.Enums.UserRole>(request.Role, true, out var role))
+            role = Domain.Enums.UserRole.Student;
+        if (role == Domain.Enums.UserRole.Developer)
             role = Domain.Enums.UserRole.Student;
 
         var user = new AppUser
@@ -137,6 +134,21 @@ public sealed class AuthService(
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
         if (user is null) return null;
 
+        return await CreateCurrentUserDtoAsync(user, cancellationToken);
+    }
+
+    private async Task<CurrentUserDto> CreateCurrentUserDtoAsync(AppUser user, CancellationToken cancellationToken)
+    {
+        var tenant = user.TenantId.HasValue
+            ? await dbContext.TenantWorkspaces
+                .AsNoTracking()
+                .Where(x => x.Id == user.TenantId.Value)
+                .Select(x => new { x.Id, x.Name, x.Slug })
+                .SingleOrDefaultAsync(cancellationToken)
+            : null;
+
+        var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
+
         return new CurrentUserDto(
             user.Id,
             user.FullName,
@@ -145,7 +157,11 @@ public sealed class AuthService(
             user.ExtraRoles.Select(x => x.ToString()).ToList(),
             user.Status.ToString(),
             user.Campus,
-            user.DepartmentOrBranch);
+            user.DepartmentOrBranch,
+            tenant?.Id,
+            tenant?.Name,
+            tenant?.Slug,
+            isPlatformAdmin);
     }
 
     public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)

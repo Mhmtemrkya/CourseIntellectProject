@@ -10,6 +10,7 @@ import {
   ChevronUp,
   ChevronDown,
   HelpCircle,
+  Pencil,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Card, CardContent } from '../components/ui/card';
@@ -51,11 +52,31 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStaff, fetchQuestionBank, fetchStaff } from '../lib/api/modules';
+import { createStaff, updateStaff, fetchQuestionBank, fetchStaff } from '../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
+};
+
+const PREDEFINED_BRANCHES = [
+  'Matematik', 'Fizik', 'Kimya', 'Biyoloji',
+  'Türkçe / Edebiyat', 'Tarih', 'Coğrafya',
+  'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca',
+  'Felsefe', 'Din Kültürü ve Ahlak Bilgisi',
+  'Beden Eğitimi', 'Müzik', 'Görsel Sanatlar',
+  'Bilgisayar / Bilişim Teknolojileri',
+  'Matematik (İlkokul)', 'Türkçe (İlkokul)',
+  'Hayat Bilgisi', 'Fen Bilimleri',
+  'Sosyal Bilgiler', 'Rehberlik',
+  'Okul Öncesi', 'Özel Eğitim',
+  'Diğer',
+];
+
+const ROLE_LABELS = {
+  Teacher: 'Öğretmen',
+  Administrative: 'İdari Personel',
+  Admin: 'Yönetici',
 };
 
 function normalizeText(value = '') {
@@ -87,7 +108,7 @@ function TeacherDetailDrawer({ teacher }) {
         </Avatar>
         <div>
           <h3 className="text-lg font-semibold">{teacher.fullName}</h3>
-          <p className="text-sm text-muted-foreground">{teacher.departmentOrBranch || teacher.department || 'Branş atanmadı'} • {teacher.role}</p>
+          <p className="text-sm text-muted-foreground">{teacher.departmentOrBranch || 'Branş atanmadı'} • {ROLE_LABELS[teacher.role] || teacher.role}</p>
           <Badge className="bg-brand-accent mt-1">{assignedClasses.length} Sınıf</Badge>
         </div>
       </div>
@@ -133,11 +154,123 @@ function TeacherDetailDrawer({ teacher }) {
   );
 }
 
+function TeacherFormFields({ form, setForm, branches, classes }) {
+  const EMPTY_HOME_ROOM = '__none__';
+
+  const toggleAssignedClass = (value) => {
+    setForm((prev) => ({
+      ...prev,
+      assignedClasses: prev.assignedClasses.includes(value)
+        ? prev.assignedClasses.filter((item) => item !== value)
+        : [...prev.assignedClasses, value],
+    }));
+  };
+
+  return (
+    <div className="grid grid-cols-2 gap-4 py-4">
+      <div className="space-y-2 col-span-2">
+        <Label>Ad Soyad</Label>
+        <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} />
+      </div>
+      {form.role !== undefined && (
+        <div className="space-y-2">
+          <Label>Rol</Label>
+          <Select value={form.role} onValueChange={(value) => setForm((p) => ({ ...p, role: value }))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="Teacher">Öğretmen</SelectItem>
+              <SelectItem value="Administrative">İdari Personel</SelectItem>
+              <SelectItem value="Admin">Yönetici</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+      <div className="space-y-2">
+        <Label>Branş / Birim</Label>
+        <Select value={form.departmentOrBranch} onValueChange={(value) => setForm((p) => ({ ...p, departmentOrBranch: value }))}>
+          <SelectTrigger><SelectValue placeholder="Branş seçin" /></SelectTrigger>
+          <SelectContent>
+            {branches.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      {form.tcNo !== undefined && (
+        <div className="space-y-2">
+          <Label>TC No</Label>
+          <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: e.target.value }))} />
+        </div>
+      )}
+      <div className="space-y-2">
+        <Label>Telefon</Label>
+        <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+      </div>
+      <div className="space-y-2 col-span-2">
+        <Label>E-posta</Label>
+        <Input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
+      </div>
+      <div className="space-y-2">
+        <Label>Eğitim</Label>
+        <Input value={form.education} onChange={(e) => setForm((p) => ({ ...p, education: e.target.value }))} />
+      </div>
+      {form.startDate !== undefined && (
+        <div className="space-y-2">
+          <Label>Başlangıç Tarihi</Label>
+          <Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
+        </div>
+      )}
+      <div className="space-y-2">
+        <Label>Kampus</Label>
+        <Input value={form.campus} onChange={(e) => setForm((p) => ({ ...p, campus: e.target.value }))} />
+      </div>
+      <div className="space-y-2">
+        <Label>Sınıf Öğretmenliği</Label>
+        <Select
+          value={form.homeroomClass || EMPTY_HOME_ROOM}
+          onValueChange={(value) => setForm((p) => ({ ...p, homeroomClass: value === EMPTY_HOME_ROOM ? '' : value }))}
+        >
+          <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value={EMPTY_HOME_ROOM}>Yok</SelectItem>
+            {classes.map((cls) => <SelectItem key={cls} value={cls}>{cls}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2 col-span-2">
+        <Label>Atanan Sınıflar</Label>
+        <div className="flex flex-wrap gap-2">
+          {classes.map((cls) => (
+            <Button key={cls} type="button" variant={form.assignedClasses.includes(cls) ? 'default' : 'outline'} size="sm" onClick={() => toggleAssignedClass(cls)}>
+              {cls}
+            </Button>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Medeni Durum</Label>
+        <Select value={form.maritalStatus} onValueChange={(value) => setForm((p) => ({ ...p, maritalStatus: value }))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="Bekar">Bekar</SelectItem>
+            <SelectItem value="Evli">Evli</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+      <div className="space-y-2">
+        <Label>Çocuk Sayısı</Label>
+        <Input type="number" value={form.childCount} onChange={(e) => setForm((p) => ({ ...p, childCount: Number(e.target.value) }))} />
+      </div>
+      <div className="space-y-2 col-span-2">
+        <Label>Not</Label>
+        <Input value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
+      </div>
+    </div>
+  );
+}
+
 function AddTeacherDialog({
   open, onOpenChange, branches, classes, onCreated,
 }) {
   const { toast } = useToast();
-  const EMPTY_HOME_ROOM = '__none__';
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     fullName: '',
@@ -158,143 +291,105 @@ function AddTeacherDialog({
 
   const handleSave = async () => {
     if (!form.fullName || !form.departmentOrBranch || !form.email) {
-      toast({
-        title: 'Eksik bilgi',
-        description: 'Ad, branş ve e-posta zorunlu.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Eksik bilgi', description: 'Ad, branş ve e-posta zorunlu.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
       const created = await createStaff(form);
-      onCreated(created);
-      toast({
-        title: 'Personel oluşturuldu',
-        description: `${created.fullName} için ${created.username} kullanıcısı üretildi.`,
-      });
+      onCreated({ ...created, assignedClasses: form.assignedClasses, departmentOrBranch: form.departmentOrBranch, email: form.email, phone: form.phone });
+      toast({ title: 'Personel oluşturuldu', description: `${created.fullName} için ${created.username} kullanıcısı üretildi.` });
       onOpenChange(false);
     } catch (err) {
-      toast({
-        title: 'Personel oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Personel oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleAssignedClass = (value) => {
-    setForm((prev) => ({
-      ...prev,
-      assignedClasses: prev.assignedClasses.includes(value)
-        ? prev.assignedClasses.filter((item) => item !== value)
-        : [...prev.assignedClasses, value],
-    }));
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Yeni Öğretmen Ekle</DialogTitle>
           <DialogDescription>Öğretmen bilgilerini girin</DialogDescription>
         </DialogHeader>
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div className="space-y-2 col-span-2">
-            <Label>Ad Soyad</Label>
-            <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Rol</Label>
-            <Select value={form.role} onValueChange={(value) => setForm((p) => ({ ...p, role: value }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Teacher">Teacher</SelectItem>
-                <SelectItem value="Administrative">Administrative</SelectItem>
-                <SelectItem value="Admin">Admin</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Branş / Birim</Label>
-            <Select value={form.departmentOrBranch} onValueChange={(value) => setForm((p) => ({ ...p, departmentOrBranch: value }))}>
-              <SelectTrigger><SelectValue placeholder="Branş seçin" /></SelectTrigger>
-              <SelectContent>
-                {branches.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>TC No</Label>
-            <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Telefon</Label>
-            <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>E-posta</Label>
-            <Input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Eğitim</Label>
-            <Input value={form.education} onChange={(e) => setForm((p) => ({ ...p, education: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Başlangıç Tarihi</Label>
-            <Input type="date" value={form.startDate} onChange={(e) => setForm((p) => ({ ...p, startDate: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Kampus</Label>
-            <Input value={form.campus} onChange={(e) => setForm((p) => ({ ...p, campus: e.target.value }))} />
-          </div>
-          <div className="space-y-2">
-            <Label>Sınıf Öğretmenliği</Label>
-            <Select
-              value={form.homeroomClass || EMPTY_HOME_ROOM}
-              onValueChange={(value) => setForm((p) => ({ ...p, homeroomClass: value === EMPTY_HOME_ROOM ? '' : value }))}
-            >
-              <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value={EMPTY_HOME_ROOM}>Yok</SelectItem>
-                {classes.map((cls) => <SelectItem key={cls} value={cls}>{cls}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Atanan Sınıflar</Label>
-            <div className="flex flex-wrap gap-2">
-              {classes.map((cls) => (
-                <Button key={cls} type="button" variant={form.assignedClasses.includes(cls) ? 'default' : 'outline'} size="sm" onClick={() => toggleAssignedClass(cls)}>
-                  {cls}
-                </Button>
-              ))}
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Medeni Durum</Label>
-            <Select value={form.maritalStatus} onValueChange={(value) => setForm((p) => ({ ...p, maritalStatus: value }))}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Bekar">Bekar</SelectItem>
-                <SelectItem value="Evli">Evli</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Çocuk Sayısı</Label>
-            <Input type="number" value={form.childCount} onChange={(e) => setForm((p) => ({ ...p, childCount: Number(e.target.value) }))} />
-          </div>
-          <div className="space-y-2 col-span-2">
-            <Label>Not</Label>
-            <Input value={form.note} onChange={(e) => setForm((p) => ({ ...p, note: e.target.value }))} />
-          </div>
-        </div>
+        <TeacherFormFields form={form} setForm={setForm} branches={branches} classes={classes} />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditTeacherDialog({
+  open, onOpenChange, teacher, branches, classes, onUpdated,
+}) {
+  const { toast } = useToast();
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState({
+    fullName: '',
+    departmentOrBranch: '',
+    phone: '',
+    email: '',
+    education: '',
+    campus: '',
+    homeroomClass: '',
+    assignedClasses: [],
+    maritalStatus: 'Bekar',
+    childCount: 0,
+    note: '',
+  });
+
+  useEffect(() => {
+    if (teacher) {
+      setForm({
+        fullName: teacher.fullName || '',
+        departmentOrBranch: teacher.departmentOrBranch || '',
+        phone: teacher.phone || '',
+        email: teacher.email || '',
+        education: teacher.education || 'Lisans',
+        campus: teacher.campus || 'Merkez Kampus',
+        homeroomClass: teacher.homeroomClass || '',
+        assignedClasses: Array.isArray(teacher.assignedClasses) ? [...teacher.assignedClasses] : [],
+        maritalStatus: teacher.maritalStatus || 'Bekar',
+        childCount: teacher.childCount || 0,
+        note: teacher.note || '',
+      });
+    }
+  }, [teacher]);
+
+  const handleSave = async () => {
+    if (!form.fullName || !form.departmentOrBranch || !form.email) {
+      toast({ title: 'Eksik bilgi', description: 'Ad, branş ve e-posta zorunlu.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setSaving(true);
+      const updated = await updateStaff(teacher.id, form);
+      onUpdated(updated);
+      toast({ title: 'Güncellendi', description: `${updated.fullName} bilgileri güncellendi.` });
+      onOpenChange(false);
+    } catch (err) {
+      toast({ title: 'Güncellenemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Öğretmen Bilgilerini Düzenle</DialogTitle>
+          <DialogDescription>{teacher?.fullName}</DialogDescription>
+        </DialogHeader>
+        <TeacherFormFields form={form} setForm={setForm} branches={branches} classes={classes} />
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
+          <Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Güncelle'}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -308,6 +403,8 @@ export default function Teachers() {
   const [sortField, setSortField] = useState('fullName');
   const [sortDirection, setSortDirection] = useState('asc');
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingTeacher, setEditingTeacher] = useState(null);
   const [staff, setStaff] = useState([]);
   const [questionBank, setQuestionBank] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -334,15 +431,15 @@ export default function Teachers() {
     loadTeachers();
   }, [loadTeachers]);
 
-  const branches = useMemo(() => [...new Set(staff.map((t) => t.departmentOrBranch).filter(Boolean))], [staff]);
+  const branches = useMemo(() => {
+    const fromStaff = staff.map((t) => t.departmentOrBranch).filter(Boolean);
+    return [...new Set([...PREDEFINED_BRANCHES, ...fromStaff])];
+  }, [staff]);
+
   const classes = useMemo(() => {
     const merged = [
       ...staff.flatMap((t) => t.assignedClasses || []),
-      '9-A',
-      '10-A',
-      '10-B',
-      '11-Sayisal',
-      '12-Dil',
+      '9-A', '10-A', '10-B', '11-Sayisal', '12-Dil',
     ];
     return [...new Set(merged.filter(Boolean))];
   }, [staff]);
@@ -385,7 +482,7 @@ export default function Teachers() {
 
   const handleCreated = (created) => {
     setStaff((prev) => [{
-      id: created.userId,
+      id: created.userId || created.id,
       fullName: created.fullName,
       username: created.username,
       role: created.role,
@@ -393,7 +490,21 @@ export default function Teachers() {
       assignedClasses: Array.isArray(created.assignedClasses) ? created.assignedClasses : [],
       email: created.email || '',
       phone: created.phone || '',
+      homeroomClass: created.homeroomClass || '',
+      education: created.education || '',
+      maritalStatus: created.maritalStatus || '',
+      childCount: created.childCount || 0,
+      note: created.note || '',
     }, ...prev]);
+  };
+
+  const handleUpdated = (updated) => {
+    setStaff((prev) => prev.map((t) => t.id === updated.id ? { ...t, ...updated } : t));
+  };
+
+  const openEditDialog = (teacher) => {
+    setEditingTeacher(teacher);
+    setEditDialogOpen(true);
   };
 
   if (loading) {
@@ -463,10 +574,11 @@ export default function Teachers() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell><Badge className="bg-brand-accent">{teacher.departmentOrBranch || teacher.role}</Badge></TableCell>
+                  <TableCell><Badge className="bg-brand-accent">{teacher.departmentOrBranch || (ROLE_LABELS[teacher.role] || teacher.role)}</Badge></TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {(teacher.assignedClasses || []).slice(0, 3).map((cls) => <Badge key={cls} variant="outline" className="text-xs">{cls}</Badge>)}
+                      {(teacher.assignedClasses || []).length === 0 && <span className="text-xs text-muted-foreground">Atama yok</span>}
                     </div>
                   </TableCell>
                   <TableCell>{teacher.pendingQuestions}</TableCell>
@@ -481,6 +593,9 @@ export default function Teachers() {
                         <DropdownMenuItem onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
                           <Eye className="h-4 w-4 mr-2" /> Detay
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(teacher); }}>
+                          <Pencil className="h-4 w-4 mr-2" /> Düzenle
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -492,6 +607,7 @@ export default function Teachers() {
       </Card>
 
       <AddTeacherDialog open={dialogOpen} onOpenChange={setDialogOpen} branches={branches} classes={classes} onCreated={handleCreated} />
+      <EditTeacherDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} teacher={editingTeacher} branches={branches} classes={classes} onUpdated={handleUpdated} />
     </motion.div>
   );
 }

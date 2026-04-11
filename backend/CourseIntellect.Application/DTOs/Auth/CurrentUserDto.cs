@@ -8,5 +8,9 @@ public sealed record CurrentUserDto(
     IReadOnlyList<string> ExtraRoles,
     string Status,
     string Campus,
-    string DepartmentOrBranch
+    string DepartmentOrBranch,
+    Guid? TenantId,
+    string? TenantName,
+    string? TenantSlug,
+    bool IsPlatformAdmin
 );

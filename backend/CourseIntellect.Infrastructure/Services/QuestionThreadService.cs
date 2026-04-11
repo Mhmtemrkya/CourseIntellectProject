@@ -85,6 +85,7 @@ public sealed class QuestionThreadService(CourseIntellectDbContext dbContext) : 
         var attachments = request.Attachments?.Where(IsValidAttachment).ToList() ?? [];
         var reply = new StudentQuestionReply
         {
+            TenantId = thread.TenantId,
             ThreadId = threadId,
             SenderName = senderName.Trim(),
             SenderRole = senderRole.Trim(),

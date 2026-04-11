@@ -74,3 +74,4 @@ yeni/
 # Misc
 *.tgz
 *.zip
+.dotnet-home/

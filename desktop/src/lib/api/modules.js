@@ -77,6 +77,11 @@ export async function createStaff(payload) {
   return response;
 }
 
+export async function updateStaff(staffId, payload) {
+  const response = await api.put(`/api/staff/${staffId}`, payload);
+  return response;
+}
+
 export async function fetchAnnouncements(audienceOrOptions, maybeOptions = {}) {
   const options = typeof audienceOrOptions === 'string'
     ? { ...maybeOptions, audience: audienceOrOptions }
@@ -134,6 +139,16 @@ export async function upsertPlatformTenant(payload, id) {
   const response = await api.put('/api/platformops/tenants', payload, {
     params: id ? { id } : undefined,
   });
+  return response;
+}
+
+export async function approveTenant(id) {
+  const response = await api.put(`/api/platformops/tenants/${id}/approve`);
+  return response;
+}
+
+export async function rejectTenant(id) {
+  const response = await api.put(`/api/platformops/tenants/${id}/reject`);
   return response;
 }
 
@@ -607,8 +622,10 @@ export async function updateContent(id, payload) {
 
 // --- Tenant Branding ---
 
-export async function fetchTenantBranding() {
-  const response = await api.get('/api/platformconfigurations/branding');
+export async function fetchTenantBranding(tenantId) {
+  const response = await api.get('/api/platformconfigurations/branding', {
+    params: tenantId ? { tenantId } : undefined,
+  });
   if (!response) return null;
   // PayloadJson'u parse et
   if (response.payloadJson) {
@@ -622,10 +639,14 @@ export async function fetchTenantBranding() {
 }
 
 export async function saveTenantBranding(tenantId, brandingPayload) {
+  if (!tenantId) {
+    throw new Error('Tenant branding kaydi icin tenantId zorunludur.');
+  }
+
   return upsertPlatformConfiguration({
     configurationType: 'tenant-customization',
-    scopeKey: tenantId || 'global',
-    displayName: `SA_TENANT_CUSTOMIZATION::${tenantId || 'global'}`,
+    scopeKey: tenantId,
+    displayName: `SA_TENANT_CUSTOMIZATION::${tenantId}`,
     payloadJson: JSON.stringify(brandingPayload),
   });
 }

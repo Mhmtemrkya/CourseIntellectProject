@@ -12,6 +12,7 @@ import {
   Calculator,
   Shield,
   Edit,
+  Code2,
   RefreshCw,
   CheckCircle2,
   Clock,
@@ -27,7 +28,11 @@ import type { UserRegistration, UserRole } from "@/types/user"
 import { cn } from "@/lib/utils"
 import { apiRequest } from "@/lib/api-client"
 
-const roleIcons: Record<UserRole, typeof GraduationCap> = {
+type AdminPanelRole = UserRole | "developer"
+type AdminPanelRegistration = Omit<UserRegistration, "role"> & { role: AdminPanelRole }
+
+const roleIcons: Record<AdminPanelRole, typeof GraduationCap> = {
+  developer: Code2,
   student: GraduationCap,
   parent: Users,
   teacher: BookOpen,
@@ -36,7 +41,8 @@ const roleIcons: Record<UserRole, typeof GraduationCap> = {
   editor: Edit,
 }
 
-const roleColors: Record<UserRole, string> = {
+const roleColors: Record<AdminPanelRole, string> = {
+  developer: "bg-slate-900 text-white",
   student: "bg-blue-100 text-blue-700",
   parent: "bg-green-100 text-green-700",
   teacher: "bg-purple-100 text-purple-700",
@@ -45,13 +51,36 @@ const roleColors: Record<UserRole, string> = {
   editor: "bg-yellow-100 text-yellow-700",
 }
 
-const roleLabels: Record<UserRole, { tr: string; en: string }> = {
+const roleLabels: Record<AdminPanelRole, { tr: string; en: string }> = {
+  developer: { tr: "Geliştirici", en: "Developer" },
   student: { tr: "Öğrenci", en: "Student" },
   parent: { tr: "Veli", en: "Parent" },
   teacher: { tr: "Öğretmen", en: "Teacher" },
   accountant: { tr: "Muhasebeci", en: "Accountant" },
   admin: { tr: "Admin", en: "Admin" },
   editor: { tr: "Editör", en: "Editor" },
+}
+
+function normalizeRole(role: string): AdminPanelRole {
+  switch (role.toLowerCase()) {
+    case "developer":
+      return "developer"
+    case "admin":
+      return "admin"
+    case "editor":
+      return "editor"
+    case "teacher":
+      return "teacher"
+    case "student":
+      return "student"
+    case "parent":
+      return "parent"
+    case "accounting":
+    case "accountant":
+      return "accountant"
+    default:
+      return "student"
+  }
 }
 
 
@@ -78,7 +107,7 @@ interface PagedResponse<T> {
 
 export default function RegistrationsPage() {
   const { language } = useLanguage()
-  const [registrations, setRegistrations] = useState<UserRegistration[]>([])
+  const [registrations, setRegistrations] = useState<AdminPanelRegistration[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [roleFilter, setRoleFilter] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(false)
@@ -115,7 +144,7 @@ export default function RegistrationsPage() {
         userId: reg.userId,
         email: reg.email,
         name: reg.name,
-        role: reg.role.toLowerCase() as UserRole,
+        role: normalizeRole(reg.role),
         registeredAt: reg.registeredAt,
         isVerified: reg.isVerified,
       }))

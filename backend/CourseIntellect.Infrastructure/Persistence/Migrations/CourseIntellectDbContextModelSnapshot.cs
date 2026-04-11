@@ -17,7 +17,7 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
-                .HasAnnotation("ProductVersion", "10.0.0")
+                .HasAnnotation("ProductVersion", "8.0.11")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
@@ -52,12 +52,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_approvals", (string)null);
                 });
@@ -73,6 +79,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Time")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -84,6 +94,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(180)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_audit_logs", (string)null);
                 });
@@ -119,12 +131,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Time")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_collections", (string)null);
                 });
@@ -160,7 +178,13 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_installments", (string)null);
                 });
@@ -191,12 +215,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_invoices", (string)null);
                 });
@@ -212,6 +242,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Time")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -226,6 +260,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("boolean");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_notifications", (string)null);
                 });
@@ -261,7 +297,13 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("accounting_salaries", (string)null);
                 });
@@ -286,12 +328,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("announcements", (string)null);
                 });
@@ -394,12 +442,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Username")
                         .IsRequired()
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -436,9 +490,15 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ClassName");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("attendance_entries", (string)null);
                 });
@@ -600,6 +660,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
@@ -611,6 +675,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(60)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("content_items", (string)null);
                 });
@@ -701,10 +767,16 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<int>("Type")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("exam_results", (string)null);
                 });
@@ -751,6 +823,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
@@ -760,6 +836,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("homework_assignments", (string)null);
                 });
@@ -794,9 +872,15 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
 
                     b.HasIndex("AssignmentId");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("homework_submissions", (string)null);
                 });
@@ -888,12 +972,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Topic")
                         .IsRequired()
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("meeting_requests", (string)null);
                 });
@@ -920,6 +1010,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("SentAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Text")
                         .IsRequired()
                         .HasMaxLength(2000)
@@ -929,6 +1023,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("ThreadId");
 
@@ -969,7 +1065,13 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("message_threads", (string)null);
                 });
@@ -1003,6 +1105,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("TimeLabel")
                         .IsRequired()
                         .HasMaxLength(60)
@@ -1014,6 +1120,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(180)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("notifications", (string)null);
                 });
@@ -1045,12 +1153,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ConfigurationType", "ScopeKey")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "ConfigurationType", "ScopeKey")
                         .IsUnique();
 
                     b.ToTable("platform_configurations", (string)null);
@@ -1126,6 +1240,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Topic")
                         .IsRequired()
                         .HasMaxLength(180)
@@ -1140,6 +1258,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("question_bank_items", (string)null);
                 });
@@ -1174,7 +1294,13 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("SubmittedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("QuestionId", "StudentUsername");
 
@@ -1278,6 +1404,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(120)
                         .HasColumnType("character varying(120)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1291,7 +1421,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("SectionKey", "Language", "Version")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "SectionKey", "Language", "Version")
                         .IsUnique();
 
                     b.ToTable("site_content_items", (string)null);
@@ -1363,10 +1495,16 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("character varying(11)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -1432,10 +1570,16 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(11)
                         .HasColumnType("character varying(11)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -1475,10 +1619,16 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<Guid>("ThreadId")
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("ThreadId");
 
@@ -1542,12 +1692,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
 
                     b.ToTable("student_question_threads", (string)null);
                 });
@@ -1575,12 +1731,18 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(150)
                         .HasColumnType("character varying(150)");
 
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
                     b.Property<int>("XpPoints")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("StudentName")
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "StudentName")
                         .IsUnique();
 
                     b.ToTable("study_plan_states", (string)null);
@@ -1665,8 +1827,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("AdminUserId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("ApiUsage")
                         .HasColumnType("integer");
+
+                    b.Property<DateTime?>("ApprovedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("BranchCount")
                         .HasColumnType("integer");
@@ -1678,6 +1846,19 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(180)
                         .HasColumnType("character varying(180)");
+
+                    b.Property<string>("ContactName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("character varying(150)");
+
+                    b.Property<string>("ContactPhone")
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)");
+
+                    b.Property<string>("PendingAdminPasswordHash")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1718,6 +1899,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AdminUserId");
 
                     b.HasIndex("Slug")
                         .IsUnique();
@@ -1760,6 +1943,230 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("translation_items", (string)null);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingApproval", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingAuditLog", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingCollection", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingInstallment", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingInvoice", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingNotification", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingSalary", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AnnouncementItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AppUser", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.AttendanceEntry", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.ContentItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.ExamResult", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.HomeworkAssignment", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.HomeworkSubmission", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.MeetingRequest", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.MessageItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.MessageThread", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.NotificationItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.PlatformConfiguration", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.QuestionBankItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.QuestionPracticeAttempt", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.SiteContentItem", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StaffProfile", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentProfile", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentQuestionReply", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StudentQuestionThread", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.StudyPlanState", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
+                        .WithMany()
+                        .HasForeignKey("TenantId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.TenantWorkspace", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("AdminUserId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 #pragma warning restore 612, 618
         }

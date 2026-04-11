@@ -21,6 +21,7 @@ import {
   Languages,
   LogIn,
   UserPlus,
+  Building2,
   type LucideIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -57,6 +58,7 @@ const navItems: NavItem[] = [
       { label: "Kayıt Listesi", href: "/admin/kullanicilar/kayitlar", icon: UserPlus },
     ],
   },
+  { label: "Kurumlar", href: "/admin/kurumlar", icon: Building2 },
   { label: "Çeviriler", href: "/admin/ceviriler", icon: Languages },
   { label: "Kurslar", href: "/admin/kurslar", icon: BookOpen },
   { label: "Mesajlar", href: "/admin/mesajlar", icon: Mail },

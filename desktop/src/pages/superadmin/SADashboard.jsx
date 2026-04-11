@@ -43,6 +43,12 @@ export default function SADashboard() {
   const stats = platform?.stats || {};
   const recentTenants = platform?.recentTenants || [];
 
+  // Dynamic system status calculations
+  const apiHealthPct   = Math.min(100, Math.round(Number(stats.aiSuccessRate ?? 96)));
+  const storageMaxGb   = 20; // platform storage ceiling (GB)
+  const storagePct     = Math.min(100, Math.round((Number(stats.storageUsedGb ?? 0) / storageMaxGb) * 100));
+  const dbUsagePct     = Math.min(95, Math.round(Math.min(88, (stats.totalUsers ?? 0) * 0.4 + 35)));
+
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8" data-testid="sa-dashboard-page">
       <div>
@@ -113,10 +119,45 @@ export default function SADashboard() {
             <CardTitle className="flex items-center gap-2"><Server className="h-5 w-5" />Sistem Durumu</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div><div className="flex justify-between text-sm mb-2"><span>API Sunucusu</span><Badge className="bg-green-100 text-green-700">Çalışıyor</Badge></div><Progress value={96} className="h-2" /><p className="text-xs text-muted-foreground mt-1">Canlı endpoint erişimi alındı</p></div>
-            <div><div className="flex justify-between text-sm mb-2"><span>Veritabanı</span><Badge className="bg-green-100 text-green-700">Sağlıklı</Badge></div><Progress value={72} className="h-2" /><p className="text-xs text-muted-foreground mt-1">Tahmini kullanım</p></div>
-            <div><div className="flex justify-between text-sm mb-2"><span>Depolama</span><Badge className="bg-yellow-100 text-yellow-700">{Number(stats.storageUsedGb || 0).toFixed(1)} GB</Badge></div><Progress value={65} className="h-2" /></div>
-            <div><div className="flex justify-between text-sm mb-2"><span>Açık Destek Talepleri</span><Badge className="bg-blue-100 text-blue-700">{stats.openTickets || 0} kayıt</Badge></div></div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>API Sunucusu</span>
+                <Badge className={apiHealthPct >= 90 ? 'bg-green-100 text-green-700' : apiHealthPct >= 70 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'}>
+                  {apiHealthPct >= 90 ? 'Çalışıyor' : apiHealthPct >= 70 ? 'Yavaş' : 'Sorunlu'} %{apiHealthPct}
+                </Badge>
+              </div>
+              <Progress value={apiHealthPct} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1">Başarı oranı — {stats.aiRequestCount ?? 0} istek işlendi</p>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Veritabanı</span>
+                <Badge className={dbUsagePct < 75 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
+                  {dbUsagePct < 75 ? 'Sağlıklı' : 'Yüksek'} %{dbUsagePct}
+                </Badge>
+              </div>
+              <Progress value={dbUsagePct} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1">{stats.totalUsers ?? 0} kullanıcı — tahmini kayıt yükü</p>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Depolama</span>
+                <Badge className={storagePct < 70 ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
+                  {Number(stats.storageUsedGb ?? 0).toFixed(1)} / {storageMaxGb} GB
+                </Badge>
+              </div>
+              <Progress value={storagePct} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1">%{storagePct} doluluk</p>
+            </div>
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span>Açık Destek Talepleri</span>
+                <Badge className="bg-blue-100 text-blue-700">{stats.openTickets ?? 0} kayıt</Badge>
+              </div>
+              {(stats.openTickets ?? 0) > 0 && (
+                <p className="text-xs text-muted-foreground mt-1">{stats.openTickets} bekleyen talep mevcut</p>
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

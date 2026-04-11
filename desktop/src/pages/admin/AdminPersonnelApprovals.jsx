@@ -98,7 +98,7 @@ export default function AdminPersonnelApprovals() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-personnel-approvals-page">
-      <div className="rounded-[28px] border border-slate-200 bg-[radial-gradient(circle_at_top_left,_rgba(34,197,94,0.18),_transparent_30%),linear-gradient(135deg,#0f172a_0%,#132b4c_50%,#14532d_100%)] p-7 text-white shadow-xl">
+      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(34,197,94,0.18)), transparent 30%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #132b4c) 50%, var(--brand-p-700, #14532d) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-white/20 bg-white/10 text-white">Onay Merkezi</Badge>
@@ -128,13 +128,13 @@ export default function AdminPersonnelApprovals() {
       </div>
       <div className="grid gap-4">
         {items.map((item) => (
-          <Card key={item.id} className="overflow-hidden border-slate-200 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
+          <Card key={item.id} className="overflow-hidden border-border shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg">
             <CardContent className="p-5">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-semibold">{item.fullName}</p>
-                    <Badge className="bg-slate-100 text-slate-700">{item.role}</Badge>
+                    <Badge className="bg-muted text-muted-foreground">{item.role}</Badge>
                     <Badge variant="outline"><CheckCircle2 className="mr-1 h-3 w-3" />{statuses[item.id] || 'İncelemede'}</Badge>
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">{item.role} • {item.department || item.campus || 'Birim yok'}</p>
@@ -164,7 +164,7 @@ export default function AdminPersonnelApprovals() {
           </DialogHeader>
           {selected ? (
             <div className="space-y-5">
-              <div className="rounded-[24px] border bg-[radial-gradient(circle_at_top_left,_rgba(250,204,21,0.16),_transparent_34%),linear-gradient(135deg,#0f172a_0%,#1d4d63_55%,#166534_100%)] p-6 text-white">
+              <div className="rounded-[24px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(250,204,21,0.16)), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #1d4d63) 55%, var(--brand-p-700, #166534) 100%)' }}>
                 <Badge className="border-white/15 bg-white/10 text-white">{statuses[selected.id] || 'İncelemede'}</Badge>
                 <h3 className="mt-4 text-2xl font-semibold">{selected.fullName}</h3>
                 <p className="mt-2 text-sm text-white/80">{selected.role} • {selected.department || selected.campus || 'Birim yok'}</p>

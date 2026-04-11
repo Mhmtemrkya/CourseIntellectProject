@@ -4,7 +4,7 @@ import type React from "react"
 
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { Plus, Eye, Edit, Trash2, X, Check, Shield, GraduationCap, User, UserCog } from "lucide-react"
+import { Plus, Eye, Edit, Trash2, X, Check, Shield, GraduationCap, User, UserCog, Code2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,7 +18,7 @@ interface UserData {
   name: string
   email: string
   phone?: string
-  role: "admin" | "editor" | "teacher" | "student" | "parent" | "accountant"
+  role: "developer" | "admin" | "editor" | "teacher" | "student" | "parent" | "accountant"
   status: "active" | "inactive" | "pending"
   createdAt: string
   lastLogin: string
@@ -47,12 +47,35 @@ interface PagedResponse<T> {
 }
 
 const roleLabels: Record<UserData["role"], { label: string; icon: React.ReactNode; color: string }> = {
+  developer: { label: "Geliştirici", icon: <Code2 className="w-3 h-3" />, color: "bg-slate-900 text-white" },
   admin: { label: "Yönetici", icon: <Shield className="w-3 h-3" />, color: "bg-red-100 text-red-700" },
   editor: { label: "Editör", icon: <Edit className="w-3 h-3" />, color: "bg-yellow-100 text-yellow-700" },
   teacher: { label: "Öğretmen", icon: <UserCog className="w-3 h-3" />, color: "bg-blue-100 text-blue-700" },
   student: { label: "Öğrenci", icon: <GraduationCap className="w-3 h-3" />, color: "bg-green-100 text-green-700" },
   parent: { label: "Veli", icon: <User className="w-3 h-3" />, color: "bg-purple-100 text-purple-700" },
   accountant: { label: "Muhasebe", icon: <User className="w-3 h-3" />, color: "bg-orange-100 text-orange-700" },
+}
+
+function normalizeUserRole(role: string): UserData["role"] {
+  switch (role.toLowerCase()) {
+    case "developer":
+      return "developer"
+    case "admin":
+      return "admin"
+    case "editor":
+      return "editor"
+    case "teacher":
+      return "teacher"
+    case "student":
+      return "student"
+    case "parent":
+      return "parent"
+    case "accounting":
+    case "accountant":
+      return "accountant"
+    default:
+      return "student"
+  }
 }
 
 const statusLabels: Record<UserData["status"], { label: string; color: string }> = {
@@ -77,7 +100,7 @@ export default function UsersPage() {
   })
 
   const mapUser = (item: UserListItemResponse): UserData => {
-    const role = item.role.toLowerCase() as UserData["role"]
+    const role = normalizeUserRole(item.role)
     const status = item.isEmailVerified ? (item.isActive ? "active" : "inactive") : "pending"
     return {
       id: item.id,
@@ -131,7 +154,7 @@ export default function UsersPage() {
       label: "Rol",
       sortable: true,
       render: (value) => {
-        const role = roleLabels[value as UserData["role"]]
+        const role = roleLabels[value as UserData["role"]] ?? roleLabels.student
         return (
           <span className={cn("inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium", role.color)}>
             {role.icon}
@@ -145,7 +168,7 @@ export default function UsersPage() {
       label: "Durum",
       sortable: true,
       render: (value) => {
-        const status = statusLabels[value as UserData["status"]]
+        const status = statusLabels[value as UserData["status"]] ?? statusLabels.pending
         return <span className={cn("px-2 py-1 rounded-full text-xs font-medium", status.color)}>{status.label}</span>
       },
     },
@@ -444,11 +467,11 @@ export default function UsersPage() {
                 <div className="grid grid-cols-2 gap-4 pt-4">
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground">Rol</p>
-                    <p className="font-medium">{roleLabels[viewingUser.role].label}</p>
+                    <p className="font-medium">{(roleLabels[viewingUser.role] ?? roleLabels.student).label}</p>
                   </div>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground">Durum</p>
-                    <p className="font-medium">{statusLabels[viewingUser.status].label}</p>
+                    <p className="font-medium">{(statusLabels[viewingUser.status] ?? statusLabels.pending).label}</p>
                   </div>
                   <div className="p-3 bg-muted/50 rounded-lg">
                     <p className="text-xs text-muted-foreground">Telefon</p>

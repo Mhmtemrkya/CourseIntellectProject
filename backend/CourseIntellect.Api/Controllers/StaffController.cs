@@ -28,6 +28,18 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
         return CreatedAtAction(nameof(Get), new { role = result.Role }, result);
     }
 
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    [ProducesResponseType(typeof(StaffSummaryDto), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Update(
+        Guid id,
+        [FromBody] UpdateStaffRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await staffManagementService.UpdateStaffAsync(id, request, cancellationToken);
+        return Ok(result);
+    }
+
     [HttpPost("accounting")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(StaffCredentialsDto), StatusCodes.Status201Created)]

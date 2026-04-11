@@ -9,5 +9,15 @@ public sealed record StaffSummaryDto(
     string Campus,
     string Status,
     IReadOnlyList<string> ExtraRoles,
-    bool HasRoleHistory
+    bool HasRoleHistory,
+    IReadOnlyList<string> AssignedClasses,
+    string Email,
+    string Phone,
+    string HomeroomClass,
+    string Education,
+    string TcNo,
+    string MaritalStatus,
+    int ChildCount,
+    string Note,
+    string StartDate
 );

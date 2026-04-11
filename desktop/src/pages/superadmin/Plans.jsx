@@ -240,7 +240,7 @@ export default function Plans() {
         price: item.price,
         priceUnit: 'kullanıcı/ay',
         description: item.description,
-        color: item.color || 'bg-slate-600',
+        color: item.color || 'bg-muted-foreground',
         icon: Package,
         popular: false,
         features: {
@@ -322,7 +322,7 @@ export default function Plans() {
       customBranding: true,
       advancedReports: true,
       prioritySupport: false,
-      color: 'bg-slate-600',
+      color: 'bg-muted-foreground',
     };
 
     try {
