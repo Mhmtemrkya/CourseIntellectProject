@@ -13,10 +13,12 @@ class AdministrativeMessagesPage extends StatefulWidget {
   const AdministrativeMessagesPage({super.key});
 
   @override
-  State<AdministrativeMessagesPage> createState() => _AdministrativeMessagesPageState();
+  State<AdministrativeMessagesPage> createState() =>
+      _AdministrativeMessagesPageState();
 }
 
-class _AdministrativeMessagesPageState extends State<AdministrativeMessagesPage> {
+class _AdministrativeMessagesPageState
+    extends State<AdministrativeMessagesPage> {
   bool _loading = true;
   String? _error;
   List<MessageThreadRecord> _threads = const [];
@@ -27,10 +29,11 @@ class _AdministrativeMessagesPageState extends State<AdministrativeMessagesPage>
   void initState() {
     super.initState();
     MessageRealtimeService.instance.ensureConnected().catchError((_) {});
-    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream.listen((payload) {
-      if (!mounted) return;
-      _upsertThread(MessageThreadRecord.fromMap(payload));
-    });
+    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
+        .listen((payload) {
+          if (!mounted) return;
+          _upsertThread(MessageThreadRecord.fromMap(payload));
+        });
     _loadThreads();
     _startSilentFallbackSync();
   }
@@ -116,7 +119,10 @@ class _AdministrativeMessagesPageState extends State<AdministrativeMessagesPage>
     } catch (_) {}
   }
 
-  bool _sameThreads(List<MessageThreadRecord> left, List<MessageThreadRecord> right) {
+  bool _sameThreads(
+    List<MessageThreadRecord> left,
+    List<MessageThreadRecord> right,
+  ) {
     if (identical(left, right)) return true;
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index += 1) {
@@ -143,7 +149,8 @@ class _AdministrativeMessagesPageState extends State<AdministrativeMessagesPage>
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
       title: 'Yeni Mesaj',
-      description: 'Öğrenci, veli, öğretmen, muhasebe ve kurum yönetimiyle yeni sohbet başlatın.',
+      description:
+          'Öğrenci, veli, öğretmen, muhasebe ve kurum yönetimiyle yeni sohbet başlatın.',
       recipients: recipients,
     );
 
@@ -177,10 +184,10 @@ class _AdministrativeMessagesPageState extends State<AdministrativeMessagesPage>
             role: item.roleType == 'Muhasebeci'
                 ? 'Accounting'
                 : item.roleType == 'Admin'
-                    ? 'Admin'
-                    : item.roleType == 'Öğretmen'
-                        ? 'Teacher'
-                        : 'Administrative',
+                ? 'Admin'
+                : item.roleType == 'Öğretmen'
+                ? 'Teacher'
+                : 'Administrative',
             contactKey: item.username,
             subtitle: item.branchOrDepartment,
           ),

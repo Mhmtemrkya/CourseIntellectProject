@@ -27,33 +27,29 @@ class _VeliStudentCardState extends State<VeliStudentCard> {
 
   @override
   Widget build(BuildContext context) {
-    final childName = _child?.fullName ?? 'Bagli Ogrenci';
-    final className = _child?.className ?? 'Sinif bilgisi bekleniyor';
+    final childName = _child?.fullName ?? 'Bağlı Öğrenci';
+    final className = _child?.className ?? 'Sınıf bilgisi bekleniyor';
 
     return Container(
-
       padding: const EdgeInsets.all(16),
 
       decoration: BoxDecoration(
-
         borderRadius: BorderRadius.circular(16),
 
         gradient: const LinearGradient(
           colors: [Color(0xFF1E3A8A), Color(0xFFFF7A00)],
         ),
-
       ),
 
       child: Column(
-
         children: [
-
           Row(
             children: [
               CircleAvatar(
                 radius: 26,
-                backgroundImage:
-                    NetworkImage("https://i.pravatar.cc/150?img=12"),
+                backgroundImage: NetworkImage(
+                  "https://i.pravatar.cc/150?img=12",
+                ),
               ),
               SizedBox(width: 12),
               Expanded(
@@ -81,11 +77,8 @@ class _VeliStudentCardState extends State<VeliStudentCard> {
               ),
             ],
           ),
-
         ],
-
       ),
-
     );
   }
 }

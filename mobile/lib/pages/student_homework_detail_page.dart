@@ -6,10 +6,7 @@ import '../services/api_config.dart';
 class StudentHomeworkDetailPage extends StatelessWidget {
   final Map<String, dynamic> homework;
 
-  const StudentHomeworkDetailPage({
-    super.key,
-    required this.homework,
-  });
+  const StudentHomeworkDetailPage({super.key, required this.homework});
 
   String _decodeText(String? value) {
     return (value ?? '')
@@ -42,26 +39,25 @@ class StudentHomeworkDetailPage extends StatelessWidget {
       final parts = value.split('::');
       return (
         name: _decodeText(parts.first.trim()),
-        url: parts.length > 1 ? parts.sublist(1).join('::').trim() : parts.first.trim(),
+        url: parts.length > 1
+            ? parts.sublist(1).join('::').trim()
+            : parts.first.trim(),
       );
     }
-    return (
-      name: _decodeText(value.split('/').last),
-      url: value,
-    );
+    return (name: _decodeText(value.split('/').last), url: value);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final materials = List<String>.from(homework["materials"] as List<dynamic>? ?? const []);
+    final materials = List<String>.from(
+      homework["materials"] as List<dynamic>? ?? const [],
+    );
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Ödev Detayı"),
-      ),
+      appBar: AppBar(title: const Text("Ödev Detayı")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -87,7 +83,7 @@ class StudentHomeworkDetailPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   _row("Teslim Tarihi", homework["deadline"] as String),
                   _row("Durum", homework["status"] as String),
-                  _row("Sinif", homework["className"] as String),
+                  _row("Sınıf", homework["className"] as String),
                 ],
               ),
             ),
@@ -128,7 +124,7 @@ class StudentHomeworkDetailPage extends StatelessWidget {
                   const SizedBox(height: 10),
                   if (materials.isEmpty)
                     Text(
-                      "Bu odeve ek materyal yuklenmedi.",
+                      "Bu ödeve ek materyal yüklenmedi.",
                       style: theme.textTheme.bodyMedium,
                     )
                   else
@@ -216,9 +212,7 @@ class StudentHomeworkDetailPage extends StatelessWidget {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          launched
-              ? '${material.name} açılıyor'
-              : '${material.name} açılamadı',
+          launched ? '${material.name} açılıyor' : '${material.name} açılamadı',
         ),
       ),
     );

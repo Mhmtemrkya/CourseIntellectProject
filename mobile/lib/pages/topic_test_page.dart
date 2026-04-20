@@ -28,8 +28,10 @@ class _TopicTestPageState extends State<TopicTestPage>
   @override
   void initState() {
     super.initState();
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 600));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
     fadeAnim = Tween<double>(begin: 0, end: 1).animate(_controller);
     _controller.forward();
     _loadQuestions();
@@ -43,7 +45,10 @@ class _TopicTestPageState extends State<TopicTestPage>
     try {
       await QuestionBankStore.instance.loadQuestions();
       final items = QuestionBankStore.instance.questions
-          .where((item) => item.options.isNotEmpty && item.correctOptionIndex != null)
+          .where(
+            (item) =>
+                item.options.isNotEmpty && item.correctOptionIndex != null,
+          )
           .take(5)
           .toList();
       if (!mounted) return;
@@ -98,9 +103,7 @@ class _TopicTestPageState extends State<TopicTestPage>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Cevap kaydi senkronize edilemedi.'),
-        ),
+        const SnackBar(content: Text('Cevap kaydı senkronize edilemedi.')),
       );
     }
   }
@@ -124,8 +127,9 @@ class _TopicTestPageState extends State<TopicTestPage>
         builder: (dialogContext) => AlertDialog(
           title: const Text("Test Bitti"),
           content: Text(
-              "Dogru: $correctCount\nYanlis: $wrongCount\nKazanilan XP: ${reward.amount}"
-              "${reward.bonuses.isEmpty ? "" : "\nBonus: ${reward.bonuses.join(" • ")}"}"),
+            "Doğru: $correctCount\nYanlis: $wrongCount\nKazanilan XP: ${reward.amount}"
+            "${reward.bonuses.isEmpty ? "" : "\nBonus: ${reward.bonuses.join(" • ")}"}",
+          ),
           actions: [
             TextButton(
               onPressed: () async {
@@ -137,7 +141,7 @@ class _TopicTestPageState extends State<TopicTestPage>
                 pageNavigator.pop(reward.amount);
               },
               child: const Text("Tamam"),
-            )
+            ),
           ],
         ),
       );
@@ -148,48 +152,53 @@ class _TopicTestPageState extends State<TopicTestPage>
   Widget build(BuildContext context) {
     final question = _questions.isEmpty ? null : _questions[currentQuestion];
     final options = question?.options ?? const <String>[];
-    final progress = _questions.isEmpty ? 0.0 : (currentQuestion + 1) / _questions.length;
+    final progress = _questions.isEmpty
+        ? 0.0
+        : (currentQuestion + 1) / _questions.length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(question?.topic ?? "Konu Testi"),
-      ),
+      appBar: AppBar(title: Text(question?.topic ?? "Konu Testi")),
       body: FadeTransition(
         opacity: fadeAnim,
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(onPressed: _loadQuestions, child: const Text('Tekrar Dene')),
-                      ],
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadQuestions,
+                      child: const Text('Tekrar Dene'),
                     ),
-                  )
-                : _questions.isEmpty
-                    ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text('Konu testi icin uygun soru bankasi kaydi bulunmuyor.'),
-                        ),
-                      )
-                    : Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          children: [
-                            progressCard(progress),
-                            const SizedBox(height: 16),
-                            questionCard(question!),
-                            const SizedBox(height: 16),
-                            optionList(options),
-                            const Spacer(),
-                            nextButton(),
-                          ],
-                        ),
-                      ),
+                  ],
+                ),
+              )
+            : _questions.isEmpty
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text(
+                    'Konu testi için uygun soru bankası kaydı bulunmuyor.',
+                  ),
+                ),
+              )
+            : Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    progressCard(progress),
+                    const SizedBox(height: 16),
+                    questionCard(question!),
+                    const SizedBox(height: 16),
+                    optionList(options),
+                    const Spacer(),
+                    nextButton(),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -208,9 +217,9 @@ class _TopicTestPageState extends State<TopicTestPage>
           Text("Soru ${currentQuestion + 1} / ${_questions.length}"),
           const Spacer(),
           Text(
-            "Dogru: $correctCount",
+            "Doğru: $correctCount",
             style: const TextStyle(color: Colors.green),
-          )
+          ),
         ],
       ),
     );
@@ -237,13 +246,15 @@ class _TopicTestPageState extends State<TopicTestPage>
     );
   }
 
-  double progressValue() => _questions.isEmpty ? 0 : (currentQuestion + 1) / _questions.length;
+  double progressValue() =>
+      _questions.isEmpty ? 0 : (currentQuestion + 1) / _questions.length;
 
   Widget optionList(List<String> options) {
     return Column(
       children: List.generate(options.length, (index) {
         final isSelected = selectedOption == index;
-        final isCorrect = _questions[currentQuestion].correctOptionIndex == index;
+        final isCorrect =
+            _questions[currentQuestion].correctOptionIndex == index;
 
         var color = Colors.white;
         if (selectedOption != -1) {
@@ -269,9 +280,7 @@ class _TopicTestPageState extends State<TopicTestPage>
             ),
             child: Row(
               children: [
-                CircleAvatar(
-                  child: Text(String.fromCharCode(65 + index)),
-                ),
+                CircleAvatar(child: Text(String.fromCharCode(65 + index))),
                 const SizedBox(width: 12),
                 Expanded(child: Text(options[index])),
               ],
@@ -295,7 +304,9 @@ class _TopicTestPageState extends State<TopicTestPage>
           ),
         ),
         child: Text(
-          currentQuestion == _questions.length - 1 ? "Testi Bitir" : "Sonraki Soru",
+          currentQuestion == _questions.length - 1
+              ? "Testi Bitir"
+              : "Sonraki Soru",
           style: const TextStyle(fontSize: 16),
         ),
       ),

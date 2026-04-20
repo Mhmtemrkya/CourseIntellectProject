@@ -89,7 +89,10 @@ class AdminHeroCard extends StatelessWidget {
             ),
             child: Text(
               eyebrow,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -123,11 +126,7 @@ class AdminHeroMetric extends StatelessWidget {
   final String label;
   final String value;
 
-  const AdminHeroMetric({
-    super.key,
-    required this.label,
-    required this.value,
-  });
+  const AdminHeroMetric({super.key, required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -142,9 +141,22 @@ class AdminHeroMetric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
       ),
@@ -157,12 +169,7 @@ class AdminPanel extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final EdgeInsetsGeometry? margin;
 
-  const AdminPanel({
-    super.key,
-    required this.child,
-    this.padding,
-    this.margin,
-  });
+  const AdminPanel({super.key, required this.child, this.padding, this.margin});
 
   @override
   Widget build(BuildContext context) {
@@ -175,12 +182,12 @@ class AdminPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.28),
-        ),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.28)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.18 : 0.06),
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.18 : 0.06,
+            ),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -210,14 +217,13 @@ class AdminSectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
         if (actionLabel != null && onAction != null)
-          TextButton(
-            onPressed: onAction,
-            child: Text(actionLabel!),
-          ),
+          TextButton(onPressed: onAction, child: Text(actionLabel!)),
       ],
     );
   }
@@ -227,11 +233,7 @@ class AdminAccentBadge extends StatelessWidget {
   final String label;
   final Color color;
 
-  const AdminAccentBadge({
-    super.key,
-    required this.label,
-    required this.color,
-  });
+  const AdminAccentBadge({super.key, required this.label, required this.color});
 
   @override
   Widget build(BuildContext context) {

@@ -38,16 +38,13 @@ class AuthApiService {
       triedUrls.add(baseUrl);
 
       try {
-        response = await http.post(
-          loginUrl,
-          headers: const {
-            'Content-Type': 'application/json',
-          },
-          body: jsonEncode({
-            'username': username,
-            'password': password,
-          }),
-        ).timeout(const Duration(seconds: 2));
+        response = await http
+            .post(
+              loginUrl,
+              headers: const {'Content-Type': 'application/json'},
+              body: jsonEncode({'username': username, 'password': password}),
+            )
+            .timeout(const Duration(seconds: 2));
 
         ApiConfig.useBaseUrl(baseUrl);
         break;
@@ -71,11 +68,19 @@ class AuthApiService {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AuthApiException('Giriş sırasında sunucu hatası oluştu (${response.statusCode}).');
+      throw AuthApiException(
+        'Giriş sırasında sunucu hatası oluştu (${response.statusCode}).',
+      );
     }
 
+    final session = parseLoginResponse(response.body);
+    await AuthSessionStore.instance.save(session);
+    return session;
+  }
+
+  AuthSession parseLoginResponse(String body) {
     try {
-      final decoded = jsonDecode(response.body);
+      final decoded = jsonDecode(body);
       final raw = _asMap(decoded);
       final map = _asMap(raw['data']).isNotEmpty ? _asMap(raw['data']) : raw;
       final user = _asMap(map['user']);
@@ -83,7 +88,9 @@ class AuthApiService {
       final expiresInSeconds = _asInt(map['expiresIn']) ?? 900;
       final accessToken = _asString(map['accessToken']);
       final refreshToken = _asString(map['refreshToken']);
-      final normalizedRole = _normalizeRole(user['primaryRole'] ?? user['role']);
+      final normalizedRole = _normalizeRole(
+        user['primaryRole'] ?? user['role'],
+      );
       final normalizedFullName = _asString(user['fullName']).isNotEmpty
           ? _asString(user['fullName'])
           : _asString(user['name']);
@@ -94,15 +101,23 @@ class AuthApiService {
       final tenantName = _asString(user['tenantName']);
       final tenantSlug = _asString(user['tenantSlug']);
 
-      if (accessToken.isEmpty || refreshToken.isEmpty || normalizedRole.isEmpty) {
-        throw const AuthApiException('Giriş cevabı eksik geldi. Lütfen tekrar dene.');
+      if (accessToken.isEmpty ||
+          refreshToken.isEmpty ||
+          normalizedRole.isEmpty) {
+        throw const AuthApiException(
+          'Giriş cevabı eksik geldi. Lütfen tekrar dene.',
+        );
       }
 
-      final session = AuthSession(
+      return AuthSession(
         accessToken: accessToken,
         refreshToken: refreshToken,
-        accessTokenExpiresAt: _parseDateTime(map['expiresAtUtc']) ?? now.add(Duration(seconds: expiresInSeconds)),
-        refreshTokenExpiresAt: _parseDateTime(map['refreshTokenExpiresAtUtc']) ?? now.add(const Duration(days: 7)),
+        accessTokenExpiresAt:
+            _parseDateTime(map['expiresAtUtc']) ??
+            now.add(Duration(seconds: expiresInSeconds)),
+        refreshTokenExpiresAt:
+            _parseDateTime(map['refreshTokenExpiresAtUtc']) ??
+            now.add(const Duration(days: 7)),
         fullName: normalizedFullName,
         username: normalizedUsername,
         primaryRole: normalizedRole,
@@ -112,12 +127,12 @@ class AuthApiService {
         tenantSlug: tenantSlug,
         isPlatformAdmin: user['isPlatformAdmin'] == true,
       );
-      await AuthSessionStore.instance.save(session);
-      return session;
     } on AuthApiException {
       rethrow;
     } catch (_) {
-      throw const AuthApiException('Giriş bilgileri işlendi ama oturum oluşturulamadı. Lütfen tekrar dene.');
+      throw const AuthApiException(
+        'Giriş bilgileri işlendi ama oturum oluşturulamadı. Lütfen tekrar dene.',
+      );
     }
   }
 
@@ -178,7 +193,10 @@ class AuthApiService {
 
   List<String> _asStringList(Object? value) {
     if (value is List) {
-      return value.map((item) => item.toString()).where((item) => item.isNotEmpty).toList();
+      return value
+          .map((item) => item.toString())
+          .where((item) => item.isNotEmpty)
+          .toList();
     }
     return const [];
   }

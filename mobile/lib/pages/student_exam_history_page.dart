@@ -37,7 +37,8 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
     final average = _averageForStudent(records).toStringAsFixed(1);
     final denemeler = records.where((item) => item.type == 'Deneme').toList();
     final lessons = _groupByLesson(records);
-    final bestRecords = [...records]..sort((a, b) => b.score.compareTo(a.score));
+    final bestRecords = [...records]
+      ..sort((a, b) => b.score.compareTo(a.score));
     final best = bestRecords.isEmpty ? null : bestRecords.first;
 
     return Scaffold(
@@ -46,130 +47,156 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _loadRecords,
-                        child: const Text('Tekrar Dene'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadRecords,
+                    child: const Text('Tekrar Dene'),
                   ),
-                )
-              : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ResponsiveContent(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _heroCard(average, records.length),
-              const SizedBox(height: 16),
-              ResponsiveLayout.isTablet(context)
-                  ? Row(
-                      children: [
-                        Expanded(
-                          child: _summaryCard(
-                            context,
-                            title: 'En Yuksek Not',
-                            value: best == null ? '-' : '${best.score}',
-                            subtitle: best == null ? 'Kayit yok' : '${best.subject} • ${best.type}',
-                            color: const Color(0xFF10B981),
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: ResponsiveContent(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _heroCard(average, records.length),
+                    const SizedBox(height: 16),
+                    ResponsiveLayout.isTablet(context)
+                        ? Row(
+                            children: [
+                              Expanded(
+                                child: _summaryCard(
+                                  context,
+                                  title: 'En Yuksek Not',
+                                  value: best == null ? '-' : '${best.score}',
+                                  subtitle: best == null
+                                      ? 'Kayıt yok'
+                                      : '${best.subject} • ${best.type}',
+                                  color: const Color(0xFF10B981),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: _summaryCard(
+                                  context,
+                                  title: 'Deneme Sayisi',
+                                  value: '${denemeler.length}',
+                                  subtitle: denemeler.isEmpty
+                                      ? 'Deneme kaydı yok'
+                                      : 'Tüm deneme sonuçların hazır',
+                                  color: const Color(0xFFF59E0B),
+                                ),
+                              ),
+                            ],
+                          )
+                        : Column(
+                            children: [
+                              _summaryCard(
+                                context,
+                                title: 'En Yuksek Not',
+                                value: best == null ? '-' : '${best.score}',
+                                subtitle: best == null
+                                    ? 'Kayıt yok'
+                                    : '${best.subject} • ${best.type}',
+                                color: const Color(0xFF10B981),
+                              ),
+                              const SizedBox(height: 10),
+                              _summaryCard(
+                                context,
+                                title: 'Deneme Sayisi',
+                                value: '${denemeler.length}',
+                                subtitle: denemeler.isEmpty
+                                    ? 'Deneme kaydı yok'
+                                    : 'Tüm deneme sonuçların hazır',
+                                color: const Color(0xFFF59E0B),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: _summaryCard(
-                            context,
-                            title: 'Deneme Sayisi',
-                            value: '${denemeler.length}',
-                            subtitle: denemeler.isEmpty ? 'Deneme kaydi yok' : 'Tum deneme sonuclarin hazir',
-                            color: const Color(0xFFF59E0B),
-                          ),
-                        ),
-                      ],
-                    )
-                  : Column(
-                      children: [
-                        _summaryCard(
-                          context,
-                          title: 'En Yuksek Not',
-                          value: best == null ? '-' : '${best.score}',
-                          subtitle: best == null ? 'Kayit yok' : '${best.subject} • ${best.type}',
-                          color: const Color(0xFF10B981),
-                        ),
-                        const SizedBox(height: 10),
-                        _summaryCard(
-                          context,
-                          title: 'Deneme Sayisi',
-                          value: '${denemeler.length}',
-                          subtitle: denemeler.isEmpty ? 'Deneme kaydi yok' : 'Tum deneme sonuclarin hazir',
-                          color: const Color(0xFFF59E0B),
-                        ),
-                      ],
+                    const SizedBox(height: 18),
+                    _sectionTitle(context, 'Denemeler'),
+                    const SizedBox(height: 12),
+                    _groupCard(
+                      context,
+                      title: 'Tüm Deneme Sonuçları',
+                      subtitle: denemeler.isEmpty
+                          ? 'Henüz deneme kaydı yok'
+                          : '${denemeler.length} kayıt • son skor ${denemeler.first.score}',
+                      color: const Color(0xFFF59E0B),
+                      trailing: denemeler.isEmpty
+                          ? '-'
+                          : '${denemeler.first.score}',
+                      onTap: denemeler.isEmpty
+                          ? null
+                          : () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => StudentExamGroupDetailPage(
+                                  title: 'Denemeler',
+                                  subtitle: widget.studentName,
+                                  color: const Color(0xFFF59E0B),
+                                  records: denemeler,
+                                ),
+                              ),
+                            ),
                     ),
-              const SizedBox(height: 18),
-              _sectionTitle(context, 'Denemeler'),
-              const SizedBox(height: 12),
-              _groupCard(
-                context,
-                title: 'Tum Deneme Sonuclari',
-                subtitle: denemeler.isEmpty ? 'Henuz deneme kaydi yok' : '${denemeler.length} kayit • son skor ${denemeler.first.score}',
-                color: const Color(0xFFF59E0B),
-                trailing: denemeler.isEmpty ? '-' : '${denemeler.first.score}',
-                onTap: denemeler.isEmpty
-                    ? null
-                    : () => Navigator.push(
+                    const SizedBox(height: 18),
+                    _sectionTitle(context, 'Dersler'),
+                    const SizedBox(height: 12),
+                    ...lessons.entries.map((entry) {
+                      final color = _subjectColor(entry.key);
+                      final sorted = [...entry.value]
+                        ..sort((a, b) => b.date.compareTo(a.date));
+                      final oralCount = entry.value
+                          .where((item) => item.type == 'Sözlü')
+                          .length;
+                      final writtenCount = entry.value
+                          .where((item) => item.type == 'Yazılı')
+                          .length;
+                      final quizCount = entry.value
+                          .where((item) => item.type == 'Quiz')
+                          .length;
+                      final average =
+                          (entry.value.fold<int>(
+                                    0,
+                                    (sum, item) => sum + item.score,
+                                  ) /
+                                  entry.value.length)
+                              .round();
+
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _groupCard(
                           context,
-                          MaterialPageRoute(
-                            builder: (_) => StudentExamGroupDetailPage(
-                              title: 'Denemeler',
-                              subtitle: widget.studentName,
-                              color: const Color(0xFFF59E0B),
-                              records: denemeler,
+                          title: entry.key,
+                          subtitle:
+                              'Yazılı $writtenCount • Sözlü $oralCount • Quiz $quizCount',
+                          color: color,
+                          trailing: '$average',
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => StudentExamGroupDetailPage(
+                                title: entry.key,
+                                subtitle: widget.studentName,
+                                color: color,
+                                records: sorted,
+                              ),
                             ),
                           ),
                         ),
+                      );
+                    }),
+                  ],
+                ),
               ),
-              const SizedBox(height: 18),
-              _sectionTitle(context, 'Dersler'),
-              const SizedBox(height: 12),
-              ...lessons.entries.map((entry) {
-                final color = _subjectColor(entry.key);
-                final sorted = [...entry.value]..sort((a, b) => b.date.compareTo(a.date));
-                final oralCount = entry.value.where((item) => item.type == 'Sozlu').length;
-                final writtenCount = entry.value.where((item) => item.type == 'Yazili').length;
-                final quizCount = entry.value.where((item) => item.type == 'Quiz').length;
-                final average = (entry.value.fold<int>(0, (sum, item) => sum + item.score) / entry.value.length).round();
-
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: _groupCard(
-                    context,
-                    title: entry.key,
-                    subtitle: 'Yazili $writtenCount • Sozlu $oralCount • Quiz $quizCount',
-                    color: color,
-                    trailing: '$average',
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => StudentExamGroupDetailPage(
-                          title: entry.key,
-                          subtitle: widget.studentName,
-                          color: color,
-                          records: sorted,
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
@@ -183,7 +210,9 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
       final studentName = session?.primaryRole == 'Student'
           ? await SchoolFeedApiService.resolveLinkedStudentName(session)
           : SchoolFeedApiService.normalizeStudentQuery(widget.studentName);
-      final records = await SchoolFeedApiService.instance.fetchExamResults(studentName: studentName);
+      final records = await SchoolFeedApiService.instance.fetchExamResults(
+        studentName: studentName,
+      );
       if (!mounted) return;
       setState(() {
         _records = records;
@@ -223,18 +252,29 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(widget.studentName, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+          Text(
+            widget.studentName,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
           const Text(
-            'Butun ders notlarini ve girdigin tum deneme sonucularini tek merkezden ac.',
-            style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900, height: 1.2),
+            'Bütün ders notlarını ve girdigin tüm deneme sonuçlarını tek merkezden ac.',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+              height: 1.2,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               _heroMetric('Genel Ortalama', average),
               const SizedBox(width: 10),
-              _heroMetric('Toplam Kayit', '$totalCount'),
+              _heroMetric('Toplam Kayıt', '$totalCount'),
             ],
           ),
         ],
@@ -253,9 +293,22 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
       ),
@@ -278,11 +331,27 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text(value, style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
           const SizedBox(height: 6),
-          Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.35)),
+          Text(
+            subtitle,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(height: 1.35),
+          ),
         ],
       ),
     );
@@ -291,7 +360,9 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
   Widget _sectionTitle(BuildContext context, String title) {
     return Text(
       title,
-      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+      style: Theme.of(
+        context,
+      ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
     );
   }
 
@@ -328,7 +399,12 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
                 ],
@@ -337,7 +413,11 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
             const SizedBox(width: 12),
             Text(
               trailing,
-              style: TextStyle(color: color, fontWeight: FontWeight.w900, fontSize: 18),
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
             ),
             const SizedBox(width: 4),
             Icon(Icons.chevron_right_rounded, color: color),
@@ -347,7 +427,9 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
     );
   }
 
-  Map<String, List<ExamScoreRecord>> _groupByLesson(List<ExamScoreRecord> records) {
+  Map<String, List<ExamScoreRecord>> _groupByLesson(
+    List<ExamScoreRecord> records,
+  ) {
     final map = <String, List<ExamScoreRecord>>{};
     for (final item in records.where((record) => record.subject != 'Genel')) {
       map.putIfAbsent(item.subject, () => []).add(item);

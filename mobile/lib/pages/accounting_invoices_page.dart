@@ -54,11 +54,19 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
           AccountingHeroCard(
             eyebrow: 'Belge merkezi',
             title: 'Öğrenci, gider ve maaş faturalarını tek akışta yönetin.',
-            description: 'Kategori bazlı belge arşivi ve makbuz kayıtları detay sayfalarına açılır.',
+            description:
+                'Kategori bazlı belge arşivi ve makbuz kayıtları detay sayfalarına açılır.',
             colors: const [Color(0xFF0F172A), Color(0xFF4F46E5)],
             metrics: [
-              AccountingHeroMetric(label: 'Toplam Kayıt', value: '${_store.invoices.length}'),
-              AccountingHeroMetric(label: 'Bekleyen', value: '${_store.invoices.where((item) => item.status == 'Bekliyor').length} belge'),
+              AccountingHeroMetric(
+                label: 'Toplam Kayıt',
+                value: '${_store.invoices.length}',
+              ),
+              AccountingHeroMetric(
+                label: 'Bekleyen',
+                value:
+                    '${_store.invoices.where((item) => item.status == 'Bekliyor').length} belge',
+              ),
             ],
           ),
           SizedBox(height: 16),
@@ -70,9 +78,10 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
           ),
           SizedBox(height: 12),
           _InvoiceCategoryCard(
-            title: 'Dershane Mekan Giderleri',
+            title: 'Dershane Mekân Giderleri',
             subtitle: 'Kira, elektrik, internet ve işletme giderleri',
-            count: '${_store.countForCategory('Dershane Mekan Giderleri')} kayıt',
+            count:
+                '${_store.countForCategory('Dershane Mekan Giderleri')} kayıt',
             color: Color(0xFFB45309),
           ),
           SizedBox(height: 12),
@@ -123,7 +132,10 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -171,16 +183,32 @@ class _InvoiceCategoryCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                  Text(
+                    subtitle,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.4),
+                  ),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(count, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800, color: color)),
+                Text(
+                  count,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 const Icon(Icons.chevron_right_rounded),
               ],
@@ -196,10 +224,7 @@ class _InvoiceListPage extends StatelessWidget {
   final String title;
   final Color color;
 
-  const _InvoiceListPage({
-    required this.title,
-    required this.color,
-  });
+  const _InvoiceListPage({required this.title, required this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -236,23 +261,40 @@ class _InvoiceListPage extends StatelessWidget {
                           color: color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(Icons.picture_as_pdf_outlined, color: color),
+                        child: Icon(
+                          Icons.picture_as_pdf_outlined,
+                          color: color,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              item.title,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 4),
-                            Text('${item.subtitle} • ${item.status}', style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              '${item.subtitle} • ${item.status}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ),
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text(item.amount, style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: color, fontWeight: FontWeight.w800)),
+                          Text(
+                            item.amount,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: color,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
                           const SizedBox(height: 4),
                           Icon(Icons.chevron_right_rounded, color: color),
                         ],

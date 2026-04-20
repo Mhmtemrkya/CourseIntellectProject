@@ -48,7 +48,7 @@ class AccountingBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.ios_share_outlined,
-          label: 'Disa Aktar',
+          label: 'Dışa Aktar',
           pageBuilder: (_) => const AccountingExportsPage(),
           sidebarColor: const Color(0xFF14B8A6),
         ),

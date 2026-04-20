@@ -46,15 +46,20 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Yönetici Bildirimleri', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Yönetici Bildirimleri',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Bildirim merkezi',
-            title: 'Kurum genelindeki kritik olaylar ve onay bekleyen süreçler burada toplanır.',
-            description: 'Yönetici görünümünde akademik, finansal ve operasyonel sinyaller tek akışta izlenir.',
+            title:
+                'Kurum genelindeki kritik olaylar ve onay bekleyen süreçler burada toplanır.',
+            description:
+                'Yönetici görünümünde akademik, finansal ve operasyonel sinyaller tek akışta izlenir.',
             metrics: [
               AdminHeroMetric(label: 'Toplam', value: '${_items.length}'),
               AdminHeroMetric(label: 'Kritik', value: '$unreadCount'),
@@ -62,14 +67,22 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           ),
           const SizedBox(height: 16),
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else if (_error != null)
             AdminPanel(
               child: Column(
                 children: [
                   Text(_error!, textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  FilledButton(onPressed: _load, child: const Text('Tekrar Dene')),
+                  FilledButton(
+                    onPressed: _load,
+                    child: const Text('Tekrar Dene'),
+                  ),
                 ],
               ),
             )
@@ -90,28 +103,50 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: _colorFor(item.category).withValues(alpha: 0.12),
+                          color: _colorFor(
+                            item.category,
+                          ).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(Icons.notifications_active_outlined, color: _colorFor(item.category)),
+                        child: Icon(
+                          Icons.notifications_active_outlined,
+                          color: _colorFor(item.category),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              item.title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 6),
-                            Text(item.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45)),
+                            Text(
+                              item.message,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(height: 1.45),
+                            ),
                             const SizedBox(height: 8),
-                            Text(item.timeLabel, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                            Text(
+                              item.timeLabel,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
                           ],
                         ),
                       ),
                       if (!item.isRead)
                         const Padding(
                           padding: EdgeInsets.only(top: 4),
-                          child: Icon(Icons.brightness_1, size: 10, color: Color(0xFF2563EB)),
+                          child: Icon(
+                            Icons.brightness_1,
+                            size: 10,
+                            color: Color(0xFF2563EB),
+                          ),
                         ),
                     ],
                   ),
@@ -129,7 +164,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
         return const Color(0xFFB42318);
       case 'Akademik':
         return const Color(0xFF2563EB);
-      case 'Kayit':
+      case 'Kayıt':
         return const Color(0xFF0F766E);
       default:
         return const Color(0xFF7C3AED);

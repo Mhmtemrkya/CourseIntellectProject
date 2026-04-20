@@ -17,7 +17,8 @@ class TeacherContentDetailPage extends StatefulWidget {
   });
 
   @override
-  State<TeacherContentDetailPage> createState() => _TeacherContentDetailPageState();
+  State<TeacherContentDetailPage> createState() =>
+      _TeacherContentDetailPageState();
 }
 
 class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
@@ -26,6 +27,8 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
   bool _saving = false;
   double _playbackSpeed = 1.0;
   VoidCallback? _videoListener;
+  bool _videoLoading = false;
+  String? _videoError;
 
   @override
   void initState() {
@@ -44,9 +47,22 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
   }
 
   Uri? get _fileUri {
+    final url = _content.fileUrl;
+    if (url != null && url.trim().isNotEmpty) {
+      return Uri.tryParse(ApiConfig.resolveAssetUrl(url));
+    }
+
     final fileName = _content.fileName;
     if (fileName == null || fileName.trim().isEmpty) return null;
-    return Uri.parse('${ApiConfig.baseUrl}/uploads/teacher-content/${Uri.encodeComponent(fileName)}');
+    final trimmed = fileName.trim();
+    if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('/')) {
+      return Uri.tryParse(ApiConfig.resolveAssetUrl(trimmed));
+    }
+    return Uri.tryParse(
+      '${ApiConfig.baseUrl}/uploads/teacher-content/${Uri.encodeComponent(trimmed)}',
+    );
   }
 
   Future<void> _initVideo() async {
@@ -58,28 +74,49 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     _videoController = null;
     if (_content.fileType.toLowerCase() != 'video' || _fileUri == null) {
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _videoLoading = false;
+          _videoError = _content.fileType.toLowerCase() == 'video'
+              ? 'Video dosya bağlantısı bulunamadı.'
+              : null;
+        });
       }
       return;
     }
-    final controller = VideoPlayerController.networkUrl(_fileUri!);
-    await controller.initialize();
-    controller.setLooping(false);
-    await controller.setPlaybackSpeed(_playbackSpeed);
-    _videoListener = () {
-      if (mounted) {
-        setState(() {});
-      }
-    };
-    controller.addListener(_videoListener!);
-    if (!mounted) {
-      controller.removeListener(_videoListener!);
-      await controller.dispose();
-      return;
+    if (mounted) {
+      setState(() {
+        _videoLoading = true;
+        _videoError = null;
+      });
     }
-    setState(() {
-      _videoController = controller;
-    });
+    try {
+      final controller = VideoPlayerController.networkUrl(_fileUri!);
+      await controller.initialize();
+      controller.setLooping(false);
+      await controller.setPlaybackSpeed(_playbackSpeed);
+      _videoListener = () {
+        if (mounted) {
+          setState(() {});
+        }
+      };
+      controller.addListener(_videoListener!);
+      if (!mounted) {
+        controller.removeListener(_videoListener!);
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _videoController = controller;
+        _videoLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _videoLoading = false;
+        _videoError =
+            'Video oynatılamadı. Bağlantıyı kontrol edip tekrar deneyin.';
+      });
+    }
   }
 
   Future<void> _togglePlayback() async {
@@ -146,7 +183,9 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   children: [
                     Center(
                       child: AspectRatio(
-                        aspectRatio: controller.value.aspectRatio == 0 ? 16 / 9 : controller.value.aspectRatio,
+                        aspectRatio: controller.value.aspectRatio == 0
+                            ? 16 / 9
+                            : controller.value.aspectRatio,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => syncPlayback(_togglePlayback),
@@ -159,10 +198,16 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                                   child: Container(
                                     padding: const EdgeInsets.all(18),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.42),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.42,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+                                    child: const Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: Colors.white,
+                                      size: 40,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -178,7 +223,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         children: [
                           IconButton(
                             onPressed: () => Navigator.of(dialogContext).pop(),
-                            icon: const Icon(Icons.close_rounded, color: Colors.white),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                            ),
                           ),
                           const Spacer(),
                           _speedMenu(
@@ -207,7 +255,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Icerik Detayi'),
+        title: const Text('İçerik Detayı'),
         actions: [
           IconButton(
             tooltip: 'Sil',
@@ -254,18 +302,28 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                           color: Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        child: Icon(_iconForType(_content.fileType), color: Colors.white, size: 28),
+                        child: Icon(
+                          _iconForType(_content.fileType),
+                          color: Colors.white,
+                          size: 28,
+                        ),
                       ),
                       const Spacer(),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 7,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(999),
                         ),
                         child: Text(
                           _content.fileType,
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ],
@@ -283,7 +341,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   const SizedBox(height: 8),
                   Text(
                     '${_content.subject} • ${_content.grade}',
-                    style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Wrap(
@@ -301,139 +362,169 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
             const SizedBox(height: 18),
             _sectionCard(
               context,
-              title: 'Yayin Bilgileri',
+              title: 'Yayın Bilgileri',
               child: Column(
                 children: [
-                  _detailRow('Ogretmen', _content.teacher),
+                  _detailRow('Öğretmen', _content.teacher),
                   _detailRow('Ders', _content.subject),
-                  _detailRow('Sinif', _content.grade),
-                  _detailRow('Dosya Turu', _content.fileType),
-                  _detailRow('Yayin Durumu', _content.publishStatus),
-                  _detailRow('Dosya', _content.fileName ?? 'Sisteme yuklenen icerik'),
+                  _detailRow('Sınıf', _content.grade),
+                  _detailRow('Dosya Türü', _content.fileType),
+                  _detailRow('Yayın Durumu', _content.publishStatus),
+                  _detailRow(
+                    'Dosya',
+                    _content.fileName ?? 'Sisteme yüklenen içerik',
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 14),
-            if (_content.fileType.toLowerCase() == 'video' && _videoController?.value.isInitialized == true) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(24),
-                child: AspectRatio(
-                  aspectRatio: _videoController!.value.aspectRatio,
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _togglePlayback,
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        VideoPlayer(_videoController!),
-                        if (!_videoController!.value.isPlaying)
-                          Center(
-                            child: Container(
-                              padding: const EdgeInsets.all(18),
-                              decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.42),
-                                shape: BoxShape.circle,
+            if (_content.fileType.toLowerCase() == 'video') ...[
+              if (_videoController?.value.isInitialized == true) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: AspectRatio(
+                    aspectRatio: _videoController!.value.aspectRatio,
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _togglePlayback,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          VideoPlayer(_videoController!),
+                          if (!_videoController!.value.isPlaying)
+                            Center(
+                              child: Container(
+                                padding: const EdgeInsets.all(18),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.42),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.play_arrow_rounded,
+                                  color: Colors.white,
+                                  size: 40,
+                                ),
                               ),
-                              child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
                             ),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: _togglePlayback,
-                      icon: Icon(
-                        _videoController!.value.isPlaying
-                            ? Icons.pause_circle_filled_rounded
-                            : Icons.play_circle_fill_rounded,
+                        ],
                       ),
-                      label: Text(_videoController!.value.isPlaying ? 'Videoyu Duraklat' : 'Videoyu Oynat'),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  _speedMenu(onSelected: (speed) => _setPlaybackSpeed(speed)),
-                  const SizedBox(width: 10),
-                  OutlinedButton.icon(
-                    onPressed: _openFullscreenVideo,
-                    icon: const Icon(Icons.fullscreen_rounded),
-                    label: const Text('Tam Ekran'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              ClipRRect(
-                borderRadius: BorderRadius.circular(999),
-                child: VideoProgressIndicator(
-                  _videoController!,
-                  allowScrubbing: true,
-                  padding: EdgeInsets.zero,
-                  colors: VideoProgressColors(
-                    playedColor: accent,
-                    bufferedColor: accent.withValues(alpha: 0.24),
-                    backgroundColor: accent.withValues(alpha: 0.12),
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Text(
-                    _formatDuration(_videoController!.value.position),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.78),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: _togglePlayback,
+                        icon: Icon(
+                          _videoController!.value.isPlaying
+                              ? Icons.pause_circle_filled_rounded
+                              : Icons.play_circle_fill_rounded,
+                        ),
+                        label: Text(
+                          _videoController!.value.isPlaying
+                              ? 'Videoyu Duraklat'
+                              : 'Videoyu Oynat',
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    _speedMenu(onSelected: (speed) => _setPlaybackSpeed(speed)),
+                    const SizedBox(width: 10),
+                    OutlinedButton.icon(
+                      onPressed: _openFullscreenVideo,
+                      icon: const Icon(Icons.fullscreen_rounded),
+                      label: const Text('Tam Ekran'),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: VideoProgressIndicator(
+                    _videoController!,
+                    allowScrubbing: true,
+                    padding: EdgeInsets.zero,
+                    colors: VideoProgressColors(
+                      playedColor: accent,
+                      bufferedColor: accent.withValues(alpha: 0.24),
+                      backgroundColor: accent.withValues(alpha: 0.12),
                     ),
                   ),
-                  const Spacer(),
-                  OutlinedButton.icon(
-                    onPressed: () => _seekBy(const Duration(seconds: -10)),
-                    icon: const Icon(Icons.replay_10_rounded),
-                    label: const Text('10 sn'),
-                  ),
-                  const SizedBox(width: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _seekBy(const Duration(seconds: 10)),
-                    icon: const Icon(Icons.forward_10_rounded),
-                    label: const Text('10 sn'),
-                  ),
-                  const Spacer(),
-                  Text(
-                    _formatDuration(_videoController!.value.duration),
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.78),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Text(
+                      _formatDuration(_videoController!.value.position),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.78,
+                        ),
+                      ),
                     ),
+                    const Spacer(),
+                    OutlinedButton.icon(
+                      onPressed: () => _seekBy(const Duration(seconds: -10)),
+                      icon: const Icon(Icons.replay_10_rounded),
+                      label: const Text('10 sn'),
+                    ),
+                    const SizedBox(width: 8),
+                    OutlinedButton.icon(
+                      onPressed: () => _seekBy(const Duration(seconds: 10)),
+                      icon: const Icon(Icons.forward_10_rounded),
+                      label: const Text('10 sn'),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _formatDuration(_videoController!.value.duration),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.78,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Container(
+                    height: 220,
+                    width: double.infinity,
+                    color: Colors.black,
+                    alignment: Alignment.center,
+                    child: _videoPlaceholder(),
                   ),
-                ],
-              ),
+                ),
+              ],
               const SizedBox(height: 14),
             ],
             _sectionCard(
               context,
-              title: 'Icerik Aciklamasi',
+              title: 'İçerik Açıklaması',
               child: Text(
                 _content.description,
                 style: TextStyle(
                   height: 1.55,
-                  color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.76),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(
+                    alpha: 0.76,
+                  ),
                 ),
               ),
             ),
             const SizedBox(height: 14),
             _sectionCard(
               context,
-              title: 'Yayin Durumu',
+              title: 'Yayın Durumu',
               child: Row(
                 children: [
                   Expanded(
                     child: _miniMetric(
-                      label: 'Ogrenci Gorunumu',
+                      label: 'Öğrenci Görünümü',
                       value: _content.publishStatus,
                       accent: _statusColor(_content.publishStatus),
                     ),
@@ -456,7 +547,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   child: OutlinedButton.icon(
                     onPressed: _openEditSheet,
                     icon: const Icon(Icons.edit_rounded),
-                    label: const Text('Duzenle'),
+                    label: const Text('Düzenle'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -464,7 +555,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   child: ElevatedButton.icon(
                     onPressed: _openPublishStatusSheet,
                     icon: const Icon(Icons.campaign_rounded),
-                    label: const Text('Yayin Durumu'),
+                    label: const Text('Yayın Durumu'),
                   ),
                 ),
               ],
@@ -474,15 +565,19 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _fileUri == null ? null : () => _openFile(download: false),
+                    onPressed: _fileUri == null
+                        ? null
+                        : () => _openFile(download: false),
                     icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('Dosyayi Ac'),
+                    label: const Text('Dosyayı Aç'),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: _fileUri == null ? null : () => _openFile(download: true),
+                    onPressed: _fileUri == null
+                        ? null
+                        : () => _openFile(download: true),
                     icon: const Icon(Icons.download_rounded),
                     label: const Text('Indir'),
                   ),
@@ -507,9 +602,11 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Bu icerik ogrenci panelindeki Icerikler sayfasinda aninda gorunur. Ogrenci kartina tiklandiginda detaylar bu bilgiyle acilir.',
+                      'Bu içerik öğrenci panelindeki İçerikler sayfasında anında görünür. Öğrenci kartına tıklandığında detaylar bu bilgiyle açılır.',
                       style: TextStyle(
-                        color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.74),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.74,
+                        ),
                         height: 1.4,
                       ),
                     ),
@@ -528,20 +625,22 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     if (uri == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu icerik icin dosya bulunamadi.')),
+        const SnackBar(content: Text('Bu içerik için dosya bulunamadı.')),
       );
       return;
     }
 
     final launched = await launchUrl(
       uri,
-      mode: download ? LaunchMode.externalApplication : LaunchMode.externalApplication,
+      mode: download
+          ? LaunchMode.externalApplication
+          : LaunchMode.externalApplication,
     );
 
     if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dosya acilamadi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Dosya açılamadı.')));
     }
   }
 
@@ -553,7 +652,9 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     final gradeController = TextEditingController(text: _content.grade);
     final teacherController = TextEditingController(text: _content.teacher);
     final infoController = TextEditingController(text: _content.info);
-    final descriptionController = TextEditingController(text: _content.description);
+    final descriptionController = TextEditingController(
+      text: _content.description,
+    );
     String selectedType = _content.fileType;
 
     await showModalBottomSheet<void>(
@@ -584,8 +685,12 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              _accentForType(selectedType).withValues(alpha: 0.96),
-                              _accentForType(selectedType).withValues(alpha: 0.72),
+                              _accentForType(
+                                selectedType,
+                              ).withValues(alpha: 0.96),
+                              _accentForType(
+                                selectedType,
+                              ).withValues(alpha: 0.72),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(24),
@@ -594,13 +699,20 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Icerigi Duzenle',
-                              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                              'İçeriği Düzenle',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Baslik, ders, sinif, tur ve aciklama alanlarini bu ekrandan guncelleyebilirsin.',
-                              style: TextStyle(color: Colors.white70, height: 1.4),
+                              'Başlık, ders, sınıf, tür ve açıklama alanlarını bu ekrandan güncelleyebilirsin.',
+                              style: TextStyle(
+                                color: Colors.white70,
+                                height: 1.4,
+                              ),
                             ),
                           ],
                         ),
@@ -609,7 +721,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       TextFormField(
                         controller: titleController,
                         validator: _requiredValidator,
-                        decoration: const InputDecoration(labelText: 'Icerik Basligi', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'İçerik Başlığı',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       Row(
@@ -618,7 +733,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                             child: TextFormField(
                               controller: subjectController,
                               validator: _requiredValidator,
-                              decoration: const InputDecoration(labelText: 'Ders', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Ders',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -626,7 +744,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                             child: TextFormField(
                               controller: gradeController,
                               validator: _requiredValidator,
-                              decoration: const InputDecoration(labelText: 'Sinif', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Sınıf',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                           ),
                         ],
@@ -635,17 +756,29 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       TextFormField(
                         controller: teacherController,
                         validator: _requiredValidator,
-                        decoration: const InputDecoration(labelText: 'Ogretmen', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Öğretmen',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedType,
-                        decoration: const InputDecoration(labelText: 'Dosya Turu', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Dosya Türü',
+                          border: OutlineInputBorder(),
+                        ),
                         items: const [
-                          DropdownMenuItem(value: 'Video', child: Text('Video')),
+                          DropdownMenuItem(
+                            value: 'Video',
+                            child: Text('Video'),
+                          ),
                           DropdownMenuItem(value: 'PDF', child: Text('PDF')),
                           DropdownMenuItem(value: 'Word', child: Text('Word')),
-                          DropdownMenuItem(value: 'PowerPoint', child: Text('PowerPoint')),
+                          DropdownMenuItem(
+                            value: 'PowerPoint',
+                            child: Text('PowerPoint'),
+                          ),
                         ],
                         onChanged: (value) {
                           if (value == null) return;
@@ -658,7 +791,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       TextFormField(
                         controller: infoController,
                         validator: _requiredValidator,
-                        decoration: const InputDecoration(labelText: 'Sure / Sayfa / Slayt', border: OutlineInputBorder()),
+                        decoration: const InputDecoration(
+                          labelText: 'Süre / Sayfa / Slayt',
+                          border: OutlineInputBorder(),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -667,7 +803,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         minLines: 4,
                         maxLines: 5,
                         decoration: const InputDecoration(
-                          labelText: 'Icerik Aciklamasi',
+                          labelText: 'İçerik Açıklaması',
                           border: OutlineInputBorder(),
                           alignLabelWithHint: true,
                         ),
@@ -679,24 +815,33 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                           onPressed: _saving
                               ? null
                               : () {
-                            if (!formKey.currentState!.validate()) {
-                              return;
-                            }
+                                  if (!formKey.currentState!.validate()) {
+                                    return;
+                                  }
 
-                            final updated = _content.copyWith(
-                              title: titleController.text.trim(),
-                              subject: subjectController.text.trim(),
-                              grade: gradeController.text.trim(),
-                              teacher: teacherController.text.trim(),
-                              fileType: selectedType,
-                              info: infoController.text.trim(),
-                              description: descriptionController.text.trim(),
-                            );
+                                  final updated = _content.copyWith(
+                                    title: titleController.text.trim(),
+                                    subject: subjectController.text.trim(),
+                                    grade: gradeController.text.trim(),
+                                    teacher: teacherController.text.trim(),
+                                    fileType: selectedType,
+                                    info: infoController.text.trim(),
+                                    description: descriptionController.text
+                                        .trim(),
+                                  );
 
-                            _saveUpdatedContent(updated, context, 'Icerik bilgileri guncellendi.');
-                          },
+                                  _saveUpdatedContent(
+                                    updated,
+                                    context,
+                                    'İçerik bilgileri güncellendi.',
+                                  );
+                                },
                           icon: const Icon(Icons.save_rounded),
-                          label: Text(_saving ? 'Kaydediliyor...' : 'Degisiklikleri Kaydet'),
+                          label: Text(
+                            _saving
+                                ? 'Kaydediliyor...'
+                                : 'Değişiklikleri Kaydet',
+                          ),
                         ),
                       ),
                     ],
@@ -750,13 +895,20 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Yayin Durumu',
-                          style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w900),
+                          'Yayın Durumu',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                         const SizedBox(height: 8),
                         Text(
                           _statusDescription(selectedStatus),
-                          style: const TextStyle(color: Colors.white70, height: 1.4),
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            height: 1.4,
+                          ),
                         ),
                       ],
                     ),
@@ -781,13 +933,15 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       onPressed: _saving
                           ? null
                           : () {
-                        final updated = _content.copyWith(
-                          publishStatus: selectedStatus,
-                        );
-                        _saveStatusContent(updated, context);
-                      },
+                              final updated = _content.copyWith(
+                                publishStatus: selectedStatus,
+                              );
+                              _saveStatusContent(updated, context);
+                            },
                       icon: const Icon(Icons.check_circle_rounded),
-                      label: Text(_saving ? 'Kaydediliyor...' : 'Durumu Kaydet'),
+                      label: Text(
+                        _saving ? 'Kaydediliyor...' : 'Durumu Kaydet',
+                      ),
                     ),
                   ),
                 ],
@@ -799,7 +953,11 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     );
   }
 
-  Future<void> _saveUpdatedContent(ContentRecord updated, BuildContext sheetContext, String message) async {
+  Future<void> _saveUpdatedContent(
+    ContentRecord updated,
+    BuildContext sheetContext,
+    String message,
+  ) async {
     if (_saving) return;
     FocusScope.of(sheetContext).unfocus();
     if (mounted) {
@@ -827,12 +985,18 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
         _saving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
-  Future<void> _saveStatusContent(ContentRecord updated, BuildContext sheetContext) async {
+  Future<void> _saveStatusContent(
+    ContentRecord updated,
+    BuildContext sheetContext,
+  ) async {
     if (_saving) return;
     FocusScope.of(sheetContext).unfocus();
     if (mounted) {
@@ -842,7 +1006,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     }
     try {
       if (updated.id == null) {
-        throw const ContentApiException('Icerik kimligi bulunamadi.');
+        throw const ContentApiException('İçerik kimliği bulunamadı.');
       }
       final saved = await ContentApiService.instance.updateStatus(
         id: updated.id!,
@@ -859,19 +1023,26 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
       if (Navigator.of(sheetContext).canPop()) {
         Navigator.of(sheetContext).pop();
       }
-      _showInfo(context, 'Yayin durumu guncellendi.');
+      _showInfo(context, 'Yayın durumu güncellendi.');
     } catch (error) {
       if (!mounted) return;
       setState(() {
         _saving = false;
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
-  Widget _sectionCard(BuildContext context, {required String title, required Widget child}) {
+  Widget _sectionCard(
+    BuildContext context, {
+    required String title,
+    required Widget child,
+  }) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
@@ -889,7 +1060,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+          ),
           const SizedBox(height: 14),
           child,
         ],
@@ -907,7 +1081,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
             width: 98,
             child: Text(
               label,
-              style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.grey),
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: Colors.grey,
+              ),
             ),
           ),
           Expanded(
@@ -918,6 +1095,62 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _videoPlaceholder() {
+    if (_videoLoading) {
+      return const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: 14),
+          Text(
+            'Video yükleniyor...',
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_videoError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.play_circle_outline_rounded,
+              color: Colors.white,
+              size: 58,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _videoError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: _initVideo,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const Icon(
+      Icons.play_circle_fill_rounded,
+      size: 88,
+      color: Colors.white,
     );
   }
 
@@ -933,13 +1166,23 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
         children: [
           Icon(icon, color: Colors.white, size: 16),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _miniMetric({required String label, required String value, required Color accent}) {
+  Widget _miniMetric({
+    required String label,
+    required String value,
+    required Color accent,
+  }) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -949,9 +1192,15 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: accent, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: TextStyle(color: accent, fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
+          ),
         ],
       ),
     );
@@ -983,7 +1232,9 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
               radius: 18,
               backgroundColor: color.withValues(alpha: 0.16),
               child: Icon(
-                selected ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                selected
+                    ? Icons.check_circle_rounded
+                    : Icons.radio_button_unchecked_rounded,
                 color: color,
                 size: 18,
               ),
@@ -993,7 +1244,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(status, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text(
+                    status,
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     _statusDescription(status),
@@ -1008,10 +1262,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     );
   }
 
-  Widget _speedMenu({
-    required ValueChanged<double> onSelected,
-    Color? color,
-  }) {
+  Widget _speedMenu({required ValueChanged<double> onSelected, Color? color}) {
     final foreground = color ?? _accentForType(_content.fileType);
     return PopupMenuButton<double>(
       tooltip: 'Hız',
@@ -1069,12 +1320,12 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Icerigi Sil'),
+        title: const Text('İçeriği Sil'),
         content: Text('"${_content.title}" silinsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgec'),
+            child: const Text('Vazgeç'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -1095,14 +1346,14 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
       await widget.onContentChanged?.call();
       if (!mounted) return;
       Navigator.of(context).pop(true);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Icerik silindi')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('İçerik silindi')));
     } on ContentApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } finally {
       if (mounted) {
         setState(() {
@@ -1122,11 +1373,11 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
   String _statusDescription(String status) {
     switch (status) {
       case 'Pasif':
-        return 'Icerik ogretmen panelinde kalir ancak ogrenci ekraninda gorunmez.';
+        return 'İçerik öğretmen panelinde kalır ancak öğrenci ekranında görünmez.';
       case 'Taslak':
-        return 'Icerik henuz yayinlanmaya hazir degil, son kontroller bekleniyor.';
+        return 'İçerik henüz yayınlanmaya hazır değil, son kontroller bekleniyor.';
       default:
-        return 'Icerik ogrenci ekraninda aktif olarak listelenir ve acilabilir.';
+        return 'İçerik öğrenci ekranında aktif olarak listelenir ve açılabilir.';
     }
   }
 

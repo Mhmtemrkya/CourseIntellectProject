@@ -37,9 +37,7 @@ class LessonTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            constraints: BoxConstraints(
-              minWidth: isTablet ? 88 : 0,
-            ),
+            constraints: BoxConstraints(minWidth: isTablet ? 88 : 0),
             padding: EdgeInsets.symmetric(
               horizontal: isTablet ? 14 : 12,
               vertical: isTablet ? 12 : 10,
@@ -74,7 +72,9 @@ class LessonTile extends StatelessWidget {
                   teacher,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontSize: isTablet ? 14 : 13,
-                    color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.7),
+                    color: theme.textTheme.bodyMedium?.color?.withValues(
+                      alpha: 0.7,
+                    ),
                   ),
                 ),
               ],

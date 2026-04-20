@@ -29,11 +29,14 @@ class _QuestionBankPageState extends State<QuestionBankPage>
   void initState() {
     super.initState();
     _controller = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 700));
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
     fadeAnim = Tween<double>(begin: 0, end: 1).animate(_controller);
-    slideAnim =
-        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
-            .animate(_controller);
+    slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(_controller);
     _controller.forward();
     _store.addListener(_refresh);
     _load();
@@ -57,15 +60,19 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       _errorMessage = null;
     });
     try {
-      final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
-      _studentClass = linkedChildren.isNotEmpty ? linkedChildren.first.className : '';
+      final linkedChildren = await LinkedChildrenService.instance
+          .loadLinkedChildren();
+      _studentClass = linkedChildren.isNotEmpty
+          ? linkedChildren.first.className
+          : '';
       await _store.loadQuestions(className: _studentClass);
-      final subjects = _store.questions
-          .map((item) => item.subject.trim())
-          .where((item) => item.isNotEmpty)
-          .toSet()
-          .toList()
-        ..sort();
+      final subjects =
+          _store.questions
+              .map((item) => item.subject.trim())
+              .where((item) => item.isNotEmpty)
+              .toSet()
+              .toList()
+            ..sort();
       tabs = ['Tümü', ...subjects];
       if (selectedTab >= tabs.length) {
         selectedTab = 0;
@@ -88,10 +95,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     return Scaffold(
       appBar: AppBar(
         title: const Text("Soru Bankası"),
-        actions: const [
-          Icon(Icons.search),
-          SizedBox(width: 12),
-        ],
+        actions: const [Icon(Icons.search), SizedBox(width: 12)],
       ),
       body: FadeTransition(
         opacity: fadeAnim,
@@ -101,41 +105,41 @@ class _QuestionBankPageState extends State<QuestionBankPage>
             padding: const EdgeInsets.all(16),
             child: ResponsiveContent(
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                summaryCards(),
-                const SizedBox(height: 16),
-                searchBox(),
-                const SizedBox(height: 12),
-                tabBar(),
-                const SizedBox(height: 16),
-                if (_isLoading)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                else if (_errorMessage != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          Text(_errorMessage!, textAlign: TextAlign.center),
-                          const SizedBox(height: 12),
-                          FilledButton(
-                            onPressed: _load,
-                            child: const Text('Tekrar Dene'),
-                          ),
-                        ],
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  summaryCards(),
+                  const SizedBox(height: 16),
+                  searchBox(),
+                  const SizedBox(height: 12),
+                  tabBar(),
+                  const SizedBox(height: 16),
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 40),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            Text(_errorMessage!, textAlign: TextAlign.center),
+                            const SizedBox(height: 12),
+                            FilledButton(
+                              onPressed: _load,
+                              child: const Text('Tekrar Dene'),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  )
-                else
-                  ...topics.map((item) => topicQuestionCard(item)),
-                const SizedBox(height: 20),
-                challengeCard(),
-              ],
-            ),
+                    )
+                  else
+                    ...topics.map((item) => topicQuestionCard(item)),
+                  const SizedBox(height: 20),
+                  challengeCard(),
+                ],
+              ),
             ),
           ),
         ),
@@ -146,9 +150,24 @@ class _QuestionBankPageState extends State<QuestionBankPage>
   /// SUMMARY
   Widget summaryCards() {
     final cards = [
-      summaryCard("${_store.questions.length}", "Toplam Soru", Icons.lightbulb, Colors.orange),
-      summaryCard("${_store.questions.where((e) => e.imagePath != null).length}", "Resimli Soru", Icons.image, Colors.green),
-      summaryCard("${_groupedQuestions().length}", "Aktif Konu", Icons.flash_on, Colors.purple),
+      summaryCard(
+        "${_store.questions.length}",
+        "Toplam Soru",
+        Icons.lightbulb,
+        Colors.orange,
+      ),
+      summaryCard(
+        "${_store.questions.where((e) => e.imagePath != null).length}",
+        "Resimli Soru",
+        Icons.image,
+        Colors.green,
+      ),
+      summaryCard(
+        "${_groupedQuestions().length}",
+        "Aktif Konu",
+        Icons.flash_on,
+        Colors.purple,
+      ),
     ];
 
     if (ResponsiveLayout.isTablet(context)) {
@@ -188,17 +207,16 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       decoration: BoxDecoration(
         color: isDark(context) ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6)
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
       child: Column(
         children: [
           Icon(icon, color: color),
           const SizedBox(height: 6),
-          Text(value,
-              style:
-                  const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+          ),
           Text(title, style: const TextStyle(color: Colors.grey)),
         ],
       ),
@@ -243,14 +261,13 @@ class _QuestionBankPageState extends State<QuestionBankPage>
             },
             child: Container(
               margin: const EdgeInsets.only(right: 10),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               decoration: BoxDecoration(
                 color: isSelected
                     ? accent
                     : isDark(context)
-                        ? const Color(0xFF1E1E1E)
-                        : Colors.grey.shade200,
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
@@ -271,8 +288,10 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     final selectedSubject = tabs[selectedTab];
     final query = _searchController.text.trim().toLowerCase();
     return _store.questions.where((item) {
-      final subjectMatch = selectedSubject == 'Tümü' || item.subject == selectedSubject;
-      final text = '${item.topic} ${item.questionText} ${item.teacher}'.toLowerCase();
+      final subjectMatch =
+          selectedSubject == 'Tümü' || item.subject == selectedSubject;
+      final text = '${item.topic} ${item.questionText} ${item.teacher}'
+          .toLowerCase();
       final searchMatch = query.isEmpty || text.contains(query);
       final classMatch =
           _studentClass.isEmpty ||
@@ -295,8 +314,12 @@ class _QuestionBankPageState extends State<QuestionBankPage>
           final aOrder = a.questionOrder ?? 9999;
           final bOrder = b.questionOrder ?? 9999;
           if (aOrder != bOrder) return aOrder.compareTo(bOrder);
-          final aTime = DateTime.tryParse(a.createdAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
-          final bTime = DateTime.tryParse(b.createdAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final aTime =
+              DateTime.tryParse(a.createdAt) ??
+              DateTime.fromMillisecondsSinceEpoch(0);
+          final bTime =
+              DateTime.tryParse(b.createdAt) ??
+              DateTime.fromMillisecondsSinceEpoch(0);
           return aTime.compareTo(bTime);
         });
       return _QuestionTopicGroup(
@@ -307,8 +330,12 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     }).toList();
 
     mapped.sort((a, b) {
-      final aTime = DateTime.tryParse(a.questions.first.createdAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
-      final bTime = DateTime.tryParse(b.questions.first.createdAt) ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final aTime =
+          DateTime.tryParse(a.questions.first.createdAt) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime =
+          DateTime.tryParse(b.questions.first.createdAt) ??
+          DateTime.fromMillisecondsSinceEpoch(0);
       return bTime.compareTo(aTime);
     });
     return mapped;
@@ -352,11 +379,15 @@ class _QuestionBankPageState extends State<QuestionBankPage>
           color: isDark(context) ? const Color(0xFF17181D) : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
-            color: isDark(context) ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFE5E7EB),
+            color: isDark(context)
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFE5E7EB),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: isDark(context) ? 0.18 : 0.06),
+              color: Colors.black.withValues(
+                alpha: isDark(context) ? 0.18 : 0.06,
+              ),
               blurRadius: 18,
               offset: const Offset(0, 10),
             ),
@@ -377,7 +408,9 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isDark(context) ? Colors.white : const Color(0xFF111827),
+                          color: isDark(context)
+                              ? Colors.white
+                              : const Color(0xFF111827),
                           fontWeight: FontWeight.w800,
                           fontSize: 17,
                         ),
@@ -386,7 +419,9 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                       Text(
                         '${group.questions.length} soru',
                         style: TextStyle(
-                          color: isDark(context) ? Colors.white70 : const Color(0xFF64748B),
+                          color: isDark(context)
+                              ? Colors.white70
+                              : const Color(0xFF64748B),
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -409,7 +444,10 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                   alignment: Alignment.center,
                   child: Text(
                     '${group.questions.length}',
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
               ],
@@ -434,8 +472,15 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     );
   }
 
-  Widget _autoCover(String subject, String title, int questionCount, Color accent) {
-    final activeSubject = _decodeSubject(subject.trim().isEmpty ? 'Genel' : subject);
+  Widget _autoCover(
+    String subject,
+    String title,
+    int questionCount,
+    Color accent,
+  ) {
+    final activeSubject = _decodeSubject(
+      subject.trim().isEmpty ? 'Genel' : subject,
+    );
     final activeTitle = _decodeSubject(title);
     return Container(
       decoration: BoxDecoration(
@@ -505,7 +550,9 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                   decoration: BoxDecoration(
                     color: Colors.white.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
                   ),
                   child: Icon(_subjectIcon(activeSubject), color: Colors.white),
                 ),
@@ -572,12 +619,24 @@ class _QuestionBankPageState extends State<QuestionBankPage>
 
   List<Color> _subjectGradient(String subject) {
     final normalized = _decodeSubject(subject).toLowerCase();
-    if (normalized.contains('mat')) return const [Color(0xFF2563EB), Color(0xFF1D4ED8)];
-    if (normalized.contains('fiz')) return const [Color(0xFF7C3AED), Color(0xFF5B21B6)];
-    if (normalized.contains('kim')) return const [Color(0xFFEA580C), Color(0xFFC2410C)];
-    if (normalized.contains('biy')) return const [Color(0xFF16A34A), Color(0xFF15803D)];
-    if (normalized.contains('türk') || normalized.contains('turk')) return const [Color(0xFFDC2626), Color(0xFFB91C1C)];
-    if (normalized.contains('ing')) return const [Color(0xFF0891B2), Color(0xFF0E7490)];
+    if (normalized.contains('mat')) {
+      return const [Color(0xFF2563EB), Color(0xFF1D4ED8)];
+    }
+    if (normalized.contains('fiz')) {
+      return const [Color(0xFF7C3AED), Color(0xFF5B21B6)];
+    }
+    if (normalized.contains('kim')) {
+      return const [Color(0xFFEA580C), Color(0xFFC2410C)];
+    }
+    if (normalized.contains('biy')) {
+      return const [Color(0xFF16A34A), Color(0xFF15803D)];
+    }
+    if (normalized.contains('türk') || normalized.contains('turk')) {
+      return const [Color(0xFFDC2626), Color(0xFFB91C1C)];
+    }
+    if (normalized.contains('ing')) {
+      return const [Color(0xFF0891B2), Color(0xFF0E7490)];
+    }
     return const [Color(0xFF0F766E), Color(0xFF155E75)];
   }
 
@@ -587,7 +646,9 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     if (normalized.contains('fiz')) return const Color(0xFF7C3AED);
     if (normalized.contains('kim')) return const Color(0xFFEA580C);
     if (normalized.contains('biy')) return const Color(0xFF16A34A);
-    if (normalized.contains('türk') || normalized.contains('turk')) return const Color(0xFFDC2626);
+    if (normalized.contains('türk') || normalized.contains('turk')) {
+      return const Color(0xFFDC2626);
+    }
     if (normalized.contains('ing')) return const Color(0xFF0891B2);
     return const Color(0xFF0F766E);
   }
@@ -598,7 +659,9 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     if (normalized.contains('fiz')) return Icons.bolt_rounded;
     if (normalized.contains('kim')) return Icons.science_rounded;
     if (normalized.contains('biy')) return Icons.eco_rounded;
-    if (normalized.contains('türk') || normalized.contains('turk')) return Icons.menu_book_rounded;
+    if (normalized.contains('türk') || normalized.contains('turk')) {
+      return Icons.menu_book_rounded;
+    }
     if (normalized.contains('ing')) return Icons.translate_rounded;
     return Icons.auto_awesome_rounded;
   }
@@ -620,7 +683,9 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     if (normalized.contains('fiz')) return 'HAREKET • ENERJİ • KUVVET';
     if (normalized.contains('kim')) return 'TEPKİME • MADDE • BAĞ';
     if (normalized.contains('biy')) return 'CANLI • HÜCRE • SİSTEM';
-    if (normalized.contains('türk') || normalized.contains('turk')) return 'DİL • ANLAM • PARAGRAF';
+    if (normalized.contains('türk') || normalized.contains('turk')) {
+      return 'DİL • ANLAM • PARAGRAF';
+    }
     if (normalized.contains('ing')) return 'VOCAB • GRAMMAR • READING';
     return 'SET • PRATİK • TEKRAR';
   }
@@ -669,13 +734,18 @@ class _QuestionBankPageState extends State<QuestionBankPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Günlük Meydan Okuma",
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold)),
+                Text(
+                  "Günlük Meydan Okuma",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 SizedBox(height: 4),
-                Text("10 soru çöz, 500 XP kazan!",
-                    style: TextStyle(color: Colors.white70)),
+                Text(
+                  "10 soru çöz, 500 XP kazan!",
+                  style: TextStyle(color: Colors.white70),
+                ),
               ],
             ),
           ),
@@ -685,11 +755,14 @@ class _QuestionBankPageState extends State<QuestionBankPage>
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Text("Devam Et",
-                style: TextStyle(
-                    color: Colors.deepPurple,
-                    fontWeight: FontWeight.bold)),
-          )
+            child: const Text(
+              "Devam Et",
+              style: TextStyle(
+                color: Colors.deepPurple,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
         ],
       ),
     );

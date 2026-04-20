@@ -27,13 +27,15 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingApprovals =
-        AccountingFinanceStore.instance.approvals.where((item) => item.status == 'Bekliyor').length;
+    final pendingApprovals = AccountingFinanceStore.instance.approvals
+        .where((item) => item.status == 'Bekliyor')
+        .length;
     final pendingStaff = StaffRegistryStore.instance.staff
         .where((item) => item.status != 'Active' && item.status != 'Aktif')
         .length;
-    final pendingMeetings =
-        MeetingRequestStore.instance.requests.where((item) => item.status == 'Bekliyor').length;
+    final pendingMeetings = MeetingRequestStore.instance.requests
+        .where((item) => item.status == 'Bekliyor')
+        .length;
     final campusCount = StaffRegistryStore.instance.staff
         .map((item) => item.campus)
         .where((item) => item.isNotEmpty)
@@ -47,23 +49,23 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
         color: const Color(0xFFB45309),
         page: const AccountingApprovalsPage(
           canApprove: true,
-          pageTitle: 'Yonetici Onaylari',
+          pageTitle: 'Yönetici Onayları',
         ),
       ),
       _AdminTaskItem(
-        title: '$pendingStaff personel kaydi tamamlanacak',
-        category: 'Idari',
+        title: '$pendingStaff personel kaydı tamamlanacak',
+        category: 'İdari',
         color: const Color(0xFF2563EB),
         page: const AdminStaffRegistrationPage(),
       ),
       _AdminTaskItem(
-        title: '$pendingMeetings veli gorusme talebi donus bekliyor',
-        category: 'Iletisim',
+        title: '$pendingMeetings veli görüşme talebi dönüş bekliyor',
+        category: 'İletişim',
         color: const Color(0xFF14532D),
         page: const TeacherMeetingApprovalsPage(),
       ),
       _AdminTaskItem(
-        title: '$campusCount kampus icin sube gorunumu guncel',
+        title: '$campusCount kampus için sube görünümü güncel',
         category: 'Raporlama',
         color: const Color(0xFF7C3AED),
         page: const AdminBranchComparisonPage(),
@@ -71,7 +73,12 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
     ];
 
     return AdminScaffold(
-      appBar: AppBar(title: const Text('Canli Gorev Merkezi', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Canlı Görev Merkezi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: tasks
@@ -91,10 +98,14 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
                       Expanded(
                         child: Text(
                           task.title,
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
-                      Text(task.category, style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        task.category,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(width: 8),
                       const Icon(Icons.chevron_right_rounded),
                     ],

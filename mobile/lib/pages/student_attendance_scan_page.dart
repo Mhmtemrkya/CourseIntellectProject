@@ -17,9 +17,9 @@ class StudentAttendanceScanPage extends StatefulWidget {
 class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
   final MobileScannerController controller = MobileScannerController();
   bool scanned = false;
-  String scanStatus = "QR kodu okut ve yoklamani gonder.";
+  String scanStatus = "QR kodu okut ve yoklamani gönder.";
   String? lastPayload;
-  String studentName = "Ogrenci";
+  String studentName = "Öğrenci";
   String className = "";
 
   @override
@@ -32,10 +32,14 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
     await StudentRegistryStore.instance.ensureLoaded();
     final session = await AuthSessionStore.instance.load();
     if (!mounted || session == null) return;
-    final matchedStudent = StudentRegistryStore.instance.students.where((item) {
-      return item.fullName.toLowerCase() == session.fullName.toLowerCase() ||
-          item.username.toLowerCase() == session.username.toLowerCase();
-    }).cast<StudentRegistryRecord?>().firstOrNull;
+    final matchedStudent = StudentRegistryStore.instance.students
+        .where((item) {
+          return item.fullName.toLowerCase() ==
+                  session.fullName.toLowerCase() ||
+              item.username.toLowerCase() == session.username.toLowerCase();
+        })
+        .cast<StudentRegistryRecord?>()
+        .firstOrNull;
     setState(() {
       studentName = session.fullName;
       className = matchedStudent?.className ?? className;
@@ -57,7 +61,7 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
     setState(() {
       scanned = true;
       lastPayload = code;
-      scanStatus = "Yoklama backend'e gonderiliyor...";
+      scanStatus = "Yoklama backend'e gönderiliyor...";
     });
 
     try {
@@ -65,24 +69,24 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
       final lessonClass = payload['class'] ?? className;
       final lesson = payload['lesson'] ?? 'Ders';
       if (lessonClass.isEmpty) {
-        throw Exception('QR kaydinda sinif bilgisi bulunamadi.');
+        throw Exception('QR kaydında sınıf bilgisi bulunamadı.');
       }
       await AttendanceService.instance.saveLessonAttendance(
         className: lessonClass,
         lesson: lesson,
         students: [
-          {
-            'name': studentName,
-            'status': 'present',
-          },
+          {'name': studentName, 'status': 'present'},
         ],
       );
       if (!mounted) return;
       setState(() {
-        scanStatus = "$studentName derse katildi. Yoklama basariyla gonderildi.";
+        scanStatus =
+            "$studentName derse katıldı. Yoklama başarıyla gönderildi.";
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("$studentName derse katildi olarak kaydedildi.")),
+        SnackBar(
+          content: Text("$studentName derse katıldı olarak kaydedildi."),
+        ),
       );
     } catch (error) {
       if (!mounted) return;
@@ -90,9 +94,9 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
         scanned = false;
         scanStatus = "Yoklama kaydedilemedi. QR kodu tekrar okut.";
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -129,10 +133,7 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
       ),
       body: Stack(
         children: [
-          MobileScanner(
-            controller: controller,
-            onDetect: _handleDetection,
-          ),
+          MobileScanner(controller: controller, onDetect: _handleDetection),
           Positioned.fill(
             child: IgnorePointer(
               child: Container(
@@ -142,22 +143,26 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
               ),
             ),
           ),
-          Builder(builder: (context) {
-            final scanSize = ResponsiveLayout.isTablet(context) ? 380.0 : 250.0;
-            return Center(
-              child: Container(
-                width: scanSize,
-                height: scanSize,
-                decoration: BoxDecoration(
-                  border: Border.all(
-                    color: scanned ? const Color(0xFF22C55E) : Colors.white,
-                    width: 3,
+          Builder(
+            builder: (context) {
+              final scanSize = ResponsiveLayout.isTablet(context)
+                  ? 380.0
+                  : 250.0;
+              return Center(
+                child: Container(
+                  width: scanSize,
+                  height: scanSize,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: scanned ? const Color(0xFF22C55E) : Colors.white,
+                      width: 3,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
                   ),
-                  borderRadius: BorderRadius.circular(28),
                 ),
-              ),
-            );
-          }),
+              );
+            },
+          ),
           Positioned(
             left: 16,
             right: 16,
@@ -175,7 +180,7 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    scanned ? "Derse Katildiniz" : "Kamera Hazir",
+                    scanned ? "Derse Katıldıniz" : "Kamera Hazır",
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: isDark ? Colors.white : Colors.black,
@@ -209,8 +214,7 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
                             setState(() {
                               scanned = false;
                               lastPayload = null;
-                              scanStatus =
-                                  "QR kodu okut ve yoklamani gonder.";
+                              scanStatus = "QR kodu okut ve yoklamani gönder.";
                             });
                           },
                           child: const Text("Tekrar Tara"),

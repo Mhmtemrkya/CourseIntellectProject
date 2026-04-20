@@ -121,7 +121,9 @@ class ExamSessionApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const ExamSessionApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const ExamSessionApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -147,7 +149,9 @@ class ExamSessionApiService {
       );
     }
 
-    return _mapSession(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _mapSession(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<ExamSessionRecord> submitAnswer({
@@ -157,7 +161,9 @@ class ExamSessionApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const ExamSessionApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const ExamSessionApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -179,20 +185,22 @@ class ExamSessionApiService {
       );
     }
 
-    return _mapSession(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _mapSession(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<ExamSessionCompletionRecord> completeSession(String sessionId) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const ExamSessionApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const ExamSessionApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/examsessions/$sessionId/complete'),
-      headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
-      },
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -205,7 +213,7 @@ class ExamSessionApiService {
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     return ExamSessionCompletionRecord(
       sessionId: map['sessionId'] as String,
-      title: map['title'] as String? ?? map['examTitle'] as String? ?? 'Sinav',
+      title: map['title'] as String? ?? map['examTitle'] as String? ?? 'Sınav',
       subject: map['subject'] as String? ?? 'Genel',
       studentName: map['studentName'] as String? ?? '',
       className: map['className'] as String? ?? '',
@@ -221,14 +229,16 @@ class ExamSessionApiService {
   static ExamSessionRecord _mapSession(Map<String, dynamic> map) {
     return ExamSessionRecord(
       id: map['id'] as String,
-      title: map['title'] as String? ?? map['examTitle'] as String? ?? 'Sinav',
+      title: map['title'] as String? ?? map['examTitle'] as String? ?? 'Sınav',
       subject: map['subject'] as String? ?? 'Genel',
       studentName: map['studentName'] as String? ?? '',
       studentUsername: map['studentUsername'] as String? ?? '',
       className: map['className'] as String? ?? '',
       status: map['status'] as String? ?? 'Active',
       durationSeconds: map['durationSeconds'] as int? ?? 0,
-      startedAtUtc: DateTime.tryParse(map['startedAtUtc'] as String? ?? '') ?? DateTime.now(),
+      startedAtUtc:
+          DateTime.tryParse(map['startedAtUtc'] as String? ?? '') ??
+          DateTime.now(),
       completedAtUtc: DateTime.tryParse(map['completedAtUtc'] as String? ?? ''),
       questions: (map['questions'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
@@ -240,7 +250,8 @@ class ExamSessionApiService {
               questionText: item['questionText'] as String? ?? '',
               imagePath: item['imagePath'] as String?,
               imagePlacement: item['imagePlacement'] as String?,
-              options: (item['options'] as List<dynamic>? ?? const []).cast<String>(),
+              options: (item['options'] as List<dynamic>? ?? const [])
+                  .cast<String>(),
               sortOrder: item['sortOrder'] as int? ?? 0,
               selectedOptionIndex: item['selectedOptionIndex'] as int?,
             ),

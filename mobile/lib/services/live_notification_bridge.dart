@@ -23,11 +23,13 @@ class LiveNotificationBridge {
   static const _seenPrefix = 'course_intellect_seen_live_notifications_v1';
   static const _historyPrefix = 'course_intellect_live_notification_history_v1';
   static const _androidChannelId = 'course_intellect_live_updates';
-  static const _androidChannelName = 'Canli Bildirimler';
-  static const _androidChannelDescription = 'Yeni duyuru ve bildirimler için anlık uyarılar';
+  static const _androidChannelName = 'Canlı Bildirimler';
+  static const _androidChannelDescription =
+      'Yeni duyuru ve bildirimler için anlık uyarılar';
   static const _repeatCooldown = Duration(seconds: 75);
 
-  final FlutterLocalNotificationsPlugin _plugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _plugin =
+      FlutterLocalNotificationsPlugin();
 
   Timer? _timer;
   Timer? _initialTimer;
@@ -40,7 +42,9 @@ class LiveNotificationBridge {
   Future<void> initialize() async {
     if (_initialized) return;
 
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
     const windowsSettings = WindowsInitializationSettings(
       appName: 'CourseIntellect',
@@ -56,7 +60,10 @@ class LiveNotificationBridge {
 
     await _plugin.initialize(settings);
 
-    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await androidPlugin?.createNotificationChannel(
       const AndroidNotificationChannel(
         _androidChannelId,
@@ -118,9 +125,13 @@ class LiveNotificationBridge {
       final seenKey = '$_seenPrefix:${session.primaryRole}:${session.username}';
       final prefs = await SharedPreferences.getInstance();
       final seen = prefs.getStringList(seenKey)?.toSet() ?? <String>{};
-      final notificationPreferences = await NotificationPreferencesService.instance.load(session);
+      final notificationPreferences = await NotificationPreferencesService
+          .instance
+          .load(session);
       final incoming = (await _loadIncoming(session))
-          .where((item) => notificationPreferences.isCategoryEnabled(item.category))
+          .where(
+            (item) => notificationPreferences.isCategoryEnabled(item.category),
+          )
           .map(
             (item) => notificationPreferences.previewEnabled
                 ? item
@@ -141,7 +152,9 @@ class LiveNotificationBridge {
           continue;
         }
 
-        final playSound = !notificationPreferences.isCategorySilent(item.category);
+        final playSound = !notificationPreferences.isCategorySilent(
+          item.category,
+        );
 
         await _plugin.show(
           item.id.hashCode & 0x7fffffff,
@@ -175,13 +188,22 @@ class LiveNotificationBridge {
   }
 
   Future<void> _requestPermissions() async {
-    final iosPlugin = _plugin.resolvePlatformSpecificImplementation<IOSFlutterLocalNotificationsPlugin>();
+    final iosPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
+        >();
     await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true);
 
-    final macPlugin = _plugin.resolvePlatformSpecificImplementation<MacOSFlutterLocalNotificationsPlugin>();
+    final macPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
     await macPlugin?.requestPermissions(alert: true, badge: true, sound: true);
 
-    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
     await androidPlugin?.requestNotificationsPermission();
   }
 
@@ -199,7 +221,7 @@ class LiveNotificationBridge {
       case 'Student':
         return _dedupe([
           ...await _mapRoleNotifications('Student'),
-          ...await _loadVisibleAnnouncements('Ogrenci'),
+          ...await _loadVisibleAnnouncements('Öğrenci'),
           ...await _loadUnreadMessageNotifications(),
           ...await _loadStudentHomework(),
           ...await _loadStudentContents(),
@@ -239,15 +261,22 @@ class LiveNotificationBridge {
     }
   }
 
-  Future<List<_LiveNotificationItem>> _mapRoleNotifications(String targetRole) async {
-    return _mapNotifications(await NotificationApiService.instance.fetchNotifications(targetRole: targetRole));
+  Future<List<_LiveNotificationItem>> _mapRoleNotifications(
+    String targetRole,
+  ) async {
+    return _mapNotifications(
+      await NotificationApiService.instance.fetchNotifications(
+        targetRole: targetRole,
+      ),
+    );
   }
 
-  Future<List<_LiveNotificationItem>> _loadAnnouncementsForAudience(String audience, {bool includeAll = false}) async {
-    final announcements = await SchoolFeedApiService.instance.fetchAnnouncements(
-      audience: audience,
-      includeAll: includeAll,
-    );
+  Future<List<_LiveNotificationItem>> _loadAnnouncementsForAudience(
+    String audience, {
+    bool includeAll = false,
+  }) async {
+    final announcements = await SchoolFeedApiService.instance
+        .fetchAnnouncements(audience: audience, includeAll: includeAll);
     return announcements
         .map(
           (item) => _LiveNotificationItem(
@@ -260,7 +289,9 @@ class LiveNotificationBridge {
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadVisibleAnnouncements(String audience) {
+  Future<List<_LiveNotificationItem>> _loadVisibleAnnouncements(
+    String audience,
+  ) {
     return _loadAnnouncementsForAudience(audience, includeAll: true);
   }
 
@@ -272,7 +303,9 @@ class LiveNotificationBridge {
           (item) => _LiveNotificationItem(
             id: 'thread:${item.id}:${item.lastMessageAt.toIso8601String()}',
             title: '${item.contactName} size mesaj gönderdi',
-            body: item.lastMessagePreview.isEmpty ? 'Yeni mesajınızı görmek için uygulamayı açın.' : _trim(item.lastMessagePreview),
+            body: item.lastMessagePreview.isEmpty
+                ? 'Yeni mesajınızı görmek için uygulamayı açın.'
+                : _trim(item.lastMessagePreview),
             category: 'message',
           ),
         )
@@ -282,12 +315,17 @@ class LiveNotificationBridge {
   Future<List<_LiveNotificationItem>> _loadStudentHomework() async {
     final assignments = await HomeworkApiService.instance.fetchAssignments();
     return assignments
-        .where((item) => (item['status']?.toString() ?? '').trim() != 'Tamamlandi')
+        .where(
+          (item) => (item['status']?.toString() ?? '').trim() != 'Tamamlandi',
+        )
         .map(
           (item) => _LiveNotificationItem(
             id: 'homework:${item['id']}',
             title: 'Yeni ödev yayınlandı',
-            body: _compactBody(item['title']?.toString() ?? 'Yeni ödev', '${item['subject'] ?? 'Ödev'} • Teslim: ${item['deadline'] ?? '-'}'),
+            body: _compactBody(
+              item['title']?.toString() ?? 'Yeni ödev',
+              '${item['subject'] ?? 'Ödev'} • Teslim: ${item['deadline'] ?? '-'}',
+            ),
             category: 'homework',
           ),
         )
@@ -301,7 +339,10 @@ class LiveNotificationBridge {
           (item) => _LiveNotificationItem(
             id: 'teacher-homework:${item['id']}',
             title: 'Ödev güncellemesi',
-            body: _compactBody(item['title']?.toString() ?? 'Ödev', '${item['className'] ?? '-'} • ${item['subject'] ?? 'Ödev'} • ${item['deadline'] ?? '-'}'),
+            body: _compactBody(
+              item['title']?.toString() ?? 'Ödev',
+              '${item['className'] ?? '-'} • ${item['subject'] ?? 'Ödev'} • ${item['deadline'] ?? '-'}',
+            ),
             category: 'homework',
           ),
         )
@@ -309,21 +350,30 @@ class LiveNotificationBridge {
   }
 
   Future<List<_LiveNotificationItem>> _loadStudentContents() async {
-    final contents = await ContentApiService.instance.fetchContents(visibleOnly: true);
+    final contents = await ContentApiService.instance.fetchContents(
+      visibleOnly: true,
+    );
     return contents
         .map(
           (item) => _LiveNotificationItem(
             id: 'content:${item.id ?? item.title}',
             title: 'Yeni içerik yayınlandı',
-            body: _compactBody(item.title.isNotEmpty ? item.title : 'Yeni içerik', '${item.subject} • ${item.teacher} • ${item.fileType}'),
+            body: _compactBody(
+              item.title.isNotEmpty ? item.title : 'Yeni içerik',
+              '${item.subject} • ${item.teacher} • ${item.fileType}',
+            ),
             category: 'content',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadStudentPlannedExams(AuthSession session) async {
-    final className = await SchoolFeedApiService.resolveLinkedStudentClassName(session);
+  Future<List<_LiveNotificationItem>> _loadStudentPlannedExams(
+    AuthSession session,
+  ) async {
+    final className = await SchoolFeedApiService.resolveLinkedStudentClassName(
+      session,
+    );
     final exams = await PlannedExamApiService.instance.fetchPlannedExams(
       className: className,
       studentName: session.fullName,
@@ -334,14 +384,19 @@ class LiveNotificationBridge {
           (item) => _LiveNotificationItem(
             id: 'planned-exam:${item.id}',
             title: 'Yeni sınav planlandı',
-            body: _compactBody(item.title, '${item.subject} • ${item.date} • ${item.duration}'),
+            body: _compactBody(
+              item.title,
+              '${item.subject} • ${item.date} • ${item.duration}',
+            ),
             category: 'planned-exam',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadTeacherPlannedExams(AuthSession session) async {
+  Future<List<_LiveNotificationItem>> _loadTeacherPlannedExams(
+    AuthSession session,
+  ) async {
     final exams = await PlannedExamApiService.instance.fetchPlannedExams(
       teacherName: session.fullName,
     );
@@ -350,16 +405,25 @@ class LiveNotificationBridge {
           (item) => _LiveNotificationItem(
             id: 'teacher-exam:${item.id}',
             title: 'Sınav takvimi güncellendi',
-            body: _compactBody(item.title, '${item.className} • ${item.subject} • ${item.date}'),
+            body: _compactBody(
+              item.title,
+              '${item.className} • ${item.subject} • ${item.date}',
+            ),
             category: 'planned-exam',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadParentPlannedExams(AuthSession session) async {
-    final className = await SchoolFeedApiService.resolveLinkedStudentClassName(session);
-    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
+  Future<List<_LiveNotificationItem>> _loadParentPlannedExams(
+    AuthSession session,
+  ) async {
+    final className = await SchoolFeedApiService.resolveLinkedStudentClassName(
+      session,
+    );
+    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
+      session,
+    );
     final exams = await PlannedExamApiService.instance.fetchPlannedExams(
       className: className,
       studentName: studentName,
@@ -369,48 +433,73 @@ class LiveNotificationBridge {
           (item) => _LiveNotificationItem(
             id: 'parent-planned-exam:${item.id}',
             title: 'Çocuğunuz için yeni sınav planlandı',
-            body: _compactBody(item.title, '${item.subject} • ${item.date} • ${item.className}'),
+            body: _compactBody(
+              item.title,
+              '${item.subject} • ${item.date} • ${item.className}',
+            ),
             category: 'planned-exam',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadStudentExamResults(AuthSession session) async {
-    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
-    final results = await SchoolFeedApiService.instance.fetchExamResults(studentName: studentName);
+  Future<List<_LiveNotificationItem>> _loadStudentExamResults(
+    AuthSession session,
+  ) async {
+    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
+      session,
+    );
+    final results = await SchoolFeedApiService.instance.fetchExamResults(
+      studentName: studentName,
+    );
     return results
         .map(
           (item) => _LiveNotificationItem(
             id: 'exam-result:${item.examTitle}:${item.date}:${item.subject}',
             title: '${item.examTitle} sonucu açıklandı',
-            body: _trim('${item.subject} • Puan: ${item.score} • Net: ${item.net}'),
+            body: _trim(
+              '${item.subject} • Puan: ${item.score} • Net: ${item.net}',
+            ),
             category: 'exam-result',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadParentExamResults(AuthSession session) async {
-    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
-    final results = await SchoolFeedApiService.instance.fetchExamResults(studentName: studentName);
+  Future<List<_LiveNotificationItem>> _loadParentExamResults(
+    AuthSession session,
+  ) async {
+    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
+      session,
+    );
+    final results = await SchoolFeedApiService.instance.fetchExamResults(
+      studentName: studentName,
+    );
     return results
         .map(
           (item) => _LiveNotificationItem(
             id: 'parent-exam-result:${item.examTitle}:${item.date}:${item.subject}',
             title: '${item.examTitle} sonucu yayınlandı',
-            body: _trim('${item.subject} • ${item.studentName} • Puan: ${item.score}'),
+            body: _trim(
+              '${item.subject} • ${item.studentName} • Puan: ${item.score}',
+            ),
             category: 'exam-result',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadParentWeeklyReports(AuthSession session) async {
-    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
+  Future<List<_LiveNotificationItem>> _loadParentWeeklyReports(
+    AuthSession session,
+  ) async {
+    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
+      session,
+    );
     final reports = await TeacherWeeklyReportApiService.instance.fetchForParent(
       studentName: studentName,
-      studentUsername: session.primaryRole == 'Student' ? session.username : null,
+      studentUsername: session.primaryRole == 'Student'
+          ? session.username
+          : null,
       parentName: session.fullName,
     );
     return reports
@@ -418,46 +507,65 @@ class LiveNotificationBridge {
           (item) => _LiveNotificationItem(
             id: 'weekly-report:${item.id}',
             title: 'Yeni haftalık rapor gönderildi',
-            body: _compactBody(item.title.isEmpty ? 'Haftalık rapor' : item.title, '${item.subject} • ${item.studentName} • ${item.weeklyPeriodLabel}'),
+            body: _compactBody(
+              item.title.isEmpty ? 'Haftalık rapor' : item.title,
+              '${item.subject} • ${item.studentName} • ${item.weeklyPeriodLabel}',
+            ),
             category: 'report',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadTeacherReports(AuthSession session) async {
-    final reports = await TeacherWeeklyReportApiService.instance.fetchForTeacher(
-      teacherUsername: session.username,
-      teacherName: session.fullName,
-    );
+  Future<List<_LiveNotificationItem>> _loadTeacherReports(
+    AuthSession session,
+  ) async {
+    final reports = await TeacherWeeklyReportApiService.instance
+        .fetchForTeacher(
+          teacherUsername: session.username,
+          teacherName: session.fullName,
+        );
     return reports
         .map(
           (item) => _LiveNotificationItem(
             id: 'teacher-report:${item.id}',
             title: 'Haftalık rapor kaydı güncellendi',
-            body: _compactBody(item.title.isEmpty ? 'Haftalık rapor' : item.title, '${item.studentName} • ${item.subject} • ${item.weeklyPeriodLabel}'),
+            body: _compactBody(
+              item.title.isEmpty ? 'Haftalık rapor' : item.title,
+              '${item.studentName} • ${item.subject} • ${item.weeklyPeriodLabel}',
+            ),
             category: 'report',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadTeacherMeetingRequests(AuthSession session) async {
-    final requests = await MeetingRequestApiService.instance.fetchRequests(advisor: session.fullName);
+  Future<List<_LiveNotificationItem>> _loadTeacherMeetingRequests(
+    AuthSession session,
+  ) async {
+    final requests = await MeetingRequestApiService.instance.fetchRequests(
+      advisor: session.fullName,
+    );
     return requests
         .map(
           (item) => _LiveNotificationItem(
             id: 'teacher-meeting:${item.id}:${item.status}',
             title: 'Yeni görüşme talebi',
-            body: _trim('${item.parentName} • ${item.studentName} • ${item.slot}'),
+            body: _trim(
+              '${item.parentName} • ${item.studentName} • ${item.slot}',
+            ),
             category: 'meeting',
           ),
         )
         .toList();
   }
 
-  Future<List<_LiveNotificationItem>> _loadParentMeetingUpdates(AuthSession session) async {
-    final requests = await MeetingRequestApiService.instance.fetchRequests(parentName: session.fullName);
+  Future<List<_LiveNotificationItem>> _loadParentMeetingUpdates(
+    AuthSession session,
+  ) async {
+    final requests = await MeetingRequestApiService.instance.fetchRequests(
+      parentName: session.fullName,
+    );
     return requests
         .map(
           (item) => _LiveNotificationItem(
@@ -470,12 +578,16 @@ class LiveNotificationBridge {
         .toList();
   }
 
-  List<_LiveNotificationItem> _mapNotifications(List<AppNotificationRecord> records) {
+  List<_LiveNotificationItem> _mapNotifications(
+    List<AppNotificationRecord> records,
+  ) {
     return records
         .map(
           (item) => _LiveNotificationItem(
             id: 'notification:${item.id}',
-            title: item.title.trim().isEmpty ? 'Yeni bildirim' : _trim(item.title),
+            title: item.title.trim().isEmpty
+                ? 'Yeni bildirim'
+                : _trim(item.title),
             body: _trim(item.message),
             category: _mapGenericCategory(item),
           ),
@@ -550,7 +662,9 @@ class LiveNotificationBridge {
 
   static String _mapGenericCategory(AppNotificationRecord item) {
     final category = item.category.trim().toLowerCase();
-    if (category.contains('finance') || category.contains('tahsil') || category.contains('odeme')) {
+    if (category.contains('finance') ||
+        category.contains('tahsil') ||
+        category.contains('odeme')) {
       return 'finance';
     }
     if (category.contains('report') || category.contains('rapor')) {
@@ -584,7 +698,8 @@ class _LiveNotificationItem {
     required this.category,
   });
 
-  String get fingerprint => '${title.trim().toLowerCase()}|${body.trim().toLowerCase()}';
+  String get fingerprint =>
+      '${title.trim().toLowerCase()}|${body.trim().toLowerCase()}';
 
   _LiveNotificationItem copyWith({
     String? id,

@@ -18,20 +18,14 @@ class LiveRoomAssetRecord {
   final String id;
   final String fileName;
 
-  const LiveRoomAssetRecord({
-    required this.id,
-    required this.fileName,
-  });
+  const LiveRoomAssetRecord({required this.id, required this.fileName});
 }
 
 class LiveRoomNoteRecord {
   final String id;
   final String text;
 
-  const LiveRoomNoteRecord({
-    required this.id,
-    required this.text,
-  });
+  const LiveRoomNoteRecord({required this.id, required this.text});
 }
 
 class LiveRoomSessionRecord {
@@ -92,7 +86,7 @@ class LiveRoomApiService {
       }),
     );
 
-    return _mapOrThrow(response, fallback: 'Canli oda acilamadi.');
+    return _mapOrThrow(response, fallback: 'Canlı oda acilamadi.');
   }
 
   Future<LiveRoomSessionRecord> updateState(
@@ -114,7 +108,7 @@ class LiveRoomApiService {
       body: jsonEncode(payload),
     );
 
-    return _mapOrThrow(response, fallback: 'Canli oda durumu guncellenemedi.');
+    return _mapOrThrow(response, fallback: 'Canlı oda durumu güncellenemedi.');
   }
 
   Future<LiveRoomSessionRecord> addAsset(String roomId, String fileName) async {
@@ -125,7 +119,7 @@ class LiveRoomApiService {
       body: jsonEncode({'fileName': fileName}),
     );
 
-    return _mapOrThrow(response, fallback: 'Dosya kaydi eklenemedi.');
+    return _mapOrThrow(response, fallback: 'Dosya kaydı eklenemedi.');
   }
 
   Future<LiveRoomSessionRecord> addNote(String roomId, String text) async {
@@ -146,23 +140,32 @@ class LiveRoomApiService {
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
-    return _mapOrThrow(response, fallback: 'Canli ders sonlandirilamadi.');
+    return _mapOrThrow(response, fallback: 'Canlı ders sonlandirilamadi.');
   }
 
   Future<AuthSession> _session() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const LiveRoomApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const LiveRoomApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
     return session;
   }
 
-  LiveRoomSessionRecord _mapOrThrow(http.Response response, {required String fallback}) {
+  LiveRoomSessionRecord _mapOrThrow(
+    http.Response response, {
+    required String fallback,
+  }) {
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw LiveRoomApiException(_extractMessage(response.body) ?? '$fallback (${response.statusCode}).');
+      throw LiveRoomApiException(
+        _extractMessage(response.body) ?? '$fallback (${response.statusCode}).',
+      );
     }
 
-    return _mapSession(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _mapSession(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   LiveRoomSessionRecord _mapSession(Map<String, dynamic> map) {
@@ -178,7 +181,8 @@ class LiveRoomApiService {
       sharingOn: map['sharingOn'] as bool? ?? false,
       recordingOn: map['recordingOn'] as bool? ?? false,
       status: map['status'] as String? ?? 'Active',
-      participants: (map['participants'] as List<dynamic>? ?? const []).cast<String>(),
+      participants: (map['participants'] as List<dynamic>? ?? const [])
+          .cast<String>(),
       assets: (map['assets'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
           .map(
@@ -201,9 +205,9 @@ class LiveRoomApiService {
   }
 
   static Map<String, String> _jsonHeaders(String accessToken) => {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-      };
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer $accessToken',
+  };
 
   static String? _extractMessage(String rawBody) {
     if (rawBody.isEmpty) return null;

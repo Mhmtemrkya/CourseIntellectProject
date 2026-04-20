@@ -31,10 +31,11 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
   final List<Map<String, dynamic>> _defaultPlans = [
     {
       "id": 1,
-      "title": "Haftalik konu tekrari",
+      "title": "Haftalık konu tekrari",
       "duration": "35 dk",
-      "status": "Bugun",
-      "reason": "Backendde kayitli plan yoksa baslangic icin varsayilan calisma plani gosterilir.",
+      "status": "Bugün",
+      "reason":
+          "Backendde kayıtlı plan yoksa başlangıç için varsayılan çalışma planı gösterilir.",
       "done": false,
       "scheduledAt": null,
       "createdByStudent": false,
@@ -45,8 +46,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
       "id": 2,
       "title": "Kisa soru taramasi",
       "duration": "20 dk",
-      "status": "Siradaki",
-      "reason": "Planlarini kendin duzenleyebilir veya hatirlatma ekleyebilirsin.",
+      "status": "Sıradaki",
+      "reason":
+          "Planlarını kendin düzenleyebilir veya hatırlatma ekleyebilirsin.",
       "done": false,
       "scheduledAt": null,
       "createdByStudent": false,
@@ -55,10 +57,11 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     },
     {
       "id": 3,
-      "title": "Eksik kalan calismayi tamamla",
+      "title": "Eksik kalan çalışmayi tamamla",
       "duration": "25 dk",
       "status": "Tekrar",
-      "reason": "Bu alan ileride soru ve sinav verilerine gore daha akilli oneriler uretebilir.",
+      "reason":
+          "Bu alan ileride soru ve sınav verilerine göre daha akıllı öneriler uretebilir.",
       "done": false,
       "scheduledAt": null,
       "createdByStudent": false,
@@ -84,7 +87,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
 
   Future<void> _initializeNotifications() async {
     tz.initializeTimeZones();
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
     const iosSettings = DarwinInitializationSettings();
     const settings = InitializationSettings(
       android: androidSettings,
@@ -94,7 +99,8 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     await _notifications.initialize(settings);
     await _notifications
         .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.requestNotificationsPermission();
   }
 
@@ -226,9 +232,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
 
     await _savePlans();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text("$deleted silindi.")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text("$deleted silindi.")));
   }
 
   Future<void> _toggleReminder(int index) async {
@@ -239,7 +245,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     if (!enabled && (scheduledAtRaw == null || scheduledAtRaw.isEmpty)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Hatirlatma icin once tarih ve saat secmelisin."),
+          content: Text("Hatırlatma için önce tarih ve saat seçmelisin."),
         ),
       );
       return;
@@ -270,14 +276,14 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
 
     await _notifications.zonedSchedule(
       item["notificationId"] as int,
-      'Calisma Plani Hatirlatmasi',
+      'Çalışma Plani Hatırlatması',
       item["title"] as String,
       scheduleDate,
       const NotificationDetails(
         android: AndroidNotificationDetails(
           'study_plan_channel',
           'Study Plan Reminders',
-          channelDescription: 'Calisma plani hatirlatmalari',
+          channelDescription: 'Çalışma planı hatırlatmalari',
           importance: Importance.high,
           priority: Priority.high,
         ),
@@ -290,7 +296,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
   Future<void> _openPlanDialog({int? editIndex}) async {
     final editing = editIndex != null;
     DateTime? selectedDateTime;
-    String selectedStatus = "Bugun";
+    String selectedStatus = "Bugün";
     bool notificationEnabled = false;
 
     if (editing) {
@@ -298,7 +304,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
       _titleController.text = item["title"] as String? ?? "";
       _reasonController.text = item["reason"] as String? ?? "";
       _durationController.text = item["duration"] as String? ?? "";
-      selectedStatus = item["status"] as String? ?? "Bugun";
+      selectedStatus = item["status"] as String? ?? "Bugün";
       notificationEnabled = item["notificationEnabled"] as bool? ?? false;
       final scheduledAt = item["scheduledAt"] as String?;
       if (scheduledAt != null && scheduledAt.isNotEmpty) {
@@ -310,7 +316,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
       _durationController.clear();
     }
 
-    const statuses = ["Bugun", "Siradaki", "Tekrar", "Hafta Sonu"];
+    const statuses = ["Bugün", "Sıradaki", "Tekrar", "Hafta Sonu"];
 
     await showDialog<void>(
       context: context,
@@ -353,83 +359,86 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Text(
-                          editing ? "Plani Duzenle" : "Plan Ekle",
-                          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                          editing ? "Plani Düzenle" : "Plan Ekle",
+                          style: const TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w800,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
-                    TextField(
-                      controller: _titleController,
-                      decoration: const InputDecoration(
-                        labelText: "Plan Basligi",
-                        hintText: "Ornek: Turev tekrar testi",
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _reasonController,
-                      maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: "Aciklama",
-                        hintText: "Neden bu plani ekledigini yaz",
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: _durationController,
-                      decoration: const InputDecoration(
-                        labelText: "Sure",
-                        hintText: "Ornek: 30 dk",
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedStatus,
-                      decoration: const InputDecoration(
-                        labelText: "Plan Zamani",
-                      ),
-                      items: statuses
-                          .map(
-                            (item) => DropdownMenuItem(
-                              value: item,
-                              child: Text(item),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (value) {
-                        if (value == null) return;
-                        setDialogState(() {
-                          selectedStatus = value;
-                        });
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        onPressed: pickDateTime,
-                        icon: const Icon(Icons.schedule_rounded),
-                        label: Text(
-                          selectedDateTime == null
-                              ? "Tarih / Saat Sec"
-                              : _formatDateTime(selectedDateTime!),
+                      TextField(
+                        controller: _titleController,
+                        decoration: const InputDecoration(
+                          labelText: "Plan Başlığı",
+                          hintText: "Örnek: Turev tekrar testi",
                         ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      value: notificationEnabled,
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text("Hatirlatma Acik"),
-                      subtitle: const Text(
-                        "Plan zamani geldiginde cihaz bildirimi olustur.",
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _reasonController,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: "Açıklama",
+                          hintText: "Neden bu planı eklendiğini yaz",
+                        ),
                       ),
-                      onChanged: (value) {
-                        setDialogState(() {
-                          notificationEnabled = value;
-                        });
-                      },
-                    ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: _durationController,
+                        decoration: const InputDecoration(
+                          labelText: "Sure",
+                          hintText: "Örnek: 30 dk",
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      DropdownButtonFormField<String>(
+                        initialValue: selectedStatus,
+                        decoration: const InputDecoration(
+                          labelText: "Plan Zamani",
+                        ),
+                        items: statuses
+                            .map(
+                              (item) => DropdownMenuItem(
+                                value: item,
+                                child: Text(item),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (value) {
+                          if (value == null) return;
+                          setDialogState(() {
+                            selectedStatus = value;
+                          });
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: pickDateTime,
+                          icon: const Icon(Icons.schedule_rounded),
+                          label: Text(
+                            selectedDateTime == null
+                                ? "Tarih / Saat Seç"
+                                : _formatDateTime(selectedDateTime!),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      SwitchListTile(
+                        value: notificationEnabled,
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text("Hatırlatma Açık"),
+                        subtitle: const Text(
+                          "Plan zamanı geldiğinde cihaz bildirimi oluştur.",
+                        ),
+                        onChanged: (value) {
+                          setDialogState(() {
+                            notificationEnabled = value;
+                          });
+                        },
+                      ),
                     ],
                   ),
                 ),
@@ -445,7 +454,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
                   ),
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text("Vazgec"),
+                  child: const Text("Vazgeç"),
                 ),
                 ElevatedButton(
                   onPressed: () async {
@@ -456,7 +465,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
                     if (title.isEmpty || reason.isEmpty || duration.isEmpty) {
                       ScaffoldMessenger.of(dialogContext).showSnackBar(
                         const SnackBar(
-                          content: Text("Tum alanlari doldurmalisin."),
+                          content: Text("Tüm alanları doldurmalısın."),
                         ),
                       );
                       return;
@@ -464,7 +473,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
 
                     final currentNotificationId = editing
                         ? planItems[editIndex]["notificationId"] as int? ??
-                            (_nextPlanId() + 1000)
+                              (_nextPlanId() + 1000)
                         : _nextPlanId() + 1000;
 
                     final plan = {
@@ -504,12 +513,12 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
                     ScaffoldMessenger.of(this.context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          editing ? "Plan guncellendi." : "Yeni plan eklendi.",
+                          editing ? "Plan güncellendi." : "Yeni plan eklendi.",
                         ),
                       ),
                     );
                   },
-                  child: Text(editing ? "Guncelle" : "Ekle"),
+                  child: Text(editing ? "Güncelle" : "Ekle"),
                 ),
               ],
             );
@@ -539,17 +548,16 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     return "$day.$month.$year $hour:$minute";
   }
 
-  List<Map<String, dynamic>> get upcomingReminders => planItems
-      .where((item) => item["notificationEnabled"] == true)
-      .toList()
-    ..sort((a, b) {
-      final aDate = DateTime.tryParse(a["scheduledAt"] as String? ?? '');
-      final bDate = DateTime.tryParse(b["scheduledAt"] as String? ?? '');
-      if (aDate == null && bDate == null) return 0;
-      if (aDate == null) return 1;
-      if (bDate == null) return -1;
-      return aDate.compareTo(bDate);
-    });
+  List<Map<String, dynamic>> get upcomingReminders =>
+      planItems.where((item) => item["notificationEnabled"] == true).toList()
+        ..sort((a, b) {
+          final aDate = DateTime.tryParse(a["scheduledAt"] as String? ?? '');
+          final bDate = DateTime.tryParse(b["scheduledAt"] as String? ?? '');
+          if (aDate == null && bDate == null) return 0;
+          if (aDate == null) return 1;
+          if (bDate == null) return -1;
+          return aDate.compareTo(bDate);
+        });
 
   @override
   Widget build(BuildContext context) {
@@ -558,308 +566,321 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     final completed = planItems.where((item) => item["done"] == true).length;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Calisma Planim"),
-      ),
+      appBar: AppBar(title: const Text("Çalışma Planim")),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               child: ResponsiveContent(
                 child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      gradient: const LinearGradient(
-                        colors: [
-                          Color(0xFF0EA5A4),
-                          Color(0xFF22C55E),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(28),
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0EA5A4), Color(0xFF22C55E)],
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF0EA5A4,
+                            ).withValues(alpha: 0.24),
+                            blurRadius: 18,
+                            offset: const Offset(0, 8),
+                          ),
                         ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0EA5A4).withValues(alpha: 0.24),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          "Kisisel calisma akisi",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.w800,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            "Kişisel çalışma akışı",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "Yanlislar, ogretmen geri bildirimleri ve test performansina gore otomatik planlandi.",
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.92),
+                          const SizedBox(height: 8),
+                          Text(
+                            "Yanlışlar, öğretmen geri bildirimleri ve test performansına göre otomatik planlandı.",
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.92),
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 18),
-                        Row(
-                          children: [
-                            _metricPill("Plan", "${planItems.length}"),
-                            const SizedBox(width: 10),
-                            _metricPill("Tamam", "$completed"),
-                            const SizedBox(width: 10),
-                            _metricPill("XP", "$xpPoints"),
-                            const SizedBox(width: 10),
-                            _metricPill("Seri", "$streakCount"),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  if (upcomingReminders.isNotEmpty) ...[
-                    Text(
-                      "Yaklasan Hatirlatmalar",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+                          const SizedBox(height: 18),
+                          Row(
+                            children: [
+                              _metricPill("Plan", "${planItems.length}"),
+                              const SizedBox(width: 10),
+                              _metricPill("Tamam", "$completed"),
+                              const SizedBox(width: 10),
+                              _metricPill("XP", "$xpPoints"),
+                              const SizedBox(width: 10),
+                              _metricPill("Seri", "$streakCount"),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    ...upcomingReminders.take(3).map(
-                      (item) => Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(18),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withValues(alpha: 0.18)
-                                  : Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+                    const SizedBox(height: 18),
+                    if (upcomingReminders.isNotEmpty) ...[
+                      Text(
+                        "Yaklasan Hatırlatmalar",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.alarm_rounded, color: Color(0xFFFF7A00)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item["title"] as String,
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                    ),
+                      ),
+                      const SizedBox(height: 12),
+                      ...upcomingReminders
+                          .take(3)
+                          .map(
+                            (item) => Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: theme.cardColor,
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: isDark
+                                        ? Colors.black.withValues(alpha: 0.18)
+                                        : Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    _formatDateTime(
-                                      DateTime.parse(item["scheduledAt"] as String),
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.alarm_rounded,
+                                    color: Color(0xFFFF7A00),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          item["title"] as String,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          _formatDateTime(
+                                            DateTime.parse(
+                                              item["scheduledAt"] as String,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                  ],
-                  Text(
-                    "Oncelikli Konular",
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _priorityTopics.map((item) {
-                      final color = item["color"] as Color;
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 14,
-                          vertical: 10,
-                        ),
-                        decoration: BoxDecoration(
-                          color: color.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(999),
-                        ),
-                        child: Text(
-                          "${item["topic"]} • ${item["count"]} soru",
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.w700,
                           ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          "Bugunku Plan",
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: () => _openPlanDialog(),
-                        icon: const Icon(Icons.add_rounded),
-                        label: const Text("Plan Ekle"),
-                      ),
+                      const SizedBox(height: 8),
                     ],
-                  ),
-                  Text(
-                    "Siralamayi degistirmek icin kartlari surukle.",
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                    Text(
+                      "Öncelikli Konular",
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  ReorderableListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: planItems.length,
-                    onReorder: _reorderPlans,
-                    buildDefaultDragHandles: false,
-                    itemBuilder: (context, index) {
-                      final item = planItems[index];
-                      final done = item["done"] as bool? ?? false;
-                      final scheduledAt = item["scheduledAt"] as String?;
-                      final hasDate =
-                          scheduledAt != null && scheduledAt.isNotEmpty;
-                      final reminderEnabled =
-                          item["notificationEnabled"] as bool? ?? false;
-
-                      return Container(
-                        key: ValueKey(item["id"]),
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: theme.cardColor,
-                          borderRadius: BorderRadius.circular(22),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withValues(alpha: 0.18)
-                                  : Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
+                    const SizedBox(height: 12),
+                    Wrap(
+                      spacing: 10,
+                      runSpacing: 10,
+                      children: _priorityTopics.map((item) {
+                        final color = item["color"] as Color;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Text(
+                            "${item["topic"]} • ${item["count"]} soru",
+                            style: TextStyle(
+                              color: color,
+                              fontWeight: FontWeight.w700,
                             ),
-                          ],
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            "Bugünkü Plan",
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                ReorderableDragStartListener(
-                                  index: index,
-                                  child: const Padding(
-                                    padding: EdgeInsets.only(right: 10),
-                                    child: Icon(Icons.drag_indicator_rounded),
+                        TextButton.icon(
+                          onPressed: () => _openPlanDialog(),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text("Plan Ekle"),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      "Sıralamayı değiştirmek için kartları sürükle.",
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    ReorderableListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: planItems.length,
+                      onReorder: _reorderPlans,
+                      buildDefaultDragHandles: false,
+                      itemBuilder: (context, index) {
+                        final item = planItems[index];
+                        final done = item["done"] as bool? ?? false;
+                        final scheduledAt = item["scheduledAt"] as String?;
+                        final hasDate =
+                            scheduledAt != null && scheduledAt.isNotEmpty;
+                        final reminderEnabled =
+                            item["notificationEnabled"] as bool? ?? false;
+
+                        return Container(
+                          key: ValueKey(item["id"]),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: theme.cardColor,
+                            borderRadius: BorderRadius.circular(22),
+                            boxShadow: [
+                              BoxShadow(
+                                color: isDark
+                                    ? Colors.black.withValues(alpha: 0.18)
+                                    : Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  ReorderableDragStartListener(
+                                    index: index,
+                                    child: const Padding(
+                                      padding: EdgeInsets.only(right: 10),
+                                      child: Icon(Icons.drag_indicator_rounded),
+                                    ),
                                   ),
+                                  Expanded(
+                                    child: Text(
+                                      item["title"] as String,
+                                      style: theme.textTheme.titleSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.w800,
+                                            decoration: done
+                                                ? TextDecoration.lineThrough
+                                                : null,
+                                          ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    onPressed: () =>
+                                        _openPlanDialog(editIndex: index),
+                                    icon: const Icon(Icons.edit_outlined),
+                                  ),
+                                  Checkbox(
+                                    value: done,
+                                    onChanged: (_) => _toggleDone(index),
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                item["reason"] as String,
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: theme.textTheme.bodyMedium?.color
+                                      ?.withValues(alpha: 0.72),
                                 ),
-                                Expanded(
-                                  child: Text(
-                                    item["title"] as String,
-                                    style: theme.textTheme.titleSmall?.copyWith(
-                                      fontWeight: FontWeight.w800,
-                                      decoration: done
-                                          ? TextDecoration.lineThrough
+                              ),
+                              const SizedBox(height: 12),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _infoChip(theme, item["duration"] as String),
+                                  _infoChip(theme, item["status"] as String),
+                                  if (hasDate)
+                                    _infoChip(
+                                      theme,
+                                      _formatDateTime(
+                                        DateTime.parse(scheduledAt),
+                                      ),
+                                    ),
+                                  if (item["createdByStudent"] == true)
+                                    _infoChip(theme, "Ben Ekledim"),
+                                  if (reminderEnabled)
+                                    _infoChip(theme, "Alarm Açık"),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  OutlinedButton(
+                                    onPressed: () =>
+                                        _openPlanDialog(editIndex: index),
+                                    child: const Text("Düzenle"),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  ElevatedButton(
+                                    onPressed: () => _toggleDone(index),
+                                    child: Text(done ? "Geri Al" : "Tamamla"),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  IconButton(
+                                    onPressed: () => _toggleReminder(index),
+                                    icon: Icon(
+                                      reminderEnabled
+                                          ? Icons.alarm_on_rounded
+                                          : Icons.alarm_add_rounded,
+                                      color: reminderEnabled
+                                          ? const Color(0xFFFF7A00)
                                           : null,
                                     ),
                                   ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _openPlanDialog(editIndex: index),
-                                  icon: const Icon(Icons.edit_outlined),
-                                ),
-                                Checkbox(
-                                  value: done,
-                                  onChanged: (_) => _toggleDone(index),
-                                ),
-                              ],
-                            ),
-                            Text(
-                              item["reason"] as String,
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.textTheme.bodyMedium?.color
-                                    ?.withValues(alpha: 0.72),
+                                  IconButton(
+                                    onPressed: () => _deletePlan(index),
+                                    icon: const Icon(
+                                      Icons.delete_outline_rounded,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            const SizedBox(height: 12),
-                            Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: [
-                                _infoChip(theme, item["duration"] as String),
-                                _infoChip(theme, item["status"] as String),
-                                if (hasDate)
-                                  _infoChip(
-                                    theme,
-                                    _formatDateTime(DateTime.parse(scheduledAt)),
-                                  ),
-                                if (item["createdByStudent"] == true)
-                                  _infoChip(theme, "Ben Ekledim"),
-                                if (reminderEnabled)
-                                  _infoChip(theme, "Alarm Acik"),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                OutlinedButton(
-                                  onPressed: () => _openPlanDialog(editIndex: index),
-                                  child: const Text("Duzenle"),
-                                ),
-                                const SizedBox(width: 10),
-                                ElevatedButton(
-                                  onPressed: () => _toggleDone(index),
-                                  child: Text(done ? "Geri Al" : "Tamamla"),
-                                ),
-                                const SizedBox(width: 10),
-                                IconButton(
-                                  onPressed: () => _toggleReminder(index),
-                                  icon: Icon(
-                                    reminderEnabled
-                                        ? Icons.alarm_on_rounded
-                                        : Icons.alarm_add_rounded,
-                                    color: reminderEnabled
-                                        ? const Color(0xFFFF7A00)
-                                        : null,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () => _deletePlan(index),
-                                  icon:
-                                      const Icon(Icons.delete_outline_rounded),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
               ),
             ),
     );
@@ -886,9 +907,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.88),
-              ),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.88)),
             ),
           ],
         ),
@@ -903,10 +922,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
         color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
     );
   }
 }

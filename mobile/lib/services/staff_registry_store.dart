@@ -4,6 +4,7 @@ import 'admin_directory_api_service.dart';
 import 'registration_api_service.dart';
 
 class StaffRegistryRecord {
+  final String id;
   final String fullName;
   final String roleType;
   final String branchOrDepartment;
@@ -25,6 +26,7 @@ class StaffRegistryRecord {
   final List<Map<String, String>> roleHistory;
 
   const StaffRegistryRecord({
+    required this.id,
     required this.fullName,
     required this.roleType,
     required this.branchOrDepartment,
@@ -51,10 +53,7 @@ class StaffLoginCredentials {
   final String username;
   final String password;
 
-  const StaffLoginCredentials({
-    required this.username,
-    required this.password,
-  });
+  const StaffLoginCredentials({required this.username, required this.password});
 }
 
 class StaffRegistryStore extends ChangeNotifier {
@@ -70,8 +69,10 @@ class StaffRegistryStore extends ChangeNotifier {
   bool isLoaded = false;
 
   List<StaffRegistryRecord> get staff => List.unmodifiable(_staff);
-  List<StaffRegistryRecord> get teachers => staff.where((item) => item.roleType == 'Öğretmen').toList();
-  List<StaffRegistryRecord> get personnel => staff.where((item) => item.roleType != 'Öğretmen').toList();
+  List<StaffRegistryRecord> get teachers =>
+      staff.where((item) => item.roleType == 'Öğretmen').toList();
+  List<StaffRegistryRecord> get personnel =>
+      staff.where((item) => item.roleType != 'Öğretmen').toList();
 
   Future<void> ensureLoaded() => _restoreFuture;
 
@@ -83,33 +84,38 @@ class StaffRegistryStore extends ChangeNotifier {
     final items = await AdminDirectoryApiService.instance.fetchStaff();
     _staff
       ..clear()
-      ..addAll(
-        items.map(
-          (item) => StaffRegistryRecord(
-            fullName: item.fullName,
-            roleType: _mapRole(item.role),
-            branchOrDepartment: item.departmentOrBranch,
-            tcNo: '',
-            phone: '',
-            email: '',
-            education: '',
-            startDate: '',
-            campus: item.campus,
-            homeroomClass: 'Sinif ogretmenligi yok',
-            assignedClasses: const [],
-            maritalStatus: 'Belirtilmedi',
-            childCount: 0,
-            note: '',
-            username: item.username,
-            password: '',
-            status: item.status,
-            extraRoles: item.extraRoles,
-            roleHistory: const [],
-          ),
-        ),
-      );
+      ..addAll(items.map(_fromRemote));
     isLoaded = true;
     notifyListeners();
+  }
+
+  StaffRegistryRecord _fromRemote(AdminStaffRecord item) {
+    return StaffRegistryRecord(
+      id: item.id,
+      fullName: item.fullName,
+      roleType: _mapRole(item.role),
+      branchOrDepartment: item.departmentOrBranch,
+      tcNo: item.tcNo,
+      phone: item.phone,
+      email: item.email,
+      education: item.education,
+      startDate: item.startDate,
+      campus: item.campus,
+      homeroomClass: item.homeroomClass.isEmpty
+          ? 'Sınıf öğretmenliği yok'
+          : item.homeroomClass,
+      assignedClasses: item.assignedClasses,
+      maritalStatus: item.maritalStatus.isEmpty
+          ? 'Belirtilmedi'
+          : item.maritalStatus,
+      childCount: item.childCount,
+      note: item.note,
+      username: item.username,
+      password: '',
+      status: item.status,
+      extraRoles: item.extraRoles,
+      roleHistory: const [],
+    );
   }
 
   Future<StaffLoginCredentials> addStaff({
@@ -151,6 +157,37 @@ class StaffRegistryStore extends ChangeNotifier {
     );
   }
 
+  Future<void> updateStaff({
+    required String id,
+    required String fullName,
+    required String branchOrDepartment,
+    required String phone,
+    required String email,
+    required String education,
+    required String campus,
+    required String homeroomClass,
+    required List<String> assignedClasses,
+    required String maritalStatus,
+    required int childCount,
+    required String note,
+  }) async {
+    await AdminDirectoryApiService.instance.updateStaff(
+      id: id,
+      fullName: fullName,
+      departmentOrBranch: branchOrDepartment,
+      phone: phone,
+      email: email,
+      education: education,
+      campus: campus,
+      homeroomClass: homeroomClass,
+      assignedClasses: assignedClasses,
+      maritalStatus: maritalStatus,
+      childCount: childCount,
+      note: note,
+    );
+    await _restore();
+  }
+
   Future<void> updateStatus({
     required String username,
     required String status,
@@ -186,10 +223,9 @@ class StaffRegistryStore extends ChangeNotifier {
     await _restore();
   }
 
-  Future<bool> undoLastRoleAssignment({
-    required String username,
-  }) async {
-    final success = await AdminDirectoryApiService.instance.undoLastRoleAssignment(username: username);
+  Future<bool> undoLastRoleAssignment({required String username}) async {
+    final success = await AdminDirectoryApiService.instance
+        .undoLastRoleAssignment(username: username);
     await _restore();
     return success;
   }

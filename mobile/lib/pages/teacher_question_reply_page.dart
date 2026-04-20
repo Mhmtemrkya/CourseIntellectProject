@@ -7,10 +7,7 @@ import 'package:student/widgets/teacher_header.dart';
 class TeacherQuestionReplyPage extends StatefulWidget {
   final Map<String, dynamic> thread;
 
-  const TeacherQuestionReplyPage({
-    super.key,
-    required this.thread,
-  });
+  const TeacherQuestionReplyPage({super.key, required this.thread});
 
   @override
   State<TeacherQuestionReplyPage> createState() =>
@@ -59,18 +56,17 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
     });
 
     try {
-      final attachment = await QuestionThreadApiService.instance.uploadAttachment(
-        file: file,
-      );
+      final attachment = await QuestionThreadApiService.instance
+          .uploadAttachment(file: file);
       if (!mounted) return;
       setState(() {
         attachments.add(attachment);
       });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() {
@@ -88,7 +84,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
     });
 
     try {
-      final effectiveMessage = replyController.text.trim().isEmpty && attachments.isNotEmpty
+      final effectiveMessage =
+          replyController.text.trim().isEmpty && attachments.isNotEmpty
           ? 'Ek paylaşıldı.'
           : replyController.text.trim();
       await QuestionThreadApiService.instance.replyToThread(
@@ -101,8 +98,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text("Basarili"),
-            content: const Text("Yanitiniz ogrenciye gonderildi."),
+            title: const Text("Başarılı"),
+            content: const Text("Yanıtınız öğrenciye gönderildi."),
             actions: [
               TextButton(
                 onPressed: () {
@@ -118,9 +115,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() {
@@ -139,8 +136,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
         title: "Yanitla",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: '${widget.thread['subject'] as String? ?? 'Genel'} Ogretmeni',
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle: '${widget.thread['subject'] as String? ?? 'Genel'} Öğretmeni',
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -167,14 +164,14 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    widget.thread['studentName'] as String? ?? 'Ogrenci',
+                    widget.thread['studentName'] as String? ?? 'Öğrenci',
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    widget.thread['className'] as String? ?? 'Sinif',
+                    widget.thread['className'] as String? ?? 'Sınıf',
                     style: theme.textTheme.bodySmall,
                   ),
                   const SizedBox(height: 12),
@@ -201,7 +198,7 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Yanitiniz",
+                    "Yanıtınız",
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -211,7 +208,7 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                     controller: replyController,
                     maxLines: 6,
                     decoration: const InputDecoration(
-                      hintText: "Ogrenciye aciklayici bir yanit yazin...",
+                      hintText: "Öğrenciye açıklayıcı bir yanıt yazın...",
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -222,7 +219,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                       color: theme.scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.12,
+                        ),
                       ),
                     ),
                     child: Column(
@@ -234,7 +233,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                               width: 42,
                               height: 42,
                               decoration: BoxDecoration(
-                                color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                                color: theme.colorScheme.primary.withValues(
+                                  alpha: 0.10,
+                                ),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Icon(
@@ -257,7 +258,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                                   Text(
                                     "Görsel, PDF veya video ekleyerek anlatımı güçlendirebilirsin.",
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                                      color: theme.textTheme.bodySmall?.color
+                                          ?.withValues(alpha: 0.72),
                                       height: 1.35,
                                     ),
                                   ),
@@ -275,7 +277,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                               context,
                               icon: Icons.image_outlined,
                               label: "Fotoğraf",
-                              onTap: () => _pickAndUploadAttachment(type: FileType.image),
+                              onTap: () => _pickAndUploadAttachment(
+                                type: FileType.image,
+                              ),
                             ),
                             _mediaButton(
                               context,
@@ -290,7 +294,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                               context,
                               icon: Icons.video_library_outlined,
                               label: "Video",
-                              onTap: () => _pickAndUploadAttachment(type: FileType.video),
+                              onTap: () => _pickAndUploadAttachment(
+                                type: FileType.video,
+                              ),
                             ),
                           ],
                         ),
@@ -307,12 +313,17 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                       (item) => Container(
                         width: double.infinity,
                         margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 12,
+                        ),
                         decoration: BoxDecoration(
                           color: theme.scaffoldBackgroundColor,
                           borderRadius: BorderRadius.circular(18),
                           border: Border.all(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.10,
+                            ),
                           ),
                         ),
                         child: Row(
@@ -321,7 +332,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: _attachmentTint(item.fileType).withValues(alpha: 0.12),
+                                color: _attachmentTint(
+                                  item.fileType,
+                                ).withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Icon(
@@ -346,7 +359,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                                   Text(
                                     _attachmentLabel(item.fileType),
                                     style: theme.textTheme.bodySmall?.copyWith(
-                                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                                      color: theme.textTheme.bodySmall?.color
+                                          ?.withValues(alpha: 0.72),
                                     ),
                                   ),
                                 ],
@@ -378,7 +392,9 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                               child: CircularProgressIndicator(strokeWidth: 2),
                             )
                           : const Icon(Icons.send_rounded),
-                      label: Text(_submitting ? "Gonderiliyor..." : "Yaniti Gonder"),
+                      label: Text(
+                        _submitting ? "Gönderiliyor..." : "Yaniti Gönder",
+                      ),
                     ),
                   ),
                 ],

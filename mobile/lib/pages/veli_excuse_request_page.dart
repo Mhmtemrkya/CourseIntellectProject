@@ -14,7 +14,8 @@ class VeliExcuseRequestPage extends StatefulWidget {
 class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
   final TextEditingController _reasonController = TextEditingController();
   final TextEditingController _noteController = TextEditingController(
-    text: 'Öğrencinin devamsızlık nedeni ve dönüş planı aşağıda paylaşılmıştır.',
+    text:
+        'Öğrencinin devamsızlık nedeni ve dönüş planı aşağıda paylaşılmıştır.',
   );
 
   String _selectedType = 'Sağlık';
@@ -167,17 +168,30 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.attach_file_rounded, color: Color(0xFF4F46E5)),
+                        const Icon(
+                          Icons.attach_file_rounded,
+                          color: Color(0xFF4F46E5),
+                        ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            _attachmentLabel.isEmpty ? 'PDF, görsel veya video ekleyebilirsiniz.' : _attachmentLabel,
+                            _attachmentLabel.isEmpty
+                                ? 'PDF, görsel veya video ekleyebilirsiniz.'
+                                : _attachmentLabel,
                           ),
                         ),
                         TextButton.icon(
-                          onPressed: _uploadingAttachment ? null : _pickAttachment,
-                          icon: Icon(_uploadingAttachment ? Icons.hourglass_top_rounded : Icons.upload_file_rounded),
-                          label: Text(_uploadingAttachment ? 'Yükleniyor' : 'Dosya Seç'),
+                          onPressed: _uploadingAttachment
+                              ? null
+                              : _pickAttachment,
+                          icon: Icon(
+                            _uploadingAttachment
+                                ? Icons.hourglass_top_rounded
+                                : Icons.upload_file_rounded,
+                          ),
+                          label: Text(
+                            _uploadingAttachment ? 'Yükleniyor' : 'Dosya Seç',
+                          ),
                         ),
                       ],
                     ),
@@ -278,10 +292,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
       child: Row(
         children: [
           Expanded(child: Text(label)),
-          Text(
-            value,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800)),
         ],
       ),
     );
@@ -298,7 +309,9 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06),
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06,
+            ),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -356,22 +369,24 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                   const SizedBox(height: 14),
                   Text(
                     'Bildirim gönderildi',
-                    style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                    style: Theme.of(dialogContext).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'Mazeret kaydı okul yönetimine ve ilgili öğretmene iletildi.',
-                    style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(
-                          height: 1.4,
-                        ),
+                    style: Theme.of(
+                      dialogContext,
+                    ).textTheme.bodyMedium?.copyWith(height: 1.4),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 12),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: Theme.of(dialogContext)
                           .colorScheme
@@ -380,10 +395,11 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
-                      _documentAttached && _attachmentLabel.isNotEmpty ? '$_selectedDate • $_attachmentLabel' : _selectedDate,
-                      style: Theme.of(dialogContext).textTheme.bodySmall?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
+                      _documentAttached && _attachmentLabel.isNotEmpty
+                          ? '$_selectedDate • $_attachmentLabel'
+                          : _selectedDate,
+                      style: Theme.of(dialogContext).textTheme.bodySmall
+                          ?.copyWith(fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -398,7 +414,16 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
   Future<void> _pickAttachment() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'jpg', 'jpeg', 'png', 'mp4', 'mov', 'doc', 'docx'],
+      allowedExtensions: const [
+        'pdf',
+        'jpg',
+        'jpeg',
+        'png',
+        'mp4',
+        'mov',
+        'doc',
+        'docx',
+      ],
       withData: true,
     );
     final file = result?.files.firstOrNull;
@@ -418,10 +443,10 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
       final label = file.extension == 'pdf'
           ? 'PDF eklendi'
           : ['jpg', 'jpeg', 'png'].contains(ext)
-              ? 'Görsel eklendi'
-              : ['mp4', 'mov'].contains(ext)
-                  ? 'Video eklendi'
-                  : 'Belge eklendi';
+          ? 'Görsel eklendi'
+          : ['mp4', 'mov'].contains(ext)
+          ? 'Video eklendi'
+          : 'Belge eklendi';
       setState(() {
         _documentAttached = true;
         _attachmentLabel = label;

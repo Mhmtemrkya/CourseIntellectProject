@@ -4,6 +4,7 @@ import 'admin_directory_api_service.dart';
 import 'registration_api_service.dart';
 
 class StudentRegistryRecord {
+  final String id;
   final String fullName;
   final String tcNo;
   final String className;
@@ -21,6 +22,7 @@ class StudentRegistryRecord {
   final String status;
 
   const StudentRegistryRecord({
+    required this.id,
     required this.fullName,
     required this.tcNo,
     required this.className,
@@ -76,6 +78,7 @@ class StudentRegistryStore extends ChangeNotifier {
       ..addAll(
         items.map(
           (item) => StudentRegistryRecord(
+            id: item.id,
             fullName: item.fullName,
             tcNo: item.tcNo,
             className: item.className,
@@ -131,6 +134,44 @@ class StudentRegistryStore extends ChangeNotifier {
       username: credentials.username,
       password: credentials.password,
     );
+  }
+
+  Future<void> updateStudent({
+    required String id,
+    required String fullName,
+    required String tcNo,
+    required String className,
+    required String currentSchool,
+    required String schoolNumber,
+    required String birthDate,
+    required String programType,
+    required String parentName,
+    required String parentPhone,
+    required String parentEmail,
+    required String address,
+    required String note,
+  }) async {
+    await AdminDirectoryApiService.instance.updateStudent(
+      id: id,
+      fullName: fullName,
+      tcNo: tcNo,
+      className: className,
+      currentSchool: currentSchool,
+      schoolNumber: schoolNumber,
+      birthDate: birthDate,
+      programType: programType,
+      parentName: parentName,
+      parentPhone: parentPhone,
+      parentEmail: parentEmail,
+      address: address,
+      note: note,
+    );
+    await _restore();
+  }
+
+  Future<void> deleteStudent(String id) async {
+    await AdminDirectoryApiService.instance.deleteStudent(id);
+    await _restore();
   }
 
   bool validateStudentLogin(String username, String password) => false;

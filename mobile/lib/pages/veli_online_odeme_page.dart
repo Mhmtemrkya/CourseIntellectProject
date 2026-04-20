@@ -10,7 +10,6 @@ class VeliOnlineOdemePage extends StatefulWidget {
 }
 
 class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
-
   final formKey = GlobalKey<FormState>();
 
   final kartSahibiController = TextEditingController();
@@ -20,27 +19,21 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
 
   @override
   Widget build(BuildContext context) {
-
     final theme = Theme.of(context);
 
     return Scaffold(
-
       backgroundColor: theme.scaffoldBackgroundColor,
 
       appBar: const AppHeader(title: "Online Ödeme"),
 
       body: SingleChildScrollView(
-
         padding: const EdgeInsets.all(16),
 
         child: Form(
-
           key: formKey,
 
           child: Column(
-
             children: [
-
               const SizedBox(height: 20),
 
               Text(
@@ -67,7 +60,6 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
 
               /// Kart Sahibi
               TextFormField(
-
                 controller: kartSahibiController,
 
                 decoration: InputDecoration(
@@ -85,14 +77,12 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                   }
                   return null;
                 },
-
               ),
 
               const SizedBox(height: 16),
 
               /// Kart Numarası
               TextFormField(
-
                 controller: kartNoController,
                 keyboardType: TextInputType.number,
 
@@ -111,18 +101,15 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                   }
                   return null;
                 },
-
               ),
 
               const SizedBox(height: 16),
 
               Row(
                 children: [
-
                   /// SKT
                   Expanded(
                     child: TextFormField(
-
                       controller: sktController,
 
                       decoration: InputDecoration(
@@ -140,7 +127,6 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                         }
                         return null;
                       },
-
                     ),
                   ),
 
@@ -149,7 +135,6 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                   /// CVV
                   Expanded(
                     child: TextFormField(
-
                       controller: cvvController,
                       keyboardType: TextInputType.number,
                       obscureText: true,
@@ -169,10 +154,8 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                         }
                         return null;
                       },
-
                     ),
                   ),
-
                 ],
               ),
 
@@ -183,20 +166,15 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                 height: 50,
 
                 child: ElevatedButton(
-
                   onPressed: () {
-
                     if (formKey.currentState!.validate()) {
-
                       Navigator.pushReplacement(
                         context,
                         MaterialPageRoute(
                           builder: (context) => const VeliOdemeMakbuzPage(),
                         ),
                       );
-
                     }
-
                   },
 
                   style: ElevatedButton.styleFrom(
@@ -211,12 +189,9 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                     "Ödemeyi Tamamla",
                     style: TextStyle(fontSize: 16),
                   ),
-
                 ),
-              )
-
+              ),
             ],
-
           ),
         ),
       ),

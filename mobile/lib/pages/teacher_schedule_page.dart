@@ -14,7 +14,7 @@ class TeacherSchedulePage extends StatefulWidget {
 }
 
 class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
-  String selectedDay = "Bugun";
+  String selectedDay = "Bugün";
   String _teacherName = '';
   Map<String, Map<String, dynamic>> weeklySchedule = {};
 
@@ -55,8 +55,8 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
   ) {
     if (lessons.isEmpty) {
       return {
-        'Bugun': {
-          'label': 'Bugun',
+        'Bugün': {
+          'label': 'Bugün',
           'date': 'Planli ders yok',
           'lessons': <Map<String, dynamic>>[],
         },
@@ -102,8 +102,9 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
     }
 
     for (final item in schedule.values) {
-      (item['lessons'] as List<Map<String, dynamic>>)
-          .sort((a, b) => (a['time'] as String).compareTo(b['time'] as String));
+      (item['lessons'] as List<Map<String, dynamic>>).sort(
+        (a, b) => (a['time'] as String).compareTo(b['time'] as String),
+      );
     }
 
     return schedule;
@@ -113,7 +114,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final current = DateTime(date.year, date.month, date.day);
-    if (current == today) return 'Bugun';
+    if (current == today) return 'Bugün';
     if (current == today.add(const Duration(days: 1))) return 'Yarin';
     return '${date.day}.${date.month}';
   }
@@ -136,24 +137,31 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
   List<Map<String, dynamic>> get currentLessons =>
       (currentDayData["lessons"] as List).cast<Map<String, dynamic>>();
 
-  int get onlineCount =>
-      currentLessons.where((item) => (item["platform"] as String?)?.toLowerCase().contains('zoom') == true).length;
+  int get onlineCount => currentLessons
+      .where(
+        (item) =>
+            (item["platform"] as String?)?.toLowerCase().contains('zoom') ==
+            true,
+      )
+      .length;
 
   int get totalStudents => currentLessons.fold<int>(
-        0,
-        (sum, item) => sum + ((item["studentCount"] as int?) ?? 0),
-      );
+    0,
+    (sum, item) => sum + ((item["studentCount"] as int?) ?? 0),
+  );
 
   int get weeklyStudents => weeklySchedule.values.fold<int>(
-        0,
-        (sum, day) => sum +
-            (day["lessons"] as List<dynamic>? ?? const [])
-                .cast<Map<String, dynamic>>()
-                .fold<int>(
-                  0,
-                  (lessonSum, lesson) => lessonSum + ((lesson["studentCount"] as int?) ?? 0),
-                ),
-      );
+    0,
+    (sum, day) =>
+        sum +
+        (day["lessons"] as List<dynamic>? ?? const [])
+            .cast<Map<String, dynamic>>()
+            .fold<int>(
+              0,
+              (lessonSum, lesson) =>
+                  lessonSum + ((lesson["studentCount"] as int?) ?? 0),
+            ),
+  );
 
   void _showLessonMenu(Map<String, dynamic> lesson) {
     showModalBottomSheet<void>(
@@ -170,8 +178,9 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor:
-                          (lesson["color"] as Color).withValues(alpha: 0.14),
+                      backgroundColor: (lesson["color"] as Color).withValues(
+                        alpha: 0.14,
+                      ),
                       foregroundColor: lesson["color"] as Color,
                       child: const Icon(Icons.info_outline_rounded),
                     ),
@@ -186,17 +195,19 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                   const SizedBox(height: 8),
                   _sheetAction(
                     icon: Icons.edit_calendar_rounded,
-                    title: "Dersi Duzenle",
+                    title: "Dersi Düzenle",
                     onTap: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text("Ders duzenleme paneli acildi.")),
+                        const SnackBar(
+                          content: Text("Ders düzenleme paneli açıldı."),
+                        ),
                       );
                     },
                   ),
                   _sheetAction(
                     icon: Icons.groups_rounded,
-                    title: "Yoklama / Katilim",
+                    title: "Yoklama / Katılım",
                     onTap: () {
                       Navigator.pop(context);
                       Navigator.push(
@@ -211,11 +222,13 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                   ),
                   _sheetAction(
                     icon: Icons.message_rounded,
-                    title: "Sinifa Mesaj Gonder",
+                    title: "Sınıfa Mesaj Gönder",
                     onTap: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(this.context).showSnackBar(
-                        const SnackBar(content: Text("Sinif mesaj paneli acildi.")),
+                        const SnackBar(
+                          content: Text("Sınıf mesaj paneli açıldı."),
+                        ),
                       );
                     },
                   ),
@@ -235,39 +248,42 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
     final hasSidebar = SidebarState.of(context);
 
     return Scaffold(
-      backgroundColor:
-          isDark ? const Color(0xFF121212) : const Color(0xFFF2F2F2),
-      appBar: hasSidebar ? null : AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        title: Text(
-          "Ders Programim",
-          style: TextStyle(
-            color: isDark ? Colors.white : Colors.black,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.only(right: 16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 120),
-              child: Center(
-                child: Text(
-                  _teacherName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: isDark ? Colors.white70 : Colors.black54,
-                    fontWeight: FontWeight.w700,
-                  ),
+      backgroundColor: isDark
+          ? const Color(0xFF121212)
+          : const Color(0xFFF2F2F2),
+      appBar: hasSidebar
+          ? null
+          : AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              title: Text(
+                "Ders Programim",
+                style: TextStyle(
+                  color: isDark ? Colors.white : Colors.black,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 120),
+                    child: Center(
+                      child: Text(
+                        _teacherName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isDark ? Colors.white70 : Colors.black54,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+              ],
             ),
-          ),
-          const SizedBox(width: 12),
-        ],
-      ),
       body: SingleChildScrollView(
         child: Column(
           children: [
@@ -301,8 +317,12 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Haftalik Gorunum",
-            style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w700),
+            "Haftalık Görünüm",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -317,7 +337,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "${currentLessons.length} ders • $totalStudents ogrenci",
+            "${currentLessons.length} ders • $totalStudents öğrenci",
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(color: Colors.white70, height: 1.35),
@@ -329,8 +349,8 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
             children: [
               StatMini("${currentLessons.length}", "Toplam\nDers"),
               StatMini("$onlineCount", "Online"),
-              StatMini("$totalStudents", "Ogrenci"),
-              StatMini("$weeklyStudents", "Haftalik\nYogunluk"),
+              StatMini("$totalStudents", "Öğrenci"),
+              StatMini("$weeklyStudents", "Haftalık\nYoğunluk"),
             ],
           ),
         ],
@@ -349,7 +369,10 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
             weeklySchedule[dayKey]!["label"] as String,
             selectedDay == dayKey,
             isDark,
-            lessonCount: ((weeklySchedule[dayKey]!["lessons"] as List<dynamic>?) ?? const []).length,
+            lessonCount:
+                ((weeklySchedule[dayKey]!["lessons"] as List<dynamic>?) ??
+                        const [])
+                    .length,
             onTap: () {
               setState(() {
                 selectedDay = dayKey;
@@ -380,11 +403,13 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
             color: active
                 ? const Color(0xFFFF7A00)
                 : isDark
-                    ? const Color(0xFF1E1E1E)
-                    : Colors.white,
+                ? const Color(0xFF1E1E1E)
+                : Colors.white,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: active ? const Color(0xFFFF7A00) : Colors.grey.withValues(alpha: 0.16),
+              color: active
+                  ? const Color(0xFFFF7A00)
+                  : Colors.grey.withValues(alpha: 0.16),
             ),
           ),
           child: Column(
@@ -395,7 +420,9 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: active ? Colors.white : (isDark ? Colors.white70 : Colors.black),
+                  color: active
+                      ? Colors.white
+                      : (isDark ? Colors.white70 : Colors.black),
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -403,7 +430,9 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
               Text(
                 "$lessonCount ders",
                 style: TextStyle(
-                  color: active ? Colors.white70 : (isDark ? Colors.white54 : Colors.black54),
+                  color: active
+                      ? Colors.white70
+                      : (isDark ? Colors.white54 : Colors.black54),
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -423,7 +452,11 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
     );
   }
 
-  Widget _scheduleTile(ThemeData theme, Map<String, dynamic> lesson, bool isDark) {
+  Widget _scheduleTile(
+    ThemeData theme,
+    Map<String, dynamic> lesson,
+    bool isDark,
+  ) {
     final color = lesson["color"] as Color;
     final className = lesson["className"] as String? ?? '-';
     final platform = lesson["platform"] as String? ?? '-';
@@ -497,7 +530,9 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          color: isDark
+                              ? Colors.white
+                              : const Color(0xFF0F172A),
                           fontSize: 14,
                           fontWeight: FontWeight.w800,
                         ),
@@ -505,7 +540,10 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                     ),
                     const SizedBox(width: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       constraints: const BoxConstraints(minHeight: 28),
                       decoration: BoxDecoration(
                         color: isDark
@@ -523,7 +561,9 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isDark ? Colors.white70 : const Color(0xFF334155),
+                          color: isDark
+                              ? Colors.white70
+                              : const Color(0xFF334155),
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
@@ -544,7 +584,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
                     ),
                     _metaChip(
                       icon: Icons.groups_rounded,
-                      text: "$studentCount ogrenci",
+                      text: "$studentCount öğrenci",
                       textColor: metaTextColor,
                       isDark: isDark,
                     ),
@@ -576,7 +616,11 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
             visualDensity: VisualDensity.compact,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: Icon(Icons.more_horiz_rounded, size: 20, color: isDark ? Colors.white : Colors.black87),
+            icon: Icon(
+              Icons.more_horiz_rounded,
+              size: 20,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
           ),
         ],
       ),
@@ -592,10 +636,14 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF8FAFC),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : const Color(0xFFF8FAFC),
         borderRadius: BorderRadius.circular(999),
         border: Border.all(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE2E8F0),
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFE2E8F0),
         ),
       ),
       child: Row(
@@ -633,8 +681,8 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
         children: [
           _legendItem(const Color(0xFF2563EB), "Ders", textColor),
           _legendItem(const Color(0xFF7C3AED), "Online", textColor),
-          _legendItem(const Color(0xFF16A34A), "Etut/Calisma", textColor),
-          _legendItem(const Color(0xFFFF7A00), "Sinav", textColor),
+          _legendItem(const Color(0xFF16A34A), "Etut/Çalışma", textColor),
+          _legendItem(const Color(0xFFFF7A00), "Sınav", textColor),
         ],
       ),
     );
@@ -653,10 +701,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
           ),
         ),
         const SizedBox(width: 6),
-        Text(
-          text,
-          style: TextStyle(color: textColor),
-        ),
+        Text(text, style: TextStyle(color: textColor)),
       ],
     );
   }
@@ -673,14 +718,11 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
         foregroundColor: const Color(0xFFFF7A00),
         child: Icon(icon),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       onTap: onTap,
     );
   }
-  }
+}
 
 class StatMini extends StatelessWidget {
   final String value;
@@ -693,24 +735,21 @@ class StatMini extends StatelessWidget {
     return SizedBox(
       width: 72,
       child: Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
+        children: [
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+            ),
           ),
-        ),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            color: Colors.white70,
-            fontSize: 12,
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
           ),
-        ),
-      ],
+        ],
       ),
     );
   }

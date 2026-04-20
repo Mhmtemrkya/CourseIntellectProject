@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../services/admin_directory_api_service.dart';
+import '../services/registration_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 
@@ -7,10 +9,12 @@ class AdminParentRegistrationPage extends StatefulWidget {
   const AdminParentRegistrationPage({super.key});
 
   @override
-  State<AdminParentRegistrationPage> createState() => _AdminParentRegistrationPageState();
+  State<AdminParentRegistrationPage> createState() =>
+      _AdminParentRegistrationPageState();
 }
 
-class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPage> {
+class _AdminParentRegistrationPageState
+    extends State<AdminParentRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
   final _parentNameController = TextEditingController();
   final _parentPhoneController = TextEditingController();
@@ -42,13 +46,7 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
   }
 
   Future<void> _loadClassOptions() async {
-    await StudentRegistryStore.instance.ensureLoaded();
-    final classes = StudentRegistryStore.instance.students
-        .map((item) => item.className.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final classes = await AdminDirectoryApiService.instance.fetchClasses();
     if (!mounted) return;
     setState(() {
       _classOptions = classes;
@@ -62,7 +60,10 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Veli Kaydı', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Veli Kaydı',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: Form(
         key: _formKey,
@@ -71,8 +72,10 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
           children: [
             const AdminHeroCard(
               eyebrow: 'Veli kayıt akışı',
-              title: 'Veli ve bağlı öğrenci bilgisini ayrı bir formda hazırlayın.',
-              description: 'Bu ekran veli odaklı kayıt toplar ve sistemde öğrenci-veli bağlantısını tek akışta oluşturur.',
+              title:
+                  'Veli ve bağlı öğrenci bilgisini ayrı bir formda hazırlayın.',
+              description:
+                  'Bu ekran veli odaklı kayıt toplar ve sistemde öğrenci-veli bağlantısını tek akışta oluşturur.',
               colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
               metrics: [
                 AdminHeroMetric(label: 'Kayıt Türü', value: 'Veli + Öğrenci'),
@@ -86,7 +89,10 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
                 children: [
                   const AdminSectionTitle(title: 'Veli Bilgileri'),
                   const SizedBox(height: 12),
-                  _field(controller: _parentNameController, label: 'Veli Ad Soyad'),
+                  _field(
+                    controller: _parentNameController,
+                    label: 'Veli Ad Soyad',
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -119,21 +125,35 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
                 children: [
                   const AdminSectionTitle(title: 'Bağlı Öğrenci Bilgileri'),
                   const SizedBox(height: 12),
-                  _field(controller: _studentNameController, label: 'Öğrenci Ad Soyad'),
+                  _field(
+                    controller: _studentNameController,
+                    label: 'Öğrenci Ad Soyad',
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: _classController.text.trim().isEmpty ? null : _classController.text.trim(),
+                          key: ValueKey(
+                            'parent-class-${_classController.text.trim()}-${_classOptions.length}',
+                          ),
+                          initialValue: _classController.text.trim().isEmpty
+                              ? null
+                              : _classController.text.trim(),
                           decoration: const InputDecoration(
                             labelText: 'Sınıf',
                             border: OutlineInputBorder(),
                           ),
                           items: _classOptions
-                              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                              .map(
+                                (item) => DropdownMenuItem(
+                                  value: item,
+                                  child: Text(item),
+                                ),
+                              )
                               .toList(),
-                          onChanged: (value) => _classController.text = value ?? '',
+                          onChanged: (value) =>
+                              _classController.text = value ?? '',
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -145,12 +165,26 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
                             border: OutlineInputBorder(),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'Genel Takip', child: Text('Genel Takip')),
-                            DropdownMenuItem(value: 'LGS Takip', child: Text('LGS Takip')),
-                            DropdownMenuItem(value: 'YKS Sayısal', child: Text('YKS Sayısal')),
-                            DropdownMenuItem(value: 'YKS Eşit Ağırlık', child: Text('YKS Eşit Ağırlık')),
+                            DropdownMenuItem(
+                              value: 'Genel Takip',
+                              child: Text('Genel Takip'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'LGS Takip',
+                              child: Text('LGS Takip'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'YKS Sayısal',
+                              child: Text('YKS Sayısal'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'YKS Eşit Ağırlık',
+                              child: Text('YKS Eşit Ağırlık'),
+                            ),
                           ],
-                          onChanged: (value) => setState(() => _programType = value ?? _programType),
+                          onChanged: (value) => setState(
+                            () => _programType = value ?? _programType,
+                          ),
                         ),
                       ),
                     ],
@@ -195,7 +229,9 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
       maxLines: maxLines,
       keyboardType: keyboardType,
       validator: required
-          ? (value) => (value == null || value.trim().isEmpty) ? '$label zorunlu.' : null
+          ? (value) => (value == null || value.trim().isEmpty)
+                ? '$label zorunlu.'
+                : null
           : null,
       decoration: InputDecoration(
         labelText: label,
@@ -208,7 +244,13 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final credentials = await StudentRegistryStore.instance.addStudent(
+      final parentCreds = await RegistrationApiService.instance.createParent(
+        fullName: _parentNameController.text.trim(),
+        phone: _parentPhoneController.text.trim(),
+        email: _parentEmailController.text.trim(),
+      );
+
+      final studentCreds = await StudentRegistryStore.instance.addStudent(
         fullName: _studentNameController.text.trim(),
         tcNo: '',
         className: _classController.text.trim(),
@@ -223,17 +265,48 @@ class _AdminParentRegistrationPageState extends State<AdminParentRegistrationPag
         note: _noteController.text.trim(),
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Veli kaydı oluşturuldu. Öğrenci kullanıcı adı: ${credentials.username}'),
-          behavior: SnackBarBehavior.floating,
+      await showDialog(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Kayıt Başarılı'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Veli Giriş Bilgileri',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              SelectableText('Kullanıcı: ${parentCreds.username}'),
+              SelectableText('Şifre: ${parentCreds.password}'),
+              const SizedBox(height: 12),
+              const Text(
+                'Öğrenci Giriş Bilgileri',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 4),
+              SelectableText('Kullanıcı: ${studentCreds.username}'),
+              SelectableText('Şifre: ${studentCreds.password}'),
+            ],
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Tamam'),
+            ),
+          ],
         ),
       );
+      if (!mounted) return;
       Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     } finally {
       if (mounted) setState(() => _saving = false);

@@ -10,4 +10,5 @@ public sealed class MessageItem : ITenantScopedEntity
     public string Text { get; set; } = string.Empty;
     public bool IsRead { get; set; }
     public DateTime SentAtUtc { get; set; } = DateTime.UtcNow;
+    public string Attachments { get; set; } = "[]";
 }

@@ -32,10 +32,7 @@ class _VeliChangePasswordPage extends State<VeliChangePasswordPage> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: theme.cardColor,
-          title: Text(
-            "Başarılı",
-            style: theme.textTheme.titleMedium,
-          ),
+          title: Text("Başarılı", style: theme.textTheme.titleMedium),
           content: Text(
             "Şifreniz başarıyla değiştirildi.",
             style: theme.textTheme.bodyMedium,
@@ -68,10 +65,7 @@ class _VeliChangePasswordPage extends State<VeliChangePasswordPage> {
       style: theme.textTheme.bodyMedium,
       decoration: InputDecoration(
         labelText: label,
-        prefixIcon: Icon(
-          Icons.lock_outline,
-          color: theme.colorScheme.primary,
-        ),
+        prefixIcon: Icon(Icons.lock_outline, color: theme.colorScheme.primary),
         suffixIcon: IconButton(
           onPressed: onToggle,
           icon: Icon(
@@ -89,9 +83,7 @@ class _VeliChangePasswordPage extends State<VeliChangePasswordPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Şifre Değiştir"),
-      ),
+      appBar: AppBar(title: const Text("Şifre Değiştir")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Container(

@@ -29,10 +29,11 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
   void initState() {
     super.initState();
     MessageRealtimeService.instance.ensureConnected().catchError((_) {});
-    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream.listen((payload) {
-      if (!mounted) return;
-      _upsertThread(MessageThreadRecord.fromMap(payload));
-    });
+    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
+        .listen((payload) {
+          if (!mounted) return;
+          _upsertThread(MessageThreadRecord.fromMap(payload));
+        });
     _loadThreads();
     _startSilentFallbackSync();
   }
@@ -118,7 +119,10 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
     } catch (_) {}
   }
 
-  bool _sameThreads(List<MessageThreadRecord> left, List<MessageThreadRecord> right) {
+  bool _sameThreads(
+    List<MessageThreadRecord> left,
+    List<MessageThreadRecord> right,
+  ) {
     if (identical(left, right)) return true;
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index += 1) {
@@ -144,7 +148,8 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
       title: 'Yeni Mesaj',
-      description: 'Öğrenci, veli, öğretmen, muhasebe ve idari birimler ile yeni sohbet başlatın.',
+      description:
+          'Öğrenci, veli, öğretmen, muhasebe ve idari birimler ile yeni sohbet başlatın.',
       recipients: recipients,
     );
 
@@ -165,13 +170,16 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
     final parents = <String, ChatRecipientOption>{};
     for (final student in _studentStore.students) {
       if (student.parentName.trim().isEmpty) continue;
-      final key = '${student.parentName.trim().toLowerCase()}|${student.parentEmail.trim().toLowerCase()}';
+      final key =
+          '${student.parentName.trim().toLowerCase()}|${student.parentEmail.trim().toLowerCase()}';
       parents.putIfAbsent(
         key,
         () => ChatRecipientOption(
           name: student.parentName,
           role: 'Parent',
-          contactKey: student.parentEmail.trim().isEmpty ? null : student.parentEmail.trim().split('@').first,
+          contactKey: student.parentEmail.trim().isEmpty
+              ? null
+              : student.parentEmail.trim().split('@').first,
           subtitle: '${student.fullName} • ${student.className}',
         ),
       );
@@ -179,15 +187,17 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
 
     return [
       ..._studentStore.students.map(
-            (item) => ChatRecipientOption(
-              name: item.fullName,
-              role: 'Student',
-              contactKey: item.username,
-              subtitle: item.className,
-            ),
-          ),
+        (item) => ChatRecipientOption(
+          name: item.fullName,
+          role: 'Student',
+          contactKey: item.username,
+          subtitle: item.className,
+        ),
+      ),
       ...parents.values,
-      ..._staffStore.teachers.where((item) => _isActive(item.status)).map(
+      ..._staffStore.teachers
+          .where((item) => _isActive(item.status))
+          .map(
             (item) => ChatRecipientOption(
               name: item.fullName,
               role: 'Teacher',
@@ -196,7 +206,9 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
             ),
           ),
       ..._staffStore.staff
-          .where((item) => _isActive(item.status) && item.roleType == 'Muhasebeci')
+          .where(
+            (item) => _isActive(item.status) && item.roleType == 'Muhasebeci',
+          )
           .map(
             (item) => ChatRecipientOption(
               name: item.fullName,
@@ -205,7 +217,9 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
               subtitle: item.branchOrDepartment,
             ),
           ),
-      ..._staffStore.personnel.where((item) => _isActive(item.status)).map(
+      ..._staffStore.personnel
+          .where((item) => _isActive(item.status))
+          .map(
             (item) => ChatRecipientOption(
               name: item.fullName,
               role: 'Administrative',

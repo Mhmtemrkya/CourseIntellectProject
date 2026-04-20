@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 ThemeData buildDynamicTheme(Color primary, Brightness brightness) {
   final bool isDark = brightness == Brightness.dark;
 
-  final Color scaffold = isDark ? const Color(0xFF121212) : const Color(0xFFF5F7FA);
+  final Color scaffold = isDark
+      ? const Color(0xFF121212)
+      : const Color(0xFFF5F7FA);
   final Color card = isDark ? const Color(0xFF1E1E1E) : Colors.white;
   final Color text = isDark ? Colors.white : Colors.black;
   final Color hint = Colors.grey;
@@ -85,5 +87,11 @@ ThemeData buildDynamicTheme(Color primary, Brightness brightness) {
 }
 
 /// Varsayılan sabit temalar (geriye uyumluluk)
-final ThemeData lightTheme = buildDynamicTheme(const Color(0xFF00354F), Brightness.light);
-final ThemeData darkTheme = buildDynamicTheme(const Color(0xFF00354F), Brightness.dark);
+final ThemeData lightTheme = buildDynamicTheme(
+  const Color(0xFF00354F),
+  Brightness.light,
+);
+final ThemeData darkTheme = buildDynamicTheme(
+  const Color(0xFF00354F),
+  Brightness.dark,
+);

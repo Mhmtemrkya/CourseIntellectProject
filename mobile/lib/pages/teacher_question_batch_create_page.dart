@@ -11,10 +11,12 @@ class TeacherQuestionBatchCreatePage extends StatefulWidget {
   const TeacherQuestionBatchCreatePage({super.key});
 
   @override
-  State<TeacherQuestionBatchCreatePage> createState() => _TeacherQuestionBatchCreatePageState();
+  State<TeacherQuestionBatchCreatePage> createState() =>
+      _TeacherQuestionBatchCreatePageState();
 }
 
-class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCreatePage> {
+class _TeacherQuestionBatchCreatePageState
+    extends State<TeacherQuestionBatchCreatePage> {
   static const List<String> _fallbackClasses = [
     '9-A',
     '9-B',
@@ -54,32 +56,44 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
   Future<void> _loadClasses() async {
     await QuestionBankStore.instance.loadQuestions();
     await StudentRegistryStore.instance.ensureLoaded();
-    final apiClasses = await AdminDirectoryApiService.instance.fetchClasses().catchError((_) => <String>[]);
+    final apiClasses = await AdminDirectoryApiService.instance
+        .fetchClasses()
+        .catchError((_) => <String>[]);
     final classes = {
-      ...apiClasses.map((item) => item.trim()).where((item) => item.isNotEmpty && item != 'Tüm Sınıflar'),
+      ...apiClasses
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty && item != 'Tüm Sınıflar'),
       ...StudentRegistryStore.instance.students
           .map((item) => item.className.trim())
           .where((item) => item.isNotEmpty),
       ...QuestionBankStore.instance.questions.expand(
-        (item) => item.classTargets.map((target) => target.trim()).where((target) => target.isNotEmpty && target != 'Tüm Sınıflar'),
+        (item) => item.classTargets
+            .map((target) => target.trim())
+            .where((target) => target.isNotEmpty && target != 'Tüm Sınıflar'),
       ),
-      ..._drafts.expand((draft) => draft.selectedClasses.where((item) => item != 'Tüm Sınıflar')),
+      ..._drafts.expand(
+        (draft) =>
+            draft.selectedClasses.where((item) => item != 'Tüm Sınıflar'),
+      ),
       ..._fallbackClasses,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     final subjects = {
       ..._defaultSubjects,
       ...QuestionBankStore.instance.questions
           .map((item) => item.subject.trim())
           .where((item) => item.isNotEmpty),
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     if (!mounted) return;
     setState(() {
-      _classOptions = ['Tüm Sınıflar', ...(classes.isEmpty ? _fallbackClasses : classes)];
+      _classOptions = [
+        'Tüm Sınıflar',
+        ...(classes.isEmpty ? _fallbackClasses : classes),
+      ];
       _subjectOptions = subjects;
       for (final draft in _drafts) {
-        draft.selectedClasses.removeWhere((item) => item != 'Tüm Sınıflar' && !classes.contains(item));
+        draft.selectedClasses.removeWhere(
+          (item) => item != 'Tüm Sınıflar' && !classes.contains(item),
+        );
         if (draft.selectedClasses.isEmpty) {
           draft.selectedClasses.add('Tüm Sınıflar');
         }
@@ -138,20 +152,32 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
   Future<void> _saveAll() async {
     if (_isSaving) return;
     final hasInvalid = _drafts.any(
-      (item) => item.questionController.text.trim().isEmpty || item.topicController.text.trim().isEmpty,
+      (item) =>
+          item.questionController.text.trim().isEmpty ||
+          item.topicController.text.trim().isEmpty,
     );
     if (hasInvalid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Her soru kartında konu ve soru metni zorunludur.')),
+        const SnackBar(
+          content: Text('Her soru kartında konu ve soru metni zorunludur.'),
+        ),
       );
       return;
     }
     final hasInvalidMultipleChoice = _drafts.any(
-      (item) => item.type == 'Çoktan Seçmeli' && item.optionControllers.map((entry) => entry.text.trim()).where((entry) => entry.isNotEmpty).length < 2,
+      (item) =>
+          item.type == 'Çoktan Seçmeli' &&
+          item.optionControllers
+                  .map((entry) => entry.text.trim())
+                  .where((entry) => entry.isNotEmpty)
+                  .length <
+              2,
     );
     if (hasInvalidMultipleChoice) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Çoktan seçmeli soru kartlarında en az iki şık girin.')),
+        const SnackBar(
+          content: Text('Çoktan seçmeli soru kartlarında en az iki şık girin.'),
+        ),
       );
       return;
     }
@@ -175,19 +201,21 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
             draft.imagePath!.isNotEmpty &&
             !draft.imagePath!.startsWith('http://') &&
             !draft.imagePath!.startsWith('https://')) {
-          uploadedImagePath = await QuestionBankApiService.instance.uploadQuestionAsset(
-            path: draft.imagePath!,
-            folder: 'question-images',
-          );
+          uploadedImagePath = await QuestionBankApiService.instance
+              .uploadQuestionAsset(
+                path: draft.imagePath!,
+                folder: 'question-images',
+              );
         }
         if (draft.solutionAssetPath != null &&
             draft.solutionAssetPath!.isNotEmpty &&
             !draft.solutionAssetPath!.startsWith('http://') &&
             !draft.solutionAssetPath!.startsWith('https://')) {
-          uploadedSolutionPath = await QuestionBankApiService.instance.uploadQuestionAsset(
-            path: draft.solutionAssetPath!,
-            folder: 'question-solutions',
-          );
+          uploadedSolutionPath = await QuestionBankApiService.instance
+              .uploadQuestionAsset(
+                path: draft.solutionAssetPath!,
+                folder: 'question-solutions',
+              );
         }
         await QuestionBankStore.instance.addQuestion(
           subject: draft.subject,
@@ -198,7 +226,9 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
           teacher: teacherName,
           imagePath: uploadedImagePath,
           options: draft.type == 'Çoktan Seçmeli' ? options : const [],
-          correctOptionIndex: draft.type == 'Çoktan Seçmeli' ? draft.correctOptionIndex : null,
+          correctOptionIndex: draft.type == 'Çoktan Seçmeli'
+              ? draft.correctOptionIndex
+              : null,
           classTargets: draft.selectedClasses.toList(),
           solutionAssetPath: uploadedSolutionPath,
           solutionAssetType: draft.solutionAssetType,
@@ -209,20 +239,24 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
           expectedAnswer: draft.type == 'Çoktan Seçmeli'
               ? options.elementAtOrNull(draft.correctOptionIndex)
               : (draft.type == 'Doğru / Yanlış'
-                  ? (draft.answerController.text.trim() == 'Yanlış' ? 'Yanlış' : 'Doğru')
-                  : draft.answerController.text.trim()),
+                    ? (draft.answerController.text.trim() == 'Yanlış'
+                          ? 'Yanlış'
+                          : 'Doğru')
+                    : draft.answerController.text.trim()),
         );
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${_drafts.length} soru soru bankasına kaydedildi.')),
+        SnackBar(
+          content: Text('${_drafts.length} soru soru bankasına kaydedildi.'),
+        ),
       );
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _isSaving = false);
@@ -271,11 +305,15 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                   children: [
                     Text(
                       'Soru ${index + 1}',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const Spacer(),
                     IconButton(
-                      onPressed: _drafts.length == 1 ? null : () => _removeDraft(draft),
+                      onPressed: _drafts.length == 1
+                          ? null
+                          : () => _removeDraft(draft),
                       icon: const Icon(Icons.delete_outline_rounded),
                     ),
                   ],
@@ -285,9 +323,13 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                   initialValue: draft.subject,
                   decoration: const InputDecoration(labelText: 'Ders'),
                   items: _subjectOptions
-                      .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                      .map(
+                        (item) =>
+                            DropdownMenuItem(value: item, child: Text(item)),
+                      )
                       .toList(),
-                  onChanged: (value) => setState(() => draft.subject = value ?? draft.subject),
+                  onChanged: (value) =>
+                      setState(() => draft.subject = value ?? draft.subject),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -303,18 +345,30 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                     DropdownMenuItem(value: 'Orta', child: Text('Orta')),
                     DropdownMenuItem(value: 'Zor', child: Text('Zor')),
                   ],
-                  onChanged: (value) => setState(() => draft.difficulty = value ?? draft.difficulty),
+                  onChanged: (value) => setState(
+                    () => draft.difficulty = value ?? draft.difficulty,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: draft.type,
                   decoration: const InputDecoration(labelText: 'Soru Tipi'),
                   items: const [
-                    DropdownMenuItem(value: 'Açık Uçlu', child: Text('Açık Uçlu')),
-                    DropdownMenuItem(value: 'Çoktan Seçmeli', child: Text('Çoktan Seçmeli')),
-                    DropdownMenuItem(value: 'Doğru / Yanlış', child: Text('Doğru / Yanlış')),
+                    DropdownMenuItem(
+                      value: 'Açık Uçlu',
+                      child: Text('Açık Uçlu'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Çoktan Seçmeli',
+                      child: Text('Çoktan Seçmeli'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'Doğru / Yanlış',
+                      child: Text('Doğru / Yanlış'),
+                    ),
                   ],
-                  onChanged: (value) => setState(() => draft.type = value ?? draft.type),
+                  onChanged: (value) =>
+                      setState(() => draft.type = value ?? draft.type),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
@@ -322,9 +376,14 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                   decoration: const InputDecoration(labelText: 'Görsel Konumu'),
                   items: const [
                     DropdownMenuItem(value: 'Top', child: Text('Görsel Üstte')),
-                    DropdownMenuItem(value: 'Bottom', child: Text('Görsel Altta')),
+                    DropdownMenuItem(
+                      value: 'Bottom',
+                      child: Text('Görsel Altta'),
+                    ),
                   ],
-                  onChanged: (value) => setState(() => draft.imagePlacement = value ?? draft.imagePlacement),
+                  onChanged: (value) => setState(
+                    () => draft.imagePlacement = value ?? draft.imagePlacement,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
@@ -371,7 +430,9 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                       padding: const EdgeInsets.only(bottom: 10),
                       child: TextField(
                         controller: draft.optionControllers[optionIndex],
-                        decoration: InputDecoration(labelText: 'Şık ${optionIndex + 1}'),
+                        decoration: InputDecoration(
+                          labelText: 'Şık ${optionIndex + 1}',
+                        ),
                       ),
                     ),
                   ),
@@ -385,7 +446,8 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                         child: Text('Şık ${index + 1}'),
                       ),
                     ),
-                    onChanged: (value) => setState(() => draft.correctOptionIndex = value ?? 0),
+                    onChanged: (value) =>
+                        setState(() => draft.correctOptionIndex = value ?? 0),
                   ),
                 ] else if (draft.type == 'Doğru / Yanlış') ...[
                   const SizedBox(height: 12),
@@ -393,11 +455,16 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                     spacing: 10,
                     runSpacing: 10,
                     children: ['Doğru', 'Yanlış'].map((item) {
-                      final selected = (draft.answerController.text.trim() == 'Yanlış' ? 'Yanlış' : 'Doğru') == item;
+                      final selected =
+                          (draft.answerController.text.trim() == 'Yanlış'
+                              ? 'Yanlış'
+                              : 'Doğru') ==
+                          item;
                       return ChoiceChip(
                         label: Text(item),
                         selected: selected,
-                        onSelected: (_) => setState(() => draft.answerController.text = item),
+                        onSelected: (_) =>
+                            setState(() => draft.answerController.text = item),
                       );
                     }).toList(),
                   ),
@@ -405,7 +472,9 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                   const SizedBox(height: 12),
                   TextField(
                     controller: draft.answerController,
-                    decoration: const InputDecoration(labelText: 'Beklenen Cevap'),
+                    decoration: const InputDecoration(
+                      labelText: 'Beklenen Cevap',
+                    ),
                   ),
                 ],
                 const SizedBox(height: 12),
@@ -413,7 +482,9 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                   contentPadding: EdgeInsets.zero,
                   value: draft.revealCorrectAnswerToStudent,
                   title: const Text('Doğru cevabı öğrenciye göster'),
-                  onChanged: (value) => setState(() => draft.revealCorrectAnswerToStudent = value),
+                  onChanged: (value) => setState(
+                    () => draft.revealCorrectAnswerToStudent = value,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Wrap(
@@ -424,7 +495,9 @@ class _TeacherQuestionBatchCreatePageState extends State<TeacherQuestionBatchCre
                       onPressed: () => _pickFile(draft, image: true),
                       icon: const Icon(Icons.image_outlined),
                       label: Text(
-                        draft.imagePath == null ? 'Görsel Ekle' : draft.imagePath!.split('/').last,
+                        draft.imagePath == null
+                            ? 'Görsel Ekle'
+                            : draft.imagePath!.split('/').last,
                       ),
                     ),
                     OutlinedButton.icon(
@@ -464,7 +537,10 @@ class _QuestionDraft {
   final TextEditingController topicController = TextEditingController();
   final TextEditingController questionController = TextEditingController();
   final TextEditingController answerController = TextEditingController();
-  final List<TextEditingController> optionControllers = List.generate(4, (_) => TextEditingController());
+  final List<TextEditingController> optionControllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
 
   String subject = 'Matematik';
   String difficulty = 'Orta';

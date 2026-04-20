@@ -7,10 +7,7 @@ import '../widgets/responsive_layout.dart';
 class StudentQuestionDetailPage extends StatelessWidget {
   final Map<String, dynamic> question;
 
-  const StudentQuestionDetailPage({
-    super.key,
-    required this.question,
-  });
+  const StudentQuestionDetailPage({super.key, required this.question});
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +55,9 @@ class StudentQuestionDetailPage extends StatelessWidget {
                       ),
                       child: Text(
                         question['question'] as String,
-                        style: theme.textTheme.bodyLarge?.copyWith(height: 1.55),
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          height: 1.55,
+                        ),
                       ),
                     ),
                   ],
@@ -81,7 +80,11 @@ class StudentQuestionDetailPage extends StatelessWidget {
                     _infoRow(theme, 'Ders', question['subject'] as String),
                     _infoRow(theme, 'Öğretmen', question['teacher'] as String),
                     _infoRow(theme, 'Konu', question['topic'] as String),
-                    _infoRow(theme, 'Öncelik', question['priority'] as String? ?? 'Normal'),
+                    _infoRow(
+                      theme,
+                      'Öncelik',
+                      question['priority'] as String? ?? 'Normal',
+                    ),
                     _infoRow(theme, 'Gönderim', question['time'] as String),
                   ],
                 ),
@@ -111,7 +114,9 @@ class StudentQuestionDetailPage extends StatelessWidget {
                         child: Text(
                           'Bu soruya eklenmiş dosya bulunmuyor.',
                           style: theme.textTheme.bodyMedium?.copyWith(
-                            color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                            color: theme.textTheme.bodySmall?.color?.withValues(
+                              alpha: 0.72,
+                            ),
                           ),
                         ),
                       )
@@ -127,11 +132,21 @@ class StudentQuestionDetailPage extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              Icon(_attachmentIcon(item['fileType']?.toString()), color: theme.colorScheme.primary),
+                              Icon(
+                                _attachmentIcon(item['fileType']?.toString()),
+                                color: theme.colorScheme.primary,
+                              ),
                               const SizedBox(width: 10),
-                              Expanded(child: Text(item['fileName']?.toString() ?? 'Ek')),
+                              Expanded(
+                                child: Text(
+                                  item['fileName']?.toString() ?? 'Ek',
+                                ),
+                              ),
                               TextButton(
-                                onPressed: () => _openAttachment(context, item['fileUrl']?.toString()),
+                                onPressed: () => _openAttachment(
+                                  context,
+                                  item['fileUrl']?.toString(),
+                                ),
                                 child: const Text('Aç'),
                               ),
                             ],
@@ -150,7 +165,9 @@ class StudentQuestionDetailPage extends StatelessWidget {
 
   Widget _heroCard(ThemeData theme, bool isDark) {
     final answered = question['status'] == 'Yanıtlandi';
-    final statusColor = answered ? const Color(0xFF059669) : const Color(0xFFF59E0B);
+    final statusColor = answered
+        ? const Color(0xFF059669)
+        : const Color(0xFFF59E0B);
 
     return Container(
       width: double.infinity,
@@ -183,7 +200,10 @@ class StudentQuestionDetailPage extends StatelessWidget {
             ),
             child: Text(
               question['topic'] as String,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -199,11 +219,19 @@ class StudentQuestionDetailPage extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _heroStat('Durum', question['status'] as String, statusColor),
+                child: _heroStat(
+                  'Durum',
+                  question['status'] as String,
+                  statusColor,
+                ),
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _heroStat('Öncelik', question['priority'] as String? ?? 'Normal', Colors.white),
+                child: _heroStat(
+                  'Öncelik',
+                  question['priority'] as String? ?? 'Normal',
+                  Colors.white,
+                ),
               ),
             ],
           ),
@@ -223,10 +251,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(
-              color: valueColor,
-              fontWeight: FontWeight.w800,
-            ),
+            style: TextStyle(color: valueColor, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 4),
           Text(
@@ -271,13 +296,17 @@ class StudentQuestionDetailPage extends StatelessWidget {
             child: Text(
               label,
               style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                color: theme.textTheme.bodySmall?.color?.withValues(
+                  alpha: 0.72,
+                ),
               ),
             ),
           ),
           Text(
             value,
-            style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -302,10 +331,13 @@ class StudentQuestionDetailPage extends StatelessWidget {
     final normalized = value.startsWith('http')
         ? value
         : '${ApiConfig.baseUrl}${value.startsWith('/') ? '' : '/'}$value';
-    final success = await launchUrl(Uri.parse(normalized), mode: LaunchMode.externalApplication);
-    if (!context.mounted || success) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Ek dosya açılamadı.')),
+    final success = await launchUrl(
+      Uri.parse(normalized),
+      mode: LaunchMode.externalApplication,
     );
+    if (!context.mounted || success) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Ek dosya açılamadı.')));
   }
 }

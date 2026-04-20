@@ -22,24 +22,62 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
   @override
   void initState() {
     super.initState();
-    _store.ensureOverdueAlerts();
-    StudentRegistryStore.instance.ensureLoaded();
+    _store.addListener(_refresh);
+    StudentRegistryStore.instance.addListener(_refresh);
+    _initialize();
   }
 
   @override
   void dispose() {
+    _store.removeListener(_refresh);
+    StudentRegistryStore.instance.removeListener(_refresh);
     _searchController.dispose();
     super.dispose();
   }
 
+  Future<void> _initialize() async {
+    await Future.wait([
+      StudentRegistryStore.instance.ensureLoaded(),
+      _store.isLoaded ? Future<void>.value() : _store.loadDashboard(),
+    ]);
+    await _store.ensureOverdueAlerts();
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedClass = _resolveSelectedClass(
+        _selectedClass,
+        _availableClasses(),
+      );
+    });
+  }
+
+  void _refresh() {
+    if (!mounted) {
+      return;
+    }
+    setState(() {
+      _selectedClass = _resolveSelectedClass(
+        _selectedClass,
+        _availableClasses(),
+      );
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final overdueItems = _store.installments.where((item) => item.status == 'Geciken').toList();
-    final classes = ['Tümü', ...{for (final item in overdueItems) _studentClass(item.student)}];
+    final overdueItems = _store.installments
+        .where((item) => item.status == 'Geciken')
+        .toList();
+    final classes = _availableClasses(overdueItems);
+    final selectedClass = _resolveSelectedClass(_selectedClass, classes);
     final filtered = overdueItems.where((item) {
-      final matchesClass = _selectedClass == 'Tümü' || _studentClass(item.student) == _selectedClass;
+      final matchesClass =
+          selectedClass == 'Tümü' ||
+          _studentClass(item.student) == selectedClass;
       final query = _searchController.text.toLowerCase();
-      final matchesSearch = query.isEmpty || item.student.toLowerCase().contains(query);
+      final matchesSearch =
+          query.isEmpty || item.student.toLowerCase().contains(query);
       return matchesClass && matchesSearch;
     }).toList();
 
@@ -50,12 +88,20 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
         children: [
           AccountingHeroCard(
             eyebrow: 'Riskli bakiye takibi',
-            title: 'Gecikmiş ödemeleri sınıf ve öğrenci bazında filtreleyin, hızlı aksiyon alın.',
-            description: 'Mesaj, arama ve hatırlatma akışları aynı kart içinde kullanılabilir.',
+            title:
+                'Gecikmiş ödemeleri sınıf ve öğrenci bazında filtreleyin, hızlı aksiyon alın.',
+            description:
+                'Mesaj, arama ve hatırlatma akışları aynı kart içinde kullanılabilir.',
             colors: const [Color(0xFF0F172A), Color(0xFFB42318)],
             metrics: [
-              AccountingHeroMetric(label: 'Geciken Tutar', value: _store.formatAmount(_store.overdueTotal)),
-              AccountingHeroMetric(label: 'Kritik Kayıt', value: '${filtered.length}'),
+              AccountingHeroMetric(
+                label: 'Geciken Tutar',
+                value: _store.formatAmount(_store.overdueTotal),
+              ),
+              AccountingHeroMetric(
+                label: 'Kritik Kayıt',
+                value: '${filtered.length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -65,14 +111,30 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                 TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(prefixIcon: Icon(Icons.search), hintText: 'Öğrenci ara', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    prefixIcon: Icon(Icons.search),
+                    hintText: 'Öğrenci ara',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
-                  initialValue: _selectedClass,
-                  decoration: const InputDecoration(labelText: 'Sınıf', border: OutlineInputBorder()),
-                  items: classes.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: (value) => setState(() => _selectedClass = value ?? 'Tümü'),
+                  key: ValueKey(
+                    'overdue-class-$selectedClass-${classes.length}',
+                  ),
+                  initialValue: selectedClass,
+                  decoration: const InputDecoration(
+                    labelText: 'Sınıf',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: classes
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedClass = value ?? 'Tümü'),
                 ),
               ],
             ),
@@ -93,13 +155,27 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
           Row(
             children: [
               Expanded(
-                child: Text(item.student, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                child: Text(
+                  item.student,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
               ),
-              Text(item.amount, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: const Color(0xFFB42318))),
+              Text(
+                item.amount,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: const Color(0xFFB42318),
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 4),
-          Text('${_studentClass(item.student)} • ${item.due} gecikme', style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            '${_studentClass(item.student)} • ${item.due} gecikme',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -109,7 +185,8 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AccountingChatPage(user: '${item.student} Velisi'),
+                    builder: (_) =>
+                        AccountingChatPage(user: '${item.student} Velisi'),
                   ),
                 ),
                 icon: const Icon(Icons.message_outlined),
@@ -123,8 +200,9 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
               OutlinedButton.icon(
                 onPressed: () {
                   _store.addFinanceNotification(
-                    title: '${item.student} icin odeme hatirlatmasi',
-                    message: 'Sayin veli, ${item.student} ogrencimize ait ${item.amount} tutarli odeme gecikmistir. Lutfen okul muhasebesi ile iletisime geciniz.',
+                    title: '${item.student} için ödeme hatırlatması',
+                    message:
+                        'Sayın veli, ${item.student} öğrencimize ait ${item.amount} tutarlı ödeme gecikmiştir. Lütfen okul muhasebesi ile iletişime geçiniz.',
                   );
                   _showSnack(context, 'Hatırlatma bildirimi veliye iletildi.');
                 },
@@ -166,7 +244,7 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
           .firstWhere((item) => item.fullName == student)
           .className;
     } catch (_) {
-      return 'Tümü';
+      return 'Sınıf Yok';
     }
   }
 
@@ -178,5 +256,23 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
     } catch (_) {
       return '+905550000000';
     }
+  }
+
+  List<String> _availableClasses([List<InstallmentRecord>? overdueItems]) {
+    final items =
+        overdueItems ??
+        _store.installments.where((item) => item.status == 'Geciken').toList();
+    final classes =
+        items
+            .map((item) => _studentClass(item.student))
+            .where((value) => value.trim().isNotEmpty && value != 'Sınıf Yok')
+            .toSet()
+            .toList()
+          ..sort();
+    return ['Tümü', ...classes];
+  }
+
+  String _resolveSelectedClass(String current, List<String> classes) {
+    return classes.contains(current) ? current : 'Tümü';
   }
 }

@@ -53,11 +53,16 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
   @override
   Widget build(BuildContext context) {
     final students = _students;
-    final classes = ['Tümü', ...{for (final item in students) item.className}.toList()..sort()];
+    final classes = [
+      'Tümü',
+      ...{for (final item in students) item.className}.toList()..sort(),
+    ];
     final filtered = students.where((student) {
-      final matchesClass = _selectedClass == 'Tümü' || student.className == _selectedClass;
+      final matchesClass =
+          _selectedClass == 'Tümü' || student.className == _selectedClass;
       final query = _searchController.text.trim().toLowerCase();
-      final matchesQuery = query.isEmpty ||
+      final matchesQuery =
+          query.isEmpty ||
           student.fullName.toLowerCase().contains(query) ||
           student.parentName.toLowerCase().contains(query) ||
           student.currentSchool.toLowerCase().contains(query);
@@ -66,18 +71,26 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Öğrenci Listesi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Öğrenci Listesi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Öğrenci yönetimi',
-            title: 'Kurumdaki tüm öğrencileri sınıf, veli ve durum bilgisiyle yönetin.',
-            description: 'Yönetici görünümünde öğrenci arama, sınıf filtreleme ve hızlı erişim aksiyonları tek ekranda sunulur.',
+            title:
+                'Kurumdaki tüm öğrencileri sınıf, veli ve durum bilgisiyle yönetin.',
+            description:
+                'Yönetici görünümünde öğrenci arama, sınıf filtreleme ve hızlı erişim aksiyonları tek ekranda sunulur.',
             metrics: [
               AdminHeroMetric(label: 'Toplam', value: '${students.length}'),
-              AdminHeroMetric(label: 'Filtrelenen', value: '${filtered.length}'),
+              AdminHeroMetric(
+                label: 'Filtrelenen',
+                value: '${filtered.length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -106,37 +119,42 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 ],
               ),
             )
-          else
-            ...[
-          AdminPanel(
-            child: Column(
-              children: [
-                TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
-                    prefixIcon: Icon(Icons.search),
-                    hintText: 'Öğrenci veya veli ara',
-                    border: OutlineInputBorder(),
+          else ...[
+            AdminPanel(
+              child: Column(
+                children: [
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (_) => setState(() {}),
+                    decoration: const InputDecoration(
+                      prefixIcon: Icon(Icons.search),
+                      hintText: 'Öğrenci veya veli ara',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                DropdownButtonFormField<String>(
-                  initialValue: _selectedClass,
-                  decoration: const InputDecoration(
-                    labelText: 'Sınıf Filtresi',
-                    border: OutlineInputBorder(),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _selectedClass,
+                    decoration: const InputDecoration(
+                      labelText: 'Sınıf Filtresi',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: classes
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setState(() => _selectedClass = value ?? 'Tümü'),
                   ),
-                  items: classes
-                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
-                      .toList(),
-                  onChanged: (value) => setState(() => _selectedClass = value ?? 'Tümü'),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 16),
-          ...filtered.map((student) => _studentCard(context, student)),
+            const SizedBox(height: 16),
+            ...filtered.map((student) => _studentCard(context, student)),
           ],
         ],
       ),
@@ -149,6 +167,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       _ => const Color(0xFF14532D),
     };
     final mappedStudent = StudentRegistryRecord(
+      id: student.id,
       fullName: student.fullName,
       tcNo: student.tcNo,
       className: student.className,
@@ -162,7 +181,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
       address: student.address,
       note: student.note,
       username: student.username,
-      password: 'Guvenli sekilde saklaniyor',
+      password: 'Güvenli sekilde saklaniyor',
       status: student.status == 'Active' ? 'Aktif' : 'Pasif',
     );
 
@@ -185,9 +204,17 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(student.fullName, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      student.fullName,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('${student.className} • Veli: ${student.parentName}', style: Theme.of(context).textTheme.bodySmall),
+                    Text(
+                      '${student.className} • Veli: ${student.parentName}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
                   ],
                 ),
               ),
@@ -200,13 +227,16 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
               const Icon(Icons.phone_outlined, size: 18),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(student.parentPhone, style: Theme.of(context).textTheme.bodyMedium),
+                child: Text(
+                  student.parentPhone,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
               ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
-            '${student.currentSchool} • TC: ${student.tcNo} • Kullanici: ${student.username}',
+            '${student.currentSchool} • TC: ${student.tcNo} • Kullanıcı: ${student.username}',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
           ),
           const SizedBox(height: 12),
@@ -215,12 +245,17 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
             runSpacing: 8,
             children: [
               FilledButton.tonalIcon(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AdminStudentDetailPage(student: mappedStudent),
-                  ),
-                ),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          AdminStudentDetailPage(student: mappedStudent),
+                    ),
+                  );
+                  if (!mounted) return;
+                  await _loadStudents();
+                },
                 icon: const Icon(Icons.badge_outlined),
                 label: const Text('Detay'),
               ),
@@ -228,7 +263,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                 onPressed: () => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AdminParentContactPage(student: mappedStudent),
+                    builder: (_) =>
+                        AdminParentContactPage(student: mappedStudent),
                   ),
                 ),
                 icon: const Icon(Icons.chat_bubble_outline_rounded),

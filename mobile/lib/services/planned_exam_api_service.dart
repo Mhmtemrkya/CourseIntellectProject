@@ -106,25 +106,36 @@ class PlannedExamApiService {
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/plannedexams').replace(
         queryParameters: {
-          if (className != null && className.trim().isNotEmpty) 'className': className.trim(),
-          if (teacherName != null && teacherName.trim().isNotEmpty) 'teacherName': teacherName.trim(),
-          if (studentName != null && studentName.trim().isNotEmpty) 'studentName': studentName.trim(),
-          if (studentUsername != null && studentUsername.trim().isNotEmpty) 'studentUsername': studentUsername.trim(),
+          if (className != null && className.trim().isNotEmpty)
+            'className': className.trim(),
+          if (teacherName != null && teacherName.trim().isNotEmpty)
+            'teacherName': teacherName.trim(),
+          if (studentName != null && studentName.trim().isNotEmpty)
+            'studentName': studentName.trim(),
+          if (studentUsername != null && studentUsername.trim().isNotEmpty)
+            'studentUsername': studentUsername.trim(),
         },
       ),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PlannedExamApiException('Planlı sınavlar alınamadı (${response.statusCode}).');
+      throw PlannedExamApiException(
+        'Planlı sınavlar alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => PlannedExamRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              PlannedExamRecord.fromMap(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
-  Future<PlannedExamRecord> createPlannedExam(Map<String, dynamic> payload) async {
+  Future<PlannedExamRecord> createPlannedExam(
+    Map<String, dynamic> payload,
+  ) async {
     final session = await _session();
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/plannedexams'),
@@ -136,10 +147,14 @@ class PlannedExamApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PlannedExamApiException('Planlı sınav oluşturulamadı (${response.statusCode}).');
+      throw PlannedExamApiException(
+        'Planlı sınav oluşturulamadı (${response.statusCode}).',
+      );
     }
 
-    return PlannedExamRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return PlannedExamRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<void> deletePlannedExam(String id) async {
@@ -150,14 +165,18 @@ class PlannedExamApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw PlannedExamApiException('Planlı sınav silinemedi (${response.statusCode}).');
+      throw PlannedExamApiException(
+        'Planlı sınav silinemedi (${response.statusCode}).',
+      );
     }
   }
 
   Future<AuthSession> _session() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const PlannedExamApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const PlannedExamApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
     return session;
   }

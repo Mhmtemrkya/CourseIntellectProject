@@ -55,42 +55,165 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   @override
   Widget build(BuildContext context) {
     final cards = [
-      _SummaryMetric('Toplam Alacak', _store.formatAmount(_store.totalReceivables), const Color(0xFF0F766E), Icons.account_balance_wallet_outlined),
-      _SummaryMetric('Tahsil Edilen', _store.formatAmount(_store.collectedTotal), const Color(0xFF2563EB), Icons.payments_outlined),
-      _SummaryMetric('Bekleyen', _store.formatAmount(_store.pendingTotal), const Color(0xFFB45309), Icons.pending_actions_outlined),
-      _SummaryMetric('Geciken', _store.formatAmount(_store.overdueTotal), const Color(0xFFB42318), Icons.warning_amber_rounded),
+      _SummaryMetric(
+        'Toplam Alacak',
+        _store.formatAmount(_store.totalReceivables),
+        const Color(0xFF0F766E),
+        Icons.account_balance_wallet_outlined,
+      ),
+      _SummaryMetric(
+        'Tahsil Edilen',
+        _store.formatAmount(_store.collectedTotal),
+        const Color(0xFF2563EB),
+        Icons.payments_outlined,
+      ),
+      _SummaryMetric(
+        'Bekleyen',
+        _store.formatAmount(_store.pendingTotal),
+        const Color(0xFFB45309),
+        Icons.pending_actions_outlined,
+      ),
+      _SummaryMetric(
+        'Geciken',
+        _store.formatAmount(_store.overdueTotal),
+        const Color(0xFFB42318),
+        Icons.warning_amber_rounded,
+      ),
     ];
 
     final modules = [
-      _ModuleCard('Öğrenci Cari Hesapları', 'Sınıf, toplam ücret, ödenen, kalan', Icons.groups_2_outlined, const Color(0xFF2563EB), const AccountingLedgerPage()),
-      _ModuleCard('Tahsilatlar', 'Güncel ödeme hareketleri ve yeni tahsilat', Icons.point_of_sale_outlined, const Color(0xFF0F766E), const AccountingReceiptsPage()),
-      _ModuleCard('Taksitler', 'Bekleyen, geciken ve yeni planlar', Icons.calendar_month_outlined, const Color(0xFF7C3AED), const AccountingInstallmentsPage()),
-      _ModuleCard('Faturalar ve Makbuzlar', 'Öğrenci, mekan, gider ve maaş kayıtları', Icons.receipt_long_outlined, const Color(0xFFB45309), const AccountingInvoicesPage()),
-      _ModuleCard('İndirim ve Burs', 'Aktif indirim, burs ve önizleme', Icons.workspace_premium_outlined, const Color(0xFF0891B2), const AccountingDiscountPage()),
-      _ModuleCard('Geciken Ödemeler', 'Arama, filtre ve iletişim aksiyonları', Icons.notifications_active_outlined, const Color(0xFFB42318), const AccountingOverduePage()),
-      _ModuleCard('Mesajlar', 'Veli ve öğrenci finans iletişimi', Icons.chat_bubble_outline_rounded, const Color(0xFF14532D), const AccountingMessagesPage()),
-      _ModuleCard('Dışa Aktar', 'Excel, PDF ve hazır rapor çıkışları', Icons.ios_share_outlined, const Color(0xFF4F46E5), const AccountingExportsPage()),
-      _ModuleCard('Maaş Ödemeleri', 'Personel maaş ve banka planlaması', Icons.badge_outlined, const Color(0xFF1D4ED8), const AccountingSalaryPage()),
-      _ModuleCard('Tahsilat Takvimi', 'Gun bazli beklenen odeme gorunumu', Icons.calendar_today_outlined, const Color(0xFF2563EB), const AccountingCollectionCalendarPage()),
-      _ModuleCard('Toplu Islem Merkezi', 'Toplu tahsilat ve toplu mesaj akisi', Icons.groups_outlined, const Color(0xFF14532D), const AccountingBulkActionsPage()),
-      _ModuleCard('Makbuz Arsivi', 'Tum tahsilat belgelerine tek yerden erisim', Icons.folder_copy_outlined, const Color(0xFF7C3AED), const AccountingReceiptArchivePage()),
-      _ModuleCard('Gecikme Senaryolari', 'Otomatik hatirlatma ve eskalasyon kurallari', Icons.rule_folder_outlined, const Color(0xFFB45309), const AccountingOverdueRulesPage()),
-      _ModuleCard('Kasa Dagilimi', 'Nakit, kart ve havale kirilimi', Icons.pie_chart_outline_rounded, const Color(0xFF0891B2), const AccountingCashReportPage()),
-      _ModuleCard('Mutabakat', 'Banka, POS ve kasa eslestirme merkezi', Icons.compare_arrows_outlined, const Color(0xFF4F46E5), const AccountingReconciliationPage()),
+      _ModuleCard(
+        'Öğrenci Cari Hesapları',
+        'Sınıf, toplam ücret, ödenen, kalan',
+        Icons.groups_2_outlined,
+        const Color(0xFF2563EB),
+        const AccountingLedgerPage(),
+      ),
+      _ModuleCard(
+        'Tahsilatlar',
+        'Güncel ödeme hareketleri ve yeni tahsilat',
+        Icons.point_of_sale_outlined,
+        const Color(0xFF0F766E),
+        const AccountingReceiptsPage(),
+      ),
+      _ModuleCard(
+        'Taksitler',
+        'Bekleyen, geciken ve yeni planlar',
+        Icons.calendar_month_outlined,
+        const Color(0xFF7C3AED),
+        const AccountingInstallmentsPage(),
+      ),
+      _ModuleCard(
+        'Faturalar ve Makbuzlar',
+        'Öğrenci, mekan, gider ve maaş kayıtları',
+        Icons.receipt_long_outlined,
+        const Color(0xFFB45309),
+        const AccountingInvoicesPage(),
+      ),
+      _ModuleCard(
+        'İndirim ve Burs',
+        'Aktif indirim, burs ve önizleme',
+        Icons.workspace_premium_outlined,
+        const Color(0xFF0891B2),
+        const AccountingDiscountPage(),
+      ),
+      _ModuleCard(
+        'Geciken Ödemeler',
+        'Arama, filtre ve iletişim aksiyonları',
+        Icons.notifications_active_outlined,
+        const Color(0xFFB42318),
+        const AccountingOverduePage(),
+      ),
+      _ModuleCard(
+        'Mesajlar',
+        'Veli ve öğrenci finans iletişimi',
+        Icons.chat_bubble_outline_rounded,
+        const Color(0xFF14532D),
+        const AccountingMessagesPage(),
+      ),
+      _ModuleCard(
+        'Dışa Aktar',
+        'Excel, PDF ve hazır rapor çıkışları',
+        Icons.ios_share_outlined,
+        const Color(0xFF4F46E5),
+        const AccountingExportsPage(),
+      ),
+      _ModuleCard(
+        'Maaş Ödemeleri',
+        'Personel maaş ve banka planlaması',
+        Icons.badge_outlined,
+        const Color(0xFF1D4ED8),
+        const AccountingSalaryPage(),
+      ),
+      _ModuleCard(
+        'Tahsilat Takvimi',
+        'Gün bazlı beklenen ödeme görünümü',
+        Icons.calendar_today_outlined,
+        const Color(0xFF2563EB),
+        const AccountingCollectionCalendarPage(),
+      ),
+      _ModuleCard(
+        'Toplu Islem Merkezi',
+        'Toplu tahsilat ve toplu mesaj akışı',
+        Icons.groups_outlined,
+        const Color(0xFF14532D),
+        const AccountingBulkActionsPage(),
+      ),
+      _ModuleCard(
+        'Makbuz Arsivi',
+        'Tüm tahsilat belgelerine tek yerden erişim',
+        Icons.folder_copy_outlined,
+        const Color(0xFF7C3AED),
+        const AccountingReceiptArchivePage(),
+      ),
+      _ModuleCard(
+        'Gecikme Senaryolari',
+        'Otomatik hatırlatma ve eskalasyon kuralları',
+        Icons.rule_folder_outlined,
+        const Color(0xFFB45309),
+        const AccountingOverdueRulesPage(),
+      ),
+      _ModuleCard(
+        'Kasa Dağılımı',
+        'Nakit, kart ve havale kırılımı',
+        Icons.pie_chart_outline_rounded,
+        const Color(0xFF0891B2),
+        const AccountingCashReportPage(),
+      ),
+      _ModuleCard(
+        'Mutabakat',
+        'Banka, POS ve kasa eşleştirme merkezi',
+        Icons.compare_arrows_outlined,
+        const Color(0xFF4F46E5),
+        const AccountingReconciliationPage(),
+      ),
     ];
 
     return AccountingScaffold(
       appBar: AppBar(
-        title: const Text('Muhasebe Paneli', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Muhasebe Paneli',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountingExportsPage())),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AccountingExportsPage()),
+            ),
             icon: const Icon(Icons.download_outlined),
           ),
           IconButton(
-            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountingNotificationsPage())),
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => const AccountingNotificationsPage(),
+              ),
+            ),
             icon: Badge(
-              isLabelVisible: _store.notifications.where((item) => item.unread).isNotEmpty,
+              isLabelVisible: _store.notifications
+                  .where((item) => item.unread)
+                  .isNotEmpty,
               child: const Icon(Icons.notifications_none_rounded),
             ),
           ),
@@ -106,7 +229,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                 AccountingPanel(
                   child: Row(
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: Color(0xFFB42318)),
+                      const Icon(
+                        Icons.error_outline_rounded,
+                        color: Color(0xFFB42318),
+                      ),
                       const SizedBox(width: 10),
                       Expanded(child: Text(_store.lastError!)),
                       TextButton(
@@ -123,7 +249,9 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: cards.map((card) => _summaryCard(context, card)).toList(),
+                children: cards
+                    .map((card) => _summaryCard(context, card))
+                    .toList(),
               ),
               const SizedBox(height: 18),
               ResponsiveLayout.isTablet(context)
@@ -153,12 +281,20 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   Widget _heroCard() {
     return AccountingHeroCard(
       eyebrow: 'Günlük finans özeti',
-      title: 'Tahsilat akışları, onay bekleyen işlemler ve riskli bakiyeler tek panelde.',
+      title:
+          'Tahsilat akışları, onay bekleyen işlemler ve riskli bakiyeler tek panelde.',
       description:
           'Toplam ${_store.collections.length} tahsilat, ${_store.approvals.where((item) => item.status == 'Bekliyor').length} bekleyen onay ve ${_store.installments.where((item) => item.status == 'Geciken').length} geciken plan izleniyor.',
       metrics: [
-        AccountingHeroMetric(label: 'Tahsilat', value: _store.formatAmount(_store.collectedTotal)),
-        AccountingHeroMetric(label: 'Bekleyen Onay', value: '${_store.approvals.where((item) => item.status == 'Bekliyor').length} kayıt'),
+        AccountingHeroMetric(
+          label: 'Tahsilat',
+          value: _store.formatAmount(_store.collectedTotal),
+        ),
+        AccountingHeroMetric(
+          label: 'Bekleyen Onay',
+          value:
+              '${_store.approvals.where((item) => item.status == 'Bekliyor').length} kayıt',
+        ),
       ],
     );
   }
@@ -179,7 +315,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: card.color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
+              decoration: BoxDecoration(
+                color: card.color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(16),
+              ),
               child: Icon(card.icon, color: card.color),
             ),
             const SizedBox(width: 12),
@@ -187,9 +326,20 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(card.title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: card.color, fontWeight: FontWeight.w700)),
+                  Text(
+                    card.title,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: card.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text(card.value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  Text(
+                    card.value,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -199,8 +349,17 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     );
   }
 
-  Widget _sectionTitle(BuildContext context, String title, String action, VoidCallback onTap) {
-    return AccountingSectionTitle(title: title, actionLabel: action, onAction: onTap);
+  Widget _sectionTitle(
+    BuildContext context,
+    String title,
+    String action,
+    VoidCallback onTap,
+  ) {
+    return AccountingSectionTitle(
+      title: title,
+      actionLabel: action,
+      onAction: onTap,
+    );
   }
 
   Widget _listRow(
@@ -215,7 +374,11 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: highlight ? color.withValues(alpha: 0.08) : Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.38),
+        color: highlight
+            ? color.withValues(alpha: 0.08)
+            : Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.38),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -224,13 +387,24 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 4),
                 Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),
-          Text(amount, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: color)),
+          Text(
+            amount,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
@@ -246,7 +420,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   }) {
     return InkWell(
       borderRadius: BorderRadius.circular(22),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+      onTap: () =>
+          Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
       child: AccountingPanel(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -254,11 +429,19 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
             Container(
               width: 44,
               height: 44,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Icon(icon, color: color),
             ),
             const SizedBox(height: 12),
-            Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 4),
             Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
           ],
@@ -272,7 +455,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle(context, 'Son Tahsilatlar', 'Tümünü Gör', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountingReceiptsPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountingReceiptsPage()),
+          );
         }),
         const SizedBox(height: 12),
         AccountingPanel(
@@ -290,26 +476,36 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
         ),
         const SizedBox(height: 18),
         _sectionTitle(context, 'Geciken Ödemeler', 'Detay', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountingOverduePage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountingOverduePage()),
+          );
         }),
         const SizedBox(height: 12),
         AccountingPanel(
           child: Column(
-            children: _store.installments.where((item) => item.status == 'Geciken').take(3).map((item) {
-              return _listRow(
-                context,
-                title: item.student,
-                subtitle: '${item.due} • geciken plan',
-                amount: item.amount,
-                color: const Color(0xFFB42318),
-                highlight: true,
-              );
-            }).toList(),
+            children: _store.installments
+                .where((item) => item.status == 'Geciken')
+                .take(3)
+                .map((item) {
+                  return _listRow(
+                    context,
+                    title: item.student,
+                    subtitle: '${item.due} • geciken plan',
+                    amount: item.amount,
+                    color: const Color(0xFFB42318),
+                    highlight: true,
+                  );
+                })
+                .toList(),
           ),
         ),
         const SizedBox(height: 18),
         _sectionTitle(context, 'Operasyon', 'Kayıtlar', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountingAuditLogPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountingAuditLogPage()),
+          );
         }),
         const SizedBox(height: 12),
         Row(
@@ -318,7 +514,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               child: _quickAction(
                 context,
                 title: 'Bildirimler',
-                subtitle: '${_store.notifications.where((item) => item.unread).length} okunmamış',
+                subtitle:
+                    '${_store.notifications.where((item) => item.unread).length} okunmamış',
                 icon: Icons.notifications_active_outlined,
                 color: const Color(0xFF14532D),
                 page: const AccountingNotificationsPage(),
@@ -344,7 +541,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               child: _quickAction(
                 context,
                 title: 'Tahsilat Takvimi',
-                subtitle: 'Gunluk odeme planlari',
+                subtitle: 'Günlük ödeme planları',
                 icon: Icons.calendar_month_outlined,
                 color: const Color(0xFF2563EB),
                 page: const AccountingCollectionCalendarPage(),
@@ -372,7 +569,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _sectionTitle(context, 'Muhasebe Modülleri', 'Cari Hesaplar', () {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => const AccountingLedgerPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountingLedgerPage()),
+          );
         }),
         const SizedBox(height: 12),
         Column(
@@ -381,7 +581,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               padding: const EdgeInsets.only(bottom: 10),
               child: InkWell(
                 borderRadius: BorderRadius.circular(22),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => module.page)),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => module.page),
+                ),
                 child: AccountingPanel(
                   child: Row(
                     children: [
@@ -399,9 +602,18 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(module.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              module.title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 4),
-                            Text(module.subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                            Text(
+                              module.subtitle,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(height: 1.4),
+                            ),
                           ],
                         ),
                       ),

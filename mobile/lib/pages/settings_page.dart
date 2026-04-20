@@ -10,7 +10,6 @@ class SettingsPage extends StatefulWidget {
 }
 
 class _SettingsPageState extends State<SettingsPage> {
-
   bool notificationsEnabled = true;
   bool messageNotif = true;
   bool examNotif = true;
@@ -18,132 +17,90 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-
     final themeProvider = context.watch<ThemeProvider>();
 
     return Scaffold(
-
-      appBar: AppBar(
-        title: const Text("Ayarlar"),
-      ),
+      appBar: AppBar(title: const Text("Ayarlar")),
 
       body: ListView(
-
         children: [
-
           const SizedBox(height: 10),
 
           /// DARK MODE
           SwitchListTile(
-
             title: const Text("Dark Mode"),
 
             value: themeProvider.isDarkMode,
 
             onChanged: (val) {
-
               themeProvider.toggleTheme(val);
-
             },
-
           ),
 
           const Divider(),
 
           /// BİLDİRİMLER
           SwitchListTile(
-
             title: const Text("Bildirimleri Aç"),
 
             value: notificationsEnabled,
 
             onChanged: (val) {
-
               setState(() {
-
                 notificationsEnabled = val;
-
               });
-
             },
-
           ),
 
           if (notificationsEnabled) ...[
-
             SwitchListTile(
-
               title: const Text("Mesaj Bildirimleri"),
 
               value: messageNotif,
 
               onChanged: (val) {
-
                 setState(() {
-
                   messageNotif = val;
-
                 });
-
               },
-
             ),
 
             SwitchListTile(
-
               title: const Text("Sınav Bildirimleri"),
 
               value: examNotif,
 
               onChanged: (val) {
-
                 setState(() {
-
                   examNotif = val;
-
                 });
-
               },
-
             ),
 
             SwitchListTile(
-
               title: const Text("Ödev Bildirimleri"),
 
               value: homeworkNotif,
 
               onChanged: (val) {
-
                 setState(() {
-
                   homeworkNotif = val;
-
                 });
-
               },
-
             ),
-
           ],
 
           const Divider(),
 
           ListTile(
-
             leading: const Icon(Icons.logout),
 
             title: const Text("Çıkış Yap"),
 
             onTap: () {},
-
           ),
-
         ],
-
       ),
-
     );
-
   }
 }

@@ -28,10 +28,11 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
   void initState() {
     super.initState();
     MessageRealtimeService.instance.ensureConnected().catchError((_) {});
-    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream.listen((payload) {
-      if (!mounted) return;
-      _upsertThread(MessageThreadRecord.fromMap(payload));
-    });
+    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
+        .listen((payload) {
+          if (!mounted) return;
+          _upsertThread(MessageThreadRecord.fromMap(payload));
+        });
     _loadThreads();
     _startSilentFallbackSync();
   }
@@ -117,7 +118,10 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
     } catch (_) {}
   }
 
-  bool _sameThreads(List<MessageThreadRecord> left, List<MessageThreadRecord> right) {
+  bool _sameThreads(
+    List<MessageThreadRecord> left,
+    List<MessageThreadRecord> right,
+  ) {
     if (identical(left, right)) return true;
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index += 1) {
@@ -142,13 +146,16 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
     final parentMap = <String, ChatRecipientOption>{};
     for (final student in _studentStore.students) {
       if (student.parentName.trim().isEmpty) continue;
-      final key = '${student.parentName.trim().toLowerCase()}|${student.parentEmail.trim().toLowerCase()}';
+      final key =
+          '${student.parentName.trim().toLowerCase()}|${student.parentEmail.trim().toLowerCase()}';
       parentMap.putIfAbsent(
         key,
         () => ChatRecipientOption(
           name: student.parentName,
           role: 'Parent',
-          contactKey: student.parentEmail.trim().isEmpty ? null : student.parentEmail.trim().split('@').first,
+          contactKey: student.parentEmail.trim().isEmpty
+              ? null
+              : student.parentEmail.trim().split('@').first,
           subtitle: '${student.fullName} • ${student.className}',
         ),
       );
@@ -164,7 +171,13 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
         ),
       ),
       ...parentMap.values,
-      ...StaffRegistryStore.instance.staff.where((item) => _isActive(item.status) && (item.roleType == 'Personel' || item.roleType == 'Admin')).map(
+      ...StaffRegistryStore.instance.staff
+          .where(
+            (item) =>
+                _isActive(item.status) &&
+                (item.roleType == 'Personel' || item.roleType == 'Admin'),
+          )
+          .map(
             (staff) => ChatRecipientOption(
               name: staff.fullName,
               role: staff.roleType == 'Admin' ? 'Admin' : 'Administrative',
@@ -177,7 +190,8 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
       title: 'Alıcı Seç',
-      description: 'Öğrenci, veli, idari birim veya yönetici ile yeni sohbet başlatın.',
+      description:
+          'Öğrenci, veli, idari birim veya yönetiçi ile yeni sohbet başlatın.',
       recipients: recipients,
     );
 
@@ -185,7 +199,11 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => TeacherChatPage(user: selected.name, contactRole: selected.role, contactKey: selected.contactKey),
+        builder: (_) => TeacherChatPage(
+          user: selected.name,
+          contactRole: selected.role,
+          contactKey: selected.contactKey,
+        ),
       ),
     );
   }

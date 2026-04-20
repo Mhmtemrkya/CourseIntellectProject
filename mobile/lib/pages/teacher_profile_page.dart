@@ -33,7 +33,9 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
   Widget build(BuildContext context) {
     final session = _session;
     final themeProvider = context.watch<ThemeProvider>();
-    final roleLabel = session?.primaryRole == 'Teacher' ? 'Öğretmen' : (session?.primaryRole ?? 'Öğretmen');
+    final roleLabel = session?.primaryRole == 'Teacher'
+        ? 'Öğretmen'
+        : (session?.primaryRole ?? 'Öğretmen');
 
     final hasSidebar = SidebarState.of(context);
     return Scaffold(
@@ -44,11 +46,23 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
           _card(
             Column(
               children: [
-                const CircleAvatar(radius: 42, child: Icon(Icons.school_rounded, size: 38)),
+                const CircleAvatar(
+                  radius: 42,
+                  child: Icon(Icons.school_rounded, size: 38),
+                ),
                 const SizedBox(height: 10),
-                Text(session?.fullName ?? "Ogretmen", style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                Text(
+                  session?.fullName ?? "Öğretmen",
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(session?.username ?? "-", style: const TextStyle(color: Colors.grey)),
+                Text(
+                  session?.username ?? "-",
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -57,14 +71,24 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Ogretmen Profili", style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text(
+                  "Öğretmen Profili",
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 12),
                 _infoRow("Ad Soyad", session?.fullName ?? "-"),
-                _infoRow("Kullanici Adi", session?.username ?? "-"),
+                _infoRow("Kullanıcı Adı", session?.username ?? "-"),
                 _infoRow("Rol", roleLabel),
-                _infoRow("Ek Yetkiler", (session?.extraRoles.isEmpty ?? true) ? 'Yok' : session!.extraRoles.join(', ')),
+                _infoRow(
+                  "Ek Yetkiler",
+                  (session?.extraRoles.isEmpty ?? true)
+                      ? 'Yok'
+                      : session!.extraRoles.join(', '),
+                ),
                 const SizedBox(height: 12),
-                const Text("Profil guncellemesi sadece yonetici ve idari birimler tarafindan yapilabilir."),
+                const Text(
+                  "Profil güncellemesi sadece yönetiçi ve idari birimler tarafından yapılabilir.",
+                ),
               ],
             ),
           ),
@@ -80,16 +104,23 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
                 ListTile(
                   leading: const Icon(Icons.notifications_active_outlined),
                   title: const Text("Bildirim Tercihleri"),
-                  subtitle: const Text("Mesaj, sınav, görüşme ve rapor banner ayarlarını yönet."),
+                  subtitle: const Text(
+                    "Mesaj, sınav, görüşme ve rapor banner ayarlarını yönet.",
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const NotificationPreferencesPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationPreferencesPage(),
+                    ),
                   ),
                 ),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                  title: const Text("Cikis Yap", style: TextStyle(color: Colors.red)),
+                  title: const Text(
+                    "Çıkış Yap",
+                    style: TextStyle(color: Colors.red),
+                  ),
                   onTap: () => logoutToRoleSelect(context),
                 ),
               ],
@@ -105,7 +136,12 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           Expanded(child: Text(value, textAlign: TextAlign.right)),
         ],
       ),

@@ -47,12 +47,18 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
   @override
   Widget build(BuildContext context) {
     final students = _buildStudents();
-    final classes = ['Tümü', ...{for (final student in students) student['class']!}];
+    final classes = [
+      'Tümü',
+      ...{for (final student in students) student['class']!},
+    ];
     final filtered = students.where((student) {
-      final matchesClass = _selectedClass == 'Tümü' || student['class'] == _selectedClass;
-      final matchesStatus = _selectedStatus == 'Tümü' || student['status'] == _selectedStatus;
+      final matchesClass =
+          _selectedClass == 'Tümü' || student['class'] == _selectedClass;
+      final matchesStatus =
+          _selectedStatus == 'Tümü' || student['status'] == _selectedStatus;
       final query = _searchController.text.trim().toLowerCase();
-      final matchesSearch = query.isEmpty || student['name']!.toLowerCase().contains(query);
+      final matchesSearch =
+          query.isEmpty || student['name']!.toLowerCase().contains(query);
       return matchesClass && matchesStatus && matchesSearch;
     }).toList();
 
@@ -64,19 +70,26 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
           children: [
             AccountingHeroCard(
               eyebrow: 'Cari görünüm',
-              title: 'Öğrenci bakiyelerini sınıf, durum ve kalan tutara göre yönetin.',
-              description: 'Cari hesap listesi günlük tahsilat ve risk durumuna göre filtrelenebilir.',
+              title:
+                  'Öğrenci bakiyelerini sınıf, durum ve kalan tutara göre yönetin.',
+              description:
+                  'Cari hesap listesi günlük tahsilat ve risk durumuna göre filtrelenebilir.',
               colors: const [Color(0xFF0F172A), Color(0xFF1D4ED8)],
               metrics: [
                 AccountingHeroMetric(
                   label: 'Açık Bakiye',
                   value: _store.formatAmount(
-                    filtered.fold<int>(0, (sum, item) => sum + _store.parseAmount(item['remaining']!)),
+                    filtered.fold<int>(
+                      0,
+                      (sum, item) =>
+                          sum + _store.parseAmount(item['remaining']!),
+                    ),
                   ),
                 ),
                 AccountingHeroMetric(
                   label: 'Tamamlanan',
-                  value: '${filtered.where((item) => item['status'] == 'Tamamlandı').length} öğrenci',
+                  value:
+                      '${filtered.where((item) => item['status'] == 'Tamamlandı').length} öğrenci',
                 ),
               ],
             ),
@@ -85,10 +98,16 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
               AccountingPanel(
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: Color(0xFFB42318)),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Color(0xFFB42318),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(child: Text(_store.lastError!)),
-                    TextButton(onPressed: _store.loadDashboard, child: const Text('Yenile')),
+                    TextButton(
+                      onPressed: _store.loadDashboard,
+                      child: const Text('Yenile'),
+                    ),
                   ],
                 ),
               ),
@@ -122,20 +141,36 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _selectedClass,
-                  decoration: const InputDecoration(labelText: 'Sınıf', border: OutlineInputBorder()),
-                  items: classes.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-                  onChanged: (value) => setState(() => _selectedClass = value ?? 'Tümü'),
+                  decoration: const InputDecoration(
+                    labelText: 'Sınıf',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: classes
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
+                      .toList(),
+                  onChanged: (value) =>
+                      setState(() => _selectedClass = value ?? 'Tümü'),
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _selectedStatus,
-                  decoration: const InputDecoration(labelText: 'Durum', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    labelText: 'Durum',
+                    border: OutlineInputBorder(),
+                  ),
                   items: const ['Tümü', 'Aktif', 'Tamamlandı', 'Gecikmeli']
-                      .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                      .map(
+                        (value) =>
+                            DropdownMenuItem(value: value, child: Text(value)),
+                      )
                       .toList(),
-                  onChanged: (value) => setState(() => _selectedStatus = value ?? 'Tümü'),
+                  onChanged: (value) =>
+                      setState(() => _selectedStatus = value ?? 'Tümü'),
                 ),
               ),
             ],
@@ -162,7 +197,9 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
               Expanded(
                 child: Text(
                   student['name']!,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               Chip(
@@ -178,11 +215,32 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
           const SizedBox(height: 12),
           Row(
             children: [
-              Expanded(child: _moneyTile(context, 'Toplam Ücret', student['total']!, const Color(0xFF1D4ED8))),
+              Expanded(
+                child: _moneyTile(
+                  context,
+                  'Toplam Ücret',
+                  student['total']!,
+                  const Color(0xFF1D4ED8),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _moneyTile(context, 'Ödenen', student['paid']!, const Color(0xFF0F766E))),
+              Expanded(
+                child: _moneyTile(
+                  context,
+                  'Ödenen',
+                  student['paid']!,
+                  const Color(0xFF0F766E),
+                ),
+              ),
               const SizedBox(width: 10),
-              Expanded(child: _moneyTile(context, 'Kalan', student['remaining']!, const Color(0xFFB45309))),
+              Expanded(
+                child: _moneyTile(
+                  context,
+                  'Kalan',
+                  student['remaining']!,
+                  const Color(0xFFB45309),
+                ),
+              ),
             ],
           ),
         ],
@@ -190,7 +248,12 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
     );
   }
 
-  Widget _moneyTile(BuildContext context, String title, String value, Color color) {
+  Widget _moneyTile(
+    BuildContext context,
+    String title,
+    String value,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -200,9 +263,20 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(value, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
+          ),
         ],
       ),
     );
@@ -224,30 +298,46 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
     final rows = names.map((name) {
       final registryStudent = studentKeys[_normalizeLedgerKey(name)];
       final studentCollections = _store.collections
-          .where((item) => _matchesLedgerStudent(item.name, name, registryStudent))
+          .where(
+            (item) => _matchesLedgerStudent(item.name, name, registryStudent),
+          )
           .toList();
       final studentInstallments = _store.installments
-          .where((item) => _matchesLedgerStudent(item.student, name, registryStudent))
+          .where(
+            (item) =>
+                _matchesLedgerStudent(item.student, name, registryStudent),
+          )
           .toList();
-      final className = registryStudent?.className ??
+      final className =
+          registryStudent?.className ??
           studentCollections.map((item) => item.className).firstOrNull ??
           'Genel';
-      final paid = studentCollections.fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
-      final planned = studentInstallments.fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
+      final paid = studentCollections.fold<int>(
+        0,
+        (sum, item) => sum + _store.parseAmount(item.amount),
+      );
+      final planned = studentInstallments.fold<int>(
+        0,
+        (sum, item) => sum + _store.parseAmount(item.amount),
+      );
       final remainingValue = planned - paid;
-      final overdue = studentInstallments.any((item) => item.status == 'Geciken');
+      final overdue = studentInstallments.any(
+        (item) => item.status == 'Geciken',
+      );
       final status = overdue
           ? 'Gecikmeli'
           : remainingValue <= 0 && planned > 0
-              ? 'Tamamlandı'
-              : 'Aktif';
+          ? 'Tamamlandı'
+          : 'Aktif';
 
       return {
         'name': registryStudent?.fullName ?? name,
         'class': className,
         'total': _store.formatAmount(planned),
         'paid': _store.formatAmount(paid),
-        'remaining': _store.formatAmount(remainingValue < 0 ? 0 : remainingValue),
+        'remaining': _store.formatAmount(
+          remainingValue < 0 ? 0 : remainingValue,
+        ),
         'status': status,
       };
     }).toList();
@@ -256,7 +346,11 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
     return rows;
   }
 
-  bool _matchesLedgerStudent(String rawValue, String name, StudentRegistryRecord? registryStudent) {
+  bool _matchesLedgerStudent(
+    String rawValue,
+    String name,
+    StudentRegistryRecord? registryStudent,
+  ) {
     final candidate = _normalizeLedgerKey(rawValue);
     if (candidate.isEmpty) {
       return false;

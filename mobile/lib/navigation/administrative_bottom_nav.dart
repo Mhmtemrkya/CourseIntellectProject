@@ -12,7 +12,7 @@ class AdministrativeBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      userRole: 'Idari Birimler',
+      userRole: 'İdari Birimler',
       destinations: [
         AdaptiveDestination(
           icon: Icons.space_dashboard_rounded,
@@ -22,7 +22,7 @@ class AdministrativeBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.folder_shared_outlined,
-          label: 'Kayitlar',
+          label: 'Kayıtlar',
           pageBuilder: (_) => const AdministrativeRecordsPage(),
           sidebarColor: const Color(0xFF8B5CF6),
         ),

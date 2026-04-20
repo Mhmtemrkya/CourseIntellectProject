@@ -1,7 +1,11 @@
+import 'dart:io';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../services/message_api_service.dart';
 import '../services/student_registry_store.dart';
+import '../services/uploads_api_service.dart';
 import '../widgets/admin_ui.dart';
 import 'administrative_document_detail_page.dart';
 
@@ -9,10 +13,12 @@ class AdministrativeDocumentsPage extends StatefulWidget {
   const AdministrativeDocumentsPage({super.key});
 
   @override
-  State<AdministrativeDocumentsPage> createState() => _AdministrativeDocumentsPageState();
+  State<AdministrativeDocumentsPage> createState() =>
+      _AdministrativeDocumentsPageState();
 }
 
-class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPage> {
+class _AdministrativeDocumentsPageState
+    extends State<AdministrativeDocumentsPage> {
   final _store = StudentRegistryStore.instance;
   final _searchController = TextEditingController();
   String _statusFilter = 'Tümü';
@@ -38,22 +44,39 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
   @override
   Widget build(BuildContext context) {
     final records = _documentRecords();
-    final waitingCount = records.where((item) => item.status == 'Eksik Evrak').length;
+    final waitingCount = records
+        .where((item) => item.status == 'Eksik Evrak')
+        .length;
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Evrak Takibi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Evrak Takibi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Evrak Yükle',
+            icon: const Icon(Icons.upload_file_rounded),
+            onPressed: _uploadDocument,
+          ),
+        ],
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Evrak kontrolü',
-            title: 'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.',
-            description: 'Öğrenci bazlı evrak durumu, eksik belge ve sözleşme takibi bu ekranda toplanır.',
+            title:
+                'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.',
+            description:
+                'Öğrenci bazlı evrak durumu, eksik belge ve sözleşme takibi bu ekranda toplanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
             metrics: [
-              AdminHeroMetric(label: 'Toplam Dosya', value: '${records.length}'),
+              AdminHeroMetric(
+                label: 'Toplam Dosya',
+                value: '${records.length}',
+              ),
               AdminHeroMetric(label: 'Eksik', value: '$waitingCount kayıt'),
             ],
           ),
@@ -93,7 +116,8 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
                       Expanded(
                         child: Text(
                           item.studentName,
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ),
                       AdminAccentBadge(
@@ -101,13 +125,16 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
                         color: item.status == 'Tamamlandı'
                             ? const Color(0xFF14532D)
                             : item.status == 'Eksik Evrak'
-                                ? const Color(0xFFB45309)
-                                : const Color(0xFF2563EB),
+                            ? const Color(0xFFB45309)
+                            : const Color(0xFF2563EB),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('${item.className} • ${item.parentName}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${item.className} • ${item.parentName}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                   const SizedBox(height: 12),
                   _docRow(context, 'TC / Kimlik', item.identityReady),
                   _docRow(context, 'Okul Bilgisi', item.schoolReady),
@@ -122,16 +149,17 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => AdministrativeDocumentDetailPage(
-                                  studentName: item.studentName,
-                                  className: item.className,
-                                  parentName: item.parentName,
-                                  status: item.status,
-                                  identityReady: item.identityReady,
-                                  schoolReady: item.schoolReady,
-                                  contractReady: item.contractReady,
-                                  contactReady: item.contactReady,
-                                ),
+                                builder: (_) =>
+                                    AdministrativeDocumentDetailPage(
+                                      studentName: item.studentName,
+                                      className: item.className,
+                                      parentName: item.parentName,
+                                      status: item.status,
+                                      identityReady: item.identityReady,
+                                      schoolReady: item.schoolReady,
+                                      contractReady: item.contractReady,
+                                      contactReady: item.contactReady,
+                                    ),
                               ),
                             );
                           },
@@ -163,7 +191,9 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
       child: Row(
         children: [
           Icon(
-            isReady ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
+            isReady
+                ? Icons.check_circle_rounded
+                : Icons.pending_actions_rounded,
             color: color,
             size: 18,
           ),
@@ -193,12 +223,150 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
           ),
         )
         .where((item) {
-          final statusMatch = _statusFilter == 'Tümü' || item.status == _statusFilter;
-          final text = '${item.studentName} ${item.parentName} ${item.className}'.toLowerCase();
+          final statusMatch =
+              _statusFilter == 'Tümü' || item.status == _statusFilter;
+          final text =
+              '${item.studentName} ${item.parentName} ${item.className}'
+                  .toLowerCase();
           final queryMatch = query.isEmpty || text.contains(query);
           return statusMatch && queryMatch;
         })
         .toList();
+  }
+
+  Future<void> _uploadDocument() async {
+    final students = _store.students;
+    String? selectedStudentName = students.isNotEmpty
+        ? students.first.fullName
+        : null;
+    String folder = 'documents';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (builderContext, setDialogState) => AlertDialog(
+            title: const Text('Evrak Yükle'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (students.isEmpty)
+                  const Text('Önce öğrenci kaydı olmalıdır.')
+                else
+                  DropdownButtonFormField<String>(
+                    initialValue: selectedStudentName,
+                    decoration: const InputDecoration(labelText: 'Öğrenci'),
+                    items: students
+                        .map(
+                          (student) => DropdownMenuItem(
+                            value: student.fullName,
+                            child: Text(student.fullName),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) =>
+                        setDialogState(() => selectedStudentName = value),
+                  ),
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  initialValue: folder,
+                  decoration: const InputDecoration(labelText: 'Kategori'),
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'documents',
+                      child: Text('Genel Evrak'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'identity',
+                      child: Text('TC / Kimlik'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'contract',
+                      child: Text('Sozlesme'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'school',
+                      child: Text('Okul Belgesi'),
+                    ),
+                  ],
+                  onChanged: (value) =>
+                      setDialogState(() => folder = value ?? 'documents'),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Vazgec'),
+              ),
+              FilledButton(
+                onPressed: students.isEmpty
+                    ? null
+                    : () => Navigator.pop(dialogContext, true),
+                child: const Text('Dosya Seç'),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+
+    if (confirmed != true || selectedStudentName == null) return;
+
+    final pickResult = await FilePicker.platform.pickFiles(type: FileType.any);
+    if (pickResult == null || pickResult.files.isEmpty) return;
+    final picked = pickResult.files.single;
+    final path = picked.path;
+    if (path == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Dosyaya erisilemedi.')));
+      return;
+    }
+
+    if (!mounted) return;
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      SnackBar(
+        content: Text('${picked.name} yükleniyor...'),
+        duration: const Duration(seconds: 2),
+      ),
+    );
+
+    try {
+      final asset = await UploadsApiService.instance.uploadFile(
+        file: File(path),
+        folder: '$folder/${_slug(selectedStudentName!)}',
+      );
+      if (!mounted) return;
+      scaffold.showSnackBar(
+        SnackBar(content: Text('${asset.fileName} yüklendi.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      scaffold.showSnackBar(
+        SnackBar(content: Text('Yükleme başarısız: $error')),
+      );
+    }
+  }
+
+  String _slug(String value) {
+    final lowered = value.trim().toLowerCase();
+    final buffer = StringBuffer();
+    for (final ch in lowered.codeUnits) {
+      final char = String.fromCharCode(ch);
+      if (RegExp(r'[a-z0-9]').hasMatch(char)) {
+        buffer.write(char);
+      } else if (char == ' ' || char == '-' || char == '_') {
+        buffer.write('-');
+      }
+    }
+    final result = buffer
+        .toString()
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '');
+    return result.isEmpty ? 'unknown' : result;
   }
 
   Future<void> _sendReminder(_AdministrativeDocumentRecord item) async {
@@ -216,7 +384,9 @@ class _AdministrativeDocumentsPageState extends State<AdministrativeDocumentsPag
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('${item.parentName} için evrak hatırlatması gönderildi.'),
+          content: Text(
+            '${item.parentName} için evrak hatırlatması gönderildi.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -252,7 +422,12 @@ class _AdministrativeDocumentRecord {
   });
 
   String get status {
-    final readyCount = [identityReady, schoolReady, contractReady, contactReady].where((item) => item).length;
+    final readyCount = [
+      identityReady,
+      schoolReady,
+      contractReady,
+      contactReady,
+    ].where((item) => item).length;
     if (readyCount == 4) return 'Tamamlandı';
     if (!contractReady) return 'Sözleşme Bekliyor';
     return 'Eksik Evrak';

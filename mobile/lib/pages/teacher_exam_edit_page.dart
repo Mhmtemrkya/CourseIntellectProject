@@ -6,10 +6,7 @@ import 'package:student/widgets/teacher_header.dart';
 class TeacherExamEditPage extends StatefulWidget {
   final Map<String, dynamic> exam;
 
-  const TeacherExamEditPage({
-    super.key,
-    required this.exam,
-  });
+  const TeacherExamEditPage({super.key, required this.exam});
 
   @override
   State<TeacherExamEditPage> createState() => _TeacherExamEditPageState();
@@ -29,13 +26,16 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
   void initState() {
     super.initState();
     _loadSession();
-    titleController = TextEditingController(text: widget.exam["title"] as String);
+    titleController = TextEditingController(
+      text: widget.exam["title"] as String,
+    );
     dateController = TextEditingController(text: widget.exam["date"] as String);
     questionController = TextEditingController(
       text: widget.exam["questionCount"].toString(),
     );
-    durationController =
-        TextEditingController(text: widget.exam["duration"] as String);
+    durationController = TextEditingController(
+      text: widget.exam["duration"] as String,
+    );
     selectedType = widget.exam["type"] as String;
     _selectedClass = widget.exam["className"] as String? ?? '';
   }
@@ -43,7 +43,12 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
   Future<void> _loadSession() async {
     await StudentRegistryStore.instance.ensureLoaded();
     final session = await AuthSessionStore.instance.load();
-    final classes = StudentRegistryStore.instance.students.map((item) => item.className).toSet().toList()..sort();
+    final classes =
+        StudentRegistryStore.instance.students
+            .map((item) => item.className)
+            .toSet()
+            .toList()
+          ..sort();
     if (!mounted) return;
     setState(() {
       _teacherName = session?.fullName ?? _teacherName;
@@ -65,18 +70,15 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
   }
 
   void _save() {
-    Navigator.pop(
-      context,
-      {
-        ...widget.exam,
-        "title": titleController.text.trim(),
-        "className": _selectedClass,
-        "date": dateController.text.trim(),
-        "questionCount": int.tryParse(questionController.text.trim()) ?? 0,
-        "duration": durationController.text.trim(),
-        "type": selectedType,
-      },
-    );
+    Navigator.pop(context, {
+      ...widget.exam,
+      "title": titleController.text.trim(),
+      "className": _selectedClass,
+      "date": dateController.text.trim(),
+      "questionCount": int.tryParse(questionController.text.trim()) ?? 0,
+      "duration": durationController.text.trim(),
+      "type": selectedType,
+    });
   }
 
   @override
@@ -86,9 +88,9 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sinavi Duzenle",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: '${widget.exam["subject"] as String? ?? 'Ders'} Ogretmeni',
+        title: "Sınavı Düzenle",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle: '${widget.exam["subject"] as String? ?? 'Ders'} Öğretmeni',
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -104,14 +106,14 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
             children: [
               TextField(
                 controller: titleController,
-                decoration: const InputDecoration(labelText: "Sinav Basligi"),
+                decoration: const InputDecoration(labelText: "Sınav Başlığı"),
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: selectedType,
-                decoration: const InputDecoration(labelText: "Sinav Turu"),
+                decoration: const InputDecoration(labelText: "Sınav Türü"),
                 items: const [
-                  DropdownMenuItem(value: "Yazili", child: Text("Yazili")),
+                  DropdownMenuItem(value: "Yazılı", child: Text("Yazılı")),
                   DropdownMenuItem(value: "Quiz", child: Text("Quiz")),
                   DropdownMenuItem(value: "Deneme", child: Text("Deneme")),
                 ],
@@ -124,9 +126,12 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _selectedClass.isEmpty ? null : _selectedClass,
-                decoration: const InputDecoration(labelText: "Sinif"),
+                decoration: const InputDecoration(labelText: "Sınıf"),
                 items: _classOptions
-                    .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                    .map(
+                      (item) =>
+                          DropdownMenuItem(value: item, child: Text(item)),
+                    )
                     .toList(),
                 onChanged: (value) {
                   if (value == null) return;

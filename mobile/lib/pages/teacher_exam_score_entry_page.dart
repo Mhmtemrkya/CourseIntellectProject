@@ -12,7 +12,8 @@ class TeacherExamScoreEntryPage extends StatefulWidget {
   const TeacherExamScoreEntryPage({super.key});
 
   @override
-  State<TeacherExamScoreEntryPage> createState() => _TeacherExamScoreEntryPageState();
+  State<TeacherExamScoreEntryPage> createState() =>
+      _TeacherExamScoreEntryPageState();
 }
 
 class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
@@ -52,17 +53,17 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
   String _monthName(int month) {
     const months = [
       'Ocak',
-      'Subat',
+      'Şubat',
       'Mart',
       'Nisan',
-      'Mayis',
-      'Haziran',
+      'Mayıs',
+      'Hazıran',
       'Temmuz',
-      'Agustos',
-      'Eylul',
+      'Ağustos',
+      'Eylül',
       'Ekim',
-      'Kasim',
-      'Aralik',
+      'Kasım',
+      'Aralık',
     ];
     return months[month - 1];
   }
@@ -78,53 +79,77 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final classes = _records.map((e) => e.className).toSet().toList()..sort();
-    final effectiveClass = classes.contains(_selectedClass) ? _selectedClass : (classes.isEmpty ? '' : classes.first);
-    final students = _records.where((e) => e.className == effectiveClass).map((e) => e.studentName).toSet().toList()..sort();
-    final classRecords = _records.where((e) => e.className == effectiveClass).toList();
-    final average = classRecords.isEmpty ? 0 : classRecords.fold<int>(0, (sum, item) => sum + item.score) ~/ classRecords.length;
-    final subject = classRecords.isNotEmpty ? _decodeText(classRecords.first.subject) : 'Ogretmen';
+    final effectiveClass = classes.contains(_selectedClass)
+        ? _selectedClass
+        : (classes.isEmpty ? '' : classes.first);
+    final students =
+        _records
+            .where((e) => e.className == effectiveClass)
+            .map((e) => e.studentName)
+            .toSet()
+            .toList()
+          ..sort();
+    final classRecords = _records
+        .where((e) => e.className == effectiveClass)
+        .toList();
+    final average = classRecords.isEmpty
+        ? 0
+        : classRecords.fold<int>(0, (sum, item) => sum + item.score) ~/
+              classRecords.length;
+    final subject = classRecords.isNotEmpty
+        ? _decodeText(classRecords.first.subject)
+        : 'Öğretmen';
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
         title: 'Sonuç Girişi',
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '$subject Öğretmeni',
         showBackButton: true,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadRecords,
+                    child: const Text('Tekrar Dene'),
+                  ),
+                ],
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                ResponsiveContent(
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _loadRecords,
-                        child: const Text('Tekrar Dene'),
+                      _heroCard(
+                        theme,
+                        isDark,
+                        average,
+                        students.length,
+                        effectiveClass,
+                      ),
+                      const SizedBox(height: 16),
+                      _classSelector(theme, classes, effectiveClass),
+                      const SizedBox(height: 16),
+                      ...students.map(
+                        (student) =>
+                            _studentCard(context, student, effectiveClass),
                       ),
                     ],
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  children: [
-                    ResponsiveContent(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _heroCard(theme, isDark, average, students.length, effectiveClass),
-                          const SizedBox(height: 16),
-                          _classSelector(theme, classes, effectiveClass),
-                          const SizedBox(height: 16),
-                          ...students.map((student) => _studentCard(context, student, effectiveClass)),
-                        ],
-                      ),
-                    ),
-                  ],
                 ),
+              ],
+            ),
     );
   }
 
@@ -136,15 +161,16 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     try {
       final session = await AuthSessionStore.instance.load();
       final records = await SchoolFeedApiService.instance.fetchExamResults();
-      final plannedExams = await PlannedExamApiService.instance.fetchPlannedExams(
-        teacherName: session?.fullName,
-      ).catchError((_) => <PlannedExamRecord>[]);
+      final plannedExams = await PlannedExamApiService.instance
+          .fetchPlannedExams(teacherName: session?.fullName)
+          .catchError((_) => <PlannedExamRecord>[]);
       if (!mounted) return;
       setState(() {
         _teacherName = session?.fullName ?? _teacherName;
         _records = records;
         _plannedExams = plannedExams;
-        if (records.isNotEmpty && !records.any((item) => item.className == _selectedClass)) {
+        if (records.isNotEmpty &&
+            !records.any((item) => item.className == _selectedClass)) {
           _selectedClass = records.first.className;
         }
       });
@@ -162,7 +188,13 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     }
   }
 
-  Widget _heroCard(ThemeData theme, bool isDark, int average, int studentCount, String className) {
+  Widget _heroCard(
+    ThemeData theme,
+    bool isDark,
+    int average,
+    int studentCount,
+    String className,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
@@ -175,7 +207,9 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
         ),
         boxShadow: [
           BoxShadow(
-            color: isDark ? Colors.black.withValues(alpha: 0.24) : const Color(0xFF1D4ED8).withValues(alpha: 0.24),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.24)
+                : const Color(0xFF1D4ED8).withValues(alpha: 0.24),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -192,18 +226,28 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             ),
             child: const Text(
               'Öğretmen giriş merkezi',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 14),
           Text(
             'Sınav notlarını ve deneme puanlarını sınıf bazında hızlıca yönetin.',
-            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, height: 1.2),
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              height: 1.2,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
             'Öğrenciye özel puan girişi yapın, son sonucu görün ve tek dokunuşla tüm geçmişi açın.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.86), height: 1.45),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.86),
+              height: 1.45,
+            ),
           ),
           const SizedBox(height: 16),
           Row(
@@ -231,16 +275,33 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _classSelector(ThemeData theme, List<String> classes, String effectiveClass) {
+  Widget _classSelector(
+    ThemeData theme,
+    List<String> classes,
+    String effectiveClass,
+  ) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -261,7 +322,9 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
         children: [
           Text(
             'Sınıf Seçimi',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
@@ -270,8 +333,13 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
               labelText: 'Sınıf',
               border: OutlineInputBorder(),
             ),
-            items: classes.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-            onChanged: (value) => setState(() => _selectedClass = value ?? effectiveClass),
+            items: classes
+                .map(
+                  (value) => DropdownMenuItem(value: value, child: Text(value)),
+                )
+                .toList(),
+            onChanged: (value) =>
+                setState(() => _selectedClass = value ?? effectiveClass),
           ),
         ],
       ),
@@ -280,9 +348,13 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
 
   Widget _studentCard(BuildContext context, String student, String className) {
     final theme = Theme.of(context);
-    final studentRecords = _records.where((item) => item.studentName == student).toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
-    final latest = studentRecords.firstWhere((item) => item.className == className, orElse: () => studentRecords.first);
+    final studentRecords =
+        _records.where((item) => item.studentName == student).toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
+    final latest = studentRecords.firstWhere(
+      (item) => item.className == className,
+      orElse: () => studentRecords.first,
+    );
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -306,10 +378,15 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.12,
+                ),
                 child: Text(
                   student[0],
-                  style: TextStyle(color: theme.colorScheme.primary, fontWeight: FontWeight.w800),
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -317,12 +394,19 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(_decodeText(student), style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                    Text(
+                      _decodeText(student),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       _decodeText(latest.examTitle),
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
                       ),
                     ),
                   ],
@@ -360,7 +444,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             children: [
               Expanded(
                 child: FilledButton.icon(
-                  onPressed: () => _openScoreSheet(context, student, latest, className),
+                  onPressed: () =>
+                      _openScoreSheet(context, student, latest, className),
                   icon: const Icon(Icons.edit_note_rounded),
                   label: const Text('Not Gir'),
                 ),
@@ -392,8 +477,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     final color = score >= 85
         ? const Color(0xFF10B981)
         : score >= 70
-            ? const Color(0xFFF59E0B)
-            : const Color(0xFFEF4444);
+        ? const Color(0xFFF59E0B)
+        : const Color(0xFFEF4444);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -429,9 +514,19 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                Text(
+                  label,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  value,
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ],
             ),
           ),
@@ -440,21 +535,26 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     );
   }
 
-  void _openScoreSheet(BuildContext context, String student, ExamScoreRecord latest, String className) {
+  void _openScoreSheet(
+    BuildContext context,
+    String student,
+    ExamScoreRecord latest,
+    String className,
+  ) {
     final resultExamOptions = <String>{
       ..._plannedExams.map((item) => _decodeText(item.title)),
       ..._records.map((item) => _decodeText(item.examTitle)),
-    }.where((item) => item.trim().isNotEmpty).toList()
-      ..sort();
+    }.where((item) => item.trim().isNotEmpty).toList()..sort();
     final subjectOptions = <String>{
       ..._plannedExams.map((item) => _decodeText(item.subject)),
       ..._records.map((item) => _decodeText(item.subject)),
-    }.where((item) => item.trim().isNotEmpty).toList()
-      ..sort();
+    }.where((item) => item.trim().isNotEmpty).toList()..sort();
     final safeLatestExamTitle = _decodeText(latest.examTitle);
     String selectedExam = resultExamOptions.contains(safeLatestExamTitle)
         ? safeLatestExamTitle
-        : (resultExamOptions.isNotEmpty ? resultExamOptions.first : safeLatestExamTitle);
+        : (resultExamOptions.isNotEmpty
+              ? resultExamOptions.first
+              : safeLatestExamTitle);
     String selectedExamType = latest.type == 'Deneme' ? 'Deneme' : latest.type;
     String selectedSubject = _decodeText(latest.subject);
     String selectedDateLabel = latest.date;
@@ -462,14 +562,27 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     final scoreController = TextEditingController(text: '${latest.score}');
     final netController = TextEditingController(text: '${latest.net}');
 
-    void syncFromExamTitle(String title, void Function(void Function()) setSheetState) {
-      final plannedMatch = _plannedExams.where((item) => _decodeText(item.title) == title).cast<PlannedExamRecord?>().firstWhere((item) => item != null, orElse: () => null);
-      final historicalMatch = _records.where((item) => _decodeText(item.examTitle) == title).cast<ExamScoreRecord?>().firstWhere((item) => item != null, orElse: () => null);
+    void syncFromExamTitle(
+      String title,
+      void Function(void Function()) setSheetState,
+    ) {
+      final plannedMatch = _plannedExams
+          .where((item) => _decodeText(item.title) == title)
+          .cast<PlannedExamRecord?>()
+          .firstWhere((item) => item != null, orElse: () => null);
+      final historicalMatch = _records
+          .where((item) => _decodeText(item.examTitle) == title)
+          .cast<ExamScoreRecord?>()
+          .firstWhere((item) => item != null, orElse: () => null);
       setSheetState(() {
         selectedExam = title;
-        selectedExamType = plannedMatch?.type ?? historicalMatch?.type ?? selectedExamType;
-        selectedSubject = _decodeText(plannedMatch?.subject ?? historicalMatch?.subject ?? selectedSubject);
-        selectedDateLabel = plannedMatch?.date ?? historicalMatch?.date ?? selectedDateLabel;
+        selectedExamType =
+            plannedMatch?.type ?? historicalMatch?.type ?? selectedExamType;
+        selectedSubject = _decodeText(
+          plannedMatch?.subject ?? historicalMatch?.subject ?? selectedSubject,
+        );
+        selectedDateLabel =
+            plannedMatch?.date ?? historicalMatch?.date ?? selectedDateLabel;
       });
     }
 
@@ -483,10 +596,17 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           builder: (context, setSheetState) {
             return Container(
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.of(context).viewInsets.bottom + 22),
+              padding: EdgeInsets.fromLTRB(
+                18,
+                8,
+                18,
+                MediaQuery.of(context).viewInsets.bottom + 22,
+              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).cardColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               child: SingleChildScrollView(
                 child: Column(
@@ -509,17 +629,27 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         children: [
                           const Text(
                             'Sonuç Girişi',
-                            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             student,
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900),
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w900,
+                                ),
                           ),
                           const SizedBox(height: 6),
                           Text(
                             'Sınıf $className • Son kayıt: ${_decodeText(latest.examTitle)}',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.86)),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  color: Colors.white.withValues(alpha: 0.86),
+                                ),
                           ),
                         ],
                       ),
@@ -527,7 +657,9 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                     const SizedBox(height: 16),
                     Text(
                       'Giriş Formu',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -537,11 +669,19 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         border: OutlineInputBorder(),
                       ),
                       items: const [
-                        DropdownMenuItem(value: 'Deneme', child: Text('Deneme')),
-                        DropdownMenuItem(value: 'Yazılı', child: Text('Yazılı')),
+                        DropdownMenuItem(
+                          value: 'Deneme',
+                          child: Text('Deneme'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Yazılı',
+                          child: Text('Yazılı'),
+                        ),
                         DropdownMenuItem(value: 'Quiz', child: Text('Quiz')),
                       ],
-                      onChanged: (value) => setSheetState(() => selectedExamType = value ?? selectedExamType),
+                      onChanged: (value) => setSheetState(
+                        () => selectedExamType = value ?? selectedExamType,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
@@ -551,7 +691,12 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         border: OutlineInputBorder(),
                       ),
                       items: resultExamOptions
-                          .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
                           .toList(),
                       onChanged: (value) {
                         if (value == null) return;
@@ -560,20 +705,31 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                     ),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
-                      initialValue: selectedSubject.isEmpty ? null : selectedSubject,
+                      initialValue: selectedSubject.isEmpty
+                          ? null
+                          : selectedSubject,
                       decoration: const InputDecoration(
                         labelText: 'Ders',
                         border: OutlineInputBorder(),
                       ),
                       items: subjectOptions
-                          .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                          .map(
+                            (value) => DropdownMenuItem(
+                              value: value,
+                              child: Text(value),
+                            ),
+                          )
                           .toList(),
-                      onChanged: (value) => setSheetState(() => selectedSubject = value ?? selectedSubject),
+                      onChanged: (value) => setSheetState(
+                        () => selectedSubject = value ?? selectedSubject,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     TextFormField(
                       readOnly: true,
-                      controller: TextEditingController(text: selectedDateLabel),
+                      controller: TextEditingController(
+                        text: selectedDateLabel,
+                      ),
                       decoration: const InputDecoration(
                         labelText: 'Tarih',
                         border: OutlineInputBorder(),
@@ -625,44 +781,70 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: FilledButton(
-                            onPressed: _saving ? null : () async {
-                              try {
-                                setState(() => _saving = true);
-                                await SchoolFeedApiService.instance.createExamResult(
-                                  examTitle: selectedExam.trim().isEmpty
-                                      ? (selectedExamType == 'Deneme' ? 'Yeni Deneme Sonucu' : 'Öğretmen Girişi $selectedExamType')
-                                      : selectedExam.trim(),
-                                  type: selectedExamType,
-                                  subject: selectedSubject.trim().isEmpty ? _decodeText(latest.subject) : selectedSubject.trim(),
-                                  dateLabel: selectedDateLabel.trim().isEmpty ? latest.date : selectedDateLabel.trim(),
-                                  studentName: student,
-                                  className: className,
-                                  score: int.tryParse(scoreController.text) ?? 0,
-                                  net: int.tryParse(netController.text) ?? 0,
-                                );
-                                if (!context.mounted) return;
-                                Navigator.pop(sheetContext);
-                                _loadRecords();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Sınav sonucu kaydedildi.'),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              } catch (error) {
-                                if (!context.mounted) return;
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(error.toString()),
-                                    behavior: SnackBarBehavior.floating,
-                                  ),
-                                );
-                              } finally {
-                                if (mounted) {
-                                  setState(() => _saving = false);
-                                }
-                              }
-                            },
+                            onPressed: _saving
+                                ? null
+                                : () async {
+                                    try {
+                                      setState(() => _saving = true);
+                                      await SchoolFeedApiService.instance
+                                          .createExamResult(
+                                            examTitle:
+                                                selectedExam.trim().isEmpty
+                                                ? (selectedExamType == 'Deneme'
+                                                      ? 'Yeni Deneme Sonuçu'
+                                                      : 'Öğretmen Girişi $selectedExamType')
+                                                : selectedExam.trim(),
+                                            type: selectedExamType,
+                                            subject:
+                                                selectedSubject.trim().isEmpty
+                                                ? _decodeText(latest.subject)
+                                                : selectedSubject.trim(),
+                                            dateLabel:
+                                                selectedDateLabel.trim().isEmpty
+                                                ? latest.date
+                                                : selectedDateLabel.trim(),
+                                            studentName: student,
+                                            className: className,
+                                            score:
+                                                int.tryParse(
+                                                  scoreController.text,
+                                                ) ??
+                                                0,
+                                            net:
+                                                int.tryParse(
+                                                  netController.text,
+                                                ) ??
+                                                0,
+                                          );
+                                      if (!context.mounted) return;
+                                      Navigator.pop(sheetContext);
+                                      _loadRecords();
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                            'Sınav sonucu kaydedildi.',
+                                          ),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    } catch (error) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(error.toString()),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => _saving = false);
+                                      }
+                                    }
+                                  },
                             child: Text(_saving ? 'Kaydediliyor...' : 'Kaydet'),
                           ),
                         ),

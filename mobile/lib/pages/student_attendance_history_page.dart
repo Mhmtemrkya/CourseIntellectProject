@@ -7,18 +7,17 @@ import '../widgets/app_header.dart';
 import '../widgets/responsive_layout.dart';
 
 class StudentAttendanceHistoryPage extends StatefulWidget {
-  const StudentAttendanceHistoryPage({
-    super.key,
-    this.studentName = '',
-  });
+  const StudentAttendanceHistoryPage({super.key, this.studentName = ''});
 
   final String studentName;
 
   @override
-  State<StudentAttendanceHistoryPage> createState() => _StudentAttendanceHistoryPageState();
+  State<StudentAttendanceHistoryPage> createState() =>
+      _StudentAttendanceHistoryPageState();
 }
 
-class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryPage> {
+class _StudentAttendanceHistoryPageState
+    extends State<StudentAttendanceHistoryPage> {
   bool _loading = true;
   String _studentName = '';
 
@@ -44,7 +43,9 @@ class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryP
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final records = AttendanceService.instance.forStudent(_studentName.isEmpty ? widget.studentName : _studentName);
+    final records = AttendanceService.instance.forStudent(
+      _studentName.isEmpty ? widget.studentName : _studentName,
+    );
     final absent = records.where((item) => item.status == 'Devamsiz').length;
     final late = records.where((item) => item.status == 'Gec').length;
     final grouped = <String, List<AttendanceRecord>>{};
@@ -56,61 +57,70 @@ class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryP
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Devamsizliklarim'),
+      appBar: const AppHeader(title: 'Devamsızlıklarim'),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ResponsiveContent(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
+              padding: const EdgeInsets.all(16),
+              child: ResponsiveContent(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      _studentName.isEmpty ? widget.studentName : _studentName,
-                      style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w900,
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(24),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Gun, hafta ve ay bazinda tum yoklama hareketlerin tek ekranda.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.86),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _studentName.isEmpty
+                                ? widget.studentName
+                                : _studentName,
+                            style: theme.textTheme.headlineSmall?.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Gün, hafta ve ay bazında tüm yoklama hareketlerin tek ekranda.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: Colors.white.withValues(alpha: 0.86),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _metric(
+                                  'Toplam Kayıt',
+                                  '${records.length}',
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(child: _metric('Devamsiz', '$absent')),
+                              const SizedBox(width: 10),
+                              Expanded(child: _metric('Gec', '$late')),
+                            ],
+                          ),
+                        ],
                       ),
                     ),
                     const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(child: _metric('Toplam Kayit', '${records.length}')),
-                        const SizedBox(width: 10),
-                        Expanded(child: _metric('Devamsiz', '$absent')),
-                        const SizedBox(width: 10),
-                        Expanded(child: _metric('Gec', '$late')),
-                      ],
+                    ...grouped.entries.map(
+                      (entry) => _dateCard(context, entry.key, entry.value),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              ...grouped.entries.map((entry) => _dateCard(context, entry.key, entry.value)),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 
@@ -124,15 +134,32 @@ class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryP
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20)),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 20,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _dateCard(BuildContext context, String dateLabel, List<AttendanceRecord> records) {
+  Widget _dateCard(
+    BuildContext context,
+    String dateLabel,
+    List<AttendanceRecord> records,
+  ) {
     final theme = Theme.of(context);
     final issueCount = records.where((item) => item.status != 'Katildi').length;
 
@@ -157,19 +184,29 @@ class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryP
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
-              issueCount == 0 ? Icons.check_circle_outline_rounded : Icons.event_busy_outlined,
-              color: issueCount == 0 ? const Color(0xFF0F766E) : const Color(0xFFB54708),
+              issueCount == 0
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.event_busy_outlined,
+              color: issueCount == 0
+                  ? const Color(0xFF0F766E)
+                  : const Color(0xFFB54708),
             ),
           ),
           title: Text(
             dateLabel,
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
           ),
           subtitle: Text(
-            issueCount == 0 ? 'Tum derslere katildi' : '$issueCount hareket dikkat gerektiriyor',
+            issueCount == 0
+                ? 'Tüm derslere katıldı'
+                : '$issueCount hareket dikkat gerektiriyor',
             style: theme.textTheme.bodySmall,
           ),
-          children: records.map((record) => _recordLine(context, record)).toList(),
+          children: records
+              .map((record) => _recordLine(context, record))
+              .toList(),
         ),
       ),
     );
@@ -197,9 +234,17 @@ class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryP
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(record.lesson, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  record.lesson,
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text('${record.className} dersi yoklama kaydi', style: theme.textTheme.bodySmall),
+                Text(
+                  '${record.className} dersi yoklama kaydı',
+                  style: theme.textTheme.bodySmall,
+                ),
               ],
             ),
           ),
@@ -209,7 +254,10 @@ class _StudentAttendanceHistoryPageState extends State<StudentAttendanceHistoryP
               color: color.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text(record.status, style: TextStyle(color: color, fontWeight: FontWeight.w800)),
+            child: Text(
+              record.status,
+              style: TextStyle(color: color, fontWeight: FontWeight.w800),
+            ),
           ),
         ],
       ),

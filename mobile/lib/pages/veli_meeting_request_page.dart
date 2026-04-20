@@ -9,10 +9,7 @@ import '../widgets/app_header.dart';
 class VeliMeetingRequestPage extends StatefulWidget {
   final String advisor;
 
-  const VeliMeetingRequestPage({
-    super.key,
-    this.advisor = 'Rehberlik Servisi',
-  });
+  const VeliMeetingRequestPage({super.key, this.advisor = 'Rehberlik Servisi'});
 
   @override
   State<VeliMeetingRequestPage> createState() => _VeliMeetingRequestPageState();
@@ -20,7 +17,8 @@ class VeliMeetingRequestPage extends StatefulWidget {
 
 class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
   final TextEditingController _noteController = TextEditingController(
-    text: 'Öğrencinin akademik durumu ve çalışma planı hakkında kısa bir görüşme talep ediyorum.',
+    text:
+        'Öğrencinin akademik durumu ve çalışma planı hakkında kısa bir görüşme talep ediyorum.',
   );
 
   String _selectedTopic = 'Akademik gelişim';
@@ -53,25 +51,39 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
   Future<void> _loadSession() async {
     final session = await AuthSessionStore.instance.load();
     final children = await LinkedChildrenService.instance.loadLinkedChildren();
-    final availableAdvisors = await MeetingRequestApiService.instance.fetchAvailableAdvisors().catchError((_) => <String>[]);
+    final availableAdvisors = await MeetingRequestApiService.instance
+        .fetchAvailableAdvisors()
+        .catchError((_) => <String>[]);
     final teachers = availableAdvisors.isNotEmpty
         ? availableAdvisors
-            .asMap()
-            .entries
-            .map((entry) => AdminStaffRecord(
+              .asMap()
+              .entries
+              .map(
+                (entry) => AdminStaffRecord(
+                  id: '',
                   fullName: entry.value,
                   username: 'advisor-${entry.key}',
                   role: 'Teacher',
                   departmentOrBranch: '',
                   campus: '',
                   status: 'Active',
-                ))
-            .toList()
-        : await AdminDirectoryApiService.instance.fetchStaff(role: 'Teacher').catchError((_) => <AdminStaffRecord>[]);
+                ),
+              )
+              .toList()
+        : await AdminDirectoryApiService.instance
+              .fetchStaff(role: 'Teacher')
+              .catchError((_) => <AdminStaffRecord>[]);
     final preferredAdvisor = widget.advisor.trim();
-    final matchingTeacher = teachers.where((teacher) => teacher.fullName.trim() == preferredAdvisor).firstOrNull;
-    final initialAdvisor = matchingTeacher?.fullName ??
-        (teachers.isNotEmpty ? teachers.first.fullName : (preferredAdvisor.isEmpty ? 'Rehberlik Servisi' : preferredAdvisor));
+    final matchingTeacher = teachers
+        .where((teacher) => teacher.fullName.trim() == preferredAdvisor)
+        .firstOrNull;
+    final initialAdvisor =
+        matchingTeacher?.fullName ??
+        (teachers.isNotEmpty
+            ? teachers.first.fullName
+            : (preferredAdvisor.isEmpty
+                  ? 'Rehberlik Servisi'
+                  : preferredAdvisor));
     if (!mounted) return;
     setState(() {
       _session = session;
@@ -88,14 +100,27 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
     if (candidate != null) {
       return _SlotInfo(
         raw: raw,
-        dateKey: '${candidate.year.toString().padLeft(4, '0')}-${candidate.month.toString().padLeft(2, '0')}-${candidate.day.toString().padLeft(2, '0')}',
+        dateKey:
+            '${candidate.year.toString().padLeft(4, '0')}-${candidate.month.toString().padLeft(2, '0')}-${candidate.day.toString().padLeft(2, '0')}',
         dayLabel: MaterialLocalizations.of(context).formatFullDate(candidate),
-        compactDay: MaterialLocalizations.of(context).formatMediumDate(candidate),
-        timeLabel: MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(candidate), alwaysUse24HourFormat: true),
+        compactDay: MaterialLocalizations.of(
+          context,
+        ).formatMediumDate(candidate),
+        timeLabel: MaterialLocalizations.of(context).formatTimeOfDay(
+          TimeOfDay.fromDateTime(candidate),
+          alwaysUse24HourFormat: true,
+        ),
         sortable: candidate.millisecondsSinceEpoch,
       );
     }
-    return _SlotInfo(raw: raw, dateKey: raw, dayLabel: raw, compactDay: raw, timeLabel: raw, sortable: 0);
+    return _SlotInfo(
+      raw: raw,
+      dateKey: raw,
+      dayLabel: raw,
+      compactDay: raw,
+      timeLabel: raw,
+      sortable: 0,
+    );
   }
 
   Future<void> _loadSlots() async {
@@ -105,7 +130,9 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
     });
     try {
       final slots = await MeetingRequestApiService.instance.fetchAvailableSlots(
-        advisor: _selectedAdvisor.trim().isEmpty ? widget.advisor : _selectedAdvisor,
+        advisor: _selectedAdvisor.trim().isEmpty
+            ? widget.advisor
+            : _selectedAdvisor,
         onlineMeeting: _onlineMeeting,
       );
       if (!mounted) return;
@@ -165,12 +192,29 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Öğrenci seçimi', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    'Öğrenci seçimi',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedStudent.isEmpty ? null : _selectedStudent,
-                    decoration: const InputDecoration(labelText: 'Çocuk', border: OutlineInputBorder()),
-                    items: _children.map((child) => DropdownMenuItem(value: child.fullName, child: Text(child.displayLabel))).toList(),
+                    initialValue: _selectedStudent.isEmpty
+                        ? null
+                        : _selectedStudent,
+                    decoration: const InputDecoration(
+                      labelText: 'Çocuk',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: _children
+                        .map(
+                          (child) => DropdownMenuItem(
+                            value: child.fullName,
+                            child: Text(child.displayLabel),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (value) {
                       if (value == null) return;
                       setState(() => _selectedStudent = value);
@@ -178,10 +222,20 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedAdvisor.isEmpty ? null : _selectedAdvisor,
-                    decoration: const InputDecoration(labelText: 'Öğretmen', border: OutlineInputBorder()),
+                    initialValue: _selectedAdvisor.isEmpty
+                        ? null
+                        : _selectedAdvisor,
+                    decoration: const InputDecoration(
+                      labelText: 'Öğretmen',
+                      border: OutlineInputBorder(),
+                    ),
                     items: _teachers
-                        .map((teacher) => DropdownMenuItem(value: teacher.fullName, child: Text(teacher.fullName)))
+                        .map(
+                          (teacher) => DropdownMenuItem(
+                            value: teacher.fullName,
+                            child: Text(teacher.fullName),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) {
                       if (value == null) return;
@@ -194,13 +248,25 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                     },
                   ),
                   const SizedBox(height: 16),
-                  Text('Görüşme konusu', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    'Görüşme konusu',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: _topics
-                        .map((topic) => ChoiceChip(label: Text(topic), selected: _selectedTopic == topic, onSelected: (_) => setState(() => _selectedTopic = topic)))
+                        .map(
+                          (topic) => ChoiceChip(
+                            label: Text(topic),
+                            selected: _selectedTopic == topic,
+                            onSelected: (_) =>
+                                setState(() => _selectedTopic = topic),
+                          ),
+                        )
                         .toList(),
                   ),
                 ],
@@ -212,12 +278,25 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Görüşme tipi', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    'Görüşme tipi',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   SegmentedButton<bool>(
                     segments: const [
-                      ButtonSegment<bool>(value: true, icon: Icon(Icons.video_call_outlined), label: Text('Online')),
-                      ButtonSegment<bool>(value: false, icon: Icon(Icons.meeting_room_outlined), label: Text('Yüz yüze')),
+                      ButtonSegment<bool>(
+                        value: true,
+                        icon: Icon(Icons.video_call_outlined),
+                        label: Text('Online'),
+                      ),
+                      ButtonSegment<bool>(
+                        value: false,
+                        icon: Icon(Icons.meeting_room_outlined),
+                        label: Text('Yüz yüze'),
+                      ),
                     ],
                     selected: {_onlineMeeting},
                     onSelectionChanged: (selection) {
@@ -237,13 +316,23 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                       children: [
                         Text(_slotError!),
                         const SizedBox(height: 12),
-                        OutlinedButton(onPressed: _loadSlots, child: const Text('Saatleri Yenile')),
+                        OutlinedButton(
+                          onPressed: _loadSlots,
+                          child: const Text('Saatleri Yenile'),
+                        ),
                       ],
                     )
                   else if (_slots.isEmpty)
-                    const Text('Bu öğretmen için uygun görüşme saati bulunamadı.')
+                    const Text(
+                      'Bu öğretmen için uygun görüşme saati bulunamadı.',
+                    )
                   else ...[
-                    Text('Uygun günler', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      'Uygün günler',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -261,7 +350,12 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                       }).toList(),
                     ),
                     const SizedBox(height: 16),
-                    Text('Saatler', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      'Saatler',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 10,
@@ -272,18 +366,40 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                           onTap: () => setState(() => _selectedSlot = slot.raw),
                           borderRadius: BorderRadius.circular(18),
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 12,
+                            ),
                             decoration: BoxDecoration(
-                              color: selected ? const Color(0xFF0F766E).withValues(alpha: 0.12) : theme.cardColor,
+                              color: selected
+                                  ? const Color(
+                                      0xFF0F766E,
+                                    ).withValues(alpha: 0.12)
+                                  : theme.cardColor,
                               borderRadius: BorderRadius.circular(18),
-                              border: Border.all(color: selected ? const Color(0xFF0F766E) : const Color(0xFFE2E8F0)),
+                              border: Border.all(
+                                color: selected
+                                    ? const Color(0xFF0F766E)
+                                    : const Color(0xFFE2E8F0),
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(slot.timeLabel, style: TextStyle(fontWeight: FontWeight.w800, color: selected ? const Color(0xFF0F766E) : null)),
+                                Text(
+                                  slot.timeLabel,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                    color: selected
+                                        ? const Color(0xFF0F766E)
+                                        : null,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text(_onlineMeeting ? 'Online' : 'Yüz yüze', style: theme.textTheme.bodySmall),
+                                Text(
+                                  _onlineMeeting ? 'Online' : 'Yüz yüze',
+                                  style: theme.textTheme.bodySmall,
+                                ),
                               ],
                             ),
                           ),
@@ -300,14 +416,20 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Not', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    'Not',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: _noteController,
                     maxLines: 5,
                     decoration: const InputDecoration(
                       labelText: 'Görüşme notu',
-                      hintText: 'Görüşme öncesi paylaşmak istediğiniz notu yazın',
+                      hintText:
+                          'Görüşme öncesi paylaşmak istediğiniz notu yazın',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -320,13 +442,37 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Talep özeti', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    'Talep özeti',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 12),
-                  _summaryLine('Yetkili', _selectedAdvisor.trim().isEmpty ? (widget.advisor.trim().isEmpty ? 'Danışman' : widget.advisor) : _selectedAdvisor),
+                  _summaryLine(
+                    'Yetkili',
+                    _selectedAdvisor.trim().isEmpty
+                        ? (widget.advisor.trim().isEmpty
+                              ? 'Danışman'
+                              : widget.advisor)
+                        : _selectedAdvisor,
+                  ),
                   _summaryLine('Konu', _selectedTopic),
-                  _summaryLine('Gün', groupedSlots[_selectedDayKey]?.first.dayLabel ?? 'Seçilmedi'),
-                  _summaryLine('Saat', _selectedSlot.isEmpty ? 'Seçilmedi' : _parseSlot(_selectedSlot).timeLabel),
-                  _summaryLine('Format', _onlineMeeting ? 'Online görüşme' : 'Yüz yüze görüşme'),
+                  _summaryLine(
+                    'Gün',
+                    groupedSlots[_selectedDayKey]?.first.dayLabel ??
+                        'Seçilmedi',
+                  ),
+                  _summaryLine(
+                    'Saat',
+                    _selectedSlot.isEmpty
+                        ? 'Seçilmedi'
+                        : _parseSlot(_selectedSlot).timeLabel,
+                  ),
+                  _summaryLine(
+                    'Format',
+                    _onlineMeeting ? 'Online görüşme' : 'Yüz yüze görüşme',
+                  ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -347,7 +493,9 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
 
   Widget _heroCard(BuildContext context) {
     final theme = Theme.of(context);
-    final advisor = _selectedAdvisor.trim().isEmpty ? (widget.advisor.trim().isEmpty ? 'Danışman' : widget.advisor) : _selectedAdvisor;
+    final advisor = _selectedAdvisor.trim().isEmpty
+        ? (widget.advisor.trim().isEmpty ? 'Danışman' : widget.advisor)
+        : _selectedAdvisor;
 
     return Container(
       width: double.infinity,
@@ -369,17 +517,30 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
               color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: Text('Görüşme planı • $advisor', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Görüşme planı • $advisor',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(height: 14),
           Text(
             'Öğretmenin açtığı uygun gün ve saatlerden birini seçerek talep oluştur.',
-            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, height: 1.15),
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              height: 1.15,
+            ),
           ),
           const SizedBox(height: 10),
           Text(
             'Liste dışındaki saatler seçilemez. Böylece hem veli tarafı net kalır hem öğretmenin takvimi düzenli çalışır.',
-            style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white.withValues(alpha: 0.88), height: 1.45),
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: Colors.white.withValues(alpha: 0.88),
+              height: 1.45,
+            ),
           ),
         ],
       ),
@@ -404,7 +565,13 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(width: 96, child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
+          SizedBox(
+            width: 96,
+            child: Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           const SizedBox(width: 12),
           Expanded(child: Text(value)),
         ],
@@ -415,7 +582,10 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
   Future<void> _submitRequest() async {
     if (_selectedStudent.isEmpty || _selectedSlot.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen öğrenci ve saat seçin.'), behavior: SnackBarBehavior.floating),
+        const SnackBar(
+          content: Text('Lütfen öğrenci ve saat seçin.'),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
       return;
     }
@@ -424,7 +594,9 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
       await MeetingRequestApiService.instance.createRequest(
         parentName: _session?.fullName ?? 'Veli',
         studentName: _selectedStudent,
-        advisor: _selectedAdvisor.trim().isEmpty ? (widget.advisor.trim().isEmpty ? 'Danışman' : widget.advisor) : _selectedAdvisor,
+        advisor: _selectedAdvisor.trim().isEmpty
+            ? (widget.advisor.trim().isEmpty ? 'Danışman' : widget.advisor)
+            : _selectedAdvisor,
         topic: _selectedTopic,
         slot: _selectedSlot,
         onlineMeeting: _onlineMeeting,
@@ -436,7 +608,9 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
         context: context,
         builder: (dialogContext) => AlertDialog(
           title: const Text('Talep Gönderildi'),
-          content: const Text('Görüşme talebiniz öğretmene başarıyla iletildi. Onay durumunu veli panelinden takip edebilirsiniz.'),
+          content: const Text(
+            'Görüşme talebiniz öğretmene başarıyla iletildi. Onay durumunu veli panelinden takip edebilirsiniz.',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
@@ -450,7 +624,10 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }

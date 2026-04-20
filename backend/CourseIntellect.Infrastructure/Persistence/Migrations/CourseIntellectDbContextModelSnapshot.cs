@@ -994,6 +994,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<string>("Attachments")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(8000)
+                        .HasColumnType("character varying(8000)")
+                        .HasDefaultValue("[]")
+                        .HasColumnName("attachments");
+
                     b.Property<bool>("IsRead")
                         .HasColumnType("boolean");
 

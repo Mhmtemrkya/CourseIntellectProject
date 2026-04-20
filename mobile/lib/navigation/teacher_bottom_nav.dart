@@ -12,7 +12,7 @@ class TeacherBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      userRole: 'Ogretmen',
+      userRole: 'Öğretmen',
       destinations: [
         AdaptiveDestination(
           icon: Icons.home_rounded,

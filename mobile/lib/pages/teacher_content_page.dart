@@ -28,13 +28,18 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF0F0F14) : const Color(0xFFF3F3F3),
+      backgroundColor: isDark
+          ? const Color(0xFF0F0F14)
+          : const Color(0xFFF3F3F3),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
           "CourseIntellect",
-          style: TextStyle(color: isDark ? Colors.white : Colors.black, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            color: isDark ? Colors.white : Colors.black,
+            fontWeight: FontWeight.bold,
+          ),
         ),
       ),
       body: SingleChildScrollView(
@@ -67,12 +72,16 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Icerik Yonetimi",
-                          style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+                          "İçerik Yönetimi",
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         const Text(
-                          "Video, PDF, Word ve PowerPoint iceriklerini tek panelden yayinla. Eklenen icerikler ogrenci ekraninda aninda gorunsun.",
+                          "Video, PDF, Word ve PowerPoint içeriklerini tek panelden yayınla. Eklenen içerikler öğrenci ekranında anında görünsün.",
                           style: TextStyle(color: Colors.white70, height: 1.4),
                         ),
                         const SizedBox(height: 16),
@@ -80,8 +89,14 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                           spacing: 10,
                           runSpacing: 10,
                           children: [
-                            _heroTag(Icons.play_circle_fill_rounded, '${_contents.where((e) => e.fileType == 'Video').length} video'),
-                            _heroTag(Icons.folder_copy_rounded, '${_contents.where((e) => e.fileType != 'Video').length} belge'),
+                            _heroTag(
+                              Icons.play_circle_fill_rounded,
+                              '${_contents.where((e) => e.fileType == 'Video').length} video',
+                            ),
+                            _heroTag(
+                              Icons.folder_copy_rounded,
+                              '${_contents.where((e) => e.fileType != 'Video').length} belge',
+                            ),
                           ],
                         ),
                       ],
@@ -92,12 +107,22 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: const Color(0xFF0F172A),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 14,
+                      ),
                     ),
-                    onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const TeacherContentCreatePage())),
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const TeacherContentCreatePage(),
+                      ),
+                    ),
                     icon: const Icon(Icons.add),
-                    label: const Text("Yeni Icerik"),
+                    label: const Text("Yeni İçerik"),
                   ),
                 ],
               ),
@@ -105,9 +130,24 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
             const SizedBox(height: 16),
             Row(
               children: [
-                StatBox('${_contents.length}', "Toplam\nIcerik", Icons.folder, isDark: isDark),
-                StatBox('${_contents.where((e) => e.fileType != 'Video').length}', "Belge / Sunum", Icons.picture_as_pdf, isDark: isDark),
-                StatBox('${_contents.where((e) => e.fileType == 'Video').length}', "Video", Icons.video_collection, isDark: isDark),
+                StatBox(
+                  '${_contents.length}',
+                  "Toplam\nİçerik",
+                  Icons.folder,
+                  isDark: isDark,
+                ),
+                StatBox(
+                  '${_contents.where((e) => e.fileType != 'Video').length}',
+                  "Belge / Sunum",
+                  Icons.picture_as_pdf,
+                  isDark: isDark,
+                ),
+                StatBox(
+                  '${_contents.where((e) => e.fileType == 'Video').length}',
+                  "Video",
+                  Icons.video_collection,
+                  isDark: isDark,
+                ),
               ],
             ),
             const SizedBox(height: 20),
@@ -124,45 +164,48 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                     children: [
                       Text(_error!, textAlign: TextAlign.center),
                       const SizedBox(height: 12),
-                      FilledButton(onPressed: _loadContents, child: const Text('Tekrar Dene')),
+                      FilledButton(
+                        onPressed: _loadContents,
+                        child: const Text('Tekrar Dene'),
+                      ),
                     ],
                   ),
                 ),
               )
             else
               GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 0.9,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              children: _contents.map((item) {
-                return GestureDetector(
-                  behavior: HitTestBehavior.opaque,
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TeacherContentDetailPage(
-                          content: item,
-                          onContentChanged: _loadContents,
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                crossAxisCount: 2,
+                childAspectRatio: 0.9,
+                crossAxisSpacing: 12,
+                mainAxisSpacing: 12,
+                children: _contents.map((item) {
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => TeacherContentDetailPage(
+                            content: item,
+                            onContentChanged: _loadContents,
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                  child: ContentCard(
-                    title: item.title,
-                    subtitle: '${item.subject} - ${item.grade}',
-                    views: item.views,
-                    size: item.size,
-                    color: _colorForType(item.fileType),
-                    icon: _iconForType(item.fileType),
-                    duration: item.info,
-                  ),
-                );
-              }).toList(),
-            ),
+                      );
+                    },
+                    child: ContentCard(
+                      title: item.title,
+                      subtitle: '${item.subject} - ${item.grade}',
+                      views: item.views,
+                      size: item.size,
+                      color: _colorForType(item.fileType),
+                      icon: _iconForType(item.fileType),
+                      duration: item.info,
+                    ),
+                  );
+                }).toList(),
+              ),
           ],
         ),
       ),
@@ -175,7 +218,9 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
       _error = null;
     });
     try {
-      final items = await ContentApiService.instance.fetchContents(visibleOnly: false);
+      final items = await ContentApiService.instance.fetchContents(
+        visibleOnly: false,
+      );
       if (!mounted) return;
       setState(() {
         _contents = items;
@@ -221,7 +266,13 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
         children: [
           Icon(icon, color: Colors.white, size: 16),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -249,7 +300,13 @@ class StatBox extends StatelessWidget {
   final IconData icon;
   final bool isDark;
 
-  const StatBox(this.value, this.label, this.icon, {super.key, required this.isDark});
+  const StatBox(
+    this.value,
+    this.label,
+    this.icon, {
+    super.key,
+    required this.isDark,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -265,8 +322,19 @@ class StatBox extends StatelessWidget {
           children: [
             Icon(icon, color: Colors.orange),
             const SizedBox(height: 8),
-            Text(value, style: TextStyle(color: isDark ? Colors.white : Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-            Text(label, textAlign: TextAlign.center, style: TextStyle(color: isDark ? Colors.white70 : Colors.black54)),
+            Text(
+              value,
+              style: TextStyle(
+                color: isDark ? Colors.white : Colors.black,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+            ),
           ],
         ),
       ),
@@ -311,14 +379,29 @@ class ContentCard extends StatelessWidget {
               const Spacer(),
               if (duration != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.black45, borderRadius: BorderRadius.circular(12)),
-                  child: Text(duration!, style: const TextStyle(color: Colors.white, fontSize: 12)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.black45,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    duration!,
+                    style: const TextStyle(color: Colors.white, fontSize: 12),
+                  ),
                 ),
             ],
           ),
           const Spacer(),
-          Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
           Text(subtitle, style: const TextStyle(color: Colors.white70)),
           const SizedBox(height: 6),
           Text(views, style: const TextStyle(color: Colors.white70)),
@@ -328,7 +411,10 @@ class ContentCard extends StatelessWidget {
             children: const [
               Text(
                 'Detayi ac',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               Spacer(),
               Icon(Icons.chevron_right_rounded, color: Colors.white),

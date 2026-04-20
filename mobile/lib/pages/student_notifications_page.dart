@@ -6,7 +6,8 @@ class StudentNotificationsPage extends StatefulWidget {
   const StudentNotificationsPage({super.key});
 
   @override
-  State<StudentNotificationsPage> createState() => _StudentNotificationsPageState();
+  State<StudentNotificationsPage> createState() =>
+      _StudentNotificationsPageState();
 }
 
 class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
@@ -42,31 +43,51 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Canlı Bildirim Kutusu', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Canlı Bildirim Kutusu',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFF0F172A), Color(0xFF1D4ED8)]),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0F172A), Color(0xFF1D4ED8)],
+              ),
               borderRadius: BorderRadius.circular(26),
             ),
             child: const Text(
               'Öğretmen yanıtları, ödev yorumları ve sınav güncellemeleri burada toplanır.',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 20, height: 1.2),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 20,
+                height: 1.2,
+              ),
             ),
           ),
           const SizedBox(height: 16),
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else if (_error != null)
             Center(
               child: Column(
                 children: [
                   Text(_error!, textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  FilledButton(onPressed: _load, child: const Text('Tekrar Dene')),
+                  FilledButton(
+                    onPressed: _load,
+                    child: const Text('Tekrar Dene'),
+                  ),
                 ],
               ),
             )
@@ -91,26 +112,45 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: _colorFor(item.category).withValues(alpha: 0.12),
+                          color: _colorFor(
+                            item.category,
+                          ).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(_iconFor(item.category), color: _colorFor(item.category)),
+                        child: Icon(
+                          _iconFor(item.category),
+                          color: _colorFor(item.category),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              item.title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 4),
-                            Text(item.message, style: Theme.of(context).textTheme.bodyMedium),
+                            Text(
+                              item.message,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
                             const SizedBox(height: 8),
-                            Text(item.timeLabel, style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              item.timeLabel,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ),
                       if (!item.isRead)
-                        const Icon(Icons.brightness_1, size: 10, color: Color(0xFF2563EB)),
+                        const Icon(
+                          Icons.brightness_1,
+                          size: 10,
+                          color: Color(0xFF2563EB),
+                        ),
                     ],
                   ),
                 ),
@@ -125,9 +165,9 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
     switch (category) {
       case 'Akademik':
         return const Color(0xFF2563EB);
-      case 'Odev':
+      case 'Ödev':
         return const Color(0xFF0F766E);
-      case 'Sinav':
+      case 'Sınav':
         return const Color(0xFFB45309);
       default:
         return const Color(0xFF7C3AED);
@@ -138,9 +178,9 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
     switch (category) {
       case 'Akademik':
         return Icons.forum_outlined;
-      case 'Odev':
+      case 'Ödev':
         return Icons.assignment_turned_in_outlined;
-      case 'Sinav':
+      case 'Sınav':
         return Icons.fact_check_outlined;
       default:
         return Icons.notifications_active_outlined;

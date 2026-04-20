@@ -86,7 +86,9 @@ class MeetingRequestApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final query = <String, String>{};
@@ -98,16 +100,24 @@ class MeetingRequestApiService {
     }
 
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/meetingrequests').replace(queryParameters: query.isEmpty ? null : query),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/meetingrequests',
+      ).replace(queryParameters: query.isEmpty ? null : query),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme talepleri alınamadı (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme talepleri alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => MeetingRequestApiRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => MeetingRequestApiRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
@@ -117,7 +127,9 @@ class MeetingRequestApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
@@ -131,11 +143,17 @@ class MeetingRequestApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Uygun görüşme saatleri alınamadı (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Uygün görüşme saatleri alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => MeetingSlotApiRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => MeetingSlotApiRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
@@ -150,7 +168,9 @@ class MeetingRequestApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -171,10 +191,14 @@ class MeetingRequestApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme talebi oluşturulamadı (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme talebi oluşturulamadı (${response.statusCode}).',
+      );
     }
 
-    return MeetingRequestApiRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return MeetingRequestApiRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<List<MeetingSlotApiRecord>> fetchConfiguredSlots({
@@ -182,29 +206,39 @@ class MeetingRequestApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/meetingrequests/availability').replace(
-        queryParameters: {'advisor': _normalize(advisor)},
-      ),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/meetingrequests/availability',
+      ).replace(queryParameters: {'advisor': _normalize(advisor)}),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme slotları alınamadı (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme slotları alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => MeetingSlotApiRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => MeetingSlotApiRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
   Future<List<String>> fetchAvailableAdvisors() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
@@ -213,7 +247,9 @@ class MeetingRequestApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme öğretmenleri alınamadı (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme öğretmenleri alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
@@ -229,7 +265,9 @@ class MeetingRequestApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -246,16 +284,22 @@ class MeetingRequestApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme slotu eklenemedi (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme slotu eklenemedi (${response.statusCode}).',
+      );
     }
 
-    return MeetingSlotApiRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return MeetingSlotApiRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<void> deleteAvailability(String id) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.delete(
@@ -264,7 +308,9 @@ class MeetingRequestApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme slotu silinemedi (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme slotu silinemedi (${response.statusCode}).',
+      );
     }
   }
 
@@ -274,7 +320,9 @@ class MeetingRequestApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MeetingRequestApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MeetingRequestApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.put(
@@ -287,10 +335,14 @@ class MeetingRequestApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MeetingRequestApiException('Görüşme durumu güncellenemedi (${response.statusCode}).');
+      throw MeetingRequestApiException(
+        'Görüşme durumu güncellenemedi (${response.statusCode}).',
+      );
     }
 
-    return MeetingRequestApiRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return MeetingRequestApiRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   static String _normalize(String value) {

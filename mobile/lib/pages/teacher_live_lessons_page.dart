@@ -26,24 +26,25 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Canli ders baglantisi acilamadi."),
-        ),
+        const SnackBar(content: Text("Canlı ders bağlantısı açılamadı.")),
       );
     }
   }
 
-  Future<void> _deleteLesson(BuildContext context, LiveLessonRecord lesson) async {
+  Future<void> _deleteLesson(
+    BuildContext context,
+    LiveLessonRecord lesson,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Canli Dersi Sil'),
+        title: const Text('Canlı Dersi Sil'),
         content: Text('"${lesson.title}" silinsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgec'),
+            child: const Text('Vazgeç'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -60,13 +61,11 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
       await _loadLessons();
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Canli ders silindi')),
+        const SnackBar(content: Text('Canlı ders silindi')),
       );
     } on SchoolFeedApiException catch (error) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      messenger.showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -95,7 +94,8 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
       final filteredLessons = _teacherName.trim().isEmpty
           ? allLessons
           : allLessons.where((lesson) {
-              return _normalizeText(lesson.teacher) == _normalizeText(_teacherName);
+              return _normalizeText(lesson.teacher) ==
+                  _normalizeText(_teacherName);
             }).toList();
       if (!mounted) return;
       setState(() {
@@ -111,7 +111,8 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Canli dersler yuklenirken beklenmeyen bir hata olustu.';
+        _errorMessage =
+            'Canlı dersler yüklenirken beklenmeyen bir hata oluştu.';
         _isLoading = false;
       });
     }
@@ -120,16 +121,17 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
   Future<void> _createLesson() async {
     final result = await Navigator.push<Map<String, dynamic>>(
       context,
-      MaterialPageRoute(
-        builder: (_) => const TeacherCreateLiveLessonPage(),
-      ),
+      MaterialPageRoute(builder: (_) => const TeacherCreateLiveLessonPage()),
     );
 
     if (!mounted) return;
     if (result == null) return;
 
     try {
-      final schedule = _parseSchedule(result["time"] as String);
+      final schedule = _parseSchedule(
+        result["time"] as String,
+        result["date"] as String?,
+      );
       await SchoolFeedApiService.instance.createLiveLesson(
         title: result["title"] as String,
         subtitle: result["subtitle"] as String,
@@ -143,50 +145,52 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
       );
       await _loadLessons();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Canli ders kaydedildi")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Canlı ders kaydedildi")));
     } on SchoolFeedApiException catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Canli ders kaydedilemedi.")),
+        const SnackBar(content: Text("Canlı ders kaydedilemedi.")),
       );
     }
   }
 
-  (DateTime, int) _parseSchedule(String value) {
+  (DateTime, int) _parseSchedule(String value, [String? dateStr]) {
     final cleaned = value.trim();
     final parts = cleaned.split('-').map((item) => item.trim()).toList();
     final startParts = parts.first.split(':');
     final startHour = int.tryParse(startParts.first) ?? DateTime.now().hour;
-    final startMinute =
-        startParts.length > 1 ? int.tryParse(startParts[1]) ?? 0 : 0;
+    final startMinute = startParts.length > 1
+        ? int.tryParse(startParts[1]) ?? 0
+        : 0;
     final now = DateTime.now();
-    final startsAt = DateTime(
-      now.year,
-      now.month,
-      now.day,
-      startHour,
-      startMinute,
-    );
+    int year = now.year;
+    int month = now.month;
+    int day = now.day;
+    if (dateStr != null && dateStr.trim().isNotEmpty) {
+      final dateParts = dateStr.trim().split('.');
+      if (dateParts.length == 3) {
+        day = int.tryParse(dateParts[0]) ?? day;
+        month = int.tryParse(dateParts[1]) ?? month;
+        year = int.tryParse(dateParts[2]) ?? year;
+      }
+    }
+    final startsAt = DateTime(year, month, day, startHour, startMinute);
 
     int durationMinutes = 60;
     if (parts.length > 1) {
       final endParts = parts[1].split(':');
       final endHour = int.tryParse(endParts.first) ?? startHour + 1;
-      final endMinute = endParts.length > 1 ? int.tryParse(endParts[1]) ?? 0 : 0;
-      final endsAt = DateTime(
-        now.year,
-        now.month,
-        now.day,
-        endHour,
-        endMinute,
-      );
+      final endMinute = endParts.length > 1
+          ? int.tryParse(endParts[1]) ?? 0
+          : 0;
+      final endsAt = DateTime(year, month, day, endHour, endMinute);
       durationMinutes = endsAt.difference(startsAt).inMinutes;
       if (durationMinutes <= 0) {
         durationMinutes = 60;
@@ -210,9 +214,9 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
 
   Color _statusColor(String status) {
     switch (status) {
-      case 'Simdi Canli':
+      case 'Şimdi Canlı':
         return const Color(0xFFEF5350);
-      case 'Tamamlandi':
+      case 'Tamamlandı':
         return const Color(0xFF64748B);
       default:
         return const Color(0xFF69C36D);
@@ -248,56 +252,56 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
             child: Wrap(
               runSpacing: 14,
               children: [
-              Center(
-                child: Container(
-                  width: 48,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade400,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-              ),
-              Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(icon, color: color, size: 30),
-              ),
-              Text(
-                title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-              Text(
-                description,
-                style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
-              ),
-              SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(sheetContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text("$title: $actionText")),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: color,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                Center(
+                  child: Container(
+                    width: 48,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade400,
+                      borderRadius: BorderRadius.circular(99),
                     ),
                   ),
-                  child: Text(actionText),
                 ),
-              ),
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Icon(icon, color: color, size: 30),
+                ),
+                Text(
+                  title,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  description,
+                  style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+                ),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(sheetContext);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text("$title: $actionText")),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: color,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: Text(actionText),
+                  ),
+                ),
               ],
             ),
           ),
@@ -314,8 +318,8 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Canli Dersler",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
+        title: "Canlı Dersler",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${lessons.length} aktif plan',
         showBackButton: true,
       ),
@@ -336,11 +340,11 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                   child: ElevatedButton.icon(
                     onPressed: _createLesson,
                     icon: const Icon(Icons.add_circle_outline_rounded),
-                    label: const Text("Canli Ders Olustur"),
+                    label: const Text("Canlı Ders Oluştur"),
                   ),
                 ),
                 const SizedBox(height: 18),
-                _sectionTitle(theme, "Bugunku Canli Dersler"),
+                _sectionTitle(theme, "Bugünkü Canlı Dersler"),
                 const SizedBox(height: 12),
                 if (_isLoading)
                   const Center(
@@ -358,35 +362,33 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                 else if (lessons.isEmpty)
                   _infoCard(
                     theme,
-                    message: 'Henuz olusturdugun bir canli ders bulunmuyor.',
+                    message: 'Henüz oluşturduğun bir canlı ders bulunmuyor.',
                     icon: Icons.videocam_off_rounded,
                   )
                 else
-                  ...lessons.asMap().entries.map(
-                    (entry) {
-                      final index = entry.key;
-                      final lesson = entry.value;
+                  ...lessons.asMap().entries.map((entry) {
+                    final index = entry.key;
+                    final lesson = entry.value;
 
-                      return _lessonCard(
-                        context,
-                        theme,
-                        isDark,
-                        index: index,
-                        title: lesson.title,
-                        subtitle: lesson.subtitle,
-                        time: lesson.timeLabel,
-                        className: lesson.className,
-                        platform: lesson.platform,
-                        status: lesson.status,
-                        statusColor: _statusColor(lesson.status),
-                        accentColor: _accentColor(lesson.platform),
-                        meetingUrl: lesson.meetingUrl,
-                        isPrimary: index == 0,
-                      );
-                    },
-                  ),
+                    return _lessonCard(
+                      context,
+                      theme,
+                      isDark,
+                      index: index,
+                      title: lesson.title,
+                      subtitle: lesson.subtitle,
+                      time: lesson.timeLabel,
+                      className: lesson.className,
+                      platform: lesson.platform,
+                      status: lesson.status,
+                      statusColor: _statusColor(lesson.status),
+                      accentColor: _accentColor(lesson.platform),
+                      meetingUrl: lesson.meetingUrl,
+                      isPrimary: index == 0,
+                    );
+                  }),
                 const SizedBox(height: 18),
-                _sectionTitle(theme, "Canli Ders Araclari"),
+                _sectionTitle(theme, "Canlı Ders Araçları"),
                 const SizedBox(height: 12),
                 _toolsRow(context),
               ],
@@ -426,7 +428,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
               Icon(Icons.videocam_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Canli Ders Merkezi",
+                "Canlı Ders Merkezi",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -437,7 +439,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Zoom ve Microsoft Teams baglantilarinizi tek ekrandan yonetin, canli derslerinize hizlica katilin.",
+            "Zoom ve Microsoft Teams bağlantılarınızı tek ekrandan yönetin, canlı derslerinize hızlıca katılın.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -449,13 +451,19 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
               _heroMiniStat(lessons.length.toString(), "Toplam"),
               const SizedBox(width: 12),
               _heroMiniStat(
-                lessons.where((e) => e.status == "Simdi Canli").length.toString(),
-                "Canli",
+                lessons
+                    .where((e) => e.status == "Şimdi Canlı")
+                    .length
+                    .toString(),
+                "Canlı",
               ),
               const SizedBox(width: 12),
               _heroMiniStat(
-                lessons.where((e) => e.status != "Simdi Canli").length.toString(),
-                "Siradaki",
+                lessons
+                    .where((e) => e.status != "Şimdi Canlı")
+                    .length
+                    .toString(),
+                "Sıradaki",
               ),
             ],
           ),
@@ -604,15 +612,19 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 7,
+                ),
                 decoration: BoxDecoration(
                   color: statusColor.withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(20),
@@ -644,7 +656,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                 child: _metaChip(
                   theme,
                   icon: Icons.groups_rounded,
-                  text: "Sinif $className",
+                  text: "Sınıf $className",
                   color: accentColor,
                 ),
               ),
@@ -674,7 +686,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                     child: ElevatedButton.icon(
                       onPressed: () => _openMeeting(context, meetingUrl),
                       icon: const Icon(Icons.open_in_new_rounded),
-                      label: const Text("Canli Derse Katil"),
+                      label: const Text("Canlı Derse Katıl"),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: accentColor,
                         foregroundColor: Colors.white,
@@ -687,10 +699,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                   width: 52,
                   height: 52,
                   child: OutlinedButton(
-                    onPressed: () => _deleteLesson(
-                      context,
-                      lessons[index],
-                    ),
+                    onPressed: () => _deleteLesson(context, lessons[index]),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red.shade600,
                       side: BorderSide(color: Colors.red.shade200),
@@ -742,16 +751,16 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
         _toolCard(
           context,
           icon: Icons.screen_share_rounded,
-          title: "Ekran Paylas",
+          title: "Ekran Paylaş",
           color: Colors.blue,
           onTap: () => _showToolSheet(
             context,
-            title: "Ekran Paylas",
+            title: "Ekran Paylaş",
             icon: Icons.screen_share_rounded,
             color: Colors.blue,
             description:
-                "Canli derste ekranini paylasarak sunum veya PDF gosterebilirsin.",
-            actionText: "Paylasimi Baslat",
+                "Canlı derste ekranını paylaşarak sunum veya PDF gösterebilirsin.",
+            actionText: "Paylaşımı Başlat",
           ),
         ),
         const SizedBox(width: 12),
@@ -765,8 +774,9 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
             title: "Ses Kontrol",
             icon: Icons.mic_rounded,
             color: Colors.green,
-            description: "Mikrofon ve ses ayarlarini bu alandan yonetebilirsin.",
-            actionText: "Ses Ayarlarini Ac",
+            description:
+                "Mikrofon ve ses ayarlarını bu alandan yönetebilirsin.",
+            actionText: "Ses Ayarlarını Aç",
           ),
         ),
         const SizedBox(width: 12),
@@ -780,8 +790,8 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
             title: "Ders Notu",
             icon: Icons.insert_drive_file_rounded,
             color: Colors.purple,
-            description: "Canli ders notlari ve materyalleri yonetebilirsin.",
-            actionText: "Notlari Ac",
+            description: "Canlı ders notları ve materyalleri yönetebilirsin.",
+            actionText: "Notları Aç",
           ),
         ),
       ],

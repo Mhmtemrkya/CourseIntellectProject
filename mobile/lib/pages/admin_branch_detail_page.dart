@@ -31,7 +31,10 @@ class AdminBranchDetailPage extends StatelessWidget {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: Text(branchName, style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text(
+          branchName,
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -41,7 +44,9 @@ class AdminBranchDetailPage extends StatelessWidget {
             title: branchName,
             description: summary,
             colors: [const Color(0xFF0F172A), color],
-            metrics: stats.map((item) => AdminHeroMetric(label: item.$1, value: item.$2)).toList(),
+            metrics: stats
+                .map((item) => AdminHeroMetric(label: item.$1, value: item.$2))
+                .toList(),
           ),
           const SizedBox(height: 16),
           ...units.map(
@@ -50,9 +55,19 @@ class AdminBranchDetailPage extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(unit.$1, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    unit.$1,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(unit.$2, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45)),
+                  Text(
+                    unit.$2,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.45),
+                  ),
                 ],
               ),
             ),
@@ -60,7 +75,10 @@ class AdminBranchDetailPage extends StatelessWidget {
           FilledButton.icon(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Şube raporu paylaşıma hazırlandı.'), behavior: SnackBarBehavior.floating),
+                const SnackBar(
+                  content: Text('Şube raporu paylaşıma hazırlandı.'),
+                  behavior: SnackBarBehavior.floating,
+                ),
               );
             },
             icon: const Icon(Icons.share_outlined),

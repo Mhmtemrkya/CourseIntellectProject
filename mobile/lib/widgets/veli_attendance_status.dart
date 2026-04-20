@@ -5,33 +5,24 @@ class VeliAttendanceStatus extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Container(
-
       padding: const EdgeInsets.all(16),
 
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(
-            color: Colors.black12,
-            blurRadius: 6,
-          ),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
 
       child: Column(
-
         crossAxisAlignment: CrossAxisAlignment.start,
 
         children: [
-
           Text(
             "Devam Durumu",
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
 
           const SizedBox(height: 8),
@@ -54,7 +45,6 @@ class VeliAttendanceStatus extends StatelessWidget {
           const Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-
               _AttendanceBox(
                 title: "45",
                 subtitle: "Katılım",
@@ -72,10 +62,8 @@ class VeliAttendanceStatus extends StatelessWidget {
                 subtitle: "İzinli",
                 color: Colors.orange,
               ),
-
             ],
-          )
-
+          ),
         ],
       ),
     );
@@ -83,7 +71,6 @@ class VeliAttendanceStatus extends StatelessWidget {
 }
 
 class _AttendanceBox extends StatelessWidget {
-
   final String title;
   final String subtitle;
   final Color color;
@@ -96,11 +83,8 @@ class _AttendanceBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Column(
-
       children: [
-
         Text(
           title,
           style: TextStyle(
@@ -110,13 +94,8 @@ class _AttendanceBox extends StatelessWidget {
           ),
         ),
 
-        Text(
-          subtitle,
-          style: Theme.of(context).textTheme.bodySmall,
-        ),
-
+        Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
       ],
-
     );
   }
 }

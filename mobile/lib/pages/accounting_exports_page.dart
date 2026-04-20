@@ -35,7 +35,10 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
             AccountingPanel(
               child: Row(
                 children: [
-                  const Icon(Icons.error_outline_rounded, color: Color(0xFFB42318)),
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: Color(0xFFB42318),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(child: Text(_store.lastError!)),
                   TextButton(
@@ -49,12 +52,16 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
           ],
           AccountingHeroCard(
             eyebrow: 'Rapor dışa aktarımı',
-            title: 'Muhasebe verilerini yönetim ve operasyon ekipleri için hazır paketler halinde alın.',
+            title:
+                'Muhasebe verilerini yönetim ve operasyon ekipleri için hazır paketler halinde alın.',
             description: 'Excel ve PDF çıktıları özet önizleme ile hazırlanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
               const AccountingHeroMetric(label: 'Hazır Şablon', value: '3'),
-              AccountingHeroMetric(label: 'Fatura Kayıt', value: '${_store.invoices.length}'),
+              AccountingHeroMetric(
+                label: 'Fatura Kayıt',
+                value: '${_store.invoices.length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -106,23 +113,37 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
               Container(
                 width: 48,
                 height: 48,
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: Icon(icon, color: color),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                child: Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
               ),
             ],
           ),
           const SizedBox(height: 12),
-          Text(subtitle, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)),
+          Text(
+            subtitle,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.4),
+          ),
           const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
                 child: FilledButton.tonalIcon(
-                  onPressed: () => _showExportPreview(context, title, exportType),
+                  onPressed: () =>
+                      _showExportPreview(context, title, exportType),
                   icon: const Icon(Icons.download_rounded),
                   label: const Text('Dışa Aktar'),
                 ),
@@ -134,20 +155,26 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
                       ? null
                       : () async {
                           final messenger = ScaffoldMessenger.of(context);
-                          final export = await AccountingExportService.instance.buildExport(
-                            exportType: exportType,
-                            store: _store,
-                          );
-                          final saved = await AccountingExportService.instance.saveExport(export: export);
+                          final export = await AccountingExportService.instance
+                              .buildExport(
+                                exportType: exportType,
+                                store: _store,
+                              );
+                          final saved = await AccountingExportService.instance
+                              .saveExport(export: export);
                           if (!mounted) return;
                           messenger.showSnackBar(
                             SnackBar(
-                              content: Text('${saved.label} kaydedildi: ${saved.file.path.split('/').last}'),
+                              content: Text(
+                                '${saved.label} kaydedildi: ${saved.file.path.split('/').last}',
+                              ),
                               behavior: SnackBarBehavior.floating,
                               action: SnackBarAction(
                                 label: 'Paylaş',
                                 onPressed: () {
-                                  AccountingExportService.instance.shareExport(saved);
+                                  AccountingExportService.instance.shareExport(
+                                    saved,
+                                  );
                                 },
                               ),
                             ),
@@ -164,7 +191,11 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
     );
   }
 
-  void _showExportPreview(BuildContext context, String title, String exportType) {
+  void _showExportPreview(
+    BuildContext context,
+    String title,
+    String exportType,
+  ) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) {
@@ -177,11 +208,17 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                  Text(
+                    title,
+                    style: Theme.of(dialogContext).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
+                  ),
                   const SizedBox(height: 8),
                   Text(
                     _store.exportSummary(exportType),
-                    style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.5),
+                    style: Theme.of(
+                      dialogContext,
+                    ).textTheme.bodyMedium?.copyWith(height: 1.5),
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -199,9 +236,15 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
                               ? null
                               : () async {
                                   Navigator.pop(dialogContext);
-                                  await _createExport(context, title, exportType);
+                                  await _createExport(
+                                    context,
+                                    title,
+                                    exportType,
+                                  );
                                 },
-                          child: Text(_isCreating ? 'Hazırlanıyor...' : 'Oluştur'),
+                          child: Text(
+                            _isCreating ? 'Hazırlanıyor...' : 'Oluştur',
+                          ),
                         ),
                       ),
                     ],
@@ -215,7 +258,11 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
     );
   }
 
-  Future<void> _createExport(BuildContext context, String title, String exportType) async {
+  Future<void> _createExport(
+    BuildContext context,
+    String title,
+    String exportType,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     setState(() {
       _isCreating = true;
@@ -226,11 +273,15 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
         exportType: exportType,
         store: _store,
       );
-      final saved = await AccountingExportService.instance.saveExport(export: export);
+      final saved = await AccountingExportService.instance.saveExport(
+        export: export,
+      );
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(
-          content: Text('${saved.label} kaydedildi: ${saved.file.path.split('/').last}'),
+          content: Text(
+            '${saved.label} kaydedildi: ${saved.file.path.split('/').last}',
+          ),
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
             label: 'Aç',

@@ -15,6 +15,7 @@ class ContentDetailPage extends StatefulWidget {
   final String fileType;
   final String description;
   final String? fileName;
+  final String? fileUrl;
   final String? size;
   final String? grade;
   final List<ContentRecord> playlist;
@@ -29,6 +30,7 @@ class ContentDetailPage extends StatefulWidget {
     required this.fileType,
     required this.description,
     this.fileName,
+    this.fileUrl,
     this.size,
     this.grade,
     this.playlist = const [],
@@ -47,19 +49,24 @@ class _ContentDetailPageState extends State<ContentDetailPage>
   ContentRecord? _currentVideoRecord;
   double _playbackSpeed = 1.0;
   VoidCallback? _videoListener;
+  bool _videoLoading = false;
+  String? _videoError;
 
   @override
   void initState() {
     super.initState();
 
-    _controller =
-        AnimationController(vsync: this, duration: const Duration(milliseconds: 700));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 700),
+    );
 
     fadeAnim = Tween<double>(begin: 0, end: 1).animate(_controller);
 
-    slideAnim =
-        Tween<Offset>(begin: const Offset(0, 0.1), end: Offset.zero)
-            .animate(_controller);
+    slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(_controller);
 
     _currentVideoRecord = _resolveCurrentRecord();
     _controller.forward();
@@ -82,7 +89,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
   ContentRecord? _resolveCurrentRecord() {
     final currentFileName = widget.fileName?.trim();
     for (final item in widget.playlist) {
-      if (currentFileName != null && currentFileName.isNotEmpty && item.fileName == currentFileName) {
+      if (currentFileName != null &&
+          currentFileName.isNotEmpty &&
+          item.fileName == currentFileName) {
         return item;
       }
       if (item.title == widget.title && item.subject == widget.subject) {
@@ -93,9 +102,22 @@ class _ContentDetailPageState extends State<ContentDetailPage>
   }
 
   Uri? get _fileUri {
+    final url = _currentVideoRecord?.fileUrl ?? widget.fileUrl;
+    if (url != null && url.trim().isNotEmpty) {
+      return Uri.tryParse(ApiConfig.resolveAssetUrl(url));
+    }
+
     final fileName = _currentVideoRecord?.fileName ?? widget.fileName;
     if (fileName == null || fileName.trim().isEmpty) return null;
-    return Uri.parse('${ApiConfig.baseUrl}/uploads/teacher-content/${Uri.encodeComponent(fileName)}');
+    final trimmed = fileName.trim();
+    if (trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('/')) {
+      return Uri.tryParse(ApiConfig.resolveAssetUrl(trimmed));
+    }
+    return Uri.tryParse(
+      '${ApiConfig.baseUrl}/uploads/teacher-content/${Uri.encodeComponent(trimmed)}',
+    );
   }
 
   Future<void> _initVideo() async {
@@ -105,26 +127,52 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     }
     await _videoController?.dispose();
     _videoController = null;
-    if (!widget.isVideo || _fileUri == null) return;
-    final controller = VideoPlayerController.networkUrl(_fileUri!);
-    await controller.initialize();
-    controller.setLooping(false);
-    await controller.setPlaybackSpeed(_playbackSpeed);
-    await controller.play();
-    _videoListener = () {
+    if (!widget.isVideo || _fileUri == null) {
       if (mounted) {
-        setState(() {});
+        setState(() {
+          _videoLoading = false;
+          _videoError = widget.isVideo
+              ? 'Video dosya bağlantısı bulunamadı.'
+              : null;
+        });
       }
-    };
-    controller.addListener(_videoListener!);
-    if (!mounted) {
-      controller.removeListener(_videoListener!);
-      await controller.dispose();
       return;
     }
-    setState(() {
-      _videoController = controller;
-    });
+    if (mounted) {
+      setState(() {
+        _videoLoading = true;
+        _videoError = null;
+      });
+    }
+    try {
+      final controller = VideoPlayerController.networkUrl(_fileUri!);
+      await controller.initialize();
+      controller.setLooping(false);
+      await controller.setPlaybackSpeed(_playbackSpeed);
+      await controller.play();
+      _videoListener = () {
+        if (mounted) {
+          setState(() {});
+        }
+      };
+      controller.addListener(_videoListener!);
+      if (!mounted) {
+        controller.removeListener(_videoListener!);
+        await controller.dispose();
+        return;
+      }
+      setState(() {
+        _videoController = controller;
+        _videoLoading = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _videoLoading = false;
+        _videoError =
+            'Video oynatılamadı. Bağlantıyı kontrol edip tekrar deneyin.';
+      });
+    }
   }
 
   Future<void> _togglePlayback() async {
@@ -191,7 +239,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                   children: [
                     Center(
                       child: AspectRatio(
-                        aspectRatio: controller.value.aspectRatio == 0 ? 16 / 9 : controller.value.aspectRatio,
+                        aspectRatio: controller.value.aspectRatio == 0
+                            ? 16 / 9
+                            : controller.value.aspectRatio,
                         child: GestureDetector(
                           behavior: HitTestBehavior.opaque,
                           onTap: () => syncPlayback(_togglePlayback),
@@ -204,10 +254,16 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                   child: Container(
                                     padding: const EdgeInsets.all(18),
                                     decoration: BoxDecoration(
-                                      color: Colors.black.withValues(alpha: 0.42),
+                                      color: Colors.black.withValues(
+                                        alpha: 0.42,
+                                      ),
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+                                    child: const Icon(
+                                      Icons.play_arrow_rounded,
+                                      color: Colors.white,
+                                      size: 40,
+                                    ),
                                   ),
                                 ),
                             ],
@@ -223,7 +279,10 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                         children: [
                           IconButton(
                             onPressed: () => Navigator.of(dialogContext).pop(),
-                            icon: const Icon(Icons.close_rounded, color: Colors.white),
+                            icon: const Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                            ),
                           ),
                           const Spacer(),
                           _speedMenu(
@@ -255,20 +314,22 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     if (uri == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu icerik icin dosya bulunamadi.')),
+        const SnackBar(content: Text('Bu içerik için dosya bulunamadı.')),
       );
       return;
     }
 
     final launched = await launchUrl(
       uri,
-      mode: download ? LaunchMode.externalApplication : LaunchMode.externalApplication,
+      mode: download
+          ? LaunchMode.externalApplication
+          : LaunchMode.externalApplication,
     );
 
     if (!launched && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Dosya acilamadi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Dosya açılamadı.')));
     }
   }
 
@@ -279,16 +340,32 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     final currentSubject = _currentVideoRecord?.subject ?? widget.subject;
     final currentTeacher = _currentVideoRecord?.teacher ?? widget.teacher;
     final currentInfo = _currentVideoRecord?.info ?? widget.info;
-    final currentDescription = _currentVideoRecord?.description ?? widget.description;
+    final currentDescription =
+        _currentVideoRecord?.description ?? widget.description;
     final currentFileType = _currentVideoRecord?.fileType ?? widget.fileType;
     final currentGrade = _currentVideoRecord?.grade ?? widget.grade;
-    final currentFileName = _currentVideoRecord?.fileName ?? widget.fileName ?? widget.fileType;
+    final currentFileName =
+        _currentVideoRecord?.fileName ?? widget.fileName ?? widget.fileType;
     final currentSize = _currentVideoRecord?.size ?? widget.size;
-    final hasInlineVideo = widget.isVideo && _videoController?.value.isInitialized == true;
-    final currentPlaylistIndex = widget.playlist.indexWhere((item) => item.fileName == (_currentVideoRecord?.fileName ?? widget.fileName));
-    final nextPlaylistItem = widget.playlist.length > 1 && currentPlaylistIndex >= 0 && currentPlaylistIndex < widget.playlist.length - 1
+    final hasInlineVideo =
+        widget.isVideo && _videoController?.value.isInitialized == true;
+    final currentPlaylistIndex = widget.playlist.indexWhere(
+      (item) =>
+          item.fileName == (_currentVideoRecord?.fileName ?? widget.fileName),
+    );
+    final nextPlaylistItem =
+        widget.playlist.length > 1 &&
+            currentPlaylistIndex >= 0 &&
+            currentPlaylistIndex < widget.playlist.length - 1
         ? widget.playlist[currentPlaylistIndex + 1]
-        : (widget.playlist.length > 1 ? widget.playlist.firstWhere((item) => item.fileName != (_currentVideoRecord?.fileName ?? widget.fileName), orElse: () => widget.playlist.first) : null);
+        : (widget.playlist.length > 1
+              ? widget.playlist.firstWhere(
+                  (item) =>
+                      item.fileName !=
+                      (_currentVideoRecord?.fileName ?? widget.fileName),
+                  orElse: () => widget.playlist.first,
+                )
+              : null);
 
     return Scaffold(
       appBar: AppBar(title: Text(currentTitle)),
@@ -296,8 +373,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         opacity: fadeAnim,
         child: SlideTransition(
           position: slideAnim,
-            child: SingleChildScrollView(
-              child: ResponsiveContent(
+          child: SingleChildScrollView(
+            child: ResponsiveContent(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -310,7 +387,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                           children: [
                             if (hasInlineVideo)
                               AspectRatio(
-                                aspectRatio: _videoController!.value.aspectRatio,
+                                aspectRatio:
+                                    _videoController!.value.aspectRatio,
                                 child: GestureDetector(
                                   behavior: HitTestBehavior.opaque,
                                   onTap: _togglePlayback,
@@ -332,25 +410,33 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                             const Spacer(),
                                             IconButton(
                                               style: IconButton.styleFrom(
-                                                backgroundColor: Colors.black.withValues(alpha: 0.42),
+                                                backgroundColor: Colors.black
+                                                    .withValues(alpha: 0.42),
                                                 foregroundColor: Colors.white,
                                               ),
-                                              onPressed: () => _openFile(download: true),
-                                              icon: const Icon(Icons.download_rounded),
+                                              onPressed: () =>
+                                                  _openFile(download: true),
+                                              icon: const Icon(
+                                                Icons.download_rounded,
+                                              ),
                                             ),
                                             const SizedBox(width: 6),
                                             _speedMenu(
                                               color: Colors.white,
-                                              onSelected: (speed) => _setPlaybackSpeed(speed),
+                                              onSelected: (speed) =>
+                                                  _setPlaybackSpeed(speed),
                                             ),
                                             const SizedBox(width: 6),
                                             IconButton(
                                               style: IconButton.styleFrom(
-                                                backgroundColor: Colors.black.withValues(alpha: 0.42),
+                                                backgroundColor: Colors.black
+                                                    .withValues(alpha: 0.42),
                                                 foregroundColor: Colors.white,
                                               ),
                                               onPressed: _openFullscreenVideo,
-                                              icon: const Icon(Icons.fullscreen_rounded),
+                                              icon: const Icon(
+                                                Icons.fullscreen_rounded,
+                                              ),
                                             ),
                                           ],
                                         ),
@@ -364,27 +450,45 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                             gradient: LinearGradient(
                                               colors: [
                                                 Colors.transparent,
-                                                Colors.black.withValues(alpha: 0.88),
+                                                Colors.black.withValues(
+                                                  alpha: 0.88,
+                                                ),
                                               ],
                                               begin: Alignment.topCenter,
                                               end: Alignment.bottomCenter,
                                             ),
                                           ),
                                           child: Padding(
-                                            padding: const EdgeInsets.fromLTRB(12, 28, 12, 10),
+                                            padding: const EdgeInsets.fromLTRB(
+                                              12,
+                                              28,
+                                              12,
+                                              10,
+                                            ),
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
                                                 ClipRRect(
-                                                  borderRadius: BorderRadius.circular(999),
+                                                  borderRadius:
+                                                      BorderRadius.circular(
+                                                        999,
+                                                      ),
                                                   child: VideoProgressIndicator(
                                                     _videoController!,
                                                     allowScrubbing: true,
                                                     padding: EdgeInsets.zero,
                                                     colors: VideoProgressColors(
                                                       playedColor: accent,
-                                                      bufferedColor: Colors.white.withValues(alpha: 0.35),
-                                                      backgroundColor: Colors.white.withValues(alpha: 0.18),
+                                                      bufferedColor: Colors
+                                                          .white
+                                                          .withValues(
+                                                            alpha: 0.35,
+                                                          ),
+                                                      backgroundColor: Colors
+                                                          .white
+                                                          .withValues(
+                                                            alpha: 0.18,
+                                                          ),
                                                     ),
                                                   ),
                                                 ),
@@ -392,23 +496,41 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                                 Row(
                                                   children: [
                                                     IconButton(
-                                                      onPressed: _togglePlayback,
+                                                      onPressed:
+                                                          _togglePlayback,
                                                       color: Colors.white,
                                                       icon: Icon(
-                                                        _videoController!.value.isPlaying
-                                                            ? Icons.pause_rounded
-                                                            : Icons.play_arrow_rounded,
+                                                        _videoController!
+                                                                .value
+                                                                .isPlaying
+                                                            ? Icons
+                                                                  .pause_rounded
+                                                            : Icons
+                                                                  .play_arrow_rounded,
                                                       ),
                                                     ),
                                                     IconButton(
-                                                      onPressed: () => _seekBy(const Duration(seconds: -10)),
+                                                      onPressed: () => _seekBy(
+                                                        const Duration(
+                                                          seconds: -10,
+                                                        ),
+                                                      ),
                                                       color: Colors.white,
-                                                      icon: const Icon(Icons.replay_10_rounded),
+                                                      icon: const Icon(
+                                                        Icons.replay_10_rounded,
+                                                      ),
                                                     ),
                                                     IconButton(
-                                                      onPressed: () => _seekBy(const Duration(seconds: 10)),
+                                                      onPressed: () => _seekBy(
+                                                        const Duration(
+                                                          seconds: 10,
+                                                        ),
+                                                      ),
                                                       color: Colors.white,
-                                                      icon: const Icon(Icons.forward_10_rounded),
+                                                      icon: const Icon(
+                                                        Icons
+                                                            .forward_10_rounded,
+                                                      ),
                                                     ),
                                                     const SizedBox(width: 4),
                                                     Expanded(
@@ -416,7 +538,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                                         '${_formatDuration(_videoController!.value.position)} / ${_formatDuration(_videoController!.value.duration)}',
                                                         style: const TextStyle(
                                                           color: Colors.white,
-                                                          fontWeight: FontWeight.w700,
+                                                          fontWeight:
+                                                              FontWeight.w700,
                                                         ),
                                                       ),
                                                     ),
@@ -432,10 +555,16 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                           child: Container(
                                             padding: const EdgeInsets.all(18),
                                             decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.42),
+                                              color: Colors.black.withValues(
+                                                alpha: 0.42,
+                                              ),
                                               shape: BoxShape.circle,
                                             ),
-                                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 40),
+                                            child: const Icon(
+                                              Icons.play_arrow_rounded,
+                                              color: Colors.white,
+                                              size: 40,
+                                            ),
                                           ),
                                         ),
                                     ],
@@ -448,11 +577,15 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                 width: double.infinity,
                                 color: Colors.black,
                                 child: Center(
-                                  child: Icon(
-                                    _iconForType(),
-                                    size: 88,
-                                    color: Colors.white.withValues(alpha: 0.94),
-                                  ),
+                                  child: widget.isVideo
+                                      ? _videoPlaceholder()
+                                      : Icon(
+                                          _iconForType(),
+                                          size: 88,
+                                          color: Colors.white.withValues(
+                                            alpha: 0.94,
+                                          ),
+                                        ),
                                 ),
                               ),
                           ],
@@ -487,7 +620,10 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                 '$currentSubject • $currentTeacher',
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                                style: const TextStyle(
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w700,
+                                ),
                               ),
                             ],
                           ),
@@ -500,175 +636,232 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: accent.withValues(alpha: 0.12),
-                            child: Icon(Icons.ondemand_video_rounded, color: accent, size: 20),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: accent.withValues(alpha: 0.12),
+                              child: Icon(
+                                Icons.ondemand_video_rounded,
+                                color: accent,
+                                size: 20,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    currentTeacher,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '$currentSubject • ${currentGrade ?? 'Tüm sınıflar'}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .textTheme
+                                          .bodySmall
+                                          ?.color
+                                          ?.withValues(alpha: 0.72),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  currentTeacher,
+                                  currentInfo,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(fontWeight: FontWeight.w800),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                                 const SizedBox(height: 3),
                                 Text(
-                                  '$currentSubject • ${currentGrade ?? 'Tum siniflar'}',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                  currentSize ?? currentFileType,
                                   style: TextStyle(
-                                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                                    color: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.color
+                                        ?.withValues(alpha: 0.68),
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 12),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(
-                                currentInfo,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontWeight: FontWeight.w800),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                currentSize ?? currentFileType,
-                                style: TextStyle(
-                                  color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.68),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _youtubeMetaPill(Icons.folder_rounded, currentFileName),
-                            const SizedBox(width: 8),
-                            if (currentSize != null) ...[
-                              _youtubeMetaPill(Icons.storage_rounded, currentSize),
-                              const SizedBox(width: 8),
-                            ],
-                            _youtubeMetaPill(Icons.video_library_rounded, currentFileType),
-                            const SizedBox(width: 8),
-                            _youtubeMetaPill(
-                              Icons.queue_play_next_rounded,
-                              '${widget.playlist.isEmpty ? 1 : widget.playlist.length} video',
-                            ),
                           ],
                         ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        "Icerik Aciklamasi",
-                        style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        currentDescription,
-                        style: TextStyle(color: Theme.of(context).textTheme.bodyMedium?.color?.withValues(alpha: 0.72), height: 1.5),
-                      ),
-                      const SizedBox(height: 20),
-                      if (widget.isVideo && widget.playlist.length > 1) ...[
-                        Row(
-                          children: [
-                            const Text(
-                              "Oynatma Listesi",
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                            ),
-                            const Spacer(),
-                            if (nextPlaylistItem != null)
-                              TextButton.icon(
-                                onPressed: () => _playPlaylistItem(nextPlaylistItem),
-                                icon: const Icon(Icons.skip_next_rounded),
-                                label: const Text('Siradaki'),
-                              ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        ...widget.playlist.map((item) {
-                          final selected = (_currentVideoRecord?.fileName ?? widget.fileName) == item.fileName;
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 2),
-                            decoration: BoxDecoration(
-                              color: selected
-                                  ? accent.withValues(alpha: 0.08)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            child: ListTile(
-                              dense: true,
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              leading: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  width: 72,
-                                  height: 44,
-                                  color: accent.withValues(alpha: selected ? 0.24 : 0.14),
-                                  child: Icon(
-                                    selected ? Icons.equalizer_rounded : Icons.play_arrow_rounded,
-                                    color: accent,
-                                  ),
-                                ),
-                              ),
-                              title: Text(item.title, maxLines: 2, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(
-                                'Bolum ${item.playlistOrder ?? 1} • ${item.subject}',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              trailing: selected ? Icon(Icons.more_vert_rounded, color: accent) : null,
-                              onTap: () => _playPlaylistItem(item),
-                            ),
-                          );
-                        }),
-                        const SizedBox(height: 10),
-                      ],
-                      if (!widget.isVideo) ...[
-                        const SizedBox(height: 8),
+                        const SizedBox(height: 16),
                         SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: Row(
                             children: [
-                              _youtubeAction(
-                                icon: Icons.open_in_new_rounded,
-                                label: 'Ac',
-                                onTap: _fileUri == null ? null : () => _openFile(download: false),
+                              _youtubeMetaPill(
+                                Icons.folder_rounded,
+                                currentFileName,
                               ),
-                              const SizedBox(width: 10),
-                              _youtubeAction(
-                                icon: Icons.download_rounded,
-                                label: 'Indir',
-                                onTap: _fileUri == null ? null : () => _openFile(download: true),
+                              const SizedBox(width: 8),
+                              if (currentSize != null) ...[
+                                _youtubeMetaPill(
+                                  Icons.storage_rounded,
+                                  currentSize,
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              _youtubeMetaPill(
+                                Icons.video_library_rounded,
+                                currentFileType,
+                              ),
+                              const SizedBox(width: 8),
+                              _youtubeMetaPill(
+                                Icons.queue_play_next_rounded,
+                                '${widget.playlist.isEmpty ? 1 : widget.playlist.length} video',
                               ),
                             ],
                           ),
                         ),
+                        const SizedBox(height: 20),
+                        const Text(
+                          "İçerik Açıklaması",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          currentDescription,
+                          style: TextStyle(
+                            color: Theme.of(context).textTheme.bodyMedium?.color
+                                ?.withValues(alpha: 0.72),
+                            height: 1.5,
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        if (widget.isVideo && widget.playlist.length > 1) ...[
+                          Row(
+                            children: [
+                              const Text(
+                                "Oynatma Listesi",
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const Spacer(),
+                              if (nextPlaylistItem != null)
+                                TextButton.icon(
+                                  onPressed: () =>
+                                      _playPlaylistItem(nextPlaylistItem),
+                                  icon: const Icon(Icons.skip_next_rounded),
+                                  label: const Text('Sıradaki'),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          ...widget.playlist.map((item) {
+                            final selected =
+                                (_currentVideoRecord?.fileName ??
+                                    widget.fileName) ==
+                                item.fileName;
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 2),
+                              decoration: BoxDecoration(
+                                color: selected
+                                    ? accent.withValues(alpha: 0.08)
+                                    : Colors.transparent,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: ListTile(
+                                dense: true,
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
+                                leading: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Container(
+                                    width: 72,
+                                    height: 44,
+                                    color: accent.withValues(
+                                      alpha: selected ? 0.24 : 0.14,
+                                    ),
+                                    child: Icon(
+                                      selected
+                                          ? Icons.equalizer_rounded
+                                          : Icons.play_arrow_rounded,
+                                      color: accent,
+                                    ),
+                                  ),
+                                ),
+                                title: Text(
+                                  item.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                subtitle: Text(
+                                  'Bolum ${item.playlistOrder ?? 1} • ${item.subject}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                trailing: selected
+                                    ? Icon(
+                                        Icons.more_vert_rounded,
+                                        color: accent,
+                                      )
+                                    : null,
+                                onTap: () => _playPlaylistItem(item),
+                              ),
+                            );
+                          }),
+                          const SizedBox(height: 10),
+                        ],
+                        if (!widget.isVideo) ...[
+                          const SizedBox(height: 8),
+                          SingleChildScrollView(
+                            scrollDirection: Axis.horizontal,
+                            child: Row(
+                              children: [
+                                _youtubeAction(
+                                  icon: Icons.open_in_new_rounded,
+                                  label: 'Ac',
+                                  onTap: _fileUri == null
+                                      ? null
+                                      : () => _openFile(download: false),
+                                ),
+                                const SizedBox(width: 10),
+                                _youtubeAction(
+                                  icon: Icons.download_rounded,
+                                  label: 'Indir',
+                                  onTap: _fileUri == null
+                                      ? null
+                                      : () => _openFile(download: true),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
-                )
-              ],
-            ),
+                ],
               ),
+            ),
           ),
         ),
       ),
@@ -679,13 +872,19 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: isDark(context) ? const Color(0xFF171B22) : const Color(0xFFF3F4F6),
+        color: isDark(context)
+            ? const Color(0xFF171B22)
+            : const Color(0xFFF3F4F6),
         borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 16, color: Theme.of(context).textTheme.bodySmall?.color),
+          Icon(
+            icon,
+            size: 16,
+            color: Theme.of(context).textTheme.bodySmall?.color,
+          ),
           const SizedBox(width: 6),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 160),
@@ -717,7 +916,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
       child: Ink(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         decoration: BoxDecoration(
-          color: isDark(context) ? const Color(0xFF171B22) : const Color(0xFFF3F4F6),
+          color: isDark(context)
+              ? const Color(0xFF171B22)
+              : const Color(0xFFF3F4F6),
           borderRadius: BorderRadius.circular(999),
         ),
         child: Row(
@@ -729,6 +930,62 @@ class _ContentDetailPageState extends State<ContentDetailPage>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _videoPlaceholder() {
+    if (_videoLoading) {
+      return const Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: Colors.white),
+          SizedBox(height: 14),
+          Text(
+            'Video yükleniyor...',
+            style: TextStyle(
+              color: Colors.white70,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_videoError != null) {
+      return Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.play_circle_outline_rounded,
+              color: Colors.white,
+              size: 58,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              _videoError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 14),
+            FilledButton.icon(
+              onPressed: _initVideo,
+              icon: const Icon(Icons.refresh_rounded),
+              label: const Text('Tekrar Dene'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const Icon(
+      Icons.play_circle_fill_rounded,
+      size: 88,
+      color: Colors.white,
     );
   }
 
@@ -745,15 +1002,15 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+        ),
       ),
     );
   }
 
-  Widget _speedMenu({
-    required ValueChanged<double> onSelected,
-    Color? color,
-  }) {
+  Widget _speedMenu({required ValueChanged<double> onSelected, Color? color}) {
     final foreground = color ?? _accentColor();
     return PopupMenuButton<double>(
       tooltip: 'Hız',

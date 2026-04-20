@@ -44,7 +44,8 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = 'Canlı dersler yüklenirken beklenmeyen bir hata oluştu.';
+        _errorMessage =
+            'Canlı dersler yüklenirken beklenmeyen bir hata oluştu.';
         _isLoading = false;
       });
     }
@@ -56,9 +57,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Canlı ders bağlantısı açılamadı."),
-        ),
+        const SnackBar(content: Text("Canlı ders bağlantısı açılamadı.")),
       );
     }
   }
@@ -150,15 +149,16 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final liveCount = lessons.where((lesson) => lesson.status == 'Şimdi Canlı').length;
+    final liveCount = lessons
+        .where((lesson) => lesson.status == 'Şimdi Canlı')
+        .length;
     final upcomingCount =
-        lessons.where((lesson) => lesson.status != 'Tamamlandi').length - liveCount;
+        lessons.where((lesson) => lesson.status != 'Tamamlandi').length -
+        liveCount;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Canli Derslerim"),
-      ),
+      appBar: AppBar(title: const Text("Canlı Derslerim")),
       body: RefreshIndicator(
         onRefresh: _loadLessons,
         child: SingleChildScrollView(
@@ -168,10 +168,16 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _heroCard(theme, isDark, lessons.length, liveCount, upcomingCount),
+                _heroCard(
+                  theme,
+                  isDark,
+                  lessons.length,
+                  liveCount,
+                  upcomingCount,
+                ),
                 const SizedBox(height: 18),
                 Text(
-                  "Bugunku Canli Dersler",
+                  "Bugünkü Canlı Dersler",
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -194,7 +200,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                 else if (lessons.isEmpty)
                   _infoCard(
                     theme,
-                    message: 'Henuz planlanmis canli ders bulunmuyor.',
+                    message: 'Henüz planlanmış canlı ders bulunmuyor.',
                     icon: Icons.event_busy_rounded,
                   )
                 else
@@ -258,7 +264,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
               Icon(Icons.live_tv_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Canli Ders Programin",
+                "Canlı Ders Programın",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -269,7 +275,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Canli ders baglantilarina hizlica katil, materyalleri goruntule ve ders saatlerini takip et.",
+            "Canlı ders bağlantılarına hızlıca katıl, materyalleri görüntüle ve ders saatlerini takip et.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -280,9 +286,9 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
             children: [
               _heroMiniStat("$totalCount", "Toplam"),
               const SizedBox(width: 12),
-              _heroMiniStat("$liveCount", "Canli"),
+              _heroMiniStat("$liveCount", "Canlı"),
               const SizedBox(width: 12),
-              _heroMiniStat("$upcomingCount", "Siradaki"),
+              _heroMiniStat("$upcomingCount", "Sıradaki"),
             ],
           ),
         ],
@@ -413,8 +419,9 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                     Text(
                       subtitle,
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
                       ),
                     ),
                   ],
@@ -499,7 +506,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                 child: ElevatedButton.icon(
                   onPressed: () => _openMeeting(context, meetingUrl),
                   icon: const Icon(Icons.open_in_new_rounded),
-                  label: const Text("Derse Katil"),
+                  label: const Text("Derse Katıl"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     foregroundColor: Colors.white,

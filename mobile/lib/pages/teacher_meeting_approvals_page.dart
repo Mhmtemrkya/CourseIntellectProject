@@ -9,10 +9,12 @@ class TeacherMeetingApprovalsPage extends StatefulWidget {
   const TeacherMeetingApprovalsPage({super.key});
 
   @override
-  State<TeacherMeetingApprovalsPage> createState() => _TeacherMeetingApprovalsPageState();
+  State<TeacherMeetingApprovalsPage> createState() =>
+      _TeacherMeetingApprovalsPageState();
 }
 
-class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPage> {
+class _TeacherMeetingApprovalsPageState
+    extends State<TeacherMeetingApprovalsPage> {
   bool _loading = true;
   String? _error;
   List<MeetingRequestApiRecord> _requests = const [];
@@ -36,8 +38,11 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
     try {
       final session = await AuthSessionStore.instance.load();
       final teacherName = session?.fullName ?? _teacherName;
-      final requests = await MeetingRequestApiService.instance.fetchRequests(advisor: teacherName);
-      final availability = await MeetingRequestApiService.instance.fetchConfiguredSlots(advisor: teacherName);
+      final requests = await MeetingRequestApiService.instance.fetchRequests(
+        advisor: teacherName,
+      );
+      final availability = await MeetingRequestApiService.instance
+          .fetchConfiguredSlots(advisor: teacherName);
       if (!mounted) return;
       setState(() {
         _teacherName = teacherName;
@@ -63,13 +68,23 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
     if (candidate != null) {
       return _SlotInfo(
         raw: raw,
-        dateKey: '${candidate.year.toString().padLeft(4, '0')}-${candidate.month.toString().padLeft(2, '0')}-${candidate.day.toString().padLeft(2, '0')}',
+        dateKey:
+            '${candidate.year.toString().padLeft(4, '0')}-${candidate.month.toString().padLeft(2, '0')}-${candidate.day.toString().padLeft(2, '0')}',
         dayLabel: MaterialLocalizations.of(context).formatFullDate(candidate),
-        timeLabel: MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(candidate), alwaysUse24HourFormat: true),
+        timeLabel: MaterialLocalizations.of(context).formatTimeOfDay(
+          TimeOfDay.fromDateTime(candidate),
+          alwaysUse24HourFormat: true,
+        ),
         sortable: candidate.millisecondsSinceEpoch,
       );
     }
-    return _SlotInfo(raw: raw, dateKey: raw, dayLabel: raw, timeLabel: raw, sortable: 0);
+    return _SlotInfo(
+      raw: raw,
+      dateKey: raw,
+      dayLabel: raw,
+      timeLabel: raw,
+      sortable: 0,
+    );
   }
 
   Map<String, List<_AvailabilityWithInfo>> _groupAvailability() {
@@ -127,7 +142,10 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -139,14 +157,23 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
-  Future<void> _updateStatus(MeetingRequestApiRecord item, String status) async {
+  Future<void> _updateStatus(
+    MeetingRequestApiRecord item,
+    String status,
+  ) async {
     try {
-      await MeetingRequestApiService.instance.updateStatus(id: item.id, status: status);
+      await MeetingRequestApiService.instance.updateStatus(
+        id: item.id,
+        status: status,
+      );
       await _loadRequests();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -158,7 +185,10 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -167,170 +197,265 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final groupedAvailability = _groupAvailability();
-    final pendingCount = _requests.where((item) => item.status == 'Bekliyor').length;
+    final pendingCount = _requests
+        .where((item) => item.status == 'Bekliyor')
+        .length;
 
     final hasSidebar = SidebarState.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: hasSidebar ? null : TeacherHeader(
-        title: 'Görüşme Onayları',
-        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
-        subtitle: 'Takvim ve veli talepleri',
-        showBackButton: true,
-      ),
+      appBar: hasSidebar
+          ? null
+          : TeacherHeader(
+              title: 'Görüşme Onayları',
+              teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+              subtitle: 'Takvim ve veli talepleri',
+              showBackButton: true,
+            ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      ElevatedButton(onPressed: _loadRequests, child: const Text('Tekrar Dene')),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadRequests,
+                    child: const Text('Tekrar Dene'),
                   ),
-                )
-              : ListView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(22),
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(28),
-                        gradient: const LinearGradient(
-                          colors: [Color(0xFF111827), Color(0xFF7C3AED), Color(0xFFEC4899)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
+                ],
+              ),
+            )
+          : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(22),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(28),
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color(0xFF111827),
+                        Color(0xFF7C3AED),
+                        Color(0xFFEC4899),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.14),
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: const Text(
+                          'Öğretmen görüşme takvimi',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 14),
+                      Text(
+                        'Gün ve saat tanımla, veli tarafında sadece o listedeki saatler görünsün.',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
+                          height: 1.15,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Row(
                         children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(999),
-                            ),
-                            child: const Text('Öğretmen görüşme takvimi', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-                          ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Gün ve saat tanımla, veli tarafında sadece o listedeki saatler görünsün.',
-                            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white, fontWeight: FontWeight.w900, height: 1.15),
-                          ),
-                          const SizedBox(height: 14),
-                          Row(
-                            children: [
-                              _heroStat('${_requests.length}', 'Toplam Talep'),
-                              const SizedBox(width: 10),
-                              _heroStat('$pendingCount', 'Bekleyen'),
-                            ],
-                          ),
+                          _heroStat('${_requests.length}', 'Toplam Talep'),
+                          const SizedBox(width: 10),
+                          _heroStat('$pendingCount', 'Bekleyen'),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Container(
-                      padding: const EdgeInsets.all(18),
-                      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(24)),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text('Müsaitlik Takvimi', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _pickDate,
-                                  icon: const Icon(Icons.calendar_month_outlined),
-                                  label: Text(_selectedDate == null ? 'Gün seç' : MaterialLocalizations.of(context).formatCompactDate(_selectedDate!)),
-                                ),
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: OutlinedButton.icon(
-                                  onPressed: _pickTime,
-                                  icon: const Icon(Icons.access_time_rounded),
-                                  label: Text(_selectedTime == null
-                                      ? 'Saat seç'
-                                      : MaterialLocalizations.of(context).formatTimeOfDay(_selectedTime!, alwaysUse24HourFormat: true)),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          SegmentedButton<bool>(
-                            segments: const [
-                              ButtonSegment<bool>(value: true, icon: Icon(Icons.video_call_outlined), label: Text('Online')),
-                              ButtonSegment<bool>(value: false, icon: Icon(Icons.meeting_room_outlined), label: Text('Yüz yüze')),
-                            ],
-                            selected: {_slotOnline},
-                            onSelectionChanged: (selection) => setState(() => _slotOnline = selection.first),
-                          ),
-                          const SizedBox(height: 12),
-                          SizedBox(width: double.infinity, child: FilledButton(onPressed: _createSlot, child: const Text('Saati Takvime Ekle'))),
-                          const SizedBox(height: 16),
-                          if (groupedAvailability.isEmpty)
-                            const Text('Henüz tanımlı görüşme saati yok.')
-                          else
-                            ...groupedAvailability.entries.map((entry) {
-                              final dayLabel = entry.value.first.info.dayLabel;
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                padding: const EdgeInsets.all(14),
-                                decoration: BoxDecoration(
-                                  color: theme.scaffoldBackgroundColor,
-                                  borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.2)),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(dayLabel, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-                                    const SizedBox(height: 10),
-                                    Wrap(
-                                      spacing: 8,
-                                      runSpacing: 8,
-                                      children: entry.value.map((item) {
-                                        return Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                                          decoration: BoxDecoration(
-                                            color: Colors.white,
-                                            borderRadius: BorderRadius.circular(999),
-                                            border: Border.all(color: const Color(0xFFE2E8F0)),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(item.info.timeLabel, style: const TextStyle(fontWeight: FontWeight.w700)),
-                                              const SizedBox(width: 8),
-                                              Text(item.record.onlineMeeting ? 'Online' : 'Yüz yüze', style: const TextStyle(fontSize: 12)),
-                                              const SizedBox(width: 8),
-                                              IconButton(
-                                                onPressed: item.record.id == null ? null : () => _deleteSlot(item.record.id!),
-                                                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                                padding: EdgeInsets.zero,
-                                                constraints: const BoxConstraints(),
-                                              ),
-                                            ],
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    ..._requests.map((item) => _requestCard(context, item)),
-                  ],
+                    ],
+                  ),
                 ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Müsaitlik Takvimi',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _pickDate,
+                              icon: const Icon(Icons.calendar_month_outlined),
+                              label: Text(
+                                _selectedDate == null
+                                    ? 'Gün seç'
+                                    : MaterialLocalizations.of(
+                                        context,
+                                      ).formatCompactDate(_selectedDate!),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: _pickTime,
+                              icon: const Icon(Icons.access_time_rounded),
+                              label: Text(
+                                _selectedTime == null
+                                    ? 'Saat seç'
+                                    : MaterialLocalizations.of(
+                                        context,
+                                      ).formatTimeOfDay(
+                                        _selectedTime!,
+                                        alwaysUse24HourFormat: true,
+                                      ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment<bool>(
+                            value: true,
+                            icon: Icon(Icons.video_call_outlined),
+                            label: Text('Online'),
+                          ),
+                          ButtonSegment<bool>(
+                            value: false,
+                            icon: Icon(Icons.meeting_room_outlined),
+                            label: Text('Yüz yüze'),
+                          ),
+                        ],
+                        selected: {_slotOnline},
+                        onSelectionChanged: (selection) =>
+                            setState(() => _slotOnline = selection.first),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton(
+                          onPressed: _createSlot,
+                          child: const Text('Saati Takvime Ekle'),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      if (groupedAvailability.isEmpty)
+                        const Text('Henüz tanımlı görüşme saati yok.')
+                      else
+                        ...groupedAvailability.entries.map((entry) {
+                          final dayLabel = entry.value.first.info.dayLabel;
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: theme.scaffoldBackgroundColor,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: theme.dividerColor.withValues(
+                                  alpha: 0.2,
+                                ),
+                              ),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  dayLabel,
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: entry.value.map((item) {
+                                    return Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 10,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
+                                        border: Border.all(
+                                          color: const Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            item.info.timeLabel,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            item.record.onlineMeeting
+                                                ? 'Online'
+                                                : 'Yüz yüze',
+                                            style: const TextStyle(
+                                              fontSize: 12,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          IconButton(
+                                            onPressed: item.record.id == null
+                                                ? null
+                                                : () => _deleteSlot(
+                                                    item.record.id!,
+                                                  ),
+                                            icon: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              size: 18,
+                                            ),
+                                            padding: EdgeInsets.zero,
+                                            constraints: const BoxConstraints(),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }).toList(),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ..._requests.map((item) => _requestCard(context, item)),
+              ],
+            ),
     );
   }
 
@@ -344,9 +469,22 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
         ),
         child: Column(
           children: [
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -370,7 +508,9 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: theme.brightness == Brightness.dark ? Colors.black.withValues(alpha: 0.18) : Colors.black.withValues(alpha: 0.05),
+            color: theme.brightness == Brightness.dark
+                ? Colors.black.withValues(alpha: 0.18)
+                : Colors.black.withValues(alpha: 0.05),
             blurRadius: 12,
             offset: const Offset(0, 4),
           ),
@@ -385,16 +525,40 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.parentName, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                    Text(
+                      item.parentName,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
                     const SizedBox(height: 4),
-                    Text('${item.studentName} • ${item.topic}', style: theme.textTheme.bodySmall?.copyWith(color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72))),
+                    Text(
+                      '${item.studentName} • ${item.topic}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(color: statusColor.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(16)),
-                child: Text(item.status, style: TextStyle(color: statusColor, fontWeight: FontWeight.w900)),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Text(
+                  item.status,
+                  style: TextStyle(
+                    color: statusColor,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
             ],
           ),
@@ -403,7 +567,13 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
           const SizedBox(height: 8),
           _infoRow(context, Icons.access_time_rounded, info.timeLabel),
           const SizedBox(height: 8),
-          _infoRow(context, item.onlineMeeting ? Icons.video_call_outlined : Icons.meeting_room_outlined, item.onlineMeeting ? 'Online görüşme' : 'Yüz yüze görüşme'),
+          _infoRow(
+            context,
+            item.onlineMeeting
+                ? Icons.video_call_outlined
+                : Icons.meeting_room_outlined,
+            item.onlineMeeting ? 'Online görüşme' : 'Yüz yüze görüşme',
+          ),
           const SizedBox(height: 8),
           _infoRow(context, Icons.notes_rounded, item.note),
           if (item.status == 'Bekliyor') ...[
@@ -439,7 +609,14 @@ class _TeacherMeetingApprovalsPageState extends State<TeacherMeetingApprovalsPag
       children: [
         Icon(icon, size: 18, color: Theme.of(context).colorScheme.primary),
         const SizedBox(width: 8),
-        Expanded(child: Text(text, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.35))),
+        Expanded(
+          child: Text(
+            text,
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.35),
+          ),
+        ),
       ],
     );
   }
@@ -465,8 +642,5 @@ class _AvailabilityWithInfo {
   final MeetingSlotApiRecord record;
   final _SlotInfo info;
 
-  const _AvailabilityWithInfo({
-    required this.record,
-    required this.info,
-  });
+  const _AvailabilityWithInfo({required this.record, required this.info});
 }

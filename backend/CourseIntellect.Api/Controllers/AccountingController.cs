@@ -107,6 +107,43 @@ public sealed class AccountingController(IAccountingService accountingService, C
         return Ok(item);
     }
 
+    [HttpGet("salaries")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> GetSalaries(CancellationToken cancellationToken)
+    {
+        var items = await dbContext.AccountingSalaries
+            .OrderByDescending(x => x.Id)
+            .Select(x => new AccountingSalaryDto(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status))
+            .ToListAsync(cancellationToken);
+        return Ok(items);
+    }
+
+    [HttpPut("salaries/{id:guid}")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> UpdateSalary(Guid id, [FromBody] UpdateSalaryRequest request, CancellationToken cancellationToken)
+    {
+        var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (item is null) return NotFound();
+        item.Employee = request.Employee.Trim();
+        item.Role = request.Role.Trim();
+        item.Amount = NormalizeMoney(request.Amount);
+        item.PayDate = request.PayDate.Trim();
+        item.Status = request.Status.Trim();
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(new AccountingSalaryDto(item.Id.ToString(), item.Employee, item.Role, item.Amount, item.PayDate, item.Status));
+    }
+
+    [HttpDelete("salaries/{id:guid}")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> DeleteSalary(Guid id, CancellationToken cancellationToken)
+    {
+        var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (item is null) return NotFound();
+        dbContext.AccountingSalaries.Remove(item);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return NoContent();
+    }
+
     [HttpPost("collections")]
     [Authorize(Roles = "Accounting,Admin")]
     public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)

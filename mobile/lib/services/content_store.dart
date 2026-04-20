@@ -13,6 +13,7 @@ class ContentRecord {
   final String size;
   final String description;
   final String? fileName;
+  final String? fileUrl;
   final String? playlistKey;
   final String? playlistTitle;
   final int? playlistOrder;
@@ -31,6 +32,7 @@ class ContentRecord {
     required this.size,
     required this.description,
     this.fileName,
+    this.fileUrl,
     this.playlistKey,
     this.playlistTitle,
     this.playlistOrder,
@@ -40,7 +42,11 @@ class ContentRecord {
   bool get isVideo => fileType.toLowerCase().contains('video');
   bool get isVisibleToStudents {
     final status = publishStatus.trim().toLowerCase();
-    return status == 'aktif' || status == 'yayinda' || status == 'yayında' || status == 'active' || status == 'published';
+    return status == 'aktif' ||
+        status == 'yayında' ||
+        status == 'yayında' ||
+        status == 'active' ||
+        status == 'published';
   }
 
   ContentRecord copyWith({
@@ -56,6 +62,7 @@ class ContentRecord {
     String? size,
     String? description,
     String? fileName,
+    String? fileUrl,
     String? playlistKey,
     String? playlistTitle,
     int? playlistOrder,
@@ -74,6 +81,7 @@ class ContentRecord {
       size: size ?? this.size,
       description: description ?? this.description,
       fileName: fileName ?? this.fileName,
+      fileUrl: fileUrl ?? this.fileUrl,
       playlistKey: playlistKey ?? this.playlistKey,
       playlistTitle: playlistTitle ?? this.playlistTitle,
       playlistOrder: playlistOrder ?? this.playlistOrder,

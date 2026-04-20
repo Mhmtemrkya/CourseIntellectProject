@@ -4,7 +4,7 @@ class TopicTestResultPage extends StatelessWidget {
   final int total;
   final int correct;
   final int wrong;
-  
+
   final List<Map<String, dynamic>> wrongQuestions;
 
   const TopicTestResultPage({
@@ -20,15 +20,16 @@ class TopicTestResultPage extends StatelessWidget {
     int score = ((correct / total) * 100).round();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Test Sonucu")),
+      appBar: AppBar(title: const Text("Test Sonuçu")),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             const SizedBox(height: 20),
-            Text("Puanın",
-                style:
-                    const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+            Text(
+              "Puanın",
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 10),
             CircleAvatar(
               radius: 60,
@@ -36,9 +37,10 @@ class TopicTestResultPage extends StatelessWidget {
               child: Text(
                 "$score",
                 style: const TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white),
+                  fontSize: 36,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
             const SizedBox(height: 20),
@@ -54,7 +56,7 @@ class TopicTestResultPage extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (_) => WrongQuestionsPage(
-                             wrongQuestions: wrongQuestions,
+                            wrongQuestions: wrongQuestions,
                           ),
                         ),
                       );
@@ -67,7 +69,7 @@ class TopicTestResultPage extends StatelessWidget {
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               child: const Text("Geri Dön"),
-            )
+            ),
           ],
         ),
       ),
@@ -84,13 +86,19 @@ class TopicTestResultPage extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Text(title,
-              style:
-                  const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
           const Spacer(),
-          Text("$value",
-              style:
-                  TextStyle(fontSize: 16, color: color, fontWeight: FontWeight.bold)),
+          Text(
+            "$value",
+            style: TextStyle(
+              fontSize: 16,
+              color: color,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
@@ -112,7 +120,9 @@ class WrongQuestionsPage extends StatelessWidget {
           final question = wrongQuestions[index];
           return ListTile(
             title: Text("Soru ${index + 1}: ${question['question']}"),
-            subtitle: Text("Secilen: ${question['selected']} • Dogru: ${question['correct']}"),
+            subtitle: Text(
+              "Seçilen: ${question['selected']} • Doğru: ${question['correct']}",
+            ),
           );
         },
       ),

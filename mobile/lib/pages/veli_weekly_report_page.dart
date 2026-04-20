@@ -70,27 +70,34 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     await _loadTeacherReports();
     if (!mounted) return;
     setState(() {
-      _examRecords = examRecords.where((item) => item.studentName == _selectedChild).toList();
-      _attendanceRecords = AttendanceService.instance.forStudent(_selectedChild);
+      _examRecords = examRecords
+          .where((item) => item.studentName == _selectedChild)
+          .toList();
+      _attendanceRecords = AttendanceService.instance.forStudent(
+        _selectedChild,
+      );
       _loading = false;
     });
   }
 
   Future<void> _loadTeacherReports() async {
     final session = await AuthSessionStore.instance.load();
-    final linkedChild = _children.where((item) => item.fullName == _selectedChild).firstOrNull;
+    final linkedChild = _children
+        .where((item) => item.fullName == _selectedChild)
+        .firstOrNull;
     if (session == null || linkedChild == null) {
       _teacherReports = const [];
       return;
     }
 
     try {
-      _teacherReports = await TeacherWeeklyReportApiService.instance.fetchForParent(
-        studentName: linkedChild.fullName,
-        studentUsername: linkedChild.username,
-        parentName: linkedChild.parentName,
-        parentEmail: linkedChild.parentEmail,
-      );
+      _teacherReports = await TeacherWeeklyReportApiService.instance
+          .fetchForParent(
+            studentName: linkedChild.fullName,
+            studentUsername: linkedChild.username,
+            parentName: linkedChild.parentName,
+            parentEmail: linkedChild.parentEmail,
+          );
     } catch (_) {
       _teacherReports = const [];
     }
@@ -115,19 +122,19 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                   child: Center(child: CircularProgressIndicator()),
                 )
               else ...[
-              _heroCard(context),
-              const SizedBox(height: 16),
-              _summaryGrid(context),
-              const SizedBox(height: 16),
-              _teacherNoteCard(context),
-              const SizedBox(height: 16),
-              _teacherReportsCard(context),
-              const SizedBox(height: 16),
-              _lessonPerformanceCard(context),
-              const SizedBox(height: 16),
-              _weeklyPlanCard(context),
-              const SizedBox(height: 16),
-              _actionsCard(context),
+                _heroCard(context),
+                const SizedBox(height: 16),
+                _summaryGrid(context),
+                const SizedBox(height: 16),
+                _teacherNoteCard(context),
+                const SizedBox(height: 16),
+                _teacherReportsCard(context),
+                const SizedBox(height: 16),
+                _lessonPerformanceCard(context),
+                const SizedBox(height: 16),
+                _weeklyPlanCard(context),
+                const SizedBox(height: 16),
+                _actionsCard(context),
               ],
             ],
           ),
@@ -141,9 +148,15 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     final average = _averageScore();
     final attendanceRate = _attendanceRate();
     final overdueCount = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
-    final status = average >= 80 ? 'Iyi' : average >= 65 ? 'Izlemede' : 'Destek';
+    final status = average >= 80
+        ? 'Iyi'
+        : average >= 65
+        ? 'Izlemede'
+        : 'Destek';
 
     return Container(
       width: double.infinity,
@@ -166,7 +179,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
               borderRadius: BorderRadius.circular(999),
             ),
             child: const Text(
-              'Guncel donem raporu',
+              'Güncel dönem raporu',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -184,7 +197,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Katilim, sinav, finans ve veli aksiyonlari tek gorunumde toplandi. Bu kart secili ogrencinin guncel kayitlarindan uretilir.',
+            'Katılım, sınav, finans ve veli aksiyonları tek görünümde toplandı. Bu kart seçili öğrencinin güncel kayıtlarından üretilir.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.86),
               height: 1.45,
@@ -193,16 +206,15 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              Expanded(
-                child: _heroMetric('Genel durum', status),
-              ),
+              Expanded(child: _heroMetric('Genel durum', status)),
+              const SizedBox(width: 10),
+              Expanded(child: _heroMetric('Katılım', '%$attendanceRate')),
               const SizedBox(width: 10),
               Expanded(
-                child: _heroMetric('Katilim', '%$attendanceRate'),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _heroMetric('Finans', overdueCount == 0 ? 'Dengede' : '$overdueCount uyari'),
+                child: _heroMetric(
+                  'Finans',
+                  overdueCount == 0 ? 'Dengede' : '$overdueCount uyarı',
+                ),
               ),
             ],
           ),
@@ -245,23 +257,27 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
 
   Widget _summaryGrid(BuildContext context) {
     final average = _averageScore();
-    final completed = _attendanceRecords.where((item) => item.status == 'Katildi').length;
+    final completed = _attendanceRecords
+        .where((item) => item.status == 'Katildi')
+        .length;
     final total = _attendanceRecords.length;
     final overdueCount = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     return Wrap(
       spacing: 12,
       runSpacing: 12,
       children: [
         _SummaryTile(
-          title: 'Sinav ortalamasi',
+          title: 'Sınav ortalaması',
           value: average == 0 ? 'Veri yok' : average.toString(),
           icon: Icons.analytics_outlined,
           color: Color(0xFF2563EB),
         ),
         _SummaryTile(
-          title: 'Katilim kaydi',
+          title: 'Katılım kaydı',
           value: '$completed / $total',
           icon: Icons.assignment_turned_in_outlined,
           color: Color(0xFF0F766E),
@@ -274,7 +290,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         ),
         _SummaryTile(
           title: 'Finans notu',
-          value: overdueCount == 0 ? 'Dengede' : '$overdueCount uyari',
+          value: overdueCount == 0 ? 'Dengede' : '$overdueCount uyarı',
           icon: Icons.flag_outlined,
           color: Color(0xFFB54708),
         ),
@@ -286,7 +302,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     final average = _averageScore();
     final attendanceRate = _attendanceRate();
     final overdueCount = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     return _surface(
       context,
@@ -295,33 +313,33 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         children: [
           Text(
             'Öğretmen değerlendirmesi',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           _InsightRow(
             icon: Icons.check_circle_outline,
             color: Color(0xFF0F766E),
             text: average >= 80
-                ? 'Sinav ortalamasi guclu gorunuyor. Mevcut calisma duzeni korunabilir.'
-                : 'Sinav ortalamasi yakindan izlenmeli. Kisa tekrar planlari faydali olabilir.',
+                ? 'Sınav ortalaması güçlü görünüyor. Mevcut çalışma düzeni korunabilir.'
+                : 'Sınav ortalaması yakından izlenmeli. Kısa tekrar planları faydalı olabilir.',
           ),
           const SizedBox(height: 10),
           _InsightRow(
             icon: Icons.priority_high_rounded,
             color: Color(0xFFB54708),
             text: attendanceRate >= 90
-                ? 'Katilim duzeni guclu. Devam takibi istikrarli ilerliyor.'
-                : 'Katilim oraninda dusus var. Devamsizlik ve gec kalma kayitlari kontrol edilmeli.',
+                ? 'Katılım düzeni guclu. Devam takibi istikrarli ilerliyor.'
+                : 'Katılım oranında düşüş var. Devamsızlık ve geç kalma kayıtları kontrol edilmeli.',
           ),
           const SizedBox(height: 10),
           _InsightRow(
             icon: Icons.edit_note_rounded,
             color: Color(0xFF2563EB),
             text: overdueCount == 0
-                ? 'Finans tarafinda kritik bir uyarı gorunmuyor.'
-                : 'Geciken odeme kayitlari var. Veli panelindeki odeme plani kontrol edilmeli.',
+                ? 'Finans tarafında kritik bir uyarı görünmüyor.'
+                : 'Geciken ödeme kayıtları var. Veli panelindeki ödeme planı kontrol edilmeli.',
           ),
         ],
       ),
@@ -341,12 +359,15 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                 child: Text(
                   'Öğretmenden Gelen Raporlar',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFDBEAFE),
                   borderRadius: BorderRadius.circular(999),
@@ -384,19 +405,15 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                   SizedBox(height: 6),
                   Text(
                     'Öğretmen bu öğrenci için rapor paylaştığında burada düzenli rapor kartları halinde görünecek.',
-                    style: TextStyle(
-                      color: Color(0xFF64748B),
-                      height: 1.45,
-                    ),
+                    style: TextStyle(color: Color(0xFF64748B), height: 1.45),
                   ),
                 ],
               ),
             )
           else
-            ..._teacherReports.take(4).map(
-              (report) {
-                final accent = _reportAccent(report.subject);
-                return Container(
+            ..._teacherReports.take(4).map((report) {
+              final accent = _reportAccent(report.subject);
+              return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(28),
@@ -455,11 +472,12 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                                     report.title,
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
-                                    style: theme.textTheme.titleMedium?.copyWith(
-                                      color: const Color(0xFF0F172A),
-                                      fontWeight: FontWeight.w900,
-                                      height: 1.2,
-                                    ),
+                                    style: theme.textTheme.titleMedium
+                                        ?.copyWith(
+                                          color: const Color(0xFF0F172A),
+                                          fontWeight: FontWeight.w900,
+                                          height: 1.2,
+                                        ),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
@@ -477,7 +495,10 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: accent.withValues(alpha: 0.10),
                                     borderRadius: BorderRadius.circular(999),
@@ -506,8 +527,14 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                           runSpacing: 8,
                           children: [
                             _teacherReportLightBadge(report.subject, accent),
-                            _teacherReportLightBadge('${report.attachments.length} ek', const Color(0xFF475569)),
-                            _teacherReportLightBadge('Veliye iletildi', const Color(0xFF059669)),
+                            _teacherReportLightBadge(
+                              '${report.attachments.length} ek',
+                              const Color(0xFF475569),
+                            ),
+                            _teacherReportLightBadge(
+                              'Veliye iletildi',
+                              const Color(0xFF059669),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 14),
@@ -522,14 +549,21 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: const Row(
                             children: [
-                              Icon(Icons.visibility_outlined, size: 18, color: Color(0xFF334155)),
+                              Icon(
+                                Icons.visibility_outlined,
+                                size: 18,
+                                color: Color(0xFF334155),
+                              ),
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
@@ -548,8 +582,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                   ),
                 ),
               );
-              },
-            ),
+            }),
         ],
       ),
     );
@@ -610,14 +643,21 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                         ),
                         const SizedBox(height: 16),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(18),
                           ),
                           child: Row(
                             children: [
-                              const Icon(Icons.mark_email_read_outlined, color: Colors.white, size: 18),
+                              const Icon(
+                                Icons.mark_email_read_outlined,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
@@ -675,15 +715,20 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                                 .map(
                                   (item) => ListTile(
                                     contentPadding: EdgeInsets.zero,
-                                    onTap: () => _openTeacherReportAttachment(item),
+                                    onTap: () =>
+                                        _openTeacherReportAttachment(item),
                                     leading: CircleAvatar(
                                       backgroundColor: const Color(0xFFDBEAFE),
                                       foregroundColor: const Color(0xFF2563EB),
-                                      child: Text(item.fileType.characters.first),
+                                      child: Text(
+                                        item.fileType.characters.first,
+                                      ),
                                     ),
                                     title: Text(item.name),
                                     subtitle: Text(item.fileType),
-                                    trailing: const Icon(Icons.open_in_new_rounded),
+                                    trailing: const Icon(
+                                      Icons.open_in_new_rounded,
+                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -698,7 +743,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     );
   }
 
-  Future<void> _openTeacherReportAttachment(TeacherWeeklyReportAttachmentRecord attachment) async {
+  Future<void> _openTeacherReportAttachment(
+    TeacherWeeklyReportAttachmentRecord attachment,
+  ) async {
     final url = ApiConfig.resolveAssetUrl(attachment.url);
     final uri = Uri.tryParse(url);
     if (uri == null) {
@@ -720,9 +767,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         children: [
           Text(
             'Ders bazlı görünüm',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
           ...lessonRows,
@@ -733,7 +780,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
 
   Widget _weeklyPlanCard(BuildContext context) {
     final overdueCount = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     return _surface(
       context,
@@ -742,31 +791,34 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         children: [
           Text(
             'Hafta içi aksiyon planı',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
           _PlanItem(
-            day: 'Bugun',
-            title: 'Yoklama ve sinav kayitlarini kontrol et',
-            detail: 'Bu rapor secili ogrencinin guncel katilim ve sinav verilerine gore olusturuldu.',
+            day: 'Bugün',
+            title: 'Yoklama ve sınav kayıtlarını kontrol et',
+            detail:
+                'Bu rapor öğrencinin güncel katılım ve sınav verilerine göre oluşturuldu.',
           ),
           const SizedBox(height: 10),
           _PlanItem(
             day: 'Bu hafta',
             title: 'Zayif derslere kisa tekrar bloklari ekle',
             detail: _lessonRows().isEmpty
-                ? 'Yeni sinav kaydi geldikce ders bazli oneri burada guclenecek.'
-                : 'En dusuk ortalamali ders icin 20-30 dakikalik tekrar penceresi planlanabilir.',
+                ? 'Yeni sınav kaydı geldikçe ders bazlı öneri burada güçlenecek.'
+                : 'En düşük ortalamali ders için 20-30 dakikalik tekrar penceresi planlanabilir.',
           ),
           const SizedBox(height: 10),
           _PlanItem(
             day: 'Takip',
-            title: overdueCount == 0 ? 'Finans dengede' : 'Finans takibi gerekli',
+            title: overdueCount == 0
+                ? 'Finans dengede'
+                : 'Finans takibi gerekli',
             detail: overdueCount == 0
-                ? 'Odeme tarafinda acil bir uyari bulunmuyor.'
-                : '$overdueCount geciken odeme kaydi icin veli paneli uzerinden aksiyon alinabilir.',
+                ? 'Ödeme tarafında acil bir uyarı bulunmuyor.'
+                : '$overdueCount geciken ödeme kaydı için veli paneli üzerinden aksiyon alinabilir.',
           ),
         ],
       ),
@@ -781,9 +833,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         children: [
           Text(
             'Hızlı işlemler',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
           InkWell(
@@ -798,7 +850,10 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.alternate_email_rounded, color: Color(0xFF4F46E5)),
+                  const Icon(
+                    Icons.alternate_email_rounded,
+                    color: Color(0xFF4F46E5),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
@@ -806,7 +861,8 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                       children: [
                         Text(
                           'Raporun gönderileceği adres',
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
                                 color: const Color(0xFF4F46E5),
                                 fontWeight: FontWeight.w700,
                               ),
@@ -814,14 +870,16 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                         const SizedBox(height: 3),
                         Text(
                           'mehmet.yilmaz.veli@example.com',
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontWeight: FontWeight.w800,
-                              ),
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(fontWeight: FontWeight.w800),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.open_in_new_rounded, color: Color(0xFF4F46E5)),
+                  const Icon(
+                    Icons.open_in_new_rounded,
+                    color: Color(0xFF4F46E5),
+                  ),
                 ],
               ),
             ),
@@ -864,7 +922,8 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
       path: email,
       queryParameters: {
         'subject': 'Haftalık veli raporu',
-        'body': 'Merhaba, secili ogrencinin haftalik veli raporunu paylasiyorum.',
+        'body':
+            'Merhaba, seçili öğrencinin haftalık veli raporunu paylaşıyorum.',
       },
     );
 
@@ -887,36 +946,51 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     document.addPage(
       pw.MultiPage(
         build: (_) => [
-          pw.Text('Haftalık Veli Raporu', style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Haftalık Veli Raporu',
+            style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
           pw.Text('Öğrenci: $_selectedChild'),
           pw.Text('Dönem: Güncel rapor'),
           pw.SizedBox(height: 18),
-          pw.Text('Genel Özet', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Genel Özet',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
           pw.Bullet(text: 'Katılım oranı: %${_attendanceRate()}'),
-          pw.Bullet(text: 'Sınav ortalaması: ${_averageScore() == 0 ? 'Veri yok' : _averageScore().toString()}'),
-          pw.Bullet(text: 'Finans durumu: ${AccountingFinanceStore.instance.installments.where((item) => item.student == _selectedChild && item.status == 'Geciken').isEmpty ? 'Dengede' : 'Uyarı var'}'),
+          pw.Bullet(
+            text:
+                'Sınav ortalaması: ${_averageScore() == 0 ? 'Veri yok' : _averageScore().toString()}',
+          ),
+          pw.Bullet(
+            text:
+                'Finans durumu: ${AccountingFinanceStore.instance.installments.where((item) => item.student == _selectedChild && item.status == 'Geciken').isEmpty ? 'Dengede' : 'Uyarı var'}',
+          ),
           pw.SizedBox(height: 18),
-          pw.Text('Öğretmen Notları', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
-          pw.Paragraph(text: 'Bu PDF, seçili öğrencinin sınav, yoklama ve finans kayıtlarından otomatik üretilmiştir.'),
+          pw.Text(
+            'Öğretmen Notları',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.Paragraph(
+            text:
+                'Bu PDF, seçili öğrencinin sınav, yoklama ve finans kayıtlarından otomatik üretilmiştir.',
+          ),
         ],
       ),
     );
 
     final directory = await getTemporaryDirectory();
-    final file = File('${directory.path}/haftalik_veli_raporu.pdf');
+    final file = File('${directory.path}/haftalık_veli_raporu.pdf');
     await file.writeAsBytes(await document.save());
     await SharePlus.instance.share(
-      ShareParams(
-        files: [XFile(file.path)],
-        text: 'Haftalik veli raporu',
-      ),
+      ShareParams(files: [XFile(file.path)], text: 'Haftalık veli raporu'),
     );
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Rapor PDF olarak hazirlandi: ${file.path}'),
+        content: Text('Rapor PDF olarak hazırlandi: ${file.path}'),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -924,10 +998,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
 
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -942,7 +1013,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06),
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06,
+            ),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -991,10 +1064,14 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
   Color _reportAccent(String subject) {
     final normalized = subject.toLowerCase();
     if (normalized.contains('matem')) return const Color(0xFF2563EB);
-    if (normalized.contains('türk') || normalized.contains('turk')) return const Color(0xFFDC2626);
+    if (normalized.contains('türk') || normalized.contains('turk')) {
+      return const Color(0xFFDC2626);
+    }
     if (normalized.contains('fen')) return const Color(0xFF059669);
     if (normalized.contains('ing')) return const Color(0xFF7C3AED);
-    if (normalized.contains('sosyal') || normalized.contains('coğraf') || normalized.contains('cograf')) {
+    if (normalized.contains('sosyal') ||
+        normalized.contains('coğraf') ||
+        normalized.contains('cograf')) {
       return const Color(0xFFF97316);
     }
     return const Color(0xFF0F766E);
@@ -1006,7 +1083,9 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     if (normalized.contains('türk') || normalized.contains('turk')) return 'TR';
     if (normalized.contains('fen')) return 'FN';
     if (normalized.contains('ing')) return 'EN';
-    if (normalized.contains('sosyal') || normalized.contains('coğraf') || normalized.contains('cograf')) {
+    if (normalized.contains('sosyal') ||
+        normalized.contains('coğraf') ||
+        normalized.contains('cograf')) {
       return 'SB';
     }
     return 'RP';
@@ -1024,10 +1103,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: const TextStyle(fontWeight: FontWeight.w800),
-          ),
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
           child,
         ],
@@ -1043,20 +1119,28 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
 
   int _attendanceRate() {
     if (_attendanceRecords.isEmpty) return 0;
-    final attended = _attendanceRecords.where((item) => item.status == 'Katildi').length;
+    final attended = _attendanceRecords
+        .where((item) => item.status == 'Katildi')
+        .length;
     return ((attended / _attendanceRecords.length) * 100).round();
   }
 
   List<Widget> _lessonRows() {
     if (_examRecords.isEmpty) {
       return const [
-        _LessonLine(title: 'Veri bekleniyor', value: 0, color: Color(0xFF9E9E9E)),
+        _LessonLine(
+          title: 'Veri bekleniyor',
+          value: 0,
+          color: Color(0xFF9E9E9E),
+        ),
       ];
     }
 
     final grouped = <String, List<ExamScoreRecord>>{};
     for (final item in _examRecords) {
-      grouped.putIfAbsent(_decodeHtmlEntities(item.subject), () => []).add(item);
+      grouped
+          .putIfAbsent(_decodeHtmlEntities(item.subject), () => [])
+          .add(item);
     }
 
     final colors = [
@@ -1069,19 +1153,24 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
     final entries = grouped.entries.toList()
       ..sort((a, b) {
         final aAvg =
-            a.value.fold<int>(0, (sum, item) => sum + item.score) / a.value.length;
+            a.value.fold<int>(0, (sum, item) => sum + item.score) /
+            a.value.length;
         final bAvg =
-            b.value.fold<int>(0, (sum, item) => sum + item.score) / b.value.length;
+            b.value.fold<int>(0, (sum, item) => sum + item.score) /
+            b.value.length;
         return bAvg.compareTo(aAvg);
       });
 
     return entries.asMap().entries.map((entry) {
       final records = entry.value.value;
       final average =
-          (records.fold<int>(0, (sum, item) => sum + item.score) / records.length)
+          (records.fold<int>(0, (sum, item) => sum + item.score) /
+                  records.length)
               .round();
       return Padding(
-        padding: EdgeInsets.only(bottom: entry.key == entries.length - 1 ? 0 : 12),
+        padding: EdgeInsets.only(
+          bottom: entry.key == entries.length - 1 ? 0 : 12,
+        ),
         child: _LessonLine(
           title: entry.value.key,
           value: average,
@@ -1108,7 +1197,9 @@ class _SummaryTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: MediaQuery.of(context).size.width > 420 ? (MediaQuery.of(context).size.width - 44) / 2 : double.infinity,
+      width: MediaQuery.of(context).size.width > 420
+          ? (MediaQuery.of(context).size.width - 44) / 2
+          : double.infinity,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
@@ -1134,16 +1225,16 @@ class _SummaryTile extends StatelessWidget {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: color,
-                          fontWeight: FontWeight.w700,
-                        ),
+                      color: color,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     value,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
+                      fontWeight: FontWeight.w900,
+                    ),
                   ),
                 ],
               ),
@@ -1184,7 +1275,9 @@ class _InsightRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.45),
           ),
         ),
       ],
@@ -1213,16 +1306,16 @@ class _LessonLine extends StatelessWidget {
             Expanded(
               child: Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w700,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
               ),
             ),
             Text(
               '$value',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w900,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
             ),
           ],
         ),
@@ -1278,14 +1371,16 @@ class _PlanItem extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
               Text(
                 detail,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(height: 1.4),
               ),
             ],
           ),

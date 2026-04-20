@@ -22,7 +22,6 @@ class VeliStatsGrid extends StatelessWidget {
       childAspectRatio: ResponsiveLayout.isLargeTablet(context) ? 1.55 : 1.3,
 
       children: [
-
         /// DEVAMSIZLIK
         _StatCard(
           title: "Devamsızlık",
@@ -32,9 +31,7 @@ class VeliStatsGrid extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const VeliDevamsizlikPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const VeliDevamsizlikPage()),
             );
           },
         ),
@@ -48,9 +45,7 @@ class VeliStatsGrid extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const VeliExamResultsPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const VeliExamResultsPage()),
             );
           },
         ),
@@ -64,9 +59,7 @@ class VeliStatsGrid extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const VeliOdemePage(),
-              ),
+              MaterialPageRoute(builder: (_) => const VeliOdemePage()),
             );
           },
         ),
@@ -80,20 +73,16 @@ class VeliStatsGrid extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (_) => const VeliMesajlarPage(),
-              ),
+              MaterialPageRoute(builder: (_) => const VeliMesajlarPage()),
             );
           },
         ),
-
       ],
     );
   }
 }
 
 class _StatCard extends StatelessWidget {
-
   final String title;
   final String value;
   final IconData icon;
@@ -110,31 +99,24 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
 
       child: Card(
-
         color: Theme.of(context).cardColor,
 
         elevation: 2,
 
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
 
         child: Padding(
-
           padding: const EdgeInsets.all(12),
 
           child: Column(
-
             mainAxisAlignment: MainAxisAlignment.center,
 
             children: [
-
               Icon(icon, color: iconColor, size: 30),
 
               const SizedBox(height: 8),
@@ -148,15 +130,10 @@ class _StatCard extends StatelessWidget {
               ),
 
               Text(title),
-
             ],
-
           ),
-
         ),
-
       ),
-
     );
   }
 }

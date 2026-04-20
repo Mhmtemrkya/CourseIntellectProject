@@ -30,7 +30,10 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Duyuru Merkezi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Duyuru Merkezi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateAnnouncementSheet,
@@ -42,10 +45,15 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
         children: [
           AdminHeroCard(
             eyebrow: 'Yönetici duyuruları',
-            title: 'Kurum genelindeki duyuruları oluşturun, düzenleyin ve hedef kitleye göre yönetin.',
-            description: 'Öğrenci, veli, öğretmen veya tüm kurum için profesyonel duyuru akışı buradan yönetilir.',
+            title:
+                'Kurum genelindeki duyuruları oluşturun, düzenleyin ve hedef kitleye göre yönetin.',
+            description:
+                'Öğrenci, veli, öğretmen veya tüm kurum için profesyonel duyuru akışı buradan yönetilir.',
             metrics: [
-              AdminHeroMetric(label: 'Toplam', value: '${_announcements.length}'),
+              AdminHeroMetric(
+                label: 'Toplam',
+                value: '${_announcements.length}',
+              ),
               AdminHeroMetric(label: 'Bugün', value: '1 yeni'),
             ],
           ),
@@ -85,16 +93,24 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
     });
     try {
       final results = await Future.wait([
-        SchoolFeedApiService.instance.fetchAnnouncements(audience: 'Tum Kurum', includeAll: true),
+        SchoolFeedApiService.instance.fetchAnnouncements(
+          audience: 'Tüm Kurum',
+          includeAll: true,
+        ),
         StudentRegistryStore.instance.ensureLoaded(),
-        AdminDirectoryApiService.instance.fetchClasses().catchError((_) => <String>[]),
+        AdminDirectoryApiService.instance.fetchClasses().catchError(
+          (_) => <String>[],
+        ),
       ]);
       final studentList = StudentRegistryStore.instance.students;
       final classes = <String>{
-        ...studentList.map((item) => item.className.trim()).where((item) => item.isNotEmpty),
-        ...((results[2] as List<dynamic>).map((item) => item.toString().trim()).where((item) => item.isNotEmpty)),
-      }.toList()
-        ..sort();
+        ...studentList
+            .map((item) => item.className.trim())
+            .where((item) => item.isNotEmpty),
+        ...((results[2] as List<dynamic>)
+            .map((item) => item.toString().trim())
+            .where((item) => item.isNotEmpty)),
+      }.toList()..sort();
       if (!mounted) return;
       setState(() {
         _announcements = results[0] as List<AnnouncementFeedItem>;
@@ -125,20 +141,26 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
       .replaceAll('ş', 's')
       .replaceAll('ü', 'u');
 
-  String _normalizeClassName(String value) => _normalizeText(value).replaceAll('-', '').replaceAll(' ', '');
+  String _normalizeClassName(String value) =>
+      _normalizeText(value).replaceAll('-', '').replaceAll(' ', '');
 
   List<StudentRegistryRecord> _studentsForClass(String className) {
     if (className.trim().isEmpty) return _students;
     final normalized = _normalizeClassName(className);
-    return _students.where((item) => _normalizeClassName(item.className) == normalized).toList();
+    return _students
+        .where((item) => _normalizeClassName(item.className) == normalized)
+        .toList();
   }
 
   List<_RecipientOption> _studentOptionsForClass(String className) {
     return _studentsForClass(className)
         .map(
           (item) => _RecipientOption(
-            primaryKey: 'student:${_normalizeText(item.username.isNotEmpty ? item.username : item.fullName)}',
-            keys: ['student:${_normalizeText(item.username.isNotEmpty ? item.username : item.fullName)}'],
+            primaryKey:
+                'student:${_normalizeText(item.username.isNotEmpty ? item.username : item.fullName)}',
+            keys: [
+              'student:${_normalizeText(item.username.isNotEmpty ? item.username : item.fullName)}',
+            ],
             label: '${item.fullName} • ${item.className}',
             helper: item.username.isNotEmpty ? item.username : 'Öğrenci hesabı',
           ),
@@ -151,21 +173,26 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
     final map = <String, _RecipientOption>{};
     for (final item in _studentsForClass(className)) {
       final parentEmail = _normalizeText(item.parentEmail);
-      final parentUsername = parentEmail.contains('@') ? parentEmail.split('@').first : parentEmail;
+      final parentUsername = parentEmail.contains('@')
+          ? parentEmail.split('@').first
+          : parentEmail;
       final parentName = _normalizeText(item.parentName);
-      final key = '${parentEmail.isNotEmpty ? parentEmail : parentName}:${_normalizeClassName(item.className)}';
+      final key =
+          '${parentEmail.isNotEmpty ? parentEmail : parentName}:${_normalizeClassName(item.className)}';
       map[key] = _RecipientOption(
         primaryKey: parentEmail.isNotEmpty
             ? 'parent-email:$parentEmail'
             : parentName.isNotEmpty
-                ? 'parent-name:$parentName'
-                : 'student:${_normalizeText(item.username)}',
+            ? 'parent-name:$parentName'
+            : 'student:${_normalizeText(item.username)}',
         keys: [
           if (parentEmail.isNotEmpty) 'parent-email:$parentEmail',
           if (parentUsername.isNotEmpty) 'parent-username:$parentUsername',
           if (parentName.isNotEmpty) 'parent-name:$parentName',
         ],
-        label: item.parentName.isNotEmpty ? '${item.parentName} • ${item.className}' : '${item.fullName} velisi',
+        label: item.parentName.isNotEmpty
+            ? '${item.parentName} • ${item.className}'
+            : '${item.fullName} velisi',
         helper: item.parentEmail.isNotEmpty ? item.parentEmail : item.fullName,
       );
     }
@@ -198,7 +225,9 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                     Expanded(
                       child: Text(
                         item.title,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
                     AdminAccentBadge(label: item.audience, color: item.color),
@@ -207,12 +236,16 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                 const SizedBox(height: 6),
                 Text(
                   item.summaryDetail,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(height: 1.45),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   item.date,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -239,16 +272,22 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            final normalizedAudience = audience == 'Tüm Kurum' ? 'Tum Kurum' : audience;
-            final recipientOptions = normalizedAudience == 'Teacher' || normalizedAudience == 'Tum Kurum'
+            final normalizedAudience = audience == 'Tüm Kurum'
+                ? 'Tüm Kurum'
+                : audience;
+            final recipientOptions =
+                normalizedAudience == 'Teacher' ||
+                    normalizedAudience == 'Tüm Kurum'
                 ? const <_RecipientOption>[]
-                : normalizedAudience == 'Veli' && targetRecipientType == 'Veliler'
-                    ? _parentOptionsForClass(targetClassName)
-                    : _studentOptionsForClass(targetClassName);
+                : normalizedAudience == 'Veli' &&
+                      targetRecipientType == 'Veliler'
+                ? _parentOptionsForClass(targetClassName)
+                : _studentOptionsForClass(targetClassName);
             return PremiumModalShell(
               eyebrow: 'Yeni Duyuru',
               title: 'Kurumsal duyuruyu profesyonel biçimde oluşturun.',
-              description: 'Desktop akışındaki gibi hedef kitleyi, sınıfı ve gerekirse seçili kişi listesini belirleyin.',
+              description:
+                  'Desktop akışındaki gibi hedef kitleyi, sınıfı ve gerekirse seçili kişi listesini belirleyin.',
               colors: const [Color(0xFF0F172A), Color(0xFFB45309)],
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -269,10 +308,19 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'Tüm Kurum', child: Text('Tüm Kurum')),
-                      DropdownMenuItem(value: 'Ogrenci', child: Text('Öğrenciler')),
+                      DropdownMenuItem(
+                        value: 'Tüm Kurum',
+                        child: Text('Tüm Kurum'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Öğrenci',
+                        child: Text('Öğrenciler'),
+                      ),
                       DropdownMenuItem(value: 'Veli', child: Text('Veliler')),
-                      DropdownMenuItem(value: 'Teacher', child: Text('Öğretmenler')),
+                      DropdownMenuItem(
+                        value: 'Teacher',
+                        child: Text('Öğretmenler'),
+                      ),
                     ],
                     onChanged: (value) => setSheetState(() {
                       audience = value ?? audience;
@@ -281,14 +329,25 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                     }),
                   ),
                   const SizedBox(height: 12),
-                  if (normalizedAudience == 'Veli' || normalizedAudience == 'Ogrenci') ...[
+                  if (normalizedAudience == 'Veli' ||
+                      normalizedAudience == 'Öğrenci') ...[
                     DropdownButtonFormField<String>(
-                      initialValue: targetClassName.isEmpty && _classes.isNotEmpty ? _classes.first : targetClassName,
+                      initialValue:
+                          targetClassName.isEmpty && _classes.isNotEmpty
+                          ? _classes.first
+                          : targetClassName,
                       decoration: const InputDecoration(
                         labelText: 'Sınıf',
                         border: OutlineInputBorder(),
                       ),
-                      items: _classes.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
+                      items: _classes
+                          .map(
+                            (item) => DropdownMenuItem(
+                              value: item,
+                              child: Text(item),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (value) => setSheetState(() {
                         targetClassName = value ?? targetClassName;
                         selectedKeys.clear();
@@ -300,7 +359,9 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                   if (normalizedAudience == 'Veli') ...[
                     Text(
                       'Liste Kaynağı',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Wrap(
@@ -336,10 +397,14 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                       children: [
                         Text(
                           'Seçili Kişiler',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
                         ),
                         const Spacer(),
-                        AdminAccentBadge(label: '${selectedLabels.length} seçildi', color: const Color(0xFFB45309)),
+                        AdminAccentBadge(
+                          label: '${selectedLabels.length} seçildi',
+                          color: const Color(0xFFB45309),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 10),
@@ -348,28 +413,54 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                       child: SingleChildScrollView(
                         child: Column(
                           children: recipientOptions.map((option) {
-                            final checked = selectedKeys.contains(option.primaryKey);
+                            final checked = selectedKeys.contains(
+                              option.primaryKey,
+                            );
                             return Container(
                               margin: const EdgeInsets.only(bottom: 10),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(18),
-                                border: Border.all(color: checked ? const Color(0xFF0F172A) : const Color(0xFFE2E8F0)),
-                                color: checked ? const Color(0xFF0F172A) : Colors.white,
+                                border: Border.all(
+                                  color: checked
+                                      ? const Color(0xFF0F172A)
+                                      : const Color(0xFFE2E8F0),
+                                ),
+                                color: checked
+                                    ? const Color(0xFF0F172A)
+                                    : Colors.white,
                               ),
                               child: CheckboxListTile(
                                 value: checked,
                                 onChanged: (_) => setSheetState(() {
                                   if (checked) {
-                                    selectedKeys.removeWhere((key) => option.keys.contains(key));
+                                    selectedKeys.removeWhere(
+                                      (key) => option.keys.contains(key),
+                                    );
                                     selectedLabels.remove(option.label);
                                   } else {
                                     selectedKeys.addAll(option.keys);
                                     selectedLabels.add(option.label);
                                   }
                                 }),
-                                title: Text(option.label, style: TextStyle(fontWeight: FontWeight.w700, color: checked ? Colors.white : const Color(0xFF0F172A))),
-                                subtitle: Text(option.helper, style: TextStyle(color: checked ? Colors.white70 : const Color(0xFF64748B))),
-                                controlAffinity: ListTileControlAffinity.leading,
+                                title: Text(
+                                  option.label,
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    color: checked
+                                        ? Colors.white
+                                        : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  option.helper,
+                                  style: TextStyle(
+                                    color: checked
+                                        ? Colors.white70
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                                controlAffinity:
+                                    ListTileControlAffinity.leading,
                               ),
                             );
                           }).toList(),
@@ -390,25 +481,33 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                       Expanded(
                         child: FilledButton(
                           onPressed: () async {
-                            if ((normalizedAudience == 'Veli' || normalizedAudience == 'Ogrenci') && selectedKeys.isEmpty) {
+                            if ((normalizedAudience == 'Veli' ||
+                                    normalizedAudience == 'Öğrenci') &&
+                                selectedKeys.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Lütfen en az bir kişi seçin.'), behavior: SnackBarBehavior.floating),
+                                const SnackBar(
+                                  content: Text('Lütfen en az bir kişi seçin.'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
                               );
                               return;
                             }
                             try {
-                              await SchoolFeedApiService.instance.createAnnouncement(
-                                title: titleController.text.trim().isEmpty ? 'Yeni duyuru' : titleController.text.trim(),
-                                detail: detailController.text.trim().isEmpty
-                                    ? 'Kurumsal duyuru içeriği eklendi.'
-                                    : detailController.text.trim(),
-                                audience: normalizedAudience,
-                                createdByRole: 'Admin',
-                                targetClassName: targetClassName,
-                                targetRecipientType: targetRecipientType,
-                                recipientKeys: selectedKeys.toList(),
-                                recipientLabels: selectedLabels.toList(),
-                              );
+                              await SchoolFeedApiService.instance
+                                  .createAnnouncement(
+                                    title: titleController.text.trim().isEmpty
+                                        ? 'Yeni duyuru'
+                                        : titleController.text.trim(),
+                                    detail: detailController.text.trim().isEmpty
+                                        ? 'Kurumsal duyuru içeriği eklendi.'
+                                        : detailController.text.trim(),
+                                    audience: normalizedAudience,
+                                    createdByRole: 'Admin',
+                                    targetClassName: targetClassName,
+                                    targetRecipientType: targetRecipientType,
+                                    recipientKeys: selectedKeys.toList(),
+                                    recipientLabels: selectedLabels.toList(),
+                                  );
                             } catch (error) {
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(

@@ -59,11 +59,17 @@ class NotificationApiService {
       if (targetRole != null && targetRole.isNotEmpty) 'targetRole=$targetRole',
       if (audience != null && audience.isNotEmpty) 'audience=$audience',
     ].join('&');
-    final path = query.isEmpty ? '/api/notifications' : '/api/notifications?$query';
+    final path = query.isEmpty
+        ? '/api/notifications'
+        : '/api/notifications?$query';
     final response = await _authorizedRequest('GET', path);
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
-        .map((item) => AppNotificationRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => AppNotificationRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
@@ -103,7 +109,9 @@ class NotificationApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null || session.accessToken.isEmpty) {
-      throw const NotificationApiException('Oturum bulunamadı. Lütfen yeniden giriş yap.');
+      throw const NotificationApiException(
+        'Oturum bulunamadı. Lütfen yeniden giriş yap.',
+      );
     }
 
     final request = http.Request(method, Uri.parse('${ApiConfig.baseUrl}$path'))
@@ -119,10 +127,14 @@ class NotificationApiService {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 401) {
-      throw const NotificationApiException('Oturum süresi dolmuş. Lütfen yeniden giriş yap.');
+      throw const NotificationApiException(
+        'Oturum süresi dolmuş. Lütfen yeniden giriş yap.',
+      );
     }
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw NotificationApiException('Bildirimler alınamadı (${response.statusCode}).');
+      throw NotificationApiException(
+        'Bildirimler alınamadı (${response.statusCode}).',
+      );
     }
 
     return response;

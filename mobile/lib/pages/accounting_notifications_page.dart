@@ -8,10 +8,12 @@ class AccountingNotificationsPage extends StatefulWidget {
   const AccountingNotificationsPage({super.key});
 
   @override
-  State<AccountingNotificationsPage> createState() => _AccountingNotificationsPageState();
+  State<AccountingNotificationsPage> createState() =>
+      _AccountingNotificationsPageState();
 }
 
-class _AccountingNotificationsPageState extends State<AccountingNotificationsPage> {
+class _AccountingNotificationsPageState
+    extends State<AccountingNotificationsPage> {
   final _store = AccountingFinanceStore.instance;
 
   @override
@@ -34,7 +36,9 @@ class _AccountingNotificationsPageState extends State<AccountingNotificationsPag
 
   @override
   Widget build(BuildContext context) {
-    final unreadCount = _store.notifications.where((item) => item.unread).length;
+    final unreadCount = _store.notifications
+        .where((item) => item.unread)
+        .length;
 
     return AccountingScaffold(
       appBar: const AppHeader(title: 'Finans Bildirimleri'),
@@ -44,10 +48,14 @@ class _AccountingNotificationsPageState extends State<AccountingNotificationsPag
           AccountingHeroCard(
             eyebrow: 'Bildirim merkezi',
             title: 'Tahsilat, onay ve riskli bakiye bildirimleri tek listede.',
-            description: 'Muhasebe ekibi için kritik olaylar okunma durumu ile birlikte izlenir.',
+            description:
+                'Muhasebe ekibi için kritik olaylar okunma durumu ile birlikte izlenir.',
             colors: const [Color(0xFF0F172A), Color(0xFF14532D)],
             metrics: [
-              AccountingHeroMetric(label: 'Toplam', value: '${_store.notifications.length}'),
+              AccountingHeroMetric(
+                label: 'Toplam',
+                value: '${_store.notifications.length}',
+              ),
               AccountingHeroMetric(label: 'Okunmamış', value: '$unreadCount'),
             ],
           ),
@@ -68,21 +76,40 @@ class _AccountingNotificationsPageState extends State<AccountingNotificationsPag
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: (item.unread ? const Color(0xFFDCFCE7) : const Color(0xFFE5E7EB)),
+                      color: (item.unread
+                          ? const Color(0xFFDCFCE7)
+                          : const Color(0xFFE5E7EB)),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: Icon(item.unread ? Icons.notifications_active_outlined : Icons.notifications_none_outlined),
+                    child: Icon(
+                      item.unread
+                          ? Icons.notifications_active_outlined
+                          : Icons.notifications_none_outlined,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(
+                          item.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                         const SizedBox(height: 6),
-                        Text(item.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                        Text(
+                          item.message,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.4),
+                        ),
                         const SizedBox(height: 8),
-                        Text(item.time, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          item.time,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
                       ],
                     ),
                   ),

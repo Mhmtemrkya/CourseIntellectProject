@@ -11,7 +11,7 @@ class BottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      userRole: 'Ogrenci',
+      userRole: 'Öğrenci',
       destinations: [
         AdaptiveDestination(
           icon: Icons.home_rounded,
@@ -21,7 +21,7 @@ class BottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.menu_book,
-          label: 'Icerikler',
+          label: 'İçerikler',
           pageBuilder: (_) => const ContentPage(),
           sidebarColor: const Color(0xFF8B5CF6),
         ),

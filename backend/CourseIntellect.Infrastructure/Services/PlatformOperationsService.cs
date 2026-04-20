@@ -522,7 +522,7 @@ public sealed class PlatformOperationsService(
             .ToArray());
 
         var parts = normalized
-            .Split([' ', '/', '\\', '-', '_'], StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Split(new[] { ' ', '/', '\\', '-', '_' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .Select(part => new string(part.Where(char.IsLetterOrDigit).ToArray()))
             .Where(part => !string.IsNullOrWhiteSpace(part));
 

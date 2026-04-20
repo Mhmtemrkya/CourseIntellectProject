@@ -5,10 +5,7 @@ import 'package:student/widgets/teacher_header.dart';
 class TeacherQuestionDetailPage extends StatefulWidget {
   final Map<String, dynamic> thread;
 
-  const TeacherQuestionDetailPage({
-    super.key,
-    required this.thread,
-  });
+  const TeacherQuestionDetailPage({super.key, required this.thread});
 
   @override
   State<TeacherQuestionDetailPage> createState() =>
@@ -34,10 +31,11 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final attachments = (widget.thread['attachments'] as List<dynamic>? ?? const [])
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .map((item) => item['fileName']?.toString() ?? 'ek')
-        .toList();
+    final attachments =
+        (widget.thread['attachments'] as List<dynamic>? ?? const [])
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .map((item) => item['fileName']?.toString() ?? 'ek')
+            .toList();
     final replies = (widget.thread['replies'] as List<dynamic>? ?? const [])
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();
@@ -69,8 +67,9 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
                     children: [
                       CircleAvatar(
                         radius: 24,
-                        backgroundColor:
-                            theme.colorScheme.primary.withValues(alpha: 0.14),
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.14,
+                        ),
                         child: Text(
                           (widget.thread['studentName'] as String? ?? 'Öğrenci')
                               .split(' ')
@@ -90,13 +89,16 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              widget.thread['studentName'] as String? ?? 'Öğrenci',
+                              widget.thread['studentName'] as String? ??
+                                  'Öğrenci',
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w800,
                               ),
                             ),
                             const SizedBox(height: 3),
-                            Text(widget.thread['className'] as String? ?? 'Sınıf'),
+                            Text(
+                              widget.thread['className'] as String? ?? 'Sınıf',
+                            ),
                           ],
                         ),
                       ),
@@ -106,10 +108,11 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
                           vertical: 6,
                         ),
                         decoration: BoxDecoration(
-                          color: (answered
-                                  ? const Color(0xFF69C36D)
-                                  : const Color(0xFFFFB020))
-                              .withValues(alpha: 0.14),
+                          color:
+                              (answered
+                                      ? const Color(0xFF69C36D)
+                                      : const Color(0xFFFFB020))
+                                  .withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Text(
@@ -128,7 +131,9 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
                   Text(
                     "Ders / Konu",
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                      color: theme.textTheme.bodySmall?.color?.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -142,7 +147,9 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
                   Text(
                     "Soru",
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                      color: theme.textTheme.bodySmall?.color?.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -198,7 +205,7 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
                   const SizedBox(height: 10),
                   Text(
                     latestReply?['messageText'] as String? ??
-                        "Bu soru henuz yanitlanmadi. Yanit ekranindan ogrenciye donus yapabilirsin.",
+                        "Bu soru henüz yanıtlanmadı. Yanıt ekranından öğrenciye dönüş yapabilirsin.",
                     style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
                 ],

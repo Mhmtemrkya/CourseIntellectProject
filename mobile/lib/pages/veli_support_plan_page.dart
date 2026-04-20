@@ -90,11 +90,17 @@ class VeliSupportPlanPage extends StatelessWidget {
           const SizedBox(height: 16),
           Row(
             children: const [
-              Expanded(child: _HeroMetric(label: 'Süre', value: '7 gün')),
+              Expanded(
+                child: _HeroMetric(label: 'Süre', value: '7 gün'),
+              ),
               SizedBox(width: 10),
-              Expanded(child: _HeroMetric(label: 'Öncelik', value: 'Yüksek')),
+              Expanded(
+                child: _HeroMetric(label: 'Öncelik', value: 'Yüksek'),
+              ),
               SizedBox(width: 10),
-              Expanded(child: _HeroMetric(label: 'Takip', value: 'Aile + öğretmen')),
+              Expanded(
+                child: _HeroMetric(label: 'Takip', value: 'Aile + öğretmen'),
+              ),
             ],
           ),
         ],
@@ -110,27 +116,30 @@ class VeliSupportPlanPage extends StatelessWidget {
         children: [
           Text(
             'Bu plan neden önerildi?',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           const _InfoRow(
             icon: Icons.analytics_outlined,
             color: Color(0xFF2563EB),
-            text: 'Son değerlendirmelerde bu alanda düzenli ama kısa destek daha verimli sonuç üretiyor.',
+            text:
+                'Son değerlendirmelerde bu alanda düzenli ama kısa destek daha verimli sonuç üretiyor.',
           ),
           const SizedBox(height: 10),
           const _InfoRow(
             icon: Icons.family_restroom_outlined,
             color: Color(0xFF0F766E),
-            text: 'Aile tarafındaki küçük yönlendirmeler öğrencinin planı sürdürmesini kolaylaştırıyor.',
+            text:
+                'Aile tarafındaki küçük yönlendirmeler öğrencinin planı sürdürmesini kolaylaştırıyor.',
           ),
           const SizedBox(height: 10),
           const _InfoRow(
             icon: Icons.flag_outlined,
             color: Color(0xFFB54708),
-            text: 'Bu plan, performans düşüşünü büyümeden dengelemek için erken müdahale olarak hazırlandı.',
+            text:
+                'Bu plan, performans düşüşünü büyümeden dengelemek için erken müdahale olarak hazırlandı.',
           ),
         ],
       ),
@@ -145,21 +154,23 @@ class VeliSupportPlanPage extends StatelessWidget {
         children: [
           Text(
             '7 günlük uygulama akışı',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
           const _TimelineTile(
             day: '1. Gün',
             title: 'Kısa başlangıç konuşması',
-            detail: 'Öğrenciyle 5 dakikalık sakin hedef konuşması yapın, baskı dili kullanmayın.',
+            detail:
+                'Öğrenciyle 5 dakikalık sakin hedef konuşması yapın, baskı dili kullanmayın.',
           ),
           const SizedBox(height: 12),
           const _TimelineTile(
             day: '3. Gün',
             title: 'Akşam mini tekrar rutini',
-            detail: '20 dakikalık kısa çalışma sonrasında sadece tamamlandı takibi yapın.',
+            detail:
+                '20 dakikalık kısa çalışma sonrasında sadece tamamlandı takibi yapın.',
           ),
           const SizedBox(height: 12),
           const _TimelineTile(
@@ -171,7 +182,8 @@ class VeliSupportPlanPage extends StatelessWidget {
           const _TimelineTile(
             day: '7. Gün',
             title: 'Sonuç değerlendirmesi',
-            detail: 'Plana uyum ve öğrencinin motivasyonu birlikte gözden geçirilsin.',
+            detail:
+                'Plana uyum ve öğrencinin motivasyonu birlikte gözden geçirilsin.',
           ),
         ],
       ),
@@ -186,9 +198,9 @@ class VeliSupportPlanPage extends StatelessWidget {
         children: [
           Text(
             'Evde uygulanacak destek dili',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
           Container(
@@ -235,14 +247,16 @@ class VeliSupportPlanPage extends StatelessWidget {
         children: [
           Text(
             'Planı başlat',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Text(
             'Plan başlatıldığında veli takvimine eklenir ve öğretmen tarafına bilgilendirme notu düşer.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.4),
           ),
           const SizedBox(height: 16),
           Row(
@@ -267,7 +281,9 @@ class VeliSupportPlanPage extends StatelessWidget {
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Öğretmene plan bilgilendirmesi gönderildi.'),
+                        content: Text(
+                          'Öğretmene plan bilgilendirmesi gönderildi.',
+                        ),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -294,7 +310,9 @@ class VeliSupportPlanPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06),
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06,
+            ),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -309,10 +327,7 @@ class _HeroMetric extends StatelessWidget {
   final String label;
   final String value;
 
-  const _HeroMetric({
-    required this.label,
-    required this.value,
-  });
+  const _HeroMetric({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -353,11 +368,7 @@ class _InfoRow extends StatelessWidget {
   final Color color;
   final String text;
 
-  const _InfoRow({
-    required this.icon,
-    required this.color,
-    required this.text,
-  });
+  const _InfoRow({required this.icon, required this.color, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -377,7 +388,9 @@ class _InfoRow extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.45),
           ),
         ),
       ],
@@ -424,14 +437,16 @@ class _TimelineTile extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 4),
               Text(
                 detail,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(height: 1.45),
               ),
             ],
           ),

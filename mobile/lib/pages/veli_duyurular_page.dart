@@ -17,7 +17,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
   final TextEditingController _searchController = TextEditingController();
   bool _loading = true;
   String? _error;
-  String _selectedFilter = 'Tumu';
+  String _selectedFilter = 'Tümu';
   List<AnnouncementFeedItem> _announcements = const [];
 
   @override
@@ -41,7 +41,9 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
       _error = null;
     });
     try {
-      final items = await SchoolFeedApiService.instance.fetchAnnouncements(audience: 'Veli');
+      final items = await SchoolFeedApiService.instance.fetchAnnouncements(
+        audience: 'Veli',
+      );
       if (!mounted) return;
       setState(() {
         _announcements = items;
@@ -112,28 +114,26 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
           _searchBar(context),
           const SizedBox(height: 8),
           Text(
-            '${filtered.length} duyuru goruntuleniyor',
+            '${filtered.length} duyuru görüntüleniyor',
             style: TextStyle(color: theme.textTheme.bodyMedium?.color),
           ),
           const SizedBox(height: 12),
           if (filtered.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 40),
-              child: Center(
-                child: Text('Filtreye uygun duyuru bulunmuyor.'),
-              ),
+              child: Center(child: Text('Filtreye uygun duyuru bulunmuyor.')),
             )
           else
             ...filtered.asMap().entries.map(
-                  (entry) => _announcementCard(
-                    context: context,
-                    icon: entry.value.icon,
-                    title: entry.value.title,
-                    description: entry.value.summaryDetail,
-                    date: entry.value.date,
-                    tags: _tagsForAnnouncement(entry.value, entry.key),
-                  ),
-                ),
+              (entry) => _announcementCard(
+                context: context,
+                icon: entry.value.icon,
+                title: entry.value.title,
+                description: entry.value.summaryDetail,
+                date: entry.value.date,
+                tags: _tagsForAnnouncement(entry.value, entry.key),
+              ),
+            ),
         ],
       ),
     );
@@ -148,7 +148,9 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
         _ => true,
       };
       final matchesQuery =
-          query.isEmpty || item.title.toLowerCase().contains(query) || item.detail.toLowerCase().contains(query);
+          query.isEmpty ||
+          item.title.toLowerCase().contains(query) ||
+          item.detail.toLowerCase().contains(query);
       return matchesFilter && matchesQuery;
     }).toList();
   }
@@ -161,7 +163,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
     if (item.audience.contains('Veli')) {
       tags.add('Veli');
     }
-    if (item.audience.contains('Tum')) {
+    if (item.audience.contains('Tüm')) {
       tags.add('Genel');
     }
     return tags.isEmpty ? ['Bilgi'] : tags;
@@ -202,7 +204,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
             ),
           ),
           items: const [
-            DropdownMenuItem(value: 'Tumu', child: Text('Tümü')),
+            DropdownMenuItem(value: 'Tümu', child: Text('Tümü')),
             DropdownMenuItem(value: 'Yeni', child: Text('Yeni')),
             DropdownMenuItem(value: 'Veli', child: Text('Veli')),
           ],
@@ -216,11 +218,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
 
         if (compact) {
           return Column(
-            children: [
-              searchField,
-              const SizedBox(height: 10),
-              filter,
-            ],
+            children: [searchField, const SizedBox(height: 10), filter],
           );
         }
 
@@ -251,9 +249,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,10 +274,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
             ],
           ),
           const SizedBox(height: 8),
-          Wrap(
-            spacing: 6,
-            children: tags.map(_tagChip).toList(),
-          ),
+          Wrap(spacing: 6, children: tags.map(_tagChip).toList()),
           const SizedBox(height: 8),
           Text(
             description,
@@ -358,7 +351,11 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Wrap(spacing: 6, runSpacing: 6, children: tags.map(_tagChip).toList()),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: tags.map(_tagChip).toList(),
+              ),
               const SizedBox(height: 12),
               Text(description),
               const SizedBox(height: 12),

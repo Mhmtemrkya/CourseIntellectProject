@@ -5,10 +5,7 @@ import '../services/student_xp_service.dart';
 class AchievementsWidget extends StatefulWidget {
   final int refreshKey;
 
-  const AchievementsWidget({
-    super.key,
-    required this.refreshKey,
-  });
+  const AchievementsWidget({super.key, required this.refreshKey});
 
   @override
   State<AchievementsWidget> createState() => _AchievementsWidgetState();
@@ -25,7 +22,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
   final List<Map<String, dynamic>> allAchievements = [
     {
       "id": "first_xp",
-      "title": "Ilk XP",
+      "title": "İlk XP",
       "subtitle": "25 XP'ye ulastin ve ilk ilerlemeni kaydettin.",
       "icon": Icons.bolt_rounded,
       "color": Color(0xFFFFB020),
@@ -34,7 +31,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
     },
     {
       "id": "quiz_starter",
-      "title": "Quiz Baslangici",
+      "title": "Quiz Başlangıç",
       "subtitle": "Yaklasik 3 quizlik ilerleme yakaladin.",
       "icon": Icons.quiz_rounded,
       "color": Color(0xFF2563EB),
@@ -53,7 +50,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
     {
       "id": "streak_3",
       "title": "Alev Serisi",
-      "subtitle": "3 gun ust uste plan tamamladin.",
+      "subtitle": "3 gün ust uste plan tamamladin.",
       "icon": Icons.local_fire_department_rounded,
       "color": Color(0xFFEF4444),
       "type": "streak",
@@ -90,7 +87,9 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
     }).toList();
 
     final newUnlocks = currentUnlocked
-        .where((achievement) => !_previousUnlockedIds.contains(achievement["id"]))
+        .where(
+          (achievement) => !_previousUnlockedIds.contains(achievement["id"]),
+        )
         .toList();
 
     if (!mounted) return;
@@ -98,7 +97,9 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
     setState(() {
       xp = currentXp;
       streak = currentStreak;
-      unlockedIds = currentUnlocked.map((item) => item["id"] as String).toList();
+      unlockedIds = currentUnlocked
+          .map((item) => item["id"] as String)
+          .toList();
       unlockedAchievements = currentUnlocked;
     });
     _previousUnlockedIds = List<String>.from(unlockedIds);
@@ -144,9 +145,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
             xp: xp,
           ),
         ),
-      )
-      .closed
-      .whenComplete(() {
+      ).closed.whenComplete(() {
         _achievementToastOpen = false;
       });
   }
@@ -156,8 +155,8 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
     final nextAchievement = allAchievements.firstWhere(
       (achievement) => !unlockedIds.contains(achievement["id"]),
       orElse: () => {
-        "title": "Tum Rozetler Acildi",
-        "subtitle": "Yeni hedefler icin quiz ve planlara devam et.",
+        "title": "Tüm Rozetler Açıldı",
+        "subtitle": "Yeni hedefler için quiz ve planlara devam et.",
         "icon": Icons.workspace_premium_rounded,
         "color": const Color(0xFF10B981),
         "type": "xp",
@@ -171,12 +170,12 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
         Row(
           children: [
             const Text(
-              "Basarilar",
+              "Başarılar",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
             Text(
-              "$xp XP • $streak gun seri",
+              "$xp XP • $streak gün seri",
               style: TextStyle(color: Colors.grey.shade600),
             ),
           ],
@@ -258,7 +257,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
           ),
           const SizedBox(height: 14),
           Text(
-            "Siradaki Rozet",
+            "Sıradaki Rozet",
             style: TextStyle(
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w700,
@@ -271,9 +270,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
           ),
           const SizedBox(height: 6),
           Text(
-            threshold > 0
-                ? "$xp / $threshold XP"
-                : "Tum rozetler tamam",
+            threshold > 0 ? "$xp / $threshold XP" : "Tüm rözetler tamam",
             style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 10),
@@ -316,7 +313,8 @@ class _AchievementSnackContent extends StatefulWidget {
   });
 
   @override
-  State<_AchievementSnackContent> createState() => _AchievementSnackContentState();
+  State<_AchievementSnackContent> createState() =>
+      _AchievementSnackContentState();
 }
 
 class _AchievementSnackContentState extends State<_AchievementSnackContent>
@@ -424,7 +422,7 @@ class _AchievementSnackContentState extends State<_AchievementSnackContent>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Yeni basari acildi",
+                        "Yeni başarı açıldı",
                         style: TextStyle(
                           color: widget.color,
                           fontSize: 12,

@@ -10,7 +10,12 @@ class VeliReceiptArchivePage extends StatelessWidget {
     final receipts = AccountingFinanceStore.instance.collections;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Makbuz Arsivi', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Makbuz Arsivi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: receipts
@@ -28,11 +33,23 @@ class VeliReceiptArchivePage extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(item.name, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        item.name,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(height: 6),
-                      Text('${item.className} • ${item.method} • ${item.time}', style: Theme.of(context).textTheme.bodySmall),
+                      Text(
+                        '${item.className} • ${item.method} • ${item.time}',
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
                       const SizedBox(height: 12),
-                      Text(item.amount, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                      Text(
+                        item.amount,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
                     ],
                   ),
                 ),
@@ -52,11 +69,14 @@ class VeliReceiptArchivePage extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _line('Sinif', item.className),
-            _line('Odeme Yontemi', item.method),
+            _line('Sınıf', item.className),
+            _line('Ödeme Yöntemi', item.method),
             _line('Tutar', item.amount),
             _line('Tarih', item.time),
-            _line('Not', item.note.isEmpty ? 'Makbuz aciklamasi yok.' : item.note),
+            _line(
+              'Not',
+              item.note.isEmpty ? 'Makbuz açıklamasi yok.' : item.note,
+            ),
           ],
         ),
         actions: [
@@ -76,7 +96,10 @@ class VeliReceiptArchivePage extends StatelessWidget {
         text: TextSpan(
           style: const TextStyle(color: Colors.black87, height: 1.45),
           children: [
-            TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w700)),
+            TextSpan(
+              text: '$label: ',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
             TextSpan(text: value),
           ],
         ),

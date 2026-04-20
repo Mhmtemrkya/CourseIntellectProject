@@ -27,7 +27,8 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
   Future<void> _loadSession() async {
     await AccountingFinanceStore.instance.loadDashboard();
     final session = await AuthSessionStore.instance.load();
-    final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
+    final linkedChildren = await LinkedChildrenService.instance
+        .loadLinkedChildren();
     if (!mounted) return;
     setState(() {
       if (linkedChildren.isNotEmpty) {
@@ -42,9 +43,16 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
   @override
   Widget build(BuildContext context) {
     final store = AccountingFinanceStore.instance;
-    final installments = store.installments.where((item) => item.student == _studentName).toList();
-    final paid = installments.where((item) => item.status == 'Alınan').fold<int>(0, (sum, item) => sum + store.parseAmount(item.amount));
-    final total = installments.fold<int>(0, (sum, item) => sum + store.parseAmount(item.amount));
+    final installments = store.installments
+        .where((item) => item.student == _studentName)
+        .toList();
+    final paid = installments
+        .where((item) => item.status == 'Alınan')
+        .fold<int>(0, (sum, item) => sum + store.parseAmount(item.amount));
+    final total = installments.fold<int>(
+      0,
+      (sum, item) => sum + store.parseAmount(item.amount),
+    );
     final remaining = (total - paid).clamp(0, total);
     final hasSidebar = SidebarState.of(context);
     return Scaffold(
@@ -53,28 +61,33 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: ResponsiveContent(
-          child: Column(
-            children: [
-              _summaryCards(context, total, paid, remaining),
-              const SizedBox(height: 16),
-              _paymentProgress(context, total, paid, remaining),
-              const SizedBox(height: 16),
-              _installmentPlan(context, installments),
-              const SizedBox(height: 16),
-              _paymentHistory(context, store, _studentName),
-              const SizedBox(height: 20),
-              _payButton(context),
-            ],
-          ),
-        ),
-      ),
+              padding: const EdgeInsets.all(16),
+              child: ResponsiveContent(
+                child: Column(
+                  children: [
+                    _summaryCards(context, total, paid, remaining),
+                    const SizedBox(height: 16),
+                    _paymentProgress(context, total, paid, remaining),
+                    const SizedBox(height: 16),
+                    _installmentPlan(context, installments),
+                    const SizedBox(height: 16),
+                    _paymentHistory(context, store, _studentName),
+                    const SizedBox(height: 20),
+                    _payButton(context),
+                  ],
+                ),
+              ),
+            ),
     );
   }
 
   // ================= SUMMARY =================
-  Widget _summaryCards(BuildContext context, int total, int paid, int remaining) {
+  Widget _summaryCards(
+    BuildContext context,
+    int total,
+    int paid,
+    int remaining,
+  ) {
     final store = AccountingFinanceStore.instance;
     final cards = [
       _SummaryCard(
@@ -119,18 +132,44 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
     }
 
     return Row(
-        children: [
-        Expanded(child: _SummaryCard(title: "Toplam", value: store.formatAmount(total), icon: Icons.account_balance_wallet, color: Colors.blue)),
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            title: "Toplam",
+            value: store.formatAmount(total),
+            icon: Icons.account_balance_wallet,
+            color: Colors.blue,
+          ),
+        ),
         SizedBox(width: 8),
-        Expanded(child: _SummaryCard(title: "Ödenen", value: store.formatAmount(paid), icon: Icons.check_circle, color: Colors.green)),
+        Expanded(
+          child: _SummaryCard(
+            title: "Ödenen",
+            value: store.formatAmount(paid),
+            icon: Icons.check_circle,
+            color: Colors.green,
+          ),
+        ),
         SizedBox(width: 8),
-        Expanded(child: _SummaryCard(title: "Kalan", value: store.formatAmount(remaining), icon: Icons.schedule, color: Colors.orange)),
+        Expanded(
+          child: _SummaryCard(
+            title: "Kalan",
+            value: store.formatAmount(remaining),
+            icon: Icons.schedule,
+            color: Colors.orange,
+          ),
+        ),
       ],
     );
   }
 
   // ================= PROGRESS =================
-  Widget _paymentProgress(BuildContext context, int total, int paid, int remaining) {
+  Widget _paymentProgress(
+    BuildContext context,
+    int total,
+    int paid,
+    int remaining,
+  ) {
     final store = AccountingFinanceStore.instance;
     final ratio = total == 0 ? 0.0 : paid / total;
     return _cardWrapper(
@@ -140,8 +179,10 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
         children: [
           Row(
             children: [
-              const Text("Ödeme İlerlemesi",
-                  style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text(
+                "Ödeme İlerlemesi",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
               const Spacer(),
               Text('%${(ratio * 100).round()}'),
             ],
@@ -159,53 +200,69 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
               Text("Ödenen: ${store.formatAmount(paid)}"),
               Text("Kalan: ${store.formatAmount(remaining)}"),
             ],
-          )
-        ],
-      ),
-    );
-  }
-
-  // ================= INSTALLMENT PLAN =================
-  Widget _installmentPlan(BuildContext context, List<InstallmentRecord> installments) {
-    return _cardWrapper(
-      context,
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Taksit Planı (2024-2025)",
-              style: TextStyle(fontWeight: FontWeight.bold)),
-          SizedBox(height: 12),
-          if (installments.isEmpty)
-            const Text('Bagli ogrenci icin henuz taksit plani bulunmuyor.')
-          else
-          ...installments.map(
-            (item) => _InstallmentRow(month: item.due, amount: item.amount, status: item.status),
           ),
         ],
       ),
     );
   }
 
-  // ================= PAYMENT HISTORY =================
-  Widget _paymentHistory(BuildContext context, AccountingFinanceStore store, String studentName) {
+  // ================= INSTALLMENT PLAN =================
+  Widget _installmentPlan(
+    BuildContext context,
+    List<InstallmentRecord> installments,
+  ) {
     return _cardWrapper(
       context,
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Ödeme Geçmişi",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            "Taksit Planı (2024-2025)",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           SizedBox(height: 12),
-          if (store.collections.where((item) => item.name == studentName).isEmpty)
-            const Text('Bagli ogrenci icin henuz tahsilat kaydi bulunmuyor.')
+          if (installments.isEmpty)
+            const Text('Bagli öğrenci için henüz taksit planı bulunmuyor.')
           else
-          ...store.collections.where((item) => item.name == studentName).map(
-                (item) => _PaymentHistoryItem(
-                  amount: item.amount,
-                  method: item.method,
-                  date: item.time,
-                ),
+            ...installments.map(
+              (item) => _InstallmentRow(
+                month: item.due,
+                amount: item.amount,
+                status: item.status,
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  // ================= PAYMENT HISTORY =================
+  Widget _paymentHistory(
+    BuildContext context,
+    AccountingFinanceStore store,
+    String studentName,
+  ) {
+    return _cardWrapper(
+      context,
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text("Ödeme Geçmişi", style: TextStyle(fontWeight: FontWeight.bold)),
+          SizedBox(height: 12),
+          if (store.collections
+              .where((item) => item.name == studentName)
+              .isEmpty)
+            const Text('Bagli öğrenci için henüz tahsilat kaydı bulunmuyor.')
+          else
+            ...store.collections
+                .where((item) => item.name == studentName)
+                .map(
+                  (item) => _PaymentHistoryItem(
+                    amount: item.amount,
+                    method: item.method,
+                    date: item.time,
+                  ),
+                ),
         ],
       ),
     );
@@ -217,14 +274,16 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
       width: double.infinity,
       height: 50,
       child: ElevatedButton.icon(
-        onPressed: _loading ? null : () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const VeliOnlineOdemePage(),
-            ),
-          );
-        },
+        onPressed: _loading
+            ? null
+            : () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const VeliOnlineOdemePage(),
+                  ),
+                );
+              },
         icon: const Icon(Icons.credit_card),
         label: const Text("Online Ödeme Yap"),
       ),
@@ -238,9 +297,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: const [
-          BoxShadow(color: Colors.black12, blurRadius: 6),
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
       child: child,
     );
@@ -264,7 +321,6 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     final theme = Theme.of(context);
 
     return Card(
@@ -322,11 +378,8 @@ class _InstallmentRow extends StatelessWidget {
               color: _statusColor().withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Text(
-              status,
-              style: TextStyle(color: _statusColor()),
-            ),
-          )
+            child: Text(status, style: TextStyle(color: _statusColor())),
+          ),
         ],
       ),
     );

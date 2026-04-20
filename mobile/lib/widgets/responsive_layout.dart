@@ -1,4 +1,5 @@
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:flutter/material.dart';
 
 class ResponsiveLayout {
@@ -49,7 +50,12 @@ class ResponsiveLayout {
     return width;
   }
 
-  static int columns(BuildContext context, {int phone = 1, int tablet = 2, int largeTablet = 3}) {
+  static int columns(
+    BuildContext context, {
+    int phone = 1,
+    int tablet = 2,
+    int largeTablet = 3,
+  }) {
     if (isLargeTablet(context)) return largeTablet;
     if (isTablet(context)) return tablet;
     return phone;
@@ -62,7 +68,12 @@ class ResponsiveLayout {
     int tablet = 2,
     int largeTablet = 3,
   }) {
-    final count = columns(context, phone: phone, tablet: tablet, largeTablet: largeTablet);
+    final count = columns(
+      context,
+      phone: phone,
+      tablet: tablet,
+      largeTablet: largeTablet,
+    );
     final maxWidth = contentMaxWidth(context);
     return (maxWidth - (spacing * (count - 1))) / count;
   }
@@ -72,21 +83,16 @@ class ResponsiveContent extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
 
-  const ResponsiveContent({
-    super.key,
-    required this.child,
-    this.padding,
-  });
+  const ResponsiveContent({super.key, required this.child, this.padding});
 
   @override
   Widget build(BuildContext context) {
     return Center(
       child: ConstrainedBox(
-        constraints: BoxConstraints(maxWidth: ResponsiveLayout.contentMaxWidth(context)),
-        child: Padding(
-          padding: padding ?? EdgeInsets.zero,
-          child: child,
+        constraints: BoxConstraints(
+          maxWidth: ResponsiveLayout.contentMaxWidth(context),
         ),
+        child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
       ),
     );
   }

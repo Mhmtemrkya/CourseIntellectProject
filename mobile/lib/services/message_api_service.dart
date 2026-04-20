@@ -46,7 +46,8 @@ class MessageThreadRecord {
       lastMessageAt: DateTime.parse(map['lastMessageAtUtc'] as String),
       unreadCount: (map['unreadCount'] as num?)?.toInt() ?? 0,
       lastMessageFromMe: map['lastMessageFromMe'] as bool? ?? false,
-      lastMessageStatus: (map['lastMessageStatus'] as String? ?? 'sent').toLowerCase(),
+      lastMessageStatus: (map['lastMessageStatus'] as String? ?? 'sent')
+          .toLowerCase(),
     );
   }
 }
@@ -74,25 +75,54 @@ class MessageAttachmentRecord {
     return '${ApiConfig.baseUrl}$fileUrl';
   }
 
-  bool get isImage => fileType == 'image';
+  bool get isImage {
+    final type = fileType.toLowerCase();
+    final name = '$originalFileName $fileName $fileUrl'.toLowerCase();
+    return type == 'image' ||
+        type.startsWith('image/') ||
+        name.endsWith('.jpg') ||
+        name.endsWith('.jpeg') ||
+        name.endsWith('.png') ||
+        name.endsWith('.gif') ||
+        name.endsWith('.webp') ||
+        name.endsWith('.heic');
+  }
+
+  bool get isVideo {
+    final type = fileType.toLowerCase();
+    final name = '$originalFileName $fileName $fileUrl'.toLowerCase();
+    return type == 'video' ||
+        type.startsWith('video/') ||
+        name.endsWith('.mp4') ||
+        name.endsWith('.mov') ||
+        name.endsWith('.m4v') ||
+        name.endsWith('.webm');
+  }
 
   factory MessageAttachmentRecord.fromMap(Map<String, dynamic> map) {
     return MessageAttachmentRecord(
       fileName: map['fileName'] as String? ?? '',
-      originalFileName: map['originalFileName'] as String? ?? map['fileName'] as String? ?? '',
+      originalFileName:
+          map['originalFileName'] as String? ??
+          map['fileName'] as String? ??
+          '',
       fileUrl: map['fileUrl'] as String? ?? '',
-      fileType: (map['fileType'] as String? ?? 'file').toLowerCase(),
+      fileType:
+          ((map['fileType'] as String?) ??
+                  (map['contentType'] as String?) ??
+                  'file')
+              .toLowerCase(),
       size: (map['size'] as num?)?.toInt() ?? 0,
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'fileName': fileName,
-        'originalFileName': originalFileName,
-        'fileUrl': fileUrl,
-        'fileType': fileType,
-        'size': size,
-      };
+    'fileName': fileName,
+    'originalFileName': originalFileName,
+    'fileUrl': fileUrl,
+    'fileType': fileType,
+    'size': size,
+  };
 }
 
 class MessageItemRecord {
@@ -133,11 +163,19 @@ class MessageItemRecord {
       isFromCurrentActor: map['isFromCurrentActor'] as bool? ?? false,
       text: map['text'] as String,
       isRead: map['isRead'] as bool,
-      deliveredAt: map['deliveredAtUtc'] == null ? null : DateTime.parse(map['deliveredAtUtc'] as String),
-      readAt: map['readAtUtc'] == null ? null : DateTime.parse(map['readAtUtc'] as String),
+      deliveredAt: map['deliveredAtUtc'] == null
+          ? null
+          : DateTime.parse(map['deliveredAtUtc'] as String),
+      readAt: map['readAtUtc'] == null
+          ? null
+          : DateTime.parse(map['readAtUtc'] as String),
       status: (map['status'] as String? ?? 'sent').toLowerCase(),
       attachments: (map['attachments'] as List<dynamic>? ?? const [])
-          .map((item) => MessageAttachmentRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+          .map(
+            (item) => MessageAttachmentRecord.fromMap(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
           .toList(),
       sentAt: DateTime.parse(map['sentAtUtc'] as String),
     );
@@ -152,7 +190,9 @@ class MessageApiService {
   Future<List<MessageThreadRecord>> fetchThreads() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MessageApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MessageApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
@@ -161,18 +201,26 @@ class MessageApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MessageApiException('Mesaj listesi alınamadı (${response.statusCode}).');
+      throw MessageApiException(
+        'Mesaj listesi alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => MessageThreadRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => MessageThreadRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
   Future<List<MessageItemRecord>> fetchMessages(String threadId) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MessageApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MessageApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
@@ -181,11 +229,16 @@ class MessageApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MessageApiException('Sohbet mesajları alınamadı (${response.statusCode}).');
+      throw MessageApiException(
+        'Sohbet mesajları alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => MessageItemRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              MessageItemRecord.fromMap(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
@@ -197,7 +250,9 @@ class MessageApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MessageApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MessageApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -215,10 +270,14 @@ class MessageApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MessageApiException('Sohbet oluşturulamadı (${response.statusCode}).');
+      throw MessageApiException(
+        'Sohbet oluşturulamadı (${response.statusCode}).',
+      );
     }
 
-    return MessageThreadRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return MessageThreadRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<MessageItemRecord> sendMessage({
@@ -228,7 +287,9 @@ class MessageApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MessageApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MessageApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -244,10 +305,14 @@ class MessageApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MessageApiException('Mesaj gönderilemedi (${response.statusCode}).');
+      throw MessageApiException(
+        'Mesaj gönderilemedi (${response.statusCode}).',
+      );
     }
 
-    return MessageItemRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return MessageItemRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<void> deleteForMe({
@@ -256,16 +321,22 @@ class MessageApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MessageApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MessageApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.delete(
-      Uri.parse('${ApiConfig.baseUrl}/api/messages/threads/$threadId/messages/$messageId/me'),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/messages/threads/$threadId/messages/$messageId/me',
+      ),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MessageApiException('Mesaj kaldırılamadı (${response.statusCode}).');
+      throw MessageApiException(
+        'Mesaj kaldırılamadı (${response.statusCode}).',
+      );
     }
   }
 
@@ -275,21 +346,30 @@ class MessageApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const MessageApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const MessageApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
-    final request = MultipartRequest('POST', Uri.parse('${ApiConfig.baseUrl}/api/uploads?folder=messages'));
+    final request = MultipartRequest(
+      'POST',
+      Uri.parse('${ApiConfig.baseUrl}/api/uploads?folder=messages'),
+    );
     request.headers['Authorization'] = 'Bearer ${session.accessToken}';
-    request.files.add(await MultipartFile.fromPath('file', file.path, filename: fileName));
+    request.files.add(
+      await MultipartFile.fromPath('file', file.path, filename: fileName),
+    );
 
     final streamed = await request.send();
     final response = await Response.fromStream(streamed);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw MessageApiException('Dosya yuklenemedi (${response.statusCode}).');
+      throw MessageApiException('Dosya yüklenemedi (${response.statusCode}).');
     }
 
-    return MessageAttachmentRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return MessageAttachmentRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   static String _normalize(String value) {

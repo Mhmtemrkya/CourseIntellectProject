@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CourseIntellect.Application.DTOs.Messages;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -79,7 +80,8 @@ public sealed class MessageService(
                 x.SentAtUtc,
                 x.SenderName == normalizedCurrentName,
                 x.IsRead ? "read" : "delivered",
-                x.IsRead ? DateTime.UtcNow : null))
+                x.IsRead ? DateTime.UtcNow : null,
+                DeserializeAttachments(x.Attachments)))
             .ToList();
     }
 
@@ -119,7 +121,7 @@ public sealed class MessageService(
                 currentUserName,
                 currentUserRole,
                 existing.Id,
-                new SendMessageRequest(request.InitialMessage!),
+                new SendMessageRequest(request.InitialMessage!, null),
                 cancellationToken);
         }
 
@@ -140,6 +142,10 @@ public sealed class MessageService(
             throw new InvalidOperationException("Thread bulunamadı.");
         }
 
+        var attachments = (request.Attachments ?? Array.Empty<MessageAttachmentDto>())
+            .Where(a => !string.IsNullOrWhiteSpace(a.FileUrl))
+            .ToList();
+
         var item = new MessageItem
         {
             TenantId = thread.TenantId,
@@ -148,11 +154,17 @@ public sealed class MessageService(
             SenderRole = currentUserRole,
             Text = request.Text.Trim(),
             IsRead = false,
-            SentAtUtc = DateTime.UtcNow
+            SentAtUtc = DateTime.UtcNow,
+            Attachments = attachments.Count == 0 ? "[]" : JsonSerializer.Serialize(attachments)
         };
 
         await dbContext.MessageItems.AddAsync(item, cancellationToken);
-        thread.LastMessagePreview = item.Text;
+        var previewText = item.Text;
+        if (string.IsNullOrWhiteSpace(previewText) && attachments.Count > 0)
+        {
+            previewText = attachments.Count == 1 ? "📎 Ek dosya" : $"📎 {attachments.Count} ek dosya";
+        }
+        thread.LastMessagePreview = previewText;
         thread.LastMessageAtUtc = item.SentAtUtc;
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -166,7 +178,8 @@ public sealed class MessageService(
             item.SentAtUtc,
             true,
             "delivered",
-            null);
+            null,
+            attachments);
         var participantKeys = new[]
         {
             thread.ParticipantOneName,
@@ -207,6 +220,23 @@ public sealed class MessageService(
             unreadCount,
             lastMessageFromMe,
             lastMessageStatus);
+    }
+
+    private static IReadOnlyList<MessageAttachmentDto> DeserializeAttachments(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return Array.Empty<MessageAttachmentDto>();
+        }
+
+        try
+        {
+            return JsonSerializer.Deserialize<List<MessageAttachmentDto>>(json) ?? new List<MessageAttachmentDto>();
+        }
+        catch
+        {
+            return Array.Empty<MessageAttachmentDto>();
+        }
     }
 
     private static string Normalize(string value)

@@ -15,15 +15,15 @@ class _VeliHeaderState extends State<VeliHeader> {
   String _greetingByHour() {
     final hour = DateTime.now().hour;
     if (hour >= 5 && hour < 12) {
-      return 'Gunaydin';
+      return 'Günaydin';
     }
     if (hour >= 12 && hour < 18) {
-      return 'Iyi Gunler';
+      return 'Iyi Günler';
     }
     if (hour >= 18 && hour < 22) {
       return 'Iyi Aksamlar';
     }
-    return 'Iyi Geceler';
+    return 'İyi Geceler';
   }
 
   @override
@@ -43,12 +43,10 @@ class _VeliHeaderState extends State<VeliHeader> {
 
   @override
   Widget build(BuildContext context) {
-
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final greeting = _greetingByHour();
 
     return Container(
-
       width: double.infinity,
 
       decoration: BoxDecoration(
@@ -60,22 +58,18 @@ class _VeliHeaderState extends State<VeliHeader> {
       ),
 
       child: SafeArea(
-
         bottom: false,
 
         child: Padding(
-
           padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
 
           child: Row(
             children: [
               Expanded(
                 child: Column(
-
                   crossAxisAlignment: CrossAxisAlignment.start,
 
                   children: [
-
                     Text(
                       "$greeting $_parentName 👋",
                       maxLines: 1,
@@ -102,16 +96,11 @@ class _VeliHeaderState extends State<VeliHeader> {
                 ),
               ),
               const SizedBox(width: 12),
-              ChildSelector(
-                onChanged: (child) {},
-              ),
+              ChildSelector(onChanged: (child) {}),
             ],
           ),
-
         ),
-
       ),
-
     );
   }
 }

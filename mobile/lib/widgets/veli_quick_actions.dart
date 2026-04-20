@@ -9,11 +9,9 @@ class VeliQuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-
         _QuickAction(
           icon: Icons.event_busy,
           label: "Devamsızlık",
@@ -39,9 +37,7 @@ class VeliQuickActions extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const VeliOdemePage(),
-              ),
+              MaterialPageRoute(builder: (context) => const VeliOdemePage()),
             );
           },
         ),
@@ -52,20 +48,16 @@ class VeliQuickActions extends StatelessWidget {
           onTap: () {
             Navigator.push(
               context,
-              MaterialPageRoute(
-                builder: (context) => const VeliMesajlarPage(),
-              ),
+              MaterialPageRoute(builder: (context) => const VeliMesajlarPage()),
             );
           },
         ),
-
       ],
     );
   }
 }
 
 class _QuickAction extends StatelessWidget {
-
   final IconData icon;
   final String label;
   final VoidCallback onTap;
@@ -78,14 +70,12 @@ class _QuickAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
 
       child: Column(
         children: [
-
           CircleAvatar(
             radius: 26,
             backgroundColor: Colors.white,
@@ -95,10 +85,8 @@ class _QuickAction extends StatelessWidget {
           const SizedBox(height: 6),
 
           Text(label, style: const TextStyle(fontSize: 12)),
-
         ],
       ),
-
     );
   }
 }

@@ -12,7 +12,7 @@ class AdminBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AdaptiveScaffold(
-      userRole: 'Yonetici',
+      userRole: 'Yönetici',
       destinations: [
         AdaptiveDestination(
           icon: Icons.space_dashboard_rounded,

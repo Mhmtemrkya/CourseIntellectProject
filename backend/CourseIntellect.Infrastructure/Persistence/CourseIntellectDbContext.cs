@@ -184,6 +184,11 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.SenderName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.SenderRole).HasMaxLength(50).IsRequired();
             entity.Property(x => x.Text).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.Attachments)
+                .HasColumnName("attachments")
+                .HasMaxLength(8000)
+                .IsRequired()
+                .HasDefaultValue("[]");
             entity.HasIndex(x => x.ThreadId);
         });
 
@@ -230,11 +235,15 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("question_practice_attempts");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
             ConfigureTenantScope(entity);
+            entity.Property(x => x.QuestionId).HasColumnName("question_id");
             entity.HasIndex(x => new { x.QuestionId, x.StudentUsername });
-            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.StudentUsername).HasMaxLength(80).IsRequired();
-            entity.Property(x => x.AnswerText).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.StudentName).HasColumnName("student_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StudentUsername).HasColumnName("student_username").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.AnswerText).HasColumnName("answer_text").HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.IsCorrect).HasColumnName("is_correct");
+            entity.Property(x => x.SubmittedAtUtc).HasColumnName("submitted_at_utc");
         });
 
         modelBuilder.Entity<StudentQuestionThread>(entity =>
@@ -308,38 +317,44 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("homework_assignments");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
             ConfigureTenantScope(entity);
-            entity.Property(x => x.Title).HasMaxLength(180).IsRequired();
-            entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
-            entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
-            entity.Property(x => x.Teacher).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.DeadlineLabel).HasMaxLength(80).IsRequired();
-            entity.Property(x => x.Description).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ClassName).HasColumnName("class_name").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Teacher).HasColumnName("teacher").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.DeadlineLabel).HasColumnName("deadline_label").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Description).HasColumnName("description").HasMaxLength(4000).IsRequired();
             entity.Property(x => x.MaterialsSerialized).HasColumnName("materials").HasMaxLength(4000).IsRequired();
-            entity.Property(x => x.CreatedAtLabel).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.TotalStudents).HasColumnName("total_students");
+            entity.Property(x => x.CreatedAtLabel).HasColumnName("created_at_label").HasMaxLength(40).IsRequired();
         });
 
         modelBuilder.Entity<HomeworkSubmission>(entity =>
         {
             entity.ToTable("homework_submissions");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
             ConfigureTenantScope(entity);
+            entity.Property(x => x.AssignmentId).HasColumnName("assignment_id");
             entity.HasIndex(x => x.AssignmentId);
-            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.Note).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.StudentName).HasColumnName("student_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Note).HasColumnName("note").HasMaxLength(4000).IsRequired();
             entity.Property(x => x.FilesSerialized).HasColumnName("files").HasMaxLength(4000).IsRequired();
-            entity.Property(x => x.SubmittedAtLabel).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.SubmittedAtLabel).HasColumnName("submitted_at_label").HasMaxLength(40).IsRequired();
         });
 
         modelBuilder.Entity<AttendanceEntry>(entity =>
         {
             entity.ToTable("attendance_entries");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
             ConfigureTenantScope(entity);
-            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
-            entity.Property(x => x.Status).HasMaxLength(30).IsRequired();
-            entity.Property(x => x.Lesson).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.StudentName).HasColumnName("student_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ClassName).HasColumnName("class_name").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.LessonDate).HasColumnName("lesson_date");
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Lesson).HasColumnName("lesson").HasMaxLength(120).IsRequired();
             entity.HasIndex(x => x.ClassName);
         });
 
@@ -347,11 +362,13 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("platform_configurations");
             entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
             ConfigureTenantScope(entity);
-            entity.Property(x => x.ConfigurationType).HasMaxLength(80).IsRequired();
-            entity.Property(x => x.ScopeKey).HasMaxLength(180).IsRequired();
-            entity.Property(x => x.DisplayName).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ConfigurationType).HasColumnName("configuration_type").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.ScopeKey).HasColumnName("scope_key").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.DisplayName).HasColumnName("display_name").HasMaxLength(180).IsRequired();
             entity.Property(x => x.PayloadJson).HasColumnName("payload_json").HasMaxLength(12000).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
             entity.HasIndex(x => new { x.TenantId, x.ConfigurationType, x.ScopeKey }).IsUnique();
         });
 
@@ -359,17 +376,24 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("tenant_workspaces");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.Name).HasMaxLength(180).IsRequired();
-            entity.Property(x => x.Slug).HasMaxLength(180).IsRequired();
-            entity.Property(x => x.ContactEmail).HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ContactEmail).HasColumnName("contact_email").HasMaxLength(180).IsRequired();
             entity.Property(x => x.ContactName).HasMaxLength(150);
             entity.Property(x => x.ContactPhone).HasMaxLength(40);
             entity.Property(x => x.PendingAdminPasswordHash).HasMaxLength(300);
-            entity.Property(x => x.Plan).HasMaxLength(60).IsRequired();
-            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.MonthlyFee).HasColumnType("numeric(18,2)");
-            entity.Property(x => x.CollectedAmount).HasColumnType("numeric(18,2)");
-            entity.Property(x => x.StorageUsedGb).HasColumnType("numeric(18,2)");
+            entity.Property(x => x.Plan).HasColumnName("plan").HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.UserCount).HasColumnName("user_count");
+            entity.Property(x => x.BranchCount).HasColumnName("branch_count");
+            entity.Property(x => x.StudentCount).HasColumnName("student_count");
+            entity.Property(x => x.StaffCount).HasColumnName("staff_count");
+            entity.Property(x => x.MonthlyFee).HasColumnName("monthly_fee").HasColumnType("numeric(18,2)");
+            entity.Property(x => x.CollectedAmount).HasColumnName("collected_amount").HasColumnType("numeric(18,2)");
+            entity.Property(x => x.StorageUsedGb).HasColumnName("storage_used_gb").HasColumnType("numeric(18,2)");
+            entity.Property(x => x.ApiUsage).HasColumnName("api_usage");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.HasIndex(x => x.AdminUserId);
             entity.HasOne<AppUser>()
@@ -382,16 +406,20 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("support_tickets");
             entity.HasKey(x => x.Id);
-            entity.Property(x => x.TicketNumber).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Subject).HasMaxLength(180).IsRequired();
-            entity.Property(x => x.TenantName).HasMaxLength(180).IsRequired();
-            entity.Property(x => x.RequestedBy).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.RequestedRole).HasMaxLength(60).IsRequired();
-            entity.Property(x => x.Category).HasMaxLength(80).IsRequired();
-            entity.Property(x => x.Priority).HasMaxLength(20).IsRequired();
-            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
-            entity.Property(x => x.Summary).HasMaxLength(2000).IsRequired();
-            entity.Property(x => x.LastMessage).HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.TicketNumber).HasColumnName("ticket_number").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.TenantName).HasColumnName("tenant_name").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.RequestedBy).HasColumnName("requested_by").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.RequestedRole).HasColumnName("requested_role").HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Category).HasColumnName("category").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Priority).HasColumnName("priority").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Summary).HasColumnName("summary").HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.LastMessage).HasColumnName("last_message").HasMaxLength(2000).IsRequired();
+            entity.Property(x => x.MessageCount).HasColumnName("message_count");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
             entity.HasIndex(x => x.TicketNumber).IsUnique();
         });
 

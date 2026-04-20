@@ -870,10 +870,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_site_content_items_SectionKey_Language_Version",
+                name: "IX_site_content_items_SectionKey",
                 table: "site_content_items",
-                columns: new[] { "SectionKey", "Language", "Version" },
-                unique: true);
+                column: "SectionKey");
 
             migrationBuilder.CreateIndex(
                 name: "IX_platform_configurations_ConfigurationType_ScopeKey",

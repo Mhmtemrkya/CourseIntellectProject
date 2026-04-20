@@ -24,18 +24,19 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final firstQuestion = questions.first;
-    final imageCount = questions.where((item) => item.imagePath != null && item.imagePath!.isNotEmpty).length;
-    final solutionCount = questions.where((item) => item.solutionAssetPath != null).length;
+    final imageCount = questions
+        .where((item) => item.imagePath != null && item.imagePath!.isNotEmpty)
+        .length;
+    final solutionCount = questions
+        .where((item) => item.solutionAssetPath != null)
+        .length;
     final visibleClasses = {
       for (final item in questions) ...item.classTargets,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Konu Detayı'),
-      ),
+      appBar: AppBar(title: const Text('Konu Detayı')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: ResponsiveContent(
@@ -86,9 +87,15 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                       spacing: 10,
                       runSpacing: 10,
                       children: [
-                        _heroMetric(Icons.quiz_outlined, '${questions.length} Soru'),
+                        _heroMetric(
+                          Icons.quiz_outlined,
+                          '${questions.length} Soru',
+                        ),
                         _heroMetric(Icons.image_outlined, '$imageCount Görsel'),
-                        _heroMetric(Icons.lightbulb_outline_rounded, '$solutionCount Çözüm'),
+                        _heroMetric(
+                          Icons.lightbulb_outline_rounded,
+                          '$solutionCount Çözüm',
+                        ),
                       ],
                     ),
                   ],
@@ -103,7 +110,9 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                   children: [
                     Text(
                       'Konu Özeti',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     Text(
@@ -113,7 +122,9 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     Text(
                       'Hedef sınıflar',
-                      style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 10),
                     Wrap(
@@ -154,69 +165,72 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                   children: [
                     Text(
                       'Sorular',
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                     const SizedBox(height: 12),
-                    ...questions.asMap().entries.map(
-                      (entry) {
-                        final item = entry.value;
-                        final hasImage =
-                            item.imagePath != null && item.imagePath!.isNotEmpty;
-                        return Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 12),
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: theme.scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  CircleAvatar(
-                                    radius: 15,
-                                    backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.12),
-                                    foregroundColor: theme.colorScheme.primary,
-                                    child: Text('${entry.key + 1}'),
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      item.type,
-                                      style: theme.textTheme.titleSmall?.copyWith(
-                                        fontWeight: FontWeight.w800,
-                                      ),
+                    ...questions.asMap().entries.map((entry) {
+                      final item = entry.value;
+                      final hasImage =
+                          item.imagePath != null && item.imagePath!.isNotEmpty;
+                      return Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: theme.scaffoldBackgroundColor,
+                          borderRadius: BorderRadius.circular(18),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 15,
+                                  backgroundColor: theme.colorScheme.primary
+                                      .withValues(alpha: 0.12),
+                                  foregroundColor: theme.colorScheme.primary,
+                                  child: Text('${entry.key + 1}'),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    item.type,
+                                    style: theme.textTheme.titleSmall?.copyWith(
+                                      fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  if (hasImage)
-                                    const Icon(Icons.image_outlined, size: 18),
-                                ],
-                              ),
-                              const SizedBox(height: 10),
-                              Text(
-                                item.questionText,
-                                maxLines: 3,
-                                overflow: TextOverflow.ellipsis,
-                                style: theme.textTheme.bodyMedium?.copyWith(height: 1.5),
-                              ),
-                              if (hasImage) ...[
-                                const SizedBox(height: 12),
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(14),
-                                  child: _questionImage(
-                                    item.imagePath!,
-                                    height: 120,
-                                    theme: theme,
-                                  ),
                                 ),
+                                if (hasImage)
+                                  const Icon(Icons.image_outlined, size: 18),
                               ],
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              item.questionText,
+                              maxLines: 3,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                height: 1.5,
+                              ),
+                            ),
+                            if (hasImage) ...[
+                              const SizedBox(height: 12),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(14),
+                                child: _questionImage(
+                                  item.imagePath!,
+                                  height: 120,
+                                  theme: theme,
+                                ),
+                              ),
                             ],
-                          ),
-                        );
-                      },
-                    ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ),
@@ -236,7 +250,10 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -258,15 +275,21 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
     );
   }
 
-  Widget _questionImage(String path, {required double height, required ThemeData theme}) {
+  Widget _questionImage(
+    String path, {
+    required double height,
+    required ThemeData theme,
+  }) {
     final resolvedPath = ApiConfig.resolveAssetUrl(path);
-    if (resolvedPath.startsWith('http://') || resolvedPath.startsWith('https://')) {
+    if (resolvedPath.startsWith('http://') ||
+        resolvedPath.startsWith('https://')) {
       return Image.network(
         resolvedPath,
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _imageFallback(theme, path),
+        errorBuilder: (context, error, stackTrace) =>
+            _imageFallback(theme, path),
       );
     }
     return Image.file(
@@ -292,7 +315,10 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
           const SizedBox(width: 8),
           Text(
             text,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ],
       ),
@@ -325,10 +351,7 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
       height: 120,
       color: theme.scaffoldBackgroundColor,
       alignment: Alignment.center,
-      child: Text(
-        path.split('/').last,
-        textAlign: TextAlign.center,
-      ),
+      child: Text(path.split('/').last, textAlign: TextAlign.center),
     );
   }
 }

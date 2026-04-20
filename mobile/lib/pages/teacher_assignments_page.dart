@@ -33,10 +33,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
   String? _error;
   String _teacherName = '';
 
-  final List<String> tabs = [
-    "Aktif Odevler",
-    "Teslim Edilenler",
-  ];
+  final List<String> tabs = ["Aktif Ödevler", "Teslim Edilenler"];
 
   @override
   void initState() {
@@ -54,12 +51,18 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
       final session = await AuthSessionStore.instance.load();
       await StudentRegistryStore.instance.ensureLoaded();
       final teacherName = session?.fullName;
-      final classes = StudentRegistryStore.instance.students.map((item) => item.className).toSet().toList()..sort();
+      final classes =
+          StudentRegistryStore.instance.students
+              .map((item) => item.className)
+              .toSet()
+              .toList()
+            ..sort();
       final subjects = {
         ..._defaultSubjects,
-        ...items.map((item) => (item['subject'] ?? '').toString()).where((item) => item.trim().isNotEmpty),
-      }.toList()
-        ..sort();
+        ...items
+            .map((item) => (item['subject'] ?? '').toString())
+            .where((item) => item.trim().isNotEmpty),
+      }.toList()..sort();
       if (!mounted) return;
       setState(() {
         _teacherName = teacherName ?? _teacherName;
@@ -89,7 +92,9 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
       context: context,
       builder: (_) => _CreateHomeworkDialog(
         availableClasses: _availableClasses,
-        availableSubjects: _availableSubjects.isEmpty ? _defaultSubjects : _availableSubjects,
+        availableSubjects: _availableSubjects.isEmpty
+            ? _defaultSubjects
+            : _availableSubjects,
       ),
     );
 
@@ -98,9 +103,13 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     if (session == null) return;
 
     final uploadedMaterials = <String>[];
-    final attachments = List<PlatformFile>.from(result['attachmentFiles'] as List<dynamic>? ?? const []);
+    final attachments = List<PlatformFile>.from(
+      result['attachmentFiles'] as List<dynamic>? ?? const [],
+    );
     for (final file in attachments) {
-      final uploaded = await HomeworkApiService.instance.uploadHomeworkAsset(file: file);
+      final uploaded = await HomeworkApiService.instance.uploadHomeworkAsset(
+        file: file,
+      );
       uploadedMaterials.add(uploaded);
     }
 
@@ -122,9 +131,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     });
     await _loadAssignments();
 
-    messenger.showSnackBar(
-      const SnackBar(content: Text("Odev olusturuldu")),
-    );
+    messenger.showSnackBar(const SnackBar(content: Text("Ödev oluşturuldu")));
   }
 
   @override
@@ -132,18 +139,22 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final allAssignments = _assignments;
-    final activeAssignments =
-        allAssignments.where((item) => item["status"] != "Tamamlandi").toList();
-    final completedAssignments =
-        allAssignments.where((item) => item["status"] == "Tamamlandi").toList();
-    final currentList = selectedTab == 0 ? activeAssignments : completedAssignments;
+    final activeAssignments = allAssignments
+        .where((item) => item["status"] != "Tamamlandi")
+        .toList();
+    final completedAssignments = allAssignments
+        .where((item) => item["status"] == "Tamamlandi")
+        .toList();
+    final currentList = selectedTab == 0
+        ? activeAssignments
+        : completedAssignments;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Odevlerim",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: "Odev Takip Merkezi",
+        title: "Ödevlerim",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle: "Ödev Takip Merkezi",
         showBackButton: true,
       ),
       floatingActionButton: FloatingActionButton(
@@ -156,34 +167,35 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
-                    child: Column(
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _loadAssignments,
-                          child: const Text('Tekrar Dene'),
-                        ),
-                      ],
+            ? Center(
+                child: Column(
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadAssignments,
+                      child: const Text('Tekrar Dene'),
                     ),
-                  )
-                : Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _heroCard(theme, isDark, activeAssignments, completedAssignments),
-                      const SizedBox(height: 18),
-                      _tabBar(theme),
-                      const SizedBox(height: 18),
-                      ...currentList.map(
-                        (item) => _assignmentCard(
-                          theme,
-                          isDark,
-                          item,
-                        ),
-                      ),
-                    ],
+                  ],
+                ),
+              )
+            : Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _heroCard(
+                    theme,
+                    isDark,
+                    activeAssignments,
+                    completedAssignments,
                   ),
+                  const SizedBox(height: 18),
+                  _tabBar(theme),
+                  const SizedBox(height: 18),
+                  ...currentList.map(
+                    (item) => _assignmentCard(theme, isDark, item),
+                  ),
+                ],
+              ),
       ),
     );
   }
@@ -200,10 +212,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF7A00),
-            Color(0xFFFFA24A),
-          ],
+          colors: [Color(0xFFFF7A00), Color(0xFFFFA24A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -225,7 +234,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
               Icon(Icons.assignment_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Odev Yonetimi",
+                "Ödev Yönetimi",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -236,7 +245,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Siniflara verdigin odevleri takip et, teslim durumlarini gor ve yeni odevler olustur.",
+            "Sınıflara verdiğin ödevleri takip et, teslim durumlarını gör ve yeni ödevler oluştur.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -316,8 +325,9 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                 tabs[index],
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color:
-                      selected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                  color: selected
+                      ? Colors.white
+                      : theme.textTheme.bodyMedium?.color,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -384,8 +394,9 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                     Text(
                       "${item["subject"]} • ${item["className"]}",
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
                       ),
                     ),
                   ],
@@ -447,7 +458,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
           Align(
             alignment: Alignment.centerRight,
             child: Text(
-              "%${(progress * 100).toInt()} tamamlandi",
+              "%${(progress * 100).toInt()} tamamlandı",
               style: theme.textTheme.bodySmall,
             ),
           ),
@@ -460,9 +471,8 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => TeacherAssignmentDetailPage(
-                          assignment: item,
-                        ),
+                        builder: (_) =>
+                            TeacherAssignmentDetailPage(assignment: item),
                       ),
                     );
                   },
@@ -482,9 +492,8 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => TeacherAssignmentSubmissionsPage(
-                          assignment: item,
-                        ),
+                        builder: (_) =>
+                            TeacherAssignmentSubmissionsPage(assignment: item),
                       ),
                     );
                   },
@@ -548,12 +557,12 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Odevi Sil'),
+        title: const Text('Ödevi Sil'),
         content: Text('"${item["title"]}" silinsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgec'),
+            child: const Text('Vazgeç'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -567,9 +576,9 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     await HomeworkApiService.instance.deleteAssignment(item["id"] as String);
     await _loadAssignments();
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Odev silindi')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Ödev silindi')));
   }
 }
 
@@ -598,8 +607,15 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
   String _attachmentSummary(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.pdf')) return 'PDF eklendi';
-    if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi')) return 'Video eklendi';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp')) {
+    if (lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.avi')) {
+      return 'Video eklendi';
+    }
+    if (lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp')) {
       return 'Görsel eklendi';
     }
     return 'Ek materyal eklendi';
@@ -608,8 +624,15 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
   String _attachmentTag(String name) {
     final lower = name.toLowerCase();
     if (lower.endsWith('.pdf')) return 'PDF';
-    if (lower.endsWith('.mp4') || lower.endsWith('.mov') || lower.endsWith('.avi')) return 'VID';
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png') || lower.endsWith('.webp')) {
+    if (lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.avi')) {
+      return 'VID';
+    }
+    if (lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png') ||
+        lower.endsWith('.webp')) {
       return 'IMG';
     }
     return 'DOS';
@@ -635,13 +658,25 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
     final result = await FilePicker.platform.pickFiles(
       allowMultiple: true,
       type: FileType.custom,
-      allowedExtensions: const ['pdf', 'doc', 'docx', 'jpg', 'jpeg', 'png', 'mp4', 'mov', 'avi'],
+      allowedExtensions: const [
+        'pdf',
+        'doc',
+        'docx',
+        'jpg',
+        'jpeg',
+        'png',
+        'mp4',
+        'mov',
+        'avi',
+      ],
     );
     if (result == null || !mounted) return;
     setState(() {
       _attachmentFiles.addAll(result.files);
       _attachments.addAll(
-        result.files.where((file) => file.name.isNotEmpty).map((file) => file.name),
+        result.files
+            .where((file) => file.name.isNotEmpty)
+            .map((file) => file.name),
       );
     });
   }
@@ -664,11 +699,11 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
   Widget build(BuildContext context) {
     final pickedDate = _selectedDate;
     final deadlineLabel = pickedDate == null
-        ? 'Teslim tarihi secin'
+        ? 'Teslim tarihi seçin'
         : '${pickedDate.day.toString().padLeft(2, '0')}.${pickedDate.month.toString().padLeft(2, '0')}.${pickedDate.year}';
 
     return AlertDialog(
-      title: const Text('Odev Olustur'),
+      title: const Text('Ödev Oluştur'),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -676,15 +711,17 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Odev Basligi'),
+              decoration: const InputDecoration(labelText: 'Ödev Başlığı'),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _selectedClass,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Sinif'),
+              decoration: const InputDecoration(labelText: 'Sınıf'),
               items: widget.availableClasses
-                  .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                  .map(
+                    (item) => DropdownMenuItem(value: item, child: Text(item)),
+                  )
                   .toList(),
               onChanged: (value) {
                 if (value == null) return;
@@ -699,7 +736,9 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
               isExpanded: true,
               decoration: const InputDecoration(labelText: 'Ders'),
               items: widget.availableSubjects
-                  .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                  .map(
+                    (item) => DropdownMenuItem(value: item, child: Text(item)),
+                  )
                   .toList(),
               onChanged: (value) {
                 if (value == null) return;
@@ -725,8 +764,8 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
               controller: _descriptionController,
               maxLines: 4,
               decoration: const InputDecoration(
-                labelText: 'Odev Aciklamasi',
-                hintText: 'Metin, yonergeler ve teslim notlarini yazin',
+                labelText: 'Ödev Açıklaması',
+                hintText: 'Metin, yönergeler ve teslim notlarını yazın',
               ),
             ),
             const SizedBox(height: 16),
@@ -753,7 +792,10 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
               ..._attachments.map(
                 (item) => Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: const Color(0xFFF8FAFC),
                     borderRadius: BorderRadius.circular(18),
@@ -772,7 +814,9 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
                           children: [
                             Text(
                               _attachmentSummary(item),
-                              style: const TextStyle(fontWeight: FontWeight.w700),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                             Text(_attachmentTag(item)),
                           ],
@@ -808,22 +852,19 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
               return;
             }
 
-            Navigator.pop(
-              context,
-              {
-                'title': _titleController.text.trim(),
-                'className': _selectedClass,
-                'subject': _selectedSubject,
-                'deadline': deadlineLabel,
-                'description': _descriptionController.text.trim().isEmpty
-                    ? 'Odev detaylari ogretmen tarafindan paylasildi.'
-                    : _descriptionController.text.trim(),
-                'materials': List<String>.from(_attachments),
-                'attachmentFiles': List<PlatformFile>.from(_attachmentFiles),
-              },
-            );
+            Navigator.pop(context, {
+              'title': _titleController.text.trim(),
+              'className': _selectedClass,
+              'subject': _selectedSubject,
+              'deadline': deadlineLabel,
+              'description': _descriptionController.text.trim().isEmpty
+                  ? 'Ödev detayları öğretmen tarafından paylaşıldı.'
+                  : _descriptionController.text.trim(),
+              'materials': List<String>.from(_attachments),
+              'attachmentFiles': List<PlatformFile>.from(_attachmentFiles),
+            });
           },
-          child: const Text('Olustur'),
+          child: const Text('Oluştur'),
         ),
       ],
     );

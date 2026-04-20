@@ -16,11 +16,12 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   final TextEditingController titleController = TextEditingController();
   final TextEditingController dateController = TextEditingController();
   final TextEditingController durationController = TextEditingController();
-  final TextEditingController questionCountController =
-      TextEditingController(text: "20");
+  final TextEditingController questionCountController = TextEditingController(
+    text: "20",
+  );
 
   bool _loadingSources = true;
-  String selectedType = "Yazili";
+  String selectedType = "Yazılı";
   String selectedSource = "Manuel Ekle";
   String selectedClass = '';
   String selectedSubject = 'Matematik';
@@ -53,18 +54,20 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     await StudentRegistryStore.instance.ensureLoaded();
     await QuestionBankStore.instance.loadQuestions();
 
-    final classes = StudentRegistryStore.instance.students
-        .map((item) => item.className)
-        .where((item) => item.trim().isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
-    final subjects = QuestionBankStore.instance.questions
-        .map((item) => item.subject.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final classes =
+        StudentRegistryStore.instance.students
+            .map((item) => item.className)
+            .where((item) => item.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
+    final subjects =
+        QuestionBankStore.instance.questions
+            .map((item) => item.subject.trim())
+            .where((item) => item.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     final examResults = await SchoolFeedApiService.instance.fetchExamResults();
     final groupedExams = <String, Map<String, String>>{};
     for (final item in examResults) {
@@ -106,7 +109,8 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
         .where((item) {
           final matchesSubject = (item['subject'] ?? '') == selectedSubject;
           final classTargets = (item['className'] ?? '').split(',');
-          final matchesClass = selectedClass.isEmpty ||
+          final matchesClass =
+              selectedClass.isEmpty ||
               classTargets.contains('Tüm Sınıflar') ||
               classTargets.contains(selectedClass);
           return matchesSubject && matchesClass;
@@ -114,9 +118,13 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
         .take(20)
         .toList();
     mockExamItems = _allExamItems
-        .where((item) => (item['subject'] ?? selectedSubject) == selectedSubject)
+        .where(
+          (item) => (item['subject'] ?? selectedSubject) == selectedSubject,
+        )
         .toList();
-    selectedItems.removeWhere((item) => (item['subject'] ?? selectedSubject) != selectedSubject);
+    selectedItems.removeWhere(
+      (item) => (item['subject'] ?? selectedSubject) != selectedSubject,
+    );
     if (selectedSource != 'Manuel Ekle') {
       questionCountController.text = selectedItems.length.toString();
     }
@@ -170,8 +178,8 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     final items = selectedSource == "Denemelerden"
         ? mockExamItems
         : selectedSource == "Soru Bankasindan"
-            ? questionBankItems
-            : [...questionBankItems, ...mockExamItems];
+        ? questionBankItems
+        : [...questionBankItems, ...mockExamItems];
 
     showModalBottomSheet(
       context: context,
@@ -185,18 +193,17 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
             shrinkWrap: true,
             children: [
               const Text(
-                "Icerik Sec",
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w800,
-                ),
+                "İçerik Seç",
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 14),
               ...items.map(
                 (item) => ListTile(
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(
-                    backgroundColor: const Color(0xFFFF7A00).withValues(alpha: 0.12),
+                    backgroundColor: const Color(
+                      0xFFFF7A00,
+                    ).withValues(alpha: 0.12),
                     child: Icon(
                       item["type"] == "Deneme"
                           ? Icons.fact_check_rounded
@@ -220,35 +227,49 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     );
   }
 
-  void _saveExam() {
+  Future<void> _saveExam() async {
     if (titleController.text.trim().isEmpty ||
         dateController.text.trim().isEmpty ||
         durationController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Baslik, tarih ve sure zorunludur."),
-        ),
+        const SnackBar(content: Text("Başlık, tarih ve süre zorunludur.")),
       );
       return;
     }
 
-    _saveExamAsync();
+    try {
+      await _saveExamAsync();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Sınav oluşturulamadı: $error'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _saveExamAsync() async {
     if (selectedSource == 'Manuel Ekle' &&
         _manualQuestions.any(
-          (item) => item.questionController.text.trim().isEmpty || item.topicController.text.trim().isEmpty,
+          (item) =>
+              item.questionController.text.trim().isEmpty ||
+              item.topicController.text.trim().isEmpty,
         )) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Manuel soru kartlarında konu ve soru metni zorunludur.')),
+        const SnackBar(
+          content: Text(
+            'Manuel soru kartlarında konu ve soru metni zorunludur.',
+          ),
+        ),
       );
       return;
     }
 
     var sources = List<Map<String, dynamic>>.from(selectedItems);
     if (selectedSource == 'Manuel Ekle' && _manualQuestions.isNotEmpty) {
-      final teacherName = _teacherName.isEmpty ? 'Ogretmen' : _teacherName;
+      final teacherName = _teacherName.isEmpty ? 'Öğretmen' : _teacherName;
       for (final draft in _manualQuestions) {
         final options = draft.optionControllers
             .map((item) => item.text.trim())
@@ -263,8 +284,12 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
           teacher: teacherName,
           imagePath: draft.imagePath,
           options: options,
-          correctOptionIndex: draft.type == 'Çoktan Seçmeli' ? draft.correctOptionIndex : null,
-          classTargets: [if (selectedClass.isNotEmpty) selectedClass else 'Tüm Sınıflar'],
+          correctOptionIndex: draft.type == 'Çoktan Seçmeli'
+              ? draft.correctOptionIndex
+              : null,
+          classTargets: [
+            if (selectedClass.isNotEmpty) selectedClass else 'Tüm Sınıflar',
+          ],
           solutionAssetPath: draft.solutionAssetPath,
           solutionAssetType: draft.solutionAssetType,
           revealCorrectAnswerToStudent: false,
@@ -284,25 +309,22 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     }
 
     if (!mounted) return;
-    Navigator.pop(
-      context,
-      {
-        "title": titleController.text.trim(),
-        "type": selectedType,
-        "className": selectedClass,
-        "subject": selectedSubject,
-        "date": dateController.text.trim(),
-        "questionCount": selectedSource == 'Manuel Ekle'
-            ? _manualQuestions.length
-            : (int.tryParse(questionCountController.text.trim()) ?? 0),
-        "duration": durationController.text.trim(),
-        "status": "Planlandi",
-        "statusColor": const Color(0xFF4E8DF5),
-        "accentColor": const Color(0xFFFF7A00),
-        "sourceType": selectedSource,
-        "sources": sources,
-      },
-    );
+    Navigator.pop(context, {
+      "title": titleController.text.trim(),
+      "type": selectedType,
+      "className": selectedClass,
+      "subject": selectedSubject,
+      "date": dateController.text.trim(),
+      "questionCount": selectedSource == 'Manuel Ekle'
+          ? _manualQuestions.length
+          : (int.tryParse(questionCountController.text.trim()) ?? 0),
+      "duration": durationController.text.trim(),
+      "status": "Planlandı",
+      "statusColor": const Color(0xFF4E8DF5),
+      "accentColor": const Color(0xFFFF7A00),
+      "sourceType": selectedSource,
+      "sources": sources,
+    });
   }
 
   @override
@@ -313,9 +335,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sinav Olustur",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: selectedSubject.isEmpty ? "Ogretmen" : "$selectedSubject Ogretmeni",
+        title: "Sınav Oluştur",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle: selectedSubject.isEmpty
+            ? "Öğretmen"
+            : "$selectedSubject Öğretmeni",
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -334,7 +358,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Sinav Bilgileri",
+                    "Sınav Bilgileri",
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -344,17 +368,15 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   TextField(
                     controller: titleController,
                     decoration: const InputDecoration(
-                      labelText: "Sinav Basligi",
+                      labelText: "Sınav Başlığı",
                     ),
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: selectedType,
-                    decoration: const InputDecoration(
-                      labelText: "Sinav Turu",
-                    ),
+                    decoration: const InputDecoration(labelText: "Sınav Türü"),
                     items: const [
-                      DropdownMenuItem(value: "Yazili", child: Text("Yazili")),
+                      DropdownMenuItem(value: "Yazılı", child: Text("Yazılı")),
                       DropdownMenuItem(value: "Quiz", child: Text("Quiz")),
                       DropdownMenuItem(value: "Deneme", child: Text("Deneme")),
                     ],
@@ -367,11 +389,12 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: selectedClass.isEmpty ? null : selectedClass,
-                    decoration: const InputDecoration(
-                      labelText: "Sinif",
-                    ),
+                    decoration: const InputDecoration(labelText: "Sınıf"),
                     items: _classOptions
-                        .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                        .map(
+                          (item) =>
+                              DropdownMenuItem(value: item, child: Text(item)),
+                        )
                         .toList(),
                     onChanged: (value) {
                       if (value == null) return;
@@ -384,11 +407,12 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: selectedSubject,
-                    decoration: const InputDecoration(
-                      labelText: "Ders",
-                    ),
+                    decoration: const InputDecoration(labelText: "Ders"),
                     items: _subjectOptions
-                        .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                        .map(
+                          (item) =>
+                              DropdownMenuItem(value: item, child: Text(item)),
+                        )
                         .toList(),
                     onChanged: (value) {
                       if (value == null) return;
@@ -408,7 +432,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                     readOnly: true,
                     decoration: const InputDecoration(
                       labelText: "Tarih / Saat",
-                      hintText: "Ornek: 30 Mart • 10:00",
+                      hintText: "Örnek: 30 Mart • 10:00",
                     ),
                     onTap: _pickDateTime,
                   ),
@@ -416,8 +440,8 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   TextField(
                     controller: durationController,
                     decoration: const InputDecoration(
-                      labelText: "Sure",
-                      hintText: "Ornek: 40 dk",
+                      labelText: "Süre",
+                      hintText: "Örnek: 40 dk",
                     ),
                   ),
                 ],
@@ -431,7 +455,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Soru Kaynagi",
+                    "Soru Kaynağı",
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -440,9 +464,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: selectedSource,
-                    decoration: const InputDecoration(
-                      labelText: "Kaynak Turu",
-                    ),
+                    decoration: const InputDecoration(labelText: "Kaynak Türü"),
                     items: const [
                       DropdownMenuItem(
                         value: "Manuel Ekle",
@@ -450,7 +472,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       ),
                       DropdownMenuItem(
                         value: "Soru Bankasindan",
-                        child: Text("Soru Bankasindan"),
+                        child: Text("Soru Bankasından"),
                       ),
                       DropdownMenuItem(
                         value: "Denemelerden",
@@ -458,7 +480,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       ),
                       DropdownMenuItem(
                         value: "Karisik",
-                        child: Text("Karisik"),
+                        child: Text("Karışık"),
                       ),
                     ],
                     onChanged: (value) {
@@ -476,9 +498,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   TextField(
                     controller: questionCountController,
                     readOnly: selectedSource != "Manuel Ekle",
-                    decoration: const InputDecoration(
-                      labelText: "Soru Sayisi",
-                    ),
+                    decoration: const InputDecoration(labelText: "Soru Sayısı"),
                   ),
                   const SizedBox(height: 16),
                   if (selectedSource != "Manuel Ekle")
@@ -488,7 +508,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       child: OutlinedButton.icon(
                         onPressed: _openSourcePicker,
                         icon: const Icon(Icons.add_circle_outline_rounded),
-                        label: const Text("Kaynaktan Icerik Sec"),
+                        label: const Text("Kaynaktan İçerik Seç"),
                       ),
                     ),
                   if (selectedSource == "Manuel Ekle")
@@ -496,7 +516,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Bu secimde her soruyu tek tek tanimlayip sinavla birlikte kaydedebilirsin.",
+                          "Bu seçimde her soruyu tek tek tanımlayıp sınavla birlikte kaydedebilirsin.",
                           style: theme.textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 12),
@@ -520,21 +540,40 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                                 children: [
                                   Row(
                                     children: [
-                                      const Text("Manuel Soru", style: TextStyle(fontWeight: FontWeight.w800)),
+                                      const Text(
+                                        "Manuel Soru",
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
                                       const Spacer(),
                                       IconButton(
-                                        onPressed: () => _removeManualQuestion(item),
-                                        icon: const Icon(Icons.delete_outline_rounded),
+                                        onPressed: () =>
+                                            _removeManualQuestion(item),
+                                        icon: const Icon(
+                                          Icons.delete_outline_rounded,
+                                        ),
                                       ),
                                     ],
                                   ),
                                   DropdownButtonFormField<String>(
                                     initialValue: item.type,
-                                    decoration: const InputDecoration(labelText: "Soru Tipi"),
+                                    decoration: const InputDecoration(
+                                      labelText: "Soru Tipi",
+                                    ),
                                     items: const [
-                                      DropdownMenuItem(value: "Açık Uçlu", child: Text("Açık Uçlu")),
-                                      DropdownMenuItem(value: "Çoktan Seçmeli", child: Text("Çoktan Seçmeli")),
-                                      DropdownMenuItem(value: "Doğru / Yanlış", child: Text("Doğru / Yanlış")),
+                                      DropdownMenuItem(
+                                        value: "Açık Uçlu",
+                                        child: Text("Açık Uçlu"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "Çoktan Seçmeli",
+                                        child: Text("Çoktan Seçmeli"),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: "Doğru / Yanlış",
+                                        child: Text("Doğru / Yanlış"),
+                                      ),
                                     ],
                                     onChanged: (value) {
                                       if (value == null) return;
@@ -544,29 +583,40 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                                   const SizedBox(height: 10),
                                   TextField(
                                     controller: item.topicController,
-                                    decoration: const InputDecoration(labelText: "Konu"),
+                                    decoration: const InputDecoration(
+                                      labelText: "Konu",
+                                    ),
                                   ),
                                   const SizedBox(height: 10),
                                   TextField(
                                     controller: item.questionController,
                                     maxLines: 4,
-                                    decoration: const InputDecoration(labelText: "Soru Metni"),
+                                    decoration: const InputDecoration(
+                                      labelText: "Soru Metni",
+                                    ),
                                   ),
                                   const SizedBox(height: 10),
                                   if (item.type == 'Çoktan Seçmeli') ...[
                                     ...List.generate(
                                       item.optionControllers.length,
                                       (optionIndex) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 8),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 8,
+                                        ),
                                         child: TextField(
-                                          controller: item.optionControllers[optionIndex],
-                                          decoration: InputDecoration(labelText: "Şık ${optionIndex + 1}"),
+                                          controller: item
+                                              .optionControllers[optionIndex],
+                                          decoration: InputDecoration(
+                                            labelText: "Şık ${optionIndex + 1}",
+                                          ),
                                         ),
                                       ),
                                     ),
                                     DropdownButtonFormField<int>(
                                       initialValue: item.correctOptionIndex,
-                                      decoration: const InputDecoration(labelText: "Doğru Şık"),
+                                      decoration: const InputDecoration(
+                                        labelText: "Doğru Şık",
+                                      ),
                                       items: List.generate(
                                         item.optionControllers.length,
                                         (index) => DropdownMenuItem(
@@ -575,13 +625,18 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                                         ),
                                       ),
                                       onChanged: (value) {
-                                        setState(() => item.correctOptionIndex = value ?? 0);
+                                        setState(
+                                          () => item.correctOptionIndex =
+                                              value ?? 0,
+                                        );
                                       },
                                     ),
                                   ] else ...[
                                     TextField(
                                       controller: item.answerController,
-                                      decoration: const InputDecoration(labelText: "Beklenen Cevap"),
+                                      decoration: const InputDecoration(
+                                        labelText: "Beklenen Cevap",
+                                      ),
                                     ),
                                   ],
                                 ],
@@ -630,7 +685,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
               child: ElevatedButton.icon(
                 onPressed: _saveExam,
                 icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text("Sinavi Olustur"),
+                label: const Text("Sınavı Oluştur"),
               ),
             ),
           ],
@@ -662,17 +717,17 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   String _monthName(int month) {
     const months = [
       'Ocak',
-      'Subat',
+      'Şubat',
       'Mart',
       'Nisan',
-      'Mayis',
-      'Haziran',
+      'Mayıs',
+      'Hazıran',
       'Temmuz',
-      'Agustos',
-      'Eylul',
+      'Ağustos',
+      'Eylül',
       'Ekim',
-      'Kasim',
-      'Aralik',
+      'Kasım',
+      'Aralık',
     ];
     return months[month - 1];
   }
@@ -706,7 +761,10 @@ class _ManualExamQuestionDraft {
   final TextEditingController topicController = TextEditingController();
   final TextEditingController questionController = TextEditingController();
   final TextEditingController answerController = TextEditingController();
-  final List<TextEditingController> optionControllers = List.generate(4, (_) => TextEditingController());
+  final List<TextEditingController> optionControllers = List.generate(
+    4,
+    (_) => TextEditingController(),
+  );
   String type = 'Açık Uçlu';
   String difficulty = 'Orta';
   String? imagePath;

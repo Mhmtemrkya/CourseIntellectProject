@@ -97,19 +97,22 @@ class TeacherAnalyticsRecord {
 class ReportsAnalyticsApiService {
   ReportsAnalyticsApiService._();
 
-  static final ReportsAnalyticsApiService instance = ReportsAnalyticsApiService._();
+  static final ReportsAnalyticsApiService instance =
+      ReportsAnalyticsApiService._();
 
   Future<ExamAnalyticsRecord> fetchExamAnalytics(String studentName) async {
     final session = await _session();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/reports/exam-analytics').replace(
-        queryParameters: {'studentName': studentName},
-      ),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/reports/exam-analytics',
+      ).replace(queryParameters: {'studentName': studentName}),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ReportsAnalyticsApiException('Detaylı sınav analizi alınamadı (${response.statusCode}).');
+      throw ReportsAnalyticsApiException(
+        'Detaylı sınav analizi alınamadı (${response.statusCode}).',
+      );
     }
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -134,7 +137,9 @@ class ReportsAnalyticsApiService {
     );
   }
 
-  Future<TeacherAnalyticsRecord> fetchTeacherAnalytics({String? className}) async {
+  Future<TeacherAnalyticsRecord> fetchTeacherAnalytics({
+    String? className,
+  }) async {
     final session = await _session();
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/reports/teacher-analytics').replace(
@@ -146,7 +151,9 @@ class ReportsAnalyticsApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw ReportsAnalyticsApiException('Öğretmen rapor analitiği alınamadı (${response.statusCode}).');
+      throw ReportsAnalyticsApiException(
+        'Öğretmen rapor analitiği alınamadı (${response.statusCode}).',
+      );
     }
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -155,7 +162,7 @@ class ReportsAnalyticsApiService {
           .map((item) => Map<String, dynamic>.from(item as Map))
           .map(
             (item) => TeacherAnalyticsClassRecord(
-              className: item['className'] as String? ?? 'Tanimsiz',
+              className: item['className'] as String? ?? 'Tanımsiz',
               studentCount: item['studentCount'] as int? ?? 0,
               average: item['average'] as int? ?? 0,
               attendance: item['attendance'] as int? ?? 0,
@@ -183,7 +190,9 @@ class ReportsAnalyticsApiService {
   Future<AuthSession> _session() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const ReportsAnalyticsApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const ReportsAnalyticsApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
     return session;
   }

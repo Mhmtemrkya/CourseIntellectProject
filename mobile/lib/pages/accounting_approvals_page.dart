@@ -15,7 +15,8 @@ class AccountingApprovalsPage extends StatefulWidget {
   });
 
   @override
-  State<AccountingApprovalsPage> createState() => _AccountingApprovalsPageState();
+  State<AccountingApprovalsPage> createState() =>
+      _AccountingApprovalsPageState();
 }
 
 class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
@@ -58,14 +59,22 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
             eyebrow: widget.canApprove ? 'Yönetici onay akışı' : 'Onay izleme',
             title: widget.canApprove
                 ? 'İndirim, maaş ve gider taleplerini tek merkezden onaylayın.'
-                : 'Muhasebe birimi onay bekleyen talepleri izler, karar yönetici tarafında verilir.',
+                : 'Muhasebe birimi onay bekleyen talepleri izler, karar yönetiçi tarafında verilir.',
             description: widget.canApprove
                 ? 'Onay verildiğinde ilgili kişilere bildirim düşer ve finans akışı güncellenir.'
-                : 'Bu görünüm yalnızca takip içindir. Onay ve ret yetkisi yönetici panelindedir.',
+                : 'Bu görünüm yalnızca takip içindir. Onay ve ret yetkisi yönetiçi panelindedir.',
             colors: [Color(0xFF0F172A), Color(0xFF475569)],
             metrics: [
-              AccountingHeroMetric(label: 'Bekleyen', value: '${_store.approvals.where((item) => item.status == 'Bekliyor').length} talep'),
-              AccountingHeroMetric(label: 'Onaylanan', value: '${_store.approvals.where((item) => item.status == 'Onaylandı').length} talep'),
+              AccountingHeroMetric(
+                label: 'Bekleyen',
+                value:
+                    '${_store.approvals.where((item) => item.status == 'Bekliyor').length} talep',
+              ),
+              AccountingHeroMetric(
+                label: 'Onaylanan',
+                value:
+                    '${_store.approvals.where((item) => item.status == 'Onaylandı').length} talep',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -95,7 +104,12 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
             Row(
               children: [
                 Expanded(
-                  child: Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  child: Text(
+                    item.title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
                 Chip(
                   label: Text(item.status),
@@ -108,7 +122,12 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
             const SizedBox(height: 4),
             Text(item.category, style: Theme.of(context).textTheme.bodySmall),
             const SizedBox(height: 10),
-            Text(item.reason, style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4)),
+            Text(
+              item.reason,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(height: 1.4),
+            ),
             const SizedBox(height: 12),
             if (isPending && widget.canApprove)
               Wrap(
@@ -116,22 +135,30 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
                 runSpacing: 8,
                 children: [
                   FilledButton(
-                    onPressed: () => _updateStatus(item, 'Onaylandı', 'Talep onaylandı ve gerekli kişilere bildirim gitti.'),
+                    onPressed: () => _updateStatus(
+                      item,
+                      'Onaylandı',
+                      'Talep onaylandı ve gerekli kişilere bildirim gitti.',
+                    ),
                     child: const Text('Onay Ver'),
                   ),
                   OutlinedButton(
-                    onPressed: () => _updateStatus(item, 'Reddedildi', 'Talep reddedildi ve ilgili kişilere bildirim gitti.'),
+                    onPressed: () => _updateStatus(
+                      item,
+                      'Reddedildi',
+                      'Talep reddedildi ve ilgili kişilere bildirim gitti.',
+                    ),
                     child: const Text('Reddet'),
                   ),
                 ],
               ),
             if (isPending && !widget.canApprove)
               Text(
-                'Bu talep yönetici onayı bekliyor.',
+                'Bu talep yönetiçi onayı bekliyor.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: const Color(0xFFB45309),
-                      fontWeight: FontWeight.w700,
-                    ),
+                  color: const Color(0xFFB45309),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
           ],
         ),
@@ -139,7 +166,11 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
     );
   }
 
-  Future<void> _updateStatus(ApprovalRecord item, String status, String message) async {
+  Future<void> _updateStatus(
+    ApprovalRecord item,
+    String status,
+    String message,
+  ) async {
     try {
       await _store.updateApprovalStatus(item, status);
       if (!mounted) return;
@@ -149,7 +180,10 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }

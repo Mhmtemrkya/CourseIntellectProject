@@ -10,5 +10,6 @@ public sealed record MessageItemDto(
     DateTime SentAtUtc,
     bool IsFromCurrentActor,
     string Status,
-    DateTime? ReadAtUtc
+    DateTime? ReadAtUtc,
+    IReadOnlyList<MessageAttachmentDto> Attachments
 );

@@ -11,7 +11,7 @@ String _normalizeInvoiceCategory(Object? value) {
   final text = _normalizeFinanceText(value);
   final normalized = text.toLowerCase();
   if (normalized.contains('öğrenci') ||
-      normalized.contains('ogrenci') ||
+      normalized.contains('öğrenci') ||
       normalized.contains('kurs')) {
     return 'Öğrenci Faturaları';
   }
@@ -24,7 +24,7 @@ String _normalizeInvoiceCategory(Object? value) {
       normalized.contains('kira') ||
       normalized.contains('elektrik') ||
       normalized.contains('internet')) {
-    return 'Dershane Mekan Giderleri';
+    return 'Dershane Mekân Giderleri';
   }
   if (text.isEmpty) {
     return 'Diğer Gider Faturaları';
@@ -34,7 +34,9 @@ String _normalizeInvoiceCategory(Object? value) {
 
 String _normalizeInvoiceStatus(Object? value) {
   final normalized = _normalizeFinanceText(value).toLowerCase();
-  if (normalized.contains('paid') || normalized.contains('öden') || normalized.contains('oden')) {
+  if (normalized.contains('paid') ||
+      normalized.contains('öden') ||
+      normalized.contains('oden')) {
     return 'Ödendi';
   }
   if (normalized.contains('overdue') || normalized.contains('gec')) {
@@ -45,16 +47,22 @@ String _normalizeInvoiceStatus(Object? value) {
 
 String _normalizeSalaryStatus(Object? value) {
   final normalized = _normalizeFinanceText(value).toLowerCase();
-  if (normalized.contains('paid') || normalized.contains('öden') || normalized.contains('oden')) {
+  if (normalized.contains('paid') ||
+      normalized.contains('öden') ||
+      normalized.contains('oden')) {
     return 'Ödendi';
   }
   if (normalized.contains('rejected') || normalized.contains('redd')) {
     return 'Reddedildi';
   }
-  if (normalized.contains('approved') || normalized.contains('planlandı') || normalized.contains('planlandi')) {
+  if (normalized.contains('approved') ||
+      normalized.contains('planlandı') ||
+      normalized.contains('planlandı')) {
     return 'Planlandı';
   }
-  if (normalized.contains('planned') || normalized.contains('pending') || normalized.contains('bekli')) {
+  if (normalized.contains('planned') ||
+      normalized.contains('pending') ||
+      normalized.contains('bekli')) {
     return 'Bekliyor';
   }
   return _normalizeFinanceText(value);
@@ -73,13 +81,17 @@ String _normalizeApprovalStatus(Object? value) {
 
 String _normalizeInstallmentStatus(Object? value) {
   final normalized = _normalizeFinanceText(value).toLowerCase();
-  if (normalized.contains('öden') || normalized.contains('oden') || normalized.contains('paid')) {
+  if (normalized.contains('öden') ||
+      normalized.contains('oden') ||
+      normalized.contains('paid')) {
     return 'Ödendi';
   }
   if (normalized.contains('sonraki')) {
     return 'Sonraki Ay';
   }
-  if (normalized.contains('gec') || normalized.contains('late') || normalized.contains('overdue')) {
+  if (normalized.contains('gec') ||
+      normalized.contains('late') ||
+      normalized.contains('overdue')) {
     return 'Geciken';
   }
   return 'Bekleyen';
@@ -129,13 +141,13 @@ class InvoiceRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'category': category,
-        'subtitle': subtitle,
-        'amount': amount,
-        'status': status,
-      };
+    'id': id,
+    'title': title,
+    'category': category,
+    'subtitle': subtitle,
+    'amount': amount,
+    'status': status,
+  };
 }
 
 class SalaryRecord {
@@ -167,13 +179,13 @@ class SalaryRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'employee': employee,
-        'role': role,
-        'amount': amount,
-        'payDate': payDate,
-        'status': status,
-      };
+    'id': id,
+    'employee': employee,
+    'role': role,
+    'amount': amount,
+    'payDate': payDate,
+    'status': status,
+  };
 }
 
 class ApprovalRecord {
@@ -208,14 +220,14 @@ class ApprovalRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'reason': reason,
-        'category': category,
-        'status': status,
-        'sourceType': sourceType,
-        'sourceKey': sourceKey,
-      };
+    'id': id,
+    'title': title,
+    'reason': reason,
+    'category': category,
+    'status': status,
+    'sourceType': sourceType,
+    'sourceKey': sourceKey,
+  };
 }
 
 class CollectionRecord {
@@ -250,14 +262,14 @@ class CollectionRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'name': name,
-        'className': className,
-        'amount': amount,
-        'method': method,
-        'time': time,
-        'note': note,
-      };
+    'id': id,
+    'name': name,
+    'className': className,
+    'amount': amount,
+    'method': method,
+    'time': time,
+    'note': note,
+  };
 }
 
 class InstallmentRecord {
@@ -289,13 +301,13 @@ class InstallmentRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'student': student,
-        'status': status,
-        'amount': amount,
-        'due': due,
-        'note': note,
-      };
+    'id': id,
+    'student': student,
+    'status': status,
+    'amount': amount,
+    'due': due,
+    'note': note,
+  };
 }
 
 class FinanceNotificationRecord {
@@ -324,12 +336,12 @@ class FinanceNotificationRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'message': message,
-        'time': time,
-        'unread': unread,
-      };
+    'id': id,
+    'title': title,
+    'message': message,
+    'time': time,
+    'unread': unread,
+  };
 }
 
 class AuditLogRecord {
@@ -355,11 +367,11 @@ class AuditLogRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'title': title,
-        'detail': detail,
-        'time': time,
-      };
+    'id': id,
+    'title': title,
+    'detail': detail,
+    'time': time,
+  };
 }
 
 class AccountingBenefitRecord {
@@ -448,7 +460,8 @@ class AccountingFinanceStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  List<InvoiceRecord> invoicesFor(String category) => invoices.where((invoice) => invoice.category == category).toList();
+  List<InvoiceRecord> invoicesFor(String category) =>
+      invoices.where((invoice) => invoice.category == category).toList();
 
   String approvalStatusFor(String sourceType, String sourceKey) {
     final sourceTypeNormalized = sourceType.trim().toLowerCase();
@@ -464,12 +477,21 @@ class AccountingFinanceStore extends ChangeNotifier {
 
   int get totalReceivables =>
       installments.fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
-  int get collectedTotal => collections.fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
-  int get pendingTotal => installments.where((item) => item.status == 'Bekleyen' || item.status == 'Sonraki Ay').fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
-  int get overdueTotal => installments.where((item) => item.status == 'Geciken').fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
+  int get collectedTotal =>
+      collections.fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
+  int get pendingTotal => installments
+      .where((item) => item.status == 'Bekleyen' || item.status == 'Sonraki Ay')
+      .fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
+  int get overdueTotal => installments
+      .where((item) => item.status == 'Geciken')
+      .fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
 
   int parseAmount(String amount) {
-    final normalized = amount.replaceAll('₺', '').replaceAll('.', '').replaceAll(',', '').trim();
+    final normalized = amount
+        .replaceAll('₺', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .trim();
     return int.tryParse(normalized) ?? 0;
   }
 
@@ -517,6 +539,30 @@ class AccountingFinanceStore extends ChangeNotifier {
       payDate: payDate,
       reason: reason,
     );
+    await loadDashboard();
+  }
+
+  Future<void> updateSalary({
+    required String id,
+    required String employee,
+    required String role,
+    required String amount,
+    required String payDate,
+    required String status,
+  }) async {
+    await AccountingApiService.instance.updateSalary(
+      salaryId: id,
+      employee: employee,
+      role: role,
+      amount: amount,
+      payDate: payDate,
+      status: status,
+    );
+    await loadDashboard();
+  }
+
+  Future<void> deleteSalary(String id) async {
+    await AccountingApiService.instance.deleteSalary(id);
     await loadDashboard();
   }
 
@@ -576,7 +622,10 @@ class AccountingFinanceStore extends ChangeNotifier {
     await loadDashboard();
   }
 
-  Future<void> updateApprovalStatus(ApprovalRecord approval, String status) async {
+  Future<void> updateApprovalStatus(
+    ApprovalRecord approval,
+    String status,
+  ) async {
     await AccountingApiService.instance.updateApprovalStatus(
       approvalId: approval.id,
       status: status,
@@ -624,12 +673,17 @@ class AccountingFinanceStore extends ChangeNotifier {
   }
 
   Future<void> ensureOverdueAlerts() async {
-    for (final item in installments.where((record) => record.status == 'Geciken')) {
-      final exists = notifications.any((note) => note.title.contains(item.student));
+    for (final item in installments.where(
+      (record) => record.status == 'Geciken',
+    )) {
+      final exists = notifications.any(
+        (note) => note.title.contains(item.student),
+      );
       if (!exists) {
         await addFinanceNotification(
-          title: '${item.student} odemesi gecikti',
-          message: 'Sayin veli, ${item.student} icin ${item.amount} tutarli odemenizde gecikme bulunuyor. Lutfen kurumla iletisime geciniz.',
+          title: '${item.student} ödemesi gecikti',
+          message:
+              'Sayın veli, ${item.student} için ${item.amount} tutarlı ödemenizde gecikme bulunuyor. Lütfen kurumla iletişime geçiniz.',
         );
       }
     }
@@ -662,5 +716,4 @@ class AccountingFinanceStore extends ChangeNotifier {
         return 'Makbuz Paketleri\nSon Tahsilat: ${collections.firstOrNull?.name ?? '-'}\nToplam Makbuz: ${collections.length}';
     }
   }
-
 }

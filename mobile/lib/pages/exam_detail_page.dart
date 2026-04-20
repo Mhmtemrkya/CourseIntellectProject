@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class ExamDetailPage extends StatelessWidget {
   final Map<String, dynamic> exam;
 
-  const ExamDetailPage({
-    super.key,
-    required this.exam,
-  });
+  const ExamDetailPage({super.key, required this.exam});
 
   @override
   Widget build(BuildContext context) {
@@ -16,9 +13,7 @@ class ExamDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Sinav Detayi"),
-      ),
+      appBar: AppBar(title: const Text("Sınav Detayı")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -41,7 +36,7 @@ class ExamDetailPage extends StatelessWidget {
                   const SizedBox(height: 16),
                   _row("Tarih", exam["date"] as String),
                   _row("Tur", exam["type"] as String),
-                  _row("Sure", exam["duration"] as String),
+                  _row("Süre", exam["duration"] as String),
                   _row("Soru", "${exam["questionCount"]}"),
                   _row("Durum", exam["status"] as String),
                 ],
@@ -56,7 +51,7 @@ class ExamDetailPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Sinav Icerigi",
+                      "Sınav İçeriği",
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),

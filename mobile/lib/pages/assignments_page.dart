@@ -35,7 +35,8 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         final className = item["className"]?.toString() ?? '';
         final matchesSubmission = submissions.any((submission) {
           final map = Map<String, dynamic>.from(submission as Map);
-          return _normalize(map["studentName"]?.toString() ?? '') == _normalize(currentName);
+          return _normalize(map["studentName"]?.toString() ?? '') ==
+              _normalize(currentName);
         });
         return matchesSubmission || className.isNotEmpty;
       }).toList();
@@ -52,99 +53,120 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Ödevler"),
-      ),
+      appBar: AppBar(title: const Text("Ödevler")),
       body: ResponsiveContent(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(onPressed: _loadAssignments, child: const Text('Tekrar Dene')),
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadAssignments,
+                      child: const Text('Tekrar Dene'),
+                    ),
+                  ],
+                ),
+              )
+            : assignments.isEmpty
+            ? const Center(child: Text('Henüz gösterilecek ödev bulunmuyor.'))
+            : ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: assignments.length,
+                itemBuilder: (context, index) {
+                  final assignment = assignments[index];
+                  final submitted = (assignment["status"]?.toString() ?? '')
+                      .toLowerCase()
+                      .contains('tamam');
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 15),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      color: Theme.of(context).cardColor,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 10,
+                        ),
                       ],
                     ),
-                  )
-                : assignments.isEmpty
-                    ? const Center(child: Text('Henuz gosterilecek odev bulunmuyor.'))
-                    : ListView.builder(
-                        padding: const EdgeInsets.all(20),
-                        itemCount: assignments.length,
-                        itemBuilder: (context, index) {
-                          final assignment = assignments[index];
-                          final submitted = (assignment["status"]?.toString() ?? '').toLowerCase().contains('tamam');
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 15),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(16),
-                              color: Theme.of(context).cardColor,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: 0.05),
-                                  blurRadius: 10,
-                                )
-                              ],
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          assignment["title"]?.toString() ?? '-',
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(assignment["teacher"]?.toString() ?? '-'),
+                        const SizedBox(height: 6),
+                        Text(assignment["deadline"]?.toString() ?? ''),
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Chip(
+                              label: Text(
+                                assignment["status"]?.toString() ?? 'Bekliyor',
+                              ),
+                              backgroundColor:
+                                  ((assignment["statusColor"] as Color?) ??
+                                          Colors.orange)
+                                      .withValues(alpha: 0.2),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  assignment["title"]?.toString() ?? '-',
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(assignment["teacher"]?.toString() ?? '-'),
-                                const SizedBox(height: 6),
-                                Text(assignment["deadline"]?.toString() ?? ''),
-                                const SizedBox(height: 12),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Chip(
-                                      label: Text(assignment["status"]?.toString() ?? 'Bekliyor'),
-                                      backgroundColor: ((assignment["statusColor"] as Color?) ?? Colors.orange)
-                                          .withValues(alpha: 0.2),
-                                    ),
-                                    ElevatedButton(
-                                      onPressed: submitted
-                                          ? null
-                                          : () async {
-                                              try {
-                                                final session = await AuthSessionStore.instance.load();
-                                                if (session == null) return;
-                                                final updated = await HomeworkApiService.instance.submitAssignment(
-                                                  assignmentId: assignment["id"] as String,
-                                                  studentName: session.fullName,
-                                                  note: 'Mobil ogrenci ekranindan teslim edildi.',
-                                                  files: const [],
-                                                );
-                                                if (!mounted) return;
-                                                setState(() => assignments[index] = updated);
-                                              } catch (error) {
-                                                if (!mounted) return;
-                                                ScaffoldMessenger.of(this.context).showSnackBar(
-                                                  SnackBar(content: Text(error.toString())),
-                                                );
-                                              }
-                                            },
-                                      child: Text(submitted ? "Teslim Edildi" : "Teslim Et"),
-                                    )
-                                  ],
-                                )
-                              ],
+                            ElevatedButton(
+                              onPressed: submitted
+                                  ? null
+                                  : () async {
+                                      try {
+                                        final session = await AuthSessionStore
+                                            .instance
+                                            .load();
+                                        if (session == null) return;
+                                        final updated = await HomeworkApiService
+                                            .instance
+                                            .submitAssignment(
+                                              assignmentId:
+                                                  assignment["id"] as String,
+                                              studentName: session.fullName,
+                                              note:
+                                                  'Mobil öğrenci ekranından teslim edildi.',
+                                              files: const [],
+                                            );
+                                        if (!mounted) return;
+                                        setState(
+                                          () => assignments[index] = updated,
+                                        );
+                                      } catch (error) {
+                                        if (!mounted) return;
+                                        ScaffoldMessenger.of(
+                                          this.context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Text(error.toString()),
+                                          ),
+                                        );
+                                      }
+                                    },
+                              child: Text(
+                                submitted ? "Teslim Edildi" : "Teslim Et",
+                              ),
                             ),
-                          );
-                        },
-                      ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
       ),
     );
   }

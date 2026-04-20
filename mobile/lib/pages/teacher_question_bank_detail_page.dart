@@ -10,16 +10,15 @@ import 'teacher_question_create_page.dart';
 class TeacherQuestionBankDetailPage extends StatefulWidget {
   final QuestionBankRecord question;
 
-  const TeacherQuestionBankDetailPage({
-    super.key,
-    required this.question,
-  });
+  const TeacherQuestionBankDetailPage({super.key, required this.question});
 
   @override
-  State<TeacherQuestionBankDetailPage> createState() => _TeacherQuestionBankDetailPageState();
+  State<TeacherQuestionBankDetailPage> createState() =>
+      _TeacherQuestionBankDetailPageState();
 }
 
-class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetailPage> {
+class _TeacherQuestionBankDetailPageState
+    extends State<TeacherQuestionBankDetailPage> {
   final _store = QuestionBankStore.instance;
 
   QuestionBankRecord get _question {
@@ -51,7 +50,9 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
       builder: (dialogContext) {
         return AlertDialog(
           title: const Text('Soruyu sil'),
-          content: const Text('Bu soru öğretmen ve öğrenci soru bankasından kaldırılacak. Emin misiniz?'),
+          content: const Text(
+            'Bu soru öğretmen ve öğrenci soru bankasından kaldırılacak. Emin misiniz?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
@@ -71,9 +72,9 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
       await _store.deleteQuestion(_question.id);
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
       return;
     }
     if (!mounted) return;
@@ -97,7 +98,8 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
               await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => TeacherQuestionCreatePage(initialQuestion: item),
+                  builder: (_) =>
+                      TeacherQuestionCreatePage(initialQuestion: item),
                 ),
               );
             },
@@ -125,7 +127,12 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Soru Metni', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    Text(
+                      'Soru Metni',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     Container(
                       width: double.infinity,
@@ -134,7 +141,12 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                         color: theme.scaffoldBackgroundColor,
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: Text(item.questionText, style: theme.textTheme.bodyLarge?.copyWith(height: 1.55)),
+                      child: Text(
+                        item.questionText,
+                        style: theme.textTheme.bodyLarge?.copyWith(
+                          height: 1.55,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -147,7 +159,12 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Seçenekler', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        'Seçenekler',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       ...item.options.asMap().entries.map((entry) {
                         final isCorrect = item.correctOptionIndex == entry.key;
@@ -165,16 +182,27 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                             children: [
                               CircleAvatar(
                                 radius: 14,
-                                backgroundColor: isCorrect ? const Color(0xFF10B981) : theme.colorScheme.primary.withValues(alpha: 0.12),
-                                foregroundColor: isCorrect ? Colors.white : theme.colorScheme.primary,
-                                child: Text(String.fromCharCode(65 + entry.key)),
+                                backgroundColor: isCorrect
+                                    ? const Color(0xFF10B981)
+                                    : theme.colorScheme.primary.withValues(
+                                        alpha: 0.12,
+                                      ),
+                                foregroundColor: isCorrect
+                                    ? Colors.white
+                                    : theme.colorScheme.primary,
+                                child: Text(
+                                  String.fromCharCode(65 + entry.key),
+                                ),
                               ),
                               const SizedBox(width: 10),
                               Expanded(child: Text(entry.value)),
                               if (isCorrect)
                                 const Text(
                                   'Doğru',
-                                  style: TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.w800),
+                                  style: TextStyle(
+                                    color: Color(0xFF047857),
+                                    fontWeight: FontWeight.w800,
+                                  ),
                                 ),
                             ],
                           ),
@@ -192,14 +220,23 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Soru Görseli', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        'Soru Görseli',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
                         onTap: () => _showImagePreview(item.imagePath!),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(18),
-                          child: _questionImage(item.imagePath!, height: 220, theme: theme),
+                          child: _questionImage(
+                            item.imagePath!,
+                            height: 220,
+                            theme: theme,
+                          ),
                         ),
                       ),
                     ],
@@ -214,7 +251,12 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Çözüm Eki', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+                      Text(
+                        'Çözüm Eki',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
                       const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
@@ -232,7 +274,11 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
                               color: theme.colorScheme.primary,
                             ),
                             const SizedBox(width: 10),
-                            Expanded(child: Text(item.solutionAssetPath!.split('/').last)),
+                            Expanded(
+                              child: Text(
+                                item.solutionAssetPath!.split('/').last,
+                              ),
+                            ),
                             Text(
                               item.solutionAssetType ?? 'Dosya',
                               style: TextStyle(
@@ -254,15 +300,21 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
     );
   }
 
-  Widget _questionImage(String path, {required double height, required ThemeData theme}) {
+  Widget _questionImage(
+    String path, {
+    required double height,
+    required ThemeData theme,
+  }) {
     final resolvedPath = ApiConfig.resolveAssetUrl(path);
-    if (resolvedPath.startsWith('http://') || resolvedPath.startsWith('https://')) {
+    if (resolvedPath.startsWith('http://') ||
+        resolvedPath.startsWith('https://')) {
       return Image.network(
         resolvedPath,
         height: height,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _imageFallback(theme, path),
+        errorBuilder: (context, error, stackTrace) =>
+            _imageFallback(theme, path),
       );
     }
     return Image.file(
@@ -345,7 +397,10 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -404,7 +459,8 @@ class _TeacherQuestionBankDetailPageState extends State<TeacherQuestionBankDetai
               child: Image.file(
                 File(path),
                 fit: BoxFit.contain,
-                errorBuilder: (context, error, stackTrace) => _imageFallback(Theme.of(dialogContext), path),
+                errorBuilder: (context, error, stackTrace) =>
+                    _imageFallback(Theme.of(dialogContext), path),
               ),
             ),
           ),

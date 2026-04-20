@@ -7,7 +7,8 @@ class AdminMeetingOverviewPage extends StatefulWidget {
   const AdminMeetingOverviewPage({super.key});
 
   @override
-  State<AdminMeetingOverviewPage> createState() => _AdminMeetingOverviewPageState();
+  State<AdminMeetingOverviewPage> createState() =>
+      _AdminMeetingOverviewPageState();
 }
 
 class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
@@ -43,7 +44,10 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
     if (candidate != null) {
       return _SlotView(
         fullDate: MaterialLocalizations.of(context).formatFullDate(candidate),
-        time: MaterialLocalizations.of(context).formatTimeOfDay(TimeOfDay.fromDateTime(candidate), alwaysUse24HourFormat: true),
+        time: MaterialLocalizations.of(context).formatTimeOfDay(
+          TimeOfDay.fromDateTime(candidate),
+          alwaysUse24HourFormat: true,
+        ),
       );
     }
     return _SlotView(fullDate: raw, time: raw);
@@ -52,17 +56,26 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
   @override
   Widget build(BuildContext context) {
     final pending = _requests.where((item) => item.status == 'Bekliyor').length;
-    final approved = _requests.where((item) => item.status == 'Onaylandı').length;
+    final approved = _requests
+        .where((item) => item.status == 'Onaylandı')
+        .length;
 
     return AdminScaffold(
-      appBar: AppBar(title: const Text('Görüşme Akışı', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Görüşme Akışı',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Yönetici denetimi',
-            title: 'Veli taleplerini ve öğretmen onaylarını tek yönetici ekranında takip edin.',
-            description: 'Kim talep göndermiş, hangi öğretmen hangi saati onaylamış ya da reddetmiş bu ekranda görünür.',
+            title:
+                'Veli taleplerini ve öğretmen onaylarını tek yönetiçi ekranında takip edin.',
+            description:
+                'Kim talep göndermiş, hangi öğretmen hangi saati onaylamış ya da reddetmiş bu ekranda görünür.',
             colors: const [Color(0xFF111827), Color(0xFF0F766E)],
             metrics: [
               AdminHeroMetric(label: 'Toplam', value: '${_requests.length}'),
@@ -84,7 +97,10 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
                   children: [
                     Text(_error!, textAlign: TextAlign.center),
                     const SizedBox(height: 12),
-                    FilledButton(onPressed: _load, child: const Text('Tekrar Dene')),
+                    FilledButton(
+                      onPressed: _load,
+                      child: const Text('Tekrar Dene'),
+                    ),
                   ],
                 ),
               ),
@@ -105,13 +121,23 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
                     Row(
                       children: [
                         Expanded(
-                          child: Text(item.parentName, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          child: Text(
+                            item.parentName,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
                         ),
-                        AdminAccentBadge(label: item.status, color: statusColor),
+                        AdminAccentBadge(
+                          label: item.status,
+                          color: statusColor,
+                        ),
                       ],
                     ),
                     const SizedBox(height: 8),
-                    Text('${item.studentName} • ${item.topic}', style: Theme.of(context).textTheme.bodyMedium),
+                    Text(
+                      '${item.studentName} • ${item.topic}',
+                      style: Theme.of(context).textTheme.bodyMedium,
+                    ),
                     const SizedBox(height: 10),
                     Wrap(
                       spacing: 8,
@@ -125,7 +151,12 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
                     ),
                     if (item.note.isNotEmpty) ...[
                       const SizedBox(height: 10),
-                      Text(item.note, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                      Text(
+                        item.note,
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.copyWith(height: 1.4),
+                      ),
                     ],
                   ],
                 ),
@@ -144,7 +175,10 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: const Color(0xFFE2E8F0)),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+      child: Text(
+        label,
+        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+      ),
     );
   }
 }
@@ -153,8 +187,5 @@ class _SlotView {
   final String fullDate;
   final String time;
 
-  const _SlotView({
-    required this.fullDate,
-    required this.time,
-  });
+  const _SlotView({required this.fullDate, required this.time});
 }

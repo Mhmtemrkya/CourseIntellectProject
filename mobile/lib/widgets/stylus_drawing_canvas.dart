@@ -2,9 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 
-/// Apple Pencil ve stylus destekli cizim canvas'i.
-/// iPad ve tablet cihazlarda basinc hassasiyeti ile cizim yapilabilir.
-/// Telefonda parmakla da kullanilabilir.
+/// Apple Pencil ve stylus destekli çizim canvas'i.
+/// iPad ve tablet cihazlarda basınç hassasiyeti ile çizim yapılabilir.
+/// Telefonda parmakla da kullanılabilir.
 class StylusDrawingCanvas extends StatefulWidget {
   final Color initialColor;
   final double initialStrokeWidth;
@@ -30,7 +30,9 @@ class StylusDrawingCanvas extends StatefulWidget {
           return Container(
             decoration: BoxDecoration(
               color: Theme.of(context).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: const StylusDrawingCanvas(),
           );
@@ -135,30 +137,32 @@ class _StylusDrawingCanvasState extends State<StylusDrawingCanvas> {
           child: Row(
             children: [
               // Renk secici
-              ..._colors.map((color) => Padding(
-                    padding: const EdgeInsets.only(right: 6),
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onTap: () => setState(() {
-                        _selectedColor = color;
-                        _isEraser = false;
-                      }),
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: _selectedColor == color && !_isEraser
-                                ? theme.colorScheme.primary
-                                : Colors.grey.withValues(alpha: 0.3),
-                            width: _selectedColor == color && !_isEraser ? 3 : 1,
-                          ),
+              ..._colors.map(
+                (color) => Padding(
+                  padding: const EdgeInsets.only(right: 6),
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => setState(() {
+                      _selectedColor = color;
+                      _isEraser = false;
+                    }),
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: color,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: _selectedColor == color && !_isEraser
+                              ? theme.colorScheme.primary
+                              : Colors.grey.withValues(alpha: 0.3),
+                          width: _selectedColor == color && !_isEraser ? 3 : 1,
                         ),
                       ),
                     ),
-                  )),
+                  ),
+                ),
+              ),
               const SizedBox(width: 8),
               // Silgi
               _ToolButton(
@@ -168,16 +172,10 @@ class _StylusDrawingCanvasState extends State<StylusDrawingCanvas> {
               ),
               const SizedBox(width: 4),
               // Geri al
-              _ToolButton(
-                icon: Icons.undo_rounded,
-                onTap: _undo,
-              ),
+              _ToolButton(icon: Icons.undo_rounded, onTap: _undo),
               const SizedBox(width: 4),
               // Temizle
-              _ToolButton(
-                icon: Icons.delete_outline_rounded,
-                onTap: _clear,
-              ),
+              _ToolButton(icon: Icons.delete_outline_rounded, onTap: _clear),
               const Spacer(),
               // Kalinlik slider
               SizedBox(
@@ -201,9 +199,7 @@ class _StylusDrawingCanvasState extends State<StylusDrawingCanvas> {
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.grey.withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),
@@ -331,7 +327,7 @@ class _DrawingPainter extends CustomPainter {
     for (int i = 0; i < stroke.points.length - 1; i++) {
       final p0 = stroke.points[i];
       final p1 = stroke.points[i + 1];
-      // Basinc hassasiyeti: Apple Pencil basinci 0-1 arasi
+      // Basinc hassasiyeti: Apple Pencil basınçi 0-1 arası
       final avgPressure = (p0.pressure + p1.pressure) / 2;
       paint.strokeWidth = stroke.baseWidth * _pressureToWidth(avgPressure);
       canvas.drawLine(p0.position, p1.position, paint);
@@ -339,7 +335,7 @@ class _DrawingPainter extends CustomPainter {
   }
 
   double _pressureToWidth(double pressure) {
-    // Basinc 0'da ince, 1'de kalin. Minimum 0.4x, maksimum 2.5x
+    // Basinc 0'da ince, 1'de kalın. Minimum 0.4x, maksimum 2.5x
     if (pressure <= 0) return 1.0;
     return 0.4 + (pressure * 2.1);
   }

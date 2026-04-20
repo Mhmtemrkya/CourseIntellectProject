@@ -26,24 +26,36 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final classes = ['Tümü', ..._records.map((item) => item.className).toSet().toList()..sort()];
-    final students = _records.map((item) => item.studentName).toSet().where((student) {
+    final classes = [
+      'Tümü',
+      ..._records.map((item) => item.className).toSet().toList()..sort(),
+    ];
+    final students = _records.map((item) => item.studentName).toSet().where((
+      student,
+    ) {
       if (_selectedClass == 'Tümü') return true;
-      return _records.any((item) => item.studentName == student && item.className == _selectedClass);
-    }).toList()
-      ..sort();
+      return _records.any(
+        (item) =>
+            item.studentName == student && item.className == _selectedClass,
+      );
+    }).toList()..sort();
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Sınav Sonuçları', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Sınav Sonuçları',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Sonuç merkezi',
-            title: 'Öğrenci notları ve deneme sonuçlarını kurumsal düzeyde görüntüleyin.',
-            description: 'Sınıf bazlı filtreleme ile öğrenci geçmişi ve genel sınav performansı açılır.',
+            title:
+                'Öğrenci notları ve deneme sonuçlarını kurumsal düzeyde görüntüleyin.',
+            description:
+                'Sınıf bazlı filtreleme ile öğrenci geçmişi ve genel sınav performansı açılır.',
             metrics: [
               AdminHeroMetric(label: 'Öğrenci', value: '${students.length}'),
               AdminHeroMetric(label: 'Kayıt', value: '${_records.length}'),
@@ -57,8 +69,14 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
                 labelText: 'Sınıf Filtresi',
                 border: OutlineInputBorder(),
               ),
-              items: classes.map((value) => DropdownMenuItem(value: value, child: Text(value))).toList(),
-              onChanged: (value) => setState(() => _selectedClass = value ?? 'Tümü'),
+              items: classes
+                  .map(
+                    (value) =>
+                        DropdownMenuItem(value: value, child: Text(value)),
+                  )
+                  .toList(),
+              onChanged: (value) =>
+                  setState(() => _selectedClass = value ?? 'Tümü'),
             ),
           ),
           const SizedBox(height: 16),
@@ -85,10 +103,16 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
             )
           else
             ...students.map((student) {
-              final studentRecords = _records.where((item) => item.studentName == student).toList();
+              final studentRecords = _records
+                  .where((item) => item.studentName == student)
+                  .toList();
               final average = studentRecords.isEmpty
                   ? 0.0
-                  : studentRecords.fold<int>(0, (sum, item) => sum + item.score) / studentRecords.length;
+                  : studentRecords.fold<int>(
+                          0,
+                          (sum, item) => sum + item.score,
+                        ) /
+                        studentRecords.length;
               final className = studentRecords.first.className;
               return AdminPanel(
                 margin: const EdgeInsets.only(bottom: 12),
@@ -111,15 +135,24 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(student, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              student,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 4),
-                            Text(className, style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              className,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ),
                       Text(
                         average.toStringAsFixed(1),
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ],
                   ),

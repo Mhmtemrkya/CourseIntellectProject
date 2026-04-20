@@ -9,7 +9,8 @@ class StudentWrongAnswersPage extends StatefulWidget {
   const StudentWrongAnswersPage({super.key});
 
   @override
-  State<StudentWrongAnswersPage> createState() => _StudentWrongAnswersPageState();
+  State<StudentWrongAnswersPage> createState() =>
+      _StudentWrongAnswersPageState();
 }
 
 class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
@@ -34,8 +35,15 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
         studentUsername: session?.username,
         studentName: session?.fullName,
       );
+      final wrongOnly = records
+          .where(
+            (r) =>
+                r.yourAnswer.trim().toLowerCase() !=
+                r.correctAnswer.trim().toLowerCase(),
+          )
+          .toList();
       final grouped = <String, List<WrongAnswerRecord>>{};
-      for (final item in records) {
+      for (final item in wrongOnly) {
         grouped.putIfAbsent(item.subject, () => []).add(item);
       }
 
@@ -46,7 +54,8 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
         return _WeakTopicCard(
           lesson: subject,
           topic: _decodeText(recentAttempts.first.topic),
-          summary: 'Toplam ${attempts.length} yanlış deneme kaydı bulundu. Son konu: ${_decodeText(recentAttempts.first.topic)}.',
+          summary:
+              'Toplam ${attempts.length} yanlış deneme kaydı bulundu. Son konu: ${_decodeText(recentAttempts.first.topic)}.',
           color: _colorForSubject(subject),
           questions: recentAttempts
               .map(
@@ -60,8 +69,7 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
               .toList(),
           sortScore: attempts.length,
         );
-      }).toList()
-        ..sort((a, b) => b.sortScore.compareTo(a.sortScore));
+      }).toList()..sort((a, b) => b.sortScore.compareTo(a.sortScore));
 
       if (!mounted) return;
       setState(() => _cards = cards);
@@ -77,214 +85,247 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Yanlış Defterim', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Yanlış Defterim',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: ResponsiveContent(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
             : _error != null
-                ? Center(
+            ? Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadCards,
+                      child: const Text('Tekrar Dene'),
+                    ),
+                  ],
+                ),
+              )
+            : _cards.isEmpty
+            ? const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Text('Henüz analiz edilecek sınav sonucu bulunmuyor.'),
+                ),
+              )
+            : ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF991B1B), Color(0xFFEA580C)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(28),
+                    ),
                     child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(onPressed: _loadCards, child: const Text('Tekrar Dene')),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.14),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: const Text(
+                            'Yanlış Analizi',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+                        Text(
+                          '${_cards.length} konu tekrar bekliyor',
+                          style: theme.textTheme.headlineSmall?.copyWith(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Çözdüğün yanlış sorular ders ve konu bazında burada toplanır. Detaya girip doğru cevabı ve notu görebilirsin.',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: Colors.white.withValues(alpha: 0.88),
+                            height: 1.45,
+                          ),
+                        ),
                       ],
                     ),
-                  )
-                : _cards.isEmpty
-                ? const Center(
-                        child: Padding(
-                          padding: EdgeInsets.all(24),
-                          child: Text('Henuz analiz edilecek sinav sonucu bulunmuyor.'),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final messenger = ScaffoldMessenger.of(context);
+                        final session = await AuthSessionStore.instance.load();
+                        await WrongAnswersApiService.instance.clearWrongAnswers(
+                          studentUsername: session?.username,
+                          studentName: session?.fullName,
+                        );
+                        if (!mounted) return;
+                        await _loadCards();
+                        if (!mounted) return;
+                        messenger.showSnackBar(
+                          const SnackBar(
+                            content: Text('Yanlış defteri temizlendi.'),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.delete_sweep_rounded),
+                      label: const Text('Yanlışlarımı Temizle'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  ..._cards.map(
+                    (item) => InkWell(
+                      borderRadius: BorderRadius.circular(22),
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => StudentWrongQuestionDetailPage(
+                            lesson: item.lesson,
+                            topic: item.topic,
+                            questions: item.questions,
+                            color: item.color,
+                          ),
                         ),
-                      )
-                    : ListView(
-                        padding: const EdgeInsets.all(16),
-                        children: [
-                          Container(
-                            margin: const EdgeInsets.only(bottom: 16),
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF991B1B), Color(0xFFEA580C)],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(22),
+                          border: Border.all(
+                            color: item.color.withValues(alpha: 0.14),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 18,
+                              offset: const Offset(0, 10),
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                          ],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  width: 46,
+                                  height: 46,
                                   decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.14),
-                                    borderRadius: BorderRadius.circular(999),
+                                    color: item.color.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(16),
                                   ),
-                                  child: const Text(
-                                    'Yanlış Analizi',
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    '${item.questions.length}',
                                     style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
+                                      color: item.color,
+                                      fontWeight: FontWeight.w900,
+                                      fontSize: 16,
                                     ),
                                   ),
                                 ),
-                                const SizedBox(height: 14),
-                                Text(
-                                  '${_cards.length} konu tekrar bekliyor',
-                                  style: theme.textTheme.headlineSmall?.copyWith(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  'Cozdugun yanlis sorular ders ve konu bazinda burada toplanir. Detaya girip dogru cevabi ve notu gorebilirsin.',
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: Colors.white.withValues(alpha: 0.88),
-                                    height: 1.45,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        item.lesson,
+                                        style: TextStyle(
+                                          color: item.color,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        item.topic,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ],
                             ),
-                          ),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: OutlinedButton.icon(
-                              onPressed: () async {
-                                final messenger = ScaffoldMessenger.of(context);
-                                final session = await AuthSessionStore.instance.load();
-                                await WrongAnswersApiService.instance.clearWrongAnswers(
-                                  studentUsername: session?.username,
-                                  studentName: session?.fullName,
-                                );
-                                if (!mounted) return;
-                                await _loadCards();
-                                if (!mounted) return;
-                                messenger.showSnackBar(
-                                  const SnackBar(content: Text('Yanlış defteri temizlendi.')),
-                                );
-                              },
-                              icon: const Icon(Icons.delete_sweep_rounded),
-                              label: const Text('Yanlışlarımı Temizle'),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          ..._cards.map(
-                              (item) => InkWell(
-                                borderRadius: BorderRadius.circular(22),
-                                onTap: () => Navigator.push(
+                            const SizedBox(height: 12),
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: item.color.withValues(alpha: 0.07),
+                                borderRadius: BorderRadius.circular(18),
+                              ),
+                              child: Text(
+                                item.summary,
+                                style: Theme.of(
                                   context,
-                                  MaterialPageRoute(
-                                    builder: (_) => StudentWrongQuestionDetailPage(
-                                      lesson: item.lesson,
-                                      topic: item.topic,
-                                      questions: item.questions,
-                                      color: item.color,
-                                    ),
-                                  ),
-                                ),
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.all(18),
-                                  decoration: BoxDecoration(
-                                    color: Theme.of(context).cardColor,
-                                    borderRadius: BorderRadius.circular(22),
-                                    border: Border.all(
-                                      color: item.color.withValues(alpha: 0.14),
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.05),
-                                        blurRadius: 18,
-                                        offset: const Offset(0, 10),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Container(
-                                            width: 46,
-                                            height: 46,
-                                            decoration: BoxDecoration(
-                                              color: item.color.withValues(alpha: 0.12),
-                                              borderRadius: BorderRadius.circular(16),
-                                            ),
-                                            alignment: Alignment.center,
-                                            child: Text(
-                                              '${item.questions.length}',
-                                              style: TextStyle(
-                                                color: item.color,
-                                                fontWeight: FontWeight.w900,
-                                                fontSize: 16,
-                                              ),
-                                            ),
-                                          ),
-                                          const SizedBox(width: 12),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  item.lesson,
-                                                  style: TextStyle(color: item.color, fontWeight: FontWeight.w800),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  item.topic,
-                                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Container(
-                                        padding: const EdgeInsets.all(14),
-                                        decoration: BoxDecoration(
-                                          color: item.color.withValues(alpha: 0.07),
-                                          borderRadius: BorderRadius.circular(18),
-                                        ),
-                                        child: Text(
-                                          item.summary,
-                                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
-                                        ),
-                                      ),
-                                      const SizedBox(height: 10),
-                                      Row(
-                                        children: [
-                                          Text(
-                                            'Detayi ac',
-                                            style: Theme.of(context)
-                                                .textTheme
-                                            .bodySmall
-                                            ?.copyWith(color: item.color, fontWeight: FontWeight.w800),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            '${item.questions.length} soru',
-                                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                                  color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                          ),
-                                          const Spacer(),
-                                          Icon(Icons.chevron_right_rounded, color: item.color),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                ),
+                                ).textTheme.bodyMedium?.copyWith(height: 1.4),
                               ),
                             ),
-                        ],
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Text(
+                                  'Detayı aç',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: item.color,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  '${item.questions.length} soru',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.color
+                                            ?.withValues(alpha: 0.7),
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                ),
+                                const Spacer(),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  color: item.color,
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }

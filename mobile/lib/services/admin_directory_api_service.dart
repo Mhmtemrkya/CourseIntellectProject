@@ -12,6 +12,7 @@ class AdminDirectoryApiException implements Exception {
 }
 
 class AdminStudentRecord {
+  final String id;
   final String fullName;
   final String tcNo;
   final String className;
@@ -28,6 +29,7 @@ class AdminStudentRecord {
   final String status;
 
   const AdminStudentRecord({
+    required this.id,
     required this.fullName,
     required this.tcNo,
     required this.className,
@@ -46,6 +48,7 @@ class AdminStudentRecord {
 
   factory AdminStudentRecord.fromMap(Map<String, dynamic> map) {
     return AdminStudentRecord(
+      id: map['id'] as String? ?? '',
       fullName: map['fullName'] as String? ?? '',
       tcNo: map['tcNo'] as String? ?? '',
       className: map['className'] as String? ?? '',
@@ -65,6 +68,7 @@ class AdminStudentRecord {
 }
 
 class AdminStaffRecord {
+  final String id;
   final String fullName;
   final String username;
   final String role;
@@ -73,8 +77,19 @@ class AdminStaffRecord {
   final String status;
   final List<String> extraRoles;
   final bool hasRoleHistory;
+  final List<String> assignedClasses;
+  final String email;
+  final String phone;
+  final String homeroomClass;
+  final String education;
+  final String tcNo;
+  final String maritalStatus;
+  final int childCount;
+  final String note;
+  final String startDate;
 
   const AdminStaffRecord({
+    required this.id,
     required this.fullName,
     required this.username,
     required this.role,
@@ -83,18 +98,41 @@ class AdminStaffRecord {
     required this.status,
     this.extraRoles = const [],
     this.hasRoleHistory = false,
+    this.assignedClasses = const [],
+    this.email = '',
+    this.phone = '',
+    this.homeroomClass = '',
+    this.education = '',
+    this.tcNo = '',
+    this.maritalStatus = '',
+    this.childCount = 0,
+    this.note = '',
+    this.startDate = '',
   });
 
   factory AdminStaffRecord.fromMap(Map<String, dynamic> map) {
     return AdminStaffRecord(
+      id: map['id'] as String? ?? '',
       fullName: map['fullName'] as String? ?? '',
       username: map['username'] as String? ?? '',
       role: map['role'] as String? ?? '',
       departmentOrBranch: map['departmentOrBranch'] as String? ?? '',
       campus: map['campus'] as String? ?? '',
       status: map['status'] as String? ?? 'Active',
-      extraRoles: (map['extraRoles'] as List<dynamic>? ?? const []).cast<String>(),
+      extraRoles: (map['extraRoles'] as List<dynamic>? ?? const [])
+          .cast<String>(),
       hasRoleHistory: map['hasRoleHistory'] as bool? ?? false,
+      assignedClasses: (map['assignedClasses'] as List<dynamic>? ?? const [])
+          .cast<String>(),
+      email: map['email'] as String? ?? '',
+      phone: map['phone'] as String? ?? '',
+      homeroomClass: map['homeroomClass'] as String? ?? '',
+      education: map['education'] as String? ?? '',
+      tcNo: map['tcNo'] as String? ?? '',
+      maritalStatus: map['maritalStatus'] as String? ?? '',
+      childCount: map['childCount'] as int? ?? 0,
+      note: map['note'] as String? ?? '',
+      startDate: map['startDate'] as String? ?? '',
     );
   }
 }
@@ -124,9 +162,11 @@ class RoleSummaryRecord {
       userCount: map['userCount'] as int? ?? 0,
       isActive: map['isActive'] as bool? ?? true,
       loginEnabled: map['loginEnabled'] as bool? ?? false,
-      requiresCriticalApproval: map['requiresCriticalApproval'] as bool? ?? false,
+      requiresCriticalApproval:
+          map['requiresCriticalApproval'] as bool? ?? false,
       messagingScope: map['messagingScope'] as String? ?? '',
-      moduleAccess: (map['moduleAccess'] as List<dynamic>? ?? const []).cast<String>(),
+      moduleAccess: (map['modüleAccess'] as List<dynamic>? ?? const [])
+          .cast<String>(),
     );
   }
 }
@@ -140,7 +180,11 @@ class AdminDirectoryApiService {
     final response = await _authorizedGet('/api/students');
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
-        .map((item) => AdminStudentRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => AdminStudentRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
@@ -153,12 +197,27 @@ class AdminDirectoryApiService {
         .toList();
   }
 
+  Future<String> createClass(String name) async {
+    final response = await _authorizedSend(
+      'POST',
+      '/api/classes',
+      body: {'name': name.trim()},
+    );
+    final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    return (map['name'] ?? '').toString().trim();
+  }
+
   Future<List<AdminStaffRecord>> fetchStaff({String? role}) async {
-    final path = role == null || role.isEmpty ? '/api/staff' : '/api/staff?role=$role';
+    final path = role == null || role.isEmpty
+        ? '/api/staff'
+        : '/api/staff?role=$role';
     final response = await _authorizedGet(path);
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
-        .map((item) => AdminStaffRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              AdminStaffRecord.fromMap(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
@@ -166,7 +225,10 @@ class AdminDirectoryApiService {
     final response = await _authorizedGet('/api/users/roles');
     final list = jsonDecode(response.body) as List<dynamic>;
     return list
-        .map((item) => RoleSummaryRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              RoleSummaryRecord.fromMap(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
@@ -186,9 +248,87 @@ class AdminDirectoryApiService {
         'loginEnabled': loginEnabled,
         'requiresCriticalApproval': requiresCriticalApproval,
         'messagingScope': messagingScope,
-        'moduleAccess': moduleAccess,
+        'modüleAccess': moduleAccess,
       },
     );
+  }
+
+  Future<AdminStaffRecord> updateStaff({
+    required String id,
+    required String fullName,
+    required String departmentOrBranch,
+    required String phone,
+    required String email,
+    required String education,
+    required String campus,
+    required String homeroomClass,
+    required List<String> assignedClasses,
+    required String maritalStatus,
+    required int childCount,
+    required String note,
+  }) async {
+    final response = await _authorizedSend(
+      'PUT',
+      '/api/staff/$id',
+      body: {
+        'fullName': fullName,
+        'departmentOrBranch': departmentOrBranch,
+        'phone': phone,
+        'email': email,
+        'education': education,
+        'campus': campus,
+        'homeroomClass': homeroomClass,
+        'assignedClasses': assignedClasses,
+        'maritalStatus': maritalStatus,
+        'childCount': childCount,
+        'note': note,
+      },
+    );
+    return AdminStaffRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  Future<AdminStudentRecord> updateStudent({
+    required String id,
+    required String fullName,
+    required String tcNo,
+    required String className,
+    required String currentSchool,
+    required String schoolNumber,
+    required String birthDate,
+    required String programType,
+    required String parentName,
+    required String parentPhone,
+    required String parentEmail,
+    required String address,
+    required String note,
+  }) async {
+    final response = await _authorizedSend(
+      'PUT',
+      '/api/students/$id',
+      body: {
+        'fullName': fullName,
+        'tcNo': tcNo,
+        'className': className,
+        'currentSchool': currentSchool,
+        'schoolNumber': schoolNumber,
+        'birthDate': birthDate,
+        'programType': programType,
+        'parentName': parentName,
+        'parentPhone': parentPhone,
+        'parentEmail': parentEmail,
+        'address': address,
+        'note': note,
+      },
+    );
+    return AdminStudentRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  Future<void> deleteStudent(String id) async {
+    await _authorizedSend('DELETE', '/api/students/$id');
   }
 
   Future<void> updateUserStatus({
@@ -228,9 +368,7 @@ class AdminDirectoryApiService {
     );
   }
 
-  Future<bool> undoLastRoleAssignment({
-    required String username,
-  }) async {
+  Future<bool> undoLastRoleAssignment({required String username}) async {
     final response = await _authorizedSend(
       'POST',
       '/api/users/$username/undo-role-assignment',
@@ -242,22 +380,26 @@ class AdminDirectoryApiService {
   Future<http.Response> _authorizedGet(String path) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null || session.accessToken.isEmpty) {
-      throw const AdminDirectoryApiException('Oturum bulunamadı. Lütfen yeniden giriş yap.');
+      throw const AdminDirectoryApiException(
+        'Oturum bulunamadı. Lütfen yeniden giriş yap.',
+      );
     }
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}$path'),
-      headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
-      },
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode == 401) {
-      throw const AdminDirectoryApiException('Oturum süresi dolmuş. Lütfen yeniden giriş yap.');
+      throw const AdminDirectoryApiException(
+        'Oturum süresi dolmuş. Lütfen yeniden giriş yap.',
+      );
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AdminDirectoryApiException('Veriler alınamadı (${response.statusCode}).');
+      throw AdminDirectoryApiException(
+        'Veriler alınamadı (${response.statusCode}).',
+      );
     }
 
     return response;
@@ -270,7 +412,9 @@ class AdminDirectoryApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null || session.accessToken.isEmpty) {
-      throw const AdminDirectoryApiException('Oturum bulunamadı. Lütfen yeniden giriş yap.');
+      throw const AdminDirectoryApiException(
+        'Oturum bulunamadı. Lütfen yeniden giriş yap.',
+      );
     }
 
     final request = http.Request(method, Uri.parse('${ApiConfig.baseUrl}$path'))
@@ -287,11 +431,15 @@ class AdminDirectoryApiService {
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode == 401) {
-      throw const AdminDirectoryApiException('Oturum süresi dolmuş. Lütfen yeniden giriş yap.');
+      throw const AdminDirectoryApiException(
+        'Oturum süresi dolmuş. Lütfen yeniden giriş yap.',
+      );
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AdminDirectoryApiException('İşlem tamamlanamadı (${response.statusCode}).');
+      throw AdminDirectoryApiException(
+        'İşlem tamamlanamadı (${response.statusCode}).',
+      );
     }
 
     return response;

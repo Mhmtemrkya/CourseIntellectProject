@@ -27,7 +27,9 @@ class MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 5),
       child: Row(
-        mainAxisAlignment: isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: isMe
+            ? MainAxisAlignment.end
+            : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           if (!isMe) ...[
@@ -35,8 +37,13 @@ class MessageBubble extends StatelessWidget {
               radius: 16,
               backgroundColor: const Color(0xFFE2E8F0),
               child: Text(
-                message.senderName.trim().isEmpty ? '?' : message.senderName.trim()[0].toUpperCase(),
-                style: const TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF0F172A)),
+                message.senderName.trim().isEmpty
+                    ? '?'
+                    : message.senderName.trim()[0].toUpperCase(),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: Color(0xFF0F172A),
+                ),
               ),
             ),
             const SizedBox(width: 8),
@@ -50,7 +57,10 @@ class MessageBubble extends StatelessWidget {
                 onLongPress: onDeleteForMe,
                 child: Container(
                   constraints: const BoxConstraints(maxWidth: 320),
-                  margin: EdgeInsets.only(left: isMe ? 48 : 0, right: isMe ? 0 : 48),
+                  margin: EdgeInsets.only(
+                    left: isMe ? 48 : 0,
+                    right: isMe ? 0 : 48,
+                  ),
                   padding: const EdgeInsets.fromLTRB(14, 10, 12, 8),
                   decoration: BoxDecoration(
                     color: bubbleColor,
@@ -61,7 +71,11 @@ class MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(isMe ? 6 : 20),
                     ),
                     boxShadow: const [
-                      BoxShadow(color: Color(0x12000000), blurRadius: 12, offset: Offset(0, 5)),
+                      BoxShadow(
+                        color: Color(0x12000000),
+                        blurRadius: 12,
+                        offset: Offset(0, 5),
+                      ),
                     ],
                   ),
                   child: Column(
@@ -81,10 +95,16 @@ class MessageBubble extends StatelessWidget {
                         ),
                       if (message.text.trim().isNotEmpty)
                         Padding(
-                          padding: EdgeInsets.only(bottom: message.attachments.isEmpty ? 2 : 10),
+                          padding: EdgeInsets.only(
+                            bottom: message.attachments.isEmpty ? 2 : 10,
+                          ),
                           child: Text(
                             message.text,
-                            style: TextStyle(color: textColor, fontSize: 15.5, height: 1.35),
+                            style: TextStyle(
+                              color: textColor,
+                              fontSize: 15.5,
+                              height: 1.35,
+                            ),
                           ),
                         ),
                       if (message.attachments.isNotEmpty)
@@ -103,7 +123,9 @@ class MessageBubble extends StatelessWidget {
                             timeLabel,
                             style: TextStyle(
                               fontSize: 11.5,
-                              color: isMe ? Colors.white70 : const Color(0xFF64748B),
+                              color: isMe
+                                  ? Colors.white70
+                                  : const Color(0xFF64748B),
                             ),
                           ),
                           if (isMe) ...[
@@ -114,6 +136,21 @@ class MessageBubble extends StatelessWidget {
                               color: statusColor,
                             ),
                           ],
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: onDeleteForMe,
+                            borderRadius: BorderRadius.circular(999),
+                            child: Padding(
+                              padding: const EdgeInsets.all(3),
+                              child: Icon(
+                                Icons.delete_outline_rounded,
+                                size: 16,
+                                color: isMe
+                                    ? Colors.white70
+                                    : const Color(0xFF94A3B8),
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -162,11 +199,57 @@ class _AttachmentTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final icon = switch (attachment.fileType) {
-      'image' => Icons.image_rounded,
-      'video' => Icons.videocam_rounded,
-      'audio' => Icons.mic_rounded,
-      'pdf' => Icons.picture_as_pdf_rounded,
+    if (attachment.isImage) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: GestureDetector(
+          onTap: onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 220),
+              child: Image.network(
+                attachment.absoluteUrl,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: 120,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 24,
+                        height: 24,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return _fileTile();
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return _fileTile();
+  }
+
+  Widget _fileTile() {
+    final type = attachment.fileType.toLowerCase();
+    final icon = switch (type) {
+      'image' || String() when type.startsWith('image/') => Icons.image_rounded,
+      'video' ||
+      String() when type.startsWith('video/') => Icons.videocam_rounded,
+      'audio' || String() when type.startsWith('audio/') => Icons.mic_rounded,
+      'pdf' || 'application/pdf' => Icons.picture_as_pdf_rounded,
       _ => Icons.insert_drive_file_rounded,
     };
 
@@ -207,12 +290,19 @@ class _AttachmentTile extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       attachment.fileType.toUpperCase(),
-                      style: const TextStyle(fontSize: 11.5, color: Color(0xFF64748B)),
+                      style: const TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.arrow_outward_rounded, size: 18, color: Color(0xFF64748B)),
+              const Icon(
+                Icons.arrow_outward_rounded,
+                size: 18,
+                color: Color(0xFF64748B),
+              ),
             ],
           ),
         ),

@@ -7,10 +7,7 @@ import 'package:student/widgets/teacher_header.dart';
 class TeacherExamResultsPage extends StatefulWidget {
   final Map<String, dynamic> exam;
 
-  const TeacherExamResultsPage({
-    super.key,
-    required this.exam,
-  });
+  const TeacherExamResultsPage({super.key, required this.exam});
 
   @override
   State<TeacherExamResultsPage> createState() => _TeacherExamResultsPageState();
@@ -76,8 +73,8 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
       final effective = exactMatches.isNotEmpty
           ? exactMatches
           : subjectMatches.isNotEmpty
-              ? subjectMatches
-              : fetched.where((item) => item.className == className).toList();
+          ? subjectMatches
+          : fetched.where((item) => item.className == className).toList();
 
       if (!mounted) return;
       setState(() {
@@ -100,22 +97,25 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
     final isDark = theme.brightness == Brightness.dark;
     final averageScore = _records.isEmpty
         ? 0
-        : (_records.fold<int>(0, (sum, item) => sum + item.score) / _records.length)
-            .round();
+        : (_records.fold<int>(0, (sum, item) => sum + item.score) /
+                  _records.length)
+              .round();
     final highestScore = _records.isEmpty
         ? 0
         : _records.fold<int>(
             0,
             (maxValue, item) => item.score > maxValue ? item.score : maxValue,
           );
-    final subject = widget.exam["subject"] as String? ?? (_records.isNotEmpty ? _records.first.subject : 'Ders');
+    final subject =
+        widget.exam["subject"] as String? ??
+        (_records.isNotEmpty ? _records.first.subject : 'Ders');
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sinav Sonuclari",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: "$subject Ogretmeni",
+        title: "Sınav Sonuçları",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle: "$subject Öğretmeni",
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -143,7 +143,7 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
                 children: [
                   Text(
                     _decodeText(widget.exam["title"] as String?) == ''
-                        ? "Sinav Sonuclari"
+                        ? "Sınav Sonuçları"
                         : _decodeText(widget.exam["title"] as String?),
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 22,
@@ -161,7 +161,7 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
                       const SizedBox(width: 10),
                       _stat(theme, "En Yuksek", "$highestScore"),
                       const SizedBox(width: 10),
-                      _stat(theme, "Katilim", "${_records.length}"),
+                      _stat(theme, "Katılım", "${_records.length}"),
                     ],
                   ),
                 ],
@@ -183,7 +183,7 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
               _messageCard(
                 theme,
                 icon: Icons.fact_check_outlined,
-                message: 'Bu sinav icin henuz sonuc bulunmuyor.',
+                message: 'Bu sınav için henüz sonuç bulunmuyor.',
               )
             else
               ..._records.map(
@@ -206,8 +206,9 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
                   child: Row(
                     children: [
                       CircleAvatar(
-                        backgroundColor:
-                            theme.colorScheme.primary.withValues(alpha: 0.14),
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.14,
+                        ),
                         child: Text(
                           item.studentName[0],
                           style: TextStyle(
@@ -228,7 +229,9 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
                               ),
                             ),
                             const SizedBox(height: 4),
-                            Text('Net: ${item.net} • ${_decodeText(item.subject)}'),
+                            Text(
+                              'Net: ${item.net} • ${_decodeText(item.subject)}',
+                            ),
                           ],
                         ),
                       ),

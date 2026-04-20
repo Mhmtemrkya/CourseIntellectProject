@@ -89,7 +89,10 @@ class AccountingHeroCard extends StatelessWidget {
             ),
             child: Text(
               eyebrow,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -142,9 +145,22 @@ class AccountingHeroMetric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700)),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white70,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 6),
-            Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 18)),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 18,
+              ),
+            ),
           ],
         ),
       ),
@@ -175,12 +191,12 @@ class AccountingPanel extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06),
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06,
+            ),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -210,7 +226,9 @@ class AccountingSectionTitle extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ),
         if (actionLabel != null && onAction != null)
@@ -243,10 +261,14 @@ class AccountingFilterChip extends StatelessWidget {
       onSelected: (_) => onTap(),
       selectedColor: isDark ? const Color(0xFF1E3A2D) : const Color(0xFFDFF3E8),
       side: BorderSide(
-        color: selected ? const Color(0xFF14532D) : Theme.of(context).dividerColor.withValues(alpha: 0.35),
+        color: selected
+            ? const Color(0xFF14532D)
+            : Theme.of(context).dividerColor.withValues(alpha: 0.35),
       ),
       labelStyle: TextStyle(
-        color: selected ? const Color(0xFF14532D) : Theme.of(context).textTheme.bodyMedium?.color,
+        color: selected
+            ? const Color(0xFF14532D)
+            : Theme.of(context).textTheme.bodyMedium?.color,
         fontWeight: FontWeight.w700,
       ),
     );

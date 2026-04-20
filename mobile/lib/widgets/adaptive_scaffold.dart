@@ -22,12 +22,13 @@ class SidebarState extends InheritedWidget {
   }
 
   @override
-  bool updateShouldNotify(SidebarState oldWidget) => hasSidebar != oldWidget.hasSidebar;
+  bool updateShouldNotify(SidebarState oldWidget) =>
+      hasSidebar != oldWidget.hasSidebar;
 }
 
 /// Platforma ve ekran genisligine gore sidebar veya bottom navigation gosterir.
 ///
-/// - macOS: Her zaman sidebar (desktop gorunumu)
+/// - macOS: Her zaman sidebar (desktop görünümü)
 /// - iPad / tablet landscape (>= 1100px): Sidebar
 /// - Telefon / dar ekran: Bottom navigation
 class AdaptiveScaffold extends StatefulWidget {
@@ -109,23 +110,25 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         children: [
           AppSidebar(
             destinations: widget.destinations
-                .map((d) => SidebarDestination(
-                      icon: d.icon,
-                      label: d.label,
-                      color: d.sidebarColor ?? Colors.white,
-                    ))
+                .map(
+                  (d) => SidebarDestination(
+                    icon: d.icon,
+                    label: d.label,
+                    color: d.sidebarColor ?? Colors.white,
+                  ),
+                )
                 .toList(),
             selectedIndex: _currentIndex,
             onDestinationSelected: _changePage,
             userName: widget.userName,
             userRole: widget.userRole,
           ),
-          // Desktop app'teki gibi ince ayirici cizgi
+          // Desktop app'teki gibi ince ayırıcı çizgi
           Container(
             width: 1,
             color: Theme.of(context).dividerColor.withValues(alpha: 0.15),
           ),
-          // Ana icerik alani
+          // Ana içerik alanı
           Expanded(child: _buildPageStack()),
         ],
       ),
@@ -147,7 +150,10 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         selectedItemColor: context.watch<ThemeProvider>().brandAccent,
         unselectedItemColor: isDark ? Colors.grey[400] : Colors.grey[600],
         items: widget.destinations
-            .map((d) => BottomNavigationBarItem(icon: Icon(d.icon), label: d.label))
+            .map(
+              (d) =>
+                  BottomNavigationBarItem(icon: Icon(d.icon), label: d.label),
+            )
             .toList(),
       ),
     );
@@ -160,6 +166,7 @@ class AdaptiveDestination {
   final IconData icon;
   final String label;
   final WidgetBuilder pageBuilder;
+
   /// Sidebar'daki ikon rengi (mobil bottom nav'da kullanilmaz)
   final Color? sidebarColor;
 

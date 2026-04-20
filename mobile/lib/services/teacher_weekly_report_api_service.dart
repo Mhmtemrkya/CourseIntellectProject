@@ -45,7 +45,9 @@ class TeacherWeeklyReportAttachmentRecord {
     required this.fileType,
   });
 
-  factory TeacherWeeklyReportAttachmentRecord.fromMap(Map<String, dynamic> map) {
+  factory TeacherWeeklyReportAttachmentRecord.fromMap(
+    Map<String, dynamic> map,
+  ) {
     return TeacherWeeklyReportAttachmentRecord(
       name: _decodeHtmlEntities(map['name'] as String? ?? 'Dosya'),
       url: map['url'] as String? ?? '',
@@ -54,10 +56,10 @@ class TeacherWeeklyReportAttachmentRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'name': name,
-        'url': url,
-        'fileType': fileType,
-      };
+    'name': name,
+    'url': url,
+    'fileType': fileType,
+  };
 }
 
 class TeacherWeeklyReportStudentRecord {
@@ -99,10 +101,18 @@ class TeacherWeeklyReportBootstrapRecord {
 
   factory TeacherWeeklyReportBootstrapRecord.fromMap(Map<String, dynamic> map) {
     return TeacherWeeklyReportBootstrapRecord(
-      classes: (map['classes'] as List<dynamic>? ?? const []).map((item) => _decodeHtmlEntities(item.toString())).toList(),
-      subjects: (map['subjects'] as List<dynamic>? ?? const []).map((item) => _decodeHtmlEntities(item.toString())).toList(),
+      classes: (map['classes'] as List<dynamic>? ?? const [])
+          .map((item) => _decodeHtmlEntities(item.toString()))
+          .toList(),
+      subjects: (map['subjects'] as List<dynamic>? ?? const [])
+          .map((item) => _decodeHtmlEntities(item.toString()))
+          .toList(),
       students: (map['students'] as List<dynamic>? ?? const [])
-          .map((item) => TeacherWeeklyReportStudentRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+          .map(
+            (item) => TeacherWeeklyReportStudentRecord.fromMap(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
           .toList(),
     );
   }
@@ -148,9 +158,13 @@ class TeacherWeeklyReportRecord {
   factory TeacherWeeklyReportRecord.fromMap(Map<String, dynamic> map) {
     return TeacherWeeklyReportRecord(
       id: map['id']?.toString() ?? '',
-      teacherUsername: _decodeHtmlEntities(map['teacherUsername'] as String? ?? ''),
+      teacherUsername: _decodeHtmlEntities(
+        map['teacherUsername'] as String? ?? '',
+      ),
       teacherName: _decodeHtmlEntities(map['teacherName'] as String? ?? ''),
-      studentUsername: _decodeHtmlEntities(map['studentUsername'] as String? ?? ''),
+      studentUsername: _decodeHtmlEntities(
+        map['studentUsername'] as String? ?? '',
+      ),
       studentName: _decodeHtmlEntities(map['studentName'] as String? ?? ''),
       parentName: _decodeHtmlEntities(map['parentName'] as String? ?? ''),
       parentEmail: _decodeHtmlEntities(map['parentEmail'] as String? ?? ''),
@@ -160,10 +174,18 @@ class TeacherWeeklyReportRecord {
       summary: _decodeHtmlEntities(map['summary'] as String? ?? ''),
       highlights: _decodeHtmlEntities(map['highlights'] as String? ?? ''),
       supportNotes: _decodeHtmlEntities(map['supportNotes'] as String? ?? ''),
-      weeklyPeriodLabel: _decodeHtmlEntities(map['weeklyPeriodLabel'] as String? ?? 'Bu Hafta'),
-      createdAtUtc: DateTime.tryParse(map['createdAtUtc'] as String? ?? '') ?? DateTime.now(),
+      weeklyPeriodLabel: _decodeHtmlEntities(
+        map['weeklyPeriodLabel'] as String? ?? 'Bu Hafta',
+      ),
+      createdAtUtc:
+          DateTime.tryParse(map['createdAtUtc'] as String? ?? '') ??
+          DateTime.now(),
       attachments: (map['attachments'] as List<dynamic>? ?? const [])
-          .map((item) => TeacherWeeklyReportAttachmentRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+          .map(
+            (item) => TeacherWeeklyReportAttachmentRecord.fromMap(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
           .toList(),
     );
   }
@@ -172,19 +194,24 @@ class TeacherWeeklyReportRecord {
 class TeacherWeeklyReportApiService {
   TeacherWeeklyReportApiService._();
 
-  static final TeacherWeeklyReportApiService instance = TeacherWeeklyReportApiService._();
+  static final TeacherWeeklyReportApiService instance =
+      TeacherWeeklyReportApiService._();
 
-  Future<TeacherWeeklyReportBootstrapRecord> fetchBootstrap({required String teacherUsername}) async {
+  Future<TeacherWeeklyReportBootstrapRecord> fetchBootstrap({
+    required String teacherUsername,
+  }) async {
     final session = await _session();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/reports/teacher-weekly/bootstrap').replace(
-        queryParameters: {'teacherUsername': teacherUsername},
-      ),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/reports/teacher-weekly/bootstrap',
+      ).replace(queryParameters: {'teacherUsername': teacherUsername}),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TeacherWeeklyReportApiException('Rapor sinif verileri alinamadi (${response.statusCode}).');
+      throw TeacherWeeklyReportApiException(
+        'Rapor sınıf verileri alınamadı (${response.statusCode}).',
+      );
     }
 
     return TeacherWeeklyReportBootstrapRecord.fromMap(
@@ -198,7 +225,9 @@ class TeacherWeeklyReportApiService {
   }) async {
     final session = await _session();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/reports/teacher-weekly/teacher').replace(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/reports/teacher-weekly/teacher',
+      ).replace(
         queryParameters: {
           'teacherUsername': teacherUsername,
           'teacherName': teacherName,
@@ -208,15 +237,23 @@ class TeacherWeeklyReportApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TeacherWeeklyReportApiException('Gonderilen raporlar alinamadi (${response.statusCode}).');
+      throw TeacherWeeklyReportApiException(
+        'Gönderilen raporlar alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => TeacherWeeklyReportRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => TeacherWeeklyReportRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
-  Future<List<TeacherWeeklyReportStudentRecord>> fetchReportStudents({String? className}) async {
+  Future<List<TeacherWeeklyReportStudentRecord>> fetchReportStudents({
+    String? className,
+  }) async {
     final session = await _session();
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/reports/students').replace(
@@ -228,7 +265,9 @@ class TeacherWeeklyReportApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TeacherWeeklyReportApiException('Rapor ogrenci listesi alinamadi (${response.statusCode}).');
+      throw TeacherWeeklyReportApiException(
+        'Rapor öğrenci listesi alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
@@ -236,7 +275,10 @@ class TeacherWeeklyReportApiService {
         .map(
           (item) => TeacherWeeklyReportStudentRecord(
             fullName: item['fullName'] as String? ?? '',
-            username: item['username'] as String? ?? item['fullName'] as String? ?? '',
+            username:
+                item['username'] as String? ??
+                item['fullName'] as String? ??
+                '',
             className: item['className'] as String? ?? '',
             parentName: item['parentName'] as String? ?? '',
             parentEmail: item['parentEmail'] as String? ?? '',
@@ -253,23 +295,34 @@ class TeacherWeeklyReportApiService {
   }) async {
     final session = await _session();
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/reports/teacher-weekly/parent').replace(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/reports/teacher-weekly/parent',
+      ).replace(
         queryParameters: {
           'studentName': studentName,
-          if (studentUsername != null && studentUsername.trim().isNotEmpty) 'studentUsername': studentUsername.trim(),
-          if (parentName != null && parentName.trim().isNotEmpty) 'parentName': parentName.trim(),
-          if (parentEmail != null && parentEmail.trim().isNotEmpty) 'parentEmail': parentEmail.trim(),
+          if (studentUsername != null && studentUsername.trim().isNotEmpty)
+            'studentUsername': studentUsername.trim(),
+          if (parentName != null && parentName.trim().isNotEmpty)
+            'parentName': parentName.trim(),
+          if (parentEmail != null && parentEmail.trim().isNotEmpty)
+            'parentEmail': parentEmail.trim(),
         },
       ),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TeacherWeeklyReportApiException('Haftalik raporlar alinamadi (${response.statusCode}).');
+      throw TeacherWeeklyReportApiException(
+        'Haftalik raporlar alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => TeacherWeeklyReportRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) => TeacherWeeklyReportRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
         .toList();
   }
 
@@ -311,7 +364,9 @@ class TeacherWeeklyReportApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TeacherWeeklyReportApiException('Haftalik rapor olusturulamadi (${response.statusCode}).');
+      throw TeacherWeeklyReportApiException(
+        'Haftalik rapor oluşturulamadi (${response.statusCode}).',
+      );
     }
 
     return TeacherWeeklyReportRecord.fromMap(
@@ -326,29 +381,43 @@ class TeacherWeeklyReportApiService {
     final session = await _session();
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/api/uploads').replace(queryParameters: {'folder': folder}),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/uploads',
+      ).replace(queryParameters: {'folder': folder}),
     );
     request.headers['Authorization'] = 'Bearer ${session.accessToken}';
 
     if (file.path != null && file.path!.isNotEmpty) {
-      request.files.add(await http.MultipartFile.fromPath('file', file.path!, filename: file.name));
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path!,
+          filename: file.name,
+        ),
+      );
     } else if (file.bytes != null) {
-      request.files.add(http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name));
+      request.files.add(
+        http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
+      );
     } else {
-      throw const TeacherWeeklyReportApiException('Secilen dosya okunamadi.');
+      throw const TeacherWeeklyReportApiException('Seçilen dosya okunamadı.');
     }
 
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw TeacherWeeklyReportApiException('Dosya yuklenemedi (${response.statusCode}).');
+      throw TeacherWeeklyReportApiException(
+        'Dosya yüklenemedi (${response.statusCode}).',
+      );
     }
 
     final payload = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     final url = payload['fileUrl']?.toString().trim() ?? '';
     final fileType = _detectFileType(file.extension ?? file.name);
     return TeacherWeeklyReportAttachmentRecord(
-      name: payload['fileName']?.toString().trim().isNotEmpty == true ? payload['fileName'].toString().trim() : file.name,
+      name: payload['fileName']?.toString().trim().isNotEmpty == true
+          ? payload['fileName'].toString().trim()
+          : file.name,
       url: url,
       fileType: fileType,
     );
@@ -357,7 +426,9 @@ class TeacherWeeklyReportApiService {
   Future<AuthSession> _session() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const TeacherWeeklyReportApiException('Oturum bulunamadi. Lutfen tekrar giris yapin.');
+      throw const TeacherWeeklyReportApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
     return session;
   }
@@ -365,10 +436,16 @@ class TeacherWeeklyReportApiService {
   String _detectFileType(String source) {
     final value = source.toLowerCase();
     if (value.endsWith('.pdf') || value == 'pdf') return 'PDF';
-    if (value.endsWith('.png') || value.endsWith('.jpg') || value.endsWith('.jpeg') || value.endsWith('.webp')) {
+    if (value.endsWith('.png') ||
+        value.endsWith('.jpg') ||
+        value.endsWith('.jpeg') ||
+        value.endsWith('.webp')) {
       return 'Gorsel';
     }
-    if (value.endsWith('.mp4') || value.endsWith('.mov') || value.endsWith('.avi') || value.endsWith('.m4v')) {
+    if (value.endsWith('.mp4') ||
+        value.endsWith('.mov') ||
+        value.endsWith('.avi') ||
+        value.endsWith('.m4v')) {
       return 'Video';
     }
     return 'Dosya';

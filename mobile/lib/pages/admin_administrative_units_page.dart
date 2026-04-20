@@ -12,10 +12,12 @@ class AdminAdministrativeUnitsPage extends StatefulWidget {
   const AdminAdministrativeUnitsPage({super.key});
 
   @override
-  State<AdminAdministrativeUnitsPage> createState() => _AdminAdministrativeUnitsPageState();
+  State<AdminAdministrativeUnitsPage> createState() =>
+      _AdminAdministrativeUnitsPageState();
 }
 
-class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsPage> {
+class _AdminAdministrativeUnitsPageState
+    extends State<AdminAdministrativeUnitsPage> {
   final _store = StudentRegistryStore.instance;
   final _staffStore = StaffRegistryStore.instance;
 
@@ -46,19 +48,30 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Idari Birimler', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'İdari Birimler',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
-            eyebrow: 'Idari operasyon',
-            title: 'Kayit, duyuru ve ogrenci evrak akislarini tek merkezden yonetin.',
-            description: 'Yonetici birimi yeni ogrenci kaydi acabilir, kurumsal duyuru yayina alabilir ve son kayitlari aninda izleyebilir.',
+            eyebrow: 'İdari operasyon',
+            title:
+                'Kayıt, duyuru ve öğrenci evrak akışlarını tek merkezden yönetin.',
+            description:
+                'Yönetici birimi yeni öğrenci kaydı açabilir, kurumsal duyuru yayına alabilir ve son kayıtları anında izleyebilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
-              AdminHeroMetric(label: 'Kayitli Ogrenci', value: '${_store.students.length}'),
-              AdminHeroMetric(label: 'Kadro', value: '${_staffStore.staff.length} aktif profil'),
+              AdminHeroMetric(
+                label: 'Kayıtlı Öğrenci',
+                value: '${_store.students.length}',
+              ),
+              AdminHeroMetric(
+                label: 'Kadro',
+                value: '${_staffStore.staff.length} aktif profil',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -67,13 +80,15 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Yeni Ogrenci Kaydi',
-                  subtitle: 'Tum alanlariyla kapsamli kayit ac',
+                  title: 'Yeni Öğrenci Kaydı',
+                  subtitle: 'Tüm alanlarıyla kapsamlı kayıt aç',
                   icon: Icons.person_add_alt_1_outlined,
                   color: const Color(0xFF2563EB),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AdminStudentRegistrationPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AdminStudentRegistrationPage(),
+                    ),
                   ),
                 ),
               ),
@@ -81,13 +96,15 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Ogretmen / Personel',
-                  subtitle: 'Kadro kaydi ve profil olusturma',
+                  title: 'Öğretmen / Personel',
+                  subtitle: 'Kadro kaydı ve profil oluşturma',
                   icon: Icons.groups_2_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AdminStaffRegistrationPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AdminStaffRegistrationPage(),
+                    ),
                   ),
                 ),
               ),
@@ -99,13 +116,15 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Duyuru Olustur',
-                  subtitle: 'Ogrenci, veli ve ogretmene yayinla',
+                  title: 'Duyuru Oluştur',
+                  subtitle: 'Öğrenci, veli ve öğretmene yayınla',
                   icon: Icons.campaign_outlined,
                   color: const Color(0xFFB45309),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AdminAnnouncementsPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AdminAnnouncementsPage(),
+                    ),
                   ),
                 ),
               ),
@@ -117,15 +136,19 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AdminSectionTitle(
-                  title: 'Son Kayitlar',
-                  actionLabel: 'Tumunu Gor',
+                  title: 'Son Kayıtlar',
+                  actionLabel: 'Tümünü Gör',
                   onAction: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AdminStudentsPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AdminStudentsPage(),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 12),
-                ...latestStudents.map((student) => _studentPreview(context, student)),
+                ...latestStudents.map(
+                  (student) => _studentPreview(context, student),
+                ),
               ],
             ),
           ),
@@ -134,7 +157,7 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Son Kadro Kayitlari'),
+                const AdminSectionTitle(title: 'Son Kadro Kayıtları'),
                 const SizedBox(height: 12),
                 ...latestStaff.map((person) => _staffPreview(context, person)),
               ],
@@ -145,19 +168,22 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                AdminSectionTitle(title: 'Idari Kontrol Noktalari'),
+                AdminSectionTitle(title: 'İdari Kontrol Noktalari'),
                 SizedBox(height: 12),
                 _AdministrativeHint(
                   title: 'Evrak Tamamlama',
-                  detail: 'TC, okul bilgisi, veli iletisim ve program alani kayit aninda tamamlanir.',
+                  detail:
+                      'TC, okul bilgisi, veli iletişim ve program alanı kayıt anında tamamlanır.',
                 ),
                 _AdministrativeHint(
-                  title: 'Giris Bilgisi Uretimi',
-                  detail: 'Kayit sonrasi ogrenciye otomatik kullanici adi ve sifre olusturulur.',
+                  title: 'Giriş Bilgisi Üretimi',
+                  detail:
+                      'Kayıt sonrası öğrenciye otomatik kullanıcı adı ve şifre oluşturulur.',
                 ),
                 _AdministrativeHint(
                   title: 'Kurumsal Duyuru Aksiyonu',
-                  detail: 'Yeni kayit sonrasi ogrenci ve veliye yonelik hos geldiniz duyurusu planlanabilir.',
+                  detail:
+                      'Yeni kayıt sonrası öğrenci ve veliye yönelik hoş geldiniz duyurusu planlanabilir.',
                 ),
               ],
             ),
@@ -192,9 +218,19 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
               child: Icon(icon, color: color),
             ),
             const SizedBox(height: 14),
-            Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 6),
-            Text(subtitle, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+            Text(
+              subtitle,
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(height: 1.4),
+            ),
           ],
         ),
       ),
@@ -207,27 +243,46 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+          color: Theme.of(
+            context,
+          ).scaffoldBackgroundColor.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
           children: [
             CircleAvatar(
               backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
-              child: Text(student.fullName.characters.first, style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w900)),
+              child: Text(
+                student.fullName.characters.first,
+                style: const TextStyle(
+                  color: Color(0xFF2563EB),
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(student.fullName, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    student.fullName,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('${student.className} • ${student.currentSchool}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${student.className} • ${student.currentSchool}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
-            AdminAccentBadge(label: student.status, color: const Color(0xFF14532D)),
+            AdminAccentBadge(
+              label: student.status,
+              color: const Color(0xFF14532D),
+            ),
           ],
         ),
       ),
@@ -235,29 +290,44 @@ class _AdminAdministrativeUnitsPageState extends State<AdminAdministrativeUnitsP
   }
 
   Widget _staffPreview(BuildContext context, StaffRegistryRecord person) {
-    final color = person.roleType == 'Öğretmen' ? const Color(0xFF2563EB) : const Color(0xFF7C3AED);
+    final color = person.roleType == 'Öğretmen'
+        ? const Color(0xFF2563EB)
+        : const Color(0xFF7C3AED);
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+          color: Theme.of(
+            context,
+          ).scaffoldBackgroundColor.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(18),
         ),
         child: Row(
           children: [
             CircleAvatar(
               backgroundColor: color.withValues(alpha: 0.12),
-              child: Text(person.fullName.characters.first, style: TextStyle(color: color, fontWeight: FontWeight.w900)),
+              child: Text(
+                person.fullName.characters.first,
+                style: TextStyle(color: color, fontWeight: FontWeight.w900),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(person.fullName, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    person.fullName,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('${person.roleType} • ${person.branchOrDepartment} • ${person.campus}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${person.roleType} • ${person.branchOrDepartment} • ${person.campus}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
@@ -273,10 +343,7 @@ class _AdministrativeHint extends StatelessWidget {
   final String title;
   final String detail;
 
-  const _AdministrativeHint({
-    required this.title,
-    required this.detail,
-  });
+  const _AdministrativeHint({required this.title, required this.detail});
 
   @override
   Widget build(BuildContext context) {
@@ -287,16 +354,30 @@ class _AdministrativeHint extends StatelessWidget {
         children: [
           const Padding(
             padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.check_circle_outline_rounded, size: 18, color: Color(0xFF14532D)),
+            child: Icon(
+              Icons.check_circle_outline_rounded,
+              size: 18,
+              color: Color(0xFF14532D),
+            ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 4),
-                Text(detail, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                Text(
+                  detail,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(height: 1.4),
+                ),
               ],
             ),
           ),

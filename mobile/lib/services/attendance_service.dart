@@ -24,7 +24,9 @@ class AttendanceRecord {
       id: map['id']?.toString() ?? '',
       studentName: map['studentName'] as String? ?? '',
       className: map['className'] as String? ?? '',
-      date: DateTime.tryParse(map['lessonDate'] as String? ?? '') ?? DateTime.now(),
+      date:
+          DateTime.tryParse(map['lessonDate'] as String? ?? '') ??
+          DateTime.now(),
       status: map['status'] as String? ?? 'Devamsiz',
       lesson: map['lesson'] as String? ?? '',
     );

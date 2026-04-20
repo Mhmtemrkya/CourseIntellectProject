@@ -8,10 +8,12 @@ class AdminPersonnelApprovalsPage extends StatefulWidget {
   const AdminPersonnelApprovalsPage({super.key});
 
   @override
-  State<AdminPersonnelApprovalsPage> createState() => _AdminPersonnelApprovalsPageState();
+  State<AdminPersonnelApprovalsPage> createState() =>
+      _AdminPersonnelApprovalsPageState();
 }
 
-class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPage> {
+class _AdminPersonnelApprovalsPageState
+    extends State<AdminPersonnelApprovalsPage> {
   final _store = StaffRegistryStore.instance;
   List<Map<String, String>> get _items {
     final activeStaff = _store.staff.take(3).toList();
@@ -21,7 +23,8 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
           'title': 'Personel onayi bekleniyor',
           'type': 'Operasyon',
           'status': 'Bekliyor',
-          'detail': 'Kadro verisi yuklendikten sonra talepler burada listelenecek.',
+          'detail':
+              'Kadro verisi yüklendikten sonra talepler burada listelenecek.',
         },
       ];
     }
@@ -30,14 +33,19 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
       final index = entry.key;
       final person = entry.value;
       return {
-        'title': '${person.fullName} ${index == 0 ? 'gorev onayi' : index == 1 ? 'izin talebi' : 'vardiya duzeni'}',
+        'title':
+            '${person.fullName} ${index == 0
+                ? 'görev onayi'
+                : index == 1
+                ? 'izin talebi'
+                : 'vardiya duzeni'}',
         'type': person.roleType,
         'status': index == 2 ? 'Onaylandı' : 'Bekliyor',
         'detail': index == 0
-            ? 'Bu hafta icin gorev/plana yonelik onay bekleniyor'
+            ? 'Bu hafta için görev/plana yönelik onay bekleniyor'
             : index == 1
-                ? 'Planlanan izin veya uygunluk degisikligi kontrol edilmeli'
-                : 'Kampus icin vardiya dagilimi guncellendi',
+            ? 'Planlanan izin veya uygunluk değişikliği kontrol edilmeli'
+            : 'Kampüs için vardiya dağılımı güncellendi',
       };
     }).toList();
   }
@@ -47,12 +55,17 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
     _store.ensureLoaded();
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Personel ve Onay Merkezi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Personel ve Onay Merkezi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         actions: [
           IconButton(
             onPressed: () => Navigator.push(
               context,
-              MaterialPageRoute(builder: (_) => const AdminStaffRegistrationPage()),
+              MaterialPageRoute(
+                builder: (_) => const AdminStaffRegistrationPage(),
+              ),
             ),
             icon: const Icon(Icons.person_add_alt_1_outlined),
           ),
@@ -63,11 +76,20 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
         children: [
           AdminHeroCard(
             eyebrow: 'Yetki merkezi',
-            title: 'Öğretmen, personel ve operasyon taleplerini yönetici seviyesinde onaylayın.',
-            description: 'Ek ders, izin, vardiya ve görev planları için tek bir onay görünümü sunulur.',
+            title:
+                'Öğretmen, personel ve operasyon taleplerini yönetiçi seviyesinde onaylayın.',
+            description:
+                'Ek ders, izin, vardiya ve görev planları için tek bir onay görünümü sunulur.',
             metrics: [
-              AdminHeroMetric(label: 'Bekleyen', value: '${_items.where((item) => item['status'] == 'Bekliyor').length}'),
-              AdminHeroMetric(label: 'Kayitli Kadro', value: '${_store.staff.length}'),
+              AdminHeroMetric(
+                label: 'Bekleyen',
+                value:
+                    '${_items.where((item) => item['status'] == 'Bekliyor').length}',
+              ),
+              AdminHeroMetric(
+                label: 'Kayıtlı Kadro',
+                value: '${_store.staff.length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -77,18 +99,22 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
               children: [
                 Expanded(
                   child: Text(
-                    'Yeni ogretmen veya personel kaydini burada acabilirsiniz.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                    'Yeni öğretmen veya personel kaydını burada açabilirsiniz.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 FilledButton.icon(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const AdminStaffRegistrationPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const AdminStaffRegistrationPage(),
+                    ),
                   ),
                   icon: const Icon(Icons.add_circle_outline_rounded),
-                  label: const Text('Yeni Kayit'),
+                  label: const Text('Yeni Kayıt'),
                 ),
               ],
             ),
@@ -102,16 +128,27 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
                   Row(
                     children: [
                       Expanded(
-                        child: Text(item['title']!, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        child: Text(
+                          item['title']!,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                       ),
                       AdminAccentBadge(
                         label: item['status']!,
-                        color: item['status'] == 'Onaylandı' ? const Color(0xFF14532D) : const Color(0xFFB45309),
+                        color: item['status'] == 'Onaylandı'
+                            ? const Color(0xFF14532D)
+                            : const Color(0xFFB45309),
                       ),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('${item['type']} • ${item['detail']}', style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45)),
+                  Text(
+                    '${item['type']} • ${item['detail']}',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.45),
+                  ),
                   const SizedBox(height: 12),
                   if (item['status'] == 'Bekliyor')
                     Row(
@@ -145,7 +182,10 @@ class _AdminPersonnelApprovalsPageState extends State<AdminPersonnelApprovalsPag
       item['status'] = status;
     });
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Talep durumu: $status'), behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text('Talep durumu: $status'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 }

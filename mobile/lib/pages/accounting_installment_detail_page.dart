@@ -7,15 +7,14 @@ import '../widgets/app_header.dart';
 class AccountingInstallmentDetailPage extends StatelessWidget {
   final String student;
 
-  const AccountingInstallmentDetailPage({
-    super.key,
-    required this.student,
-  });
+  const AccountingInstallmentDetailPage({super.key, required this.student});
 
   @override
   Widget build(BuildContext context) {
     final store = AccountingFinanceStore.instance;
-    final records = store.installments.where((item) => item.student == student).toList();
+    final records = store.installments
+        .where((item) => item.student == student)
+        .toList();
     final summary = _studentSummary(store, student, records);
 
     return AccountingScaffold(
@@ -26,7 +25,8 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
           AccountingHeroCard(
             eyebrow: summary.className,
             title: student,
-            description: 'Öğrencinin taksit planı, ödeme dengesi ve dönem içi taksit hareketleri bu ekranda izlenir.',
+            description:
+                'Öğrencinin taksit planı, ödeme dengesi ve dönem içi taksit hareketleri bu ekranda izlenir.',
             colors: const [Color(0xFF0F172A), Color(0xFF7C3AED)],
             metrics: [
               AccountingHeroMetric(label: 'Toplam Plan', value: summary.total),
@@ -64,7 +64,8 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
                 child: _metricCard(
                   context,
                   title: 'Tamamlanan',
-                  value: '${records.where((item) => item.status == 'Alınan').length} taksit',
+                  value:
+                      '${records.where((item) => item.status == 'Alınan').length} taksit',
                   color: const Color(0xFF2563EB),
                   icon: Icons.task_alt_rounded,
                 ),
@@ -74,7 +75,8 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
                 child: _metricCard(
                   context,
                   title: 'Bekleyen',
-                  value: '${records.where((item) => item.status == 'Bekleyen' || item.status == 'Sonraki Ay').length} taksit',
+                  value:
+                      '${records.where((item) => item.status == 'Bekleyen' || item.status == 'Sonraki Ay').length} taksit',
                   color: const Color(0xFFB45309),
                   icon: Icons.pending_actions_rounded,
                 ),
@@ -88,11 +90,15 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Expanded(child: AccountingSectionTitle(title: 'Plan Özeti')),
+                    const Expanded(
+                      child: AccountingSectionTitle(title: 'Plan Özeti'),
+                    ),
                     OutlinedButton.icon(
-                      onPressed: records.isEmpty ? null : () => _openEditSheet(context, store, records.first),
+                      onPressed: records.isEmpty
+                          ? null
+                          : () => _openEditSheet(context, store, records.first),
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Taksidi Duzenle'),
+                      label: const Text('Taksidi Düzenle'),
                     ),
                   ],
                 ),
@@ -143,9 +149,19 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
             child: Icon(icon, color: color),
           ),
           const SizedBox(height: 12),
-          Text(title, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+          Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
         ],
       ),
     );
@@ -160,14 +176,18 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
             width: 110,
             child: Text(
               label,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
           ),
         ],
@@ -206,12 +226,25 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(record.amount, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  record.amount,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 4),
-                Text('${record.status} • ${record.due}', style: Theme.of(context).textTheme.bodySmall),
+                Text(
+                  '${record.status} • ${record.due}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
                 if (record.note.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  Text(record.note, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.35)),
+                  Text(
+                    record.note,
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.35),
+                  ),
                 ],
               ],
             ),
@@ -222,8 +255,12 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
               AccountingAccentBadge(label: record.status, color: color),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => _openEditSheet(context, AccountingFinanceStore.instance, record),
-                child: const Text('Duzenle'),
+                onPressed: () => _openEditSheet(
+                  context,
+                  AccountingFinanceStore.instance,
+                  record,
+                ),
+                child: const Text('Düzenle'),
               ),
             ],
           ),
@@ -259,19 +296,31 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
             children: [
               TextField(
                 controller: amountController,
-                decoration: const InputDecoration(labelText: 'Tutar', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Tutar',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: dueController,
-                decoration: const InputDecoration(labelText: 'Vade', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Vade',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 initialValue: status,
-                decoration: const InputDecoration(labelText: 'Durum', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Durum',
+                  border: OutlineInputBorder(),
+                ),
                 items: const ['Bekleyen', 'Alınan', 'Geciken', 'Sonraki Ay']
-                    .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                    .map(
+                      (item) =>
+                          DropdownMenuItem(value: item, child: Text(item)),
+                    )
                     .toList(),
                 onChanged: (value) => status = value ?? status,
               ),
@@ -279,7 +328,10 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
               TextField(
                 controller: noteController,
                 maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Not', border: OutlineInputBorder()),
+                decoration: const InputDecoration(
+                  labelText: 'Not',
+                  border: OutlineInputBorder(),
+                ),
               ),
               const SizedBox(height: 16),
               SizedBox(
@@ -296,7 +348,7 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Taksit plani guncellendi.'),
+                        content: Text('Taksit planı güncellendi.'),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -316,12 +368,16 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
     String student,
     List<InstallmentRecord> records,
   ) {
-    final className = store.collections
+    final className =
+        store.collections
             .where((item) => item.name == student)
             .map((item) => item.className)
             .firstOrNull ??
         'Genel';
-    final planned = records.fold<int>(0, (sum, item) => sum + store.parseAmount(item.amount));
+    final planned = records.fold<int>(
+      0,
+      (sum, item) => sum + store.parseAmount(item.amount),
+    );
     final paid = records
         .where((item) => item.status == 'Alınan')
         .fold<int>(0, (sum, item) => sum + store.parseAmount(item.amount));

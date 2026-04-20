@@ -53,17 +53,21 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
         children: [
           AccountingHeroCard(
             eyebrow: 'Bordro görünümü',
-            title: 'Personel maaş, planlanan ödeme ve onay bekleyen bordroları izleyin.',
-            description: 'Öğretmen ve idari kadro ödemeleri aynı modülde toplanır.',
+            title:
+                'Personel maaş, planlanan ödeme ve onay bekleyen bordroları izleyin.',
+            description:
+                'Öğretmen ve idari kadro ödemeleri aynı modülde toplanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF1D4ED8)],
             metrics: [
               AccountingHeroMetric(
                 label: 'Bu Ay Bordro',
-                value: '₺${_store.salaries.fold<int>(0, (sum, item) => sum + _parseAmount(item.amount)).toString()}',
+                value:
+                    '₺${_store.salaries.fold<int>(0, (sum, item) => sum + _parseAmount(item.amount)).toString()}',
               ),
               AccountingHeroMetric(
                 label: 'Bekleyen',
-                value: '${_store.salaries.where((item) => _store.approvalStatusFor('Salary', item.id) == 'Bekliyor').length} ödeme',
+                value:
+                    '${_store.salaries.where((item) => _store.approvalStatusFor('Salary', item.id) == 'Bekliyor').length} ödeme',
               ),
             ],
           ),
@@ -82,17 +86,29 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
                 child: Row(
                   children: [
                     CircleAvatar(
-                      backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.12),
-                      child: const Icon(Icons.badge_outlined, color: Color(0xFF0F766E)),
+                      backgroundColor: const Color(
+                        0xFF0F766E,
+                      ).withValues(alpha: 0.12),
+                      child: const Icon(
+                        Icons.badge_outlined,
+                        color: Color(0xFF0F766E),
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(salary.employee, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                          Text(
+                            salary.employee,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
                           const SizedBox(height: 4),
-                          Text('${salary.role} • ${salary.payDate}', style: Theme.of(context).textTheme.bodySmall),
+                          Text(
+                            '${salary.role} • ${salary.payDate}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
                           const SizedBox(height: 8),
                           AccountingAccentBadge(
                             label: salary.status,
@@ -104,9 +120,16 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text(salary.amount, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
+                        Text(
+                          salary.amount,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
                         const SizedBox(height: 4),
-                        Icon(Icons.chevron_right_rounded, color: _statusColor(salary.status)),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: _statusColor(salary.status),
+                        ),
                       ],
                     ),
                   ],
@@ -148,13 +171,20 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
 
   int _parseAmount(String amount) {
-    final normalized = amount.replaceAll('₺', '').replaceAll('.', '').replaceAll(',', '').trim();
+    final normalized = amount
+        .replaceAll('₺', '')
+        .replaceAll('.', '')
+        .replaceAll(',', '')
+        .trim();
     return int.tryParse(normalized) ?? 0;
   }
 

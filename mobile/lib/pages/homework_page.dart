@@ -6,7 +6,6 @@ import 'package:student/services/homework_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import '../widgets/responsive_layout.dart';
 
-
 class HomeworkPage extends StatefulWidget {
   const HomeworkPage({super.key});
 
@@ -21,10 +20,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
   String? _error;
   String _studentName = '';
 
-  final List<String> tabs = [
-    "Aktif Odevler",
-    "Teslim Edilenler",
-  ];
+  final List<String> tabs = ["Aktif Ödevler", "Teslim Edilenler"];
 
   @override
   void initState() {
@@ -34,7 +30,8 @@ class _HomeworkPageState extends State<HomeworkPage> {
 
   Future<void> _bootstrap() async {
     final session = await AuthSessionStore.instance.load();
-    final resolvedStudentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
+    final resolvedStudentName =
+        await SchoolFeedApiService.resolveLinkedStudentName(session);
     if (mounted) {
       setState(() => _studentName = resolvedStudentName);
     }
@@ -82,7 +79,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text("Odev teslim edildi • +$result XP"),
+          content: Text("Ödev teslim edildi • +$result XP"),
         ),
       );
     }
@@ -93,64 +90,75 @@ class _HomeworkPageState extends State<HomeworkPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final activeHomeworks = _assignments.where((item) {
-      final submissions = List<Map<String, dynamic>>.from(item["submissions"] as List<dynamic>? ?? const []);
+      final submissions = List<Map<String, dynamic>>.from(
+        item["submissions"] as List<dynamic>? ?? const [],
+      );
       return !submissions.any((entry) => entry["studentName"] == _studentName);
     }).toList();
     final submittedHomeworks = _assignments.where((item) {
-      final submissions = List<Map<String, dynamic>>.from(item["submissions"] as List<dynamic>? ?? const []);
+      final submissions = List<Map<String, dynamic>>.from(
+        item["submissions"] as List<dynamic>? ?? const [],
+      );
       return submissions.any((entry) => entry["studentName"] == _studentName);
     }).toList();
     final currentList = selectedTab == 0 ? activeHomeworks : submittedHomeworks;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Ödevlerim"),
-      ),
+      appBar: AppBar(title: const Text("Ödevlerim")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: ResponsiveContent(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
               : _error != null
-                  ? Center(
-                      child: Column(
-                        children: [
-                          Text(_error!, textAlign: TextAlign.center),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: _loadAssignments,
-                            child: const Text('Tekrar Dene'),
-                          ),
-                        ],
+              ? Center(
+                  child: Column(
+                    children: [
+                      Text(_error!, textAlign: TextAlign.center),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadAssignments,
+                        child: const Text('Tekrar Dene'),
                       ),
-                    )
-                  : Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _heroCard(theme, isDark, activeHomeworks.length, submittedHomeworks.length),
-                        const SizedBox(height: 18),
-                        _tabBar(theme),
-                        const SizedBox(height: 18),
-                        ...currentList.map((item) => _homeworkCard(theme, isDark, item)),
-                      ],
+                    ],
+                  ),
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _heroCard(
+                      theme,
+                      isDark,
+                      activeHomeworks.length,
+                      submittedHomeworks.length,
                     ),
+                    const SizedBox(height: 18),
+                    _tabBar(theme),
+                    const SizedBox(height: 18),
+                    ...currentList.map(
+                      (item) => _homeworkCard(theme, isDark, item),
+                    ),
+                  ],
+                ),
         ),
       ),
     );
   }
 
-  Widget _heroCard(ThemeData theme, bool isDark, int activeCount, int submittedCount) {
+  Widget _heroCard(
+    ThemeData theme,
+    bool isDark,
+    int activeCount,
+    int submittedCount,
+  ) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF7A00),
-            Color(0xFFFFA24A),
-          ],
+          colors: [Color(0xFFFF7A00), Color(0xFFFFA24A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -172,7 +180,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
               Icon(Icons.assignment_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Odev Takibi",
+                "Ödev Takibi",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -258,8 +266,9 @@ class _HomeworkPageState extends State<HomeworkPage> {
                 tabs[index],
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color:
-                      selected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                  color: selected
+                      ? Colors.white
+                      : theme.textTheme.bodyMedium?.color,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -324,8 +333,9 @@ class _HomeworkPageState extends State<HomeworkPage> {
                     Text(
                       "${item["subject"]} • ${item["teacher"]}",
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color:
-                            theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.72,
+                        ),
                       ),
                     ),
                   ],
@@ -382,9 +392,8 @@ class _HomeworkPageState extends State<HomeworkPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => StudentHomeworkDetailPage(
-                          homework: item,
-                        ),
+                        builder: (_) =>
+                            StudentHomeworkDetailPage(homework: item),
                       ),
                     );
                   },
@@ -401,9 +410,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
                         ? Icons.check_circle_outline_rounded
                         : Icons.upload_file_rounded,
                   ),
-                  label: Text(
-                    isSubmitted ? "Teslim Edildi" : "Odev Yukle",
-                  ),
+                  label: Text(isSubmitted ? "Teslim Edildi" : "Ödev Yükle"),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: item["accentColor"] as Color,
                     foregroundColor: Colors.white,

@@ -10,52 +10,58 @@ class SmartInsightService {
     final attendance = AttendanceService.instance.forStudent(studentName);
     final absent = attendance.where((item) => item.status == 'Devamsiz').length;
     final late = attendance.where((item) => item.status == 'Gec').length;
-    final overdue = AccountingFinanceStore.instance.installments.where((item) => item.status == 'Geciken').length;
+    final overdue = AccountingFinanceStore.instance.installments
+        .where((item) => item.status == 'Geciken')
+        .length;
 
     return [
       {
         'title': 'Akademik takip gerekli',
         'detail': absent > 0
-            ? 'Son donemde $absent devamsizlik kaydi, ders devamini etkileyebilir.'
-            : 'Devamsizlik dusuk, ancak ders ritminin korunmasi onerilir.',
+            ? 'Son dönemde $absent devamsızlık kaydı, ders devamını etkileyebilir.'
+            : 'Devamsızlık dusuk, ancak ders ritminin korunmasi önerilir.',
       },
       {
-        'title': 'Disiplin ve zaman yonetimi',
+        'title': 'Disiplin ve zaman yönetimi',
         'detail': late > 0
-            ? '$late kez gec kalma goruldu. Sabah rutininin duzenlenmesi faydali olur.'
-            : 'Gec kalma kaydi dusuk seviyede, mevcut rutin korunabilir.',
+            ? '$late kez geç kalma görüldü. Sabah rutininin düzenlenmesi faydalı olur.'
+            : 'Gec kalma kaydı dusuk seviyede, mevcut rutin korunabilir.',
       },
       {
-        'title': 'Finans uyari seviyesi',
+        'title': 'Finans uyarı seviyesi',
         'detail': overdue > 0
-            ? '$overdue gecikmis plan bulundu. Finans akisinin aksatilmamasi onerilir.'
-            : 'Finans tarafinda kritik gecikme gorunmuyor.',
+            ? '$overdue gecikmiş plan bulundu. Finans akışının aksatilmamasi önerilir.'
+            : 'Finans tarafında kritik gecikme görünmüyor.',
       },
     ];
   }
 
   List<Map<String, dynamic>> teacherSuggestions() {
-    final overdue = AccountingFinanceStore.instance.installments.where((item) => item.status == 'Geciken').length;
+    final overdue = AccountingFinanceStore.instance.installments
+        .where((item) => item.status == 'Geciken')
+        .length;
     final attendance = AttendanceService.instance.all();
     final absent = attendance.where((item) => item.status == 'Devamsiz').length;
 
     return [
       {
-        'title': 'Devamsizlik odakli etut plani',
-        'subtitle': '$absent kritik devam kaydi sistem tarafindan izlendi. Destege ihtiyaci olan ogrenciler icin plan acilabilir.',
+        'title': 'Devamsızlık odakli etut planı',
+        'subtitle':
+            '$absent devamsızlık kaydı sistem tarafından izlendi. Desteğe ihtiyacı olan öğrenciler için plan açılabilir.',
         'action': 'Plani Ac',
       },
       {
-        'title': 'Veli bilgilendirme taslagi',
-        'subtitle': 'Riskli ogrenciler icin tek tikla veli mesaj taslagi acilabilir.',
-        'action': 'Taslagi Goster',
+        'title': 'Veli bilgilendirme taslağı',
+        'subtitle':
+            'Riskli öğrenciler için tek tıkla veli mesaj taslağı açılabilir.',
+        'action': 'Taslağı Göster',
       },
       {
-        'title': 'Finans ve akademik uyari eslestirmesi',
+        'title': 'Finans ve akademik uyarı eşleştirmesi',
         'subtitle': overdue > 0
-            ? '$overdue finans gecikmesi bulundu. Veli iletisimi akademik uyariyla birlikte ilerletilebilir.'
-            : 'Finans tarafinda kritik eslesme yok, sadece akademik takip oneriliyor.',
-        'action': 'Sinavlara Git',
+            ? '$overdue finans gecikmesi bulundu. Veli iletişimi akademik uyarıyla birlikte ilerletilebilir.'
+            : 'Finans tarafında kritik eşleşme yok, sadece akademik takip öneriliyor.',
+        'action': 'Sınavlara Git',
       },
     ];
   }

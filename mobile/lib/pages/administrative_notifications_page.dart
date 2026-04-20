@@ -7,10 +7,12 @@ class AdministrativeNotificationsPage extends StatefulWidget {
   const AdministrativeNotificationsPage({super.key});
 
   @override
-  State<AdministrativeNotificationsPage> createState() => _AdministrativeNotificationsPageState();
+  State<AdministrativeNotificationsPage> createState() =>
+      _AdministrativeNotificationsPageState();
 }
 
-class _AdministrativeNotificationsPageState extends State<AdministrativeNotificationsPage> {
+class _AdministrativeNotificationsPageState
+    extends State<AdministrativeNotificationsPage> {
   List<AppNotificationRecord> _items = const [];
   bool _loading = true;
   String? _error;
@@ -44,31 +46,47 @@ class _AdministrativeNotificationsPageState extends State<AdministrativeNotifica
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('İdari Bildirimler', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'İdari Bildirimler',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Bildirim merkezi',
-            title: 'Kayıt, veli dönüşü ve evrak süreçlerine ait idari bildirimleri tek akışta görün.',
-            description: 'Yeni öğrenci kaydı, otomatik veli bilgilendirmesi ve eksik evrak hatırlatmaları burada toplanır.',
+            title:
+                'Kayıt, veli dönüşü ve evrak süreçlerine ait idari bildirimleri tek akışta görün.',
+            description:
+                'Yeni öğrenci kaydı, otomatik veli bilgilendirmesi ve eksik evrak hatırlatmaları burada toplanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
               AdminHeroMetric(label: 'Toplam', value: '${_items.length}'),
-              AdminHeroMetric(label: 'Takip', value: '${_items.where((item) => !item.isRead).length}'),
+              AdminHeroMetric(
+                label: 'Takip',
+                value: '${_items.where((item) => !item.isRead).length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator()))
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(32),
+                child: CircularProgressIndicator(),
+              ),
+            )
           else if (_error != null)
             AdminPanel(
               child: Column(
                 children: [
                   Text(_error!, textAlign: TextAlign.center),
                   const SizedBox(height: 12),
-                  FilledButton(onPressed: _load, child: const Text('Tekrar Dene')),
+                  FilledButton(
+                    onPressed: _load,
+                    child: const Text('Tekrar Dene'),
+                  ),
                 ],
               ),
             )
@@ -89,21 +107,39 @@ class _AdministrativeNotificationsPageState extends State<AdministrativeNotifica
                         width: 46,
                         height: 46,
                         decoration: BoxDecoration(
-                          color: _colorFor(item.category).withValues(alpha: 0.12),
+                          color: _colorFor(
+                            item.category,
+                          ).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: Icon(Icons.notifications_active_outlined, color: _colorFor(item.category)),
+                        child: Icon(
+                          Icons.notifications_active_outlined,
+                          color: _colorFor(item.category),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              item.title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 6),
-                            Text(item.message, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45)),
+                            Text(
+                              item.message,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.bodySmall?.copyWith(height: 1.45),
+                            ),
                             const SizedBox(height: 8),
-                            Text(item.timeLabel, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                            Text(
+                              item.timeLabel,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(fontWeight: FontWeight.w700),
+                            ),
                           ],
                         ),
                       ),
@@ -119,7 +155,7 @@ class _AdministrativeNotificationsPageState extends State<AdministrativeNotifica
 
   Color _colorFor(String category) {
     switch (category) {
-      case 'Kayit':
+      case 'Kayıt':
         return const Color(0xFF0F766E);
       case 'Evrak':
         return const Color(0xFF2563EB);

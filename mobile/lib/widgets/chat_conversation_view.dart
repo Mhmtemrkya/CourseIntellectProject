@@ -63,7 +63,9 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     _presenceSubscription?.cancel();
     _typingSubscription?.cancel();
     MessageRealtimeService.instance.leaveThread(_resolvedThreadId);
-    MessageRealtimeService.instance.unsubscribePresence(widget.contactKey ?? widget.contactName);
+    MessageRealtimeService.instance.unsubscribePresence(
+      widget.contactKey ?? widget.contactName,
+    );
     _scrollController.dispose();
     super.dispose();
   }
@@ -81,7 +83,10 @@ class _ChatConversationViewState extends State<ChatConversationView> {
           children: [
             Text(_error!, textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            ElevatedButton(onPressed: _loadMessages, child: const Text('Tekrar Dene')),
+            ElevatedButton(
+              onPressed: _loadMessages,
+              child: const Text('Tekrar Dene'),
+            ),
           ],
         ),
       );
@@ -149,69 +154,97 @@ class _ChatConversationViewState extends State<ChatConversationView> {
             )
           : null;
       final resolvedThreadId = widget.threadId ?? thread!.id;
-      final messages = await MessageApiService.instance.fetchMessages(resolvedThreadId);
+      final messages = await MessageApiService.instance.fetchMessages(
+        resolvedThreadId,
+      );
       try {
         await MessageRealtimeService.instance.joinThread(resolvedThreadId);
-        await MessageRealtimeService.instance.subscribePresence(widget.contactKey ?? widget.contactName);
+        await MessageRealtimeService.instance.subscribePresence(
+          widget.contactKey ?? widget.contactName,
+        );
       } catch (_) {}
 
       _messageSubscription?.cancel();
-      _messageSubscription = MessageRealtimeService.instance.messageReceivedStream.listen((payload) {
-        if (!mounted || payload['threadId']?.toString() != resolvedThreadId) return;
-        final item = MessageItemRecord.fromMap(payload);
-        setState(() {
-          if (_messages.any((existing) => existing.id == item.id)) return;
-          _messages = [..._messages, item];
-        });
-        _jumpToBottom();
-      });
+      _messageSubscription = MessageRealtimeService
+          .instance
+          .messageReceivedStream
+          .listen((payload) {
+            if (!mounted ||
+                payload['threadId']?.toString() != resolvedThreadId) {
+              return;
+            }
+            final item = MessageItemRecord.fromMap(payload);
+            setState(() {
+              if (_messages.any((existing) => existing.id == item.id)) return;
+              _messages = [..._messages, item];
+            });
+            _jumpToBottom();
+          });
 
       _messageStatusSubscription?.cancel();
-      _messageStatusSubscription = MessageRealtimeService.instance.messageStatusChangedStream.listen((payload) {
-        if (!mounted || payload['threadId']?.toString() != resolvedThreadId) return;
-        final messageId = payload['messageId']?.toString();
-        final status = payload['status']?.toString().toLowerCase() ?? 'delivered';
-        setState(() {
-          _messages = _messages.map((item) {
-            if (item.id != messageId) return item;
-            return MessageItemRecord(
-              id: item.id,
-              threadId: item.threadId,
-              senderName: item.senderName,
-              senderRole: item.senderRole,
-              isFromCurrentActor: item.isFromCurrentActor,
-              text: item.text,
-              isRead: status == 'read',
-              deliveredAt: item.deliveredAt,
-              readAt: payload['readAtUtc'] == null ? item.readAt : DateTime.tryParse(payload['readAtUtc'].toString()),
-              status: status,
-              attachments: item.attachments,
-              sentAt: item.sentAt,
-            );
-          }).toList();
-        });
-      });
+      _messageStatusSubscription = MessageRealtimeService
+          .instance
+          .messageStatusChangedStream
+          .listen((payload) {
+            if (!mounted ||
+                payload['threadId']?.toString() != resolvedThreadId) {
+              return;
+            }
+            final messageId = payload['messageId']?.toString();
+            final status =
+                payload['status']?.toString().toLowerCase() ?? 'delivered';
+            setState(() {
+              _messages = _messages.map((item) {
+                if (item.id != messageId) return item;
+                return MessageItemRecord(
+                  id: item.id,
+                  threadId: item.threadId,
+                  senderName: item.senderName,
+                  senderRole: item.senderRole,
+                  isFromCurrentActor: item.isFromCurrentActor,
+                  text: item.text,
+                  isRead: status == 'read',
+                  deliveredAt: item.deliveredAt,
+                  readAt: payload['readAtUtc'] == null
+                      ? item.readAt
+                      : DateTime.tryParse(payload['readAtUtc'].toString()),
+                  status: status,
+                  attachments: item.attachments,
+                  sentAt: item.sentAt,
+                );
+              }).toList();
+            });
+          });
 
       _presenceSubscription?.cancel();
-      _presenceSubscription = MessageRealtimeService.instance.presenceChangedStream.listen((payload) {
-        final actorKey = payload['actorKey']?.toString().toLowerCase();
-        final expected = (widget.contactKey ?? widget.contactName).toLowerCase();
-        if (!mounted || actorKey != expected) return;
-        setState(() {
-          _isContactOnline = payload['isOnline'] == true;
-        });
-      });
+      _presenceSubscription = MessageRealtimeService
+          .instance
+          .presenceChangedStream
+          .listen((payload) {
+            final actorKey = payload['actorKey']?.toString().toLowerCase();
+            final expected = (widget.contactKey ?? widget.contactName)
+                .toLowerCase();
+            if (!mounted || actorKey != expected) return;
+            setState(() {
+              _isContactOnline = payload['isOnline'] == true;
+            });
+          });
 
       _typingSubscription?.cancel();
-      _typingSubscription = MessageRealtimeService.instance.typingChangedStream.listen((payload) {
-        if (!mounted || payload['threadId']?.toString() != resolvedThreadId) return;
-        final actorKey = payload['actorKey']?.toString().toLowerCase();
-        final expected = (widget.contactKey ?? widget.contactName).toLowerCase();
-        if (actorKey != expected) return;
-        setState(() {
-          _isContactTyping = payload['isTyping'] == true;
-        });
-      });
+      _typingSubscription = MessageRealtimeService.instance.typingChangedStream
+          .listen((payload) {
+            if (!mounted ||
+                payload['threadId']?.toString() != resolvedThreadId) {
+              return;
+            }
+            final actorKey = payload['actorKey']?.toString().toLowerCase();
+            final expected = (widget.contactKey ?? widget.contactName)
+                .toLowerCase();
+            if (actorKey != expected) return;
+            setState(() {
+              _isContactTyping = payload['isTyping'] == true;
+            });
+          });
 
       if (!mounted) return;
       setState(() {
@@ -254,7 +287,10 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     } catch (_) {}
   }
 
-  bool _sameMessages(List<MessageItemRecord> left, List<MessageItemRecord> right) {
+  bool _sameMessages(
+    List<MessageItemRecord> left,
+    List<MessageItemRecord> right,
+  ) {
     if (identical(left, right)) return true;
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index += 1) {
@@ -299,7 +335,10 @@ class _ChatConversationViewState extends State<ChatConversationView> {
         .trim();
   }
 
-  Future<void> _sendMessage(String text, List<MessageAttachmentRecord> attachments) async {
+  Future<void> _sendMessage(
+    String text,
+    List<MessageAttachmentRecord> attachments,
+  ) async {
     if (_resolvedThreadId == null) return;
 
     final optimisticId = 'temp-${DateTime.now().microsecondsSinceEpoch}';
@@ -344,7 +383,9 @@ class _ChatConversationViewState extends State<ChatConversationView> {
             deliveredAt: created.deliveredAt,
             readAt: created.readAt,
             status: created.status == 'read' ? 'read' : 'delivered',
-            attachments: created.attachments.isEmpty ? item.attachments : created.attachments,
+            attachments: created.attachments.isEmpty
+                ? item.attachments
+                : created.attachments,
             sentAt: created.sentAt,
           );
         }).toList();
@@ -371,7 +412,10 @@ class _ChatConversationViewState extends State<ChatConversationView> {
         }).toList();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -380,7 +424,9 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     final hasText = value.trim().isNotEmpty;
     _typingDebounce?.cancel();
     AuthSessionStore.instance.load().then((session) {
-      final actorName = session?.username.isNotEmpty == true ? session!.username : (session?.fullName ?? 'Ben');
+      final actorName = session?.username.isNotEmpty == true
+          ? session!.username
+          : (session?.fullName ?? 'Ben');
       MessageRealtimeService.instance.setTyping(
         threadId: _resolvedThreadId,
         actorName: actorName,
@@ -390,7 +436,9 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     if (!hasText) return;
     _typingDebounce = Timer(const Duration(milliseconds: 900), () {
       AuthSessionStore.instance.load().then((session) {
-        final actorName = session?.username.isNotEmpty == true ? session!.username : (session?.fullName ?? 'Ben');
+        final actorName = session?.username.isNotEmpty == true
+            ? session!.username
+            : (session?.fullName ?? 'Ben');
         MessageRealtimeService.instance.setTyping(
           threadId: _resolvedThreadId,
           actorName: actorName,
@@ -414,7 +462,10 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+        SnackBar(
+          content: Text(error.toString()),
+          behavior: SnackBarBehavior.floating,
+        ),
       );
     }
   }
@@ -428,9 +479,12 @@ class _ChatConversationViewState extends State<ChatConversationView> {
           shrinkWrap: true,
           children: [
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: Color(0xFFDC2626),
+              ),
               title: const Text('Benden Sil'),
-              subtitle: const Text('Mesaj sadece senin ekranindan kaldirilir.'),
+              subtitle: const Text('Mesaj sadece senin ekranından kaldırılır.'),
               onTap: () async {
                 Navigator.pop(context);
                 await _deleteForMe(message);
@@ -483,8 +537,8 @@ class _ConversationStatusCard extends StatelessWidget {
     final subtitle = isTyping
         ? 'Yazıyor...'
         : isOnline
-            ? 'Çevrimiçi'
-            : contactRole;
+        ? 'Çevrimiçi'
+        : contactRole;
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 14, 14, 10),
@@ -492,7 +546,13 @@ class _ConversationStatusCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [BoxShadow(color: Color(0x12000000), blurRadius: 16, offset: Offset(0, 6))],
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 16,
+            offset: Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -500,8 +560,13 @@ class _ConversationStatusCard extends StatelessWidget {
             radius: 24,
             backgroundColor: const Color(0xFFDCFCE7),
             child: Text(
-              contactName.trim().isEmpty ? '?' : contactName.trim()[0].toUpperCase(),
-              style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF0F766E)),
+              contactName.trim().isEmpty
+                  ? '?'
+                  : contactName.trim()[0].toUpperCase(),
+              style: const TextStyle(
+                fontWeight: FontWeight.w900,
+                color: Color(0xFF0F766E),
+              ),
             ),
           ),
           const SizedBox(width: 12),
@@ -513,7 +578,9 @@ class _ConversationStatusCard extends StatelessWidget {
                   contactName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -522,7 +589,9 @@ class _ConversationStatusCard extends StatelessWidget {
                       width: 8,
                       height: 8,
                       decoration: BoxDecoration(
-                        color: isTyping || isOnline ? const Color(0xFF10B981) : const Color(0xFF94A3B8),
+                        color: isTyping || isOnline
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFF94A3B8),
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -530,9 +599,11 @@ class _ConversationStatusCard extends StatelessWidget {
                     Text(
                       subtitle,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: isTyping ? const Color(0xFF0F766E) : const Color(0xFF64748B),
-                            fontWeight: FontWeight.w700,
-                          ),
+                        color: isTyping
+                            ? const Color(0xFF0F766E)
+                            : const Color(0xFF64748B),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ],
                 ),

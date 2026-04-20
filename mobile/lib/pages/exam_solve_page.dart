@@ -113,9 +113,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       });
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     } finally {
       if (mounted) {
         setState(() => _submitting = false);
@@ -131,7 +131,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     setState(() => _submitting = true);
 
     try {
-      final result = await ExamSessionApiService.instance.completeSession(session.id);
+      final result = await ExamSessionApiService.instance.completeSession(
+        session.id,
+      );
       final reward = StudentXpService.buildExamReward(
         correctCount: result.correct,
         totalQuestions: result.total,
@@ -160,9 +162,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _submitting = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
       _startTimer();
     }
   }
@@ -190,9 +192,11 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: Text(_session == null
-            ? "Sinav Oturumu"
-            : "${_session!.title} ${currentQuestion + 1}/${_session!.questions.length}"),
+        title: Text(
+          _session == null
+              ? "Sınav Oturumu"
+              : "${_session!.title} ${currentQuestion + 1}/${_session!.questions.length}",
+        ),
         actions: [
           if (_session != null)
             Container(
@@ -217,23 +221,23 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: _loadSession,
-                          child: const Text('Tekrar Dene'),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: _loadSession,
+                      child: const Text('Tekrar Dene'),
                     ),
-                  ),
-                )
-              : _buildContent(context, theme),
+                  ],
+                ),
+              ),
+            )
+          : _buildContent(context, theme),
     );
   }
 
@@ -241,7 +245,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     final session = _session!;
     final question = session.questions[currentQuestion];
     final selectedAnswer = question.selectedOptionIndex;
-    final progress = session.questions.isEmpty ? 0.0 : (currentQuestion + 1) / session.questions.length;
+    final progress = session.questions.isEmpty
+        ? 0.0
+        : (currentQuestion + 1) / session.questions.length;
 
     return Padding(
       padding: const EdgeInsets.all(16),
@@ -347,15 +353,17 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                             child: Image.network(
                               _resolveImageUrl(question.imagePath)!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) => Container(
-                                height: 180,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary.withValues(alpha: 0.08),
-                                  borderRadius: BorderRadius.circular(18),
-                                ),
-                                alignment: Alignment.center,
-                                child: const Text('Görsel yüklenemedi'),
-                              ),
+                              errorBuilder: (context, error, stackTrace) =>
+                                  Container(
+                                    height: 180,
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.primary
+                                          .withValues(alpha: 0.08),
+                                      borderRadius: BorderRadius.circular(18),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: const Text('Görsel yüklenemedi'),
+                                  ),
                             ),
                           ),
                         ],
@@ -375,7 +383,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
                           color: selected
-                              ? theme.colorScheme.primary.withValues(alpha: 0.14)
+                              ? theme.colorScheme.primary.withValues(
+                                  alpha: 0.14,
+                                )
                               : theme.cardColor,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
@@ -438,7 +448,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   child: Text(
                     currentQuestion < session.questions.length - 1
                         ? 'Sonraki Soru'
-                        : 'Sinavi Bitir',
+                        : 'Sınavı Bitir',
                   ),
                 ),
               ),

@@ -7,7 +7,8 @@ class AccountingSalaryFormPage extends StatefulWidget {
   const AccountingSalaryFormPage({super.key});
 
   @override
-  State<AccountingSalaryFormPage> createState() => _AccountingSalaryFormPageState();
+  State<AccountingSalaryFormPage> createState() =>
+      _AccountingSalaryFormPageState();
 }
 
 class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
@@ -38,7 +39,8 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
           const AccountingHeroCard(
             eyebrow: 'Bordro hazırlığı',
             title: 'Personel için yeni maaş ödeme planını oluşturun.',
-            description: 'Kayıt sonrası bordro listeye düşer ve yönetici onayına gönderilir.',
+            description:
+                'Kayıt sonrası bordro listeye düşer ve yönetiçi onayına gönderilir.',
             colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
               AccountingHeroMetric(label: 'Durum', value: 'Bekliyor'),
@@ -53,33 +55,54 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
                 children: [
                   TextFormField(
                     controller: _employeeController,
-                    decoration: const InputDecoration(labelText: 'Personel Adı'),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Personel adı girin' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Personel Adı',
+                    ),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                        ? 'Personel adı girin'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _roleController,
                     decoration: const InputDecoration(labelText: 'Pozisyon'),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Pozisyon girin' : null,
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                        ? 'Pozisyon girin'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _amountController,
                     decoration: const InputDecoration(labelText: 'Tutar'),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Tutar girin' : null,
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                        ? 'Tutar girin'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _dateController,
-                    decoration: const InputDecoration(labelText: 'Ödeme Tarihi'),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Tarih girin' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Ödeme Tarihi',
+                    ),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                        ? 'Tarih girin'
+                        : null,
                   ),
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _reasonController,
                     maxLines: 4,
-                    decoration: const InputDecoration(labelText: 'Not / Gerekçe'),
-                    validator: (value) => (value == null || value.trim().isEmpty) ? 'Açıklama girin' : null,
+                    decoration: const InputDecoration(
+                      labelText: 'Not / Gerekçe',
+                    ),
+                    validator: (value) =>
+                        (value == null || value.trim().isEmpty)
+                        ? 'Açıklama girin'
+                        : null,
                   ),
                   const SizedBox(height: 18),
                   SizedBox(
@@ -103,15 +126,12 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
       return;
     }
 
-    Navigator.pop(
-      context,
-      {
-        'employee': _employeeController.text.trim(),
-        'role': _roleController.text.trim(),
-        'amount': _amountController.text.trim(),
-        'payDate': _dateController.text.trim(),
-        'reason': _reasonController.text.trim(),
-      },
-    );
+    Navigator.pop(context, {
+      'employee': _employeeController.text.trim(),
+      'role': _roleController.text.trim(),
+      'amount': _amountController.text.trim(),
+      'payDate': _dateController.text.trim(),
+      'reason': _reasonController.text.trim(),
+    });
   }
 }

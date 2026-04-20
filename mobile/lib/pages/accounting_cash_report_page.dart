@@ -7,7 +7,8 @@ class AccountingCashReportPage extends StatefulWidget {
   const AccountingCashReportPage({super.key});
 
   @override
-  State<AccountingCashReportPage> createState() => _AccountingCashReportPageState();
+  State<AccountingCashReportPage> createState() =>
+      _AccountingCashReportPageState();
 }
 
 class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
@@ -42,67 +43,117 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
         .where((item) => item.method.toLowerCase().contains('kart'))
         .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
     final bankTotal = collections
-        .where((item) => item.method.toLowerCase().contains('havale') || item.method.toLowerCase().contains('eft'))
+        .where(
+          (item) =>
+              item.method.toLowerCase().contains('havale') ||
+              item.method.toLowerCase().contains('eft'),
+        )
         .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
     final grandTotal = cashTotal + cardTotal + bankTotal;
 
     return AccountingScaffold(
-      appBar: AppBar(title: const Text('Kasa ve Ödeme Dağılımı', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Kasa ve Ödeme Dağılımı',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AccountingHeroCard(
             eyebrow: 'Kasa görünümü',
-            title: 'Nakit, kart ve havale tahsilatlarını canlı dağılımla izleyin.',
-            description: 'Bu ekran artık doğrudan tahsilat kayıtlarını okuyup ödeme yöntemi kırılımını gösterir.',
+            title:
+                'Nakit, kart ve havale tahsilatlarını canlı dağılımla izleyin.',
+            description:
+                'Bu ekran artık doğrudan tahsilat kayıtlarını okuyup ödeme yöntemi kırılımını gösterir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0EA5E9)],
             metrics: [
-              AccountingHeroMetric(label: 'Toplam', value: _store.formatAmount(grandTotal)),
-              AccountingHeroMetric(label: 'İşlem', value: '${collections.length}'),
+              AccountingHeroMetric(
+                label: 'Toplam',
+                value: _store.formatAmount(grandTotal),
+              ),
+              AccountingHeroMetric(
+                label: 'İşlem',
+                value: '${collections.length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
           AccountingPanel(
             child: Column(
               children: [
-                _metricRow('Nakit', cashTotal, grandTotal, const Color(0xFF15803D)),
+                _metricRow(
+                  'Nakit',
+                  cashTotal,
+                  grandTotal,
+                  const Color(0xFF15803D),
+                ),
                 const SizedBox(height: 12),
-                _metricRow('Kart', cardTotal, grandTotal, const Color(0xFF2563EB)),
+                _metricRow(
+                  'Kart',
+                  cardTotal,
+                  grandTotal,
+                  const Color(0xFF2563EB),
+                ),
                 const SizedBox(height: 12),
-                _metricRow('Havale/EFT', bankTotal, grandTotal, const Color(0xFF7C3AED)),
+                _metricRow(
+                  'Havale/EFT',
+                  bankTotal,
+                  grandTotal,
+                  const Color(0xFF7C3AED),
+                ),
               ],
             ),
           ),
           const SizedBox(height: 16),
-          ...collections.take(20).map(
-            (item) => AccountingPanel(
-              margin: const EdgeInsets.only(bottom: 12),
-              child: Row(
-                children: [
-                  const CircleAvatar(child: Icon(Icons.account_balance_wallet_outlined)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(item.name, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
-                        const SizedBox(height: 4),
-                        Text('${item.className} • ${item.method}', style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+          ...collections
+              .take(20)
+              .map(
+                (item) => AccountingPanel(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Row(
                     children: [
-                      Text(item.amount, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900)),
-                      const SizedBox(height: 4),
-                      Text(item.time, style: Theme.of(context).textTheme.bodySmall),
+                      const CircleAvatar(
+                        child: Icon(Icons.account_balance_wallet_outlined),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.name,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '${item.className} • ${item.method}',
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text(
+                            item.amount,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            item.time,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
                     ],
                   ),
-                ],
+                ),
               ),
-            ),
-          ),
         ],
       ),
     );

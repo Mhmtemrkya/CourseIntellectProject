@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../theme_provider.dart';
 import 'course_intellect_logo.dart';
 
-/// Desktop uygulamasindaki ModernSidebar'in Flutter karsiligi.
-/// Gradient arkaplan, logo, navigasyon ogeleri ve kullanici bilgisi icerir.
+/// Desktop uygulamasındaki ModernSidebar'in Flutter karşılığı.
+/// Gradient arka plan, logo, navigasyon ögeleri ve kullanıcı bilgisi içerir.
 class AppSidebar extends StatelessWidget {
   final List<SidebarDestination> destinations;
   final int selectedIndex;
@@ -23,7 +23,7 @@ class AppSidebar extends StatelessWidget {
 
   static const double width = 280;
 
-  // Desktop app ile ayni gradient: #00354F → #002a40 → #001f30
+  // Desktop app ile aynı gradient: #00354F → #002a40 → #001f30
   static const _gradientColors = [
     Color(0xFF00354F),
     Color(0xFF002A40),
@@ -117,7 +117,7 @@ class _LogoSection extends StatelessWidget {
       ),
       child: Row(
         children: [
-          // Tenant logo veya varsayilan ikon
+          // Tenant logo veya varsayılan ikon
           Container(
             width: 36,
             height: 36,
@@ -135,11 +135,18 @@ class _LogoSection extends StatelessWidget {
                       width: 36,
                       height: 36,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) =>
-                          const Icon(Icons.school_rounded, color: Colors.white, size: 20),
+                      errorBuilder: (_, _, _) => const Icon(
+                        Icons.school_rounded,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   )
-                : const Icon(Icons.school_rounded, color: Colors.white, size: 20),
+                : const Icon(
+                    Icons.school_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -202,15 +209,17 @@ class _NavItemState extends State<_NavItem> {
               color: widget.isSelected
                   ? Colors.white.withValues(alpha: 0.14)
                   : _hovering
-                      ? Colors.white.withValues(alpha: 0.07)
-                      : Colors.transparent,
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : Colors.transparent,
             ),
             child: Row(
               children: [
                 Icon(
                   widget.icon,
                   size: 20,
-                  color: widget.isSelected ? widget.color : Colors.white.withValues(alpha: 0.7),
+                  color: widget.isSelected
+                      ? widget.color
+                      : Colors.white.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -218,8 +227,12 @@ class _NavItemState extends State<_NavItem> {
                     widget.label,
                     style: TextStyle(
                       fontSize: 14,
-                      fontWeight: widget.isSelected ? FontWeight.w600 : FontWeight.w400,
-                      color: widget.isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                      fontWeight: widget.isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w400,
+                      color: widget.isSelected
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
                 ),

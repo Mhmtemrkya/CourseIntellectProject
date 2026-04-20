@@ -6,16 +6,21 @@ import 'package:image_picker/image_picker.dart';
 
 import '../services/message_api_service.dart';
 
-typedef MessageComposerSend = Future<void> Function(
-  String text,
-  List<MessageAttachmentRecord> attachments,
-);
+typedef MessageComposerSend =
+    Future<void> Function(
+      String text,
+      List<MessageAttachmentRecord> attachments,
+    );
 
 class MessageComposer extends StatefulWidget {
   final MessageComposerSend onSend;
   final ValueChanged<String>? onTypingChanged;
 
-  const MessageComposer({super.key, required this.onSend, this.onTypingChanged});
+  const MessageComposer({
+    super.key,
+    required this.onSend,
+    this.onTypingChanged,
+  });
 
   @override
   State<MessageComposer> createState() => _MessageComposerState();
@@ -58,7 +63,8 @@ class _MessageComposerState extends State<MessageComposer> {
                     final item = _pendingAttachments[index];
                     return _AttachmentChip(
                       item: item,
-                      onRemove: () => setState(() => _pendingAttachments.removeAt(index)),
+                      onRemove: () =>
+                          setState(() => _pendingAttachments.removeAt(index)),
                     );
                   },
                 ),
@@ -90,7 +96,10 @@ class _MessageComposerState extends State<MessageComposer> {
                         hintText: 'Mesaj yaz...',
                         filled: true,
                         fillColor: const Color(0xFFF5F7FB),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(26),
                           borderSide: BorderSide.none,
@@ -106,13 +115,18 @@ class _MessageComposerState extends State<MessageComposer> {
                     backgroundColor: const Color(0xFF128C7E),
                     foregroundColor: Colors.white,
                     minimumSize: const Size(84, 48),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
                   ),
                   child: _sending
                       ? const SizedBox(
                           width: 18,
                           height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2.2, color: Colors.white),
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.2,
+                            color: Colors.white,
+                          ),
                         )
                       : const Text(
                           'Gönder',
@@ -253,7 +267,9 @@ class _AttachmentChip extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  item.fileType == 'image' ? Icons.image_rounded : Icons.insert_drive_file_rounded,
+                  item.fileType == 'image'
+                      ? Icons.image_rounded
+                      : Icons.insert_drive_file_rounded,
                   color: const Color(0xFF128C7E),
                 ),
               ),
@@ -267,11 +283,16 @@ class _AttachmentChip extends StatelessWidget {
                       _attachmentLabel(),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(999),
@@ -279,9 +300,9 @@ class _AttachmentChip extends StatelessWidget {
                       child: Text(
                         _attachmentTag(),
                         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                              color: const Color(0xFF128C7E),
-                            ),
+                          fontWeight: FontWeight.w800,
+                          color: const Color(0xFF128C7E),
+                        ),
                       ),
                     ),
                   ],

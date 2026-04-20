@@ -8,10 +8,7 @@ import 'package:student/services/student_xp_service.dart';
 class StudentHomeworkUploadPage extends StatefulWidget {
   final Map<String, dynamic> homework;
 
-  const StudentHomeworkUploadPage({
-    super.key,
-    required this.homework,
-  });
+  const StudentHomeworkUploadPage({super.key, required this.homework});
 
   @override
   State<StudentHomeworkUploadPage> createState() =>
@@ -31,7 +28,8 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
 
   Future<void> _loadSession() async {
     final session = await AuthSessionStore.instance.load();
-    final resolvedStudentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
+    final resolvedStudentName =
+        await SchoolFeedApiService.resolveLinkedStudentName(session);
     if (!mounted) return;
     setState(() => _studentName = resolvedStudentName);
   }
@@ -84,7 +82,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
         return AlertDialog(
           title: const Text("Başarılı"),
           content: Text(
-            "Odeviniz teslim edildi. +${reward.amount} XP kazandiniz."
+            "Ödeviniz teslim edildi. +${reward.amount} XP kazandınız."
             "${reward.bonuses.isEmpty ? "" : "\nBonus: ${reward.bonuses.join(" • ")}"}",
           ),
           actions: [
@@ -118,9 +116,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Odev Yukle"),
-      ),
+      appBar: AppBar(title: const Text("Ödev Yükle")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -191,7 +187,9 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(
@@ -260,7 +258,9 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
     if (lower.endsWith('.pdf')) {
       return Icons.picture_as_pdf_rounded;
     }
-    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg') || lower.endsWith('.png')) {
+    if (lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.png')) {
       return Icons.image_outlined;
     }
     return Icons.insert_drive_file_rounded;

@@ -25,4 +25,23 @@ public sealed class StudentsController(IAcademicQueryService academicQueryServic
         var result = await academicQueryService.CreateStudentAsync(request, cancellationToken);
         return CreatedAtAction(nameof(GetStudents), new { id = result.UserId }, result);
     }
+
+    [HttpPut("{id:guid}")]
+    [Authorize(Roles = "Admin,Administrative")]
+    public async Task<IActionResult> UpdateStudent(
+        Guid id,
+        [FromBody] CourseIntellect.Application.DTOs.Students.UpdateStudentRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await academicQueryService.UpdateStudentAsync(id, request, cancellationToken);
+        return result is null ? NotFound(new { message = "Ogrenci bulunamadi." }) : Ok(result);
+    }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Admin,Administrative")]
+    public async Task<IActionResult> DeleteStudent(Guid id, CancellationToken cancellationToken)
+    {
+        var removed = await academicQueryService.DeleteStudentAsync(id, cancellationToken);
+        return removed ? NoContent() : NotFound(new { message = "Ogrenci bulunamadi." });
+    }
 }

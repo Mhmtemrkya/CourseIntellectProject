@@ -18,6 +18,7 @@ class _TeacherCreateLiveLessonPageState
   final TextEditingController descriptionController = TextEditingController();
   final TextEditingController urlController = TextEditingController();
   final TextEditingController timeController = TextEditingController();
+  final TextEditingController dateController = TextEditingController();
 
   final List<String> materials = [];
   String selectedPlatform = "Zoom";
@@ -34,7 +35,12 @@ class _TeacherCreateLiveLessonPageState
   Future<void> _loadSession() async {
     await StudentRegistryStore.instance.ensureLoaded();
     final session = await AuthSessionStore.instance.load();
-    final classes = StudentRegistryStore.instance.students.map((item) => item.className).toSet().toList()..sort();
+    final classes =
+        StudentRegistryStore.instance.students
+            .map((item) => item.className)
+            .toSet()
+            .toList()
+          ..sort();
     if (!mounted) return;
     setState(() {
       _teacherName = session?.fullName ?? _teacherName;
@@ -53,10 +59,24 @@ class _TeacherCreateLiveLessonPageState
     }
   }
 
+  Future<void> _pickDate() async {
+    final now = DateTime.now();
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: now,
+      firstDate: now.subtract(const Duration(days: 1)),
+      lastDate: now.add(const Duration(days: 365)),
+    );
+    if (picked == null || !mounted) return;
+    dateController.text =
+        '${picked.day.toString().padLeft(2, '0')}.${picked.month.toString().padLeft(2, '0')}.${picked.year}';
+  }
+
   void _saveLesson() {
     if (topicController.text.trim().isEmpty ||
         urlController.text.trim().isEmpty ||
-        timeController.text.trim().isEmpty) {
+        timeController.text.trim().isEmpty ||
+        dateController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Konu, sınıf, saat ve bağlantı alanları zorunludur."),
@@ -65,21 +85,19 @@ class _TeacherCreateLiveLessonPageState
       return;
     }
 
-    Navigator.pop(
-      context,
-      {
-        "title": topicController.text.trim(),
-        "subtitle": descriptionController.text.trim().isEmpty
-            ? "Canlı ders açıklaması"
-            : descriptionController.text.trim(),
-        "time": timeController.text.trim(),
-        "className": _selectedClass,
-        "platform": selectedPlatform,
-        "status": "Planlandı",
-        "meetingUrl": urlController.text.trim(),
-        "materials": List<String>.from(materials),
-      },
-    );
+    Navigator.pop(context, {
+      "title": topicController.text.trim(),
+      "subtitle": descriptionController.text.trim().isEmpty
+          ? "Canlı ders açıklaması"
+          : descriptionController.text.trim(),
+      "date": dateController.text.trim(),
+      "time": timeController.text.trim(),
+      "className": _selectedClass,
+      "platform": selectedPlatform,
+      "status": "Planlandı",
+      "meetingUrl": urlController.text.trim(),
+      "materials": List<String>.from(materials),
+    });
   }
 
   @override
@@ -88,6 +106,7 @@ class _TeacherCreateLiveLessonPageState
     descriptionController.dispose();
     urlController.dispose();
     timeController.dispose();
+    dateController.dispose();
     super.dispose();
   }
 
@@ -137,26 +156,25 @@ class _TeacherCreateLiveLessonPageState
                   const SizedBox(height: 16),
                   TextField(
                     controller: topicController,
-                    decoration: const InputDecoration(
-                      labelText: "Konu Adı",
-                    ),
+                    decoration: const InputDecoration(labelText: "Konu Adı"),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: descriptionController,
                     maxLines: 3,
-                    decoration: const InputDecoration(
-                      labelText: "Açıklama",
-                    ),
+                    decoration: const InputDecoration(labelText: "Açıklama"),
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
-                    initialValue: _selectedClass.isEmpty ? null : _selectedClass,
-                    decoration: const InputDecoration(
-                      labelText: "Sınıf",
-                    ),
+                    initialValue: _selectedClass.isEmpty
+                        ? null
+                        : _selectedClass,
+                    decoration: const InputDecoration(labelText: "Sınıf"),
                     items: _classOptions
-                        .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                        .map(
+                          (item) =>
+                              DropdownMenuItem(value: item, child: Text(item)),
+                        )
                         .toList(),
                     onChanged: (value) {
                       if (value == null) return;
@@ -164,6 +182,17 @@ class _TeacherCreateLiveLessonPageState
                         _selectedClass = value;
                       });
                     },
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: dateController,
+                    readOnly: true,
+                    decoration: const InputDecoration(
+                      labelText: "Tarih",
+                      hintText: "Takvimden seçin",
+                      suffixIcon: Icon(Icons.calendar_today_rounded),
+                    ),
+                    onTap: _pickDate,
                   ),
                   const SizedBox(height: 14),
                   TextField(
@@ -176,14 +205,9 @@ class _TeacherCreateLiveLessonPageState
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: selectedPlatform,
-                    decoration: const InputDecoration(
-                      labelText: "Platform",
-                    ),
+                    decoration: const InputDecoration(labelText: "Platform"),
                     items: const [
-                      DropdownMenuItem(
-                        value: "Zoom",
-                        child: Text("Zoom"),
-                      ),
+                      DropdownMenuItem(value: "Zoom", child: Text("Zoom")),
                       DropdownMenuItem(
                         value: "Microsoft Teams",
                         child: Text("Microsoft Teams"),
@@ -241,7 +265,9 @@ class _TeacherCreateLiveLessonPageState
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                            color: theme.colorScheme.primary.withValues(
+                              alpha: 0.12,
+                            ),
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Icon(

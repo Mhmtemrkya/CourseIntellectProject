@@ -50,7 +50,7 @@ class StudentXpService {
 
     if (correctCount == totalQuestions) {
       amount += 20;
-      bonuses.add('Tum sorular dogru bonusu +20 XP');
+      bonuses.add('Tüm sorular doğru bonusu +20 XP');
     } else if (correctCount >= totalQuestions - 1) {
       amount += 10;
       bonuses.add('Yuksek isabet bonusu +10 XP');
@@ -58,7 +58,7 @@ class StudentXpService {
 
     return StudentXpReward(
       amount: amount,
-      summary: 'Konu testi tamamlandi',
+      summary: 'Konu testi tamamlandı',
       bonuses: bonuses,
     );
   }
@@ -78,12 +78,12 @@ class StudentXpService {
 
     if (hasNote) {
       amount += 5;
-      bonuses.add('Aciklama notu bonusu +5 XP');
+      bonuses.add('Açıklama notu bonusu +5 XP');
     }
 
     return StudentXpReward(
       amount: amount,
-      summary: 'Odev teslim edildi',
+      summary: 'Ödev teslim edildi',
       bonuses: bonuses,
     );
   }
@@ -98,17 +98,17 @@ class StudentXpService {
 
     if (correctCount == totalQuestions) {
       amount += 30;
-      bonuses.add('Tam dogru bonusu +30 XP');
+      bonuses.add('Tam doğru bonusu +30 XP');
     }
 
     if (remainingSeconds > 15 * 60) {
       amount += 10;
-      bonuses.add('Sure bonusu +10 XP');
+      bonuses.add('Süre bonusu +10 XP');
     }
 
     return StudentXpReward(
       amount: amount,
-      summary: 'Sinav tamamlandi',
+      summary: 'Sınav tamamlandı',
       bonuses: bonuses,
     );
   }
@@ -122,9 +122,9 @@ class StudentXpService {
     final bonuses = <String>[];
 
     if (isCorrect) {
-      bonuses.add('Dogru cevap bonusu +18 XP');
+      bonuses.add('Doğru cevap bonusu +18 XP');
     } else {
-      bonuses.add('Deneme katilimi +6 XP');
+      bonuses.add('Deneme katılımi +6 XP');
     }
 
     if (hasImage) {
@@ -139,7 +139,7 @@ class StudentXpService {
 
     return StudentXpReward(
       amount: amount,
-      summary: 'Soru bankasi sorusu cozuldu',
+      summary: 'Soru bankası sorusu cozuldu',
       bonuses: bonuses,
     );
   }

@@ -23,7 +23,7 @@ class VeliBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.fact_check_outlined,
-          label: 'Devamsizlik',
+          label: 'Devamsızlık',
           pageBuilder: (_) => const VeliDevamsizlikPage(),
           sidebarColor: const Color(0xFFEF4444),
         ),
@@ -35,7 +35,7 @@ class VeliBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.payment_rounded,
-          label: 'Odemeler',
+          label: 'Ödemeler',
           pageBuilder: (_) => const VeliOdemePage(),
           sidebarColor: const Color(0xFF10B981),
         ),

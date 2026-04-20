@@ -9,7 +9,8 @@ class VeliChildrenDashboardPage extends StatefulWidget {
   const VeliChildrenDashboardPage({super.key});
 
   @override
-  State<VeliChildrenDashboardPage> createState() => _VeliChildrenDashboardPageState();
+  State<VeliChildrenDashboardPage> createState() =>
+      _VeliChildrenDashboardPageState();
 }
 
 class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
@@ -24,22 +25,44 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
   Future<void> _loadChildren() async {
     await AccountingFinanceStore.instance.loadDashboard();
     await AttendanceService.instance.refresh();
-    final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
+    final linkedChildren = await LinkedChildrenService.instance
+        .loadLinkedChildren();
     final examResults = await SchoolFeedApiService.instance.fetchExamResults();
 
     final rows = linkedChildren.map((child) {
       final attendance = AttendanceService.instance.forStudent(child.fullName);
-      final absent = attendance.where((item) => item.status == 'Devamsiz').length;
-      final overdue = AccountingFinanceStore.instance.installments
-          .where((item) => item.student == child.fullName && item.status == 'Geciken')
+      final absent = attendance
+          .where((item) => item.status == 'Devamsiz')
           .length;
-      final childScores = examResults.where((item) => _normalize(item.studentName) == _normalize(child.fullName)).toList();
+      final overdue = AccountingFinanceStore.instance.installments
+          .where(
+            (item) =>
+                item.student == child.fullName && item.status == 'Geciken',
+          )
+          .length;
+      final childScores = examResults
+          .where(
+            (item) =>
+                _normalize(item.studentName) == _normalize(child.fullName),
+          )
+          .toList();
       final average = childScores.isEmpty
           ? 0.0
-          : childScores.fold<int>(0, (sum, item) => sum + item.score) / childScores.length;
-      final note = overdue > 0 ? '$overdue finans uyarisi' : '$absent devamsizlik kaydi';
-      final color = child.className.contains('11') ? const Color(0xFF2563EB) : const Color(0xFF0F766E);
-      return (child.fullName, child.className, '${average.toStringAsFixed(1)} ortalama', note, color);
+          : childScores.fold<int>(0, (sum, item) => sum + item.score) /
+                childScores.length;
+      final note = overdue > 0
+          ? '$overdue finans uyarısi'
+          : '$absent devamsızlık kaydı';
+      final color = child.className.contains('11')
+          ? const Color(0xFF2563EB)
+          : const Color(0xFF0F766E);
+      return (
+        child.fullName,
+        child.className,
+        '${average.toStringAsFixed(1)} ortalama',
+        note,
+        color,
+      );
     }).toList();
 
     if (!mounted) return;
@@ -51,7 +74,12 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
     final children = _children;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Cocuk Bazli Dashboard', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Çocuk Bazli Dashboard',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: children
@@ -73,7 +101,13 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
                         children: [
                           CircleAvatar(
                             backgroundColor: child.$5.withValues(alpha: 0.12),
-                            child: Text(child.$1[0], style: TextStyle(color: child.$5, fontWeight: FontWeight.w900)),
+                            child: Text(
+                              child.$1[0],
+                              style: TextStyle(
+                                color: child.$5,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                           const SizedBox(width: 12),
                           Expanded(
@@ -84,10 +118,14 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
                                   child.$1.replaceAll('Yilmaz', 'Yılmaz'),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                                  style: Theme.of(context).textTheme.titleSmall
+                                      ?.copyWith(fontWeight: FontWeight.w900),
                                 ),
                                 const SizedBox(height: 2),
-                                Text(child.$2, style: Theme.of(context).textTheme.bodySmall),
+                                Text(
+                                  child.$2,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
                               ],
                             ),
                           ),
@@ -124,9 +162,9 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
       child: Text(
         text,
         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: color,
-              fontWeight: FontWeight.w700,
-            ),
+          color: color,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -143,9 +181,9 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Sinif: ${child.$2}'),
+            Text('Sınıf: ${child.$2}'),
             const SizedBox(height: 8),
-            Text('Akademik Ozet: ${child.$3}'),
+            Text('Akademik Özet: ${child.$3}'),
             const SizedBox(height: 8),
             Text('Durum: ${child.$4}'),
           ],

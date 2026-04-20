@@ -46,7 +46,8 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
           ? items
           : items.where((item) {
               final teacherName = item['teacherName'] as String? ?? '';
-              return _normalizeText(teacherName) == _normalizeText(_teacherName);
+              return _normalizeText(teacherName) ==
+                  _normalizeText(_teacherName);
             }).toList();
       if (!mounted) return;
       setState(() {
@@ -67,7 +68,9 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
   }
 
   List<Map<String, dynamic>> get _answeredQuestions {
-    return _questions.where((item) => _teacherReplies(item).isNotEmpty).toList();
+    return _questions
+        .where((item) => _teacherReplies(item).isNotEmpty)
+        .toList();
   }
 
   List<Map<String, dynamic>> _teacherReplies(Map<String, dynamic> item) {
@@ -79,7 +82,9 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
     }).toList();
   }
 
-  List<Map<String, dynamic>> _visibleQuestions(List<Map<String, dynamic>> source) {
+  List<Map<String, dynamic>> _visibleQuestions(
+    List<Map<String, dynamic>> source,
+  ) {
     if (_searchQuery.trim().isEmpty) {
       return source;
     }
@@ -107,8 +112,9 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
       if (createdAt == null || replies.isEmpty) {
         continue;
       }
-      final repliedAt =
-          DateTime.tryParse(replies.last['createdAt'] as String? ?? '');
+      final repliedAt = DateTime.tryParse(
+        replies.last['createdAt'] as String? ?? '',
+      );
       if (repliedAt == null) {
         continue;
       }
@@ -141,10 +147,10 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
     if (date == null) return value;
     final diff = DateTime.now().difference(date);
     if (diff.inMinutes < 1) return 'Simdi';
-    if (diff.inHours < 1) return '${diff.inMinutes} dk once';
-    if (diff.inDays < 1) return '${diff.inHours} saat once';
+    if (diff.inHours < 1) return '${diff.inMinutes} dk önce';
+    if (diff.inDays < 1) return '${diff.inHours} saat önce';
     if (diff.inDays == 1) return 'Dun';
-    return '${diff.inDays} gun once';
+    return '${diff.inDays} gün önce';
   }
 
   @override
@@ -159,7 +165,7 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
         title: "Soru Kutusu",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${_pendingQuestions.length} bekleyen soru',
         showBackButton: true,
       ),
@@ -316,7 +322,9 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
             Text(
               title,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                color: theme.textTheme.bodySmall?.color?.withValues(
+                  alpha: 0.72,
+                ),
               ),
             ),
           ],
@@ -453,7 +461,9 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.14),
+                backgroundColor: theme.colorScheme.primary.withValues(
+                  alpha: 0.14,
+                ),
                 child: Text(
                   initials,
                   style: TextStyle(
@@ -477,14 +487,19 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
                     Text(
                       '$className • ${_formatRelative(item['lastActivity'] as String? ?? item['createdAt'] as String?)}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: answered
                       ? const Color(0xFF69C36D).withValues(alpha: 0.14)
@@ -555,7 +570,7 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: Text(answered ? "Goruntule" : "Yanitla"),
+                  child: Text(answered ? "Görüntüle" : "Yanitla"),
                 ),
               ),
             ],

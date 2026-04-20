@@ -22,10 +22,7 @@ class _ExamsPageState extends State<ExamsPage> {
   List<Map<String, dynamic>> _completedExams = const [];
   List<Map<String, dynamic>> _upcomingExams = const [];
 
-  final List<String> tabs = [
-    "Sınavlarım",
-    "Sonuçlarım",
-  ];
+  final List<String> tabs = ["Sınavlarım", "Sonuçlarım"];
 
   @override
   void initState() {
@@ -85,14 +82,14 @@ class _ExamsPageState extends State<ExamsPage> {
                 "net": item.questionCount,
                 "sources": item.sources
                     .map(
-                    (source) => {
-                      "questionId": source.questionId,
-                      "title": source.title,
-                      "type": source.type,
-                      "imagePath": source.imagePath,
-                      "imagePlacement": source.imagePlacement,
-                    },
-                  )
+                      (source) => {
+                        "questionId": source.questionId,
+                        "title": source.title,
+                        "type": source.type,
+                        "imagePath": source.imagePath,
+                        "imagePlacement": source.imagePlacement,
+                      },
+                    )
                     .toList(),
               },
             )
@@ -106,8 +103,8 @@ class _ExamsPageState extends State<ExamsPage> {
                 "subject": item.subject,
                 "date": item.date,
                 "questionCount": item.net > 0 ? item.net : 0,
-                "duration": "Sonuc Kaydi",
-                "status": "Tamamlandi",
+                "duration": "Sonuç Kaydı",
+                "status": "Tamamlandı",
                 "statusColor": const Color(0xFF69C36D),
                 "accentColor": _accentColorForSubject(item.subject),
                 "score": item.score,
@@ -139,9 +136,7 @@ class _ExamsPageState extends State<ExamsPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Sinavlarim"),
-      ),
+      appBar: AppBar(title: const Text("Sınavlarım")),
       body: RefreshIndicator(
         onRefresh: _loadExams,
         child: SingleChildScrollView(
@@ -179,12 +174,10 @@ class _ExamsPageState extends State<ExamsPage> {
                       : _messageCard(
                           theme,
                           icon: Icons.fact_check_outlined,
-                          message: 'Henuz tamamlanmis sinav sonucu bulunmuyor.',
+                          message: 'Henüz tamamlanmış sınav sonucu bulunmuyor.',
                         )
                 else
-                  ...currentList.map(
-                    (item) => _examCard(theme, isDark, item),
-                  ),
+                  ...currentList.map((item) => _examCard(theme, isDark, item)),
               ],
             ),
           ),
@@ -200,10 +193,7 @@ class _ExamsPageState extends State<ExamsPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF7A00),
-            Color(0xFFFFA24A),
-          ],
+          colors: [Color(0xFFFF7A00), Color(0xFFFFA24A)],
         ),
         boxShadow: [
           BoxShadow(
@@ -309,8 +299,9 @@ class _ExamsPageState extends State<ExamsPage> {
                 tabs[index],
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color:
-                      selected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                  color: selected
+                      ? Colors.white
+                      : theme.textTheme.bodyMedium?.color,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -347,11 +338,7 @@ class _ExamsPageState extends State<ExamsPage> {
     );
   }
 
-  Widget _examCard(
-    ThemeData theme,
-    bool isDark,
-    Map<String, dynamic> item,
-  ) {
+  Widget _examCard(ThemeData theme, bool isDark, Map<String, dynamic> item) {
     final isCompleted = selectedTab == 1;
     final accent = item["accentColor"] as Color;
     final sources = (item["sources"] as List<dynamic>? ?? const []);
@@ -384,7 +371,9 @@ class _ExamsPageState extends State<ExamsPage> {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(26),
+              ),
             ),
             child: Stack(
               children: [
@@ -418,13 +407,18 @@ class _ExamsPageState extends State<ExamsPage> {
                         ),
                         const Spacer(),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
-                            isCompleted ? 'Sonuç' : '${item["questionCount"]} soru',
+                            isCompleted
+                                ? 'Sonuç'
+                                : '${item["questionCount"]} soru',
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
@@ -474,8 +468,16 @@ class _ExamsPageState extends State<ExamsPage> {
                   runSpacing: 8,
                   children: [
                     _pill(theme, item["type"] as String, subjectTheme.ink),
-                    _pill(theme, item["className"] as String, const Color(0xFF475569)),
-                    _pill(theme, item["status"] as String, item["statusColor"] as Color),
+                    _pill(
+                      theme,
+                      item["className"] as String,
+                      const Color(0xFF475569),
+                    ),
+                    _pill(
+                      theme,
+                      item["status"] as String,
+                      item["statusColor"] as Color,
+                    ),
                   ],
                 ),
                 const SizedBox(height: 14),
@@ -492,7 +494,9 @@ class _ExamsPageState extends State<ExamsPage> {
                         child: _detailMetric(
                           theme,
                           icon: Icons.calendar_today_outlined,
-                          label: isCompleted ? 'Sınav Tarihi' : 'Planlanan Tarih',
+                          label: isCompleted
+                              ? 'Sınav Tarihi'
+                              : 'Planlanan Tarih',
                           value: item["date"] as String,
                         ),
                       ),
@@ -523,7 +527,9 @@ class _ExamsPageState extends State<ExamsPage> {
                       child: _numberMetric(
                         theme,
                         label: isCompleted ? 'Net' : 'Kaynak',
-                        value: isCompleted ? '${item["net"]}' : '${sources.length}',
+                        value: isCompleted
+                            ? '${item["net"]}'
+                            : '${sources.length}',
                       ),
                     ),
                     if (isCompleted) ...[
@@ -542,34 +548,49 @@ class _ExamsPageState extends State<ExamsPage> {
                   const SizedBox(height: 14),
                   Text(
                     'Sınav İçeriği',
-                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                  ),
-                  const SizedBox(height: 10),
-                  ...sources.take(3).map(
-                    (source) => Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 8),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                      decoration: BoxDecoration(
-                        color: theme.scaffoldBackgroundColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.checklist_rtl_rounded, color: accent, size: 18),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Text(
-                              (source as Map<String, dynamic>)["title"]?.toString() ?? 'Soru kaynağı',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-                            ),
-                          ),
-                        ],
-                      ),
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  ...sources
+                      .take(3)
+                      .map(
+                        (source) => Container(
+                          width: double.infinity,
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          decoration: BoxDecoration(
+                            color: theme.scaffoldBackgroundColor,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.checklist_rtl_rounded,
+                                color: accent,
+                                size: 18,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  (source as Map<String, dynamic>)["title"]
+                                          ?.toString() ??
+                                      'Soru kaynağı',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: theme.textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                 ],
                 const SizedBox(height: 16),
                 Row(
@@ -598,7 +619,7 @@ class _ExamsPageState extends State<ExamsPage> {
                               MaterialPageRoute(
                                 builder: (_) => StudentExamHistoryPage(
                                   studentName: _studentName,
-                                  title: 'Sinav Sonuclarim',
+                                  title: 'Sınav Sonuçlarım',
                                 ),
                               ),
                             );
@@ -610,7 +631,8 @@ class _ExamsPageState extends State<ExamsPage> {
                                   plannedExamId: item["id"] as String?,
                                   examTitle: item["title"] as String?,
                                   subject: item["subject"] as String?,
-                                  questionCount: item["questionCount"] as int? ?? 10,
+                                  questionCount:
+                                      item["questionCount"] as int? ?? 10,
                                 ),
                               ),
                             );
@@ -621,7 +643,7 @@ class _ExamsPageState extends State<ExamsPage> {
                               ? Icons.bar_chart_rounded
                               : Icons.play_arrow_rounded,
                         ),
-                        label: Text(isCompleted ? "Sonucu Gor" : "Sinava Gir"),
+                        label: Text(isCompleted ? "Sonuçu Gör" : "Sınava Gir"),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accent,
                           foregroundColor: Colors.white,
@@ -673,13 +695,17 @@ class _ExamsPageState extends State<ExamsPage> {
               Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                  color: theme.textTheme.bodySmall?.color?.withValues(
+                    alpha: 0.72,
+                  ),
                 ),
               ),
               const SizedBox(height: 2),
               Text(
                 value,
-                style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -703,7 +729,9 @@ class _ExamsPageState extends State<ExamsPage> {
         children: [
           Text(
             value,
-            style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 4),
           Text(
@@ -716,7 +744,6 @@ class _ExamsPageState extends State<ExamsPage> {
       ),
     );
   }
-
 }
 
 class _ExamSubjectTheme {

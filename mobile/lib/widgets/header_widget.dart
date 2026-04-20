@@ -32,7 +32,8 @@ class _HeaderWidgetState extends State<HeaderWidget> {
     if (!mounted) return;
     setState(() {
       xp = currentXp;
-      firstName = (session?.fullName.split(' ').firstOrNull ?? 'Öğrenci').trim();
+      firstName = (session?.fullName.split(' ').firstOrNull ?? 'Öğrenci')
+          .trim();
     });
   }
 
@@ -51,18 +52,17 @@ class _HeaderWidgetState extends State<HeaderWidget> {
           style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 6),
-        Text("Bugün harika şeyler öğrenmeye hazır mısın?",
-            style: TextStyle(color: Colors.grey.shade500)),
+        Text(
+          "Bugün harika şeyler öğrenmeye hazır mısın?",
+          style: TextStyle(color: Colors.grey.shade500),
+        ),
         const SizedBox(height: 12),
         TweenAnimationBuilder<double>(
           tween: Tween(begin: 0, end: progressInLevel),
           duration: const Duration(seconds: 1),
           builder: (context, value, _) => ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            child: LinearProgressIndicator(
-              value: value,
-              minHeight: 12,
-            ),
+            child: LinearProgressIndicator(value: value, minHeight: 12),
           ),
         ),
         const SizedBox(height: 6),

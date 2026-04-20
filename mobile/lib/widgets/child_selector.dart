@@ -56,7 +56,7 @@ class _ChildSelectorState extends State<ChildSelector> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            'Cocuk yok',
+            'Çocuk yok',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: theme.textTheme.bodyLarge?.color),
@@ -69,59 +69,57 @@ class _ChildSelectorState extends State<ChildSelector> {
       constraints: const BoxConstraints(maxWidth: 150),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
-        isExpanded: true,
-        value: selectedChild,
+          isExpanded: true,
+          value: selectedChild,
 
-        /// DARK MODE DROPDOWN RENK
-        dropdownColor: theme.cardColor,
+          /// DARK MODE DROPDOWN RENK
+          dropdownColor: theme.cardColor,
 
-        icon: Icon(
-          Icons.keyboard_arrow_down,
-          color: theme.textTheme.bodyLarge!.color,
-        ),
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            color: theme.textTheme.bodyLarge!.color,
+          ),
 
-        style: TextStyle(
-          color: theme.textTheme.bodyLarge!.color,
-          fontWeight: FontWeight.w500,
-        ),
+          style: TextStyle(
+            color: theme.textTheme.bodyLarge!.color,
+            fontWeight: FontWeight.w500,
+          ),
 
-        items: children.map((child) {
-          return DropdownMenuItem(
-            value: child,
-            child: Row(
-              children: [
-                const CircleAvatar(
-                  radius: 10,
-                  backgroundImage:
-                      NetworkImage("https://i.pravatar.cc/150?img=3"),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    child,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: theme.textTheme.bodyLarge!.color,
+          items: children.map((child) {
+            return DropdownMenuItem(
+              value: child,
+              child: Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 10,
+                    backgroundImage: NetworkImage(
+                      "https://i.pravatar.cc/150?img=3",
                     ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }).toList(),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      child,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: theme.textTheme.bodyLarge!.color),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
 
-        onChanged: (value) {
-          if (value == null) return;
+          onChanged: (value) {
+            if (value == null) return;
 
-          setState(() {
-            selectedChild = value;
-          });
+            setState(() {
+              selectedChild = value;
+            });
 
-          widget.onChanged(value);
-
-        },
-      ),
+            widget.onChanged(value);
+          },
+        ),
       ),
     );
   }

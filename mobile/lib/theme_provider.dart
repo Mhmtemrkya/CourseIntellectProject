@@ -3,13 +3,13 @@ import 'theme.dart';
 
 class ThemeProvider extends ChangeNotifier {
   ThemeProvider()
-      : _isDarkMode =
-            WidgetsBinding.instance.platformDispatcher.platformBrightness ==
-                Brightness.dark,
-        _brandPrimary = const Color(0xFF00354F),
-        _brandAccent = const Color(0xFFD9790B),
-        _tenantLogo = null,
-        _tenantName = '';
+    : _isDarkMode =
+          WidgetsBinding.instance.platformDispatcher.platformBrightness ==
+          Brightness.dark,
+      _brandPrimary = const Color(0xFF00354F),
+      _brandAccent = const Color(0xFFD9790B),
+      _tenantLogo = null,
+      _tenantName = '';
 
   bool _isDarkMode;
   Color _brandPrimary;
@@ -27,11 +27,11 @@ class ThemeProvider extends ChangeNotifier {
   String get tenantName => _tenantName;
 
   /// MaterialApp için themeMode
-  ThemeMode get themeMode =>
-      _isDarkMode ? ThemeMode.dark : ThemeMode.light;
+  ThemeMode get themeMode => _isDarkMode ? ThemeMode.dark : ThemeMode.light;
 
   /// Dinamik tema — brand rengine göre üretilir
-  ThemeData get lightTheme => buildDynamicTheme(_brandPrimary, Brightness.light);
+  ThemeData get lightTheme =>
+      buildDynamicTheme(_brandPrimary, Brightness.light);
   ThemeData get darkTheme => buildDynamicTheme(_brandPrimary, Brightness.dark);
 
   /// Theme değiştir

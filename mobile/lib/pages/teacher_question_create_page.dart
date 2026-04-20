@@ -11,13 +11,11 @@ import '../widgets/responsive_layout.dart';
 class TeacherQuestionCreatePage extends StatefulWidget {
   final QuestionBankRecord? initialQuestion;
 
-  const TeacherQuestionCreatePage({
-    super.key,
-    this.initialQuestion,
-  });
+  const TeacherQuestionCreatePage({super.key, this.initialQuestion});
 
   @override
-  State<TeacherQuestionCreatePage> createState() => _TeacherQuestionCreatePageState();
+  State<TeacherQuestionCreatePage> createState() =>
+      _TeacherQuestionCreatePageState();
 }
 
 class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
@@ -63,6 +61,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
     }
     return ['Tüm Sınıflar', ..._fallbackClasses];
   }
+
   bool get _isMultipleChoice => _type == 'Çoktan Seçmeli';
   bool get _isTrueFalse => _type == 'Doğru / Yanlış';
 
@@ -88,7 +87,11 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
       _topicController.text = initial.topic;
       _questionController.text = initial.questionText;
       _answerKeyController.text = initial.expectedAnswer ?? '';
-      for (var i = 0; i < initial.options.length && i < _optionControllers.length; i++) {
+      for (
+        var i = 0;
+        i < initial.options.length && i < _optionControllers.length;
+        i++
+      ) {
         _optionControllers[i].text = initial.options[i];
       }
       _correctOptionIndex = initial.correctOptionIndex ?? 0;
@@ -99,34 +102,43 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
   Future<void> _loadClassOptions() async {
     await QuestionBankStore.instance.loadQuestions();
     await StudentRegistryStore.instance.ensureLoaded();
-    final apiClasses = await AdminDirectoryApiService.instance.fetchClasses().catchError((_) => <String>[]);
+    final apiClasses = await AdminDirectoryApiService.instance
+        .fetchClasses()
+        .catchError((_) => <String>[]);
     final classes = {
-      ...apiClasses.map((item) => item.trim()).where((item) => item.isNotEmpty && item != 'Tüm Sınıflar'),
+      ...apiClasses
+          .map((item) => item.trim())
+          .where((item) => item.isNotEmpty && item != 'Tüm Sınıflar'),
       ...StudentRegistryStore.instance.students
           .map((item) => item.className.trim())
           .where((item) => item.isNotEmpty),
       ...QuestionBankStore.instance.questions.expand(
-        (item) => item.classTargets.map((target) => target.trim()).where((target) => target.isNotEmpty && target != 'Tüm Sınıflar'),
+        (item) => item.classTargets
+            .map((target) => target.trim())
+            .where((target) => target.isNotEmpty && target != 'Tüm Sınıflar'),
       ),
       ..._selectedClasses.where((item) => item != 'Tüm Sınıflar'),
       ..._fallbackClasses,
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     final subjects = {
       ..._defaultSubjects,
       ...QuestionBankStore.instance.questions
           .map((item) => item.subject.trim())
           .where((item) => item.isNotEmpty),
-    }.toList()
-      ..sort();
+    }.toList()..sort();
     if (!mounted) return;
     setState(() {
-      _classOptions = ['Tüm Sınıflar', ...(classes.isEmpty ? _fallbackClasses : classes)];
+      _classOptions = [
+        'Tüm Sınıflar',
+        ...(classes.isEmpty ? _fallbackClasses : classes),
+      ];
       _subjectOptions = subjects;
       if (!_subjectOptions.contains(_subject)) {
         _subject = _subjectOptions.first;
       }
-      _selectedClasses.removeWhere((item) => item != 'Tüm Sınıflar' && !classes.contains(item));
+      _selectedClasses.removeWhere(
+        (item) => item != 'Tüm Sınıflar' && !classes.contains(item),
+      );
       if (_selectedClasses.isEmpty) {
         _selectedClasses.add('Tüm Sınıflar');
       }
@@ -176,31 +188,42 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
 
   Future<void> _save() async {
     if (_isSaving) return;
-    if (_topicController.text.trim().isEmpty || _questionController.text.trim().isEmpty) {
+    if (_topicController.text.trim().isEmpty ||
+        _questionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Konu ve soru metni zorunludur.')),
       );
       return;
     }
 
-    final optionValues = _optionControllers.map((item) => item.text.trim()).where((item) => item.isNotEmpty).toList();
+    final optionValues = _optionControllers
+        .map((item) => item.text.trim())
+        .where((item) => item.isNotEmpty)
+        .toList();
     if (_isMultipleChoice && optionValues.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Çoktan seçmeli sorular için en az iki seçenek girin.')),
+        const SnackBar(
+          content: Text('Çoktan seçmeli sorular için en az iki seçenek girin.'),
+        ),
       );
       return;
     }
 
     final session = await AuthSessionStore.instance.load();
     final teacherName = session?.fullName ?? 'Öğretmen';
-    final setKey = widget.initialQuestion?.questionSetKey ??
+    final setKey =
+        widget.initialQuestion?.questionSetKey ??
         'set-${DateTime.now().microsecondsSinceEpoch}';
-    final setTitle = widget.initialQuestion?.questionSetTitle ?? _topicController.text.trim();
+    final setTitle =
+        widget.initialQuestion?.questionSetTitle ??
+        _topicController.text.trim();
     final expectedAnswer = _isMultipleChoice
         ? optionValues.elementAtOrNull(_correctOptionIndex)
         : (_isTrueFalse
-            ? (_answerKeyController.text.trim() == 'Yanlış' ? 'Yanlış' : 'Doğru')
-            : _answerKeyController.text.trim());
+              ? (_answerKeyController.text.trim() == 'Yanlış'
+                    ? 'Yanlış'
+                    : 'Doğru')
+              : _answerKeyController.text.trim());
 
     setState(() {
       _isSaving = true;
@@ -213,19 +236,18 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
           _imagePath!.isNotEmpty &&
           !_imagePath!.startsWith('http://') &&
           !_imagePath!.startsWith('https://')) {
-        uploadedImagePath = await QuestionBankApiService.instance.uploadQuestionAsset(
-          path: _imagePath!,
-          folder: 'question-images',
-        );
+        uploadedImagePath = await QuestionBankApiService.instance
+            .uploadQuestionAsset(path: _imagePath!, folder: 'question-images');
       }
       if (_solutionAssetPath != null &&
           _solutionAssetPath!.isNotEmpty &&
           !_solutionAssetPath!.startsWith('http://') &&
           !_solutionAssetPath!.startsWith('https://')) {
-        uploadedSolutionPath = await QuestionBankApiService.instance.uploadQuestionAsset(
-          path: _solutionAssetPath!,
-          folder: 'question-solutions',
-        );
+        uploadedSolutionPath = await QuestionBankApiService.instance
+            .uploadQuestionAsset(
+              path: _solutionAssetPath!,
+              folder: 'question-solutions',
+            );
       }
 
       if (_isEditMode) {
@@ -277,9 +299,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
       setState(() {
         _isSaving = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
       return;
     }
 
@@ -312,19 +334,26 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                       color: const Color(0xFFD1FAE5),
                       borderRadius: BorderRadius.circular(18),
                     ),
-                    child: const Icon(Icons.check_rounded, color: Color(0xFF047857), size: 30),
+                    child: const Icon(
+                      Icons.check_rounded,
+                      color: Color(0xFF047857),
+                      size: 30,
+                    ),
                   ),
                   const SizedBox(height: 14),
                   Text(
                     _isEditMode ? 'Soru güncellendi' : 'Soru yayınlandı',
-                    style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                    style: Theme.of(dialogContext).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     _isEditMode
                         ? 'Güncellenen soru öğrenci soru bankasında yeni haliyle görünüyor.'
                         : 'Soru artık öğrencilerin soru bankasında görünüyor.',
-                    style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.4),
+                    style: Theme.of(
+                      dialogContext,
+                    ).textTheme.bodyMedium?.copyWith(height: 1.4),
                     textAlign: TextAlign.center,
                   ),
                 ],
@@ -342,9 +371,12 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final fileName = _imagePath == null ? 'Henüz görsel eklenmedi.' : _imagePath!.split('/').last;
-    final solutionFileName =
-        _solutionAssetPath == null ? 'Henüz çözüm eki eklenmedi.' : _solutionAssetPath!.split('/').last;
+    final fileName = _imagePath == null
+        ? 'Henüz görsel eklenmedi.'
+        : _imagePath!.split('/').last;
+    final solutionFileName = _solutionAssetPath == null
+        ? 'Henüz çözüm eki eklenmedi.'
+        : _solutionAssetPath!.split('/').last;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -372,8 +404,13 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _isEditMode ? 'Soru kaydını güncelleyin' : 'Yeni soru ekleyin',
-                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                      _isEditMode
+                          ? 'Soru kaydını güncelleyin'
+                          : 'Yeni soru ekleyin',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -411,23 +448,36 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         final isWide = constraints.maxWidth >= 720;
                         final children = [
                           SizedBox(
-                            width: isWide ? (constraints.maxWidth - 12) / 2 : double.infinity,
+                            width: isWide
+                                ? (constraints.maxWidth - 12) / 2
+                                : double.infinity,
                             child: DropdownButtonFormField<String>(
                               initialValue: _subject,
-                              decoration: const InputDecoration(labelText: 'Ders'),
+                              decoration: const InputDecoration(
+                                labelText: 'Ders',
+                              ),
                               items: _subjectOptions
-                                  .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                                  .map(
+                                    (item) => DropdownMenuItem(
+                                      value: item,
+                                      child: Text(item),
+                                    ),
+                                  )
                                   .toList(),
-                              onChanged: (value) => setState(() => _subject = value ?? _subject),
+                              onChanged: (value) =>
+                                  setState(() => _subject = value ?? _subject),
                             ),
                           ),
                           SizedBox(
-                            width: isWide ? (constraints.maxWidth - 12) / 2 : double.infinity,
+                            width: isWide
+                                ? (constraints.maxWidth - 12) / 2
+                                : double.infinity,
                             child: TextField(
                               controller: _topicController,
                               decoration: const InputDecoration(
                                 labelText: 'Konu',
-                                hintText: 'Örnek: Parabol, Türev, Organik Kimya',
+                                hintText:
+                                    'Örnek: Parabol, Türev, Organik Kimya',
                               ),
                             ),
                           ),
@@ -443,7 +493,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                     LayoutBuilder(
                       builder: (context, constraints) {
                         final isWide = constraints.maxWidth >= 720;
-                        final fieldWidth = isWide ? (constraints.maxWidth - 12) / 2 : double.infinity;
+                        final fieldWidth = isWide
+                            ? (constraints.maxWidth - 12) / 2
+                            : double.infinity;
                         return Wrap(
                           spacing: 12,
                           runSpacing: 12,
@@ -452,26 +504,51 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                               width: fieldWidth,
                               child: DropdownButtonFormField<String>(
                                 initialValue: _difficulty,
-                                decoration: const InputDecoration(labelText: 'Zorluk'),
+                                decoration: const InputDecoration(
+                                  labelText: 'Zorluk',
+                                ),
                                 items: const [
-                                  DropdownMenuItem(value: 'Kolay', child: Text('Kolay')),
-                                  DropdownMenuItem(value: 'Orta', child: Text('Orta')),
-                                  DropdownMenuItem(value: 'Zor', child: Text('Zor')),
+                                  DropdownMenuItem(
+                                    value: 'Kolay',
+                                    child: Text('Kolay'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Orta',
+                                    child: Text('Orta'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Zor',
+                                    child: Text('Zor'),
+                                  ),
                                 ],
-                                onChanged: (value) => setState(() => _difficulty = value ?? _difficulty),
+                                onChanged: (value) => setState(
+                                  () => _difficulty = value ?? _difficulty,
+                                ),
                               ),
                             ),
                             SizedBox(
                               width: fieldWidth,
                               child: DropdownButtonFormField<String>(
                                 initialValue: _type,
-                                decoration: const InputDecoration(labelText: 'Soru Tipi'),
+                                decoration: const InputDecoration(
+                                  labelText: 'Soru Tipi',
+                                ),
                                 items: const [
-                                  DropdownMenuItem(value: 'Açık Uçlu', child: Text('Açık Uçlu')),
-                                  DropdownMenuItem(value: 'Çoktan Seçmeli', child: Text('Çoktan Seçmeli')),
-                                  DropdownMenuItem(value: 'Doğru / Yanlış', child: Text('Doğru / Yanlış')),
+                                  DropdownMenuItem(
+                                    value: 'Açık Uçlu',
+                                    child: Text('Açık Uçlu'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Çoktan Seçmeli',
+                                    child: Text('Çoktan Seçmeli'),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 'Doğru / Yanlış',
+                                    child: Text('Doğru / Yanlış'),
+                                  ),
                                 ],
-                                onChanged: (value) => setState(() => _type = value ?? _type),
+                                onChanged: (value) =>
+                                    setState(() => _type = value ?? _type),
                               ),
                             ),
                           ],
@@ -493,7 +570,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         controller: _answerKeyController,
                         decoration: const InputDecoration(
                           labelText: 'Cevap Anahtarı',
-                          hintText: 'Öğrencinin cevabı bununla karşılaştırılır.',
+                          hintText:
+                              'Öğrencinin cevabı bununla karşılaştırılır.',
                         ),
                       ),
                     ],
@@ -510,7 +588,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         children: [
                           Text(
                             'Hedef Sınıflar',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const SizedBox(height: 10),
                           Wrap(
@@ -519,7 +599,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                             children: _availableClassOptions.map((item) {
                               final selected = _selectedClasses.contains(item);
                               return ConstrainedBox(
-                                constraints: const BoxConstraints(minHeight: 36),
+                                constraints: const BoxConstraints(
+                                  minHeight: 36,
+                                ),
                                 child: FilterChip(
                                   label: Text(
                                     item,
@@ -573,7 +655,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         children: [
                           Text(
                             'Soru Görseli (Opsiyonel)',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(fileName, style: theme.textTheme.bodyMedium),
@@ -594,8 +678,11 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                               ),
                               if (_imagePath != null)
                                 OutlinedButton.icon(
-                                  onPressed: () => setState(() => _imagePath = null),
-                                  icon: const Icon(Icons.delete_outline_rounded),
+                                  onPressed: () =>
+                                      setState(() => _imagePath = null),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                  ),
                                   label: const Text('Kaldır'),
                                 ),
                             ],
@@ -616,10 +703,15 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         children: [
                           Text(
                             'Çözüm Eki',
-                            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                            style: theme.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           const SizedBox(height: 8),
-                          Text(solutionFileName, style: theme.textTheme.bodyMedium),
+                          Text(
+                            solutionFileName,
+                            style: theme.textTheme.bodyMedium,
+                          ),
                           if (_solutionAssetType != null) ...[
                             const SizedBox(height: 6),
                             Text(
@@ -634,7 +726,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                             children: [
                               OutlinedButton.icon(
                                 onPressed: _pickSolutionAsset,
-                                icon: const Icon(Icons.playlist_add_check_circle_outlined),
+                                icon: const Icon(
+                                  Icons.playlist_add_check_circle_outlined,
+                                ),
                                 label: const Text('Çözüm Eki Seç'),
                               ),
                               if (_solutionAssetPath != null)
@@ -643,7 +737,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                                     _solutionAssetPath = null;
                                     _solutionAssetType = null;
                                   }),
-                                  icon: const Icon(Icons.delete_outline_rounded),
+                                  icon: const Icon(
+                                    Icons.delete_outline_rounded,
+                                  ),
                                   label: const Text('Kaldır'),
                                 ),
                             ],
@@ -656,9 +752,13 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                       SwitchListTile.adaptive(
                         contentPadding: EdgeInsets.zero,
                         value: _revealCorrectAnswerToStudent,
-                        onChanged: (value) => setState(() => _revealCorrectAnswerToStudent = value),
+                        onChanged: (value) => setState(
+                          () => _revealCorrectAnswerToStudent = value,
+                        ),
                         title: const Text('Doğru cevap öğrenciye görünsün'),
-                        subtitle: const Text('Kapalıysa doğru seçenek sadece öğretmen detayında görünür.'),
+                        subtitle: const Text(
+                          'Kapalıysa doğru seçenek sadece öğretmen detayında görünür.',
+                        ),
                       ),
                     ],
                     const SizedBox(height: 18),
@@ -672,8 +772,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                           _isSaving
                               ? 'Kaydediliyor...'
                               : _isEditMode
-                                  ? 'Güncellemeyi Kaydet'
-                                  : 'Soru Bankasına Yayınla',
+                              ? 'Güncellemeyi Kaydet'
+                              : 'Soru Bankasına Yayınla',
                         ),
                       ),
                     ),
@@ -700,12 +800,15 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
         children: [
           Text(
             'Seçenekler',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 12),
           RadioGroup<int>(
             groupValue: _correctOptionIndex,
-            onChanged: (value) => setState(() => _correctOptionIndex = value ?? 0),
+            onChanged: (value) =>
+                setState(() => _correctOptionIndex = value ?? 0),
             child: Column(
               children: List.generate(_optionControllers.length, (index) {
                 return Padding(
@@ -717,7 +820,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         child: TextField(
                           controller: _optionControllers[index],
                           decoration: InputDecoration(
-                            labelText: 'Seçenek ${String.fromCharCode(65 + index)}',
+                            labelText:
+                                'Seçenek ${String.fromCharCode(65 + index)}',
                           ),
                         ),
                       ),
@@ -737,7 +841,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
   }
 
   Widget _trueFalseSection(ThemeData theme) {
-    final current = _answerKeyController.text.trim() == 'Yanlış' ? 'Yanlış' : 'Doğru';
+    final current = _answerKeyController.text.trim() == 'Yanlış'
+        ? 'Yanlış'
+        : 'Doğru';
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -750,7 +856,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
         children: [
           Text(
             'Doğru Cevap',
-            style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            style: theme.textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -761,7 +869,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
               return ChoiceChip(
                 label: Text(item),
                 selected: selected,
-                onSelected: (_) => setState(() => _answerKeyController.text = item),
+                onSelected: (_) =>
+                    setState(() => _answerKeyController.text = item),
               );
             }).toList(),
           ),

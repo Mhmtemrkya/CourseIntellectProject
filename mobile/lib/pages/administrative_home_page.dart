@@ -4,14 +4,15 @@ import '../services/accounting_finance_store.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
+import 'admin_class_management_page.dart';
 import 'admin_announcements_page.dart';
 import 'admin_operations_page.dart';
 import 'admin_parent_registration_page.dart';
+import 'admin_schedule_list_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
 import 'admin_students_page.dart';
-import 'accounting_approvals_page.dart';
 import 'attendance_overview_page.dart';
 import 'administrative_documents_page.dart';
 import 'administrative_notifications_page.dart';
@@ -55,40 +56,55 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
   Widget build(BuildContext context) {
     final todayStudents = _studentStore.students.take(4).toList();
     final activePersonnel = _staffStore.personnel.length;
-    final pendingStudents = _studentStore.students.where((item) => item.status != 'Active' && item.status != 'Aktif').length;
-    final unreadNotifications = _financeStore.notifications.where((item) => item.unread).length;
+    final pendingStudents = _studentStore.students
+        .where((item) => item.status != 'Active' && item.status != 'Aktif')
+        .length;
+    final unreadNotifications = _financeStore.notifications
+        .where((item) => item.unread)
+        .length;
     final todayTasks = [
       (
         'Kayıt belgelerini tamamla',
         pendingStudents > 0
             ? '$pendingStudents öğrenci için durum ve belge kontrolü bekleniyor.'
-            : 'Aktif kayıtların belge akışı sistemde güncel görünüyor.'
+            : 'Aktif kayıtların belge akışı sistemde güncel görünüyor.',
       ),
       (
-        'Hoş geldiniz duyurusu yayınla',
-        '${todayStudents.length} son kayıt için veli ve öğrenci bilgilendirmesi hazır.'
+        'Hoş geldinizz duyurusu yayınla',
+        '${todayStudents.length} son kayıt için veli ve öğrenci bilgilendirmesi hazır.',
       ),
       (
         'Veli dönüşlerini gözden geçir',
-        '$unreadNotifications okunmamis bildirim ve ${_staffStore.staff.length} kadro kaydi izleniyor.'
+        '$unreadNotifications okunmamis bildirim ve ${_staffStore.staff.length} kadro kaydı izleniyor.',
       ),
     ];
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('İdari Panel', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'İdari Panel',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'İdari operasyon',
-            title: 'Kayıt, evrak, duyuru ve iletişim akışlarını tek panelden yönetin.',
-            description: 'Öğrenci işleri, kurumsal duyurular, personel kaydı ve veli iletişimi idari birim panelinde aktif olarak yönetilir.',
+            title:
+                'Kayıt, evrak, duyuru ve iletişim akışlarını tek panelden yönetin.',
+            description:
+                'Öğrenci işleri, kurumsal duyurular, personel kaydı ve veli iletişimi idari birim panelinde aktif olarak yönetilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
-              AdminHeroMetric(label: 'Toplam Öğrenci', value: '${_studentStore.students.length}'),
-              AdminHeroMetric(label: 'Personel', value: '$activePersonnel aktif'),
+              AdminHeroMetric(
+                label: 'Toplam Öğrenci',
+                value: '${_studentStore.students.length}',
+              ),
+              AdminHeroMetric(
+                label: 'Personel',
+                value: '$activePersonnel aktif',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -183,18 +199,8 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   title: 'Bildirimler',
                   value: 'İdari akışı aç',
                   color: const Color(0xFF0F766E),
-                  onTap: () => _openPage(const AdministrativeNotificationsPage()),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  icon: Icons.approval_outlined,
-                  title: 'Finans Onayları',
-                  value: 'Finans taleplerini aç',
-                  color: const Color(0xFF14532D),
-                  onTap: () => _openPage(const AccountingApprovalsPage(canApprove: true, pageTitle: 'Finans Onayları')),
+                  onTap: () =>
+                      _openPage(const AdministrativeNotificationsPage()),
                 ),
               ),
             ],
@@ -226,13 +232,45 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
             ],
           ),
           const SizedBox(height: 12),
-          _metricCard(
-            context,
-            icon: Icons.fact_check_outlined,
-            title: 'Devamsizlik Paneli',
-            value: 'Tum ogrencilerin gunluk yoklamalari',
-            color: const Color(0xFFB42318),
-            onTap: () => _openPage(const AttendanceOverviewPage()),
+          Row(
+            children: [
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.class_outlined,
+                  title: 'Sınıf Ekle',
+                  value: 'Yeni sınıf tanımı oluştur',
+                  color: const Color(0xFF1D4ED8),
+                  onTap: () => _openPage(const AdminClassManagementPage()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.fact_check_outlined,
+                  title: 'Devamsızlık Paneli',
+                  value: 'Tüm öğrencilerin günlük yoklamalari',
+                  color: const Color(0xFFB42318),
+                  onTap: () => _openPage(const AttendanceOverviewPage()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.schedule_rounded,
+                  title: 'Ders Programı',
+                  value: 'Sınıf programlarını düzenle',
+                  color: const Color(0xFF2563EB),
+                  onTap: () => _openPage(const AdminScheduleListPage()),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           AdminPanel(
@@ -241,7 +279,9 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
               children: [
                 const AdminSectionTitle(title: 'Bugünün İş Akışı'),
                 const SizedBox(height: 12),
-                ...todayTasks.map((item) => _taskTile(context, item.$1, item.$2)),
+                ...todayTasks.map(
+                  (item) => _taskTile(context, item.$1, item.$2),
+                ),
               ],
             ),
           ),
@@ -261,13 +301,17 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+                      color: Theme.of(
+                        context,
+                      ).scaffoldBackgroundColor.withValues(alpha: 0.45),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: Row(
                       children: [
                         CircleAvatar(
-                          backgroundColor: const Color(0xFF0F766E).withValues(alpha: 0.12),
+                          backgroundColor: const Color(
+                            0xFF0F766E,
+                          ).withValues(alpha: 0.12),
                           child: Text(
                             student.fullName.characters.first,
                             style: const TextStyle(
@@ -283,14 +327,20 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                             children: [
                               Text(
                                 student.fullName,
-                                style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(fontWeight: FontWeight.w800),
                               ),
                               const SizedBox(height: 4),
-                              Text('${student.className} • ${student.currentSchool}'),
+                              Text(
+                                '${student.className} • ${student.currentSchool}',
+                              ),
                             ],
                           ),
                         ),
-                        AdminAccentBadge(label: student.status, color: const Color(0xFF0F766E)),
+                        AdminAccentBadge(
+                          label: student.status,
+                          color: const Color(0xFF0F766E),
+                        ),
                       ],
                     ),
                   ),
@@ -328,7 +378,12 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
               child: Icon(icon, color: color),
             ),
             const SizedBox(height: 14),
-            Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+            ),
             const SizedBox(height: 6),
             Text(value, style: Theme.of(context).textTheme.bodySmall),
           ],
@@ -342,7 +397,9 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+        color: Theme.of(
+          context,
+        ).scaffoldBackgroundColor.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Row(
@@ -357,9 +414,19 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 4),
-                Text(detail, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                Text(
+                  detail,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(height: 1.4),
+                ),
               ],
             ),
           ),
@@ -369,9 +436,6 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
   }
 
   void _openPage(Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 }

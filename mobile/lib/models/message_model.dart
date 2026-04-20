@@ -1,5 +1,4 @@
 class MessageModel {
-
   String id;
   String text;
   String senderId;
@@ -15,5 +14,4 @@ class MessageModel {
     required this.isRead,
     required this.time,
   });
-
 }

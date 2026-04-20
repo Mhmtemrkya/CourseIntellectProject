@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'admin_courses_page.dart';
 import 'admin_exam_results_page.dart';
+import 'admin_schedule_list_page.dart';
 import '../services/attendance_service.dart';
 import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
@@ -37,42 +39,55 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
   Widget build(BuildContext context) {
     final branchCards = _buildBranchCards();
 
-    final teachers = (_staffStore.teachers.isEmpty ? _staffStore.staff : _staffStore.teachers)
-        .take(4)
-        .map(
-          (teacher) => (
-            teacher.fullName,
-            teacher.branchOrDepartment,
-            teacher.assignedClasses.isEmpty ? 'Sinif atamasi bekleniyor' : '${teacher.assignedClasses.length} sinif',
-            _teacherHealth(teacher.fullName)
-          ),
-        )
-        .toList();
+    final teachers =
+        (_staffStore.teachers.isEmpty
+                ? _staffStore.staff
+                : _staffStore.teachers)
+            .take(4)
+            .map(
+              (teacher) => (
+                teacher.fullName,
+                teacher.branchOrDepartment,
+                teacher.assignedClasses.isEmpty
+                    ? 'Sınıf ataması bekleniyor'
+                    : '${teacher.assignedClasses.length} sınıf',
+                _teacherHealth(teacher.fullName),
+              ),
+            )
+            .toList();
 
-    final absentCount =
-        AttendanceService.instance.all().where((item) => item.status == 'Devamsiz').length;
+    final absentCount = AttendanceService.instance
+        .all()
+        .where((item) => item.status == 'Devamsiz')
+        .length;
     final attendanceRate = AttendanceService.instance.all().isEmpty
         ? 100
         : (((AttendanceService.instance.all().length - absentCount) /
-                    AttendanceService.instance.all().length) *
-                100)
-            .round();
+                      AttendanceService.instance.all().length) *
+                  100)
+              .round();
     final averageScore = _records.isEmpty
         ? 0
-        : (_records.fold<int>(0, (sum, item) => sum + item.score) / _records.length)
-            .round();
+        : (_records.fold<int>(0, (sum, item) => sum + item.score) /
+                  _records.length)
+              .round();
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Akademik Yonetim', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Akademik Yönetim',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Akademik kontrol',
-            title: 'Sinif basarisi, brans sagligi ve ogretmen etkisini kurumsal duzeyde izleyin.',
-            description: 'Yonetici gorunumunde sinav sonuclari, katilim ve ogretmen etkisi birlikte degerlendirilir.',
+            title:
+                'Sınıf başarısı, branş sağlığı ve öğretmen etkisini kurumsal düzeyde izleyin.',
+            description:
+                'Yönetici görünümünde sınav sonuçları, katılım ve öğretmen etkisi birlikte değerlendirilir.',
             metrics: [
               AdminHeroMetric(label: 'Kurum Ort.', value: '$averageScore'),
               AdminHeroMetric(label: 'Devam', value: '%$attendanceRate'),
@@ -100,9 +115,16 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.$1, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(
+                          item.$1,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                         const SizedBox(height: 4),
-                        Text('${item.$2} • ${item.$3}', style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          '${item.$2} • ${item.$3}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ],
                     ),
                   ),
@@ -112,7 +134,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
             ),
           ),
           const SizedBox(height: 18),
-          const AdminSectionTitle(title: 'Ogretmen Etkisi'),
+          const AdminSectionTitle(title: 'Öğretmen Etkisi'),
           const SizedBox(height: 12),
           ...teachers.map(
             (item) => AdminPanel(
@@ -125,29 +147,72 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.$1, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(
+                          item.$1,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                         const SizedBox(height: 4),
-                        Text('${item.$2} • ${item.$3}', style: Theme.of(context).textTheme.bodySmall),
+                        Text(
+                          '${item.$2} • ${item.$3}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
                       ],
                     ),
                   ),
-                  Text(item.$4, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800, color: const Color(0xFF14532D))),
+                  Text(
+                    item.$4,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFF14532D),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
           if (teachers.isEmpty)
-            const AdminPanel(
-              child: Text('Henuz ogretmen kaydi gorunmuyor.'),
-            ),
+            const AdminPanel(child: Text('Henüz öğretmen kaydı görünmüyor.')),
           const SizedBox(height: 18),
+          FilledButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminScheduleListPage()),
+            ),
+            icon: const Icon(Icons.schedule_rounded),
+            label: const Text('Ders Programi Yönetimi'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          FilledButton.icon(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const AdminCoursesPage()),
+            ),
+            icon: const Icon(Icons.menu_book_rounded),
+            label: const Text('Kurs Yönetimi'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
-                child: FilledButton.icon(
+                child: FilledButton.tonalIcon(
                   onPressed: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const TeacherReportsPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const TeacherReportsPage(),
+                    ),
                   ),
                   icon: const Icon(Icons.analytics_outlined),
                   label: const Text('Rapor Merkezi'),
@@ -163,7 +228,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
                     ),
                   ),
                   icon: const Icon(Icons.fact_check_outlined),
-                  label: const Text('Sinav Sonuclari'),
+                  label: const Text('Sınav Sonuçları'),
                 ),
               ),
             ],
@@ -176,7 +241,12 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
   List<(String, String, String, Color)> _buildBranchCards() {
     if (_records.isEmpty) {
       return [
-        ('Veri Yok', 'Ort. 0', 'Sonuc kaydi bekleniyor', const Color(0xFF9E9E9E)),
+        (
+          'Veri Yok',
+          'Ort. 0',
+          'Sonuç kaydı bekleniyor',
+          const Color(0xFF9E9E9E),
+        ),
       ];
     }
 
@@ -187,22 +257,23 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
 
     final cards = grouped.entries.map((entry) {
       final average =
-          (entry.value.fold<int>(0, (sum, item) => sum + item.score) / entry.value.length)
+          (entry.value.fold<int>(0, (sum, item) => sum + item.score) /
+                  entry.value.length)
               .round();
-      final lowest = [...entry.value]..sort((a, b) => a.score.compareTo(b.score));
+      final lowest = [...entry.value]
+        ..sort((a, b) => a.score.compareTo(b.score));
       final color = average >= 80
           ? const Color(0xFF14532D)
           : average >= 70
-              ? const Color(0xFF2563EB)
-              : const Color(0xFFB45309);
+          ? const Color(0xFF2563EB)
+          : const Color(0xFFB45309);
       return (
         entry.key,
         'Ort. $average',
         'Risk: ${lowest.first.studentName}',
         color,
       );
-    }).toList()
-      ..sort((a, b) => a.$2.compareTo(b.$2));
+    }).toList()..sort((a, b) => a.$2.compareTo(b.$2));
 
     return cards.take(4).toList();
   }
@@ -216,13 +287,16 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
       return 'Izleniyor';
     }
 
-    final related = _records.where((item) => classes.contains(item.className)).toList();
+    final related = _records
+        .where((item) => classes.contains(item.className))
+        .toList();
     if (related.isEmpty) {
       return 'Izleniyor';
     }
 
     final average =
-        (related.fold<int>(0, (sum, item) => sum + item.score) / related.length).round();
+        (related.fold<int>(0, (sum, item) => sum + item.score) / related.length)
+            .round();
     return '%$average etki';
   }
 }

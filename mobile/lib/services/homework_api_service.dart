@@ -26,27 +26,37 @@ class HomeworkApiService {
     String folder = 'homework-materials',
   }) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const HomeworkApiException('Oturum bulunamadi.');
+    if (session == null) throw const HomeworkApiException('Oturum bulunamadı.');
 
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/api/uploads').replace(queryParameters: {'folder': folder}),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/uploads',
+      ).replace(queryParameters: {'folder': folder}),
     );
     request.headers['Authorization'] = 'Bearer ${session.accessToken}';
 
     if (file.path != null && file.path!.isNotEmpty) {
-      request.files.add(await http.MultipartFile.fromPath('file', file.path!, filename: file.name));
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path!,
+          filename: file.name,
+        ),
+      );
     } else if (file.bytes != null) {
-      request.files.add(http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name));
+      request.files.add(
+        http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
+      );
     } else {
-      throw const HomeworkApiException('Secilen dosya okunamadi.');
+      throw const HomeworkApiException('Seçilen dosya okunamadı.');
     }
 
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HomeworkApiException('Dosya yuklenemedi (${response.statusCode}).');
+      throw HomeworkApiException('Dosya yüklenemedi (${response.statusCode}).');
     }
 
     final payload = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -60,7 +70,7 @@ class HomeworkApiService {
 
   Future<List<Map<String, dynamic>>> fetchAssignments() async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const HomeworkApiException('Oturum bulunamadi.');
+    if (session == null) throw const HomeworkApiException('Oturum bulunamadı.');
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/homework'),
@@ -68,11 +78,14 @@ class HomeworkApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HomeworkApiException('Odevler alinamadi (${response.statusCode}).');
+      throw HomeworkApiException('Ödevler alınamadı (${response.statusCode}).');
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => _normalizeAssignment(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              _normalizeAssignment(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
@@ -86,7 +99,7 @@ class HomeworkApiService {
     required List<String> materials,
   }) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const HomeworkApiException('Oturum bulunamadi.');
+    if (session == null) throw const HomeworkApiException('Oturum bulunamadı.');
 
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/homework'),
@@ -106,15 +119,19 @@ class HomeworkApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HomeworkApiException('Odev kaydedilemedi (${response.statusCode}).');
+      throw HomeworkApiException(
+        'Ödev kaydedilemedi (${response.statusCode}).',
+      );
     }
 
-    return _normalizeAssignment(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _normalizeAssignment(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<void> deleteAssignment(String id) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const HomeworkApiException('Oturum bulunamadi.');
+    if (session == null) throw const HomeworkApiException('Oturum bulunamadı.');
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/homework/$id'),
@@ -122,7 +139,7 @@ class HomeworkApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HomeworkApiException('Odev silinemedi (${response.statusCode}).');
+      throw HomeworkApiException('Ödev silinemedi (${response.statusCode}).');
     }
   }
 
@@ -133,7 +150,7 @@ class HomeworkApiService {
     required List<String> files,
   }) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const HomeworkApiException('Oturum bulunamadi.');
+    if (session == null) throw const HomeworkApiException('Oturum bulunamadı.');
 
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/homework/$assignmentId/submit'),
@@ -149,10 +166,14 @@ class HomeworkApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw HomeworkApiException('Odev teslim edilemedi (${response.statusCode}).');
+      throw HomeworkApiException(
+        'Ödev teslim edilemedi (${response.statusCode}).',
+      );
     }
 
-    return _normalizeAssignment(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _normalizeAssignment(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Map<String, dynamic> _normalizeAssignment(Map<String, dynamic> map) {
@@ -167,7 +188,8 @@ class HomeworkApiService {
       ...map,
       'id': map['id']?.toString(),
       'deadline': map['deadline'] as String? ?? '',
-      'materials': (map['materials'] as List<dynamic>? ?? const []).cast<String>(),
+      'materials': (map['materials'] as List<dynamic>? ?? const [])
+          .cast<String>(),
       'submissions': (map['submissions'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
           .toList(),

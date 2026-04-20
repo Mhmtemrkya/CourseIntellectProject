@@ -56,7 +56,9 @@ class WrongAnswerRecord {
       yourAnswer: map['yourAnswer'] as String? ?? '',
       correctAnswer: map['correctAnswer'] as String? ?? '',
       note: map['note'] as String? ?? '',
-      submittedAtUtc: DateTime.tryParse(map['submittedAtUtc'] as String? ?? '') ?? DateTime.now(),
+      submittedAtUtc:
+          DateTime.tryParse(map['submittedAtUtc'] as String? ?? '') ??
+          DateTime.now(),
     );
   }
 }
@@ -72,7 +74,9 @@ class WrongAnswersApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const WrongAnswersApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const WrongAnswersApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
@@ -88,11 +92,16 @@ class WrongAnswersApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw WrongAnswersApiException('Yanlış soru kayıtları alınamadı (${response.statusCode}).');
+      throw WrongAnswersApiException(
+        'Yanlış soru kayıtları alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => WrongAnswerRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .map(
+          (item) =>
+              WrongAnswerRecord.fromMap(Map<String, dynamic>.from(item as Map)),
+        )
         .toList();
   }
 
@@ -102,7 +111,9 @@ class WrongAnswersApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const WrongAnswersApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const WrongAnswersApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.delete(
@@ -118,7 +129,9 @@ class WrongAnswersApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw WrongAnswersApiException('Yanlış soru kayıtları temizlenemedi (${response.statusCode}).');
+      throw WrongAnswersApiException(
+        'Yanlış soru kayıtları temizlenemedi (${response.statusCode}).',
+      );
     }
   }
 }

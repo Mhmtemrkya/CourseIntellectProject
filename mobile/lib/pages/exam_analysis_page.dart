@@ -13,7 +13,7 @@ class ExamAnalysisPage extends StatefulWidget {
 class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
   bool _loading = true;
   String? _error;
-  String _studentName = 'Ogrenci';
+  String _studentName = 'Öğrenci';
   ExamAnalyticsRecord? _analytics;
 
   @override
@@ -28,9 +28,13 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
       _error = null;
     });
     try {
-      final children = await LinkedChildrenService.instance.loadLinkedChildren();
-      final studentName = children.isNotEmpty ? children.first.fullName : _studentName;
-      final analytics = await ReportsAnalyticsApiService.instance.fetchExamAnalytics(studentName);
+      final children = await LinkedChildrenService.instance
+          .loadLinkedChildren();
+      final studentName = children.isNotEmpty
+          ? children.first.fullName
+          : _studentName;
+      final analytics = await ReportsAnalyticsApiService.instance
+          .fetchExamAnalytics(studentName);
       if (!mounted) return;
       setState(() {
         _studentName = studentName;
@@ -119,17 +123,14 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
             children: [
               Text(
                 lesson,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const Spacer(),
               Text(
                 score,
-                style: TextStyle(
-                  color: color,
-                  fontWeight: FontWeight.bold,
-                ),
+                style: TextStyle(color: color, fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -173,14 +174,11 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                 Text(
                   title,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
+                Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
               ],
             ),
           ),
@@ -193,7 +191,8 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final analytics = _analytics;
-    final subjects = analytics?.subjects ?? const <ExamAnalyticsSubjectRecord>[];
+    final subjects =
+        analytics?.subjects ?? const <ExamAnalyticsSubjectRecord>[];
     final average = analytics?.averageScore ?? 0;
     final correctEstimate = analytics?.netAverage ?? 0;
     final wrongEstimate = analytics?.riskScore ?? 0;
@@ -202,130 +201,155 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Detayli Analiz"),
-      ),
+      appBar: AppBar(title: const Text("Detayli Analiz")),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(_error!, textAlign: TextAlign.center),
-                      const SizedBox(height: 12),
-                      ElevatedButton(
-                        onPressed: _loadAnalysis,
-                        child: const Text('Tekrar Dene'),
-                      ),
-                    ],
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(_error!, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: _loadAnalysis,
+                    child: const Text('Tekrar Dene'),
                   ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _card(
-                        context,
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "$_studentName analiz ozeti",
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            Row(
-                              children: [
-                                _statItem(context, "Ortalama", "$average", Colors.orange, Icons.bar_chart),
-                                const SizedBox(width: 12),
-                                _statItem(context, "Net Ort.", "$correctEstimate", Colors.green, Icons.check_circle),
-                                const SizedBox(width: 12),
-                                _statItem(context, "Risk", "$wrongEstimate", Colors.red, Icons.cancel),
-                              ],
-                            ),
-                          ],
+                ],
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  _card(
+                    context,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "$_studentName analiz özeti",
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      _card(
-                        context,
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        const SizedBox(height: 16),
+                        Row(
                           children: [
-                            Text(
-                              "Ders Bazli Basari",
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            if (subjects.isEmpty)
-                              const Text('Ders bazli analiz icin henuz sonuc kaydi bulunmuyor.')
-                            else
-                              ...subjects.asMap().entries.map((entry) {
-                                final avg = entry.value.averageScore;
-                                final color = _subjectColor(entry.value.subject, entry.key);
-                                return _progressRow(
-                                  context,
-                                  entry.value.subject,
-                                  avg / 100,
-                                  '%$avg',
-                                  color,
-                                );
-                              }),
-                          ],
-                        ),
-                      ),
-                      _card(
-                        context,
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Analiz Notlari",
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontSize: 20,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 16),
-                            _insightTile(
+                            _statItem(
                               context,
-                              Icons.trending_up,
-                              strongest == null ? 'Guclu ders bekleniyor' : 'En guclu ders: $strongest',
-                              strongest == null
-                                  ? 'Yeni sinav kaydi geldikce burada otomatik yorum olusacak.'
-                                  : 'Bu dersteki performans diger derslere gore daha yuksek.',
-                              Colors.green,
-                            ),
-                            _insightTile(
-                              context,
-                              Icons.lightbulb_outline,
-                              weakest == null ? 'Destek alani bekleniyor' : 'Ek tekrar onerisi: $weakest',
-                              weakest == null
-                                  ? 'Destek onerisi icin daha fazla veri gerekiyor.'
-                                  : 'Bu alanda ek tekrar ve soru cozum oturumu faydali olabilir.',
+                              "Ortalama",
+                              "$average",
                               Colors.orange,
+                              Icons.bar_chart,
                             ),
-                            _insightTile(
+                            const SizedBox(width: 12),
+                            _statItem(
                               context,
-                              Icons.timer_outlined,
-                              "Sinav hareketleri izlendi",
-                              (analytics?.examCount ?? 0) == 0
-                                  ? 'Henuz sinav sonucu kaydi yok.'
-                                  : '${analytics?.examCount ?? 0} sonuc kaydi analiz edildi ve guncel tablo olusturuldu.',
-                              Colors.blue,
+                              "Net Ort.",
+                              "$correctEstimate",
+                              Colors.green,
+                              Icons.check_circle,
+                            ),
+                            const SizedBox(width: 12),
+                            _statItem(
+                              context,
+                              "Risk",
+                              "$wrongEstimate",
+                              Colors.red,
+                              Icons.cancel,
                             ),
                           ],
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
+                  _card(
+                    context,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Ders Bazlı Başarı",
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        if (subjects.isEmpty)
+                          const Text(
+                            'Ders bazlı analiz için henüz sonuç kaydı bulunmuyor.',
+                          )
+                        else
+                          ...subjects.asMap().entries.map((entry) {
+                            final avg = entry.value.averageScore;
+                            final color = _subjectColor(
+                              entry.value.subject,
+                              entry.key,
+                            );
+                            return _progressRow(
+                              context,
+                              entry.value.subject,
+                              avg / 100,
+                              '%$avg',
+                              color,
+                            );
+                          }),
+                      ],
+                    ),
+                  ),
+                  _card(
+                    context,
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Analiz Notlari",
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _insightTile(
+                          context,
+                          Icons.trending_up,
+                          strongest == null
+                              ? 'Guclu ders bekleniyor'
+                              : 'En guclu ders: $strongest',
+                          strongest == null
+                              ? 'Yeni sınav kaydı geldikce burada otomatik yorum olusacak.'
+                              : 'Bu dersteki performans diğer derslere göre daha yüksek.',
+                          Colors.green,
+                        ),
+                        _insightTile(
+                          context,
+                          Icons.lightbulb_outline,
+                          weakest == null
+                              ? 'Destek alanı bekleniyor'
+                              : 'Ek tekrar önerisi: $weakest',
+                          weakest == null
+                              ? 'Destek önerisi için daha fazla veri gerekiyor.'
+                              : 'Bu alanda ek tekrar ve soru çözüm oturumu faydali olabilir.',
+                          Colors.orange,
+                        ),
+                        _insightTile(
+                          context,
+                          Icons.timer_outlined,
+                          "Sınav hareketleri izlendi",
+                          (analytics?.examCount ?? 0) == 0
+                              ? 'Henüz sınav sonucu kaydı yok.'
+                              : '${analytics?.examCount ?? 0} sonuç kaydı analiz edildi ve güncel tablo oluşturuldu.',
+                          Colors.blue,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
     );
   }
 

@@ -35,7 +35,9 @@ class StudyPlanApiService {
 
   Future<StudyPlanStateRecord> fetch() async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const StudyPlanApiException('Oturum bulunamadi.');
+    if (session == null) {
+      throw const StudyPlanApiException('Oturum bulunamadı.');
+    }
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/studyplans'),
@@ -43,7 +45,9 @@ class StudyPlanApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StudyPlanApiException('Calisma plani alinamadi (${response.statusCode}).');
+      throw StudyPlanApiException(
+        'Çalışma planı alınamadı (${response.statusCode}).',
+      );
     }
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -55,7 +59,9 @@ class StudyPlanApiService {
           .toList(),
       streakCount: map['streakCount'] as int? ?? 0,
       xpPoints: map['xpPoints'] as int? ?? 0,
-      lastCompletedAt: DateTime.tryParse(map['lastCompletedAt'] as String? ?? ''),
+      lastCompletedAt: DateTime.tryParse(
+        map['lastCompletedAt'] as String? ?? '',
+      ),
     );
   }
 
@@ -67,7 +73,9 @@ class StudyPlanApiService {
     required DateTime? lastCompletedAt,
   }) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const StudyPlanApiException('Oturum bulunamadi.');
+    if (session == null) {
+      throw const StudyPlanApiException('Oturum bulunamadı.');
+    }
 
     final response = await http.put(
       Uri.parse('${ApiConfig.baseUrl}/api/studyplans'),
@@ -85,7 +93,9 @@ class StudyPlanApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StudyPlanApiException('Calisma plani kaydedilemedi (${response.statusCode}).');
+      throw StudyPlanApiException(
+        'Çalışma planı kaydedilemedi (${response.statusCode}).',
+      );
     }
   }
 }

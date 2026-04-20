@@ -17,10 +17,16 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = AccountingFinanceStore.instance;
-    final current = store.invoices
-        .where((item) => item.id == invoice.id || item.title == invoice.title)
-        .firstOrNull ?? invoice;
-    final approvalStatus = current.id.isEmpty ? '' : store.approvalStatusFor('Invoice', current.id);
+    final current =
+        store.invoices
+            .where(
+              (item) => item.id == invoice.id || item.title == invoice.title,
+            )
+            .firstOrNull ??
+        invoice;
+    final approvalStatus = current.id.isEmpty
+        ? ''
+        : store.approvalStatusFor('Invoice', current.id);
     final approvalLabel = approvalStatus.isEmpty ? 'Bekliyor' : approvalStatus;
     final approvalComplete = approvalLabel == 'Onaylandı';
 
@@ -32,10 +38,14 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
           AccountingHeroCard(
             eyebrow: current.category,
             title: current.title,
-            description: 'Belge durumu, ödeme özeti ve işlem adımları bu ekranda toplanır.',
+            description:
+                'Belge durumu, ödeme özeti ve işlem adımları bu ekranda toplanır.',
             colors: [const Color(0xFF0F172A), accentColor],
             metrics: [
-              AccountingHeroMetric(label: 'Belge Tutarı', value: current.amount),
+              AccountingHeroMetric(
+                label: 'Belge Tutarı',
+                value: current.amount,
+              ),
               AccountingHeroMetric(label: 'Durum', value: current.status),
             ],
           ),
@@ -65,12 +75,15 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                   color: accentColor,
                   icon: Icons.receipt_long_outlined,
                   title: 'Belge oluşturuldu',
-                  subtitle: 'Muhasebe kaydı sisteme işlendi ve belge numarası üretildi.',
+                  subtitle:
+                      'Muhasebe kaydı sisteme işlendi ve belge numarası üretildi.',
                 ),
                 _FlowTile(
                   color: accentColor,
                   icon: Icons.verified_outlined,
-                  title: approvalComplete ? 'Onay tamamlandı' : 'Onay süreci izleniyor',
+                  title: approvalComplete
+                      ? 'Onay tamamlandı'
+                      : 'Onay süreci izleniyor',
                   subtitle: approvalComplete
                       ? 'Yönetici onayı tamamlandı, belge aktif mali kayıtlara işlendi.'
                       : 'Belge şu an inceleme sürecinde; karar sonrası durum güncellenecek.',
@@ -79,7 +92,8 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                   color: accentColor,
                   icon: Icons.picture_as_pdf_outlined,
                   title: 'Belge çıktısı hazır',
-                  subtitle: 'Makbuz ve PDF paylaşımı için belge formatı hazır tutuluyor.',
+                  subtitle:
+                      'Makbuz ve PDF paylaşımı için belge formatı hazır tutuluyor.',
                   isLast: true,
                 ),
               ],
@@ -121,10 +135,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
 
   void _showActionInfo(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -133,9 +144,14 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
       exportType: 'PDF',
       store: AccountingFinanceStore.instance,
     );
-    final saved = await AccountingExportService.instance.saveExport(export: export);
+    final saved = await AccountingExportService.instance.saveExport(
+      export: export,
+    );
     if (!context.mounted) return;
-    _showActionInfo(context, 'PDF kaydedildi: ${saved.file.path.split('/').last}');
+    _showActionInfo(
+      context,
+      'PDF kaydedildi: ${saved.file.path.split('/').last}',
+    );
   }
 
   Future<void> _sharePdf(BuildContext context) async {
@@ -143,7 +159,9 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
       exportType: 'PDF',
       store: AccountingFinanceStore.instance,
     );
-    final saved = await AccountingExportService.instance.saveExport(export: export);
+    final saved = await AccountingExportService.instance.saveExport(
+      export: export,
+    );
     await AccountingExportService.instance.openExport(saved);
     if (!context.mounted) return;
     _showActionInfo(context, 'PDF dosyalar uygulamasında açıldı.');
@@ -154,10 +172,7 @@ class _DetailRow extends StatelessWidget {
   final String label;
   final String value;
 
-  const _DetailRow({
-    required this.label,
-    required this.value,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -171,16 +186,20 @@ class _DetailRow extends StatelessWidget {
             child: Text(
               label,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
-                  ),
+                fontWeight: FontWeight.w700,
+                color: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+              ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               value,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -240,12 +259,16 @@ class _FlowTile extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     subtitle,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.45),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.45),
                   ),
                 ],
               ),

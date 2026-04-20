@@ -19,7 +19,8 @@ class _WrongQuestionsPageState extends State<WrongQuestionsPage> {
     return Scaffold(
       appBar: AppBar(
         title: Text(
-            "Yanlış Sorular ${currentIndex + 1}/${widget.wrongQuestions.length}"),
+          "Yanlış Sorular ${currentIndex + 1}/${widget.wrongQuestions.length}",
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
@@ -59,8 +60,8 @@ class _WrongQuestionsPageState extends State<WrongQuestionsPage> {
         Color bgColor = isCorrect
             ? Colors.green
             : isSelected
-                ? Colors.red
-                : Colors.white;
+            ? Colors.red
+            : Colors.white;
 
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
@@ -75,8 +76,8 @@ class _WrongQuestionsPageState extends State<WrongQuestionsPage> {
                 isCorrect
                     ? Icons.check_circle
                     : isSelected
-                        ? Icons.close
-                        : Icons.radio_button_off,
+                    ? Icons.close
+                    : Icons.radio_button_off,
                 color: isCorrect || isSelected ? Colors.white : Colors.grey,
               ),
               const SizedBox(width: 12),
@@ -84,8 +85,10 @@ class _WrongQuestionsPageState extends State<WrongQuestionsPage> {
                 child: Text(
                   q["options"][index],
                   style: TextStyle(
-                      color:
-                          isCorrect || isSelected ? Colors.white : Colors.black),
+                    color: isCorrect || isSelected
+                        ? Colors.white
+                        : Colors.black,
+                  ),
                 ),
               ),
             ],

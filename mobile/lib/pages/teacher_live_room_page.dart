@@ -112,9 +112,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           content: TextField(
             controller: controller,
             maxLines: 4,
-            decoration: const InputDecoration(
-              hintText: "Notunuzu yazin...",
-            ),
+            decoration: const InputDecoration(hintText: "Notunuzu yazın..."),
           ),
           actions: [
             TextButton(
@@ -187,22 +185,22 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
 
   Future<void> _toggleMic() async {
     await _updateState(mic: !micOn);
-    _showSnack(micOn ? "Mikrofon acildi" : "Mikrofon kapatildi");
+    _showSnack(micOn ? "Mikrofon açıldı" : "Mikrofon kapatildi");
   }
 
   Future<void> _toggleCamera() async {
     await _updateState(camera: !cameraOn);
-    _showSnack(cameraOn ? "Kamera acildi" : "Kamera kapatildi");
+    _showSnack(cameraOn ? "Kamera açıldı" : "Kamera kapatildi");
   }
 
   Future<void> _toggleSharing() async {
     await _updateState(sharing: !sharingOn);
-    _showSnack(sharingOn ? "Ekran paylasimi basladi" : "Ekran paylasimi durdu");
+    _showSnack(sharingOn ? "Ekran paylaşimi basladi" : "Ekran paylaşimi durdu");
   }
 
   Future<void> _toggleRecording() async {
     await _updateState(recording: !recordingOn);
-    _showSnack(recordingOn ? "Ders kaydi baslatildi" : "Ders kaydi durduruldu");
+    _showSnack(recordingOn ? "Ders kaydı başlatıldı" : "Ders kaydı durduruldu");
   }
 
   Future<void> _endLesson() async {
@@ -214,7 +212,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
     try {
       await LiveRoomApiService.instance.endRoom(roomId);
       if (!mounted) return;
-      _showSnack("Canli ders sonlandirildi");
+      _showSnack("Canlı ders sonlandırıldı");
       Navigator.pop(context);
     } catch (error) {
       if (!mounted) return;
@@ -223,9 +221,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
   }
 
   void _showSnack(String text) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(text)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
@@ -236,80 +232,80 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Canli Ders Odasi",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
+        title: "Canlı Ders Odası",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${widget.className} • ${widget.time}',
         showBackButton: true,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(_error!, textAlign: TextAlign.center),
-                        const SizedBox(height: 12),
-                        ElevatedButton(
-                          onPressed: () => _loadContext(),
-                          child: const Text('Tekrar Dene'),
-                        ),
-                      ],
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center),
+                    const SizedBox(height: 12),
+                    ElevatedButton(
+                      onPressed: () => _loadContext(),
+                      child: const Text('Tekrar Dene'),
                     ),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _heroRoomCard(theme, isDark),
-                      if (sharingOn) ...[
-                        const SizedBox(height: 14),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: Colors.blue.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.screen_share_rounded, color: Colors.blue),
-                              SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  "Ekran paylasimi aktif. Ogrenciler paylastiginiz icerigi goruyor.",
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: 18),
-                      _sectionTitle(theme, "Ders Bilgileri"),
-                      const SizedBox(height: 12),
-                      _infoCard(theme, isDark),
-                      const SizedBox(height: 18),
-                      _sectionTitle(theme, "Katilimcilar"),
-                      const SizedBox(height: 12),
-                      _participantsCard(theme, isDark),
-                      const SizedBox(height: 18),
-                      _sectionTitle(theme, "Ders Araclari"),
-                      const SizedBox(height: 12),
-                      _toolsGrid(context),
-                      const SizedBox(height: 18),
-                      _sectionTitle(theme, "Paylasilan Icerikler"),
-                      const SizedBox(height: 12),
-                      _contentCard(theme, isDark),
-                      const SizedBox(height: 18),
-                      _controlBar(context),
-                    ],
-                  ),
+                  ],
                 ),
+              ),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _heroRoomCard(theme, isDark),
+                  if (sharingOn) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.screen_share_rounded, color: Colors.blue),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              "Ekran paylaşımı aktif. Öğrenciler paylaştığınız içeriği görüyor.",
+                              style: TextStyle(fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  _sectionTitle(theme, "Ders Bilgileri"),
+                  const SizedBox(height: 12),
+                  _infoCard(theme, isDark),
+                  const SizedBox(height: 18),
+                  _sectionTitle(theme, "Katılımcılar"),
+                  const SizedBox(height: 12),
+                  _participantsCard(theme, isDark),
+                  const SizedBox(height: 18),
+                  _sectionTitle(theme, "Ders Araclari"),
+                  const SizedBox(height: 12),
+                  _toolsGrid(context),
+                  const SizedBox(height: 18),
+                  _sectionTitle(theme, "Paylaşılan İçerikler"),
+                  const SizedBox(height: 12),
+                  _contentCard(theme, isDark),
+                  const SizedBox(height: 18),
+                  _controlBar(context),
+                ],
+              ),
+            ),
     );
   }
 
@@ -320,10 +316,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF7A00),
-            Color(0xFFFFA24A),
-          ],
+          colors: [Color(0xFFFF7A00), Color(0xFFFFA24A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -345,7 +338,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
               Icon(Icons.wifi_tethering_rounded, color: Colors.white),
               SizedBox(width: 8),
               Text(
-                "Canli Ders Aktif",
+                "Canlı Ders Aktif",
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -356,7 +349,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Ogrenciler baglandi, ders akisiniz hazir. Simdi paylasim yapabilir, kamera ve mikrofon kontrollerini yonetebilirsin.",
+            "Öğrenciler bağlandı, ders akışınız hazır. Şimdi paylaşım yapabilir, kamera ve mikrofon kontrollerini yönetebilirsin.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -365,11 +358,14 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           const SizedBox(height: 16),
           Row(
             children: [
-              _heroStat("${participants.length}", "Katilimci"),
+              _heroStat("${participants.length}", "Katılımcı"),
               const SizedBox(width: 12),
-              _heroStat("${participants.length > 3 ? 3 : participants.length}", "Aktif"),
+              _heroStat(
+                "${participants.length > 3 ? 3 : participants.length}",
+                "Aktif",
+              ),
               const SizedBox(width: 12),
-              _heroStat(recordingOn ? "REC" : "OFF", "Kayit"),
+              _heroStat(recordingOn ? "REC" : "OFF", "Kayıt"),
             ],
           ),
         ],
@@ -440,7 +436,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
         children: [
           _infoRow(theme, Icons.menu_book_rounded, "Ders", widget.lessonTitle),
           const SizedBox(height: 12),
-          _infoRow(theme, Icons.groups_rounded, "Sinif", widget.className),
+          _infoRow(theme, Icons.groups_rounded, "Sınıf", widget.className),
           const SizedBox(height: 12),
           _infoRow(theme, Icons.schedule_rounded, "Saat", widget.time),
           const SizedBox(height: 12),
@@ -448,19 +444,16 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
             theme,
             Icons.link_rounded,
             "Baglanti",
-            _roomId == null ? "meet.courseintellect.live/${widget.className}" : "meet.courseintellect.live/${widget.className}".toLowerCase(),
+            _roomId == null
+                ? "meet.courseintellect.live/${widget.className}"
+                : "meet.courseintellect.live/${widget.className}".toLowerCase(),
           ),
         ],
       ),
     );
   }
 
-  Widget _infoRow(
-    ThemeData theme,
-    IconData icon,
-    String label,
-    String value,
-  ) {
+  Widget _infoRow(ThemeData theme, IconData icon, String label, String value) {
     return Row(
       children: [
         Icon(icon, color: theme.colorScheme.primary),
@@ -472,9 +465,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           ),
         ),
         const SizedBox(width: 6),
-        Expanded(
-          child: Text(value),
-        ),
+        Expanded(child: Text(value)),
       ],
     );
   }
@@ -503,7 +494,10 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
               runSpacing: 10,
               children: participants.map((name) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
                   decoration: BoxDecoration(
                     color: theme.scaffoldBackgroundColor,
                     borderRadius: BorderRadius.circular(16),
@@ -513,7 +507,9 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                     children: [
                       CircleAvatar(
                         radius: 14,
-                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.14),
+                        backgroundColor: theme.colorScheme.primary.withValues(
+                          alpha: 0.14,
+                        ),
                         child: Text(
                           name[0],
                           style: TextStyle(
@@ -589,7 +585,9 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
             color: active ? color.withValues(alpha: 0.12) : theme.cardColor,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: active ? color.withValues(alpha: 0.40) : Colors.transparent,
+              color: active
+                  ? color.withValues(alpha: 0.40)
+                  : Colors.transparent,
             ),
           ),
           child: Column(
@@ -618,7 +616,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
               ),
               const SizedBox(height: 4),
               Text(
-                active ? "Acik" : "Kapali",
+                active ? "Açık" : "Kapali",
                 style: theme.textTheme.bodySmall,
               ),
             ],
@@ -652,7 +650,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
             children: [
               Expanded(
                 child: Text(
-                  "Paylasilan Icerikler",
+                  "Paylaşılan İçerikler",
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -669,10 +667,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                     color: theme.colorScheme.primary.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Icon(
-                    Icons.add,
-                    color: theme.colorScheme.primary,
-                  ),
+                  child: Icon(Icons.add, color: theme.colorScheme.primary),
                 ),
               ),
               GestureDetector(
@@ -710,12 +705,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      item,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
+                  Expanded(child: Text(item, overflow: TextOverflow.ellipsis)),
                   IconButton(
                     onPressed: () => _downloadFile(item),
                     icon: const Icon(Icons.download_rounded),
@@ -772,7 +762,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                   ? Icons.stop_circle_outlined
                   : Icons.fiber_manual_record_rounded,
             ),
-            label: Text(recordingOn ? "Kaydi Durdur" : "Kaydi Baslat"),
+            label: Text(recordingOn ? "Kaydı Durdur" : "Kaydı Başlat"),
             style: OutlinedButton.styleFrom(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),

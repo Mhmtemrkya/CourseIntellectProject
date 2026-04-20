@@ -31,9 +31,13 @@ class ExamResultsStore extends ChangeNotifier {
 
   List<ExamScoreRecord> get records => List.unmodifiable(_records);
 
-  List<String> get classes => [...{for (final item in _records) item.className}]..sort();
+  List<String> get classes => [
+    ...{for (final item in _records) item.className},
+  ]..sort();
 
-  List<String> get students => [...{for (final item in _records) item.studentName}]..sort();
+  List<String> get students => [
+    ...{for (final item in _records) item.studentName},
+  ]..sort();
 
   void replaceRecords(List<ExamScoreRecord> records) {
     _records
@@ -43,7 +47,9 @@ class ExamResultsStore extends ChangeNotifier {
   }
 
   List<ExamScoreRecord> recordsForStudent(String studentName) {
-    final list = _records.where((item) => item.studentName == studentName).toList();
+    final list = _records
+        .where((item) => item.studentName == studentName)
+        .toList();
     list.sort((a, b) => b.date.compareTo(a.date));
     return list;
   }
@@ -69,7 +75,12 @@ class ExamResultsStore extends ChangeNotifier {
     required int score,
     required int net,
   }) {
-    final existing = _records.where((item) => item.examTitle == examTitle && item.studentName == studentName).firstOrNull;
+    final existing = _records
+        .where(
+          (item) =>
+              item.examTitle == examTitle && item.studentName == studentName,
+        )
+        .firstOrNull;
 
     if (existing != null) {
       existing.score = score;

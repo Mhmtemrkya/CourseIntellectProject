@@ -25,20 +25,11 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
   String selectedTeacher = "";
   String selectedPriority = "Normal";
 
-  final List<String> subjects = [
-    "Matematik",
-    "Fizik",
-    "Kimya",
-    "Turkce",
-  ];
+  final List<String> subjects = ["Matematik", "Fizik", "Kimya", "Turkce"];
 
   final Map<String, List<String>> teachersBySubject = {};
 
-  final List<String> priorities = [
-    "Normal",
-    "Acil",
-    "Odev Icin",
-  ];
+  final List<String> priorities = ["Normal", "Acil", "Ödev İçin"];
 
   final List<QuestionThreadAttachmentRecord> attachments = [];
   bool _uploadingAttachment = false;
@@ -61,7 +52,11 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     final teachers = StaffRegistryStore.instance.teachers;
     for (final subject in subjects) {
       final matches = teachers
-          .where((teacher) => teacher.branchOrDepartment.toLowerCase().contains(subject.toLowerCase()))
+          .where(
+            (teacher) => teacher.branchOrDepartment.toLowerCase().contains(
+              subject.toLowerCase(),
+            ),
+          )
           .map((teacher) => teacher.fullName)
           .toList();
       teachersBySubject[subject] = matches.isNotEmpty
@@ -109,11 +104,11 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     final topic = _topicController.text.trim();
 
     if (question.isEmpty || topic.isEmpty) {
-      _showInfo("Konu ve soru aciklamasi zorunlu.");
+      _showInfo("Konu ve soru açıklamasi zorunlu.");
       return;
     }
     if (selectedTeacher.trim().isEmpty) {
-      _showInfo("Bu ders icin atanmis ogretmen bulunamadi.");
+      _showInfo("Bu ders için atanmış öğretmen bulunamadı.");
       return;
     }
 
@@ -139,7 +134,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
       setState(() {
         selectedTab = 1;
       });
-      _showInfo("Sorun ogretmene gonderildi.");
+      _showInfo("Sorun öğretmene gönderildi.");
     } catch (error) {
       _showInfo(error.toString());
     } finally {
@@ -168,9 +163,8 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     });
 
     try {
-      final attachment = await QuestionThreadApiService.instance.uploadAttachment(
-        file: file,
-      );
+      final attachment = await QuestionThreadApiService.instance
+          .uploadAttachment(file: file);
       if (!mounted) return;
       setState(() {
         attachments.add(attachment);
@@ -187,25 +181,25 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
   }
 
   void _showInfo(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final answeredCount =
-        myQuestions.where((item) => item["status"] == "Yanıtlandi").length;
-    final unreadNotifications =
-        questionNotifications.where((item) => item["read"] == false).length;
+    final answeredCount = myQuestions
+        .where((item) => item["status"] == "Yanıtlandi")
+        .length;
+    final unreadNotifications = questionNotifications
+        .where((item) => item["read"] == false)
+        .length;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Soru Sor"),
-      ),
+      appBar: AppBar(title: const Text("Soru Sor")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: ResponsiveContent(
@@ -223,13 +217,14 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                 )
               else if (_loadError != null)
                 _errorPanel(theme, isDark)
-              else
-              if (selectedTab == 0) ...[
+              else if (selectedTab == 0) ...[
                 _askForm(theme, isDark),
               ] else if (selectedTab == 1) ...[
                 _notificationPanel(theme, isDark),
                 const SizedBox(height: 16),
-                ...myQuestions.map((item) => _questionCard(theme, isDark, item)),
+                ...myQuestions.map(
+                  (item) => _questionCard(theme, isDark, item),
+                ),
               ] else ...[
                 _historyPanel(theme, isDark),
               ],
@@ -245,29 +240,40 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
         .map((reply) => Map<String, dynamic>.from(reply as Map))
         .toList();
     final teacherReplies = replies
-        .where((reply) => (reply['senderRole'] as String? ?? '').toLowerCase() == 'teacher')
+        .where(
+          (reply) =>
+              (reply['senderRole'] as String? ?? '').toLowerCase() == 'teacher',
+        )
         .toList();
-    final latestTeacherReply = teacherReplies.isNotEmpty ? teacherReplies.last : null;
+    final latestTeacherReply = teacherReplies.isNotEmpty
+        ? teacherReplies.last
+        : null;
     final attachmentItems = (item['attachments'] as List<dynamic>? ?? const [])
         .map((attachment) => Map<String, dynamic>.from(attachment as Map))
         .map(QuestionThreadAttachmentRecord.fromMap)
         .toList();
-    final latestTeacherReplyAttachments = (latestTeacherReply?['attachments'] as List<dynamic>? ?? const [])
-        .map((attachment) => Map<String, dynamic>.from(attachment as Map))
-        .map(QuestionThreadAttachmentRecord.fromMap)
-        .toList();
+    final latestTeacherReplyAttachments =
+        (latestTeacherReply?['attachments'] as List<dynamic>? ?? const [])
+            .map((attachment) => Map<String, dynamic>.from(attachment as Map))
+            .map(QuestionThreadAttachmentRecord.fromMap)
+            .toList();
     final status = teacherReplies.isNotEmpty ? 'Yanıtlandi' : 'Bekliyor';
 
     return {
       'id': item['id']?.toString() ?? '',
       'subject': item['subject'] as String? ?? 'Genel',
-      'teacher': item['teacherName'] as String? ?? 'Atanan Ogretmen',
+      'teacher': item['teacherName'] as String? ?? 'Atanan Öğretmen',
       'topic': item['title'] as String? ?? 'Soru',
       'question': item['questionText'] as String? ?? '',
       'status': status,
-      'time': _formatRelative(item['lastActivity'] as String? ?? item['createdAt'] as String?),
+      'time': _formatRelative(
+        item['lastActivity'] as String? ?? item['createdAt'] as String?,
+      ),
       'answer': latestTeacherReply?['messageText'] as String? ?? '',
-      'priority': _inferPriority(item['title'] as String? ?? '', item['questionText'] as String? ?? ''),
+      'priority': _inferPriority(
+        item['title'] as String? ?? '',
+        item['questionText'] as String? ?? '',
+      ),
       'answeredTime': latestTeacherReply == null
           ? null
           : _formatDateTime(latestTeacherReply['createdAt'] as String?),
@@ -278,14 +284,21 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     };
   }
 
-  List<Map<String, dynamic>> _buildNotifications(List<Map<String, dynamic>> items) {
-    final answered = items.where((item) => item['status'] == 'Yanıtlandi').take(3);
+  List<Map<String, dynamic>> _buildNotifications(
+    List<Map<String, dynamic>> items,
+  ) {
+    final answered = items
+        .where((item) => item['status'] == 'Yanıtlandi')
+        .take(3);
     return answered
         .map(
           (item) => {
             'title': '${item["topic"]} soruna yanit geldi',
-            'subtitle': '${item["teacher"]} cozum adimlarini paylasti.',
-            'time': item['answeredTime'] as String? ?? item['time'] as String? ?? 'Bugun',
+            'subtitle': '${item["teacher"]} çözüm adımlarını paylaştı.',
+            'time':
+                item['answeredTime'] as String? ??
+                item['time'] as String? ??
+                'Bugün',
             'read': false,
           },
         )
@@ -295,7 +308,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
   String _inferPriority(String title, String questionText) {
     final normalized = '$title $questionText'.toLowerCase();
     if (normalized.contains('acil')) return 'Acil';
-    if (normalized.contains('odev')) return 'Odev Icin';
+    if (normalized.contains('ödev')) return 'Ödev İçin';
     return 'Normal';
   }
 
@@ -305,14 +318,14 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     if (date == null) return value;
     final diff = DateTime.now().difference(date);
     if (diff.inMinutes < 1) return 'Simdi';
-    if (diff.inHours < 1) return '${diff.inMinutes} dk once';
-    if (diff.inDays < 1) return '${diff.inHours} saat once';
+    if (diff.inHours < 1) return '${diff.inMinutes} dk önce';
+    if (diff.inDays < 1) return '${diff.inHours} saat önce';
     if (diff.inDays == 1) return 'Dun';
-    return '${diff.inDays} gun once';
+    return '${diff.inDays} gün önce';
   }
 
   String _formatDateTime(String? value) {
-    if (value == null || value.isEmpty) return 'Bugun';
+    if (value == null || value.isEmpty) return 'Bugün';
     final date = DateTime.tryParse(value)?.toLocal();
     if (date == null) return value;
     final day = date.day.toString().padLeft(2, '0');
@@ -343,7 +356,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Sorular yuklenemedi',
+            'Sorular yüklenemedi',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -373,10 +386,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFF2563EB),
-            Color(0xFF38BDF8),
-          ],
+          colors: [Color(0xFF2563EB), Color(0xFF38BDF8)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -392,7 +402,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Takildigin soruyu hemen gonder",
+            "Takıldığın soruyu hemen gönder",
             style: TextStyle(
               color: Colors.white,
               fontSize: 26,
@@ -401,7 +411,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Ogretmenine konu, oncelik ve eklerle birlikte soru gonderebilir, onceki yanitlarini takip edebilirsin.",
+            "Öğretmenine konu, öncelik ve eklerle birlikte soru gönderebilir, önceki yanıtlarını takip edebilirsin.",
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -443,9 +453,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
             const SizedBox(height: 4),
             Text(
               label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.88),
-              ),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.88)),
             ),
           ],
         ),
@@ -478,8 +486,9 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                 child: Text(
                   items[index],
                   style: TextStyle(
-                    color:
-                        selected ? Colors.white : theme.textTheme.bodyLarge?.color,
+                    color: selected
+                        ? Colors.white
+                        : theme.textTheme.bodyLarge?.color,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -521,15 +530,18 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
               if (value == null) return;
               setState(() {
                 selectedSubject = value;
-                final nextTeachers = teachersBySubject[value] ?? const <String>[];
-                selectedTeacher = nextTeachers.isNotEmpty ? nextTeachers.first : '';
+                final nextTeachers =
+                    teachersBySubject[value] ?? const <String>[];
+                selectedTeacher = nextTeachers.isNotEmpty
+                    ? nextTeachers.first
+                    : '';
               });
             },
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: selectedTeacher.isEmpty ? null : selectedTeacher,
-            decoration: const InputDecoration(labelText: "Ogretmen"),
+            decoration: const InputDecoration(labelText: "Öğretmen"),
             items: currentTeachers
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
@@ -545,20 +557,20 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
           if (currentTeachers.isEmpty)
             const Padding(
               padding: EdgeInsets.only(top: 8),
-              child: Text('Secili ders icin uygun ogretmen bulunamadi.'),
+              child: Text('Seçili ders için uygun öğretmen bulunamadı.'),
             ),
           const SizedBox(height: 12),
           TextField(
             controller: _topicController,
             decoration: const InputDecoration(
               labelText: "Konu",
-              hintText: "Ornek: Turev, Fonksiyonlar, Parabol",
+              hintText: "Örnek: Turev, Fonksiyonlar, Parabol",
             ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: selectedPriority,
-            decoration: const InputDecoration(labelText: "Oncelik"),
+            decoration: const InputDecoration(labelText: "Öncelik"),
             items: priorities
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
@@ -574,9 +586,9 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
             controller: _questionController,
             maxLines: 6,
             decoration: const InputDecoration(
-              labelText: "Soru Aciklamasi",
+              labelText: "Soru Açıklaması",
               hintText:
-                  "Soruyu detayli yaz. Takildigin adimi, denedigin yontemi ve tam olarak neyi anlamadigini belirt.",
+                  "Soruyu detaylı yaz. Takıldığın adımı, denediğin yöntemi ve tam olarak neyi anlamadığını belirt.",
             ),
           ),
           const SizedBox(height: 16),
@@ -599,7 +611,9 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                       width: 42,
                       height: 42,
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.10),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.10,
+                        ),
                         borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
@@ -622,7 +636,8 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                           Text(
                             "Resim, PDF veya video ekleyerek sorunu daha net anlat.",
                             style: theme.textTheme.bodySmall?.copyWith(
-                              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                              color: theme.textTheme.bodySmall?.color
+                                  ?.withValues(alpha: 0.72),
                               height: 1.35,
                             ),
                           ),
@@ -678,7 +693,10 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
             ...attachments.map(
               (item) => Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: theme.scaffoldBackgroundColor,
                   borderRadius: BorderRadius.circular(18),
@@ -692,7 +710,9 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: _attachmentTint(item.fileType).withValues(alpha: 0.12),
+                        color: _attachmentTint(
+                          item.fileType,
+                        ).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Icon(
@@ -715,7 +735,10 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                           ),
                           const SizedBox(height: 2),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(999),
@@ -753,7 +776,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
-              "Oncelik: $selectedPriority • Ogretmen: $selectedTeacher",
+              "Öncelik: $selectedPriority • Öğretmen: $selectedTeacher",
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w600,
               ),
@@ -772,7 +795,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.send_rounded),
-              label: Text(_submitting ? "Gonderiliyor..." : "Soruyu Gonder"),
+              label: Text(_submitting ? "Gönderiliyor..." : "Soruyu Gönder"),
             ),
           ),
         ],
@@ -904,11 +927,14 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
-                  color: (answered ? Colors.green : Colors.orange)
-                      .withValues(alpha: 0.12),
+                  color: (answered ? Colors.green : Colors.orange).withValues(
+                    alpha: 0.12,
+                  ),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
@@ -968,11 +994,12 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => StudentQuestionAnswerPage(question: item),
+                        builder: (_) =>
+                            StudentQuestionAnswerPage(question: item),
                       ),
                     );
                   },
-                  child: const Text("Yaniti Gor"),
+                  child: const Text("Yanıtı Gör"),
                 ),
             ],
           ),
@@ -1017,50 +1044,52 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                'Henuz yeni soru bildirimi yok.',
+                'Henüz yeni soru bildirimi yok.',
                 style: theme.textTheme.bodyMedium,
               ),
             )
           else
-          ...questionNotifications.map((item) {
-            final unread = item["read"] == false;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: unread
-                    ? theme.colorScheme.primary.withValues(alpha: 0.08)
-                    : theme.scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    unread ? Icons.notifications_active_rounded : Icons.check_circle_outline_rounded,
-                    color: unread ? theme.colorScheme.primary : Colors.green,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          item["title"] as String,
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(item["subtitle"] as String),
-                      ],
+            ...questionNotifications.map((item) {
+              final unread = item["read"] == false;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: unread
+                      ? theme.colorScheme.primary.withValues(alpha: 0.08)
+                      : theme.scaffoldBackgroundColor,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      unread
+                          ? Icons.notifications_active_rounded
+                          : Icons.check_circle_outline_rounded,
+                      color: unread ? theme.colorScheme.primary : Colors.green,
                     ),
-                  ),
-                  Text(
-                    item["time"] as String,
-                    style: theme.textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            );
-          }),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item["title"] as String,
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(item["subtitle"] as String),
+                        ],
+                      ),
+                    ),
+                    Text(
+                      item["time"] as String,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -1086,67 +1115,67 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
               borderRadius: BorderRadius.circular(22),
             ),
             child: Text(
-              'Henuz gonderdigin soru bulunmuyor.',
+              'Henüz gönderdiğin soru bulunmuyor.',
               style: theme.textTheme.bodyMedium,
             ),
           )
         else
-        ...myQuestions.map((item) {
-          final answered = item["status"] == "Yanıtlandi";
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: theme.cardColor,
-              borderRadius: BorderRadius.circular(22),
-              boxShadow: [
-                BoxShadow(
-                  color: isDark
-                      ? Colors.black.withValues(alpha: 0.18)
-                      : Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  backgroundColor: (answered ? Colors.green : Colors.orange)
-                      .withValues(alpha: 0.14),
-                  foregroundColor: answered ? Colors.green : Colors.orange,
-                  child: Icon(
-                    answered ? Icons.done_rounded : Icons.schedule_rounded,
+          ...myQuestions.map((item) {
+            final answered = item["status"] == "Yanıtlandi";
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: theme.cardColor,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: isDark
+                        ? Colors.black.withValues(alpha: 0.18)
+                        : Colors.black.withValues(alpha: 0.04),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item["topic"] as String,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "${item["teacher"]} • ${item["time"]}",
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    ],
+                ],
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: (answered ? Colors.green : Colors.orange)
+                        .withValues(alpha: 0.14),
+                    foregroundColor: answered ? Colors.green : Colors.orange,
+                    child: Icon(
+                      answered ? Icons.done_rounded : Icons.schedule_rounded,
+                    ),
                   ),
-                ),
-                Text(
-                  item["status"] as String,
-                  style: TextStyle(
-                    color: answered ? Colors.green : Colors.orange,
-                    fontWeight: FontWeight.w700,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item["topic"] as String,
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          "${item["teacher"]} • ${item["time"]}",
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
-          );
-        }),
+                  Text(
+                    item["status"] as String,
+                    style: TextStyle(
+                      color: answered ? Colors.green : Colors.orange,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
       ],
     );
   }

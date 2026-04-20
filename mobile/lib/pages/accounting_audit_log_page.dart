@@ -41,12 +41,20 @@ class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
         children: [
           AccountingHeroCard(
             eyebrow: 'Audit log',
-            title: 'Muhasebe modülünde yapılan finans işlemleri kronolojik olarak kaydedilir.',
-            description: 'Kimin neyi ne zaman tetiklediğini görmek için bu kayıtlar kullanılır.',
+            title:
+                'Muhasebe modülünde yapılan finans işlemleri kronolojik olarak kaydedilir.',
+            description:
+                'Kimin neyi ne zaman tetiklediğini görmek için bu kayıtlar kullanılır.',
             colors: const [Color(0xFF0F172A), Color(0xFF4F46E5)],
             metrics: [
-              AccountingHeroMetric(label: 'Kayıt', value: '${_store.auditLogs.length}'),
-              AccountingHeroMetric(label: 'Son', value: _store.auditLogs.firstOrNull?.time ?? '-'),
+              AccountingHeroMetric(
+                label: 'Kayıt',
+                value: '${_store.auditLogs.length}',
+              ),
+              AccountingHeroMetric(
+                label: 'Son',
+                value: _store.auditLogs.firstOrNull?.time ?? '-',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -63,18 +71,34 @@ class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
                       color: const Color(0xFFE0E7FF),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.history_rounded, color: Color(0xFF4F46E5)),
+                    child: const Icon(
+                      Icons.history_rounded,
+                      color: Color(0xFF4F46E5),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(
+                          item.title,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                         const SizedBox(height: 6),
-                        Text(item.detail, style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4)),
+                        Text(
+                          item.detail,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.bodySmall?.copyWith(height: 1.4),
+                        ),
                         const SizedBox(height: 8),
-                        Text(item.time, style: Theme.of(context).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700)),
+                        Text(
+                          item.time,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(fontWeight: FontWeight.w700),
+                        ),
                       ],
                     ),
                   ),

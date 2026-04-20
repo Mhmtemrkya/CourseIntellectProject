@@ -19,10 +19,7 @@ class ResponsiveSheetContainer extends StatelessWidget {
         constraints: BoxConstraints(
           maxWidth: ResponsiveLayout.isTablet(context) ? 720 : double.infinity,
         ),
-        child: Padding(
-          padding: padding ?? EdgeInsets.zero,
-          child: child,
-        ),
+        child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
       ),
     );
   }

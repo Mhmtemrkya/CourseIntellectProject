@@ -24,18 +24,22 @@ class AdministrativeNoticeRecord {
       title: map['title'] as String? ?? '',
       detail: map['detail'] as String? ?? '',
       date: map['date'] as String? ?? '',
-      color: Color(map['colorValue'] as int? ?? const Color(0xFF0F766E).toARGB32()),
-      iconKey: map['iconKey'] as String? ?? _legacyIconKey(map['iconCodePoint'] as int?),
+      color: Color(
+        map['colorValue'] as int? ?? const Color(0xFF0F766E).toARGB32(),
+      ),
+      iconKey:
+          map['iconKey'] as String? ??
+          _legacyIconKey(map['iconCodePoint'] as int?),
     );
   }
 
   Map<String, dynamic> toMap() => {
-        'title': title,
-        'detail': detail,
-        'date': date,
-        'colorValue': color.toARGB32(),
-        'iconKey': iconKey,
-      };
+    'title': title,
+    'detail': detail,
+    'date': date,
+    'colorValue': color.toARGB32(),
+    'iconKey': iconKey,
+  };
 
   static String _legacyIconKey(int? codePoint) {
     switch (codePoint) {
@@ -62,7 +66,8 @@ class AdministrativeNoticeStore extends ChangeNotifier {
     _restoreFuture = _restore();
   }
 
-  static final AdministrativeNoticeStore instance = AdministrativeNoticeStore._();
+  static final AdministrativeNoticeStore instance =
+      AdministrativeNoticeStore._();
   Future<void> _restoreFuture;
 
   bool isLoaded = false;
@@ -79,7 +84,11 @@ class AdministrativeNoticeStore extends ChangeNotifier {
       targetRole: 'Administrative',
     );
     notices = list
-        .where((item) => item.category == 'AdministrativeNotice' || item.category == 'Administrative')
+        .where(
+          (item) =>
+              item.category == 'AdministrativeNotice' ||
+              item.category == 'Administrative',
+        )
         .map(
           (item) => AdministrativeNoticeRecord(
             title: item.title,

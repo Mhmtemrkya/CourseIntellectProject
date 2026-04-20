@@ -8,6 +8,16 @@ class ApiConfig {
     defaultValue: 'http://192.168.1.6:5206',
   );
 
+  static const String _configuredMarketingUrl = String.fromEnvironment(
+    'COURSE_INTELLECT_MARKETING_URL',
+    defaultValue: '',
+  );
+
+  static const String _productionMarketingUrl = String.fromEnvironment(
+    'COURSE_INTELLECT_PROD_MARKETING_URL',
+    defaultValue: '',
+  );
+
   static String? _overrideBaseUrl;
 
   static List<String> get candidateBaseUrls {
@@ -15,11 +25,15 @@ class ApiConfig {
     if (configured.isNotEmpty) return [configured];
 
     if (AppEnv.isProduction) {
-      return AppEnv.productionApiUrl.isNotEmpty ? [AppEnv.productionApiUrl] : const [];
+      return AppEnv.productionApiUrl.isNotEmpty
+          ? [AppEnv.productionApiUrl]
+          : const [];
     }
 
     if (AppEnv.isStaging) {
-      return AppEnv.stagingApiUrl.isNotEmpty ? [AppEnv.stagingApiUrl] : const [];
+      return AppEnv.stagingApiUrl.isNotEmpty
+          ? [AppEnv.stagingApiUrl]
+          : const [];
     }
 
     if (kIsWeb) {
@@ -71,6 +85,25 @@ class ApiConfig {
 
   static String get baseUrl {
     return candidateBaseUrls.isEmpty ? '' : candidateBaseUrls.first;
+  }
+
+  static String get marketingBaseUrl {
+    if (_configuredMarketingUrl.isNotEmpty) return _configuredMarketingUrl;
+
+    if (AppEnv.isProduction) return _productionMarketingUrl;
+
+    if (kIsWeb) return 'http://localhost:3000';
+
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'http://10.0.2.2:3000';
+      case TargetPlatform.iOS:
+      case TargetPlatform.macOS:
+      case TargetPlatform.windows:
+      case TargetPlatform.linux:
+      case TargetPlatform.fuchsia:
+        return 'http://localhost:3000';
+    }
   }
 
   static String resolveAssetUrl(String? path) {

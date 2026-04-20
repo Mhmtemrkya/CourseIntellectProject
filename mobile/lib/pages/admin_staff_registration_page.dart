@@ -10,10 +10,12 @@ class AdminStaffRegistrationPage extends StatefulWidget {
   const AdminStaffRegistrationPage({super.key});
 
   @override
-  State<AdminStaffRegistrationPage> createState() => _AdminStaffRegistrationPageState();
+  State<AdminStaffRegistrationPage> createState() =>
+      _AdminStaffRegistrationPageState();
 }
 
-class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage> with SingleTickerProviderStateMixin {
+class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
+    with SingleTickerProviderStateMixin {
   final _teacherFormKey = GlobalKey<FormState>();
   final _personnelFormKey = GlobalKey<FormState>();
 
@@ -25,7 +27,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _teacherEmailController = TextEditingController();
   final _teacherEducationController = TextEditingController();
   final _teacherStartDateController = TextEditingController();
-  final _teacherCampusController = TextEditingController(text: 'Merkez Kampus');
+  final _teacherCampusController = TextEditingController(text: 'Merkez Kampüs');
   final _teacherChildCountController = TextEditingController(text: '0');
   final _teacherNoteController = TextEditingController();
 
@@ -35,13 +37,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _personnelEmailController = TextEditingController();
   final _personnelEducationController = TextEditingController();
   final _personnelStartDateController = TextEditingController();
-  final _personnelCampusController = TextEditingController(text: 'Merkez Kampus');
+  final _personnelCampusController = TextEditingController(
+    text: 'Merkez Kampüs',
+  );
   final _personnelChildCountController = TextEditingController(text: '0');
   final _personnelNoteController = TextEditingController();
 
   String _teacherBranch = 'Matematik';
-  String _personnelDepartment = 'Ogrenci Isleri';
-  String _teacherHomeroomClass = 'Sinif ogretmenligi yok';
+  String _personnelDepartment = 'Öğrenci Isleri';
+  String _teacherHomeroomClass = 'Sınıf öğretmenliği yok';
   final Set<String> _teacherAssignedClasses = {};
   List<String> _classOptions = const [];
   String _teacherMaritalStatus = 'Bekar';
@@ -81,18 +85,22 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
 
   Future<void> _loadClassOptions() async {
     await StudentRegistryStore.instance.ensureLoaded();
-    final classes = StudentRegistryStore.instance.students
-        .map((item) => item.className.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final classes =
+        StudentRegistryStore.instance.students
+            .map((item) => item.className.trim())
+            .where((item) => item.isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     if (!mounted) return;
     setState(() {
       _classOptions = classes;
-      _teacherAssignedClasses.removeWhere((item) => !_classOptions.contains(item));
-      if (_teacherHomeroomClass != 'Sinif ogretmenligi yok' && !_classOptions.contains(_teacherHomeroomClass)) {
-        _teacherHomeroomClass = 'Sinif ogretmenligi yok';
+      _teacherAssignedClasses.removeWhere(
+        (item) => !_classOptions.contains(item),
+      );
+      if (_teacherHomeroomClass != 'Sınıf öğretmenliği yok' &&
+          !_classOptions.contains(_teacherHomeroomClass)) {
+        _teacherHomeroomClass = 'Sınıf öğretmenliği yok';
       }
     });
   }
@@ -101,15 +109,20 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Öğretmen ve Personel Kaydı', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Öğretmen ve Personel Kaydı',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           const AdminHeroCard(
             eyebrow: 'İnsan kaynağı kayıt merkezi',
-            title: 'Öğretmen ve idari personel profillerini kurumsal standartta oluşturun.',
-            description: 'Branş, departman, kampüs ve iletişim bilgileri tek akışta toplanır. Öğretmen hesapları için sistem giriş bilgisi otomatik üretilir.',
+            title:
+                'Öğretmen ve idari personel profillerini kurumsal standartta oluşturun.',
+            description:
+                'Branş, departman, kampüs ve iletişim bilgileri tek akışta toplanır. Öğretmen hesapları için sistem giriş bilgisi otomatik üretilir.',
             colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
             metrics: [
               AdminHeroMetric(label: 'Öğretmen', value: 'Hesap oluşur'),
@@ -123,7 +136,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               children: [
                 Container(
                   decoration: BoxDecoration(
-                    color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.55),
+                    color: Theme.of(
+                      context,
+                    ).scaffoldBackgroundColor.withValues(alpha: 0.55),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: TabBar(
@@ -134,7 +149,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       borderRadius: BorderRadius.circular(14),
                     ),
                     labelColor: Colors.white,
-                    unselectedLabelColor: Theme.of(context).textTheme.bodyMedium?.color,
+                    unselectedLabelColor: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.color,
                     tabs: const [
                       Tab(text: 'Öğretmen Kaydı'),
                       Tab(text: 'Personel Kaydı'),
@@ -188,12 +205,23 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'Matematik', child: Text('Matematik')),
-                      DropdownMenuItem(value: 'Fen Bilimleri', child: Text('Fen Bilimleri')),
+                      DropdownMenuItem(
+                        value: 'Matematik',
+                        child: Text('Matematik'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Fen Bilimleri',
+                        child: Text('Fen Bilimleri'),
+                      ),
                       DropdownMenuItem(value: 'Türkçe', child: Text('Türkçe')),
-                      DropdownMenuItem(value: 'İngilizce', child: Text('İngilizce')),
+                      DropdownMenuItem(
+                        value: 'İngilizce',
+                        child: Text('İngilizce'),
+                      ),
                     ],
-                    onChanged: (value) => setState(() => _teacherBranch = value ?? _teacherBranch),
+                    onChanged: (value) => setState(
+                      () => _teacherBranch = value ?? _teacherBranch,
+                    ),
                   ),
                 ),
               ],
@@ -201,38 +229,72 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field(controller: _teacherPhoneController, label: 'Telefon', keyboardType: TextInputType.phone)),
+                Expanded(
+                  child: _field(
+                    controller: _teacherPhoneController,
+                    label: 'Telefon',
+                    keyboardType: TextInputType.phone,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _field(controller: _teacherEmailController, label: 'E-Posta', keyboardType: TextInputType.emailAddress)),
+                Expanded(
+                  child: _field(
+                    controller: _teacherEmailController,
+                    label: 'E-Posta',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            _field(controller: _teacherEducationController, label: 'Mezuniyet / Universite'),
+            _field(
+              controller: _teacherEducationController,
+              label: 'Mezuniyet / Universite',
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field(controller: _teacherStartDateController, label: 'Ise Baslama Tarihi')),
+                Expanded(
+                  child: _field(
+                    controller: _teacherStartDateController,
+                    label: 'Ise Baslama Tarihi',
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _field(controller: _teacherCampusController, label: 'Kampus')),
+                Expanded(
+                  child: _field(
+                    controller: _teacherCampusController,
+                    label: 'Kampüs',
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _teacherHomeroomClass,
               decoration: const InputDecoration(
-                labelText: 'Sinif Ogretmenligi',
+                labelText: 'Sınıf Öğretmenliği',
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem(value: 'Sinif ogretmenligi yok', child: Text('Sinif ogretmenligi yok')),
-                ..._classOptions.map((item) => DropdownMenuItem(value: item, child: Text(item))),
+                const DropdownMenuItem(
+                  value: 'Sınıf öğretmenliği yok',
+                  child: Text('Sınıf öğretmenliği yok'),
+                ),
+                ..._classOptions.map(
+                  (item) => DropdownMenuItem(value: item, child: Text(item)),
+                ),
               ],
-              onChanged: (value) => setState(() => _teacherHomeroomClass = value ?? _teacherHomeroomClass),
+              onChanged: (value) => setState(
+                () => _teacherHomeroomClass = value ?? _teacherHomeroomClass,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
-              'Ders Girdigi Siniflar',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+              'Ders Girdiği Sınıflar',
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 8),
             Wrap(
@@ -270,37 +332,51 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       DropdownMenuItem(value: 'Bekar', child: Text('Bekar')),
                       DropdownMenuItem(value: 'Evli', child: Text('Evli')),
                     ],
-                    onChanged: (value) => setState(() => _teacherMaritalStatus = value ?? _teacherMaritalStatus),
+                    onChanged: (value) => setState(
+                      () => _teacherMaritalStatus =
+                          value ?? _teacherMaritalStatus,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _field(
                     controller: _teacherChildCountController,
-                    label: 'Cocuk Sayisi',
+                    label: 'Çocuk Sayisi',
                     keyboardType: TextInputType.number,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _field(controller: _teacherNoteController, label: 'Gorev Notu', maxLines: 4, required: false),
+            _field(
+              controller: _teacherNoteController,
+              label: 'Görev Notu',
+              maxLines: 4,
+              required: false,
+            ),
             const SizedBox(height: 16),
-            const AdminSectionTitle(title: 'Kayit Sonrasi'),
+            const AdminSectionTitle(title: 'Kayıt Sonrasi'),
             const SizedBox(height: 10),
-            const _InfoRow(title: 'Sistem Hesabi', value: 'Otomatik kullanici adi ve sifre uretilir'),
-            const _InfoRow(title: 'Rol', value: 'Ogretmen paneline giris hazir olur'),
+            const _InfoRow(
+              title: 'Sistem Hesabı',
+              value: 'Otomatik kullanıcı adı ve şifre üretilir',
+            ),
+            const _InfoRow(
+              title: 'Rol',
+              value: 'Öğretmen paneline giriş hazır olur',
+            ),
             _InfoRow(
-              title: 'Ogretmen Atamasi',
+              title: 'Öğretmen Ataması',
               value: _teacherAssignedClasses.isEmpty
-                  ? 'Sinif secilmedi'
-                  : (_teacherHomeroomClass == 'Sinif ogretmenligi yok'
-                      ? 'Brans ogretmeni'
-                      : 'Sinif ogretmeni: $_teacherHomeroomClass'),
+                  ? 'Sınıf seçilmedi'
+                  : (_teacherHomeroomClass == 'Sınıf öğretmenliği yok'
+                        ? 'Branş öğretmeni'
+                        : 'Sınıf öğretmeni: $_teacherHomeroomClass'),
             ),
             const SizedBox(height: 16),
             _submitButton(
-              label: 'Ogretmen Kaydini Tamamla',
+              label: 'Öğretmen Kaydını Tamamla',
               onPressed: _submitTeacher,
             ),
           ],
@@ -337,12 +413,27 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       border: OutlineInputBorder(),
                     ),
                     items: const [
-                      DropdownMenuItem(value: 'Ogrenci Isleri', child: Text('Ogrenci Isleri')),
-                      DropdownMenuItem(value: 'Muhasebe', child: Text('Muhasebe')),
-                      DropdownMenuItem(value: 'Destek ve IT', child: Text('Destek ve IT')),
-                      DropdownMenuItem(value: 'Operasyon', child: Text('Operasyon')),
+                      DropdownMenuItem(
+                        value: 'Öğrenci Isleri',
+                        child: Text('Öğrenci İşleri'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Muhasebe',
+                        child: Text('Muhasebe'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Destek ve IT',
+                        child: Text('Destek ve IT'),
+                      ),
+                      DropdownMenuItem(
+                        value: 'Operasyon',
+                        child: Text('Operasyon'),
+                      ),
                     ],
-                    onChanged: (value) => setState(() => _personnelDepartment = value ?? _personnelDepartment),
+                    onChanged: (value) => setState(
+                      () =>
+                          _personnelDepartment = value ?? _personnelDepartment,
+                    ),
                   ),
                 ),
               ],
@@ -350,19 +441,44 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field(controller: _personnelPhoneController, label: 'Telefon', keyboardType: TextInputType.phone)),
+                Expanded(
+                  child: _field(
+                    controller: _personnelPhoneController,
+                    label: 'Telefon',
+                    keyboardType: TextInputType.phone,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _field(controller: _personnelEmailController, label: 'E-Posta', keyboardType: TextInputType.emailAddress)),
+                Expanded(
+                  child: _field(
+                    controller: _personnelEmailController,
+                    label: 'E-Posta',
+                    keyboardType: TextInputType.emailAddress,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
-            _field(controller: _personnelEducationController, label: 'Egitim / Uzmanlik'),
+            _field(
+              controller: _personnelEducationController,
+              label: 'Egitim / Uzmanlik',
+            ),
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(child: _field(controller: _personnelStartDateController, label: 'Ise Baslama Tarihi')),
+                Expanded(
+                  child: _field(
+                    controller: _personnelStartDateController,
+                    label: 'Ise Baslama Tarihi',
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: _field(controller: _personnelCampusController, label: 'Kampus')),
+                Expanded(
+                  child: _field(
+                    controller: _personnelCampusController,
+                    label: 'Kampüs',
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -379,26 +495,40 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       DropdownMenuItem(value: 'Bekar', child: Text('Bekar')),
                       DropdownMenuItem(value: 'Evli', child: Text('Evli')),
                     ],
-                    onChanged: (value) => setState(() => _personnelMaritalStatus = value ?? _personnelMaritalStatus),
+                    onChanged: (value) => setState(
+                      () => _personnelMaritalStatus =
+                          value ?? _personnelMaritalStatus,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: _field(
                     controller: _personnelChildCountController,
-                    label: 'Cocuk Sayisi',
+                    label: 'Çocuk Sayisi',
                     keyboardType: TextInputType.number,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            _field(controller: _personnelNoteController, label: 'Idari Not', maxLines: 4, required: false),
+            _field(
+              controller: _personnelNoteController,
+              label: 'İdari Not',
+              maxLines: 4,
+              required: false,
+            ),
             const SizedBox(height: 16),
-            const AdminSectionTitle(title: 'Kayit Sonrasi'),
+            const AdminSectionTitle(title: 'Kayıt Sonrasi'),
             const SizedBox(height: 10),
-            const _InfoRow(title: 'Personel Profili', value: 'Departman ve kampus kaydi kurumsal listede yer alir'),
-            const _InfoRow(title: 'Duyuru Akisi', value: 'Idari duyurular ve kurum ici gorev akislariyla eslesir'),
+            const _InfoRow(
+              title: 'Personel Profili',
+              value: 'Departman ve kampus kaydı kurumsal listede yer alir',
+            ),
+            const _InfoRow(
+              title: 'Duyuru Akışı',
+              value: 'İdari duyurular ve kurum içi görev akışlarıyla eşleşir',
+            ),
             const SizedBox(height: 16),
             _submitButton(
               label: 'Personel Kaydini Tamamla',
@@ -424,7 +554,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       maxLines: maxLines,
       maxLength: maxLength,
       validator: required
-          ? (value) => value == null || value.trim().isEmpty ? '$label zorunludur' : null
+          ? (value) => value == null || value.trim().isEmpty
+                ? '$label zorunludur'
+                : null
           : null,
       decoration: InputDecoration(
         labelText: label,
@@ -479,17 +611,18 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       if (!mounted) return;
       setState(() => _saving = false);
       await _showResultCard(
-        title: 'Ogretmen kaydi tamamlandi',
-        description: 'Ogretmen paneli icin kullanici adi ve sifre otomatik olusturuldu.',
+        title: 'Öğretmen kaydı tamamlandı',
+        description:
+            'Öğretmen paneli için kullanıcı adı ve şifre otomatik oluşturuldu.',
         credentials: credentials,
         withLogin: true,
       );
     } on RegistrationApiException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -510,26 +643,28 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         education: _personnelEducationController.text.trim(),
         startDate: _personnelStartDateController.text.trim(),
         campus: _personnelCampusController.text.trim(),
-        homeroomClass: 'Sinif ogretmenligi yok',
+        homeroomClass: 'Sınıf öğretmenliği yok',
         assignedClasses: const [],
         maritalStatus: _personnelMaritalStatus,
-        childCount: int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
+        childCount:
+            int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
         note: _personnelNoteController.text.trim(),
       );
       if (!mounted) return;
       setState(() => _saving = false);
       await _showResultCard(
-        title: 'Personel kaydi tamamlandi',
-        description: 'Idari profil olusturuldu ve kurum ici iletisim listesine eklendi.',
+        title: 'Personel kaydı tamamlandı',
+        description:
+            'İdari profil oluşturuldu ve kurum içi iletişim listesine eklendi.',
         credentials: credentials,
         withLogin: false,
       );
     } on RegistrationApiException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -543,7 +678,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       context: context,
       builder: (dialogContext) {
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(22),
             child: Column(
@@ -557,12 +694,25 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     color: const Color(0xFF14532D).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.verified_user_outlined, color: Color(0xFF14532D)),
+                  child: const Icon(
+                    Icons.verified_user_outlined,
+                    color: Color(0xFF14532D),
+                  ),
                 ),
                 const SizedBox(height: 14),
-                Text(title, style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900)),
+                Text(
+                  title,
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 8),
-                Text(description, style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.45)),
+                Text(
+                  description,
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.45),
+                ),
                 const SizedBox(height: 16),
                 Container(
                   width: double.infinity,
@@ -570,18 +720,22 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   decoration: BoxDecoration(
                     color: Theme.of(dialogContext).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(dialogContext).dividerColor.withValues(alpha: 0.28)),
+                    border: Border.all(
+                      color: Theme.of(
+                        dialogContext,
+                      ).dividerColor.withValues(alpha: 0.28),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _resultRow('Kullanici Adi', credentials.username),
+                      _resultRow('Kullanıcı Adı', credentials.username),
                       const SizedBox(height: 10),
-                      _resultRow('Sifre', credentials.password),
+                      _resultRow('Şifre', credentials.password),
                       if (!withLogin) ...[
                         const SizedBox(height: 10),
                         Text(
-                          'Bu kayit su an kurum ici personel profili olarak tutulur.',
+                          'Bu kayıt su an kurum içi personel profili olarak tutulur.',
                           style: Theme.of(dialogContext).textTheme.bodySmall,
                         ),
                       ],
@@ -596,13 +750,16 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                         onPressed: () async {
                           await Clipboard.setData(
                             ClipboardData(
-                              text: 'Kullanici Adi: ${credentials.username}\nSifre: ${credentials.password}',
+                              text:
+                                  'Kullanıcı Adı: ${credentials.username}\nŞifre: ${credentials.password}',
                             ),
                           );
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Kayit bilgileri panoya kopyalandi.'),
+                              content: Text(
+                                'Kayıt bilgileri panoya kopyalandı.',
+                              ),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -634,9 +791,17 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   Widget _resultRow(String title, String value) {
     return Row(
       children: [
-        Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+        Expanded(
+          child: Text(
+            title,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
         const SizedBox(width: 12),
-        SelectableText(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        SelectableText(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
       ],
     );
   }
@@ -646,10 +811,7 @@ class _InfoRow extends StatelessWidget {
   final String title;
   final String value;
 
-  const _InfoRow({
-    required this.title,
-    required this.value,
-  });
+  const _InfoRow({required this.title, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -659,7 +821,12 @@ class _InfoRow extends StatelessWidget {
         children: [
           const Icon(Icons.check_circle_outline_rounded, size: 18),
           const SizedBox(width: 10),
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           const SizedBox(width: 12),
           Flexible(child: Text(value, textAlign: TextAlign.right)),
         ],

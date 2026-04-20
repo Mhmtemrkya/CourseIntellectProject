@@ -18,6 +18,7 @@ import '../pages/student_study_plan_page.dart';
 import '../pages/student_question_page.dart';
 import '../pages/student_wrong_answers_page.dart';
 import '../pages/student_attendance_history_page.dart';
+import '../pages/exam_analysis_page.dart';
 
 import '../pages/lessons_page.dart';
 import '../pages/exams_page.dart';
@@ -34,7 +35,6 @@ class StudentHomePage extends StatefulWidget {
 
 class _StudentHomePageState extends State<StudentHomePage>
     with TickerProviderStateMixin {
-
   late AnimationController _controller;
   late Animation<double> _fadeAnimation;
   int achievementRefreshKey = 0;
@@ -57,7 +57,9 @@ class _StudentHomePageState extends State<StudentHomePage>
 
   Future<void> _loadStudent() async {
     final session = await AuthSessionStore.instance.load();
-    final resolved = await SchoolFeedApiService.resolveLinkedStudentName(session);
+    final resolved = await SchoolFeedApiService.resolveLinkedStudentName(
+      session,
+    );
     if (!mounted) return;
     setState(() {
       _studentName = resolved.isEmpty ? 'Öğrenci' : resolved;
@@ -184,9 +186,10 @@ class _StudentHomePageState extends State<StudentHomePage>
 
   @override
   Widget build(BuildContext context) {
-
     return Scaffold(
-      floatingActionButton: ResponsiveLayout.supportsStylusInput && ResponsiveLayout.isTablet(context)
+      floatingActionButton:
+          ResponsiveLayout.supportsStylusInput &&
+              ResponsiveLayout.isTablet(context)
           ? FloatingActionButton(
               onPressed: () => StylusDrawingCanvas.open(context),
               backgroundColor: const Color(0xFFD9790B),
@@ -194,9 +197,7 @@ class _StudentHomePageState extends State<StudentHomePage>
             )
           : null,
       body: SafeArea(
-
         child: FadeTransition(
-
           opacity: _fadeAnimation,
 
           child: SingleChildScrollView(
@@ -210,8 +211,12 @@ class _StudentHomePageState extends State<StudentHomePage>
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              HeaderWidget(key: ValueKey(achievementRefreshKey)),
+                              HeaderWidget(
+                                key: ValueKey(achievementRefreshKey),
+                              ),
                               const SizedBox(height: 16),
+                              const QuickActions(),
+                              const SizedBox(height: 20),
                               SummaryCards(
                                 onLessonsTap: goToLessons,
                                 onExamTap: goToExams,
@@ -219,7 +224,9 @@ class _StudentHomePageState extends State<StudentHomePage>
                                 onResultsTap: goToExamResults,
                               ),
                               const SizedBox(height: 20),
-                              AchievementsWidget(refreshKey: achievementRefreshKey),
+                              AchievementsWidget(
+                                refreshKey: achievementRefreshKey,
+                              ),
                             ],
                           ),
                         ),
@@ -231,8 +238,6 @@ class _StudentHomePageState extends State<StudentHomePage>
                               _focusPanel(),
                               const SizedBox(height: 20),
                               _studentExtraPanel(),
-                              const SizedBox(height: 20),
-                              const QuickActions(),
                             ],
                           ),
                         ),
@@ -243,6 +248,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                       children: [
                         HeaderWidget(key: ValueKey(achievementRefreshKey)),
                         const SizedBox(height: 16),
+                        const QuickActions(),
+                        const SizedBox(height: 20),
                         SummaryCards(
                           onLessonsTap: goToLessons,
                           onExamTap: goToExams,
@@ -255,8 +262,6 @@ class _StudentHomePageState extends State<StudentHomePage>
                         _focusPanel(),
                         const SizedBox(height: 20),
                         _studentExtraPanel(),
-                        const SizedBox(height: 20),
-                        const QuickActions(),
                       ],
                     ),
             ),
@@ -279,9 +284,17 @@ class _StudentHomePageState extends State<StudentHomePage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('Öğrenci Gelişim Alanları', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+          Text(
+            'Öğrenci Gelişim Alanları',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 8),
-          Text('Yanlışlarını tekrar listesinde topla ve öğretmen, ödev, sınav hareketlerini canlı bildirim kutusundan izle.', style: theme.textTheme.bodyMedium),
+          Text(
+            'Yanlışlarını tekrar listesinde topla ve öğretmen, ödev, sınav hareketlerini canlı bildirim kutusundan izle.',
+            style: theme.textTheme.bodyMedium,
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -296,7 +309,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               const SizedBox(width: 10),
               Expanded(
                 child: _miniAction(
-                  title: "Canli Bildirim",
+                  title: "Canlı Bildirim",
                   icon: Icons.notifications_active_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: goToNotifications,
@@ -305,7 +318,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               const SizedBox(width: 10),
               Expanded(
                 child: _miniAction(
-                  title: "Devamsizlik",
+                  title: "Devamsızlık",
                   icon: Icons.event_busy_outlined,
                   color: const Color(0xFFB42318),
                   onTap: goToAttendanceHistory,
@@ -349,7 +362,7 @@ class _StudentHomePageState extends State<StudentHomePage>
           ),
           const SizedBox(height: 8),
           Text(
-            "QR yoklamaya katil, ogretmenine soru gonder ve otomatik olusan calisma planini takip et.",
+            "QR yoklamaya katıl, öğretmenine soru gönder ve otomatik oluşan çalışma planını takip et.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
             ),
@@ -378,19 +391,28 @@ class _StudentHomePageState extends State<StudentHomePage>
                 onTap: goToAttendanceScan,
               ),
               _miniAction(
-                title: "Sinav Sonuclarim",
+                title: "Sınav Sonuçlarım",
                 icon: Icons.bar_chart_rounded,
                 color: const Color(0xFFF59E0B),
                 onTap: goToExamResults,
               ),
               _miniAction(
-                title: "Calisma Planim",
+                title: "Detayli Analiz",
+                icon: Icons.insights_rounded,
+                color: const Color(0xFF7C3AED),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const ExamAnalysisPage()),
+                ),
+              ),
+              _miniAction(
+                title: "Çalışma Planim",
                 icon: Icons.event_note_rounded,
                 color: const Color(0xFF10B981),
                 onTap: goToStudyPlan,
               ),
               _miniAction(
-                title: "Devamsizlik",
+                title: "Devamsızlık",
                 icon: Icons.rule_folder_outlined,
                 color: const Color(0xFFB42318),
                 onTap: goToAttendanceHistory,

@@ -126,14 +126,29 @@ internal static class CompatibilitySnapshotStore
         return trimmed;
     }
 
+    private static readonly CultureInfo? TurkishCulture = TryGetCulture("tr-TR");
+
+    private static CultureInfo? TryGetCulture(string name)
+    {
+        try
+        {
+            return CultureInfo.GetCultureInfo(name);
+        }
+        catch (CultureNotFoundException)
+        {
+            return null;
+        }
+    }
+
     public static DateTime ParseDateLabel(string? value)
     {
-        if (DateTime.TryParse(value, out var parsed))
+        if (DateTime.TryParse(value, CultureInfo.InvariantCulture, DateTimeStyles.None, out var parsed))
         {
             return parsed;
         }
 
-        if (DateTime.TryParseExact(value, "dd.MM.yyyy", CultureInfo.GetCultureInfo("tr-TR"), DateTimeStyles.None, out parsed))
+        var culture = TurkishCulture ?? CultureInfo.InvariantCulture;
+        if (DateTime.TryParseExact(value, "dd.MM.yyyy", culture, DateTimeStyles.None, out parsed))
         {
             return parsed;
         }

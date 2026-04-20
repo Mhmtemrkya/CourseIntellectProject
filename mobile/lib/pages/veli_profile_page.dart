@@ -52,11 +52,23 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
           _card(
             Column(
               children: [
-                const CircleAvatar(radius: 40, child: Icon(Icons.family_restroom_rounded, size: 36)),
+                const CircleAvatar(
+                  radius: 40,
+                  child: Icon(Icons.family_restroom_rounded, size: 36),
+                ),
                 const SizedBox(height: 10),
-                Text(session?.fullName ?? "Veli", style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+                Text(
+                  session?.fullName ?? "Veli",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(session?.username ?? "-", style: const TextStyle(color: Colors.grey)),
+                Text(
+                  session?.username ?? "-",
+                  style: const TextStyle(color: Colors.grey),
+                ),
               ],
             ),
           ),
@@ -65,17 +77,23 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Veli Bilgileri", style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text(
+                  "Veli Bilgileri",
+                  style: TextStyle(fontWeight: FontWeight.w800),
+                ),
                 const SizedBox(height: 12),
                 _infoRow("Ad Soyad", session?.fullName ?? "-"),
-                _infoRow("Kullanici Adi", session?.username ?? "-"),
+                _infoRow("Kullanıcı Adı", session?.username ?? "-"),
                 _infoRow("Rol", "Veli"),
-                _infoRow("Secili Cocuk", _selectedChild.isEmpty ? "-" : _selectedChild),
+                _infoRow(
+                  "Seçili Çocuk",
+                  _selectedChild.isEmpty ? "-" : _selectedChild,
+                ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedChild.isEmpty ? null : _selectedChild,
                   decoration: const InputDecoration(
-                    labelText: 'Cocuk Sec',
+                    labelText: 'Çocuk Seç',
                     border: OutlineInputBorder(),
                   ),
                   items: _children
@@ -92,7 +110,9 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                   },
                 ),
                 const SizedBox(height: 12),
-                const Text("Bu bilgiler sadece yonetici ve idari birimler tarafindan guncellenebilir."),
+                const Text(
+                  "Bu bilgiler sadece yönetiçi ve idari birimler tarafından güncellenebilir.",
+                ),
               ],
             ),
           ),
@@ -108,16 +128,23 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                 ListTile(
                   leading: const Icon(Icons.notifications_active_outlined),
                   title: const Text("Bildirim Tercihleri"),
-                  subtitle: const Text("Ödeme, mesaj, görüşme ve rapor uyarılarını yönet."),
+                  subtitle: const Text(
+                    "Ödeme, mesaj, görüşme ve rapor uyarılarını yönet.",
+                  ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
                     context,
-                    MaterialPageRoute(builder: (_) => const NotificationPreferencesPage()),
+                    MaterialPageRoute(
+                      builder: (_) => const NotificationPreferencesPage(),
+                    ),
                   ),
                 ),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                  title: const Text("Cikis Yap", style: TextStyle(color: Colors.red)),
+                  title: const Text(
+                    "Çıkış Yap",
+                    style: TextStyle(color: Colors.red),
+                  ),
                   onTap: () => logoutToRoleSelect(context),
                 ),
               ],
@@ -133,7 +160,12 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         children: [
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           Expanded(child: Text(value, textAlign: TextAlign.right)),
         ],
       ),

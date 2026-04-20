@@ -26,14 +26,23 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
   Widget build(BuildContext context) {
     final query = _controller.text.trim().toLowerCase();
     final students = _studentStore.students.where((item) {
-      return query.isEmpty || item.fullName.toLowerCase().contains(query) || item.parentName.toLowerCase().contains(query);
+      return query.isEmpty ||
+          item.fullName.toLowerCase().contains(query) ||
+          item.parentName.toLowerCase().contains(query);
     }).toList();
     final staff = _staffStore.staff.where((item) {
-      return query.isEmpty || item.fullName.toLowerCase().contains(query) || item.branchOrDepartment.toLowerCase().contains(query);
+      return query.isEmpty ||
+          item.fullName.toLowerCase().contains(query) ||
+          item.branchOrDepartment.toLowerCase().contains(query);
     }).toList();
 
     return AdminScaffold(
-      appBar: AppBar(title: const Text('Global Arama Merkezi', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Global Arama Merkezi',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -43,19 +52,33 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
               onChanged: (_) => setState(() {}),
               decoration: const InputDecoration(
                 prefixIcon: Icon(Icons.search),
-                hintText: 'Ogrenci, veli, ogretmen ara',
+                hintText: 'Öğrenci, veli, öğretmen ara',
                 border: OutlineInputBorder(),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          const AdminSectionTitle(title: 'Ogrenci Sonuclari'),
+          const AdminSectionTitle(title: 'Öğrenci Sonuçları'),
           const SizedBox(height: 12),
-          ...students.map((item) => AdminPanel(margin: const EdgeInsets.only(bottom: 10), child: Text('${item.fullName} • ${item.className} • ${item.parentName}'))),
+          ...students.map(
+            (item) => AdminPanel(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                '${item.fullName} • ${item.className} • ${item.parentName}',
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
-          const AdminSectionTitle(title: 'Kadro Sonuclari'),
+          const AdminSectionTitle(title: 'Kadro Sonuçları'),
           const SizedBox(height: 12),
-          ...staff.map((item) => AdminPanel(margin: const EdgeInsets.only(bottom: 10), child: Text('${item.fullName} • ${item.roleType} • ${item.branchOrDepartment}'))),
+          ...staff.map(
+            (item) => AdminPanel(
+              margin: const EdgeInsets.only(bottom: 10),
+              child: Text(
+                '${item.fullName} • ${item.roleType} • ${item.branchOrDepartment}',
+              ),
+            ),
+          ),
         ],
       ),
     );

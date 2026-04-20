@@ -41,14 +41,36 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
   @override
   Widget build(BuildContext context) {
     final financeRows = [
-      ('Toplam Alacak', _store.formatAmount(_store.totalReceivables), const Color(0xFF14532D)),
-      ('Tahsil Edilen', _store.formatAmount(_store.collectedTotal), const Color(0xFF2563EB)),
-      ('Bekleyen', _store.formatAmount(_store.pendingTotal), const Color(0xFFB45309)),
-      ('Geciken', _store.formatAmount(_store.overdueTotal), const Color(0xFFB42318)),
+      (
+        'Toplam Alacak',
+        _store.formatAmount(_store.totalReceivables),
+        const Color(0xFF14532D),
+      ),
+      (
+        'Tahsil Edilen',
+        _store.formatAmount(_store.collectedTotal),
+        const Color(0xFF2563EB),
+      ),
+      (
+        'Bekleyen',
+        _store.formatAmount(_store.pendingTotal),
+        const Color(0xFFB45309),
+      ),
+      (
+        'Geciken',
+        _store.formatAmount(_store.overdueTotal),
+        const Color(0xFFB42318),
+      ),
     ];
 
     final actions = [
-      _AdminFinanceAction('Tahsilatlar', 'Guncel odeme hareketleri', Icons.payments_outlined, const Color(0xFF14532D), const AccountingReceiptsPage()),
+      _AdminFinanceAction(
+        'Tahsilatlar',
+        'Güncel ödeme hareketleri',
+        Icons.payments_outlined,
+        const Color(0xFF14532D),
+        const AccountingReceiptsPage(),
+      ),
       _AdminFinanceAction(
         'Onaylar',
         'Finans ve indirim onaylari',
@@ -56,30 +78,58 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
         const Color(0xFF475569),
         const AccountingApprovalsPage(
           canApprove: true,
-          pageTitle: 'Yonetici Onaylari',
+          pageTitle: 'Yönetici Onayları',
         ),
       ),
-      _AdminFinanceAction('Disa Aktar', 'PDF / Excel ciktilari', Icons.ios_share_outlined, const Color(0xFF4F46E5), const AccountingExportsPage()),
-      _AdminFinanceAction('Gecikenler', 'Riskli odeme listesi', Icons.warning_amber_rounded, const Color(0xFFB42318), const AccountingOverduePage()),
-      _AdminFinanceAction('Muhasebe Kaydi', 'Sadece yonetici yeni muhasebe hesabi acar', Icons.person_add_alt_1_rounded, const Color(0xFF0F766E), const AdminAccountingRegistrationPage()),
+      _AdminFinanceAction(
+        'Dışa Aktar',
+        'PDF / Excel ciktilari',
+        Icons.ios_share_outlined,
+        const Color(0xFF4F46E5),
+        const AccountingExportsPage(),
+      ),
+      _AdminFinanceAction(
+        'Gecikenler',
+        'Riskli ödeme listesi',
+        Icons.warning_amber_rounded,
+        const Color(0xFFB42318),
+        const AccountingOverduePage(),
+      ),
+      _AdminFinanceAction(
+        'Muhasebe Kaydı',
+        'Sadece yönetiçi yeni muhasebe hesabı açar',
+        Icons.person_add_alt_1_rounded,
+        const Color(0xFF0F766E),
+        const AdminAccountingRegistrationPage(),
+      ),
     ];
 
-    final riskCount = _store.installments.where((item) => item.status == 'Geciken').length;
+    final riskCount = _store.installments
+        .where((item) => item.status == 'Geciken')
+        .length;
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Finans Kontrolu', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Finans Kontrolu',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
-            eyebrow: 'Finans gorunumu',
-            title: 'Tahsilat, onay ve riskli bakiye akislarini yonetici perspektifiyle izleyin.',
-            description: 'Muhasebe modulundeki hareketler ozetlenir ve kritik finans surecleri dogrudan acilir.',
+            eyebrow: 'Finans görünümü',
+            title:
+                'Tahsilat, onay ve riskli bakiye akışlarını yönetiçi perspektifiyle izleyin.',
+            description:
+                'Muhasebe modülundeki hareketler özetlenir ve kritik finans süreçleri doğrudan açılır.',
             metrics: [
-              AdminHeroMetric(label: 'Nakit Sagligi', value: riskCount == 0 ? 'Dengede' : 'Izleme'),
-              AdminHeroMetric(label: 'Riskli Kayit', value: '$riskCount'),
+              AdminHeroMetric(
+                label: 'Nakit Sagligi',
+                value: riskCount == 0 ? 'Dengede' : 'Izleme',
+              ),
+              AdminHeroMetric(label: 'Riskli Kayıt', value: '$riskCount'),
             ],
           ),
           const SizedBox(height: 16),
@@ -99,9 +149,20 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: Text(item.$1, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+                    child: Text(
+                      item.$1,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
-                  Text(item.$2, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: item.$3)),
+                  Text(
+                    item.$2,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: item.$3,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -114,7 +175,10 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
               padding: const EdgeInsets.only(bottom: 10),
               child: InkWell(
                 borderRadius: BorderRadius.circular(22),
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => item.page)),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => item.page),
+                ),
                 child: AdminPanel(
                   child: Row(
                     children: [
@@ -132,9 +196,16 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(item.title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                            Text(
+                              item.title,
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
                             const SizedBox(height: 4),
-                            Text(item.subtitle, style: Theme.of(context).textTheme.bodySmall),
+                            Text(
+                              item.subtitle,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
                           ],
                         ),
                       ),
@@ -167,5 +238,11 @@ class _AdminFinanceAction {
   final Color color;
   final Widget page;
 
-  _AdminFinanceAction(this.title, this.subtitle, this.icon, this.color, this.page);
+  _AdminFinanceAction(
+    this.title,
+    this.subtitle,
+    this.icon,
+    this.color,
+    this.page,
+  );
 }

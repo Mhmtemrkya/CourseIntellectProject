@@ -13,17 +13,24 @@ class MessageRealtimeService {
   HubConnection? _connection;
   final _threadController = StreamController<Map<String, dynamic>>.broadcast();
   final _messageController = StreamController<Map<String, dynamic>>.broadcast();
-  final _messageStatusController = StreamController<Map<String, dynamic>>.broadcast();
-  final _presenceController = StreamController<Map<String, dynamic>>.broadcast();
+  final _messageStatusController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  final _presenceController =
+      StreamController<Map<String, dynamic>>.broadcast();
   final _typingController = StreamController<Map<String, dynamic>>.broadcast();
   final Set<String> _joinedThreads = <String>{};
   final Set<String> _presenceKeys = <String>{};
 
-  Stream<Map<String, dynamic>> get threadUpdatedStream => _threadController.stream;
-  Stream<Map<String, dynamic>> get messageReceivedStream => _messageController.stream;
-  Stream<Map<String, dynamic>> get messageStatusChangedStream => _messageStatusController.stream;
-  Stream<Map<String, dynamic>> get presenceChangedStream => _presenceController.stream;
-  Stream<Map<String, dynamic>> get typingChangedStream => _typingController.stream;
+  Stream<Map<String, dynamic>> get threadUpdatedStream =>
+      _threadController.stream;
+  Stream<Map<String, dynamic>> get messageReceivedStream =>
+      _messageController.stream;
+  Stream<Map<String, dynamic>> get messageStatusChangedStream =>
+      _messageStatusController.stream;
+  Stream<Map<String, dynamic>> get presenceChangedStream =>
+      _presenceController.stream;
+  Stream<Map<String, dynamic>> get typingChangedStream =>
+      _typingController.stream;
 
   bool get isConnected => _connection?.state == HubConnectionState.Connected;
 
@@ -31,7 +38,8 @@ class MessageRealtimeService {
     final session = await AuthSessionStore.instance.load();
     if (session == null) return;
 
-    if (_connection != null && _connection!.state == HubConnectionState.Connected) {
+    if (_connection != null &&
+        _connection!.state == HubConnectionState.Connected) {
       return;
     }
 
@@ -39,7 +47,8 @@ class MessageRealtimeService {
         .withUrl(
           '${ApiConfig.baseUrl}/hubs/messages',
           options: HttpConnectionOptions(
-            accessTokenFactory: () async => (await AuthSessionStore.instance.load())?.accessToken ?? '',
+            accessTokenFactory: () async =>
+                (await AuthSessionStore.instance.load())?.accessToken ?? '',
           ),
         )
         .withAutomaticReconnect()
@@ -47,10 +56,14 @@ class MessageRealtimeService {
 
     _connection!.onreconnected(({String? connectionId}) {
       for (final threadId in _joinedThreads) {
-        _connection!.invoke('JoinThread', args: [threadId]).catchError((_) => null);
+        _connection!
+            .invoke('JoinThread', args: [threadId])
+            .catchError((_) => null);
       }
       for (final actorKey in _presenceKeys) {
-        _connection!.invoke('SubscribePresence', args: [actorKey]).catchError((_) => null);
+        _connection!
+            .invoke('SubscribePresence', args: [actorKey])
+            .catchError((_) => null);
       }
     });
 
@@ -147,7 +160,10 @@ class MessageRealtimeService {
     await ensureConnected();
     if (_connection?.state != HubConnectionState.Connected) return;
     try {
-      await _connection!.invoke(isTyping ? 'TypingStart' : 'TypingStop', args: [threadId, actorName]);
+      await _connection!.invoke(
+        isTyping ? 'TypingStart' : 'TypingStop',
+        args: [threadId, actorName],
+      );
     } catch (_) {}
   }
 

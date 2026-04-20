@@ -9,7 +9,8 @@ class AdminRoleManagementPage extends StatefulWidget {
   const AdminRoleManagementPage({super.key});
 
   @override
-  State<AdminRoleManagementPage> createState() => _AdminRoleManagementPageState();
+  State<AdminRoleManagementPage> createState() =>
+      _AdminRoleManagementPageState();
 }
 
 class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
@@ -18,9 +19,12 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
   late final List<_RoleProfile> _roles = [
     _RoleProfile(
       title: 'Yönetici',
-      description: 'Tüm modüllere erişir, onay verir ve kurum genel ayarlarını yönetir.',
-      mainGoal: 'Kurumsal karar, onay ve yetki mimarisini güvenli şekilde yönetmek.',
-      riskNote: 'Bu rolde gereksiz fazla kullanıcı olması kritik onay ve veri güvenliği riski oluşturur.',
+      description:
+          'Tüm modüllere erişir, onay verir ve kurum genel ayarlarını yönetir.',
+      mainGoal:
+          'Kurumsal karar, onay ve yetki mimarisini güvenli şekilde yönetmek.',
+      riskNote:
+          'Bu rolde gereksiz fazla kullanıcı olması kritik onay ve veri güvenliği riski oluşturur.',
       color: const Color(0xFF1D4ED8),
       icon: Icons.admin_panel_settings_outlined,
       isActive: true,
@@ -43,15 +47,18 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
     ),
     _RoleProfile(
       title: 'Öğretmen',
-      description: 'Sınıf yönetimi, içerik, sınav, soru bankası ve veli görüşme süreçlerini yürütür.',
-      mainGoal: 'Akademik süreçleri yönetmek ve öğrenci performansını artırmak.',
-      riskNote: 'Finans veya onay ekranlarının açık kalması görev karmaşasına neden olur.',
+      description:
+          'Sınıf yönetimi, içerik, sınav, soru bankası ve veli görüşme süreçlerini yürütür.',
+      mainGoal:
+          'Akademik süreçleri yönetmek ve öğrenci performansını artırmak.',
+      riskNote:
+          'Finans veya onay ekranlarının açık kalması görev karmaşasına neden olur.',
       color: const Color(0xFF7C3AED),
       icon: Icons.menu_book_outlined,
       isActive: true,
       requiresApprovalForCriticalActions: false,
       loginEnabled: true,
-      messagingScope: 'Öğrenci, veli, yönetici',
+      messagingScope: 'Öğrenci, veli, yönetiçi',
       moduleAccess: {
         'Akademik': true,
         'Finans': false,
@@ -68,15 +75,17 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
     ),
     _RoleProfile(
       title: 'Muhasebeci',
-      description: 'Tahsilat, taksit, burs ve ödeme süreçlerini yönetir; onay vermez, takip eder.',
-      mainGoal: 'Tahsilat ve ödeme operasyonunu hatasız yürütmek, finansal kayıtları düzenli tutmak.',
+      description:
+          'Tahsilat, taksit, burs ve ödeme süreçlerini yönetir; onay vermez, takip eder.',
+      mainGoal:
+          'Tahsilat ve ödeme operasyonunu hatasız yürütmek, finansal kayıtları düzenli tutmak.',
       riskNote: 'Onay yetkisi açılırsa finans kontrol zinciri bozulur.',
       color: const Color(0xFF14532D),
       icon: Icons.account_balance_wallet_outlined,
       isActive: true,
       requiresApprovalForCriticalActions: true,
       loginEnabled: true,
-      messagingScope: 'Veli, yönetici',
+      messagingScope: 'Veli, yönetiçi',
       moduleAccess: {
         'Akademik': false,
         'Finans': true,
@@ -84,24 +93,23 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
         'Duyurular': false,
         'Onaylar': false,
       },
-      criticalPowers: [
-        'Tahsilat oluşturma',
-        'Bordro hazırlama',
-        'Onay takibi',
-      ],
+      criticalPowers: ['Tahsilat oluşturma', 'Bordro hazırlama', 'Onay takibi'],
       assignedUsers: ['Muhasebe Birimi', 'Ceren Aksoy'],
     ),
     _RoleProfile(
       title: 'İdari Birimler',
-      description: 'Öğrenci kaydı, evrak takibi, duyuru ve veli iletişim süreçlerini yürütür.',
-      mainGoal: 'Kayıt, evrak ve veli bilgilendirme operasyonunu hızlı ve eksiksiz yürütmek.',
-      riskNote: 'Finans yetkisi verilirse kayıt ve tahsilat süreçleri birbirine karışır.',
+      description:
+          'Öğrenci kaydı, evrak takibi, duyuru ve veli iletişim süreçlerini yürütür.',
+      mainGoal:
+          'Kayıt, evrak ve veli bilgilendirme operasyonunu hızlı ve eksiksiz yürütmek.',
+      riskNote:
+          'Finans yetkisi verilirse kayıt ve tahsilat süreçleri birbirine karışır.',
       color: const Color(0xFF0F766E),
       icon: Icons.apartment_outlined,
       isActive: true,
       requiresApprovalForCriticalActions: false,
       loginEnabled: true,
-      messagingScope: 'Veli, yönetici, muhasebe',
+      messagingScope: 'Veli, yönetiçi, muhasebe',
       moduleAccess: {
         'Akademik': false,
         'Finans': false,
@@ -150,7 +158,8 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
           if (summary == null) continue;
           role.isActive = summary.isActive;
           role.loginEnabled = summary.loginEnabled;
-          role.requiresApprovalForCriticalActions = summary.requiresCriticalApproval;
+          role.requiresApprovalForCriticalActions =
+              summary.requiresCriticalApproval;
           role.messagingScope = summary.messagingScope;
           for (final key in role.moduleAccess.keys.toList()) {
             role.moduleAccess[key] = summary.moduleAccess.contains(key);
@@ -164,8 +173,12 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    final activeCount = _roleSummaries.isEmpty ? _roles.where((item) => item.isActive).length : _roleSummaries.length;
-    final loginEnabledCount = _roleSummaries.isEmpty ? _roles.where((item) => item.loginEnabled).length : _roleSummaries.where((item) => item.loginEnabled).length;
+    final activeCount = _roleSummaries.isEmpty
+        ? _roles.where((item) => item.isActive).length
+        : _roleSummaries.length;
+    final loginEnabledCount = _roleSummaries.isEmpty
+        ? _roles.where((item) => item.loginEnabled).length
+        : _roleSummaries.where((item) => item.loginEnabled).length;
     final approvalCount = _roleSummaries.isEmpty
         ? _roles.where((item) => item.requiresApprovalForCriticalActions).length
         : _roleSummaries.where((item) => item.requiresCriticalApproval).length;
@@ -182,7 +195,8 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
         children: [
           AdminHeroCard(
             eyebrow: 'Rol merkezi',
-            title: 'Kurumdaki her rolün amacı, erişimi ve kritik yetkisi açık şekilde yönetilsin.',
+            title:
+                'Kurumdaki her rolün amacı, erişimi ve kritik yetkisi açık şekilde yönetilsin.',
             description:
                 'Bu ekranda rolün sadece açık olup olmadığı değil; hangi modüllere eriştiği, kimlerle mesajlaşabildiği ve kritik işlemlerde onay gerekip gerekmediği belirlenir.',
             colors: const [Color(0xFF0F172A), Color(0xFF1D4ED8)],
@@ -241,8 +255,8 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                 const SizedBox(height: 12),
                 _policyTile(
                   context,
-                  'Kritik finans ve maaş onayı yalnızca yöneticide kalır.',
-                  'Muhasebe hazırlık yapar, karar ve onay yönetici tarafından verilir.',
+                  'Kritik finans ve maaş onayı yalnızca yönetiçide kalır.',
+                  'Muhasebe hazırlık yapar, karar ve onay yönetiçi tarafından verilir.',
                 ),
                 _policyTile(
                   context,
@@ -274,7 +288,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
         decoration: BoxDecoration(
           color: selected
               ? role.color.withValues(alpha: 0.10)
-              : Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+              : Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: selected
@@ -301,15 +317,17 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                   Text(
                     role.title,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     role.description,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(height: 1.4),
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.copyWith(height: 1.4),
                   ),
                 ],
               ),
@@ -325,9 +343,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                 const SizedBox(height: 8),
                 Text(
                   role.loginEnabled ? 'Giriş Açık' : 'Giriş Kapalı',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -356,7 +374,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               ),
               child: Text(
                 '${role.title} rolünde kayıtlı ${assignedPeople.length} kullanıcı bulundu. Bu bölüm backend listesinden okunur.',
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(height: 1.4),
               ),
             ),
           ],
@@ -366,8 +386,8 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                 child: Text(
                   '${role.title} Rol Detayı',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
-                      ),
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               AdminAccentBadge(label: role.title, color: role.color),
@@ -376,7 +396,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
           const SizedBox(height: 10),
           Text(
             role.description,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.45),
           ),
           const SizedBox(height: 10),
           Container(
@@ -391,14 +413,16 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               children: [
                 Text(
                   'Rolün Amacı',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   role.mainGoal,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.4),
                 ),
               ],
             ),
@@ -411,7 +435,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               setState(() => role.isActive = value);
             },
             title: const Text('Rol aktif'),
-            subtitle: const Text('Bu rol sistem içinde görünür ve atanabilir olsun'),
+            subtitle: const Text(
+              'Bu rol sistem içinde görünür ve atanabilir olsun',
+            ),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -420,7 +446,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               setState(() => role.loginEnabled = value);
             },
             title: const Text('Giriş yetkisi açık'),
-            subtitle: const Text('Bu roldeki kullanıcılar login ekranından giriş yapabilsin'),
+            subtitle: const Text(
+              'Bu roldeki kullanıcılar login ekranından giriş yapabilsin',
+            ),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -429,36 +457,40 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               setState(() => role.requiresApprovalForCriticalActions = value);
             },
             title: const Text('Kritik işlemde onay gereksinimi'),
-            subtitle: const Text('Bu roldeki kritik işlemler yönetici onayıyla tamamlansın'),
+            subtitle: const Text(
+              'Bu roldeki kritik işlemler yönetiçi onayıyla tamamlansın',
+            ),
           ),
           const SizedBox(height: 12),
           Text(
             'Mesajlaşma Kapsamı',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+              color: Theme.of(
+                context,
+              ).scaffoldBackgroundColor.withValues(alpha: 0.45),
               borderRadius: BorderRadius.circular(18),
             ),
             child: Text(
               role.messagingScope,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Bu Role Atanmış Kullanıcılar',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           if (assignedPeople.isEmpty)
@@ -466,7 +498,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: const Text('Bu role atanmış aktif kullanıcı yok.'),
@@ -478,12 +512,18 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+                  color: Theme.of(
+                    context,
+                  ).scaffoldBackgroundColor.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Row(
                   children: [
-                    Icon(Icons.person_outline_rounded, color: role.color, size: 18),
+                    Icon(
+                      Icons.person_outline_rounded,
+                      color: role.color,
+                      size: 18,
+                    ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Column(
@@ -503,10 +543,17 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                               children: person.extraRoles
                                   .map(
                                     (extraRole) => Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
                                       decoration: BoxDecoration(
-                                        color: role.color.withValues(alpha: 0.10),
-                                        borderRadius: BorderRadius.circular(999),
+                                        color: role.color.withValues(
+                                          alpha: 0.10,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          999,
+                                        ),
                                       ),
                                       child: Text(
                                         'Ek Yetki: $extraRole',
@@ -543,25 +590,26 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
           const SizedBox(height: 16),
           Text(
             'Modül Erişimleri',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           ...role.moduleAccess.entries.map(
             (entry) => SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: entry.value,
-              onChanged: (value) => setState(() => role.moduleAccess[entry.key] = value),
+              onChanged: (value) =>
+                  setState(() => role.moduleAccess[entry.key] = value),
               title: Text(entry.key),
             ),
           ),
           const SizedBox(height: 16),
           Text(
             'Rolün Kritik Kullanım Alanları',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 10),
           ...role.criticalPowers.map(
@@ -570,7 +618,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+                color: Theme.of(
+                  context,
+                ).scaffoldBackgroundColor.withValues(alpha: 0.45),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Row(
@@ -604,9 +654,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                 Text(
                   role.riskNote,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        height: 1.4,
-                        color: const Color(0xFF7F1D1D),
-                      ),
+                    height: 1.4,
+                    color: const Color(0xFF7F1D1D),
+                  ),
                 ),
               ],
             ),
@@ -630,15 +680,21 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                       roleName: _toApiRole(role.title),
                       isActive: role.isActive,
                       loginEnabled: role.loginEnabled,
-                      requiresCriticalApproval: role.requiresApprovalForCriticalActions,
+                      requiresCriticalApproval:
+                          role.requiresApprovalForCriticalActions,
                       messagingScope: role.messagingScope,
-                      moduleAccess: role.moduleAccess.entries.where((entry) => entry.value).map((entry) => entry.key).toList(),
+                      moduleAccess: role.moduleAccess.entries
+                          .where((entry) => entry.value)
+                          .map((entry) => entry.key)
+                          .toList(),
                     );
                     await _loadDirectoryData();
                     if (!mounted) return;
                     messenger.showSnackBar(
                       SnackBar(
-                        content: Text('${role.title} rol ayarlari guncellendi.'),
+                        content: Text(
+                          '${role.title} rol ayarları güncellendi.',
+                        ),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -659,7 +715,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+        color: Theme.of(
+          context,
+        ).scaffoldBackgroundColor.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(18),
       ),
       child: Column(
@@ -667,9 +725,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
         children: [
           Text(
             title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
@@ -686,7 +744,11 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
       switch (role.title) {
         case 'Öğretmen':
           return _staffRecords
-              .where((person) => person.role == 'Teacher' || person.extraRoles.contains('Teacher'))
+              .where(
+                (person) =>
+                    person.role == 'Teacher' ||
+                    person.extraRoles.contains('Teacher'),
+              )
               .map(
                 (person) => _AssignedPerson(
                   displayName: person.fullName,
@@ -701,7 +763,11 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               .toList();
         case 'Muhasebeci':
           return _staffRecords
-              .where((person) => person.role == 'Accounting' || person.extraRoles.contains('Accounting'))
+              .where(
+                (person) =>
+                    person.role == 'Accounting' ||
+                    person.extraRoles.contains('Accounting'),
+              )
               .map(
                 (person) => _AssignedPerson(
                   displayName: person.fullName,
@@ -716,7 +782,11 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               .toList();
         case 'İdari Birimler':
           return _staffRecords
-              .where((person) => person.role == 'Administrative' || person.extraRoles.contains('Administrative'))
+              .where(
+                (person) =>
+                    person.role == 'Administrative' ||
+                    person.extraRoles.contains('Administrative'),
+              )
               .map(
                 (person) => _AssignedPerson(
                   displayName: person.fullName,
@@ -744,7 +814,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${person.displayName} durumu ${value ? 'Aktif' : 'Pasif'} olarak güncellendi.'),
+        content: Text(
+          '${person.displayName} durumu ${value ? 'Aktif' : 'Pasif'} olarak güncellendi.',
+        ),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -771,14 +843,15 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                   children: [
                     Text(
                       '${role.title} Rolüne Kullanıcı Ata',
-                      style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w900,
-                          ),
+                      style: Theme.of(sheetContext).textTheme.titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w900),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Kayıtlı kullanıcılar arasından seçim yaparak bu role atayabilir veya ek yetki profili tanımlayabilirsin.',
-                      style: Theme.of(sheetContext).textTheme.bodyMedium?.copyWith(height: 1.4),
+                      style: Theme.of(
+                        sheetContext,
+                      ).textTheme.bodyMedium?.copyWith(height: 1.4),
                     ),
                     if (candidates.isEmpty) ...[
                       const SizedBox(height: 8),
@@ -791,7 +864,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                         ),
                         child: Text(
                           '${role.title} için listede atanabilir kullanıcı yok. Yeni kullanıcı oluşturarak devam edebilirsin.',
-                          style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(height: 1.4),
+                          style: Theme.of(
+                            sheetContext,
+                          ).textTheme.bodySmall?.copyWith(height: 1.4),
                         ),
                       ),
                     ],
@@ -815,7 +890,7 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                         icon: const Icon(Icons.person_add_alt_1_outlined),
                         label: Text(
                           role.title == 'Muhasebeci'
-                              ? 'Listede yok mu? Muhasebe Hesabi Olustur'
+                              ? 'Listede yok mu? Muhasebe Hesabi Oluştur'
                               : 'Listede yok mu? Yeni Kullanıcı Oluştur',
                         ),
                       ),
@@ -829,7 +904,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                           setSheetState(() => assignAsExtraRole = value);
                         },
                         title: const Text('Ek yetki olarak ekle'),
-                        subtitle: const Text('Ana rolü değiştirmeden bu role ek erişim ver'),
+                        subtitle: const Text(
+                          'Ana rolü değiştirmeden bu role ek erişim ver',
+                        ),
                       ),
                       const SizedBox(height: 16),
                       DropdownButtonFormField<_AssignedPerson>(
@@ -842,7 +919,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                             .map(
                               (person) => DropdownMenuItem<_AssignedPerson>(
                                 value: person,
-                                child: Text('${person.displayName} • ${person.subtitle}'),
+                                child: Text(
+                                  '${person.displayName} • ${person.subtitle}',
+                                ),
                               ),
                             )
                             .toList(),
@@ -859,38 +938,43 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
                         onPressed: candidates.isEmpty
                             ? null
                             : () async {
-                          if (selected == null || selected!.username.isEmpty) {
-                            Navigator.pop(sheetContext);
-                            return;
-                          }
-                          final messenger = ScaffoldMessenger.of(context);
-                          final navigator = Navigator.of(sheetContext);
-                          if (assignAsExtraRole) {
-                            await AdminDirectoryApiService.instance.addExtraRole(
-                              username: selected!.username,
-                              roleName: _toApiRole(role.title),
-                            );
-                          } else {
-                            await AdminDirectoryApiService.instance.assignPrimaryRole(
-                              username: selected!.username,
-                              primaryRole: _toApiRole(role.title),
-                              departmentOrBranch: _mappedDepartment(role),
-                            );
-                          }
-                          await _loadDirectoryData();
-                          if (!mounted) return;
-                          navigator.pop();
-                          messenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                assignAsExtraRole
-                                    ? '${selected!.displayName} için ${role.title} ek yetkisi tanımlandı.'
-                                    : '${selected!.displayName} ${role.title} rolüne atandı.',
-                              ),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        },
+                                if (selected == null ||
+                                    selected!.username.isEmpty) {
+                                  Navigator.pop(sheetContext);
+                                  return;
+                                }
+                                final messenger = ScaffoldMessenger.of(context);
+                                final navigator = Navigator.of(sheetContext);
+                                if (assignAsExtraRole) {
+                                  await AdminDirectoryApiService.instance
+                                      .addExtraRole(
+                                        username: selected!.username,
+                                        roleName: _toApiRole(role.title),
+                                      );
+                                } else {
+                                  await AdminDirectoryApiService.instance
+                                      .assignPrimaryRole(
+                                        username: selected!.username,
+                                        primaryRole: _toApiRole(role.title),
+                                        departmentOrBranch: _mappedDepartment(
+                                          role,
+                                        ),
+                                      );
+                                }
+                                await _loadDirectoryData();
+                                if (!mounted) return;
+                                navigator.pop();
+                                messenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      assignAsExtraRole
+                                          ? '${selected!.displayName} için ${role.title} ek yetkisi tanımlandı.'
+                                          : '${selected!.displayName} ${role.title} rolüne atandı.',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
+                                );
+                              },
                         child: const Text('Atamayı Kaydet'),
                       ),
                     ),
@@ -925,9 +1009,9 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
       case 'Muhasebeci':
         return 'Muhasebe';
       case 'İdari Birimler':
-        return 'Ogrenci Isleri';
+        return 'Öğrenci Isleri';
       case 'Öğretmen':
-        return 'Genel Ogretmen';
+        return 'Genel Öğretmen';
       default:
         return 'Genel';
     }
@@ -935,7 +1019,8 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
 
   Future<void> _undoLastAssignment(_AssignedPerson person) async {
     if (!person.canUndo || person.username.isEmpty) return;
-    final success = await AdminDirectoryApiService.instance.undoLastRoleAssignment(username: person.username);
+    final success = await AdminDirectoryApiService.instance
+        .undoLastRoleAssignment(username: person.username);
     await _loadDirectoryData();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(

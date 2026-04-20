@@ -15,10 +15,7 @@ import 'package:student/widgets/teacher_header.dart';
 class TeacherAttendancePage extends StatefulWidget {
   final String? initialLessonTitle;
 
-  const TeacherAttendancePage({
-    super.key,
-    this.initialLessonTitle,
-  });
+  const TeacherAttendancePage({super.key, this.initialLessonTitle});
 
   @override
   State<TeacherAttendancePage> createState() => _TeacherAttendancePageState();
@@ -91,7 +88,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             ? lesson.platform
             : '${lesson.timeLabel} • ${lesson.platform}',
         "className": lesson.className,
-        "mode": lesson.platform.toLowerCase().contains('online') ? 'Online' : 'Sinif Ici',
+        "mode": lesson.platform.toLowerCase().contains('online')
+            ? 'Online'
+            : 'Sınıf İçi',
       };
     }).toList();
 
@@ -101,22 +100,29 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       final lessonTitle = lesson["title"] as String;
       final existingRecords = AttendanceService.instance
           .all()
-          .where((record) => record.className == className && record.lesson == lessonTitle)
+          .where(
+            (record) =>
+                record.className == className && record.lesson == lessonTitle,
+          )
           .toList();
-      final classStudents = allStudents.where((student) => student.className == className).toList()
-        ..sort((a, b) => a.fullName.compareTo(b.fullName));
+      final classStudents =
+          allStudents
+              .where((student) => student.className == className)
+              .toList()
+            ..sort((a, b) => a.fullName.compareTo(b.fullName));
 
       lessonStudents[className] = classStudents.asMap().entries.map((entry) {
         final student = entry.value;
         final latestRecord = existingRecords
-            .where((record) => _normalizeText(record.studentName) == _normalizeText(student.fullName))
-            .fold<AttendanceRecord?>(
-              null,
-              (previous, current) {
-                if (previous == null) return current;
-                return current.date.isAfter(previous.date) ? current : previous;
-              },
-            );
+            .where(
+              (record) =>
+                  _normalizeText(record.studentName) ==
+                  _normalizeText(student.fullName),
+            )
+            .fold<AttendanceRecord?>(null, (previous, current) {
+              if (previous == null) return current;
+              return current.date.isAfter(previous.date) ? current : previous;
+            });
         return {
           "no": student.schoolNumber.isNotEmpty
               ? student.schoolNumber
@@ -140,7 +146,10 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
     setState(() {
       _teacherName = session?.fullName ?? _teacherName;
       lessons = builtLessons;
-      selectedLesson = resolvedSelectedLesson.clamp(0, builtLessons.isEmpty ? 0 : builtLessons.length - 1);
+      selectedLesson = resolvedSelectedLesson.clamp(
+        0,
+        builtLessons.isEmpty ? 0 : builtLessons.length - 1,
+      );
       qrPayload = lessons.isEmpty ? '' : _buildQrPayload();
       _loadingLessons = false;
     });
@@ -208,13 +217,13 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         student["status"] = "present";
       }
     });
-    _showInfo("Tum ogrenciler geldi olarak isaretlendi.");
+    _showInfo("Tüm öğrenciler geldi olarak işaretlendi.");
   }
 
   void _showInfo(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -231,8 +240,10 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
         title: "Yoklama",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: lessons.isEmpty ? "Yoklama Takibi" : '${lessons[selectedLesson]["className"]} Yoklama Takibi',
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle: lessons.isEmpty
+            ? "Yoklama Takibi"
+            : '${lessons[selectedLesson]["className"]} Yoklama Takibi',
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -255,81 +266,111 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: const Text('Öğretmene atanmış sınıf veya yoklama dersi bulunmuyor.'),
+                child: const Text(
+                  'Öğretmene atanmış sınıf veya yoklama dersi bulunmuyor.',
+                ),
               )
             else ...[
-            _sectionTitle(theme, "Ders Seçimi", "Yoklama alınacak dersi seçin"),
-            const SizedBox(height: 12),
-            _lessonStrip(theme),
-            const SizedBox(height: 20),
-            _sectionTabs(theme),
-            const SizedBox(height: 16),
-            if (selectedTab == 0) ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  _counter(theme, "✔", present.toString(), "Geldi", Colors.green),
-                  _counter(theme, "✖", absent.toString(), "Gelmedi", Colors.red),
-                  _counter(theme, "⏰", late.toString(), "Geç", Colors.orange),
-                  _counter(theme, "!", excuse.toString(), "İzinli", Colors.blue),
-                ],
+              _sectionTitle(
+                theme,
+                "Ders Seçimi",
+                "Yoklama alınacak dersi seçin",
               ),
+              const SizedBox(height: 12),
+              _lessonStrip(theme),
               const SizedBox(height: 20),
-              Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      "Öğrenci Listesi - ${lessons[selectedLesson]["title"]}",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
+              _sectionTabs(theme),
+              const SizedBox(height: 16),
+              if (selectedTab == 0) ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _counter(
+                      theme,
+                      "✔",
+                      present.toString(),
+                      "Geldi",
+                      Colors.green,
+                    ),
+                    _counter(
+                      theme,
+                      "✖",
+                      absent.toString(),
+                      "Gelmedi",
+                      Colors.red,
+                    ),
+                    _counter(theme, "⏰", late.toString(), "Geç", Colors.orange),
+                    _counter(
+                      theme,
+                      "!",
+                      excuse.toString(),
+                      "İzinli",
+                      Colors.blue,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        "Öğrenci Listesi - ${lessons[selectedLesson]["title"]}",
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ),
+                    TextButton.icon(
+                      onPressed: _attendanceAlreadyTaken
+                          ? null
+                          : _markAllPresent,
+                      icon: const Icon(Icons.done_all_rounded),
+                      label: const Text("Tümünü Geldi"),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Column(
+                  children: students
+                      .asMap()
+                      .entries
+                      .map((e) => _studentTile(theme, e.key, e.value, isDark))
+                      .toList(),
+                ),
+              ] else ...[
+                _qrAttendanceCard(theme, isDark),
+                const SizedBox(height: 16),
+                _qrInfoPanel(theme, isDark),
+              ],
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton.icon(
+                  onPressed: (_savingAttendance || _attendanceAlreadyTaken)
+                      ? null
+                      : _saveAttendance,
+                  icon: const Icon(Icons.save_rounded),
+                  label: Text(
+                    _attendanceAlreadyTaken
+                        ? "Yoklama Alindi"
+                        : _savingAttendance
+                        ? "Kaydediliyor..."
+                        : "Yoklamayi Kaydet",
                   ),
-                  TextButton.icon(
-                    onPressed: _attendanceAlreadyTaken ? null : _markAllPresent,
-                    icon: const Icon(Icons.done_all_rounded),
-                    label: const Text("Tumunu Geldi"),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              Column(
-                children: students
-                    .asMap()
-                    .entries
-                    .map((e) => _studentTile(theme, e.key, e.value, isDark))
-                    .toList(),
-              ),
-            ] else ...[
-              _qrAttendanceCard(theme, isDark),
-              const SizedBox(height: 16),
-              _qrInfoPanel(theme, isDark),
-            ],
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              height: 52,
-              child: ElevatedButton.icon(
-                onPressed: (_savingAttendance || _attendanceAlreadyTaken) ? null : _saveAttendance,
-                icon: const Icon(Icons.save_rounded),
-                label: Text(
-                  _attendanceAlreadyTaken
-                      ? "Yoklama Alindi"
-                      : _savingAttendance
-                          ? "Kaydediliyor..."
-                          : "Yoklamayi Kaydet",
                 ),
               ),
-            ),
-            if (_attendanceAlreadyTaken) ...[
-              const SizedBox(height: 10),
-              Text(
-                'Bu dersin yoklamasi daha once kaydedildi. Ayni ders icin ikinci kez yoklama alinmaz.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+              if (_attendanceAlreadyTaken) ...[
+                const SizedBox(height: 10),
+                Text(
+                  'Bu dersin yoklaması daha önce kaydedildi. Aynı ders için ikinci kez yoklama alınmaz.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.textTheme.bodySmall?.color?.withValues(
+                      alpha: 0.72,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+              ],
             ],
           ],
         ),
@@ -339,11 +380,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
 
   Widget _topCard(ThemeData theme, bool isDark) {
     final currentLesson = lessons.isEmpty
-        ? {
-            "title": "Yukleniyor",
-            "time": "-",
-            "mode": "-",
-          }
+        ? {"title": "Yükleniyor", "time": "-", "mode": "-"}
         : lessons[selectedLesson];
     return Container(
       padding: const EdgeInsets.all(18),
@@ -366,7 +403,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text("Secili Ders"),
+              const Text("Seçili Ders"),
               const SizedBox(height: 4),
               Text(
                 currentLesson["title"] as String,
@@ -388,7 +425,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                 "Online",
               ),
               const SizedBox(width: 12),
-              MiniStat("${students.length}", "Ogrenci"),
+              MiniStat("${students.length}", "Öğrenci"),
             ],
           ),
         ],
@@ -417,7 +454,13 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         document.addPage(
           pw.MultiPage(
             build: (_) => [
-              pw.Text('Yoklama Ozeti', style: pw.TextStyle(fontSize: 20, fontWeight: pw.FontWeight.bold)),
+              pw.Text(
+                'Yoklama Özeti',
+                style: pw.TextStyle(
+                  fontSize: 20,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
               pw.SizedBox(height: 8),
               pw.Text('$lessonTitle • $className'),
               pw.SizedBox(height: 16),
@@ -428,7 +471,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                       (student) => [
                         student['no']?.toString() ?? '-',
                         student['name']?.toString() ?? '-',
-                        _pdfStatusLabel(student['status'] as String? ?? 'present'),
+                        _pdfStatusLabel(
+                          student['status'] as String? ?? 'present',
+                        ),
                       ],
                     )
                     .toList(),
@@ -438,7 +483,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         );
 
         final directory = await getTemporaryDirectory();
-        final file = File('${directory.path}/yoklama_${DateTime.now().millisecondsSinceEpoch}.pdf');
+        final file = File(
+          '${directory.path}/yoklama_${DateTime.now().millisecondsSinceEpoch}.pdf',
+        );
         await file.writeAsBytes(await document.save());
         await SharePlus.instance.share(
           ShareParams(
@@ -480,7 +527,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
   String _attendanceStatusToUi(String? value) {
     switch (_normalizeText(value ?? '')) {
       case 'present':
-      case 'katildi':
+      case 'katıldı':
       case 'geldi':
         return 'present';
       case 'late':
@@ -575,10 +622,11 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                       vertical: 6,
                     ),
                     decoration: BoxDecoration(
-                      color: (lesson["mode"] == "Online"
-                              ? const Color(0xFF7C3AED)
-                              : const Color(0xFF2563EB))
-                          .withValues(alpha: 0.12),
+                      color:
+                          (lesson["mode"] == "Online"
+                                  ? const Color(0xFF7C3AED)
+                                  : const Color(0xFF2563EB))
+                              .withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
@@ -622,9 +670,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
               margin: EdgeInsets.only(right: index == 0 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 14),
               decoration: BoxDecoration(
-                color: selected
-                    ? theme.colorScheme.primary
-                    : theme.cardColor,
+                color: selected ? theme.colorScheme.primary : theme.cardColor,
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Center(
@@ -656,10 +702,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       children: [
         CircleAvatar(
           backgroundColor: color.withValues(alpha: 0.2),
-          child: Text(
-            icon,
-            style: TextStyle(color: color, fontSize: 18),
-          ),
+          child: Text(icon, style: TextStyle(color: color, fontSize: 18)),
         ),
         const SizedBox(height: 4),
         Text(
@@ -699,9 +742,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            child: Text((student["name"] as String)[0]),
-          ),
+          CircleAvatar(child: Text((student["name"] as String)[0])),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -793,8 +834,9 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                     Text(
                       "${lesson["title"]} • ${lesson["className"]}",
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.textTheme.bodyMedium?.color
-                            ?.withValues(alpha: 0.72),
+                        color: theme.textTheme.bodyMedium?.color?.withValues(
+                          alpha: 0.72,
+                        ),
                       ),
                     ),
                   ],
@@ -840,7 +882,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             children: [
               Expanded(
                 child: Text(
-                  "QR ${qrRemainingSeconds.snprintf()} sn sonra degisecek",
+                  "QR ${qrRemainingSeconds.snprintf()} sn sonra değişecek",
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -900,13 +942,17 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
           SizedBox(height: 10),
-          Text("1. Ogretmen QR kodu sinifa veya ekrana yansitir."),
+          Text("1. Öğretmen QR kodu sınıfa veya ekrana yansıtır."),
           SizedBox(height: 6),
-          Text("2. Ogrenciler uygulamadan QR kodu okutarak yoklama gonderir."),
+          Text("2. Öğrenciler uygulamadan QR kodu okutarak yoklama gönderir."),
           SizedBox(height: 6),
-          Text("3. Kod her 60 saniyede degisir, bu sayede eski kodlar kullanilamaz."),
+          Text(
+            "3. Kod her 60 saniyede değişir, bu sayede eski kodlar kullanılamaz.",
+          ),
           SizedBox(height: 6),
-          Text("4. Gec gelen ogrenciler icin yeni QR ile katilim yeniden alinabilir."),
+          Text(
+            "4. Geç gelen öğrenciler için yeni QR ile katılım yeniden alınabilir.",
+          ),
         ],
       ),
     );

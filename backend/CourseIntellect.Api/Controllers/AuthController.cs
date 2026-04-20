@@ -51,6 +51,21 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return user is null ? Unauthorized() : Ok(user);
     }
 
+    [Authorize]
+    [HttpPut("me")]
+    [ProducesResponseType(typeof(CurrentUserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdateMe([FromBody] UpdateProfileRequest request, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub");
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        var user = await authService.UpdateProfileAsync(userId, request, cancellationToken);
+        return user is null ? BadRequest(new { message = "Profil guncellenemedi." }) : Ok(user);
+    }
+
     /// <summary>Debug: JWT claim'leri ve IsInRole kontrolü</summary>
     [Authorize]
     [HttpGet("debug-claims")]

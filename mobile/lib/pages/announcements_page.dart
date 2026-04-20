@@ -28,7 +28,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       _error = null;
     });
     try {
-      final announcements = await _service.fetchAnnouncements(audience: 'Ogrenci');
+      final announcements = await _service.fetchAnnouncements(
+        audience: 'Öğrenci',
+      );
       if (!mounted) return;
       setState(() {
         _announcements = announcements;
@@ -54,10 +56,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
         title: const Text('Duyurular'),
         centerTitle: true,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.search),
-            onPressed: () {},
-          ),
+          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
           Stack(
             children: [
               IconButton(
@@ -75,10 +74,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   ),
                   child: Text(
                     '${_announcements.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 10,
-                    ),
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
                   ),
                 ),
               ),
@@ -115,7 +111,7 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
     }
 
     if (_announcements.isEmpty) {
-      return const Center(child: Text('Gosterilecek duyuru bulunmuyor.'));
+      return const Center(child: Text('Gösterilecek duyuru bulunmuyor.'));
     }
 
     return ListView(
@@ -182,7 +178,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                 Text(
                   desc,
                   style: TextStyle(
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.color?.withValues(alpha: 0.72),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -190,7 +188,9 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
                   date,
                   style: TextStyle(
                     fontSize: 12,
-                    color: Theme.of(context).textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.color?.withValues(alpha: 0.72),
                   ),
                 ),
               ],

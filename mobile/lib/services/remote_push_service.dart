@@ -19,11 +19,12 @@ class RemotePushService {
     if (_initialized) return;
     try {
       await Firebase.initializeApp();
-      await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      await FirebaseMessaging.instance
+          .setForegroundNotificationPresentationOptions(
+            alert: true,
+            badge: true,
+            sound: true,
+          );
       await FirebaseMessaging.instance.requestPermission(
         alert: true,
         badge: true,
@@ -52,8 +53,7 @@ class RemotePushService {
       if (token != null && token.isNotEmpty) {
         await _registerToken(token);
       }
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> unregister() async {
@@ -70,8 +70,7 @@ class RemotePushService {
         },
         body: jsonEncode({'token': token}),
       );
-    } catch (_) {
-    }
+    } catch (_) {}
   }
 
   Future<void> _registerToken(String token) async {
@@ -86,7 +85,11 @@ class RemotePushService {
       },
       body: jsonEncode({
         'token': token,
-        'platform': Platform.isIOS ? 'ios' : Platform.isAndroid ? 'android' : 'other',
+        'platform': Platform.isIOS
+            ? 'ios'
+            : Platform.isAndroid
+            ? 'android'
+            : 'other',
         'username': session.username,
         'fullName': session.fullName,
         'role': session.primaryRole,

@@ -35,12 +35,17 @@ class AuthSession {
     return AuthSession(
       accessToken: map['accessToken'] as String,
       refreshToken: map['refreshToken'] as String,
-      accessTokenExpiresAt: DateTime.parse(map['accessTokenExpiresAt'] as String),
-      refreshTokenExpiresAt: DateTime.parse(map['refreshTokenExpiresAt'] as String),
+      accessTokenExpiresAt: DateTime.parse(
+        map['accessTokenExpiresAt'] as String,
+      ),
+      refreshTokenExpiresAt: DateTime.parse(
+        map['refreshTokenExpiresAt'] as String,
+      ),
       fullName: map['fullName'] as String,
       username: map['username'] as String,
       primaryRole: map['primaryRole'] as String,
-      extraRoles: (map['extraRoles'] as List<dynamic>? ?? const []).cast<String>(),
+      extraRoles: (map['extraRoles'] as List<dynamic>? ?? const [])
+          .cast<String>(),
       tenantId: map['tenantId'] as String?,
       tenantName: (map['tenantName'] as String?) ?? '',
       tenantSlug: (map['tenantSlug'] as String?) ?? '',
@@ -49,19 +54,19 @@ class AuthSession {
   }
 
   Map<String, dynamic> toMap() => {
-        'accessToken': accessToken,
-        'refreshToken': refreshToken,
-        'accessTokenExpiresAt': accessTokenExpiresAt.toIso8601String(),
-        'refreshTokenExpiresAt': refreshTokenExpiresAt.toIso8601String(),
-        'fullName': fullName,
-        'username': username,
-        'primaryRole': primaryRole,
-        'extraRoles': extraRoles,
-        'tenantId': tenantId,
-        'tenantName': tenantName,
-        'tenantSlug': tenantSlug,
-        'isPlatformAdmin': isPlatformAdmin,
-      };
+    'accessToken': accessToken,
+    'refreshToken': refreshToken,
+    'accessTokenExpiresAt': accessTokenExpiresAt.toIso8601String(),
+    'refreshTokenExpiresAt': refreshTokenExpiresAt.toIso8601String(),
+    'fullName': fullName,
+    'username': username,
+    'primaryRole': primaryRole,
+    'extraRoles': extraRoles,
+    'tenantId': tenantId,
+    'tenantName': tenantName,
+    'tenantSlug': tenantSlug,
+    'isPlatformAdmin': isPlatformAdmin,
+  };
 }
 
 class AuthSessionStore {
@@ -79,7 +84,9 @@ class AuthSessionStore {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_storageKey);
     if (raw == null || raw.isEmpty) return null;
-    return AuthSession.fromMap(Map<String, dynamic>.from(jsonDecode(raw) as Map));
+    return AuthSession.fromMap(
+      Map<String, dynamic>.from(jsonDecode(raw) as Map),
+    );
   }
 
   Future<void> clear() async {

@@ -84,7 +84,10 @@ class AnnouncementFeedItem {
       if (className != null && className.isNotEmpty) className,
       if (platform != null && platform.isNotEmpty) platform,
       if (dateLabel.isNotEmpty || timeLabel.isNotEmpty)
-        [if (dateLabel.isNotEmpty) dateLabel, if (timeLabel.isNotEmpty) timeLabel].join(' • '),
+        [
+          if (dateLabel.isNotEmpty) dateLabel,
+          if (timeLabel.isNotEmpty) timeLabel,
+        ].join(' • '),
     ];
 
     return parts.isEmpty ? 'Canlı ders duyurusu yayınlandı.' : parts.join('\n');
@@ -138,7 +141,9 @@ class SchoolFeedApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const SchoolFeedApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final linkedChildren = audience == 'Veli'
@@ -153,18 +158,22 @@ class SchoolFeedApiService {
           'viewerRole': _normalizeText(session.primaryRole),
           'viewerUsername': session.username,
           'viewerName': session.fullName,
-          'viewerClassName': linkedChildren.isNotEmpty ? linkedChildren.first.className : '',
+          'viewerClassName': linkedChildren.isNotEmpty
+              ? linkedChildren.first.className
+              : '',
           if (linkedChildren.isNotEmpty)
-            'viewerLinkedStudentUsernames': linkedChildren.map((item) => item.username).join(','),
+            'viewerLinkedStudentUsernames': linkedChildren
+                .map((item) => item.username)
+                .join(','),
         },
       ),
-      headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
-      },
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SchoolFeedApiException('Duyurular alınamadı (${response.statusCode}).');
+      throw SchoolFeedApiException(
+        'Duyurular alınamadı (${response.statusCode}).',
+      );
     }
 
     final list = (jsonDecode(response.body) as List<dynamic>)
@@ -182,9 +191,10 @@ class SchoolFeedApiService {
             createdByRole: (map['createdByRole'] as String?) ?? '',
             targetClassName: (map['targetClassName'] as String?) ?? '',
             targetRecipientType: (map['targetRecipientType'] as String?) ?? '',
-            recipientLabels: ((map['recipientLabels'] as List<dynamic>?) ?? const [])
-                .map((item) => item.toString())
-                .toList(),
+            recipientLabels:
+                ((map['recipientLabels'] as List<dynamic>?) ?? const [])
+                    .map((item) => item.toString())
+                    .toList(),
             recipientCount: (map['recipientCount'] as num?)?.toInt() ?? 0,
           ),
         )
@@ -199,7 +209,9 @@ class SchoolFeedApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const SchoolFeedApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final queryParameters = <String, String>{};
@@ -214,31 +226,32 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/examresults').replace(
         queryParameters: queryParameters.isEmpty ? null : queryParameters,
       ),
-      headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
-      },
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SchoolFeedApiException('Sınav sonuçları alınamadı (${response.statusCode}).');
+      throw SchoolFeedApiException(
+        'Sınav sonuçları alınamadı (${response.statusCode}).',
+      );
     }
 
-    final records = (jsonDecode(response.body) as List<dynamic>)
-        .map((item) => Map<String, dynamic>.from(item as Map))
-        .map(
-          (map) => ExamScoreRecord(
-            examTitle: map['examTitle'] as String,
-            type: _mapExamType(map['type'] as String),
-            subject: map['subject'] as String,
-            date: map['dateLabel'] as String,
-            studentName: map['studentName'] as String,
-            className: map['className'] as String,
-            score: map['score'] as int,
-            net: map['net'] as int,
-          ),
-        )
-        .toList()
-      ..sort((a, b) => b.date.compareTo(a.date));
+    final records =
+        (jsonDecode(response.body) as List<dynamic>)
+            .map((item) => Map<String, dynamic>.from(item as Map))
+            .map(
+              (map) => ExamScoreRecord(
+                examTitle: map['examTitle'] as String,
+                type: _mapExamType(map['type'] as String),
+                subject: map['subject'] as String,
+                date: map['dateLabel'] as String,
+                studentName: map['studentName'] as String,
+                className: map['className'] as String,
+                score: map['score'] as int,
+                net: map['net'] as int,
+              ),
+            )
+            .toList()
+          ..sort((a, b) => b.date.compareTo(a.date));
 
     ExamResultsStore.instance.replaceRecords(records);
     return records;
@@ -258,7 +271,9 @@ class SchoolFeedApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const SchoolFeedApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -282,7 +297,9 @@ class SchoolFeedApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SchoolFeedApiException('Duyuru oluşturulamadı (${response.statusCode}).');
+      throw SchoolFeedApiException(
+        'Duyuru oluşturulamadı (${response.statusCode}).',
+      );
     }
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -308,7 +325,9 @@ class SchoolFeedApiService {
   Future<void> deleteAnnouncement(String id) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const SchoolFeedApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.delete(
@@ -317,12 +336,14 @@ class SchoolFeedApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SchoolFeedApiException('Canli ders silinemedi (${response.statusCode}).');
+      throw SchoolFeedApiException(
+        'Canlı ders silinemedi (${response.statusCode}).',
+      );
     }
   }
 
   Future<List<LiveLessonRecord>> fetchLiveLessons() async {
-    final announcements = await fetchAnnouncements(audience: 'Ogrenci');
+    final announcements = await fetchAnnouncements(audience: 'Öğrenci');
     return announcements
         .where((item) => item.detail.startsWith('LIVE_LESSON'))
         .map(_parseLiveLesson)
@@ -357,7 +378,7 @@ class SchoolFeedApiService {
         subtitle: subtitle,
         materials: materials,
       ),
-      audience: 'Ogrenci',
+      audience: 'Öğrenci',
     );
     return _parseLiveLesson(announcement);
   }
@@ -374,7 +395,9 @@ class SchoolFeedApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const SchoolFeedApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const SchoolFeedApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -396,7 +419,9 @@ class SchoolFeedApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw SchoolFeedApiException('Sınav sonucu kaydedilemedi (${response.statusCode}).');
+      throw SchoolFeedApiException(
+        'Sınav sonucu kaydedilemedi (${response.statusCode}).',
+      );
     }
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
@@ -438,7 +463,7 @@ class SchoolFeedApiService {
     final durationMinutes = int.tryParse(map['duration'] ?? '') ?? 60;
     final now = DateTime.now();
     final endsAt = startsAt?.add(Duration(minutes: durationMinutes));
-    String status = 'Planlandi';
+    String status = 'Planlandı';
     if (startsAt != null && endsAt != null) {
       if (now.isAfter(startsAt) && now.isBefore(endsAt)) {
         status = 'Şimdi Canlı';
@@ -448,7 +473,7 @@ class SchoolFeedApiService {
     }
 
     return LiveLessonRecord(
-      id: '${announcement.title}-${announcement.date}-${map['class'] ?? ''}',
+      id: announcement.id,
       title: announcement.title,
       subtitle: map['subtitle'] ?? 'Canlı ders açıklaması',
       teacher: map['teacher'] ?? 'Öğretmen',
@@ -491,14 +516,18 @@ class SchoolFeedApiService {
 
   static Future<String> resolveLinkedStudentName(AuthSession? session) async {
     if (session == null) {
-      final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
-      return linkedChildren.isNotEmpty ? _normalizeText(linkedChildren.first.fullName) : '';
+      final linkedChildren = await LinkedChildrenService.instance
+          .loadLinkedChildren();
+      return linkedChildren.isNotEmpty
+          ? _normalizeText(linkedChildren.first.fullName)
+          : '';
     }
     if (session.primaryRole == 'Student') {
       return _normalizeText(session.fullName);
     }
     if (session.primaryRole == 'Parent') {
-      final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
+      final linkedChildren = await LinkedChildrenService.instance
+          .loadLinkedChildren();
       if (linkedChildren.isNotEmpty) {
         return _normalizeText(linkedChildren.first.fullName);
       }
@@ -506,24 +535,35 @@ class SchoolFeedApiService {
     return _normalizeText(session.fullName);
   }
 
-  static Future<String> resolveLinkedStudentClassName(AuthSession? session) async {
+  static Future<String> resolveLinkedStudentClassName(
+    AuthSession? session,
+  ) async {
     await StudentRegistryStore.instance.ensureLoaded();
     final students = StudentRegistryStore.instance.students;
 
     if (students.isEmpty) {
-      final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
-      return linkedChildren.isNotEmpty ? linkedChildren.first.className.trim() : '';
+      final linkedChildren = await LinkedChildrenService.instance
+          .loadLinkedChildren();
+      return linkedChildren.isNotEmpty
+          ? linkedChildren.first.className.trim()
+          : '';
     }
 
     if (session == null) {
-      final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
-      return linkedChildren.isNotEmpty ? linkedChildren.first.className.trim() : '';
+      final linkedChildren = await LinkedChildrenService.instance
+          .loadLinkedChildren();
+      return linkedChildren.isNotEmpty
+          ? linkedChildren.first.className.trim()
+          : '';
     }
 
     if (session.primaryRole == 'Student') {
       final directMatch = students.where((item) {
-        final sameUsername = item.username.trim().toLowerCase() == session.username.trim().toLowerCase();
-        final sameName = _normalizeText(item.fullName) == _normalizeText(session.fullName);
+        final sameUsername =
+            item.username.trim().toLowerCase() ==
+            session.username.trim().toLowerCase();
+        final sameName =
+            _normalizeText(item.fullName) == _normalizeText(session.fullName);
         return sameUsername || sameName;
       }).toList();
       if (directMatch.isNotEmpty) {
@@ -531,8 +571,11 @@ class SchoolFeedApiService {
       }
     }
 
-    final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
-    return linkedChildren.isNotEmpty ? linkedChildren.first.className.trim() : '';
+    final linkedChildren = await LinkedChildrenService.instance
+        .loadLinkedChildren();
+    return linkedChildren.isNotEmpty
+        ? linkedChildren.first.className.trim()
+        : '';
   }
 
   static String _normalizeText(String value) {
@@ -557,9 +600,9 @@ class SchoolFeedApiService {
       case 'MockExam':
         return 'Deneme';
       case 'Written':
-        return 'Yazili';
+        return 'Yazılı';
       case 'Oral':
-        return 'Sozlu';
+        return 'Sözlü';
       case 'Quiz':
         return 'Quiz';
       default:
@@ -568,26 +611,26 @@ class SchoolFeedApiService {
   }
 
   static IconData _iconForAudience(String audience) {
-    if (audience.contains('Ogrenci')) {
+    if (audience.contains('Öğrenci')) {
       return Icons.school_outlined;
     }
     if (audience.contains('Veli')) {
       return Icons.groups_outlined;
     }
-    if (audience.contains('Ogretmen')) {
+    if (audience.contains('Öğretmen')) {
       return Icons.menu_book_outlined;
     }
     return Icons.campaign_outlined;
   }
 
   static Color _colorForAudience(String audience) {
-    if (audience.contains('Ogrenci')) {
+    if (audience.contains('Öğrenci')) {
       return const Color(0xFF2563EB);
     }
     if (audience.contains('Veli')) {
       return const Color(0xFF14532D);
     }
-    if (audience.contains('Ogretmen')) {
+    if (audience.contains('Öğretmen')) {
       return const Color(0xFF7C3AED);
     }
     return const Color(0xFFB45309);

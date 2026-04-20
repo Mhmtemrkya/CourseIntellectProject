@@ -33,16 +33,12 @@ class TeacherHomePage extends StatefulWidget {
 }
 
 class _TeacherHomePageState extends State<TeacherHomePage> {
-  String selectedFilter = "Bugun";
-  String _teacherName = 'Ogretmen';
-  String _teacherSubtitle = 'Ogretmen Paneli';
+  String selectedFilter = "Bugün";
+  String _teacherName = 'Öğretmen';
+  String _teacherSubtitle = 'Öğretmen Paneli';
   bool _loadingDashboard = true;
 
-  final List<String> dashboardFilters = [
-    "Bugun",
-    "Bu Hafta",
-    "Bu Ay",
-  ];
+  final List<String> dashboardFilters = ["Bugün", "Bu Hafta", "Bu Ay"];
 
   final TextEditingController _taskTitleController = TextEditingController();
   final TextEditingController _taskSubtitleController = TextEditingController();
@@ -65,7 +61,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       ]);
       final session = await AuthSessionStore.instance.load();
       final lessons = await SchoolFeedApiService.instance.fetchLiveLessons();
-      final examResults = await SchoolFeedApiService.instance.fetchExamResults();
+      final examResults = await SchoolFeedApiService.instance
+          .fetchExamResults();
 
       final teacherName = session?.fullName ?? _teacherName;
       final teacherLessons = lessons.where((lesson) {
@@ -85,7 +82,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       if (!mounted) return;
       setState(() {
         _teacherName = teacherName;
-        _teacherSubtitle = 'Bugun ${teacherLessons.length} ders';
+        _teacherSubtitle = 'Bugün ${teacherLessons.length} ders';
         classComparison = comparison;
         scheduleItems = schedule;
         _loadingDashboard = false;
@@ -98,7 +95,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     }
   }
 
-  List<Map<String, dynamic>> _buildClassComparison(List<ExamScoreRecord> records) {
+  List<Map<String, dynamic>> _buildClassComparison(
+    List<ExamScoreRecord> records,
+  ) {
     if (records.isEmpty) {
       return const [
         {
@@ -115,25 +114,27 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       grouped.putIfAbsent(item.className, () => []).add(item);
     }
 
-    final entries = grouped.entries.map((entry) {
-      final scores = entry.value.map((item) => item.score).toList()
-        ..sort();
-      final average =
-          (scores.fold<int>(0, (sum, score) => sum + score) / scores.length).round();
-      final trendValue = scores.length > 1 ? scores.last - scores.first : 0;
-      final color = average >= 80
-          ? const Color(0xFF27B3A2)
-          : average >= 65
+    final entries =
+        grouped.entries.map((entry) {
+          final scores = entry.value.map((item) => item.score).toList()..sort();
+          final average =
+              (scores.fold<int>(0, (sum, score) => sum + score) / scores.length)
+                  .round();
+          final trendValue = scores.length > 1 ? scores.last - scores.first : 0;
+          final color = average >= 80
+              ? const Color(0xFF27B3A2)
+              : average >= 65
               ? const Color(0xFFFFB020)
               : const Color(0xFFFF6B6B);
-      return {
-        "name": entry.key,
-        "average": average,
-        "trend": trendValue > 0 ? "+$trendValue" : "$trendValue",
-        "color": color,
-      };
-    }).toList()
-      ..sort((a, b) => (b["average"] as int).compareTo(a["average"] as int));
+          return {
+            "name": entry.key,
+            "average": average,
+            "trend": trendValue > 0 ? "+$trendValue" : "$trendValue",
+            "color": color,
+          };
+        }).toList()..sort(
+          (a, b) => (b["average"] as int).compareTo(a["average"] as int),
+        );
 
     return entries.take(4).toList();
   }
@@ -151,16 +152,13 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   }
 
   void _showInfo(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _openPage(Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   List<Map<String, dynamic>> get suggestions {
@@ -189,29 +187,36 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   }
 
   List<Map<String, dynamic>> get tasks {
-    final absentCount = AttendanceService.instance.all().where((item) => item.status == 'Devamsiz').length;
-    final overdueCount = AccountingFinanceStore.instance.installments.where((item) => item.status == 'Geciken').length;
+    final absentCount = AttendanceService.instance
+        .all()
+        .where((item) => item.status == 'Devamsiz')
+        .length;
+    final overdueCount = AccountingFinanceStore.instance.installments
+        .where((item) => item.status == 'Geciken')
+        .length;
     return [
       ..._manualTasks,
       {
-        "title": "Aktif odev akisini kontrol et",
-        "subtitle": "Ogretmen panelinde acik odevler ve teslimler seni bekliyor.",
+        "title": "Aktif ödev akışıni kontrol et",
+        "subtitle":
+            "Öğretmen panelinde açık ödevler ve teslimler seni bekliyor.",
         "icon": Icons.assignment_turned_in_rounded,
         "color": const Color(0xFFFF7A00),
-        "action": "Odevleri Ac",
+        "action": "Ödevleri Ac",
         "page": const TeacherAssignmentsPage(),
       },
       {
-        "title": "${AttendanceService.instance.all().length} yoklama kaydi izlendi",
-        "subtitle": "Sinif devam bilgileri ve PDF yoklama dokumleri hazir.",
+        "title":
+            "${AttendanceService.instance.all().length} yoklama kaydı izlendi",
+        "subtitle": "Sınıf devam bilgileri ve PDF yoklama dokumleri hazır.",
         "icon": Icons.analytics_rounded,
         "color": const Color(0xFF27B3A2),
         "action": "Yoklamaya Git",
         "page": const TeacherAttendancePage(),
       },
       {
-        "title": "${absentCount + overdueCount} ogrenci/veli takibi oneriliyor",
-        "subtitle": "Devamsizlik ve finans sinyalleri birlikte izleniyor.",
+        "title": "${absentCount + overdueCount} öğrenci/veli takibi öneriliyor",
+        "subtitle": "Devamsızlık ve finans sinyalleri birlikte izleniyor.",
         "icon": Icons.warning_amber_rounded,
         "color": const Color(0xFFFF6B6B),
         "action": "Risk Listesi",
@@ -221,7 +226,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
   }
 
   List<Map<String, dynamic>> get notifications {
-    final teacherSuggestions = SmartInsightService.instance.teacherSuggestions();
+    final teacherSuggestions = SmartInsightService.instance
+        .teacherSuggestions();
     final icons = [
       Icons.trending_down_rounded,
       Icons.mark_chat_unread_rounded,
@@ -237,7 +243,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       (index) => {
         "title": teacherSuggestions[index]["title"],
         "subtitle": teacherSuggestions[index]["subtitle"],
-        "time": "${12 + (index * 18)} dk once",
+        "time": "${12 + (index * 18)} dk önce",
         "color": colors[index % colors.length],
         "icon": icons[index % icons.length],
       },
@@ -255,33 +261,45 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           "score": 60,
           "attendance": 100,
           "missing": 0,
-          "reason": "Ders devami ve performans izleniyor.",
+          "reason": "Ders devamı ve performans izleniyor.",
         },
       );
       if (item.status == 'Devamsiz') {
         current["missing"] = (current["missing"] as int) + 1;
-        current["attendance"] = ((current["attendance"] as int) - 10).clamp(0, 100);
+        current["attendance"] = ((current["attendance"] as int) - 10).clamp(
+          0,
+          100,
+        );
         current["score"] = ((current["score"] as int) - 6).clamp(0, 100);
-        current["reason"] = 'Devamsizlik nedeniyle yakindan takip oneriliyor.';
+        current["reason"] = 'Devamsızlık nedeniyle yakından takip öneriliyor.';
       } else if (item.status == 'Gec') {
-        current["attendance"] = ((current["attendance"] as int) - 4).clamp(0, 100);
+        current["attendance"] = ((current["attendance"] as int) - 4).clamp(
+          0,
+          100,
+        );
         current["score"] = ((current["score"] as int) - 2).clamp(0, 100);
-        current["reason"] = 'Gec kalma kayitlari zaman yonetimi destegi gerektirebilir.';
+        current["reason"] =
+            'Gec kalma kayıtları zaman yönetimi destegi gerektirebilir.';
       }
     }
 
-    final records = grouped.values.where((item) => (item["missing"] as int) > 0 || (item["attendance"] as int) < 85).toList();
+    final records = grouped.values
+        .where(
+          (item) =>
+              (item["missing"] as int) > 0 || (item["attendance"] as int) < 85,
+        )
+        .toList();
     if (records.isNotEmpty) {
       return records.take(4).toList();
     }
     return [
       {
-        "name": "Riskli kayit yok",
-        "className": "Tum Siniflar",
+        "name": "Riskli kayıt yok",
+        "className": "Tüm Sınıflar",
         "score": 100,
         "attendance": 100,
         "missing": 0,
-        "reason": "Mevcut devamsizlik verilerinde kritik ogrenci gorunmuyor.",
+        "reason": "Mevcut devamsızlık verilerinde kritik öğrenci görünmüyor.",
       },
     ];
   }
@@ -302,8 +320,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     (item) => ListTile(
                       contentPadding: EdgeInsets.zero,
                       leading: CircleAvatar(
-                        backgroundColor:
-                            (item["color"] as Color).withValues(alpha: 0.14),
+                        backgroundColor: (item["color"] as Color).withValues(
+                          alpha: 0.14,
+                        ),
                         foregroundColor: item["color"] as Color,
                         child: Icon(item["icon"] as IconData),
                       ),
@@ -320,7 +339,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       ),
                       onTap: () {
                         Navigator.pop(context);
-                        _showInfo("Bildirim detayi acildi.");
+                        _showInfo("Bildirim detayi açıldı.");
                       },
                     ),
                   )
@@ -369,7 +388,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       selectedFilter = tempFilter;
                     });
                     Navigator.pop(context);
-                    _showInfo("Panel filtresi $selectedFilter olarak guncellendi.");
+                    _showInfo(
+                      "Panel filtresi $selectedFilter olarak güncellendi.",
+                    );
                   },
                   child: const Text("Uygula"),
                 ),
@@ -394,7 +415,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               children: [
                 _sheetAction(
                   icon: Icons.fact_check_rounded,
-                  title: "Sinav Olustur",
+                  title: "Sınav Oluştur",
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherExamsPage());
@@ -402,7 +423,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.assignment_rounded,
-                  title: "Odev Ver",
+                  title: "Ödev Ver",
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherAssignmentsPage());
@@ -418,7 +439,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.help_center_rounded,
-                  title: "Soru Olustur",
+                  title: "Soru Oluştur",
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherQuestionCreatePage());
@@ -426,7 +447,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.folder_copy_rounded,
-                  title: "Icerik Yukle",
+                  title: "İçerik Yükle",
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherContentPage());
@@ -434,7 +455,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.bar_chart_rounded,
-                  title: "Rapor Gonder",
+                  title: "Rapor Gönder",
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherReportsPage());
@@ -491,7 +512,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       controller: _taskTitleController,
                       decoration: const InputDecoration(
                         labelText: "Baslik",
-                        hintText: "Ornek: 11-A quiz sonucunu kontrol et",
+                        hintText: "Örnek: 11-A quiz sonucunu kontrol et",
                       ),
                     ),
                     const SizedBox(height: 12),
@@ -499,8 +520,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       controller: _taskSubtitleController,
                       maxLines: 3,
                       decoration: const InputDecoration(
-                        labelText: "Aciklama",
-                        hintText: "Bu gorevin neden eklendigini yazin",
+                        labelText: "Açıklama",
+                        hintText: "Bu görevin neden eklendigini yazın",
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -583,7 +604,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     final subtitle = _taskSubtitleController.text.trim();
 
                     if (title.isEmpty || subtitle.isEmpty) {
-                      _showInfo("Baslik ve aciklama zorunlu.");
+                      _showInfo("Baslik ve açıklama zorunlu.");
                       return;
                     }
 
@@ -599,7 +620,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     });
 
                     Navigator.pop(context);
-                    _showInfo("Yeni yapilacak gorev eklendi.");
+                    _showInfo("Yeni yapılacak görev eklendi.");
                   },
                   child: const Text("Ekle"),
                 ),
@@ -633,7 +654,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         backgroundColor: const Color(0xFFFF7A00),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text("Hizli Islem"),
+        label: const Text("Hızlı İşlem"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
@@ -643,62 +664,79 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             children: [
               _heroCard(theme, isDark),
               const SizedBox(height: 18),
+              _sectionHeader(theme, title: "Hızlı İşlemler", actionText: ""),
+              const SizedBox(height: 12),
+              _quickActions(context),
+              const SizedBox(height: 18),
               _filterRow(theme),
               const SizedBox(height: 18),
               _sectionHeader(
-              theme,
-              title: "Bugun Yapilacaklar",
-              actionText: "Ekle",
-              onActionTap: _openAddTaskDialog,
-            ),
-            const SizedBox(height: 12),
-            ...tasks.map((item) => _taskCard(theme, isDark, item)),
-            const SizedBox(height: 18),
-            _sectionHeader(
-              theme,
-              title: "Akilli Bildirimler",
-              actionText: "Tumunu Gor",
-              onActionTap: _openNotificationsSheet,
-            ),
-            const SizedBox(height: 12),
-            _notificationsPanel(theme, isDark),
-            const SizedBox(height: 18),
-            _sectionHeader(theme, title: "Riskli Ogrenciler", actionText: ""),
-            const SizedBox(height: 12),
-            ...riskyStudents.map((item) => _riskStudentCard(theme, isDark, item)),
-            const SizedBox(height: 18),
-            _sectionHeader(theme, title: "Sinif Karsilastirma", actionText: ""),
-            const SizedBox(height: 12),
-            _classComparisonCard(theme, isDark),
-            const SizedBox(height: 18),
-            _sectionHeader(theme, title: "Akilli Oneriler", actionText: ""),
-            const SizedBox(height: 12),
-            ...suggestions.map((item) => _suggestionCard(theme, isDark, item)),
-            const SizedBox(height: 18),
-            _sectionHeader(theme, title: "Canli Ders Sonrasi Ozet", actionText: ""),
-            const SizedBox(height: 12),
-            _liveSummaryCard(theme, isDark),
-            const SizedBox(height: 18),
-            _sectionHeader(theme, title: "Ders Programim", actionText: "Takvimi Ac", onActionTap: () {
-              _openPage(const TeacherSchedulePage());
-            }),
-            const SizedBox(height: 12),
-            _scheduleCard(theme, isDark),
-            const SizedBox(height: 18),
-            _sectionHeader(theme, title: "Hizli Islemler", actionText: ""),
-            const SizedBox(height: 12),
-            _quickActions(context),
-            const SizedBox(height: 18),
-            _sectionHeader(
-              theme,
-              title: "Duyurular",
-              actionText: "Tumunu Gor",
-              onActionTap: () {
-                _openPage(const TeacherAnnouncementsPage());
-              },
-            ),
-            const SizedBox(height: 12),
-            _announcementsCard(theme, isDark),
+                theme,
+                title: "Bugün Yapılacaklar",
+                actionText: "Ekle",
+                onActionTap: _openAddTaskDialog,
+              ),
+              const SizedBox(height: 12),
+              ...tasks.map((item) => _taskCard(theme, isDark, item)),
+              const SizedBox(height: 18),
+              _sectionHeader(
+                theme,
+                title: "Akıllı Bildirimler",
+                actionText: "Tümünü Gör",
+                onActionTap: _openNotificationsSheet,
+              ),
+              const SizedBox(height: 12),
+              _notificationsPanel(theme, isDark),
+              const SizedBox(height: 18),
+              _sectionHeader(theme, title: "Riskli Öğrenciler", actionText: ""),
+              const SizedBox(height: 12),
+              ...riskyStudents.map(
+                (item) => _riskStudentCard(theme, isDark, item),
+              ),
+              const SizedBox(height: 18),
+              _sectionHeader(
+                theme,
+                title: "Sınıf Karşılaştırma",
+                actionText: "",
+              ),
+              const SizedBox(height: 12),
+              _classComparisonCard(theme, isDark),
+              const SizedBox(height: 18),
+              _sectionHeader(theme, title: "Akıllı Öneriler", actionText: ""),
+              const SizedBox(height: 12),
+              ...suggestions.map(
+                (item) => _suggestionCard(theme, isDark, item),
+              ),
+              const SizedBox(height: 18),
+              _sectionHeader(
+                theme,
+                title: "Canlı Ders Sonrası Özet",
+                actionText: "",
+              ),
+              const SizedBox(height: 12),
+              _liveSummaryCard(theme, isDark),
+              const SizedBox(height: 18),
+              _sectionHeader(
+                theme,
+                title: "Ders Programım",
+                actionText: "Takvimi Aç",
+                onActionTap: () {
+                  _openPage(const TeacherSchedulePage());
+                },
+              ),
+              const SizedBox(height: 12),
+              _scheduleCard(theme, isDark),
+              const SizedBox(height: 18),
+              _sectionHeader(
+                theme,
+                title: "Duyurular",
+                actionText: "Tümünü Gör",
+                onActionTap: () {
+                  _openPage(const TeacherAnnouncementsPage());
+                },
+              ),
+              const SizedBox(height: 12),
+              _announcementsCard(theme, isDark),
             ],
           ),
         ),
@@ -713,10 +751,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
         gradient: const LinearGradient(
-          colors: [
-            Color(0xFFFF7A00),
-            Color(0xFFFFB020),
-          ],
+          colors: [Color(0xFFFF7A00), Color(0xFFFFB020)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -759,7 +794,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           ),
           const SizedBox(height: 20),
           const Text(
-            "Ogretmen operasyon merkezi",
+            "Öğretmen operasyon merkezi",
             style: TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -768,7 +803,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "$selectedFilter odakli gorevler, riskli ogrenciler, sinif karsilastirmalari ve aksiyon onerileri tek ekranda.",
+            "$selectedFilter odakli görevler, riskli öğrenciler, sınıf karşılaştırmaları ve aksiyon önerileri tek ekranda.",
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.45,
@@ -779,9 +814,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             builder: (context, constraints) {
               final wide = constraints.maxWidth > 640;
               final statCards = [
-                _heroStat("Bugunku Ders", "${scheduleItems.length}"),
-                _heroStat("Akilli Uyari", "${notifications.length}"),
-                _heroStat("Riskli Ogrenci", "${riskyStudents.length}"),
+                _heroStat("Bugünku Ders", "${scheduleItems.length}"),
+                _heroStat("Akıllı Uyari", "${notifications.length}"),
+                _heroStat("Riskli Öğrenci", "${riskyStudents.length}"),
               ];
 
               if (wide) {
@@ -797,7 +832,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
 
               return Column(
                 children: [
-              statCards[0],
+                  statCards[0],
                   const SizedBox(height: 10),
                   statCards[1],
                   const SizedBox(height: 10),
@@ -882,11 +917,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     );
   }
 
-  Widget _taskCard(
-    ThemeData theme,
-    bool isDark,
-    Map<String, dynamic> item,
-  ) {
+  Widget _taskCard(ThemeData theme, bool isDark, Map<String, dynamic> item) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -904,7 +935,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               color: (item["color"] as Color).withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(item["icon"] as IconData, color: item["color"] as Color),
+            child: Icon(
+              item["icon"] as IconData,
+              color: item["color"] as Color,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -921,8 +955,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 Text(
                   item["subtitle"] as String,
                   style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.textTheme.bodyMedium?.color
-                        ?.withValues(alpha: 0.72),
+                    color: theme.textTheme.bodyMedium?.color?.withValues(
+                      alpha: 0.72,
+                    ),
                   ),
                 ),
               ],
@@ -935,7 +970,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               if (page != null) {
                 _openPage(page);
               } else {
-                _showInfo("Risk listesi bu ekranda asagida gosteriliyor.");
+                _showInfo("Risk listesi bu ekranda aşağıda gosteriliyor.");
               }
             },
             style: FilledButton.styleFrom(
@@ -966,8 +1001,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: CircleAvatar(
-                      backgroundColor:
-                          (item["color"] as Color).withValues(alpha: 0.14),
+                      backgroundColor: (item["color"] as Color).withValues(
+                        alpha: 0.14,
+                      ),
                       foregroundColor: item["color"] as Color,
                       child: Icon(item["icon"] as IconData),
                     ),
@@ -1010,7 +1046,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           Row(
             children: [
               CircleAvatar(
-                backgroundColor: const Color(0xFFFF6B6B).withValues(alpha: 0.14),
+                backgroundColor: const Color(
+                  0xFFFF6B6B,
+                ).withValues(alpha: 0.14),
                 foregroundColor: const Color(0xFFFF6B6B),
                 child: Text((item["name"] as String)[0]),
               ),
@@ -1026,13 +1064,17 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text("${item["className"]} • Eksik gorev: ${item["missing"]}"),
+                    Text(
+                      "${item["className"]} • Eksik görev: ${item["missing"]}",
+                    ),
                   ],
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFF6B6B).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),
@@ -1068,7 +1110,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               Expanded(
                 child: _metricBox(
                   theme,
-                  title: "Basari",
+                  title: "Başarı",
                   value: "${item["score"]}",
                 ),
               ),
@@ -1098,7 +1140,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 child: ElevatedButton(
                   onPressed: () {
                     _openPage(const StudentStudyPlanPage());
-                    _showInfo("${item["name"]} icin calisma plani taslagi acildi.");
+                    _showInfo(
+                      "${item["name"]} için çalışma planı taslağı açıldı.",
+                    );
                   },
                   child: const Text("Planla"),
                 ),
@@ -1141,52 +1185,52 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       borderRadius: BorderRadius.circular(24),
       onTap: _showClassComparisonDetail,
       child: Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: _shadow(isDark),
-      ),
-      child: Column(
-        children: classComparison.map((item) {
-          final color = item["color"] as Color;
-          final average = item["average"] as int;
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: _shadow(isDark),
+        ),
+        child: Column(
+          children: classComparison.map((item) {
+            final color = item["color"] as Color;
+            final average = item["average"] as int;
 
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        item["name"] as String,
-                        style: theme.textTheme.titleSmall?.copyWith(
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          item["name"] as String,
+                          style: theme.textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text("%$average"),
+                      const SizedBox(width: 8),
+                      Text(
+                        item["trend"] as String,
+                        style: TextStyle(
+                          color: (item["trend"] as String).startsWith("+")
+                              ? const Color(0xFF27B3A2)
+                              : const Color(0xFFFF6B6B),
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                    ),
-                    Text("%$average"),
-                    const SizedBox(width: 8),
-                    Text(
-                      item["trend"] as String,
-                      style: TextStyle(
-                        color: (item["trend"] as String).startsWith("+")
-                            ? const Color(0xFF27B3A2)
-                            : const Color(0xFFFF6B6B),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                _fillBar(theme, value: average, color: color),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  _fillBar(theme, value: average, color: color),
+                ],
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -1213,7 +1257,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               color: (item["color"] as Color).withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Icon(item["icon"] as IconData, color: item["color"] as Color),
+            child: Icon(
+              item["icon"] as IconData,
+              color: item["color"] as Color,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1239,10 +1286,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 _openPage(const TeacherExamsPage());
               } else if (action == "Plani Ac") {
                 _openPage(const StudentStudyPlanPage());
-              } else if (action == "Taslagi Goster") {
-                _openPage(TeacherChatPage(user: 'Veli Bilgilendirme Hatti'));
+              } else if (action == "Taslagi Göster") {
+                _openPage(TeacherChatPage(user: 'Veli Bilgilendirme Hattı'));
               } else {
-                _showInfo("$action aksiyonu baslatildi.");
+                _showInfo("$action aksiyonu başlatıldı.");
               }
             },
             child: Text(item["action"] as String),
@@ -1265,11 +1312,16 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             const SizedBox(height: 12),
             Text('Zaman: ${item["time"]}'),
             const SizedBox(height: 8),
-            const Text('Bu kayit, sinif performansi, veli geri bildirimi ve katilim hareketlerine gore akilli olarak olusturuldu.'),
+            const Text(
+              'Bu kayıt, sınıf performansı, veli geri bildirimi ve katılım hareketlerine göre akıllı olarak oluşturuldu.',
+            ),
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Kapat')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
         ],
       ),
     );
@@ -1285,22 +1337,30 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           shrinkWrap: true,
           children: [
             Text(
-              'Sinif Karsilastirma Detayi',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              'Sınıf Karsilastirma Detayi',
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
-            const Text('Ortalama, trend ve risk seviyeleri birlikte listelenir.'),
+            const Text(
+              'Ortalama, trend ve risk seviyeleri birlikte listelenir.',
+            ),
             const SizedBox(height: 16),
             ...classComparison.map(
               (item) => ListTile(
                 contentPadding: EdgeInsets.zero,
                 leading: CircleAvatar(
-                  backgroundColor: (item["color"] as Color).withValues(alpha: 0.14),
+                  backgroundColor: (item["color"] as Color).withValues(
+                    alpha: 0.14,
+                  ),
                   foregroundColor: item["color"] as Color,
                   child: Text(item["name"] as String),
                 ),
                 title: Text('%${item["average"]} ortalama'),
-                subtitle: Text('Trend ${item["trend"]} • Kazanim analizi hazir'),
+                subtitle: Text(
+                  'Trend ${item["trend"]} • Kazanim analizi hazır',
+                ),
               ),
             ),
           ],
@@ -1311,7 +1371,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
 
   Widget _liveSummaryCard(ThemeData theme, bool isDark) {
     final currentLesson = scheduleItems.isNotEmpty ? scheduleItems.first : null;
-    final liveTitle = currentLesson?["subtitle"] as String? ?? 'Canli ders ozeti bekleniyor';
+    final liveTitle =
+        currentLesson?["subtitle"] as String? ?? 'Canlı ders özeti bekleniyor';
     final attendanceCount = AttendanceService.instance.all().length;
     final riskCount = riskyStudents.length;
     final questionCount = classComparison.fold<int>(
@@ -1372,9 +1433,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             spacing: 10,
             runSpacing: 10,
             children: [
-              _SummaryChip(label: "$attendanceCount yoklama kaydi"),
-              _SummaryChip(label: "$questionCount sinif ozeti"),
-              _SummaryChip(label: "$riskCount riskli ogrenci"),
+              _SummaryChip(label: "$attendanceCount yoklama kaydı"),
+              _SummaryChip(label: "$questionCount sınıf özeti"),
+              _SummaryChip(label: "$riskCount riskli öğrenci"),
             ],
           ),
         ],
@@ -1405,11 +1466,11 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     ),
                     child: const Icon(Icons.event_busy_rounded),
                   ),
-                  title: const Text("Bugun planli canli ders gorunmuyor"),
+                  title: const Text("Bugün planli canlı ders görünmüyor"),
                   subtitle: Text(
                     _loadingDashboard
-                        ? "Takvim verisi yukleniyor."
-                        : "Canli dersler olusturuldugunda burada listelenecek.",
+                        ? "Takvim verisi yükleniyor."
+                        : "Canlı dersler oluşturuldugünda burada listelenecek.",
                   ),
                   trailing: TextButton(
                     onPressed: () => _openPage(const TeacherSchedulePage()),
@@ -1419,32 +1480,32 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               ]
             : scheduleItems.map((item) {
                 return ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              width: 56,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                item["time"] as String,
-                style: theme.textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-            title: Text(
-              item["title"] as String,
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            subtitle: Text(item["subtitle"] as String),
-            trailing: TextButton(
-              onPressed: () => _openPage(const TeacherSchedulePage()),
-              child: Text(item["status"] as String),
-            ),
+                  contentPadding: EdgeInsets.zero,
+                  leading: Container(
+                    width: 56,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: theme.scaffoldBackgroundColor,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      item["time"] as String,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                  title: Text(
+                    item["title"] as String,
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  subtitle: Text(item["subtitle"] as String),
+                  trailing: TextButton(
+                    onPressed: () => _openPage(const TeacherSchedulePage()),
+                    child: Text(item["status"] as String),
+                  ),
                 );
               }).toList(),
       ),
@@ -1469,10 +1530,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           ),
         ),
         if (actionText.isNotEmpty)
-          TextButton(
-            onPressed: onActionTap ?? () {},
-            child: Text(actionText),
-          ),
+          TextButton(onPressed: onActionTap ?? () {}, child: Text(actionText)),
       ],
     );
   }
@@ -1493,23 +1551,23 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             icon: Icons.campaign_rounded,
             color: const Color(0xFFFFB020),
             title: "Yarin zumre toplantisi var",
-            subtitle: "Saat 14:30'da ogretmenler odasinda yapilacak.",
+            subtitle: "Saat 14:30'da öğretmenler odasında yapılacak.",
           ),
           _divider(theme),
           _announcementItem(
             theme,
             icon: Icons.videocam_rounded,
             color: const Color(0xFF4E8DF5),
-            title: "Canli ders baglantilari guncellendi",
-            subtitle: "Yeni baglantilar ders sayfasina eklendi.",
+            title: "Canlı ders bağlantılari güncellendi",
+            subtitle: "Yeni bağlantılar ders sayfasina eklendi.",
           ),
           _divider(theme),
           _announcementItem(
             theme,
             icon: Icons.assignment_turned_in_rounded,
             color: const Color(0xFF69C36D),
-            title: "Haftalik rapor teslim gunu",
-            subtitle: "Cuma 17:00'ye kadar sistemden yuklenmeli.",
+            title: "Haftalık rapor teslim günu",
+            subtitle: "Cuma 17:00'ye kadar sistemden yüklenmeli.",
           ),
         ],
       ),
@@ -1551,8 +1609,9 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 Text(
                   subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.textTheme.bodySmall?.color
-                        ?.withValues(alpha: 0.72),
+                    color: theme.textTheme.bodySmall?.color?.withValues(
+                      alpha: 0.72,
+                    ),
                   ),
                 ),
               ],
@@ -1567,19 +1626,19 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     final actions = [
       {
         "icon": Icons.videocam_rounded,
-        "title": "Canli\nDersler",
+        "title": "Canlı\nDersler",
         "color": Colors.redAccent,
         "page": const TeacherLiveLessonsPage(),
       },
       {
         "icon": Icons.assignment_rounded,
-        "title": "Odevler",
+        "title": "Ödevler",
         "color": Colors.orange,
         "page": const TeacherAssignmentsPage(),
       },
       {
         "icon": Icons.fact_check_rounded,
-        "title": "Sinavlar",
+        "title": "Sınavlar",
         "color": Colors.green,
         "page": const TeacherExamsPage(),
       },
@@ -1591,7 +1650,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       },
       {
         "icon": Icons.folder_copy_rounded,
-        "title": "Icerik\nYonetimi",
+        "title": "İçerik\nYönetimi",
         "color": const Color(0xFF2563EB),
         "page": const TeacherContentPage(),
       },
@@ -1621,7 +1680,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       },
       {
         "icon": Icons.groups_2_rounded,
-        "title": "Gorusme\nOnaylari",
+        "title": "Görüşme\nOnaylari",
         "color": const Color(0xFF7C3AED),
         "page": const TeacherMeetingApprovalsPage(),
       },
@@ -1694,26 +1753,16 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         foregroundColor: const Color(0xFFFF7A00),
         child: Icon(icon),
       ),
-      title: Text(
-        title,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       onTap: onTap,
     );
   }
 
   Widget _divider(ThemeData theme) {
-    return Divider(
-      height: 1,
-      color: theme.dividerColor.withValues(alpha: 0.5),
-    );
+    return Divider(height: 1, color: theme.dividerColor.withValues(alpha: 0.5));
   }
 
-  Widget _fillBar(
-    ThemeData theme, {
-    required int value,
-    required Color color,
-  }) {
+  Widget _fillBar(ThemeData theme, {required int value, required Color color}) {
     final safeValue = value.clamp(0, 100) / 100;
 
     return Container(
@@ -1730,10 +1779,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(999),
             gradient: LinearGradient(
-              colors: [
-                color.withValues(alpha: 0.72),
-                color,
-              ],
+              colors: [color.withValues(alpha: 0.72), color],
             ),
           ),
         ),
@@ -1767,10 +1813,7 @@ class _SummaryChip extends StatelessWidget {
         color: Theme.of(context).scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(999),
       ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
+      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
     );
   }
 }

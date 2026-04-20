@@ -137,6 +137,22 @@ public sealed class AuthService(
         return await CreateCurrentUserDtoAsync(user, cancellationToken);
     }
 
+    public async Task<CurrentUserDto?> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        if (user is null) return null;
+
+        var fullName = request.FullName.Trim();
+        if (string.IsNullOrEmpty(fullName)) return null;
+
+        user.FullName = fullName;
+        user.Campus = request.Campus.Trim();
+        user.DepartmentOrBranch = request.DepartmentOrBranch.Trim();
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await CreateCurrentUserDtoAsync(user, cancellationToken);
+    }
+
     private async Task<CurrentUserDto> CreateCurrentUserDtoAsync(AppUser user, CancellationToken cancellationToken)
     {
         var tenant = user.TenantId.HasValue

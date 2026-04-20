@@ -9,7 +9,8 @@ class VeliTeacherFeedbackPage extends StatefulWidget {
   const VeliTeacherFeedbackPage({super.key});
 
   @override
-  State<VeliTeacherFeedbackPage> createState() => _VeliTeacherFeedbackPageState();
+  State<VeliTeacherFeedbackPage> createState() =>
+      _VeliTeacherFeedbackPageState();
 }
 
 class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
@@ -30,16 +31,18 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
     });
 
     try {
-      final linkedChildren = await LinkedChildrenService.instance.loadLinkedChildren();
+      final linkedChildren = await LinkedChildrenService.instance
+          .loadLinkedChildren();
       await AttendanceService.instance.refresh();
       final threads = await MessageApiService.instance.fetchThreads();
-      final examResults = await SchoolFeedApiService.instance.fetchExamResults();
+      final examResults = await SchoolFeedApiService.instance
+          .fetchExamResults();
       final attendance = AttendanceService.instance.all();
       final notes = <_FeedbackNote>[];
 
       for (final thread in threads.where((item) {
         final role = item.contactRole.toLowerCase();
-        return role.contains('teacher') || role.contains('ogretmen');
+        return role.contains('teacher') || role.contains('öğretmen');
       })) {
         notes.add(
           _FeedbackNote(
@@ -53,26 +56,44 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
 
       for (final child in linkedChildren) {
         final childAttendance = attendance
-            .where((item) => _normalizeText(item.studentName) == _normalizeText(child.fullName))
+            .where(
+              (item) =>
+                  _normalizeText(item.studentName) ==
+                  _normalizeText(child.fullName),
+            )
             .toList();
         final absentCount = childAttendance
-            .where((item) => _normalizeText(item.status).contains('devamsiz') || _normalizeText(item.status) == 'absent')
+            .where(
+              (item) =>
+                  _normalizeText(item.status).contains('devamsız') ||
+                  _normalizeText(item.status) == 'absent',
+            )
             .length;
         final lateCount = childAttendance
-            .where((item) => _normalizeText(item.status).contains('gec') || _normalizeText(item.status) == 'late')
+            .where(
+              (item) =>
+                  _normalizeText(item.status).contains('gec') ||
+                  _normalizeText(item.status) == 'late',
+            )
             .length;
         final childExams = examResults
-            .where((item) => _normalizeText(item.studentName) == _normalizeText(child.fullName))
+            .where(
+              (item) =>
+                  _normalizeText(item.studentName) ==
+                  _normalizeText(child.fullName),
+            )
             .toList();
 
         if (childExams.isNotEmpty) {
-          final average = childExams.fold<int>(0, (sum, item) => sum + item.score) / childExams.length;
+          final average =
+              childExams.fold<int>(0, (sum, item) => sum + item.score) /
+              childExams.length;
           notes.add(
             _FeedbackNote(
               title: '${child.fullName} • Akademik Durum',
               detail:
-                  'Son ${childExams.length} sinav kaydinin ortalamasi ${average.toStringAsFixed(0)}. ${child.className} icin bu ozet canli sinav verisinden olusturuldu.',
-              time: 'Sinav Sonuclari',
+                  'Son ${childExams.length} sınav kaydının ortalaması ${average.toStringAsFixed(0)}. ${child.className} için bu özet canlı sınav verisinden oluşturuldu.',
+              time: 'Sınav Sonuçları',
               color: const Color(0xFF0F766E),
             ),
           );
@@ -81,10 +102,10 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
         if (absentCount > 0 || lateCount > 0) {
           notes.add(
             _FeedbackNote(
-              title: '${child.fullName} • Katilim Ozeti',
+              title: '${child.fullName} • Katılım Özeti',
               detail:
-                  '$absentCount devamsizlik ve $lateCount gec kalma kaydi var. Bu kart ogretmen yoklama verisinden olusuyor.',
-              time: 'Yoklama Kayitlari',
+                  '$absentCount devamsızlık ve $lateCount geç kalma kaydı var. Bu kart öğretmen yoklama verisinden oluşuyor.',
+              time: 'Yoklama Kayıtları',
               color: const Color(0xFF7C3AED),
             ),
           );
@@ -108,7 +129,7 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Ogretmen Geri Bildirim Kutusu',
+          'Öğretmen Geri Bildirim Kutusu',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -160,7 +181,7 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(22),
           ),
-          child: const Text('Henuz gosterilecek geri bildirim bulunmuyor.'),
+          child: const Text('Henüz gösterilecek geri bildirim bulunmuyor.'),
         ),
       ];
     }
@@ -179,14 +200,21 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
               children: [
                 Text(
                   note.title,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 6),
-                Text(note.detail, style: Theme.of(context).textTheme.bodyMedium),
+                Text(
+                  note.detail,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
                 const SizedBox(height: 8),
                 Text(
                   note.time,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(color: note.color),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.copyWith(color: note.color),
                 ),
               ],
             ),

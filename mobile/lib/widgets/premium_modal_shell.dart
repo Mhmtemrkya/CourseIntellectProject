@@ -27,8 +27,14 @@ class PremiumModalShell extends StatelessWidget {
     return ResponsiveSheetContainer(
       child: Container(
         margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        padding: contentPadding ??
-            EdgeInsets.fromLTRB(18, 8, 18, MediaQuery.of(context).viewInsets.bottom + 24),
+        padding:
+            contentPadding ??
+            EdgeInsets.fromLTRB(
+              18,
+              8,
+              18,
+              MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
         decoration: BoxDecoration(
           color: theme.cardColor,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
@@ -54,7 +60,10 @@ class PremiumModalShell extends StatelessWidget {
                   children: [
                     Text(
                       eyebrow,
-                      style: const TextStyle(color: Colors.white70, fontWeight: FontWeight.w700),
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                     const SizedBox(height: 8),
                     Text(

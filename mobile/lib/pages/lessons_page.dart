@@ -46,9 +46,7 @@ class _LessonsPageState extends State<LessonsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Dersler"),
-      ),
+      appBar: AppBar(title: const Text("Dersler")),
       body: RefreshIndicator(
         onRefresh: _loadLessons,
         child: ResponsiveContent(
@@ -64,7 +62,7 @@ class _LessonsPageState extends State<LessonsPage> {
               else if (_error != null)
                 _messageCard(context, _error!)
               else if (_lessons.isEmpty)
-                _messageCard(context, 'Bugun gorunen ders kaydi bulunmuyor.')
+                _messageCard(context, 'Bugün görünen ders kaydı bulunmuyor.')
               else
                 ..._lessons.map(
                   (lesson) => LessonTile(

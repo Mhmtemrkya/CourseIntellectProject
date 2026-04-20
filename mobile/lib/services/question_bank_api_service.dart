@@ -24,7 +24,9 @@ class QuestionBankApiService {
   Future<List<QuestionBankRecord>> fetchQuestions({String? className}) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.get(
@@ -35,7 +37,9 @@ class QuestionBankApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Soru bankası alınamadı (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Soru bankası alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
@@ -46,7 +50,9 @@ class QuestionBankApiService {
   Future<QuestionBankRecord> createQuestion(QuestionBankRecord record) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -59,10 +65,14 @@ class QuestionBankApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Soru oluşturulamadı (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Soru oluşturulamadı (${response.statusCode}).',
+      );
     }
 
-    return _mapRecord(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _mapRecord(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<QuestionBankRecord> updateQuestion(QuestionBankRecord record) async {
@@ -73,7 +83,9 @@ class QuestionBankApiService {
 
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.put(
@@ -86,16 +98,22 @@ class QuestionBankApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Soru güncellenemedi (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Soru güncellenemedi (${response.statusCode}).',
+      );
     }
 
-    return _mapRecord(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _mapRecord(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<void> deleteQuestion(String id) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.delete(
@@ -104,14 +122,18 @@ class QuestionBankApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Soru silinemedi (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Soru silinemedi (${response.statusCode}).',
+      );
     }
   }
 
   Future<QuestionBankRecord> incrementUsage(String id) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -123,10 +145,14 @@ class QuestionBankApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Kullanım sayısı güncellenemedi (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Kullanım sayısı güncellenemedi (${response.statusCode}).',
+      );
     }
 
-    return _mapRecord(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+    return _mapRecord(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
   }
 
   Future<String> uploadQuestionAsset({
@@ -135,7 +161,9 @@ class QuestionBankApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final file = File(path);
@@ -145,19 +173,31 @@ class QuestionBankApiService {
 
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/api/uploads').replace(queryParameters: {'folder': folder}),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/uploads',
+      ).replace(queryParameters: {'folder': folder}),
     );
     request.headers['Authorization'] = 'Bearer ${session.accessToken}';
-    request.files.add(await http.MultipartFile.fromPath('file', file.path, filename: file.uri.pathSegments.last));
+    request.files.add(
+      await http.MultipartFile.fromPath(
+        'file',
+        file.path,
+        filename: file.uri.pathSegments.last,
+      ),
+    );
 
     final streamed = await request.send();
     final response = await http.Response.fromStream(streamed);
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Dosya yuklenemedi (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Dosya yüklenemedi (${response.statusCode}).',
+      );
     }
 
     final payload = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
-    return payload['fileUrl'] as String? ?? payload['fileName'] as String? ?? file.uri.pathSegments.last;
+    return payload['fileUrl'] as String? ??
+        payload['fileName'] as String? ??
+        file.uri.pathSegments.last;
   }
 
   Future<void> submitAttempt({
@@ -168,7 +208,9 @@ class QuestionBankApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionBankApiException('Oturum bulunamadı. Lütfen tekrar giriş yapın.');
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
     }
 
     final response = await http.post(
@@ -185,7 +227,9 @@ class QuestionBankApiService {
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw QuestionBankApiException('Soru denemesi kaydedilemedi (${response.statusCode}).');
+      throw QuestionBankApiException(
+        'Soru denemesi kaydedilemedi (${response.statusCode}).',
+      );
     }
   }
 
@@ -203,44 +247,69 @@ class QuestionBankApiService {
       imagePath: map['imagePath'] as String?,
       options: (map['options'] as List<dynamic>? ?? const []).cast<String>(),
       correctOptionIndex: map['correctOptionIndex'] as int?,
-      classTargets: ((map['classTargets'] as List<dynamic>? ?? const ['Tüm Sınıflar']).cast<String>())
-          .map(_normalizeLabel)
-          .toList(),
+      classTargets:
+          ((map['classTargets'] as List<dynamic>? ?? const ['Tüm Sınıflar'])
+                  .cast<String>())
+              .map(_normalizeLabel)
+              .toList(),
       solutionAssetPath: map['solutionAssetPath'] as String?,
-      solutionAssetType: _normalizeNullable(map['solutionAssetType'] as String?),
+      solutionAssetType: _normalizeNullable(
+        map['solutionAssetType'] as String?,
+      ),
       questionSetKey: map['questionSetKey'] as String?,
       questionSetTitle: map['questionSetTitle'] as String?,
       questionOrder: map['questionOrder'] as int?,
-      revealCorrectAnswerToStudent: map['revealCorrectAnswerToStudent'] as bool? ?? false,
+      revealCorrectAnswerToStudent:
+          map['revealCorrectAnswerToStudent'] as bool? ?? false,
       expectedAnswer: map['expectedAnswer'] as String?,
     );
   }
 
-  static Map<String, dynamic> _toPayload(QuestionBankRecord record) => {
-        'subject': record.subject,
-        'topic': record.topic,
-        'difficulty': record.difficulty,
-        'type': record.type,
-        'questionText': record.questionText,
-        'teacher': record.teacher,
-        'imagePath': record.imagePath,
-        'options': record.options,
-        'correctOptionIndex': record.correctOptionIndex,
-        'classTargets': record.classTargets,
-        'solutionAssetPath': record.solutionAssetPath,
-        'solutionAssetType': record.solutionAssetType,
-        'questionSetKey': record.questionSetKey,
-        'questionSetTitle': record.questionSetTitle,
-        'questionOrder': record.questionOrder,
-        'revealCorrectAnswerToStudent': record.revealCorrectAnswerToStudent,
-        'expectedAnswer': record.expectedAnswer,
-      };
+  static Map<String, dynamic> _toPayload(QuestionBankRecord record) {
+    final payload = <String, dynamic>{
+      'subject': record.subject,
+      'topic': record.topic,
+      'difficulty': record.difficulty,
+      'type': record.type,
+      'questionText': record.questionText,
+      'teacher': record.teacher,
+      'imagePlacement': record.imagePath == null ? 'None' : 'Top',
+      'options': record.options,
+      'classTargets': record.classTargets,
+      'revealCorrectAnswerToStudent': record.revealCorrectAnswerToStudent,
+    };
+    if (record.imagePath != null) {
+      payload['imagePath'] = record.imagePath;
+    }
+    if (record.correctOptionIndex != null) {
+      payload['correctOptionIndex'] = record.correctOptionIndex;
+    }
+    if (record.solutionAssetPath != null) {
+      payload['solutionAssetPath'] = record.solutionAssetPath;
+    }
+    if (record.solutionAssetType != null) {
+      payload['solutionAssetType'] = record.solutionAssetType;
+    }
+    if (record.questionSetKey != null) {
+      payload['questionSetKey'] = record.questionSetKey;
+    }
+    if (record.questionSetTitle != null) {
+      payload['questionSetTitle'] = record.questionSetTitle;
+    }
+    if (record.questionOrder != null) {
+      payload['questionOrder'] = record.questionOrder;
+    }
+    if (record.expectedAnswer != null) {
+      payload['expectedAnswer'] = record.expectedAnswer;
+    }
+    return payload;
+  }
 
   static String _normalizeLabel(String value) {
     return switch (value) {
       'Coktan Secmeli' => 'Çoktan Seçmeli',
       'Acik Uclu' => 'Açık Uçlu',
-      'Tum Siniflar' => 'Tüm Sınıflar',
+      'Tüm Sınıflar' => 'Tüm Sınıflar',
       _ => value,
     };
   }

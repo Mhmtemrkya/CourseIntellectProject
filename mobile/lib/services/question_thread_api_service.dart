@@ -23,7 +23,7 @@ class QuestionThreadApiService {
   Future<List<Map<String, dynamic>>> fetchThreads() async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionThreadApiException('Oturum bulunamadi.');
+      throw const QuestionThreadApiException('Oturum bulunamadı.');
     }
 
     final response = await http.get(
@@ -33,7 +33,7 @@ class QuestionThreadApiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw QuestionThreadApiException(
-        'Soru listesi alinamadi (${response.statusCode}).',
+        'Soru listesi alınamadı (${response.statusCode}).',
       );
     }
 
@@ -51,7 +51,7 @@ class QuestionThreadApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionThreadApiException('Oturum bulunamadi.');
+      throw const QuestionThreadApiException('Oturum bulunamadı.');
     }
 
     final response = await http.post(
@@ -71,7 +71,7 @@ class QuestionThreadApiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw QuestionThreadApiException(
-        'Soru gonderilemedi (${response.statusCode}).',
+        'Soru gönderilemedi (${response.statusCode}).',
       );
     }
 
@@ -85,7 +85,7 @@ class QuestionThreadApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionThreadApiException('Oturum bulunamadi.');
+      throw const QuestionThreadApiException('Oturum bulunamadı.');
     }
 
     final response = await http.post(
@@ -102,7 +102,7 @@ class QuestionThreadApiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw QuestionThreadApiException(
-        'Yanit gonderilemedi (${response.statusCode}).',
+        'Yanit gönderilemedi (${response.statusCode}).',
       );
     }
 
@@ -115,14 +115,14 @@ class QuestionThreadApiService {
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
-      throw const QuestionThreadApiException('Oturum bulunamadi.');
+      throw const QuestionThreadApiException('Oturum bulunamadı.');
     }
 
     final request = http.MultipartRequest(
       'POST',
-      Uri.parse('${ApiConfig.baseUrl}/api/uploads').replace(
-        queryParameters: {'folder': folder},
-      ),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/uploads',
+      ).replace(queryParameters: {'folder': folder}),
     );
     request.headers['Authorization'] = 'Bearer ${session.accessToken}';
 
@@ -136,14 +136,10 @@ class QuestionThreadApiService {
       );
     } else if (file.bytes != null) {
       request.files.add(
-        http.MultipartFile.fromBytes(
-          'file',
-          file.bytes!,
-          filename: file.name,
-        ),
+        http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
       );
     } else {
-      throw const QuestionThreadApiException('Secilen dosya okunamadi.');
+      throw const QuestionThreadApiException('Seçilen dosya okunamadı.');
     }
 
     final streamed = await request.send();
@@ -151,14 +147,15 @@ class QuestionThreadApiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw QuestionThreadApiException(
-        'Dosya yuklenemedi (${response.statusCode}).',
+        'Dosya yüklenemedi (${response.statusCode}).',
       );
     }
 
     final payload = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     return QuestionThreadAttachmentRecord(
       fileName: payload['originalFileName'] as String? ?? file.name,
-      fileUrl: payload['fileUrl'] as String? ?? payload['fileName'] as String? ?? '',
+      fileUrl:
+          payload['fileUrl'] as String? ?? payload['fileName'] as String? ?? '',
       fileType: payload['fileType'] as String? ?? _resolveFileType(file.name),
     );
   }
@@ -196,10 +193,10 @@ class QuestionThreadAttachmentRecord {
   });
 
   Map<String, dynamic> toPayload() => {
-        'fileName': fileName,
-        'fileUrl': fileUrl,
-        'fileType': fileType,
-      };
+    'fileName': fileName,
+    'fileUrl': fileUrl,
+    'fileType': fileType,
+  };
 
   factory QuestionThreadAttachmentRecord.fromMap(Map<String, dynamic> map) {
     return QuestionThreadAttachmentRecord(

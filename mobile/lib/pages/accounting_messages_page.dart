@@ -11,10 +11,7 @@ import 'accounting_chat_page.dart';
 class AccountingMessagesPage extends StatefulWidget {
   final String? initialStudent;
 
-  const AccountingMessagesPage({
-    super.key,
-    this.initialStudent,
-  });
+  const AccountingMessagesPage({super.key, this.initialStudent});
 
   @override
   State<AccountingMessagesPage> createState() => _AccountingMessagesPageState();
@@ -32,10 +29,11 @@ class _AccountingMessagesPageState extends State<AccountingMessagesPage> {
   void initState() {
     super.initState();
     MessageRealtimeService.instance.ensureConnected().catchError((_) {});
-    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream.listen((payload) {
-      if (!mounted) return;
-      _upsertThread(MessageThreadRecord.fromMap(payload));
-    });
+    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
+        .listen((payload) {
+          if (!mounted) return;
+          _upsertThread(MessageThreadRecord.fromMap(payload));
+        });
     _loadThreads();
     _startSilentFallbackSync();
   }
@@ -122,7 +120,10 @@ class _AccountingMessagesPageState extends State<AccountingMessagesPage> {
     } catch (_) {}
   }
 
-  bool _sameThreads(List<MessageThreadRecord> left, List<MessageThreadRecord> right) {
+  bool _sameThreads(
+    List<MessageThreadRecord> left,
+    List<MessageThreadRecord> right,
+  ) {
     if (identical(left, right)) return true;
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index += 1) {
@@ -144,7 +145,9 @@ class _AccountingMessagesPageState extends State<AccountingMessagesPage> {
     if (!mounted) return;
 
     final recipients = <ChatRecipientOption>[
-      ..._staffStore.staff.where((item) => _isReachableForAccounting(item)).map(
+      ..._staffStore.staff
+          .where((item) => _isReachableForAccounting(item))
+          .map(
             (staff) => ChatRecipientOption(
               name: staff.fullName,
               role: _resolveRecipientRole(staff),
@@ -157,7 +160,8 @@ class _AccountingMessagesPageState extends State<AccountingMessagesPage> {
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
       title: 'Alıcı Seç',
-      description: 'Yalnızca idari birimler ve yönetici ile yeni sohbet başlatabilirsiniz.',
+      description:
+          'Yalnızca idari birimler ve yönetiçi ile yeni sohbet başlatabilirsiniz.',
       recipients: recipients,
     );
 
@@ -165,7 +169,11 @@ class _AccountingMessagesPageState extends State<AccountingMessagesPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AccountingChatPage(user: selected.name, contactRole: selected.role, contactKey: selected.contactKey),
+        builder: (_) => AccountingChatPage(
+          user: selected.name,
+          contactRole: selected.role,
+          contactKey: selected.contactKey,
+        ),
       ),
     );
   }

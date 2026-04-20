@@ -1,4 +1,5 @@
 using CourseIntellect.Application.DTOs.ExamResults;
+using CourseIntellect.Application.DTOs.Parents;
 using CourseIntellect.Application.DTOs.Students;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -155,6 +156,92 @@ public sealed class AcademicQueryService(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return new StudentCredentialsDto(user.Id, user.FullName, user.Username, password, student.ClassName);
+    }
+
+    public async Task<StudentSummaryDto?> UpdateStudentAsync(Guid studentId, UpdateStudentRequest request, CancellationToken cancellationToken = default)
+    {
+        var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == studentId, cancellationToken);
+        if (student is null) return null;
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == student.UserId, cancellationToken);
+        if (user is null) return null;
+
+        var currentTenantId = ResolveCurrentTenantId();
+        if (currentTenantId.HasValue && user.TenantId != currentTenantId.Value) return null;
+
+        student.FullName = request.FullName;
+        student.TcNo = request.TcNo;
+        student.ClassName = request.ClassName;
+        student.CurrentSchool = request.CurrentSchool;
+        student.SchoolNumber = request.SchoolNumber;
+        student.BirthDate = request.BirthDate;
+        student.ProgramType = request.ProgramType;
+        student.ParentName = request.ParentName;
+        student.ParentPhone = request.ParentPhone;
+        student.ParentEmail = request.ParentEmail;
+        student.Address = request.Address;
+        student.Note = request.Note;
+
+        user.FullName = request.FullName;
+        user.DepartmentOrBranch = request.ClassName;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new StudentSummaryDto(
+            student.Id,
+            student.FullName,
+            student.TcNo,
+            student.ClassName,
+            student.CurrentSchool,
+            student.SchoolNumber,
+            student.BirthDate,
+            student.ProgramType,
+            student.ParentName,
+            student.ParentPhone,
+            student.ParentEmail,
+            student.Address,
+            student.Note,
+            user.Username,
+            user.Status.ToString());
+    }
+
+    public async Task<bool> DeleteStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
+    {
+        var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == studentId, cancellationToken);
+        if (student is null) return false;
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == student.UserId, cancellationToken);
+        if (user is null) return false;
+
+        var currentTenantId = ResolveCurrentTenantId();
+        if (currentTenantId.HasValue && user.TenantId != currentTenantId.Value) return false;
+
+        dbContext.Students.Remove(student);
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<ParentCredentialsDto> CreateParentAsync(CreateParentRequest request, CancellationToken cancellationToken = default)
+    {
+        var username = await GenerateUniqueUsernameAsync(request.FullName, "veli", cancellationToken);
+        var password = GeneratePassword();
+
+        var user = new AppUser
+        {
+            TenantId = ResolveCurrentTenantId(),
+            FullName = request.FullName.Trim(),
+            Username = username,
+            PasswordHash = passwordHasher.Hash(password),
+            PrimaryRole = UserRole.Parent,
+            Campus = "Merkez Kampus",
+            DepartmentOrBranch = string.Empty
+        };
+
+        await dbContext.Users.AddAsync(user, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new ParentCredentialsDto(user.Id, user.FullName, user.Username, password);
     }
 
     private async Task<string> GenerateUniqueUsernameAsync(string fullName, string className, CancellationToken cancellationToken)

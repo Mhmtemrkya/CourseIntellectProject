@@ -43,9 +43,7 @@ class TeacherHeader extends StatelessWidget implements PreferredSizeWidget {
         children: [
           CircleAvatar(
             radius: isTablet ? 24 : 22,
-            backgroundImage: NetworkImage(
-              "https://i.pravatar.cc/150?img=12",
-            ),
+            backgroundImage: NetworkImage("https://i.pravatar.cc/150?img=12"),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -71,7 +69,9 @@ class TeacherHeader extends StatelessWidget implements PreferredSizeWidget {
                   subtitle,
                   style: theme.textTheme.bodySmall?.copyWith(
                     fontSize: isTablet ? 13 : 12,
-                    color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                    color: theme.textTheme.bodySmall?.color?.withValues(
+                      alpha: 0.7,
+                    ),
                   ),
                 ),
               ],

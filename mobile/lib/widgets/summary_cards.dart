@@ -43,17 +43,18 @@ class _SummaryCardsState extends State<SummaryCards> {
           ? ''
           : await SchoolFeedApiService.resolveLinkedStudentName(session);
 
-      final liveLessons = await SchoolFeedApiService.instance.fetchLiveLessons();
-      final plannedExams = await PlannedExamApiService.instance.fetchPlannedExams(
-        studentName: studentName,
-      );
+      final liveLessons = await SchoolFeedApiService.instance
+          .fetchLiveLessons();
+      final plannedExams = await PlannedExamApiService.instance
+          .fetchPlannedExams(studentName: studentName);
       final examResults = await SchoolFeedApiService.instance.fetchExamResults(
         studentName: studentName,
       );
       final assignments = await HomeworkApiService.instance.fetchAssignments();
       final pendingHomework = assignments.where((item) {
-        final submissions =
-            List<Map<String, dynamic>>.from(item["submissions"] as List<dynamic>? ?? const []);
+        final submissions = List<Map<String, dynamic>>.from(
+          item["submissions"] as List<dynamic>? ?? const [],
+        );
         return !submissions.any((entry) => entry["studentName"] == studentName);
       }).length;
 
@@ -79,42 +80,44 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.calendar_today_rounded,
-        title: "Bugunku Ders",
+        title: "Bugünkü Ders",
         value: _loading ? "..." : "$_liveLessonCount",
         hint: _liveLessonCount > 0
-            ? "Canli ders kayitlari hazir"
-            : "Bugun gorunen canli ders yok",
+            ? "Canlı ders kayıtları hazır"
+            : "Bugün görünen canlı ders yok",
         color: const Color(0xFFF59E0B),
         onTap: widget.onLessonsTap,
       ),
       _card(
         context,
         icon: Icons.track_changes_rounded,
-        title: "Yaklasan Sinav",
+        title: "Yaklaşan Sınav",
         value: _loading ? "..." : "$_upcomingExamCount",
         hint: _upcomingExamCount > 0
-            ? "Planli sinavlar hazir"
-            : "Yaklasan sinav bulunmuyor",
+            ? "Planlı sınavlar hazır"
+            : "Yaklaşan sınav bulunmuyor",
         color: const Color(0xFF7C3AED),
         onTap: widget.onExamTap,
       ),
       _card(
         context,
         icon: Icons.bar_chart_rounded,
-        title: "Sinav Sonuclarim",
+        title: "Sınav Sonuçlarım",
         value: _loading ? "..." : "$_examResultCount",
-        hint: _examResultCount > 0 ? "Tum notlar bir arada" : "Henuz sonuc kaydi yok",
+        hint: _examResultCount > 0
+            ? "Tüm notlar bir arada"
+            : "Henüz sonuç kaydı yok",
         color: const Color(0xFF2563EB),
         onTap: widget.onResultsTap,
       ),
       _card(
         context,
         icon: Icons.book_rounded,
-        title: "Bekleyen Odev",
+        title: "Bekleyen Ödev",
         value: _loading ? "..." : "$_pendingHomeworkCount",
         hint: _pendingHomeworkCount > 0
             ? "Teslim takibi gerekli"
-            : "Bekleyen odev bulunmuyor",
+            : "Bekleyen ödev bulunmuyor",
         color: const Color(0xFFEA580C),
         onTap: widget.onHomeworkTap,
       ),
@@ -157,14 +160,8 @@ class _SummaryCardsState extends State<SummaryCards> {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
-                ? [
-                    color.withValues(alpha: 0.22),
-                    theme.cardColor,
-                  ]
-                : [
-                    color.withValues(alpha: 0.14),
-                    theme.cardColor,
-                  ],
+                ? [color.withValues(alpha: 0.22), theme.cardColor]
+                : [color.withValues(alpha: 0.14), theme.cardColor],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -199,9 +196,14 @@ class _SummaryCardsState extends State<SummaryCards> {
                   ),
                   if (value.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: theme.scaffoldBackgroundColor.withValues(alpha: 0.62),
+                        color: theme.scaffoldBackgroundColor.withValues(
+                          alpha: 0.62,
+                        ),
                         borderRadius: BorderRadius.circular(999),
                       ),
                       child: Text(
@@ -226,7 +228,9 @@ class _SummaryCardsState extends State<SummaryCards> {
                 hint,
                 style: theme.textTheme.bodySmall?.copyWith(
                   height: 1.35,
-                  color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                  color: theme.textTheme.bodySmall?.color?.withValues(
+                    alpha: 0.72,
+                  ),
                 ),
               ),
               const SizedBox(height: 10),

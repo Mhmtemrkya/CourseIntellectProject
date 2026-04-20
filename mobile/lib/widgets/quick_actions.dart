@@ -15,12 +15,7 @@ class QuickActions extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final actions = [
-      (
-        Icons.message_rounded,
-        "Mesajlar",
-        Colors.blue,
-        const MessagesPage(),
-      ),
+      (Icons.message_rounded, "Mesajlar", Colors.blue, const MessagesPage()),
       (
         Icons.help_center_rounded,
         "Soru Sor",
@@ -35,7 +30,7 @@ class QuickActions extends StatelessWidget {
       ),
       (
         Icons.event_note_rounded,
-        "Calisma Planim",
+        "Çalışma Planim",
         const Color(0xFF10B981),
         const StudentStudyPlanPage(),
       ),
@@ -70,10 +65,7 @@ class QuickActions extends StatelessWidget {
       children: [
         const Text(
           "Hızlı İşlemler",
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         ResponsiveLayout.isTablet(context)
@@ -131,12 +123,7 @@ class QuickActions extends StatelessWidget {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => page,
-          ),
-        );
+        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
       },
       child: Container(
         width: width,
@@ -145,10 +132,7 @@ class QuickActions extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: LinearGradient(
-            colors: [
-              color.withValues(alpha: 0.75),
-              color,
-            ],
+            colors: [color.withValues(alpha: 0.75), color],
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
           ),
@@ -156,11 +140,7 @@ class QuickActions extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              icon,
-              color: Colors.white,
-              size: 30,
-            ),
+            Icon(icon, color: Colors.white, size: 30),
             const SizedBox(height: 10),
             Text(
               title,

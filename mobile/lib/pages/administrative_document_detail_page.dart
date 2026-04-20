@@ -30,12 +30,15 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
     final statusColor = status == 'Tamamlandı'
         ? const Color(0xFF14532D)
         : status == 'Eksik Evrak'
-            ? const Color(0xFFB45309)
-            : const Color(0xFF2563EB);
+        ? const Color(0xFFB45309)
+        : const Color(0xFF2563EB);
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Evrak Detayı', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Evrak Detayı',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -59,8 +62,8 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                 Text(
                   'Belge Kontrolü',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 _row('TC / Kimlik Belgesi', identityReady),
@@ -78,13 +81,16 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                 Text(
                   'İdari Aksiyonlar',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.mark_email_unread_outlined, color: statusColor),
+                  leading: Icon(
+                    Icons.mark_email_unread_outlined,
+                    color: statusColor,
+                  ),
                   title: const Text('Veliye belge hatırlatması hazırla'),
                   subtitle: const Text(
                     'Eksik belge varsa standart bilgilendirme mesajı oluşturulur.',
@@ -93,7 +99,10 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                 ),
                 ListTile(
                   contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.description_outlined, color: Color(0xFF2563EB)),
+                  leading: const Icon(
+                    Icons.description_outlined,
+                    color: Color(0xFF2563EB),
+                  ),
                   title: const Text('Evrak özetini oluştur'),
                   subtitle: const Text(
                     'Kayıt dosyasının idari özet çıktısı hazırlanır.',
@@ -115,7 +124,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            isReady ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
+            isReady
+                ? Icons.check_circle_rounded
+                : Icons.pending_actions_rounded,
             color: color,
             size: 18,
           ),
@@ -158,12 +169,17 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                   color: statusColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(18),
                 ),
-                child: Icon(Icons.mark_email_unread_outlined, color: statusColor),
+                child: Icon(
+                  Icons.mark_email_unread_outlined,
+                  color: statusColor,
+                ),
               ),
               const SizedBox(height: 14),
               Text(
                 'Belge Hatırlatması',
-                style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
@@ -226,7 +242,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
         return Dialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(22),
             child: Column(
@@ -240,12 +258,17 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                     color: const Color(0xFF2563EB).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.description_outlined, color: Color(0xFF2563EB)),
+                  child: const Icon(
+                    Icons.description_outlined,
+                    color: Color(0xFF2563EB),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Text(
                   'Evrak Özeti',
-                  style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -293,8 +316,16 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                       const SizedBox(height: 14),
                       const Divider(),
                       const SizedBox(height: 10),
-                      _summaryCheck(theme, 'TC / Kimlik Belgesi', identityReady),
-                      _summaryCheck(theme, 'Okul ve sınıf bilgisi', schoolReady),
+                      _summaryCheck(
+                        theme,
+                        'TC / Kimlik Belgesi',
+                        identityReady,
+                      ),
+                      _summaryCheck(
+                        theme,
+                        'Okul ve sınıf bilgisi',
+                        schoolReady,
+                      ),
                       _summaryCheck(theme, 'Veli sözleşmesi', contractReady),
                       _summaryCheck(theme, 'İletişim evrakı', contactReady),
                     ],
@@ -316,7 +347,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                           Navigator.pop(dialogContext);
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Evrak özeti belge görünümünde hazırlandı.'),
+                              content: Text(
+                                'Evrak özeti belge görünümünde hazırlandı.',
+                              ),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -345,7 +378,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
               label,
               style: theme.textTheme.bodySmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                color: theme.textTheme.bodySmall?.color?.withValues(
+                  alpha: 0.72,
+                ),
               ),
             ),
           ),
@@ -353,7 +388,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -368,7 +405,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
       child: Row(
         children: [
           Icon(
-            isReady ? Icons.check_circle_rounded : Icons.pending_actions_rounded,
+            isReady
+                ? Icons.check_circle_rounded
+                : Icons.pending_actions_rounded,
             size: 18,
             color: color,
           ),

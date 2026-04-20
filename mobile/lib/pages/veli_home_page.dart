@@ -12,6 +12,7 @@ import 'veli_devamsizlik_page.dart';
 import 'veli_duyurular_page.dart';
 import 'veli_excuse_request_page.dart';
 import 'veli_exam_results_page.dart';
+import 'exam_analysis_page.dart';
 import 'veli_mesajlar_page.dart';
 import 'veli_meeting_request_page.dart';
 import 'veli_odeme_page.dart';
@@ -36,9 +37,19 @@ class _VeliHomePageState extends State<VeliHomePage> {
   List<TeacherWeeklyReportRecord> _teacherReports = const [];
 
   List<Map<String, dynamic>> get _riskAlerts {
-    final analytics = SmartInsightService.instance.parentRiskAlerts(_selectedChild);
-    final colors = [const Color(0xFFB42318), const Color(0xFF1D4ED8), const Color(0xFFB54708)];
-    final icons = [Icons.trending_down_rounded, Icons.event_busy_rounded, Icons.receipt_long_outlined];
+    final analytics = SmartInsightService.instance.parentRiskAlerts(
+      _selectedChild,
+    );
+    final colors = [
+      const Color(0xFFB42318),
+      const Color(0xFF1D4ED8),
+      const Color(0xFFB54708),
+    ];
+    final icons = [
+      Icons.trending_down_rounded,
+      Icons.event_busy_rounded,
+      Icons.receipt_long_outlined,
+    ];
     return List.generate(
       analytics.length,
       (index) => {
@@ -52,29 +63,33 @@ class _VeliHomePageState extends State<VeliHomePage> {
 
   List<Map<String, String>> get _supportSuggestions {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
-    final absentCount = attendance.where((item) => item.status == 'Devamsiz').length;
+    final absentCount = attendance
+        .where((item) => item.status == 'Devamsiz')
+        .length;
     final lateCount = attendance.where((item) => item.status == 'Gec').length;
     final overdueCount = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     return [
       {
-        'title': 'Gunluk tekrar saatini sabitleyin',
+        'title': 'Günlük tekrar saatini sabitleyin',
         'detail': lateCount > 0
-            ? '$lateCount gec kalma kaydi var. Aksam rutininin sabitlenmesi faydali olabilir.'
-            : 'Ders sonrasi kisa tekrar rutini performans istikrarini korur.',
+            ? '$lateCount geç kalma kaydı var. Aksam rutininin sabitlenmesi faydali olabilir.'
+            : 'Ders sonrası kisa tekrar rutini performans istikrarini korur.',
       },
       {
-        'title': 'Yoklama hareketlerini haftalik izleyin',
+        'title': 'Yoklama hareketlerini haftalık izleyin',
         'detail': absentCount > 0
-            ? '$absentCount devamsizlik kaydi sistemde gorunuyor. Haftalik kontrol onerilir.'
-            : 'Katilim duzenli; mevcut tempoyu korumak yeterli gorunuyor.',
+            ? '$absentCount devamsızlık kaydı sistemde görünüyor. Haftalık kontrol önerilir.'
+            : 'Katılım düzenli; mevcut tempoyu korumak yeterli görünüyor.',
       },
       {
         'title': 'Finans ve rehberlik bildirimlerini takip edin',
         'detail': overdueCount > 0
-            ? '$overdueCount geciken odeme kaydi var. Veli panelinden detaylari kontrol edebilirsiniz.'
-            : 'Odeme ve gorusme tarafinda su an kritik bir uyarı gorunmuyor.',
+            ? '$overdueCount geciken ödeme kaydı var. Veli panelinden detaylari kontrol edebilirsiniz.'
+            : 'Ödeme ve görüşme tarafında su an kritik bir uyarı görünmüyor.',
       },
     ];
   }
@@ -109,19 +124,22 @@ class _VeliHomePageState extends State<VeliHomePage> {
   }
 
   Future<void> _loadTeacherReports() async {
-    final linkedChild = _linkedChildren.where((item) => item.fullName == _selectedChild).firstOrNull;
+    final linkedChild = _linkedChildren
+        .where((item) => item.fullName == _selectedChild)
+        .firstOrNull;
     if (linkedChild == null) {
       _teacherReports = const [];
       return;
     }
 
     try {
-      _teacherReports = await TeacherWeeklyReportApiService.instance.fetchForParent(
-        studentName: linkedChild.fullName,
-        studentUsername: linkedChild.username,
-        parentName: linkedChild.parentName,
-        parentEmail: linkedChild.parentEmail,
-      );
+      _teacherReports = await TeacherWeeklyReportApiService.instance
+          .fetchForParent(
+            studentName: linkedChild.fullName,
+            studentUsername: linkedChild.username,
+            parentName: linkedChild.parentName,
+            parentEmail: linkedChild.parentEmail,
+          );
     } catch (_) {
       _teacherReports = const [];
     }
@@ -137,7 +155,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
     if (attendance.isNotEmpty) {
       final latest = attendance.first;
       items.add({
-        'time': 'Bugun',
+        'time': 'Bugün',
         'title': '${latest.lesson} yoklama durumu',
         'subtitle': '${latest.status} • ${latest.className}',
         'type': 'Yoklama',
@@ -148,9 +166,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
     for (final meeting in meetings.take(2)) {
       items.add({
         'time': meeting.slot,
-        'title': '${meeting.advisor} gorusmesi',
+        'title': '${meeting.advisor} görüşmesi',
         'subtitle': meeting.topic,
-        'type': 'Gorusme',
+        'type': 'Görüşme',
         'color': const Color(0xFF7C3AED),
       });
     }
@@ -160,7 +178,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
         {
           'time': 'Plan yok',
           'title': 'Takvim verisi bekleniyor',
-          'subtitle': 'Yeni yoklama veya gorusme kaydi olustugunda burada gorunecek',
+          'subtitle':
+              'Yeni yoklama veya görüşme kaydı olustugünda burada görünecek',
           'type': 'Bilgi',
           'color': Color(0xFF9E9E9E),
         },
@@ -232,10 +251,12 @@ class _VeliHomePageState extends State<VeliHomePage> {
           onAction: _showRiskSummary,
         ),
         const SizedBox(height: 12),
-        ..._riskAlerts.map((alert) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _riskCard(context, alert),
-            )),
+        ..._riskAlerts.map(
+          (alert) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _riskCard(context, alert),
+          ),
+        ),
         const SizedBox(height: 8),
         _sectionTitle(
           context,
@@ -291,7 +312,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Cocuk ve belge yonetimi',
+          title: 'Çocuk ve belge yönetimi',
           actionLabel: 'Dashboard',
           onAction: () => _openPage(context, const VeliChildrenDashboardPage()),
         ),
@@ -326,16 +347,20 @@ class _VeliHomePageState extends State<VeliHomePage> {
           ),
         ),
         const SizedBox(height: 12),
-        ..._supportSuggestions.map((suggestion) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _suggestionCard(context, suggestion),
-            )),
+        ..._supportSuggestions.map(
+          (suggestion) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _suggestionCard(context, suggestion),
+          ),
+        ),
       ],
     );
   }
 
   Widget _familyToolsSection(BuildContext context) {
-    final latestAttendance = AttendanceService.instance.forStudent(_selectedChild).firstOrNull;
+    final latestAttendance = AttendanceService.instance
+        .forStudent(_selectedChild)
+        .firstOrNull;
     return Column(
       children: [
         _surface(
@@ -345,25 +370,31 @@ class _VeliHomePageState extends State<VeliHomePage> {
             children: [
               Row(
                 children: [
-                  const Icon(Icons.notifications_active_outlined, color: Color(0xFF2563EB)),
+                  const Icon(
+                    Icons.notifications_active_outlined,
+                    color: Color(0xFF2563EB),
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       'Anlik yoklama bildirimi',
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ),
                   TextButton(
-                    onPressed: () => _openPage(context, const VeliDevamsizlikPage()),
-                    child: const Text('Devamsizlik'),
+                    onPressed: () =>
+                        _openPage(context, const VeliDevamsizlikPage()),
+                    child: const Text('Devamsızlık'),
                   ),
                 ],
               ),
               const SizedBox(height: 8),
               Text(
                 latestAttendance == null
-                    ? 'Secili ogrenci icin henuz yoklama verisi bulunmuyor.'
-                    : 'Son yoklama kaydina gore $_selectedChild ${latestAttendance.lesson} dersinde ${latestAttendance.status.toLowerCase()} olarak guncellendi.',
+                    ? 'Seçili öğrenci için henüz yoklama verisi bulunmuyor.'
+                    : 'Son yoklama kaydına göre $_selectedChild ${latestAttendance.lesson} dersinde ${latestAttendance.status.toLowerCase()} olarak güncellendi.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -375,10 +406,11 @@ class _VeliHomePageState extends State<VeliHomePage> {
             Expanded(
               child: _toolCard(
                 context,
-                title: 'Cocuk Dashboard',
+                title: 'Çocuk Dashboard',
                 icon: Icons.family_restroom_outlined,
                 color: const Color(0xFF2563EB),
-                onTap: () => _openPage(context, const VeliChildrenDashboardPage()),
+                onTap: () =>
+                    _openPage(context, const VeliChildrenDashboardPage()),
               ),
             ),
             const SizedBox(width: 10),
@@ -396,7 +428,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 10),
         _toolCard(
           context,
-          title: 'Ogretmen Geri Bildirimleri',
+          title: 'Öğretmen Geri Bildirimleri',
           icon: Icons.feedback_outlined,
           color: const Color(0xFF7C3AED),
           onTap: () => _openPage(context, const VeliTeacherFeedbackPage()),
@@ -429,7 +461,12 @@ class _VeliHomePageState extends State<VeliHomePage> {
               child: Icon(icon, color: color),
             ),
             const SizedBox(width: 12),
-            Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))),
+            Expanded(
+              child: Text(
+                title,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
           ],
         ),
       ),
@@ -454,10 +491,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
             ),
           ),
         ),
-        TextButton(
-          onPressed: onAction,
-          child: Text(actionLabel),
-        ),
+        TextButton(onPressed: onAction, child: Text(actionLabel)),
       ],
     );
   }
@@ -467,7 +501,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
     final absent = attendance.where((item) => item.status == 'Devamsiz').length;
     final late = attendance.where((item) => item.status == 'Gec').length;
-    final attendanceRate = attendance.isEmpty ? 100 : (((attendance.length - absent) / attendance.length) * 100).round();
+    final attendanceRate = attendance.isEmpty
+        ? 100
+        : (((attendance.length - absent) / attendance.length) * 100).round();
 
     return _surface(
       context,
@@ -482,7 +518,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   color: const Color(0xFFDBEAFE),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: const Icon(Icons.insights_rounded, color: Color(0xFF2563EB)),
+                child: const Icon(
+                  Icons.insights_rounded,
+                  color: Color(0xFF2563EB),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -499,16 +538,25 @@ class _VeliHomePageState extends State<VeliHomePage> {
                     Text(
                       '${_classForChild(_selectedChild)} • Sayısal • Son güncelleme bugün',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                        color: theme.textTheme.bodySmall?.color?.withValues(
+                          alpha: 0.7,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
               FilledButton.tonalIcon(
-                onPressed: () => _openPage(context, const VeliExamResultsPage()),
+                onPressed: () =>
+                    _openPage(context, const VeliExamResultsPage()),
                 icon: const Icon(Icons.analytics_outlined),
                 label: const Text('Sonuçlar'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.tonalIcon(
+                onPressed: () => _openPage(context, const ExamAnalysisPage()),
+                icon: const Icon(Icons.insights_rounded),
+                label: const Text('Analiz'),
               ),
             ],
           ),
@@ -552,14 +600,15 @@ class _VeliHomePageState extends State<VeliHomePage> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.record_voice_over_rounded, color: Color(0xFF2563EB)),
+                const Icon(
+                  Icons.record_voice_over_rounded,
+                  color: Color(0xFF2563EB),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Rehberlik notu: $_selectedChild için devam, görev ve sınav akışı birlikte izleniyor.',
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      height: 1.4,
-                    ),
+                    style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
                 ),
               ],
@@ -583,7 +632,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
               color: (alert['color'] as Color).withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(alert['icon'] as IconData, color: alert['color'] as Color),
+            child: Icon(
+              alert['icon'] as IconData,
+              color: alert['color'] as Color,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -592,14 +644,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
               children: [
                 Text(
                   alert['title'] as String,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   alert['detail'] as String,
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.4),
                 ),
                 const SizedBox(height: 10),
                 Wrap(
@@ -622,10 +676,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
 
   Widget _weeklyReportCard(BuildContext context) {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
-    final attended = attendance.where((item) => item.status == 'Katildi').length;
-    final attendanceRate = attendance.isEmpty ? 0 : ((attended / attendance.length) * 100).round();
+    final attended = attendance
+        .where((item) => item.status == 'Katildi')
+        .length;
+    final attendanceRate = attendance.isEmpty
+        ? 0
+        : ((attended / attendance.length) * 100).round();
     final overdue = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     return _surface(
       context,
@@ -637,9 +697,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
               Expanded(
                 child: Text(
                   'Güncel veli raporu',
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               Chip(
@@ -652,18 +712,24 @@ class _VeliHomePageState extends State<VeliHomePage> {
           ),
           const SizedBox(height: 12),
           _ReportLine(label: 'Katılım', value: '%$attendanceRate'),
-          _ReportLine(label: 'Tamamlanan ders', value: '$attended / ${attendance.length}'),
+          _ReportLine(
+            label: 'Tamamlanan ders',
+            value: '$attended / ${attendance.length}',
+          ),
           _ReportLine(
             label: 'Finans durumu',
             value: overdue == 0 ? 'Dengede' : '$overdue uyarı',
           ),
           _ReportLine(
             label: 'Öğretmen raporu',
-            value: _teacherReports.firstOrNull?.title ?? 'Yeni rapor bekleniyor',
+            value:
+                _teacherReports.firstOrNull?.title ?? 'Yeni rapor bekleniyor',
           ),
           _ReportLine(
             label: 'Gönderilen rapor',
-            value: _teacherReports.isEmpty ? 'Henüz yok' : '${_teacherReports.length} kayıt',
+            value: _teacherReports.isEmpty
+                ? 'Henüz yok'
+                : '${_teacherReports.length} kayıt',
           ),
           const SizedBox(height: 12),
           Row(
@@ -678,7 +744,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _showInfoSnack('Rapor veli e-posta adresine gönderildi.'),
+                  onPressed: () =>
+                      _showInfoSnack('Rapor veli e-posta adresine gönderildi.'),
                   icon: const Icon(Icons.mail_outline_rounded),
                   label: const Text('E-posta Gönder'),
                 ),
@@ -697,7 +764,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         .firstOrNull;
     final advisor = latestMeeting?.advisor ?? _preferredAdvisor;
     final advisorSubtitle = latestMeeting == null
-        ? 'Secili ogrenci icin aktif gorusme plani henuz yok'
+        ? 'Seçili öğrenci için aktif görüşme planı henüz yok'
         : '${latestMeeting.slot} • ${latestMeeting.status}';
     return _surface(
       context,
@@ -716,8 +783,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
             context,
             title: 'Rehberlik Servisi',
             subtitle: latestMeeting == null
-                ? 'Gorusme ve destek planlari buradan yonetilir'
-                : '${latestMeeting.topic} icin destek kaydi var',
+                ? 'Görüşme ve destek planları buradan yönetilir'
+                : '${latestMeeting.topic} için destek kaydı var',
             icon: Icons.support_agent_rounded,
             color: const Color(0xFF7C3AED),
             onTap: () => _openMeetingRequest(_preferredAdvisor),
@@ -751,18 +818,22 @@ class _VeliHomePageState extends State<VeliHomePage> {
 
   Widget _studyTrackingSection(BuildContext context) {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
-    final overdue = AccountingFinanceStore.instance.installments.where((item) => item.status == 'Geciken').length;
+    final overdue = AccountingFinanceStore.instance.installments
+        .where((item) => item.status == 'Geciken')
+        .length;
     final studyItems = [
       {
         'label': 'Bugün tamamlanan ders',
-        'value': '${attendance.where((item) => item.status == 'Katildi').length} ders',
-        'note': 'Secili ogrencinin yoklama ve plan verisi birlikte izleniyor',
+        'value':
+            '${attendance.where((item) => item.status == 'Katildi').length} ders',
+        'note': 'Seçili öğrencinin yoklama ve plan verisi birlikte izleniyor',
         'icon': Icons.task_alt_rounded,
         'color': const Color(0xFF0F766E),
       },
       {
         'label': 'Bu hafta devamsızlık',
-        'value': '${attendance.where((item) => item.status == 'Devamsiz').length} kayıt',
+        'value':
+            '${attendance.where((item) => item.status == 'Devamsiz').length} kayıt',
         'note': 'Tarih bazlı devamsızlık dökümü görüntülenebilir',
         'icon': Icons.auto_graph_rounded,
         'color': const Color(0xFF2563EB),
@@ -770,7 +841,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
       {
         'label': 'Finans sinyali',
         'value': overdue == 0 ? 'Dengede' : '$overdue uyarı',
-        'note': overdue == 0 ? 'Gecikmiş ödeme görünmüyor' : 'Geciken planlar sistemde işaretlendi',
+        'note': overdue == 0
+            ? 'Gecikmiş ödeme görünmüyor'
+            : 'Geciken planlar sistemde işaretlendi',
         'icon': Icons.timer_outlined,
         'color': const Color(0xFF7C3AED),
       },
@@ -791,7 +864,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
                         color: (item['color'] as Color).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(14),
                       ),
-                      child: Icon(item['icon'] as IconData, color: item['color'] as Color),
+                      child: Icon(
+                        item['icon'] as IconData,
+                        color: item['color'] as Color,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -800,9 +876,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
                         children: [
                           Text(
                             item['label'] as String,
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                ),
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -815,8 +890,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
                     Text(
                       item['value'] as String,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
                   ],
                 ),
@@ -861,9 +936,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
                             const SizedBox(height: 3),
                             Text(
                               item['title'] as String,
-                              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                    fontWeight: FontWeight.w800,
-                                  ),
+                              style: Theme.of(context).textTheme.titleSmall
+                                  ?.copyWith(fontWeight: FontWeight.w800),
                             ),
                             const SizedBox(height: 4),
                             Text(
@@ -876,7 +950,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
                       Chip(
                         label: Text(item['type'] as String),
                         side: BorderSide.none,
-                        backgroundColor: (item['color'] as Color).withValues(alpha: 0.12),
+                        backgroundColor: (item['color'] as Color).withValues(
+                          alpha: 0.12,
+                        ),
                         labelStyle: TextStyle(color: item['color'] as Color),
                       ),
                     ],
@@ -891,9 +967,14 @@ class _VeliHomePageState extends State<VeliHomePage> {
 
   Widget _financeCard(BuildContext context) {
     final store = AccountingFinanceStore.instance;
-    final overdue = store.installments.where((item) => item.status == 'Geciken').toList();
-    final latestDue = overdue.isEmpty ? 'Odeme dengede' : overdue.first.due;
-    final remaining = overdue.fold<int>(0, (sum, item) => sum + store.parseAmount(item.amount));
+    final overdue = store.installments
+        .where((item) => item.status == 'Geciken')
+        .toList();
+    final latestDue = overdue.isEmpty ? 'Ödeme dengede' : overdue.first.due;
+    final remaining = overdue.fold<int>(
+      0,
+      (sum, item) => sum + store.parseAmount(item.amount),
+    );
     return _surface(
       context,
       child: Column(
@@ -929,13 +1010,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded, color: Color(0xFFB45309)),
+                const Icon(
+                  Icons.info_outline_rounded,
+                  color: Color(0xFFB45309),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     overdue.isEmpty
-                        ? 'Geciken odeme bulunmuyor. Tum tahsilatlar dengede ilerliyor.'
-                        : 'Geciken odemeler icin sistem otomatik uyari olusturur. Geciken plan sayisi: ${overdue.length}.',
+                        ? 'Geciken ödeme bulunmuyor. Tüm tahsilatlar dengede ilerliyor.'
+                        : 'Geciken ödemeler için sistem otomatik uyarı oluşturur. Geciken plan sayısı: ${overdue.length}.',
                   ),
                 ),
               ],
@@ -947,7 +1031,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
             runSpacing: 8,
             children: [
               FilledButton.icon(
-                onPressed: () => _openPage(context, const VeliOnlineOdemePage()),
+                onPressed: () =>
+                    _openPage(context, const VeliOnlineOdemePage()),
                 icon: const Icon(Icons.credit_card_rounded),
                 label: const Text('Online Ödeme'),
               ),
@@ -977,12 +1062,15 @@ class _VeliHomePageState extends State<VeliHomePage> {
               Expanded(
                 child: Text(
                   'Bu ay $absent devamsızlık, $excused izinli kayıt bulunuyor.',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.4),
                 ),
               ),
               const SizedBox(width: 12),
               FilledButton.tonal(
-                onPressed: () => _openPage(context, const VeliDevamsizlikPage()),
+                onPressed: () =>
+                    _openPage(context, const VeliDevamsizlikPage()),
                 child: const Text('Takvim'),
               ),
             ],
@@ -998,7 +1086,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 label: const Text('Mazeret Bildir'),
               ),
               OutlinedButton.icon(
-                onPressed: () => _showInfoSnack('Devamsızlık özeti öğretmene iletildi.'),
+                onPressed: () =>
+                    _showInfoSnack('Devamsızlık özeti öğretmene iletildi.'),
                 icon: const Icon(Icons.send_outlined),
                 label: const Text('Okula Bildir'),
               ),
@@ -1030,7 +1119,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
                           color: const Color(0xFFEEF2FF),
                           borderRadius: BorderRadius.circular(14),
                         ),
-                        child: const Icon(Icons.description_outlined, color: Color(0xFF4F46E5)),
+                        child: const Icon(
+                          Icons.description_outlined,
+                          color: Color(0xFF4F46E5),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -1039,9 +1131,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
                           children: [
                             Text(
                               document['title']!,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w700,
-                                  ),
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w700),
                             ),
                             const SizedBox(height: 3),
                             Text(
@@ -1073,14 +1164,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
         children: [
           Text(
             suggestion['title']!,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 6),
           Text(
             suggestion['detail']!,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.4),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(height: 1.4),
           ),
           const SizedBox(height: 10),
           Align(
@@ -1116,16 +1209,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
           Text(
             title,
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: color,
-                  fontWeight: FontWeight.w700,
-                ),
+              color: color,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
             value,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
           ),
         ],
       ),
@@ -1146,7 +1239,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+          color: Theme.of(
+            context,
+          ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
@@ -1168,8 +1263,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   Text(
                     title,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          fontWeight: FontWeight.w800,
-                        ),
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 2),
                   Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
@@ -1194,7 +1289,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06),
+            color: Colors.black.withValues(
+              alpha: theme.brightness == Brightness.dark ? 0.22 : 0.06,
+            ),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -1205,18 +1302,12 @@ class _VeliHomePageState extends State<VeliHomePage> {
   }
 
   void _openPage(BuildContext context, Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    );
+    Navigator.push(context, MaterialPageRoute(builder: (_) => page));
   }
 
   void _showInfoSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-      ),
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
     );
   }
 
@@ -1234,9 +1325,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
             children: [
               Text(
                 'Canlı akademik özet',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 14),
               ..._academicReportLines(),
@@ -1262,7 +1353,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
         return AlertDialog(
           title: const Text('Risk özeti'),
           content: Text(
-            _riskAlerts.map((item) => '• ${item['title']}: ${item['detail']}').join('\n\n'),
+            _riskAlerts
+                .map((item) => '• ${item['title']}: ${item['detail']}')
+                .join('\n\n'),
           ),
           actions: [
             TextButton(
@@ -1299,9 +1392,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
             children: [
               Text(
                 'Çalışma takibi ayrıntısı',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 14),
               ..._studyTrackingLines(),
@@ -1315,33 +1408,51 @@ class _VeliHomePageState extends State<VeliHomePage> {
   List<Widget> _academicReportLines() {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
     final overdue = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     final meetings = MeetingRequestStore.instance.requests
         .where((item) => item.studentName == _selectedChild)
         .length;
     return [
-      _ReportLine(label: 'Secili ogrenci', value: _selectedChild),
-      _ReportLine(label: 'Yoklama kaydi', value: '${attendance.length} hareket'),
-      _ReportLine(label: 'Geciken odeme', value: overdue == 0 ? 'Yok' : '$overdue uyari'),
-      _ReportLine(label: 'Gorusme takibi', value: '$meetings kayit'),
+      _ReportLine(label: 'Seçili öğrenci', value: _selectedChild),
+      _ReportLine(
+        label: 'Yoklama kaydı',
+        value: '${attendance.length} hareket',
+      ),
+      _ReportLine(
+        label: 'Geciken ödeme',
+        value: overdue == 0 ? 'Yok' : '$overdue uyarı',
+      ),
+      _ReportLine(label: 'Görüşme takibi', value: '$meetings kayıt'),
     ];
   }
 
   List<Widget> _studyTrackingLines() {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
-    final attended = attendance.where((item) => item.status == 'Katildi').length;
+    final attended = attendance
+        .where((item) => item.status == 'Katildi')
+        .length;
     final absent = attendance.where((item) => item.status == 'Devamsiz').length;
     final late = attendance.where((item) => item.status == 'Gec').length;
     final overdue = AccountingFinanceStore.instance.installments
-        .where((item) => item.student == _selectedChild && item.status == 'Geciken')
+        .where(
+          (item) => item.student == _selectedChild && item.status == 'Geciken',
+        )
         .length;
     return [
-      _ReportLine(label: 'Tamamlanan ders', value: '$attended kayit'),
-      _ReportLine(label: 'Devamsizlik', value: '$absent kayit'),
-      _ReportLine(label: 'Gec kalma', value: '$late kayit'),
-      _ReportLine(label: 'Finans sinyali', value: overdue == 0 ? 'Dengede' : '$overdue uyari'),
-      _ReportLine(label: 'Destek noktasi', value: _supportSuggestions.first['title'] ?? 'Plan bekleniyor'),
+      _ReportLine(label: 'Tamamlanan ders', value: '$attended kayıt'),
+      _ReportLine(label: 'Devamsızlık', value: '$absent kayıt'),
+      _ReportLine(label: 'Gec kalma', value: '$late kayıt'),
+      _ReportLine(
+        label: 'Finans sinyali',
+        value: overdue == 0 ? 'Dengede' : '$overdue uyarı',
+      ),
+      _ReportLine(
+        label: 'Destek noktasi',
+        value: _supportSuggestions.first['title'] ?? 'Plan bekleniyor',
+      ),
     ];
   }
 
@@ -1360,8 +1471,13 @@ class _VeliHomePageState extends State<VeliHomePage> {
             return ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
-                backgroundColor: (item['color'] as Color).withValues(alpha: 0.12),
-                child: Icon(Icons.event_note_rounded, color: item['color'] as Color),
+                backgroundColor: (item['color'] as Color).withValues(
+                  alpha: 0.12,
+                ),
+                child: Icon(
+                  Icons.event_note_rounded,
+                  color: item['color'] as Color,
+                ),
               ),
               title: Text(item['title'] as String),
               subtitle: Text('${item['time']} • ${item['subtitle']}'),
@@ -1394,7 +1510,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Kapat')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Kapat'),
+          ),
         ],
       ),
     );
@@ -1420,7 +1539,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
               contentPadding: EdgeInsets.zero,
               leading: const CircleAvatar(
                 backgroundColor: Color(0xFFEEF2FF),
-                child: Icon(Icons.description_outlined, color: Color(0xFF4F46E5)),
+                child: Icon(
+                  Icons.description_outlined,
+                  color: Color(0xFF4F46E5),
+                ),
               ),
               title: Text(item['title']!),
               subtitle: Text(item['subtitle']!),
@@ -1455,12 +1577,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.45),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Text(
                   _documentBody(document['title']!),
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(height: 1.45),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.45),
                 ),
               ),
             ],
@@ -1485,36 +1611,29 @@ class _VeliHomePageState extends State<VeliHomePage> {
 
   String _documentBody(String title) {
     if (title.contains('makbuzu')) {
-      return 'Bu belge canli tahsilat kaydindan olusturuldu. Odeme kanali, zaman bilgisi ve ogrenci eslesmesi finans dashboard verisinden geliyor.';
+      return 'Bu belge canlı tahsilat kaydından oluşturuldu. Ödeme kanalı, zaman bilgisi ve öğrenci eşleşmesi finans dashboard verisinden geliyor.';
     }
     if (title.contains('akademik')) {
-      return 'Haftalik akademik ozet, secili ogrencinin yoklama, sinav ve plan takibine gore panelde derlenir.';
+      return 'Haftalık akademik özet, seçili öğrencinin yoklama, sınav ve plan takibine göre panelde derlenir.';
     }
-    if (title.contains('gorusme')) {
-      return 'Gorusme notlari veli-talep ve rehberlik akisindan olusur. Yeni toplanti olustukca burada guncellenir.';
+    if (title.contains('görüşme')) {
+      return 'Görüşme notlari veli-talep ve rehberlik akışından olusur. Yeni toplanti olustukca burada güncellenir.';
     }
-    return 'Bu belge icin onizleme hazir degil.';
+    return 'Bu belge için önizleme hazır değil.';
   }
 
   void _openRecommendationPlan(String title, String detail) {
-    _openPage(
-      context,
-      VeliSupportPlanPage(
-        title: title,
-        detail: detail,
-      ),
-    );
+    _openPage(context, VeliSupportPlanPage(title: title, detail: detail));
   }
 
   void _openMeetingRequest(String advisor) {
-    _openPage(
-      context,
-      VeliMeetingRequestPage(advisor: advisor),
-    );
+    _openPage(context, VeliMeetingRequestPage(advisor: advisor));
   }
 
   List<Map<String, String>> get _documentItems {
-    final collections = AccountingFinanceStore.instance.collections.take(3).toList();
+    final collections = AccountingFinanceStore.instance.collections
+        .take(3)
+        .toList();
     if (collections.isNotEmpty) {
       return collections
           .map(
@@ -1525,12 +1644,14 @@ class _VeliHomePageState extends State<VeliHomePage> {
           )
           .toList();
     }
-    final meetings = MeetingRequestStore.instance.requests.where((item) => item.studentName == _selectedChild).take(2);
+    final meetings = MeetingRequestStore.instance.requests
+        .where((item) => item.studentName == _selectedChild)
+        .take(2);
     if (meetings.isNotEmpty) {
       return meetings
           .map(
             (item) => {
-              'title': '${item.advisor} gorusme notu',
+              'title': '${item.advisor} görüşme notu',
               'subtitle': '${item.slot} • ${item.status}',
             },
           )
@@ -1538,8 +1659,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
     }
     return [
       {
-        'title': 'Haftalik akademik ozet',
-        'subtitle': 'Canli veri ozeti • Bugun',
+        'title': 'Haftalık akademik özet',
+        'subtitle': 'Canlı veri özeti • Bugün',
       },
     ];
   }
@@ -1555,10 +1676,12 @@ class _VeliHomePageState extends State<VeliHomePage> {
           border: OutlineInputBorder(),
         ),
         items: options
-            .map((item) => DropdownMenuItem(
-                  value: item,
-                  child: Text(item.replaceAll('Yilmaz', 'Yılmaz')),
-                ))
+            .map(
+              (item) => DropdownMenuItem(
+                value: item,
+                child: Text(item.replaceAll('Yilmaz', 'Yılmaz')),
+              ),
+            )
             .toList(),
         onChanged: (value) async {
           if (value == null) return;
@@ -1572,8 +1695,10 @@ class _VeliHomePageState extends State<VeliHomePage> {
   }
 
   String _classForChild(String child) {
-    final record = _linkedChildren.where((item) => item.fullName == child).firstOrNull;
-    return record?.className ?? 'Sinif';
+    final record = _linkedChildren
+        .where((item) => item.fullName == child)
+        .firstOrNull;
+    return record?.className ?? 'Sınıf';
   }
 }
 
@@ -1581,10 +1706,7 @@ class _ReportLine extends StatelessWidget {
   final String label;
   final String value;
 
-  const _ReportLine({
-    required this.label,
-    required this.value,
-  });
+  const _ReportLine({required this.label, required this.value});
 
   @override
   Widget build(BuildContext context) {
@@ -1593,16 +1715,13 @@ class _ReportLine extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              label,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
+            child: Text(label, style: Theme.of(context).textTheme.bodyMedium),
           ),
           Text(
             value,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w800,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
         ],
       ),

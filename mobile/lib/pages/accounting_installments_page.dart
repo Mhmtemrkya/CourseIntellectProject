@@ -10,10 +10,12 @@ class AccountingInstallmentsPage extends StatefulWidget {
   const AccountingInstallmentsPage({super.key});
 
   @override
-  State<AccountingInstallmentsPage> createState() => _AccountingInstallmentsPageState();
+  State<AccountingInstallmentsPage> createState() =>
+      _AccountingInstallmentsPageState();
 }
 
-class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage> {
+class _AccountingInstallmentsPageState
+    extends State<AccountingInstallmentsPage> {
   final AccountingFinanceStore _store = AccountingFinanceStore.instance;
   String _filter = 'Tümü';
 
@@ -45,7 +47,9 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
 
   @override
   Widget build(BuildContext context) {
-    final filtered = _store.installments.where((plan) => _filter == 'Tümü' || plan.status == _filter).toList();
+    final filtered = _store.installments
+        .where((plan) => _filter == 'Tümü' || plan.status == _filter)
+        .toList();
 
     return AccountingScaffold(
       appBar: AppBar(
@@ -64,12 +68,22 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
         children: [
           AccountingHeroCard(
             eyebrow: 'Taksit planlama',
-            title: 'Bekleyen, alınan ve geciken taksitleri aylık akışla izleyin.',
-            description: 'Yeni taksit planı oluştururken ilk taksit, başlangıç tarihi ve notlar aynı formda yönetilir.',
+            title:
+                'Bekleyen, alınan ve geciken taksitleri aylık akışla izleyin.',
+            description:
+                'Yeni taksit planı oluştururken ilk taksit, başlangıç tarihi ve notlar aynı formda yönetilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF7C3AED)],
             metrics: [
-              AccountingHeroMetric(label: 'Bekleyen', value: '${_store.installments.where((item) => item.status == 'Bekleyen').length} plan'),
-              AccountingHeroMetric(label: 'Geciken', value: '${_store.installments.where((item) => item.status == 'Geciken').length} plan'),
+              AccountingHeroMetric(
+                label: 'Bekleyen',
+                value:
+                    '${_store.installments.where((item) => item.status == 'Bekleyen').length} plan',
+              ),
+              AccountingHeroMetric(
+                label: 'Geciken',
+                value:
+                    '${_store.installments.where((item) => item.status == 'Geciken').length} plan',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -110,7 +124,8 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
       onTap: () => Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (_) => AccountingInstallmentDetailPage(student: plan.student),
+          builder: (_) =>
+              AccountingInstallmentDetailPage(student: plan.student),
         ),
       ),
       child: AccountingPanel(
@@ -120,7 +135,10 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
             Container(
               width: 46,
               height: 46,
-              decoration: BoxDecoration(color: color.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(14)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
+              ),
               child: Icon(Icons.calendar_month_outlined, color: color),
             ),
             const SizedBox(width: 12),
@@ -128,16 +146,30 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plan.student, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    plan.student,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('${plan.status} • ${plan.due}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${plan.status} • ${plan.due}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(plan.amount, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: color)),
+                Text(
+                  plan.amount,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: color,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Icon(Icons.chevron_right_rounded, color: color),
               ],
@@ -149,12 +181,13 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
   }
 
   void _showNewPlanSheet() {
-    final students = StudentRegistryStore.instance.students
-        .map((item) => item.fullName)
-        .where((item) => item.trim().isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final students =
+        StudentRegistryStore.instance.students
+            .map((item) => item.fullName)
+            .where((item) => item.trim().isNotEmpty)
+            .toSet()
+            .toList()
+          ..sort();
     String selectedStudent = students.isNotEmpty ? students.first : '';
     final totalController = TextEditingController(text: '120000');
     final countController = TextEditingController(text: '12');
@@ -171,10 +204,17 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
         return ResponsiveSheetContainer(
           child: Container(
             margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(sheetContext).viewInsets.bottom + 24),
+            padding: EdgeInsets.fromLTRB(
+              16,
+              8,
+              16,
+              MediaQuery.of(sheetContext).viewInsets.bottom + 24,
+            ),
             decoration: BoxDecoration(
               color: Theme.of(sheetContext).scaffoldBackgroundColor,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(30),
+              ),
             ),
             child: SingleChildScrollView(
               child: Column(
@@ -184,7 +224,8 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
                   const AccountingHeroCard(
                     eyebrow: 'Yeni plan',
                     title: 'Taksit planını kontrollü şekilde oluşturun.',
-                    description: 'Öğrenci, toplam tutar, taksit sayısı ve ilk taksit bilgisine göre aylık yapı hazırlanır.',
+                    description:
+                        'Öğrenci, toplam tutar, taksit sayısı ve ilk taksit bilgisine göre aylık yapı hazırlanır.',
                     colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
                     metrics: [
                       AccountingHeroMetric(label: 'Plan', value: 'Aylık'),
@@ -196,24 +237,63 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('Plan formu', style: Theme.of(sheetContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                        Text(
+                          'Plan formu',
+                          style: Theme.of(sheetContext).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
+                        ),
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          initialValue: selectedStudent.isEmpty ? null : selectedStudent,
-                          decoration: const InputDecoration(labelText: 'Öğrenci', border: OutlineInputBorder()),
+                          initialValue: selectedStudent.isEmpty
+                              ? null
+                              : selectedStudent,
+                          decoration: const InputDecoration(
+                            labelText: 'Öğrenci',
+                            border: OutlineInputBorder(),
+                          ),
                           items: students
-                              .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                              .map(
+                                (value) => DropdownMenuItem(
+                                  value: value,
+                                  child: Text(value),
+                                ),
+                              )
                               .toList(),
-                          onChanged: (value) => selectedStudent = value ?? selectedStudent,
+                          onChanged: (value) =>
+                              selectedStudent = value ?? selectedStudent,
                         ),
                         const SizedBox(height: 12),
-                        TextField(controller: totalController, decoration: const InputDecoration(labelText: 'Toplam Tutar', border: OutlineInputBorder())),
+                        TextField(
+                          controller: totalController,
+                          decoration: const InputDecoration(
+                            labelText: 'Toplam Tutar',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextField(controller: countController, decoration: const InputDecoration(labelText: 'Taksit Sayısı', border: OutlineInputBorder())),
+                        TextField(
+                          controller: countController,
+                          decoration: const InputDecoration(
+                            labelText: 'Taksit Sayısı',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextField(controller: startDateController, decoration: const InputDecoration(labelText: 'Başlangıç Tarihi', border: OutlineInputBorder())),
+                        TextField(
+                          controller: startDateController,
+                          decoration: const InputDecoration(
+                            labelText: 'Başlangıç Tarihi',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                         const SizedBox(height: 12),
-                        TextField(controller: firstInstallmentController, decoration: const InputDecoration(labelText: 'İlk Taksit Tutarı', border: OutlineInputBorder())),
+                        TextField(
+                          controller: firstInstallmentController,
+                          decoration: const InputDecoration(
+                            labelText: 'İlk Taksit Tutarı',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                         const SizedBox(height: 12),
                         AccountingPanel(
                           padding: const EdgeInsets.all(14),
@@ -223,7 +303,14 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
                           ),
                         ),
                         const SizedBox(height: 12),
-                        TextField(controller: noteController, maxLines: 3, decoration: const InputDecoration(labelText: 'Not', border: OutlineInputBorder())),
+                        TextField(
+                          controller: noteController,
+                          maxLines: 3,
+                          decoration: const InputDecoration(
+                            labelText: 'Not',
+                            border: OutlineInputBorder(),
+                          ),
+                        ),
                         const SizedBox(height: 16),
                         SizedBox(
                           width: double.infinity,
@@ -231,7 +318,12 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
                             onPressed: () async {
                               if (selectedStudent.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(content: Text('Plan olusturmak icin once ogrenci kaydi gerekir.'), behavior: SnackBarBehavior.floating),
+                                  const SnackBar(
+                                    content: Text(
+                                      'Plan oluşturmak için önce öğrenci kaydı gerekir.',
+                                    ),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
                                 );
                                 return;
                               }
@@ -246,12 +338,18 @@ class _AccountingInstallmentsPageState extends State<AccountingInstallmentsPage>
                                 );
                                 if (!mounted) return;
                                 messenger.showSnackBar(
-                                  const SnackBar(content: Text('Taksit planı oluşturuldu.'), behavior: SnackBarBehavior.floating),
+                                  const SnackBar(
+                                    content: Text('Taksit planı oluşturuldu.'),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
                                 );
                               } catch (error) {
                                 if (!mounted) return;
                                 messenger.showSnackBar(
-                                  SnackBar(content: Text(error.toString()), behavior: SnackBarBehavior.floating),
+                                  SnackBar(
+                                    content: Text(error.toString()),
+                                    behavior: SnackBarBehavior.floating,
+                                  ),
                                 );
                               }
                             },

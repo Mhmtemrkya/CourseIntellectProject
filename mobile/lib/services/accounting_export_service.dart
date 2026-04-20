@@ -14,10 +14,7 @@ class AccountingExportFile {
   final File file;
   final String label;
 
-  const AccountingExportFile({
-    required this.file,
-    required this.label,
-  });
+  const AccountingExportFile({required this.file, required this.label});
 }
 
 class AccountingExportService {
@@ -40,7 +37,7 @@ class AccountingExportService {
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(export.file.path)],
-        text: '${export.label} dosyasi hazir.',
+        text: '${export.label} dosyası hazır.',
       ),
     );
   }
@@ -53,7 +50,9 @@ class AccountingExportService {
     required AccountingExportFile export,
   }) async {
     final directory = await _resolveExportDirectory();
-    final target = File('${directory.path}/${export.file.uri.pathSegments.last}');
+    final target = File(
+      '${directory.path}/${export.file.uri.pathSegments.last}',
+    );
     final bytes = await export.file.readAsBytes();
     final saved = await target.writeAsBytes(bytes, flush: true);
     return AccountingExportFile(file: saved, label: export.label);
@@ -62,10 +61,22 @@ class AccountingExportService {
   Future<AccountingExportFile> _buildCsv(AccountingFinanceStore store) async {
     final lines = <String>[
       'Tip,Ad/Sistem,Kategori/Sınıf,Tutar,Durum/Tarih',
-      ...store.collections.map((item) => 'Tahsilat,${_escape(item.name)},${_escape(item.className)},${_escape(item.amount)},${_escape(item.time)}'),
-      ...store.installments.map((item) => 'Taksit,${_escape(item.student)},${_escape(item.status)},${_escape(item.amount)},${_escape(item.due)}'),
-      ...store.invoices.map((item) => 'Fatura,${_escape(item.title)},${_escape(item.category)},${_escape(item.amount)},${_escape(item.status)}'),
-      ...store.salaries.map((item) => 'Bordro,${_escape(item.employee)},${_escape(item.role)},${_escape(item.amount)},${_escape(item.status)}'),
+      ...store.collections.map(
+        (item) =>
+            'Tahsilat,${_escape(item.name)},${_escape(item.className)},${_escape(item.amount)},${_escape(item.time)}',
+      ),
+      ...store.installments.map(
+        (item) =>
+            'Taksit,${_escape(item.student)},${_escape(item.status)},${_escape(item.amount)},${_escape(item.due)}',
+      ),
+      ...store.invoices.map(
+        (item) =>
+            'Fatura,${_escape(item.title)},${_escape(item.category)},${_escape(item.amount)},${_escape(item.status)}',
+      ),
+      ...store.salaries.map(
+        (item) =>
+            'Bordro,${_escape(item.employee)},${_escape(item.role)},${_escape(item.amount)},${_escape(item.status)}',
+      ),
     ];
 
     final file = await _writeFile(
@@ -88,24 +99,39 @@ class AccountingExportService {
             style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 12),
-          pw.Text('Toplam Tahsilat: ${store.formatAmount(store.collectedTotal)}'),
+          pw.Text(
+            'Toplam Tahsilat: ${store.formatAmount(store.collectedTotal)}',
+          ),
           pw.Text('Bekleyen Tutar: ${store.formatAmount(store.pendingTotal)}'),
           pw.Text('Geciken Tutar: ${store.formatAmount(store.overdueTotal)}'),
           pw.SizedBox(height: 18),
-          pw.Text('Son Tahsilatlar', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Son Tahsilatlar',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
             headers: const ['Öğrenci', 'Sınıf', 'Yöntem', 'Tutar'],
             data: store.collections
                 .take(8)
-                .map((item) => [item.name, item.className, item.method, item.amount])
+                .map(
+                  (item) => [
+                    item.name,
+                    item.className,
+                    item.method,
+                    item.amount,
+                  ],
+                )
                 .toList(),
           ),
           pw.SizedBox(height: 18),
-          pw.Text('Onay Bekleyenler', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
+          pw.Text(
+            'Onay Bekleyenler',
+            style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+          ),
           pw.SizedBox(height: 8),
           pw.TableHelper.fromTextArray(
-            headers: const ['Baslik', 'Kategori', 'Durum'],
+            headers: const ['Başlık', 'Kategori', 'Durum'],
             data: store.approvals
                 .take(8)
                 .map((item) => [item.title, item.category, item.status])
@@ -115,11 +141,13 @@ class AccountingExportService {
       ),
     );
 
-    final file = await _writeFile('muhasebe_ozeti.pdf', await document.save());
+    final file = await _writeFile('muhasebe_özeti.pdf', await document.save());
     return AccountingExportFile(file: file, label: 'PDF');
   }
 
-  Future<AccountingExportFile> _buildReceiptPackage(AccountingFinanceStore store) async {
+  Future<AccountingExportFile> _buildReceiptPackage(
+    AccountingFinanceStore store,
+  ) async {
     final regularFont = await _loadPdfFont();
     final document = pw.Document();
     document.addPage(
@@ -135,9 +163,16 @@ class AccountingExportService {
           pw.TableHelper.fromTextArray(
             headers: const ['No', 'Öğrenci', 'Yöntem', 'Tutar', 'Saat'],
             data: store.collections.asMap().entries.map((entry) {
-              final receiptNo = 'TR-2026-${(entry.key + 1).toString().padLeft(3, '0')}';
+              final receiptNo =
+                  'TR-2026-${(entry.key + 1).toString().padLeft(3, '0')}';
               final item = entry.value;
-              return [receiptNo, item.name, item.method, item.amount, item.time];
+              return [
+                receiptNo,
+                item.name,
+                item.method,
+                item.amount,
+                item.time,
+              ];
             }).toList(),
           ),
         ],

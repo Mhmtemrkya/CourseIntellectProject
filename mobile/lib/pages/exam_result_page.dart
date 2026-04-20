@@ -3,10 +3,7 @@ import 'package:flutter/material.dart';
 class ExamResultPage extends StatefulWidget {
   final Map<String, dynamic> exam;
 
-  const ExamResultPage({
-    super.key,
-    required this.exam,
-  });
+  const ExamResultPage({super.key, required this.exam});
 
   @override
   State<ExamResultPage> createState() => _ExamResultPageState();
@@ -29,7 +26,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           behavior: SnackBarBehavior.floating,
-          content: Text("Sinav tamamlandi • +$earnedXp XP"),
+          content: Text("Sınav tamamlandı • +$earnedXp XP"),
         ),
       );
     });
@@ -49,9 +46,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text("Sinav Sonucu"),
-      ),
+      appBar: AppBar(title: const Text("Sınav Sonuçu")),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -62,10 +57,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(28),
                 gradient: const LinearGradient(
-                  colors: [
-                    Color(0xFFFF7A00),
-                    Color(0xFFFFA24A),
-                  ],
+                  colors: [Color(0xFFFF7A00), Color(0xFFFFA24A)],
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -80,7 +72,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
               child: Column(
                 children: [
                   const Text(
-                    "Sinav Sonucun",
+                    "Sınav Sonuçun",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,
@@ -98,7 +90,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    widget.exam["title"] as String? ?? "Sinav",
+                    widget.exam["title"] as String? ?? "Sınav",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.92),
@@ -152,10 +144,10 @@ class _ExamResultPageState extends State<ExamResultPage> {
       ),
       child: Column(
         children: [
-          _row("Dogru", "$correct"),
-          _row("Yanlis", "$wrong"),
+          _row("Doğru", "$correct"),
+          _row("Yanlış", "$wrong"),
           _row("Bos", "$blank"),
-          _row("Basari", "%$score"),
+          _row("Başarı", "%$score"),
           _row("XP", "+$earnedXp"),
           if (xpBonuses.isNotEmpty) ...[
             const SizedBox(height: 6),
@@ -167,7 +159,9 @@ class _ExamResultPageState extends State<ExamResultPage> {
                   child: Text(
                     bonus,
                     style: TextStyle(
-                      color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.72),
+                      color: theme.textTheme.bodySmall?.color?.withValues(
+                        alpha: 0.72,
+                      ),
                       fontSize: 12,
                     ),
                   ),
@@ -185,10 +179,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w700),
-          ),
+          Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
           const Spacer(),
           Text(value),
         ],

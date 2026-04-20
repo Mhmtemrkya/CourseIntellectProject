@@ -8,16 +8,15 @@ import 'package:student/widgets/teacher_header.dart';
 class TeacherAssignmentDetailPage extends StatefulWidget {
   final Map<String, dynamic> assignment;
 
-  const TeacherAssignmentDetailPage({
-    super.key,
-    required this.assignment,
-  });
+  const TeacherAssignmentDetailPage({super.key, required this.assignment});
 
   @override
-  State<TeacherAssignmentDetailPage> createState() => _TeacherAssignmentDetailPageState();
+  State<TeacherAssignmentDetailPage> createState() =>
+      _TeacherAssignmentDetailPageState();
 }
 
-class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPage> {
+class _TeacherAssignmentDetailPageState
+    extends State<TeacherAssignmentDetailPage> {
   String _teacherName = '';
 
   String _decodeText(String? value) {
@@ -51,13 +50,12 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
       final parts = value.split('::');
       return (
         name: _decodeText(parts.first.trim()),
-        url: parts.length > 1 ? parts.sublist(1).join('::').trim() : parts.first.trim(),
+        url: parts.length > 1
+            ? parts.sublist(1).join('::').trim()
+            : parts.first.trim(),
       );
     }
-    return (
-      name: _decodeText(value.split('/').last),
-      url: value,
-    );
+    return (name: _decodeText(value.split('/').last), url: value);
   }
 
   @override
@@ -76,14 +74,17 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final materials = List<String>.from(widget.assignment["materials"] as List<dynamic>? ?? const []);
+    final materials = List<String>.from(
+      widget.assignment["materials"] as List<dynamic>? ?? const [],
+    );
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Odev Detayi",
-        teacherName: _teacherName.isEmpty ? 'Ogretmen' : _teacherName,
-        subtitle: '${_decodeText(widget.assignment["subject"] as String? ?? 'Ders')} Ogretmeni',
+        title: "Ödev Detayı",
+        teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
+        subtitle:
+            '${_decodeText(widget.assignment["subject"] as String? ?? 'Ders')} Öğretmeni',
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -109,7 +110,10 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 16),
-                  _row("Teslim Tarihi", widget.assignment["deadline"] as String),
+                  _row(
+                    "Teslim Tarihi",
+                    widget.assignment["deadline"] as String,
+                  ),
                   _row("Durum", widget.assignment["status"] as String),
                   _row(
                     "Teslim Eden",
@@ -126,14 +130,17 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Aciklama",
+                    "Açıklama",
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    _decodeText(widget.assignment["description"] as String? ?? "Bu odev icin aciklama eklenmedi."),
+                    _decodeText(
+                      widget.assignment["description"] as String? ??
+                          "Bu ödev için açıklama eklenmedi.",
+                    ),
                     style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
                   ),
                 ],
@@ -165,7 +172,7 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
                   const SizedBox(height: 10),
                   if (materials.isEmpty)
                     Text(
-                      "Bu odeve ogretmen tarafindan ek materyal yuklenmedi.",
+                      "Bu ödeve öğretmen tarafından ek materyal yüklenmedi.",
                       style: theme.textTheme.bodyMedium,
                     )
                   else
@@ -202,20 +209,23 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
       onTap: () => _downloadMaterial(context, name),
       borderRadius: BorderRadius.circular(16),
       child: Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: theme.scaffoldBackgroundColor,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.insert_drive_file_rounded, color: theme.colorScheme.primary),
-          const SizedBox(width: 10),
-          Expanded(child: Text(_parseMaterial(name).name)),
-          const Icon(Icons.download_rounded),
-        ],
-      ),
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: theme.scaffoldBackgroundColor,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.insert_drive_file_rounded,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(child: Text(_parseMaterial(name).name)),
+            const Icon(Icons.download_rounded),
+          ],
+        ),
       ),
     );
   }
@@ -231,9 +241,7 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          launched
-              ? '${material.name} açılıyor'
-              : '${material.name} açılamadı',
+          launched ? '${material.name} açılıyor' : '${material.name} açılamadı',
         ),
       ),
     );
@@ -243,12 +251,14 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text("Odevi Sil"),
-        content: Text('"${_decodeText(widget.assignment["title"] as String?)}" odevi silinsin mi?'),
+        title: const Text("Ödevi Sil"),
+        content: Text(
+          '"${_decodeText(widget.assignment["title"] as String?)}" ödevi silinsin mi?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text("Vazgec"),
+            child: const Text("Vazgeç"),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -260,12 +270,14 @@ class _TeacherAssignmentDetailPageState extends State<TeacherAssignmentDetailPag
 
     if (shouldDelete != true) return;
 
-    await HomeworkApiService.instance.deleteAssignment(widget.assignment["id"] as String);
+    await HomeworkApiService.instance.deleteAssignment(
+      widget.assignment["id"] as String,
+    );
     if (!context.mounted) return;
     Navigator.pop(context);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Odev silindi")),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text("Ödev silindi")));
   }
 
   Widget _card(ThemeData theme, bool isDark, Widget child) {

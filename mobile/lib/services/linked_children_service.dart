@@ -44,13 +44,19 @@ class LinkedChildrenService {
     final linked = students.where((student) {
       final parentTokens = _tokens(student.parentName);
       final tokenMatch = sessionTokens.any(parentTokens.contains);
-      final usernameMatch = student.parentEmail.toLowerCase().contains(sessionUsername);
-      final surnameMatch = sessionSurname.isNotEmpty &&
-          _surname(student.parentName).toLowerCase() == sessionSurname.toLowerCase();
+      final usernameMatch = student.parentEmail.toLowerCase().contains(
+        sessionUsername,
+      );
+      final surnameMatch =
+          sessionSurname.isNotEmpty &&
+          _surname(student.parentName).toLowerCase() ==
+              sessionSurname.toLowerCase();
       return tokenMatch || usernameMatch || surnameMatch;
     }).toList();
 
-    final resolved = linked.isNotEmpty ? linked : _fallbackStudents(session, students);
+    final resolved = linked.isNotEmpty
+        ? linked
+        : _fallbackStudents(session, students);
 
     return _mapRecords(resolved);
   }
@@ -62,7 +68,11 @@ class LinkedChildrenService {
     final sessionSurname = _surname(session.fullName);
     if (sessionSurname.isNotEmpty) {
       final surnameMatches = students
-          .where((student) => _surname(student.parentName).toLowerCase() == sessionSurname.toLowerCase())
+          .where(
+            (student) =>
+                _surname(student.parentName).toLowerCase() ==
+                sessionSurname.toLowerCase(),
+          )
           .toList();
       if (surnameMatches.isNotEmpty) {
         return surnameMatches;
@@ -71,7 +81,11 @@ class LinkedChildrenService {
 
     if (session.username.isNotEmpty) {
       final usernameMatches = students
-          .where((student) => student.parentEmail.toLowerCase().contains(session.username.toLowerCase()))
+          .where(
+            (student) => student.parentEmail.toLowerCase().contains(
+              session.username.toLowerCase(),
+            ),
+          )
           .toList();
       if (usernameMatches.isNotEmpty) {
         return usernameMatches;
@@ -81,7 +95,9 @@ class LinkedChildrenService {
     return students.take(2).toList();
   }
 
-  List<LinkedChildRecord> _mapRecords(Iterable<StudentRegistryRecord> students) {
+  List<LinkedChildRecord> _mapRecords(
+    Iterable<StudentRegistryRecord> students,
+  ) {
     return students
         .map(
           (student) => LinkedChildRecord(
@@ -96,7 +112,11 @@ class LinkedChildrenService {
   }
 
   String _surname(String value) {
-    final parts = value.trim().split(RegExp(r'\s+')).where((item) => item.isNotEmpty).toList();
+    final parts = value
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((item) => item.isNotEmpty)
+        .toList();
     return parts.isEmpty ? '' : parts.last;
   }
 

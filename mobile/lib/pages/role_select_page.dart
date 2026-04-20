@@ -33,17 +33,16 @@ class RoleSelectPage extends StatelessWidget {
                   const CourseIntellectLogo(scale: 0.8, compact: true),
                   const SizedBox(height: 16),
                   const Text(
-                    "Hos Geldiniz",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    "Hoş Geldiniz",
+                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Kullanici tipinizi secin",
+                    "Kullanıcı tipinizi seçin",
                     style: TextStyle(
-                      color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.68),
+                      color: theme.textTheme.bodyMedium?.color?.withValues(
+                        alpha: 0.68,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -57,93 +56,104 @@ class RoleSelectPage extends StatelessWidget {
                       ),
                       crossAxisSpacing: 16,
                       mainAxisSpacing: 16,
-                      childAspectRatio: ResponsiveLayout.isLargeTablet(context) ? 1.12 : .95,
+                      childAspectRatio: ResponsiveLayout.isLargeTablet(context)
+                          ? 1.12
+                          : .95,
                       children: [
+                        RoleCard(
+                          title: "Öğrenci",
+                          subtitle: "Derslerinizi takip edin",
+                          icon: Icons.school,
+                          color: Colors.blue,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LoginPage(role: "Öğrenci"),
+                              ),
+                            );
+                          },
+                        ),
 
                         RoleCard(
-                        title: "Öğrenci",
-                        subtitle: "Derslerinizi takip edin",
-                        icon: Icons.school,
-                        color: Colors.blue,
-                        onTap: (){
-                          Navigator.push(context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(role: "Öğrenci"),
-                            ),
-                          );
-                        },
-                      ),
+                          title: "Veli",
+                          subtitle: "Çocuğunuzun eğitimini izleyin",
+                          icon: Icons.group,
+                          color: Colors.green,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const LoginPage(role: "Veli"),
+                              ),
+                            );
+                          },
+                        ),
 
                         RoleCard(
-                        title: "Veli",
-                        subtitle: "Çocuğunuzun eğitimini izleyin",
-                        icon: Icons.group,
-                        color: Colors.green,
-                        onTap: (){
-                          Navigator.push(context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(role: "Veli"),
-                            ),
-                          );
-                        },
-                      ),
+                          title: "Öğretmen",
+                          subtitle: "Sınıflarınızı yönetin",
+                          icon: Icons.menu_book,
+                          color: Colors.purple,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LoginPage(role: "Öğretmen"),
+                              ),
+                            );
+                          },
+                        ),
 
                         RoleCard(
-                        title: "Öğretmen",
-                        subtitle: "Sınıflarınızı yönetin",
-                        icon: Icons.menu_book,
-                        color: Colors.purple,
-                        onTap: (){
-                          Navigator.push(context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(role: "Öğretmen"),
-                            ),
-                          );
-                        },
-                      ),
+                          title: "Muhasebeci",
+                          subtitle: "Finansal işlemleri yönetin",
+                          icon: Icons.calculate,
+                          color: Colors.orange,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LoginPage(role: "Muhasebeci"),
+                              ),
+                            );
+                          },
+                        ),
 
                         RoleCard(
-                        title: "Muhasebeci",
-                        subtitle: "Finansal işlemleri yönetin",
-                        icon: Icons.calculate,
-                        color: Colors.orange,
-                        onTap: (){
-                          Navigator.push(context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(role: "Muhasebeci"),
-                            ),
-                          );
-                        },
-                      ),
+                          title: "İdari Birimler",
+                          subtitle: "Kayıt, duyuru ve öğrenci işleri",
+                          icon: Icons.apartment_outlined,
+                          color: Colors.teal,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LoginPage(role: "İdari Birimler"),
+                              ),
+                            );
+                          },
+                        ),
 
                         RoleCard(
-                        title: "İdari Birimler",
-                        subtitle: "Kayıt, duyuru ve öğrenci işleri",
-                        icon: Icons.apartment_outlined,
-                        color: Colors.teal,
-                        onTap: (){
-                          Navigator.push(context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(role: "İdari Birimler"),
-                            ),
-                          );
-                        },
-                      ),
-
-                        RoleCard(
-                        title: "Yönetici",
-                        subtitle: "Kurumu uçtan uca yönetin",
-                        icon: Icons.admin_panel_settings_outlined,
-                        color: Colors.indigo,
-                        onTap: (){
-                          Navigator.push(context,
-                            MaterialPageRoute(
-                              builder: (_) => const LoginPage(role: "Yönetici"),
-                            ),
-                          );
-                        },
-                      ),
-
+                          title: "Yönetici",
+                          subtitle: "Kurumu uçtan uca yönetin",
+                          icon: Icons.admin_panel_settings_outlined,
+                          color: Colors.indigo,
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const LoginPage(role: "Yönetici"),
+                              ),
+                            );
+                          },
+                        ),
                       ],
                     ),
                   ),

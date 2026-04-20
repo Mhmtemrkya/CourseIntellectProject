@@ -6,11 +6,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool goHomeOnBack;
 
-  const AppHeader({
-    super.key,
-    required this.title,
-    this.goHomeOnBack = false,
-  });
+  const AppHeader({super.key, required this.title, this.goHomeOnBack = false});
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +19,7 @@ class AppHeader extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       toolbarHeight: toolbarHeight,
       titleSpacing: isTablet ? 8 : NavigationToolbar.kMiddleSpacing,
-      iconTheme: IconThemeData(
-        color: theme.textTheme.bodyLarge?.color,
-      ),
+      iconTheme: IconThemeData(color: theme.textTheme.bodyLarge?.color),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back),
         onPressed: () async {

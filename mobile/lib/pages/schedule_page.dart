@@ -17,7 +17,15 @@ class _SchedulePageState extends State<SchedulePage>
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
 
-  final List<String> _days = const ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"];
+  final List<String> _days = const [
+    "Pzt",
+    "Sal",
+    "Car",
+    "Per",
+    "Cum",
+    "Cmt",
+    "Paz",
+  ];
   late int _selectedDay;
   Map<int, List<Map<String, String>>> _weeklyLessons = {};
   bool _loading = true;
@@ -43,10 +51,13 @@ class _SchedulePageState extends State<SchedulePage>
 
   Future<void> _loadSchedule() async {
     final session = await AuthSessionStore.instance.load();
-    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(session);
+    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
+      session,
+    );
     final lessons = await SchoolFeedApiService.instance.fetchLiveLessons();
     final studentLessons = lessons.where((lesson) {
-      if (session?.primaryRole == 'Student' || session?.primaryRole == 'Parent') {
+      if (session?.primaryRole == 'Student' ||
+          session?.primaryRole == 'Parent') {
         return studentName.isEmpty || lesson.className.isNotEmpty;
       }
       return true;
@@ -55,10 +66,13 @@ class _SchedulePageState extends State<SchedulePage>
     for (final lesson in studentLessons) {
       if (lesson.startsAt == null) continue;
       final day = lesson.startsAt!.weekday - 1;
-      final type = lesson.platform.toLowerCase().contains('online') ? "Canli Ders" : "Sinif Ici";
+      final type = lesson.platform.toLowerCase().contains('online')
+          ? "Canlı Ders"
+          : "Sınıf İçi";
       schedule.putIfAbsent(day, () => []);
       schedule[day]!.add({
-        "time": '${lesson.startsAt!.hour.toString().padLeft(2, '0')}:${lesson.startsAt!.minute.toString().padLeft(2, '0')}',
+        "time":
+            '${lesson.startsAt!.hour.toString().padLeft(2, '0')}:${lesson.startsAt!.minute.toString().padLeft(2, '0')}',
         "title": lesson.title,
         "detail": '${lesson.className} • ${lesson.teacher}',
         "type": type,
@@ -66,7 +80,9 @@ class _SchedulePageState extends State<SchedulePage>
     }
     for (var day = 0; day < 7; day++) {
       schedule.putIfAbsent(day, () => []);
-      schedule[day]!.sort((a, b) => (a["time"] ?? '').compareTo(b["time"] ?? ''));
+      schedule[day]!.sort(
+        (a, b) => (a["time"] ?? '').compareTo(b["time"] ?? ''),
+      );
     }
     if (!mounted) return;
     setState(() {
@@ -90,9 +106,7 @@ class _SchedulePageState extends State<SchedulePage>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Ders Programi"),
-      ),
+      appBar: AppBar(title: const Text("Ders Programi")),
       body: FadeTransition(
         opacity: _fadeAnim,
         child: SlideTransition(
@@ -110,7 +124,7 @@ class _SchedulePageState extends State<SchedulePage>
                     child: LinearProgressIndicator(),
                   ),
                 Text(
-                  "${_days[_selectedDay]} gunu programi",
+                  "${_days[_selectedDay]} günu programi",
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -149,15 +163,17 @@ class _SchedulePageState extends State<SchedulePage>
                 color: isSelected
                     ? const Color(0xFFFF7A45)
                     : _isDark(context)
-                        ? const Color(0xFF1E1E1E)
-                        : Colors.grey.shade200,
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
                 child: Text(
                   _days[index],
                   style: TextStyle(
-                    color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color,
+                    color: isSelected
+                        ? Colors.white
+                        : theme.textTheme.bodyMedium?.color,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -170,7 +186,7 @@ class _SchedulePageState extends State<SchedulePage>
   }
 
   Widget _lessonTile(ThemeData theme, Map<String, String> lesson) {
-    final isLive = lesson["type"] == "Canli Ders";
+    final isLive = lesson["type"] == "Canlı Ders";
     return InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: () {
@@ -235,7 +251,10 @@ class _SchedulePageState extends State<SchedulePage>
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isLive
                         ? const Color(0xFFFF7A45).withValues(alpha: 0.14)
@@ -267,7 +286,7 @@ class _SchedulePageState extends State<SchedulePage>
   Widget _liveSummary(ThemeData theme) {
     final liveCount = _weeklyLessons.values
         .expand((items) => items)
-        .where((item) => item["type"] == "Canli Ders")
+        .where((item) => item["type"] == "Canlı Ders")
         .length;
     return Container(
       padding: const EdgeInsets.all(16),
@@ -285,7 +304,7 @@ class _SchedulePageState extends State<SchedulePage>
               Icon(Icons.video_collection_rounded, color: Colors.white),
               SizedBox(width: 8),
               Text(
-                "Canli Ders Ozet ve Tekrar",
+                "Canlı Ders Özet ve Tekrar",
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -296,31 +315,38 @@ class _SchedulePageState extends State<SchedulePage>
           ),
           const SizedBox(height: 10),
           const Text(
-            "Takvimdeki canli dersleri acmak icin bu alani kullan. Liste backend duyurularindan beslenir.",
+            "Takvimdeki canlı dersleri acmak için bu alanı kullan. Liste backend duyurularindan beslenir.",
             style: TextStyle(color: Colors.white),
           ),
           const SizedBox(height: 10),
           Text(
-            'Toplam canli ders kaydi: $liveCount',
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+            'Toplam canlı ders kaydı: $liveCount',
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
           ),
           const SizedBox(height: 14),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
-              _summaryButton("Canli Derse Git", Icons.live_tv_rounded, () {
+              _summaryButton("Canlı Derse Git", Icons.live_tv_rounded, () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (_) => const LiveLessonsPage()),
                 );
               }),
-              _summaryButton("Tekrar Izle", Icons.replay_circle_filled_rounded, () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const LiveLessonsPage()),
-                );
-              }),
+              _summaryButton(
+                "Tekrar Izle",
+                Icons.replay_circle_filled_rounded,
+                () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LiveLessonsPage()),
+                  );
+                },
+              ),
             ],
           ),
         ],
@@ -349,7 +375,7 @@ class _SchedulePageState extends State<SchedulePage>
         borderRadius: BorderRadius.circular(18),
       ),
       child: Text(
-        "Secilen gun icin tanimli ders bulunmuyor.",
+        "Seçilen gün için tanimli ders bulunmuyor.",
         style: theme.textTheme.bodyMedium,
       ),
     );

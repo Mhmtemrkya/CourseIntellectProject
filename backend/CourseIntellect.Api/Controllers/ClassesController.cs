@@ -1,7 +1,8 @@
+using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using CourseIntellect.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -10,6 +11,8 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/classes")]
 public sealed class ClassesController(CourseIntellectDbContext dbContext) : ControllerBase
 {
+    private const string ClassRegistryConfigurationType = "class-registry";
+
     [HttpGet]
     public async Task<ActionResult<List<string>>> GetList(CancellationToken cancellationToken)
     {
@@ -32,6 +35,11 @@ public sealed class ClassesController(CourseIntellectDbContext dbContext) : Cont
         AddMany(await dbContext.ExamResults.AsNoTracking().Select(item => item.ClassName).ToListAsync(cancellationToken));
         AddMany(await dbContext.HomeworkAssignments.AsNoTracking().Select(item => item.ClassName).ToListAsync(cancellationToken));
         AddMany(await dbContext.AccountingCollections.AsNoTracking().Select(item => item.ClassName).ToListAsync(cancellationToken));
+        AddMany(await dbContext.PlatformConfigurations
+            .AsNoTracking()
+            .Where(item => item.ConfigurationType == ClassRegistryConfigurationType)
+            .Select(item => item.DisplayName)
+            .ToListAsync(cancellationToken));
 
         // Staff assigned classes (comma-separated)
         var staffClassCsvs = await dbContext.Staff
@@ -87,4 +95,48 @@ public sealed class ClassesController(CourseIntellectDbContext dbContext) : Cont
 
         return Ok(ordered);
     }
+
+    [HttpPost]
+    [Authorize(Roles = "Admin,Administrative")]
+    public async Task<ActionResult<object>> Create([FromBody] CreateClassRequest request, CancellationToken cancellationToken)
+    {
+        var normalized = CompatibilitySnapshotStore.NormalizeClassName(request.Name);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return BadRequest(new { message = "Sınıf adı zorunludur." });
+        }
+
+        var existingClasses = await BuildClassListAsync(cancellationToken);
+        if (existingClasses.Any(item => string.Equals(item, normalized, StringComparison.OrdinalIgnoreCase)))
+        {
+            return Conflict(new { message = "Bu sınıf zaten kayıtlı." });
+        }
+
+        var entity = new CourseIntellect.Domain.Entities.PlatformConfiguration
+        {
+            ConfigurationType = ClassRegistryConfigurationType,
+            ScopeKey = Guid.NewGuid().ToString("N"),
+            DisplayName = normalized,
+            PayloadJson = JsonSerializer.Serialize(new { name = normalized }),
+            UpdatedAtUtc = DateTime.UtcNow,
+        };
+
+        await dbContext.PlatformConfigurations.AddAsync(entity, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Ok(new { name = normalized });
+    }
+
+    private async Task<List<string>> BuildClassListAsync(CancellationToken cancellationToken)
+    {
+        var result = await GetList(cancellationToken);
+        if (result.Result is OkObjectResult ok && ok.Value is List<string> classes)
+        {
+            return classes;
+        }
+
+        return result.Value ?? [];
+    }
+
+    public sealed record CreateClassRequest(string Name);
 }

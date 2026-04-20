@@ -34,19 +34,19 @@ class AnnouncementRecord {
 
   static String _iconKeyForAudience(String audience) {
     final normalized = audience.toLowerCase();
-    if (normalized.contains('ogretmen') || normalized.contains('teacher')) {
+    if (normalized.contains('öğretmen') || normalized.contains('teacher')) {
       return 'teacher';
     }
     if (normalized.contains('veli') || normalized.contains('parent')) {
       return 'parent';
     }
-    if (normalized.contains('ogrenci') || normalized.contains('student')) {
+    if (normalized.contains('öğrenci') || normalized.contains('student')) {
       return 'student';
     }
     if (normalized.contains('odeme') || normalized.contains('payment')) {
       return 'payments';
     }
-    if (normalized.contains('sinav') || normalized.contains('exam')) {
+    if (normalized.contains('sınav') || normalized.contains('exam')) {
       return 'exam';
     }
     return 'announcement';
@@ -88,7 +88,9 @@ class AnnouncementStore extends ChangeNotifier {
   }
 
   Future<void> _restore({String audience = 'Tüm Kurum'}) async {
-    final items = await SchoolFeedApiService.instance.fetchAnnouncements(audience: audience);
+    final items = await SchoolFeedApiService.instance.fetchAnnouncements(
+      audience: audience,
+    );
     announcements = items.map(AnnouncementRecord.fromFeedItem).toList();
     isLoaded = true;
     notifyListeners();

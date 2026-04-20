@@ -6,47 +6,35 @@ class VeliAnnouncements extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-
     return Card(
-
       color: Theme.of(context).cardColor,
 
       elevation: 2,
 
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
 
       child: Padding(
-
         padding: const EdgeInsets.all(16),
 
         child: Column(
-
           crossAxisAlignment: CrossAxisAlignment.start,
 
           children: [
-
             /// BAŞLIK
             InkWell(
-
               borderRadius: BorderRadius.circular(8),
 
               onTap: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const VeliDuyurularPage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const VeliDuyurularPage()),
                 );
               },
 
               child: Row(
-
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
 
                 children: const [
-
                   Text(
                     "Duyurular",
                     style: TextStyle(
@@ -61,11 +49,8 @@ class VeliAnnouncements extends StatelessWidget {
                     size: 16,
                     color: Color(0xFFFF7A00),
                   ),
-
                 ],
-
               ),
-
             ),
 
             const SizedBox(height: 10),
@@ -87,14 +72,9 @@ class VeliAnnouncements extends StatelessWidget {
               title: Text("Ara Sınav Takvimi"),
               trailing: Text("08.01.2025"),
             ),
-
           ],
-
         ),
-
       ),
-
     );
-
   }
 }

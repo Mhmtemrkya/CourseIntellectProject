@@ -161,8 +161,8 @@ class _StudentQuestionBankSolvePageState
 
     final answerText = _currentQuestion.type == 'Çoktan Seçmeli'
         ? (_selectedOptions[_currentQuestion.id] != null
-            ? '${String.fromCharCode(65 + _selectedOptions[_currentQuestion.id]!)} - ${_currentQuestion.options[_selectedOptions[_currentQuestion.id]!]}'
-            : '')
+              ? _currentQuestion.options[_selectedOptions[_currentQuestion.id]!]
+              : '')
         : (_typedAnswers[_currentQuestion.id] ?? '').trim();
 
     if (answerText.isEmpty) {
@@ -205,8 +205,9 @@ class _StudentQuestionBankSolvePageState
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
-        final resultColor =
-            isSuccessful ? const Color(0xFF059669) : const Color(0xFFDC2626);
+        final resultColor = isSuccessful
+            ? const Color(0xFF059669)
+            : const Color(0xFFDC2626);
 
         return Dialog(
           backgroundColor: Colors.transparent,
@@ -359,33 +360,35 @@ class _StudentQuestionBankSolvePageState
                         ),
                       ),
                       const SizedBox(height: 10),
-                      ...wrongQuestions.take(3).map(
-                        (question) => Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: theme.scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.refresh_rounded,
-                                color: Color(0xFFDC2626),
+                      ...wrongQuestions
+                          .take(3)
+                          .map(
+                            (question) => Container(
+                              width: double.infinity,
+                              margin: const EdgeInsets.only(bottom: 8),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: theme.scaffoldBackgroundColor,
+                                borderRadius: BorderRadius.circular(16),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  question.questionText,
-                                  maxLines: 2,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                              child: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.refresh_rounded,
+                                    color: Color(0xFFDC2626),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      question.questionText,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      ),
                     ],
                     const SizedBox(height: 18),
                     Wrap(
@@ -434,14 +437,13 @@ class _StudentQuestionBankSolvePageState
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final hasImage =
-        _currentQuestion.imagePath != null && _currentQuestion.imagePath!.isNotEmpty;
+        _currentQuestion.imagePath != null &&
+        _currentQuestion.imagePath!.isNotEmpty;
     final progress = (_currentIndex + 1) / widget.questions.length;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Soru Seti'),
-      ),
+      appBar: AppBar(title: const Text('Soru Seti')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: ResponsiveContent(
@@ -538,13 +540,17 @@ class _StudentQuestionBankSolvePageState
                             ),
                           ),
                           const SizedBox(height: 12),
-                          ..._currentQuestion.options.asMap().entries.map((entry) {
+                          ..._currentQuestion.options.asMap().entries.map((
+                            entry,
+                          ) {
                             final selected =
-                                _selectedOptions[_currentQuestion.id] == entry.key;
+                                _selectedOptions[_currentQuestion.id] ==
+                                entry.key;
                             return GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(
-                                () => _selectedOptions[_currentQuestion.id] = entry.key,
+                                () => _selectedOptions[_currentQuestion.id] =
+                                    entry.key,
                               ),
                               child: Container(
                                 width: double.infinity,
@@ -552,7 +558,9 @@ class _StudentQuestionBankSolvePageState
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
                                   color: selected
-                                      ? theme.colorScheme.primary.withValues(alpha: 0.12)
+                                      ? theme.colorScheme.primary.withValues(
+                                          alpha: 0.12,
+                                        )
                                       : theme.scaffoldBackgroundColor,
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
@@ -568,10 +576,13 @@ class _StudentQuestionBankSolvePageState
                                       backgroundColor: selected
                                           ? theme.colorScheme.primary
                                           : theme.colorScheme.primary
-                                              .withValues(alpha: 0.12),
-                                      foregroundColor:
-                                          selected ? Colors.white : theme.colorScheme.primary,
-                                      child: Text(String.fromCharCode(65 + entry.key)),
+                                                .withValues(alpha: 0.12),
+                                      foregroundColor: selected
+                                          ? Colors.white
+                                          : theme.colorScheme.primary,
+                                      child: Text(
+                                        String.fromCharCode(65 + entry.key),
+                                      ),
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(child: Text(entry.value)),
@@ -675,7 +686,10 @@ class _StudentQuestionBankSolvePageState
       ),
       child: Text(
         text,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+        style: const TextStyle(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }
@@ -717,7 +731,8 @@ class _StudentQuestionBankSolvePageState
 
   Widget _questionImage(ThemeData theme) {
     final resolved = ApiConfig.resolveAssetUrl(_currentQuestion.imagePath);
-    final isNetwork = resolved.startsWith('http://') || resolved.startsWith('https://');
+    final isNetwork =
+        resolved.startsWith('http://') || resolved.startsWith('https://');
     return ClipRRect(
       borderRadius: BorderRadius.circular(18),
       child: Container(
@@ -728,7 +743,8 @@ class _StudentQuestionBankSolvePageState
             ? Image.network(
                 resolved,
                 fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => _imageFallback(theme),
+                errorBuilder: (context, error, stackTrace) =>
+                    _imageFallback(theme),
               )
             : _imageFallback(theme),
       ),

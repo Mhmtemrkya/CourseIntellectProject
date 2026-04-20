@@ -10,21 +10,36 @@ class AccountingBulkActionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final store = AccountingFinanceStore.instance;
-    final overdue = store.installments.where((item) => item.status == 'Geciken').toList();
+    final overdue = store.installments
+        .where((item) => item.status == 'Geciken')
+        .toList();
 
     return AccountingScaffold(
-      appBar: AppBar(title: const Text('Toplu Tahsilat ve Mesaj', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Toplu Tahsilat ve Mesaj',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AccountingHeroCard(
             eyebrow: 'Toplu işlem merkezi',
-            title: 'Aynı akışta tahsilat planı ve hatırlatma adımlarını yönetin.',
-            description: 'Geciken planlar için toplu hatırlatma ve özet kontrol bu ekranda yapılır.',
+            title:
+                'Aynı akışta tahsilat planı ve hatırlatma adımlarını yönetin.',
+            description:
+                'Geciken planlar için toplu hatırlatma ve özet kontrol bu ekranda yapılır.',
             colors: const [Color(0xFF0F172A), Color(0xFF14532D)],
             metrics: [
-              AccountingHeroMetric(label: 'Geciken', value: '${overdue.length} kayıt'),
-              AccountingHeroMetric(label: 'Tahsilat', value: store.formatAmount(store.collectedTotal)),
+              AccountingHeroMetric(
+                label: 'Geciken',
+                value: '${overdue.length} kayıt',
+              ),
+              AccountingHeroMetric(
+                label: 'Tahsilat',
+                value: store.formatAmount(store.collectedTotal),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -36,19 +51,22 @@ class AccountingBulkActionsPage extends StatelessWidget {
                   onPressed: () {
                     for (final item in overdue) {
                       store.addFinanceNotification(
-                        title: '${item.student} icin toplu tahsilat kaydi',
-                        message: '${item.amount} tutarli geciken plan toplu tahsilat listesine alindi.',
+                        title: '${item.student} için toplu tahsilat kaydı',
+                        message:
+                            '${item.amount} tutarlı geciken plan toplu tahsilat listesine alindi.',
                       );
                     }
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('${overdue.length} geciken plan için toplu tahsilat listesi hazırlandı.'),
+                        content: Text(
+                          '${overdue.length} geciken plan için toplu tahsilat listesi hazırlandı.',
+                        ),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   },
                   icon: const Icon(Icons.payments_outlined),
-                  label: const Text('Toplu Tahsilat Baslat'),
+                  label: const Text('Toplu Tahsilat Başlat'),
                 ),
                 const SizedBox(height: 10),
                 FilledButton.tonalIcon(
@@ -56,7 +74,8 @@ class AccountingBulkActionsPage extends StatelessWidget {
                       ? null
                       : () async {
                           try {
-                            final payload = await AccountingApiService.instance.sendBulkReminders();
+                            final payload = await AccountingApiService.instance
+                                .sendBulkReminders();
                             if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(
@@ -78,24 +97,33 @@ class AccountingBulkActionsPage extends StatelessWidget {
                           }
                         },
                   icon: const Icon(Icons.sms_outlined),
-                  label: const Text('Toplu Hatirlatma Gonder'),
+                  label: const Text('Toplu Hatırlatma Gönder'),
                 ),
                 const SizedBox(height: 16),
-                ...overdue.take(5).map(
-                  (item) => Padding(
-                    padding: const EdgeInsets.only(bottom: 10),
-                    child: AccountingPanel(
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.warning_amber_rounded, color: Color(0xFFB42318)),
-                          const SizedBox(width: 10),
-                          Expanded(child: Text('${item.student} • ${item.amount} • ${item.due}')),
-                        ],
+                ...overdue
+                    .take(5)
+                    .map(
+                      (item) => Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: AccountingPanel(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.warning_amber_rounded,
+                                color: Color(0xFFB42318),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  '${item.student} • ${item.amount} • ${item.due}',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
               ],
             ),
           ),

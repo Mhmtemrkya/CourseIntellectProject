@@ -18,10 +18,7 @@ class GeneratedCredentials {
   final String username;
   final String password;
 
-  const GeneratedCredentials({
-    required this.username,
-    required this.password,
-  });
+  const GeneratedCredentials({required this.username, required this.password});
 }
 
 class RegistrationApiService {
@@ -146,13 +143,32 @@ class RegistrationApiService {
     );
   }
 
+  Future<GeneratedCredentials> createParent({
+    required String fullName,
+    required String phone,
+    required String email,
+  }) async {
+    final response = await _authorizedPost(
+      '/api/parents',
+      body: {'fullName': fullName, 'phone': phone, 'email': email},
+    );
+
+    final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    return GeneratedCredentials(
+      username: map['username'] as String,
+      password: map['password'] as String,
+    );
+  }
+
   Future<http.Response> _authorizedPost(
     String path, {
     required Map<String, dynamic> body,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null || session.accessToken.isEmpty) {
-      throw const RegistrationApiException('Oturum bulunamadı. Lütfen yeniden giriş yap.');
+      throw const RegistrationApiException(
+        'Oturum bulunamadı. Lütfen yeniden giriş yap.',
+      );
     }
 
     final response = await http.post(
@@ -165,7 +181,9 @@ class RegistrationApiService {
     );
 
     if (response.statusCode == 401) {
-      throw const RegistrationApiException('Oturum süresi dolmuş. Lütfen yeniden giriş yap.');
+      throw const RegistrationApiException(
+        'Oturum süresi dolmuş. Lütfen yeniden giriş yap.',
+      );
     }
 
     if (response.statusCode == 403) {
@@ -173,7 +191,9 @@ class RegistrationApiService {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw RegistrationApiException('Kayıt işlemi başarısız oldu (${response.statusCode}).');
+      throw RegistrationApiException(
+        'Kayıt işlemi başarısız oldu (${response.statusCode}).',
+      );
     }
 
     return response;

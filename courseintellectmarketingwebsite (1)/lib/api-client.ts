@@ -29,10 +29,13 @@ export type ApiRequestOptions = {
 
 const AUTH_STORAGE_KEY = "courseintellect_auth"
 
+const DEV_LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "10.0.2.2", "10.0.3.2"])
+
 const DEFAULT_API_URL =
   typeof window !== "undefined"
-    ? window.location.hostname === "localhost" && (window.location.port === "3000" || window.location.port === "3001")
-      ? "http://localhost:5206"
+    ? DEV_LOOPBACK_HOSTS.has(window.location.hostname) &&
+      (window.location.port === "3000" || window.location.port === "3001")
+      ? `${window.location.protocol}//${window.location.hostname}:5206`
       : window.location.origin
     : "http://localhost:5206"
 

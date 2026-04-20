@@ -68,17 +68,11 @@ class MeetingRequestStore extends ChangeNotifier {
 
   Future<void> ensureLoaded() => _restoreFuture;
 
-  Future<void> refresh({
-    String? advisor,
-    String? parentName,
-  }) async {
+  Future<void> refresh({String? advisor, String? parentName}) async {
     await _restore(advisor: advisor, parentName: parentName);
   }
 
-  Future<void> _restore({
-    String? advisor,
-    String? parentName,
-  }) async {
+  Future<void> _restore({String? advisor, String? parentName}) async {
     final items = await MeetingRequestApiService.instance.fetchRequests(
       advisor: advisor,
       parentName: parentName,
@@ -89,7 +83,9 @@ class MeetingRequestStore extends ChangeNotifier {
         .map(
           (item) => ParentMeetingNotification(
             parentName: item.parentName,
-            title: item.status == 'Onaylandı' ? 'Görüşme talebi onaylandı' : 'Görüşme talebi güncellendi',
+            title: item.status == 'Onaylandı'
+                ? 'Görüşme talebi onaylandı'
+                : 'Görüşme talebi güncellendi',
             detail: item.status == 'Onaylandı'
                 ? '${item.advisor} ile ${item.slot} için ${item.onlineMeeting ? 'online' : 'yüz yüze'} görüşme onaylandı.'
                 : '${item.advisor} için seçilen slot uygun bulunmadı. Lütfen yeni zaman seçin.',
@@ -106,7 +102,9 @@ class MeetingRequestStore extends ChangeNotifier {
   }
 
   List<ParentMeetingNotification> notificationsForParent(String parentName) {
-    return parentNotifications.where((item) => item.parentName == parentName).toList();
+    return parentNotifications
+        .where((item) => item.parentName == parentName)
+        .toList();
   }
 
   Future<void> createRequest({
@@ -131,12 +129,18 @@ class MeetingRequestStore extends ChangeNotifier {
   }
 
   Future<void> approveRequest(MeetingRequestRecord request) async {
-    await MeetingRequestApiService.instance.updateStatus(id: request.id, status: 'Onaylandı');
+    await MeetingRequestApiService.instance.updateStatus(
+      id: request.id,
+      status: 'Onaylandı',
+    );
     await _restore(advisor: request.advisor);
   }
 
   Future<void> rejectRequest(MeetingRequestRecord request) async {
-    await MeetingRequestApiService.instance.updateStatus(id: request.id, status: 'Reddedildi');
+    await MeetingRequestApiService.instance.updateStatus(
+      id: request.id,
+      status: 'Reddedildi',
+    );
     await _restore(advisor: request.advisor);
   }
 }

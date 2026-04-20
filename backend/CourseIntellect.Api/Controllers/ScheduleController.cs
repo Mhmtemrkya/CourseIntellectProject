@@ -245,6 +245,8 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
         "Çarşamba" => 3,
         "Perşembe" => 4,
         "Cuma" => 5,
+        "Cumartesi" => 6,
+        "Pazar" => 7,
         _ => 99,
     };
 

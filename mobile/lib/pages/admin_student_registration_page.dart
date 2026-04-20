@@ -3,19 +3,21 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/administrative_notice_store.dart';
+import '../services/admin_directory_api_service.dart';
 import '../services/announcement_store.dart';
 import '../services/registration_api_service.dart';
-import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 
 class AdminStudentRegistrationPage extends StatefulWidget {
   const AdminStudentRegistrationPage({super.key});
 
   @override
-  State<AdminStudentRegistrationPage> createState() => _AdminStudentRegistrationPageState();
+  State<AdminStudentRegistrationPage> createState() =>
+      _AdminStudentRegistrationPageState();
 }
 
-class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationPage> {
+class _AdminStudentRegistrationPageState
+    extends State<AdminStudentRegistrationPage> {
   final _formKey = GlobalKey<FormState>();
 
   final _fullNameController = TextEditingController();
@@ -57,13 +59,7 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
   }
 
   Future<void> _loadClassOptions() async {
-    await StudentRegistryStore.instance.ensureLoaded();
-    final classes = StudentRegistryStore.instance.students
-        .map((item) => item.className.trim())
-        .where((item) => item.isNotEmpty)
-        .toSet()
-        .toList()
-      ..sort();
+    final classes = await AdminDirectoryApiService.instance.fetchClasses();
     if (!mounted) return;
     setState(() {
       _classOptions = classes;
@@ -77,7 +73,10 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Yeni Ogrenci Kaydi', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Yeni Öğrenci Kaydı',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
       ),
       child: Form(
         key: _formKey,
@@ -85,13 +84,15 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
           padding: const EdgeInsets.all(16),
           children: [
             const AdminHeroCard(
-              eyebrow: 'Kayit merkezi',
-              title: 'Ogrenci kaydini idari standartlara uygun sekilde tamamlayin.',
-              description: 'Kayit sonrasi ogrenci icin sistem kullanici adi ve sifre otomatik uretilir; veli bilgileri ve program alani ayni akista tamamlanir.',
+              eyebrow: 'Kayıt merkezi',
+              title:
+                  'Öğrenci kaydını idari standartlara uygun şekilde tamamlayın.',
+              description:
+                  'Kayıt sonrası öğrenci için sistem kullanıcı adı ve şifre otomatik üretilir; veli bilgileri ve program alanı aynı akışta tamamlanır.',
               colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
               metrics: [
-                AdminHeroMetric(label: 'Alan', value: 'Tum Kayit'),
-                AdminHeroMetric(label: 'Cikti', value: 'Otomatik Giris'),
+                AdminHeroMetric(label: 'Alan', value: 'Tüm Kayıt'),
+                AdminHeroMetric(label: 'Çıktı', value: 'Otomatik Giriş'),
               ],
             ),
             const SizedBox(height: 16),
@@ -99,9 +100,12 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'Ogrenci Bilgileri'),
+                  const AdminSectionTitle(title: 'Öğrenci Bilgileri'),
                   const SizedBox(height: 12),
-                  _buildField(controller: _fullNameController, label: 'Ad Soyad'),
+                  _buildField(
+                    controller: _fullNameController,
+                    label: 'Ad Soyad',
+                  ),
                   const SizedBox(height: 12),
                   _buildField(
                     controller: _tcController,
@@ -114,13 +118,23 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                     children: [
                       Expanded(
                         child: DropdownButtonFormField<String>(
-                          initialValue: _classController.text.trim().isEmpty ? null : _classController.text.trim(),
+                          key: ValueKey(
+                            'student-class-${_classController.text.trim()}-${_classOptions.length}',
+                          ),
+                          initialValue: _classController.text.trim().isEmpty
+                              ? null
+                              : _classController.text.trim(),
                           decoration: const InputDecoration(
-                            labelText: 'Sinif',
+                            labelText: 'Sınıf',
                             border: OutlineInputBorder(),
                           ),
                           items: _classOptions
-                              .map((item) => DropdownMenuItem(value: item, child: Text(item)))
+                              .map(
+                                (item) => DropdownMenuItem(
+                                  value: item,
+                                  child: Text(item),
+                                ),
+                              )
                               .toList(),
                           onChanged: (value) {
                             _classController.text = value ?? '';
@@ -138,11 +152,19 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildField(controller: _schoolController, label: 'Okudugu Okul'),
+                  _buildField(
+                    controller: _schoolController,
+                    label: 'Okuduğu Okul',
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _buildField(controller: _birthDateController, label: 'Dogum Tarihi')),
+                      Expanded(
+                        child: _buildField(
+                          controller: _birthDateController,
+                          label: 'Doğum Tarihi',
+                        ),
+                      ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: DropdownButtonFormField<String>(
@@ -152,12 +174,23 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                             border: OutlineInputBorder(),
                           ),
                           items: const [
-                            DropdownMenuItem(value: 'Sayisal', child: Text('Sayisal')),
-                            DropdownMenuItem(value: 'Esit Agirlik', child: Text('Esit Agirlik')),
+                            DropdownMenuItem(
+                              value: 'Sayisal',
+                              child: Text('Sayisal'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Esit Agirlik',
+                              child: Text('Esit Agirlik'),
+                            ),
                             DropdownMenuItem(value: 'Dil', child: Text('Dil')),
-                            DropdownMenuItem(value: 'LGS Takip', child: Text('LGS Takip')),
+                            DropdownMenuItem(
+                              value: 'LGS Takip',
+                              child: Text('LGS Takip'),
+                            ),
                           ],
-                          onChanged: (value) => setState(() => _programType = value ?? _programType),
+                          onChanged: (value) => setState(
+                            () => _programType = value ?? _programType,
+                          ),
                         ),
                       ),
                     ],
@@ -170,9 +203,12 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'Veli ve Iletisim Bilgileri'),
+                  const AdminSectionTitle(title: 'Veli ve İletişim Bilgileri'),
                   const SizedBox(height: 12),
-                  _buildField(controller: _parentNameController, label: 'Veli Ad Soyad'),
+                  _buildField(
+                    controller: _parentNameController,
+                    label: 'Veli Ad Soyad',
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -204,7 +240,7 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                   const SizedBox(height: 12),
                   _buildField(
                     controller: _noteController,
-                    label: 'Kayit Notu',
+                    label: 'Kayıt Notu',
                     maxLines: 4,
                     required: false,
                   ),
@@ -216,11 +252,17 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'Onizleme ve Ek Kontroller'),
+                  const AdminSectionTitle(title: 'Önizleme ve Ek Kontroller'),
                   const SizedBox(height: 12),
-                  _previewTile('Kayit Tipi', 'Kurumsal tam kayit'),
-                  _previewTile('Veli Bilgilendirme', 'Kullanici adi ve sifre otomatik paylasima hazir'),
-                  _previewTile('Ogrenci Durumu', 'Kayit sonrasi aktif kullanici olarak olusur'),
+                  _previewTile('Kayıt Tipi', 'Kurumsal tam kayıt'),
+                  _previewTile(
+                    'Veli Bilgilendirme',
+                    'Kullanıcı adı ve şifre otomatik paylaşıma hazır',
+                  ),
+                  _previewTile(
+                    'Öğrenci Durumu',
+                    'Kayıt sonrası aktif kullanıcı olarak oluşur',
+                  ),
                 ],
               ),
             ),
@@ -230,7 +272,7 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                 Expanded(
                   child: OutlinedButton(
                     onPressed: _saving ? null : () => Navigator.pop(context),
-                    child: const Text('Vazgec'),
+                    child: const Text('Vazgeç'),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -244,7 +286,7 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : const Icon(Icons.person_add_alt_1_outlined),
-                    label: Text(_saving ? 'Kaydediliyor' : 'Kaydi Tamamla'),
+                    label: Text(_saving ? 'Kaydediliyor' : 'Kaydı Tamamla'),
                   ),
                 ),
               ],
@@ -271,7 +313,7 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
       validator: required
           ? (value) {
               if (value == null || value.trim().isEmpty) {
-                return '$label alani zorunludur';
+                return '$label alanı zorunludur';
               }
               return null;
             }
@@ -290,7 +332,12 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
         children: [
           const Icon(Icons.check_circle_outline_rounded, size: 18),
           const SizedBox(width: 10),
-          Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
           const SizedBox(width: 10),
           Flexible(child: Text(value, textAlign: TextAlign.right)),
         ],
@@ -339,9 +386,9 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
     } on RegistrationApiException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 
@@ -352,7 +399,9 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
       builder: (dialogContext) {
         return Dialog(
           insetPadding: const EdgeInsets.symmetric(horizontal: 28),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(28),
+          ),
           child: Padding(
             padding: const EdgeInsets.all(22),
             child: Column(
@@ -366,17 +415,24 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                     color: const Color(0xFF14532D).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(18),
                   ),
-                  child: const Icon(Icons.verified_rounded, color: Color(0xFF14532D)),
+                  child: const Icon(
+                    Icons.verified_rounded,
+                    color: Color(0xFF14532D),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Kayit tamamlandi',
-                  style: Theme.of(dialogContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                  'Kayıt tamamlandı',
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Ogrenci sisteme girebilir. Asagidaki giris bilgileri otomatik olusturuldu.',
-                  style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.45),
+                  'Öğrenci sisteme girebilir. Aşağıdaki giriş bilgileri otomatik oluşturuldu.',
+                  style: Theme.of(
+                    dialogContext,
+                  ).textTheme.bodyMedium?.copyWith(height: 1.45),
                 ),
                 const SizedBox(height: 10),
                 Container(
@@ -401,14 +457,18 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                   decoration: BoxDecoration(
                     color: Theme.of(dialogContext).cardColor,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: Theme.of(dialogContext).dividerColor.withValues(alpha: 0.28)),
+                    border: Border.all(
+                      color: Theme.of(
+                        dialogContext,
+                      ).dividerColor.withValues(alpha: 0.28),
+                    ),
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _credentialRow('Kullanici Adi', credentials.username),
+                      _credentialRow('Kullanıcı Adı', credentials.username),
                       const SizedBox(height: 10),
-                      _credentialRow('Sifre', credentials.password),
+                      _credentialRow('Şifre', credentials.password),
                     ],
                   ),
                 ),
@@ -437,7 +497,8 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                         onPressed: () async {
                           await Clipboard.setData(
                             ClipboardData(
-                              text: 'Kullanici Adi: ${credentials.username}\nSifre: ${credentials.password}',
+                              text:
+                                  'Kullanıcı Adı: ${credentials.username}\nŞifre: ${credentials.password}',
                             ),
                           );
                           if (!mounted) {
@@ -445,7 +506,9 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
                           }
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(
-                              content: Text('Giris bilgileri panoya kopyalandi.'),
+                              content: Text(
+                                'Giriş bilgileri panoya kopyalandı.',
+                              ),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
@@ -477,9 +540,17 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
   Widget _credentialRow(String label, String value) {
     return Row(
       children: [
-        Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700))),
+        Expanded(
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
         const SizedBox(width: 12),
-        SelectableText(value, style: const TextStyle(fontWeight: FontWeight.w800)),
+        SelectableText(
+          value,
+          style: const TextStyle(fontWeight: FontWeight.w800),
+        ),
       ],
     );
   }
@@ -487,7 +558,7 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
   Future<void> _launchSms(GeneratedCredentials credentials) async {
     final phone = _parentPhoneController.text.trim();
     final body =
-        'Merhaba ${_parentNameController.text.trim()}, ${_fullNameController.text.trim()} kaydi tamamlandi. Kullanici adi: ${credentials.username} Sifre: ${credentials.password}';
+        'Merhaba ${_parentNameController.text.trim()}, ${_fullNameController.text.trim()} kaydı tamamlandı. Kullanıcı adı: ${credentials.username} Şifre: ${credentials.password}';
     final uri = Uri(
       scheme: 'sms',
       path: phone,
@@ -499,13 +570,16 @@ class _AdminStudentRegistrationPageState extends State<AdminStudentRegistrationP
   Future<void> _launchWhatsapp(GeneratedCredentials credentials) async {
     final phone = _parentPhoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
     final message =
-        'Merhaba ${_parentNameController.text.trim()}, ${_fullNameController.text.trim()} kaydi tamamlandi. Kullanici adi: ${credentials.username} Sifre: ${credentials.password}';
-    final uri = Uri.parse('https://wa.me/$phone?text=${Uri.encodeComponent(message)}');
+        'Merhaba ${_parentNameController.text.trim()}, ${_fullNameController.text.trim()} kaydı tamamlandı. Kullanıcı adı: ${credentials.username} Şifre: ${credentials.password}';
+    final uri = Uri.parse(
+      'https://wa.me/$phone?text=${Uri.encodeComponent(message)}',
+    );
     await _launchExternal(uri);
   }
 
   Future<void> _launchExternal(Uri uri) async {
-    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) && mounted) {
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication) &&
+        mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Paylaşım uygulaması açılamadı.'),

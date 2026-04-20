@@ -8,10 +8,12 @@ class AccountingDiscountFormPage extends StatefulWidget {
   const AccountingDiscountFormPage({super.key});
 
   @override
-  State<AccountingDiscountFormPage> createState() => _AccountingDiscountFormPageState();
+  State<AccountingDiscountFormPage> createState() =>
+      _AccountingDiscountFormPageState();
 }
 
-class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage> {
+class _AccountingDiscountFormPageState
+    extends State<AccountingDiscountFormPage> {
   bool isScholarship = false;
   String student = '';
   String _studentUsername = '';
@@ -37,14 +39,20 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
 
   Future<void> _loadStudents() async {
     await StudentRegistryStore.instance.ensureLoaded();
-    final students = StudentRegistryStore.instance.students
+    final students = [...StudentRegistryStore.instance.students]
       ..sort((a, b) => a.fullName.compareTo(b.fullName));
     if (!mounted) return;
     setState(() {
       _students = students;
-      student = students.isEmpty ? '' : students.first.fullName;
-      _studentUsername = students.isEmpty ? '' : students.first.username;
-      _studentClassName = students.isEmpty ? '' : students.first.className;
+      final hasSelectedStudent = students.any(
+        (item) => item.username == _studentUsername,
+      );
+      final selected = hasSelectedStudent
+          ? students.firstWhere((item) => item.username == _studentUsername)
+          : students.firstOrNull;
+      student = selected?.fullName ?? '';
+      _studentUsername = selected?.username ?? '';
+      _studentClassName = selected?.className ?? '';
     });
   }
 
@@ -64,7 +72,8 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
             const AccountingHeroCard(
               eyebrow: 'Yeni tanım',
               title: 'Öğrenci bazlı burs ve indirim tanımlama',
-              description: 'Oran değiştikçe tutar otomatik güncellenir ve önizleme alanı yeni bakiyeyi gösterir.',
+              description:
+                  'Oran değiştikçe tutar otomatik güncellenir ve önizleme alanı yeni bakiyeyi gösterir.',
               colors: [Color(0xFF0F172A), Color(0xFF0891B2)],
               metrics: [
                 AccountingHeroMetric(label: 'Önizleme', value: 'Canlı'),
@@ -83,17 +92,35 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
                       ButtonSegment<bool>(value: true, label: Text('Burs')),
                     ],
                     selected: {isScholarship},
-                    onSelectionChanged: (value) => setState(() => isScholarship = value.first),
+                    onSelectionChanged: (value) =>
+                        setState(() => isScholarship = value.first),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                    initialValue: _studentUsername.isEmpty ? null : _studentUsername,
-                    decoration: const InputDecoration(labelText: 'Öğrenci', border: OutlineInputBorder()),
+                    key: ValueKey(
+                      '${_students.length}:${_studentUsername.isEmpty ? 'empty' : _studentUsername}',
+                    ),
+                    initialValue: _studentUsername.isEmpty
+                        ? null
+                        : _studentUsername,
+                    decoration: const InputDecoration(
+                      labelText: 'Öğrenci',
+                      border: OutlineInputBorder(),
+                    ),
                     items: _students
-                        .map((value) => DropdownMenuItem(value: value.username, child: Text('${value.fullName} • ${value.className}')))
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value.username,
+                            child: Text(
+                              '${value.fullName} • ${value.className}',
+                            ),
+                          ),
+                        )
                         .toList(),
                     onChanged: (value) {
-                      final selected = _students.where((item) => item.username == value).firstOrNull;
+                      final selected = _students
+                          .where((item) => item.username == value)
+                          .firstOrNull;
                       if (selected == null) return;
                       setState(() {
                         student = selected.fullName;
@@ -107,7 +134,10 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
                     controller: totalController,
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(labelText: 'Toplam Tutar', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Toplam Tutar',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -123,7 +153,10 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
                   TextField(
                     controller: noteController,
                     maxLines: 4,
-                    decoration: const InputDecoration(labelText: 'Not', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Not',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                 ],
               ),
@@ -136,13 +169,21 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
                 children: [
                   Text(
                     'Önizleme',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _previewLine('Öğrenci', student),
-                  _previewLine('Tanım Türü', isScholarship ? 'Burs' : 'İndirim'),
+                  _previewLine(
+                    'Tanım Türü',
+                    isScholarship ? 'Burs' : 'İndirim',
+                  ),
                   _previewLine('Uygulanacak Oran', '%${rateController.text}'),
-                  _previewLine('Yeni Tutar', '₺${discounted.toStringAsFixed(0)}'),
+                  _previewLine(
+                    'Yeni Tutar',
+                    '₺${discounted.toStringAsFixed(0)}',
+                  ),
                   const SizedBox(height: 16),
                   SizedBox(
                     width: double.infinity,
@@ -150,20 +191,21 @@ class _AccountingDiscountFormPageState extends State<AccountingDiscountFormPage>
                       onPressed: _studentUsername.isEmpty
                           ? null
                           : () {
-                        Navigator.pop(
-                          context,
-                          {
-                            'studentName': student,
-                            'studentUsername': _studentUsername,
-                            'className': _studentClassName,
-                            'title': noteController.text.trim().isEmpty ? (isScholarship ? 'Yeni Burs Tanımı' : 'Yeni İndirim Tanımı') : noteController.text.trim(),
-                            'type': isScholarship ? 'Burs' : 'İndirim',
-                            'rate': rateController.text.trim(),
-                            'totalAmount': totalController.text.trim(),
-                            'note': noteController.text.trim(),
-                          },
-                        );
-                      },
+                              Navigator.pop(context, {
+                                'studentName': student,
+                                'studentUsername': _studentUsername,
+                                'className': _studentClassName,
+                                'title': noteController.text.trim().isEmpty
+                                    ? (isScholarship
+                                          ? 'Yeni Burs Tanımı'
+                                          : 'Yeni İndirim Tanımı')
+                                    : noteController.text.trim(),
+                                'type': isScholarship ? 'Burs' : 'İndirim',
+                                'rate': rateController.text.trim(),
+                                'totalAmount': totalController.text.trim(),
+                                'note': noteController.text.trim(),
+                              });
+                            },
                       child: const Text('Kaydı Oluştur'),
                     ),
                   ),

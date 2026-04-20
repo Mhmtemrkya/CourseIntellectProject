@@ -39,28 +39,41 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final totalStudents = StudentRegistryStore.instance.students.length;
-    final absentCount =
-        AttendanceService.instance.all().where((item) => item.status == 'Devamsiz').length;
+    final absentCount = AttendanceService.instance
+        .all()
+        .where((item) => item.status == 'Devamsiz')
+        .length;
     final attendanceTotal = AttendanceService.instance.all().length;
     final collectionRate = AccountingFinanceStore.instance.totalReceivables == 0
         ? 0.0
         : AccountingFinanceStore.instance.collectedTotal /
-            AccountingFinanceStore.instance.totalReceivables;
-    final occupancyRate = totalStudents == 0 ? 0.0 : (totalStudents / 1000).clamp(0.0, 1.0);
-    final absenteeRisk = attendanceTotal == 0 ? 0.0 : absentCount / attendanceTotal;
+              AccountingFinanceStore.instance.totalReceivables;
+    final occupancyRate = totalStudents == 0
+        ? 0.0
+        : (totalStudents / 1000).clamp(0.0, 1.0);
+    final absenteeRisk = attendanceTotal == 0
+        ? 0.0
+        : absentCount / attendanceTotal;
     final academicScore = _records.isEmpty
         ? 0.0
-        : (_records.fold<int>(0, (sum, item) => sum + item.score) / _records.length) / 100;
+        : (_records.fold<int>(0, (sum, item) => sum + item.score) /
+                  _records.length) /
+              100;
 
     final kpis = [
       ('Doluluk Orani', occupancyRate, const Color(0xFF2563EB)),
       ('Tahsilat Performansi', collectionRate, const Color(0xFF14532D)),
-      ('Devamsizlik Riski', absenteeRisk, const Color(0xFFB45309)),
-      ('Akademik Basari', academicScore, const Color(0xFF7C3AED)),
+      ('Devamsızlık Riski', absenteeRisk, const Color(0xFFB45309)),
+      ('Akademik Başarı', academicScore, const Color(0xFF7C3AED)),
     ];
 
     return AdminScaffold(
-      appBar: AppBar(title: const Text('Kurum KPI Grafikleri', style: TextStyle(fontWeight: FontWeight.bold))),
+      appBar: AppBar(
+        title: const Text(
+          'Kurum KPI Grafikleri',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+      ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: kpis
@@ -72,9 +85,19 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
                   children: [
                     Row(
                       children: [
-                        Text(kpi.$1, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                        Text(
+                          kpi.$1,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(fontWeight: FontWeight.w800),
+                        ),
                         const Spacer(),
-                        Text('%${(kpi.$2 * 100).round()}', style: TextStyle(color: kpi.$3, fontWeight: FontWeight.w900)),
+                        Text(
+                          '%${(kpi.$2 * 100).round()}',
+                          style: TextStyle(
+                            color: kpi.$3,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 12),

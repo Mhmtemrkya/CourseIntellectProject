@@ -29,10 +29,11 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
   void initState() {
     super.initState();
     MessageRealtimeService.instance.ensureConnected().catchError((_) {});
-    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream.listen((payload) {
-      if (!mounted) return;
-      _upsertThread(MessageThreadRecord.fromMap(payload));
-    });
+    _threadSubscription = MessageRealtimeService.instance.threadUpdatedStream
+        .listen((payload) {
+          if (!mounted) return;
+          _upsertThread(MessageThreadRecord.fromMap(payload));
+        });
     _loadThreads();
     _startSilentFallbackSync();
   }
@@ -74,7 +75,8 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
       _error = null;
     });
     try {
-      final children = await LinkedChildrenService.instance.loadLinkedChildren();
+      final children = await LinkedChildrenService.instance
+          .loadLinkedChildren();
       final threads = await MessageApiService.instance.fetchThreads();
       if (!mounted) return;
       setState(() {
@@ -122,7 +124,10 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
     } catch (_) {}
   }
 
-  bool _sameThreads(List<MessageThreadRecord> left, List<MessageThreadRecord> right) {
+  bool _sameThreads(
+    List<MessageThreadRecord> left,
+    List<MessageThreadRecord> right,
+  ) {
     if (identical(left, right)) return true;
     if (left.length != right.length) return false;
     for (var index = 0; index < left.length; index += 1) {
@@ -143,9 +148,15 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
     await _staffStore.ensureLoaded();
     if (!mounted) return;
 
-    final teachers = _staffStore.teachers.where((item) => _isActive(item.status));
-    final administrative = _staffStore.personnel.where((item) => _isActive(item.status));
-    final admins = _staffStore.staff.where((item) => _isActive(item.status) && item.roleType == 'Admin');
+    final teachers = _staffStore.teachers.where(
+      (item) => _isActive(item.status),
+    );
+    final administrative = _staffStore.personnel.where(
+      (item) => _isActive(item.status),
+    );
+    final admins = _staffStore.staff.where(
+      (item) => _isActive(item.status) && item.roleType == 'Admin',
+    );
     final recipients = <ChatRecipientOption>[
       ..._children.map(
         (child) => ChatRecipientOption(
@@ -182,8 +193,9 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
 
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
-      title: 'Alici Sec',
-      description: 'Çocuğunuza, öğretmenlere, idari birimlere ve yöneticiye mesaj gönderebilirsiniz.',
+      title: 'Aliçi Seç',
+      description:
+          'Çocuğunuza, öğretmenlere, idari birimlere ve yönetiçiye mesaj gönderebilirsiniz.',
       recipients: recipients,
     );
 
@@ -191,7 +203,11 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => VeliChatPage(user: selected.name, contactRole: selected.role, contactKey: selected.contactKey),
+        builder: (_) => VeliChatPage(
+          user: selected.name,
+          contactRole: selected.role,
+          contactKey: selected.contactKey,
+        ),
       ),
     );
   }

@@ -61,13 +61,16 @@ class QuestionBankRecord {
       imagePath: map['imagePath'] as String?,
       options: (map['options'] as List<dynamic>? ?? const []).cast<String>(),
       correctOptionIndex: map['correctOptionIndex'] as int?,
-      classTargets: (map['classTargets'] as List<dynamic>? ?? const ['Tüm Sınıflar']).cast<String>(),
+      classTargets:
+          (map['classTargets'] as List<dynamic>? ?? const ['Tüm Sınıflar'])
+              .cast<String>(),
       solutionAssetPath: map['solutionAssetPath'] as String?,
       solutionAssetType: map['solutionAssetType'] as String?,
       questionSetKey: map['questionSetKey'] as String?,
       questionSetTitle: map['questionSetTitle'] as String?,
       questionOrder: map['questionOrder'] as int?,
-      revealCorrectAnswerToStudent: map['revealCorrectAnswerToStudent'] as bool? ?? false,
+      revealCorrectAnswerToStudent:
+          map['revealCorrectAnswerToStudent'] as bool? ?? false,
       expectedAnswer: map['expectedAnswer'] as String?,
     );
   }
@@ -119,27 +122,27 @@ class QuestionBankRecord {
   }
 
   Map<String, dynamic> toMap() => {
-        'id': id,
-        'subject': subject,
-        'topic': topic,
-        'difficulty': difficulty,
-        'type': type,
-        'questionText': questionText,
-        'teacher': teacher,
-        'createdAt': createdAt,
-        'usageCount': usageCount,
-        'imagePath': imagePath,
-        'options': options,
-        'correctOptionIndex': correctOptionIndex,
-        'classTargets': classTargets,
-        'solutionAssetPath': solutionAssetPath,
-        'solutionAssetType': solutionAssetType,
-        'questionSetKey': questionSetKey,
-        'questionSetTitle': questionSetTitle,
-        'questionOrder': questionOrder,
-        'revealCorrectAnswerToStudent': revealCorrectAnswerToStudent,
-        'expectedAnswer': expectedAnswer,
-      };
+    'id': id,
+    'subject': subject,
+    'topic': topic,
+    'difficulty': difficulty,
+    'type': type,
+    'questionText': questionText,
+    'teacher': teacher,
+    'createdAt': createdAt,
+    'usageCount': usageCount,
+    'imagePath': imagePath,
+    'options': options,
+    'correctOptionIndex': correctOptionIndex,
+    'classTargets': classTargets,
+    'solutionAssetPath': solutionAssetPath,
+    'solutionAssetType': solutionAssetType,
+    'questionSetKey': questionSetKey,
+    'questionSetTitle': questionSetTitle,
+    'questionOrder': questionOrder,
+    'revealCorrectAnswerToStudent': revealCorrectAnswerToStudent,
+    'expectedAnswer': expectedAnswer,
+  };
 }
 
 class QuestionBankStore extends ChangeNotifier {
@@ -151,7 +154,9 @@ class QuestionBankStore extends ChangeNotifier {
   List<QuestionBankRecord> questions = [];
 
   Future<void> loadQuestions({String? className}) async {
-    questions = await QuestionBankApiService.instance.fetchQuestions(className: className);
+    questions = await QuestionBankApiService.instance.fetchQuestions(
+      className: className,
+    );
     isLoaded = true;
     notifyListeners();
   }
@@ -206,7 +211,9 @@ class QuestionBankStore extends ChangeNotifier {
 
   Future<void> updateQuestion(QuestionBankRecord updated) async {
     final index = questions.indexWhere((item) => item.id == updated.id);
-    final refreshed = await QuestionBankApiService.instance.updateQuestion(updated);
+    final refreshed = await QuestionBankApiService.instance.updateQuestion(
+      updated,
+    );
     if (index == -1) {
       questions.insert(0, refreshed);
     } else {

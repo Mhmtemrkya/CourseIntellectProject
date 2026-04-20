@@ -24,7 +24,9 @@ class AttendanceApiService {
     String? className,
   }) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const AttendanceApiException('Oturum bulunamadi.');
+    if (session == null) {
+      throw const AttendanceApiException('Oturum bulunamadı.');
+    }
 
     final query = <String, String>{};
     if (studentName != null && studentName.isNotEmpty) {
@@ -35,12 +37,16 @@ class AttendanceApiService {
     }
 
     final response = await http.get(
-      Uri.parse('${ApiConfig.baseUrl}/api/attendance').replace(queryParameters: query.isEmpty ? null : query),
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/attendance',
+      ).replace(queryParameters: query.isEmpty ? null : query),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AttendanceApiException('Devamsizlik verisi alinamadi (${response.statusCode}).');
+      throw AttendanceApiException(
+        'Devamsızlık verisi alınamadı (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)
@@ -54,7 +60,9 @@ class AttendanceApiService {
     required List<Map<String, dynamic>> students,
   }) async {
     final session = await AuthSessionStore.instance.load();
-    if (session == null) throw const AttendanceApiException('Oturum bulunamadi.');
+    if (session == null) {
+      throw const AttendanceApiException('Oturum bulunamadı.');
+    }
 
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/attendance'),
@@ -67,16 +75,20 @@ class AttendanceApiService {
         'lesson': lesson,
         'lessonDate': DateTime.now().toIso8601String(),
         'students': students
-            .map((student) => {
-                  'name': student['name'],
-                  'status': student['status'],
-                })
+            .map(
+              (student) => {
+                'name': student['name'],
+                'status': student['status'],
+              },
+            )
             .toList(),
       }),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw AttendanceApiException('Yoklama kaydedilemedi (${response.statusCode}).');
+      throw AttendanceApiException(
+        'Yoklama kaydedilemedi (${response.statusCode}).',
+      );
     }
 
     return (jsonDecode(response.body) as List<dynamic>)

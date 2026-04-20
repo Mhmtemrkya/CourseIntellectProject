@@ -60,12 +60,20 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
         children: [
           AccountingHeroCard(
             eyebrow: 'Tahsilat merkezi',
-            title: 'Ödeme hareketlerini tek ekranda yönetin ve yeni tahsilatı güvenli akışla tamamlayın.',
-            description: 'Kart, havale, nakit ve POS tahsilatları için hızlı giriş ve makbuz üretimi hazır.',
+            title:
+                'Ödeme hareketlerini tek ekranda yönetin ve yeni tahsilatı güvenli akışla tamamlayın.',
+            description:
+                'Kart, havale, nakit ve POS tahsilatları için hızlı giriş ve makbuz üretimi hazır.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
-              AccountingHeroMetric(label: 'Toplam', value: _store.formatAmount(_store.collectedTotal)),
-              AccountingHeroMetric(label: 'İşlem', value: '${_store.collections.length}'),
+              AccountingHeroMetric(
+                label: 'Toplam',
+                value: _store.formatAmount(_store.collectedTotal),
+              ),
+              AccountingHeroMetric(
+                label: 'İşlem',
+                value: '${_store.collections.length}',
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -81,13 +89,29 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
     return AccountingPanel(
       child: Row(
         children: [
-          Expanded(child: _summaryItem(context, 'Toplam', _store.formatAmount(_store.collectedTotal))),
-          Expanded(child: _summaryItem(context, 'İşlem', '${_store.collections.length}')),
+          Expanded(
+            child: _summaryItem(
+              context,
+              'Toplam',
+              _store.formatAmount(_store.collectedTotal),
+            ),
+          ),
+          Expanded(
+            child: _summaryItem(
+              context,
+              'İşlem',
+              '${_store.collections.length}',
+            ),
+          ),
           Expanded(
             child: _summaryItem(
               context,
               'Ortalama',
-              _store.collections.isEmpty ? '₺0' : _store.formatAmount(_store.collectedTotal ~/ _store.collections.length),
+              _store.collections.isEmpty
+                  ? '₺0'
+                  : _store.formatAmount(
+                      _store.collectedTotal ~/ _store.collections.length,
+                    ),
             ),
           ),
         ],
@@ -101,7 +125,12 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
       children: [
         Text(label, style: Theme.of(context).textTheme.bodySmall),
         const SizedBox(height: 6),
-        Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+        Text(
+          value,
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+        ),
       ],
     );
   }
@@ -121,16 +150,27 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                 color: const Color(0xFFDCFCE7),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Icon(Icons.payments_outlined, color: Color(0xFF15803D)),
+              child: const Icon(
+                Icons.payments_outlined,
+                color: Color(0xFF15803D),
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(item.name, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    item.name,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 4),
-                  Text('${item.className} • ${item.method} • ${item.time}', style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    '${item.className} • ${item.method} • ${item.time}',
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ],
               ),
             ),
@@ -139,7 +179,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
               children: [
                 Text(
                   item.amount,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900, color: const Color(0xFF15803D)),
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF15803D),
+                  ),
                 ),
                 const SizedBox(height: 6),
                 const Icon(Icons.more_horiz_rounded),
@@ -160,7 +203,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
           shrinkWrap: true,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit_outlined, color: Color(0xFF2563EB)),
+              leading: const Icon(
+                Icons.edit_outlined,
+                color: Color(0xFF2563EB),
+              ),
               title: const Text('Tahsilatı Düzenle'),
               onTap: () {
                 Navigator.pop(context);
@@ -168,7 +214,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: Color(0xFFDC2626)),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: Color(0xFFDC2626),
+              ),
               title: const Text('Tahsilatı Sil'),
               onTap: () async {
                 final messenger = ScaffoldMessenger.of(this.context);
@@ -176,7 +225,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                 await _store.deleteCollection(item.id);
                 if (!mounted) return;
                 messenger.showSnackBar(
-                  const SnackBar(content: Text('Tahsilat silindi.'), behavior: SnackBarBehavior.floating),
+                  const SnackBar(
+                    content: Text('Tahsilat silindi.'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
                 );
               },
             ),
@@ -187,7 +239,9 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
   }
 
   void _showEditCollectionSheet(CollectionRecord item) {
-    final amountController = TextEditingController(text: item.amount.replaceAll('₺', '').trim());
+    final amountController = TextEditingController(
+      text: item.amount.replaceAll('₺', '').trim(),
+    );
     final noteController = TextEditingController(text: item.note);
     var selectedMethod = item.method;
 
@@ -201,10 +255,17 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
           builder: (context, setSheetState) => ResponsiveSheetContainer(
             child: Container(
               margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-              padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 24),
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                MediaQuery.of(context).viewInsets.bottom + 24,
+              ),
               decoration: BoxDecoration(
                 color: Theme.of(context).scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(30),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -212,27 +273,43 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Tutar', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Tutar',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: selectedMethod,
-                    decoration: const InputDecoration(labelText: 'Ödeme Türü', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Ödeme Türü',
+                      border: OutlineInputBorder(),
+                    ),
                     items: const ['Kredi Kartı', 'Havale/EFT', 'Nakit']
-                        .map((value) => DropdownMenuItem(value: value, child: Text(value)))
+                        .map(
+                          (value) => DropdownMenuItem(
+                            value: value,
+                            child: Text(value),
+                          ),
+                        )
                         .toList(),
-                    onChanged: (value) => setSheetState(() => selectedMethod = value ?? selectedMethod),
+                    onChanged: (value) => setSheetState(
+                      () => selectedMethod = value ?? selectedMethod,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
                     controller: noteController,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: 'Not', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Not',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   SizedBox(
-                      width: double.infinity,
-                      child: FilledButton(
+                    width: double.infinity,
+                    child: FilledButton(
                       onPressed: () async {
                         final messenger = ScaffoldMessenger.of(this.context);
                         final navigator = Navigator.of(sheetContext);
@@ -247,7 +324,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                         if (!mounted) return;
                         navigator.pop();
                         messenger.showSnackBar(
-                          const SnackBar(content: Text('Tahsilat güncellendi.'), behavior: SnackBarBehavior.floating),
+                          const SnackBar(
+                            content: Text('Tahsilat güncellendi.'),
+                            behavior: SnackBarBehavior.floating,
+                          ),
                         );
                       },
                       child: const Text('Kaydet'),
@@ -281,10 +361,17 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
             return ResponsiveSheetContainer(
               child: Container(
                 margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                padding: EdgeInsets.fromLTRB(16, 8, 16, MediaQuery.of(context).viewInsets.bottom + 24),
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  8,
+                  16,
+                  MediaQuery.of(context).viewInsets.bottom + 24,
+                ),
                 decoration: BoxDecoration(
                   color: Theme.of(context).scaffoldBackgroundColor,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(30),
+                  ),
                 ),
                 child: SingleChildScrollView(
                   child: Column(
@@ -293,12 +380,17 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                     children: [
                       const AccountingHeroCard(
                         eyebrow: 'Yeni kayıt',
-                        title: 'Tahsilatı hızlı ama kontrollü şekilde oluşturun.',
-                        description: 'Öğrenci, tutar ve ödeme yöntemi seçildikten sonra kayıt onay ekranına alınır.',
+                        title:
+                            'Tahsilatı hızlı ama kontrollü şekilde oluşturun.',
+                        description:
+                            'Öğrenci, tutar ve ödeme yöntemi seçildikten sonra kayıt onay ekranına alınır.',
                         colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
                         metrics: [
                           AccountingHeroMetric(label: 'Akış', value: '2 adım'),
-                          AccountingHeroMetric(label: 'Makbuz', value: 'QR hazır'),
+                          AccountingHeroMetric(
+                            label: 'Makbuz',
+                            value: 'QR hazır',
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
@@ -306,45 +398,86 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Tahsilat formu', style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900)),
+                            Text(
+                              'Tahsilat formu',
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w900),
+                            ),
                             const SizedBox(height: 16),
                             DropdownButtonFormField<String>(
                               initialValue: selectedStudent,
-                              decoration: const InputDecoration(labelText: 'Öğrenci', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Öğrenci',
+                                border: OutlineInputBorder(),
+                              ),
                               items: studentOptions
-                                  .map((value) => DropdownMenuItem(value: value.fullName, child: Text(value.fullName)))
+                                  .map(
+                                    (value) => DropdownMenuItem(
+                                      value: value.fullName,
+                                      child: Text(value.fullName),
+                                    ),
+                                  )
                                   .toList(),
                               onChanged: (value) => setSheetState(() {
                                 selectedStudent = value ?? selectedStudent;
-                                final student = studentOptions.where((item) => item.fullName == selectedStudent).firstOrNull;
+                                final student = studentOptions
+                                    .where(
+                                      (item) =>
+                                          item.fullName == selectedStudent,
+                                    )
+                                    .firstOrNull;
                                 selectedClass = student?.className ?? '';
                               }),
                             ),
                             const SizedBox(height: 12),
                             InputDecorator(
-                              decoration: const InputDecoration(labelText: 'Sınıf', border: OutlineInputBorder()),
-                              child: Text(selectedClass.isEmpty ? 'Sınıf bilgisi yok' : selectedClass),
+                              decoration: const InputDecoration(
+                                labelText: 'Sınıf',
+                                border: OutlineInputBorder(),
+                              ),
+                              child: Text(
+                                selectedClass.isEmpty
+                                    ? 'Sınıf bilgisi yok'
+                                    : selectedClass,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: amountController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(labelText: 'Tutar', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Tutar',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                             const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
                               initialValue: selectedMethod,
-                              decoration: const InputDecoration(labelText: 'Ödeme Türü', border: OutlineInputBorder()),
-                              items: const ['Kredi Kartı', 'Havale/EFT', 'Nakit']
-                                  .map((value) => DropdownMenuItem(value: value, child: Text(value)))
-                                  .toList(),
-                              onChanged: (value) => setSheetState(() => selectedMethod = value ?? selectedMethod),
+                              decoration: const InputDecoration(
+                                labelText: 'Ödeme Türü',
+                                border: OutlineInputBorder(),
+                              ),
+                              items:
+                                  const ['Kredi Kartı', 'Havale/EFT', 'Nakit']
+                                      .map(
+                                        (value) => DropdownMenuItem(
+                                          value: value,
+                                          child: Text(value),
+                                        ),
+                                      )
+                                      .toList(),
+                              onChanged: (value) => setSheetState(
+                                () => selectedMethod = value ?? selectedMethod,
+                              ),
                             ),
                             const SizedBox(height: 12),
                             TextField(
                               controller: noteController,
                               maxLines: 3,
-                              decoration: const InputDecoration(labelText: 'Not', border: OutlineInputBorder()),
+                              decoration: const InputDecoration(
+                                labelText: 'Not',
+                                border: OutlineInputBorder(),
+                              ),
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
@@ -353,13 +486,13 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                                 onPressed: selectedStudent.isEmpty
                                     ? null
                                     : () => _confirmCollection(
-                                          sheetContext,
-                                          selectedStudent,
-                                          selectedClass,
-                                          amountController.text,
-                                          selectedMethod,
-                                          noteController.text,
-                                        ),
+                                        sheetContext,
+                                        selectedStudent,
+                                        selectedClass,
+                                        amountController.text,
+                                        selectedMethod,
+                                        noteController.text,
+                                      ),
                                 child: const Text('Tahsilatı Tamamla'),
                               ),
                             ),
@@ -407,13 +540,17 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                           color: const Color(0xFFFFEDD5),
                           borderRadius: BorderRadius.circular(16),
                         ),
-                        child: const Icon(Icons.rule_folder_outlined, color: Color(0xFFB45309)),
+                        child: const Icon(
+                          Icons.rule_folder_outlined,
+                          color: Color(0xFFB45309),
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
                           'Tahsilatı onaylayın',
-                          style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                          style: Theme.of(dialogContext).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w900),
                         ),
                       ),
                     ],
@@ -421,7 +558,9 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                   const SizedBox(height: 14),
                   Text(
                     '$student için ₺$amount tutarında $method tahsilatı oluşturulacak.',
-                    style: Theme.of(dialogContext).textTheme.bodyMedium?.copyWith(height: 1.45),
+                    style: Theme.of(
+                      dialogContext,
+                    ).textTheme.bodyMedium?.copyWith(height: 1.45),
                   ),
                   const SizedBox(height: 14),
                   AccountingPanel(
@@ -458,7 +597,9 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                                 name: student,
                                 className: className,
                                 amount: amount,
-                                method: method == 'Kredi Kartı' ? 'Kredi Karti' : method,
+                                method: method == 'Kredi Kartı'
+                                    ? 'Kredi Karti'
+                                    : method,
                                 note: note,
                               );
                               if (!mounted) return;
@@ -501,7 +642,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
       context: context,
       builder: (dialogContext) {
         return Dialog(
-          insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 24,
+            vertical: 24,
+          ),
           backgroundColor: Colors.transparent,
           elevation: 0,
           child: Center(
@@ -528,7 +672,8 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                       TweenAnimationBuilder<double>(
                         tween: Tween(begin: 0.8, end: 1),
                         duration: const Duration(milliseconds: 350),
-                        builder: (context, value, child) => Transform.scale(scale: value, child: child),
+                        builder: (context, value, child) =>
+                            Transform.scale(scale: value, child: child),
                         child: Container(
                           width: 66,
                           height: 66,
@@ -536,13 +681,18 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             color: const Color(0xFFD1FAE5),
                             borderRadius: BorderRadius.circular(20),
                           ),
-                          child: const Icon(Icons.check_rounded, color: Color(0xFF047857), size: 34),
+                          child: const Icon(
+                            Icons.check_rounded,
+                            color: Color(0xFF047857),
+                            size: 34,
+                          ),
                         ),
                       ),
                       const SizedBox(height: 14),
                       Text(
                         'Başarılı Tahsilat',
-                        style: Theme.of(dialogContext).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+                        style: Theme.of(dialogContext).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -569,7 +719,12 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             onPressed: () {
                               Navigator.pop(dialogContext);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Tahsilat özeti paylaşıma hazırlandı.'), behavior: SnackBarBehavior.floating),
+                                const SnackBar(
+                                  content: Text(
+                                    'Tahsilat özeti paylaşıma hazırlandı.',
+                                  ),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
                               );
                             },
                             icon: const Icon(Icons.share_outlined),
@@ -579,7 +734,10 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             onPressed: () {
                               Navigator.pop(dialogContext);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('Makbuz PDF olarak indirildi.'), behavior: SnackBarBehavior.floating),
+                                const SnackBar(
+                                  content: Text('Makbuz PDF olarak indirildi.'),
+                                  behavior: SnackBarBehavior.floating,
+                                ),
                               );
                             },
                             icon: const Icon(Icons.picture_as_pdf_outlined),
