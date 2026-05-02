@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Palette, Upload, Eye, Save, Building2, Image, Type, RefreshCw,
-  Check, Settings, Paintbrush,
+  Check, Settings, Paintbrush, Trash2, FileImage,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -74,6 +74,66 @@ export default function TenantCustomization() {
   const [error, setError] = useState('');
   const [customizations, setCustomizations] = useState({});
   const [assetDialog, setAssetDialog] = useState({ open: false, field: 'logoUrl', value: '' });
+  const logoInputRef = useRef(null);
+  const faviconInputRef = useRef(null);
+
+  const MAX_LOGO_BYTES = 512 * 1024; // 512 KB
+  const MAX_FAVICON_BYTES = 128 * 1024; // 128 KB
+
+  const readFileAsDataUrl = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+
+  const handleFilePicked = async (event, field) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file || !selectedTenantId) return;
+
+    const maxBytes = field === 'logoUrl' ? MAX_LOGO_BYTES : MAX_FAVICON_BYTES;
+    if (file.size > maxBytes) {
+      toast({
+        title: 'Dosya çok büyük',
+        description: `Maksimum ${Math.round(maxBytes / 1024)} KB dosya yükleyebilirsiniz.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      toast({ title: 'Geçersiz dosya türü', description: 'Lütfen bir görsel dosyası seçin.', variant: 'destructive' });
+      return;
+    }
+    try {
+      const dataUrl = await readFileAsDataUrl(file);
+      setCustomizations((prev) => ({
+        ...prev,
+        [selectedTenantId]: {
+          ...prev[selectedTenantId],
+          [field]: dataUrl,
+        },
+      }));
+      toast({
+        title: field === 'logoUrl' ? 'Logo yüklendi' : 'Favicon yüklendi',
+        description: 'Kaydet butonuna basarak kalıcı hale getirin.',
+      });
+    } catch {
+      toast({ title: 'Dosya okunamadı', variant: 'destructive' });
+    }
+  };
+
+  const handleClearAsset = (field) => {
+    if (!selectedTenantId) return;
+    setCustomizations((prev) => ({
+      ...prev,
+      [selectedTenantId]: {
+        ...prev[selectedTenantId],
+        [field]: '',
+      },
+    }));
+  };
 
   const loadCustomizationData = useCallback(async () => {
     try {
@@ -454,33 +514,134 @@ export default function TenantCustomization() {
                 </TabsContent>
 
                 <TabsContent value="logo" className="space-y-6">
+                  <input
+                    ref={logoInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                    className="hidden"
+                    onChange={(e) => handleFilePicked(e, 'logoUrl')}
+                  />
+                  <input
+                    ref={faviconInputRef}
+                    type="file"
+                    accept="image/png,image/x-icon,image/vnd.microsoft.icon,image/svg+xml"
+                    className="hidden"
+                    onChange={(e) => handleFilePicked(e, 'faviconUrl')}
+                  />
+
                   <div className="grid grid-cols-2 gap-6">
-                    <div className="space-y-4">
+                    {/* Logo */}
+                    <div className="space-y-3">
                       <Label>Logo (Tam Boyut)</Label>
-                      <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-brand-accent transition-colors cursor-pointer" onClick={() => handleLogoUpload('logoUrl')}>
-                        <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Logo yüklemek için tıklayın</p>
-                        <p className="text-xs text-muted-foreground mt-1">PNG, JPG veya SVG (max 2MB)</p>
-                      </div>
+                      {customization.logoUrl ? (
+                        <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+                          <div className="flex items-center justify-center h-32 rounded-lg bg-white dark:bg-gray-900 border">
+                            <img
+                              src={customization.logoUrl}
+                              alt="Logo önizleme"
+                              className="max-h-24 max-w-full object-contain"
+                              onError={(e) => { e.currentTarget.src = ''; }}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => logoInputRef.current?.click()}
+                            >
+                              <Upload className="h-4 w-4 mr-2" /> Değiştir
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleClearAsset('logoUrl')}
+                              title="Logoyu kaldır"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground text-center">
+                            Kaydet butonuna basmayı unutmayın.
+                          </p>
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed rounded-xl p-8 text-center hover:border-brand-accent transition-colors cursor-pointer"
+                          onClick={() => logoInputRef.current?.click()}
+                        >
+                          <FileImage className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                          <p className="text-sm font-medium">PC'den logo seçin</p>
+                          <p className="text-xs text-muted-foreground mt-1">PNG, JPG, WEBP veya SVG (max 512 KB)</p>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-4">
+
+                    {/* Favicon */}
+                    <div className="space-y-3">
                       <Label>Favicon</Label>
-                      <div className="border-2 border-dashed rounded-xl p-8 text-center hover:border-brand-accent transition-colors cursor-pointer" onClick={() => handleLogoUpload('faviconUrl')}>
-                        <Upload className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
-                        <p className="text-sm text-muted-foreground">Favicon yüklemek için tıklayın</p>
-                        <p className="text-xs text-muted-foreground mt-1">ICO veya PNG (32x32px)</p>
-                      </div>
+                      {customization.faviconUrl ? (
+                        <div className="border rounded-xl p-4 bg-muted/20 space-y-3">
+                          <div className="flex items-center justify-center h-32 rounded-lg bg-white dark:bg-gray-900 border">
+                            <img
+                              src={customization.faviconUrl}
+                              alt="Favicon önizleme"
+                              className="h-16 w-16 object-contain"
+                              onError={(e) => { e.currentTarget.src = ''; }}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="flex-1"
+                              onClick={() => faviconInputRef.current?.click()}
+                            >
+                              <Upload className="h-4 w-4 mr-2" /> Değiştir
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleClearAsset('faviconUrl')}
+                              title="Favicon'u kaldır"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground text-center">
+                            Kaydet butonuna basmayı unutmayın.
+                          </p>
+                        </div>
+                      ) : (
+                        <div
+                          className="border-2 border-dashed rounded-xl p-8 text-center hover:border-brand-accent transition-colors cursor-pointer"
+                          onClick={() => faviconInputRef.current?.click()}
+                        >
+                          <FileImage className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+                          <p className="text-sm font-medium">PC'den favicon seçin</p>
+                          <p className="text-xs text-muted-foreground mt-1">PNG veya ICO, 32×32 px (max 128 KB)</p>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label>Logo URL (Harici)</Label>
-                    <Input
-                      type="url"
-                      placeholder="https://example.com/logo.png"
-                      value={customization.logoUrl}
-                      onChange={(e) => setCustomizations((prev) => ({ ...prev, [selectedTenant.id]: { ...prev[selectedTenant.id], logoUrl: e.target.value } }))}
-                    />
+                  <div className="pt-2 border-t space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <Label>Harici URL kullan</Label>
+                        <p className="text-xs text-muted-foreground">Dosya yüklemek yerine mevcut bir bağlantı kullanabilirsiniz.</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleLogoUpload('logoUrl')}>
+                          <Image className="h-4 w-4 mr-1" /> Logo URL
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={() => handleLogoUpload('faviconUrl')}>
+                          <Image className="h-4 w-4 mr-1" /> Favicon URL
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
 

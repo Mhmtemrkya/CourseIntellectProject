@@ -21,5 +21,6 @@ public sealed class TenantWorkspace
     public decimal StorageUsedGb { get; set; }
     public int ApiUsage { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
+    public DateTime? RejectedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

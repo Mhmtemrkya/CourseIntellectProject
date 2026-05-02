@@ -1,13 +1,15 @@
+using System.Text.Json;
+
 namespace CourseIntellect.Application.DTOs.SiteContent;
 
 public sealed record SiteContentDto(
     Guid Id,
-    string SectionKey,
-    string ContentJson,
+    string Section,
+    JsonElement Content,
     string Language,
     int Version,
     bool IsPublished,
-    DateTime CreatedAtUtc,
-    DateTime UpdatedAtUtc,
-    string UpdatedBy
+    DateTime CreatedAt,
+    DateTime UpdatedAt,
+    string? UpdatedBy
 );

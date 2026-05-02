@@ -34,6 +34,7 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
 
         services.AddScoped<DatabaseSeeder>();
+        services.AddHostedService<RejectedTenantCleanupService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
         services.AddScoped<IAuthService, AuthService>();
@@ -54,10 +55,12 @@ public static class DependencyInjection
         services.AddScoped<INotificationService, NotificationService>();
         services.AddScoped<IPlatformConfigurationService, PlatformConfigurationService>();
         services.AddScoped<IPlatformOperationsService, PlatformOperationsService>();
+        services.AddScoped<IPlatformSubscriptionService, PlatformSubscriptionService>();
         services.AddScoped<ISiteContentService, SiteContentService>();
         services.AddScoped<IContactMessageService, ContactMessageService>();
         services.AddScoped<ITranslationService, TranslationService>();
         services.AddScoped<IAppSettingService, AppSettingService>();
+        services.AddScoped<ISystemService, SystemService>();
         services.AddScoped<ICourseService, CourseService>();
         services.AddScoped<ILoginAttemptService, LoginAttemptService>();
         services.AddScoped<IDashboardService, DashboardService>();

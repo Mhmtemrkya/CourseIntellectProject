@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next";
 import { ContentProvider } from "@/context/content-context";
 import { LanguageProvider } from "@/context/language-context";
 import { PageTransitionProvider } from "@/components/layout/page-transition";
+import { SmoothScrollProvider } from "@/components/layout/smooth-scroll-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -56,7 +57,9 @@ export default function RootLayout({
         <LanguageProvider>
           <ContentProvider>
             <Suspense fallback={null}>
-              <PageTransitionProvider>{children}</PageTransitionProvider>
+              <SmoothScrollProvider>
+                <PageTransitionProvider>{children}</PageTransitionProvider>
+              </SmoothScrollProvider>
             </Suspense>
           </ContentProvider>
         </LanguageProvider>

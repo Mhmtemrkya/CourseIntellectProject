@@ -25,3 +25,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# Generated frame sequences (regenerated via 'npm run frames')
+public/frames/

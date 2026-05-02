@@ -47,8 +47,20 @@ export function AppProvider({ children }) {
     setIsAuthLoading(false);
   }, []);
 
+  const enforceActiveSubscription = (payload) => {
+    const apiUser = payload?.user;
+    if (apiUser && apiUser.subscriptionRequired === true && apiUser.isPlatformAdmin !== true) {
+      const err = new Error(
+        "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın."
+      );
+      err.code = "SUBSCRIPTION_REQUIRED";
+      throw err;
+    }
+  };
+
   const login = async ({ username, password }) => {
     const payload = await loginWithBackend(username, password);
+    enforceActiveSubscription(payload);
     const desktopUser = createDesktopUser(payload);
     const nextSession = {
       accessToken: payload.accessToken,
@@ -67,6 +79,7 @@ export function AppProvider({ children }) {
   const loginWithBrowser = async () => {
     const pkceResult = await startPkceLogin(desktopApiBaseUrl);
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
+    enforceActiveSubscription(payload);
     const desktopUser = createDesktopUser(payload);
     const nextSession = {
       accessToken: payload.accessToken,

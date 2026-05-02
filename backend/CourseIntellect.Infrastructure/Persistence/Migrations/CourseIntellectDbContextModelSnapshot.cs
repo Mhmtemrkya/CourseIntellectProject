@@ -465,30 +465,36 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("ClassName")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("class_name");
 
                     b.Property<string>("Lesson")
                         .IsRequired()
                         .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("lesson");
 
                     b.Property<DateTime>("LessonDate")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("lesson_date");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("status");
 
                     b.Property<string>("StudentName")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("student_name");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -785,27 +791,32 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("ClassName")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("class_name");
 
                     b.Property<string>("CreatedAtLabel")
                         .IsRequired()
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("created_at_label");
 
                     b.Property<string>("DeadlineLabel")
                         .IsRequired()
                         .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("deadline_label");
 
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("description");
 
                     b.Property<string>("MaterialsSerialized")
                         .IsRequired()
@@ -816,12 +827,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("subject");
 
                     b.Property<string>("Teacher")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("teacher");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -830,10 +843,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("Title")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("title");
 
                     b.Property<int>("TotalStudents")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("total_students");
 
                     b.HasKey("Id");
 
@@ -846,10 +861,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid>("AssignmentId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("assignment_id");
 
                     b.Property<string>("FilesSerialized")
                         .IsRequired()
@@ -860,17 +877,20 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("Note")
                         .IsRequired()
                         .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("note");
 
                     b.Property<string>("StudentName")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("student_name");
 
                     b.Property<string>("SubmittedAtLabel")
                         .IsRequired()
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("submitted_at_label");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -1138,35 +1158,39 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("ConfigurationType")
                         .IsRequired()
                         .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("configuration_type");
 
                     b.Property<string>("DisplayName")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("display_name");
 
                     b.Property<string>("PayloadJson")
                         .IsRequired()
-                        .HasMaxLength(12000)
-                        .HasColumnType("character varying(12000)")
+                        .HasColumnType("text")
                         .HasColumnName("payload_json");
 
                     b.Property<string>("ScopeKey")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("scope_key");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
                         .HasColumnName("tenant_id");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
 
                     b.HasKey("Id");
 
@@ -1176,6 +1200,106 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("platform_configurations", (string)null);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.PlatformSubscriptionInvoice", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<string>("BillingPeriod")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("billing_period");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(8)
+                        .HasColumnType("character varying(8)")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTime>("DueAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("due_at_utc");
+
+                    b.Property<string>("InvoiceNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("invoice_number");
+
+                    b.Property<DateTime>("IssuedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("issued_at_utc");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateTime?>("PaidAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_at_utc");
+
+                    b.Property<DateTime>("PeriodEndUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_end_utc");
+
+                    b.Property<DateTime>("PeriodStartUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("period_start_utc");
+
+                    b.Property<string>("PlanId")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("plan_id");
+
+                    b.Property<string>("PlanName")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("plan_name");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("TenantContactEmail")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("tenant_contact_email");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("TenantName")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("tenant_name");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InvoiceNumber")
+                        .IsUnique();
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("platform_subscription_invoices", (string)null);
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.QuestionBankItem", b =>
@@ -1276,31 +1400,38 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("AnswerText")
                         .IsRequired()
                         .HasMaxLength(4000)
-                        .HasColumnType("character varying(4000)");
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("answer_text");
 
                     b.Property<bool>("IsCorrect")
-                        .HasColumnType("boolean");
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_correct");
 
                     b.Property<Guid>("QuestionId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("question_id");
 
                     b.Property<string>("StudentName")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("student_name");
 
                     b.Property<string>("StudentUsername")
                         .IsRequired()
                         .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("student_username");
 
                     b.Property<DateTime>("SubmittedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at_utc");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -1760,66 +1891,80 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(80)
-                        .HasColumnType("character varying(80)");
+                        .HasColumnType("character varying(80)")
+                        .HasColumnName("category");
 
                     b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
 
                     b.Property<string>("LastMessage")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_message");
 
                     b.Property<int>("MessageCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("message_count");
 
                     b.Property<string>("Priority")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("priority");
 
                     b.Property<string>("RequestedBy")
                         .IsRequired()
                         .HasMaxLength(150)
-                        .HasColumnType("character varying(150)");
+                        .HasColumnType("character varying(150)")
+                        .HasColumnName("requested_by");
 
                     b.Property<string>("RequestedRole")
                         .IsRequired()
                         .HasMaxLength(60)
-                        .HasColumnType("character varying(60)");
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("requested_role");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
 
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("subject");
 
                     b.Property<string>("Summary")
                         .IsRequired()
                         .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("summary");
 
                     b.Property<string>("TenantName")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("tenant_name");
 
                     b.Property<string>("TicketNumber")
                         .IsRequired()
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("ticket_number");
 
                     b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at_utc");
 
                     b.HasKey("Id");
 
@@ -1833,27 +1978,32 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<Guid?>("AdminUserId")
                         .HasColumnType("uuid");
 
                     b.Property<int>("ApiUsage")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("api_usage");
 
                     b.Property<DateTime?>("ApprovedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<int>("BranchCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("branch_count");
 
                     b.Property<decimal>("CollectedAmount")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("collected_amount");
 
                     b.Property<string>("ContactEmail")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("contact_email");
 
                     b.Property<string>("ContactName")
                         .IsRequired()
@@ -1864,47 +2014,60 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
-                    b.Property<string>("PendingAdminPasswordHash")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
                     b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
 
                     b.Property<decimal>("MonthlyFee")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("monthly_fee");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("PendingAdminPasswordHash")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)");
 
                     b.Property<string>("Plan")
                         .IsRequired()
                         .HasMaxLength(60)
-                        .HasColumnType("character varying(60)");
+                        .HasColumnType("character varying(60)")
+                        .HasColumnName("plan");
+
+                    b.Property<DateTime?>("RejectedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Slug")
                         .IsRequired()
                         .HasMaxLength(180)
-                        .HasColumnType("character varying(180)");
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("slug");
 
                     b.Property<int>("StaffCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("staff_count");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("status");
 
                     b.Property<decimal>("StorageUsedGb")
-                        .HasColumnType("numeric(18,2)");
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("storage_used_gb");
 
                     b.Property<int>("StudentCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("student_count");
 
                     b.Property<int>("UserCount")
-                        .HasColumnType("integer");
+                        .HasColumnType("integer")
+                        .HasColumnName("user_count");
 
                     b.HasKey("Id");
 

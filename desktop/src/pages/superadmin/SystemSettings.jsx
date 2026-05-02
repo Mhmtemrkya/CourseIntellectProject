@@ -12,7 +12,13 @@ import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchPlatformConfigurations, fetchPlatformOverview, upsertPlatformConfiguration } from '../../lib/api/modules';
+import {
+  fetchPlatformConfigurations,
+  fetchPlatformOverview,
+  upsertPlatformConfiguration,
+  fetchSystemStatus,
+  setSystemMaintenance,
+} from '../../lib/api/modules';
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const SETTINGS_MARKER = 'SA_SYSTEM_SETTINGS';
@@ -30,9 +36,10 @@ export default function SystemSettings() {
     try {
       setLoading(true);
       setError('');
-      const [data, savedRecords] = await Promise.all([
+      const [data, savedRecords, systemStatus] = await Promise.all([
         fetchPlatformOverview(),
         fetchPlatformConfigurations('system-settings').catch(() => []),
+        fetchSystemStatus().catch(() => null),
       ]);
       const savedSettings = savedRecords
         .filter((item) => item.scopeKey === 'global')
@@ -54,9 +61,15 @@ export default function SystemSettings() {
         { id: 'ai-reports', name: 'AI Raporlama', description: `${data.stats.aiRequestCount || 0} AI isteğiyle izleniyor`, enabled: true },
         { id: 'kiosk-mode', name: 'Kiosk Modu', description: 'QR ve yoklama altyapısı bağlı', enabled: true },
       ];
-      if (parsedSettings) {
+      // Bakım modu artık /api/system/status'tan gelir (gerçek source of truth)
+      if (systemStatus) {
+        setMaintenanceMode(Boolean(systemStatus.maintenanceMode));
+        setMaintenanceMessage(systemStatus.maintenanceMessage || '');
+      } else if (parsedSettings) {
         setMaintenanceMode(Boolean(parsedSettings.maintenanceMode));
         setMaintenanceMessage(parsedSettings.maintenanceMessage || '');
+      }
+      if (parsedSettings) {
         setFeatures(baseFeatures.map((item) => {
           const savedFeature = parsedSettings.features?.find((feature) => feature.id === item.id);
           return savedFeature ? { ...item, enabled: savedFeature.enabled } : item;
@@ -97,6 +110,9 @@ export default function SystemSettings() {
 
   const handleSave = async () => {
     try {
+      // Bakım modunu gerçek system endpoint'ine yaz (login gate burayı dinler)
+      await setSystemMaintenance({ enabled: maintenanceMode, message: maintenanceMessage });
+      // Diğer toggle'ları (modüller) platform-configurations'a yaz
       await upsertPlatformConfiguration({
         configurationType: 'system-settings',
         scopeKey: 'global',
@@ -108,8 +124,10 @@ export default function SystemSettings() {
         }),
       });
       toast({
-        title: 'Ayarlar kaydedildi',
-        description: 'Sistem ayarları platform konfigürasyonuna yazıldı.',
+        title: maintenanceMode ? 'Bakım modu AKTİF' : 'Ayarlar kaydedildi',
+        description: maintenanceMode
+          ? 'Tüm istemcilerde (web, desktop, mobil) kullanıcı girişleri engellendi. Sadece platform admin giriş yapabilir.'
+          : 'Sistem ayarları kaydedildi.',
       });
     } catch (err) {
       toast({

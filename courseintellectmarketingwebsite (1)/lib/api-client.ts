@@ -27,7 +27,9 @@ export type ApiRequestOptions = {
   headers?: Record<string, string>
 }
 
-const AUTH_STORAGE_KEY = "courseintellect_auth"
+// İki ayrı auth context var: admin paneli ve kurum kullanıcı.
+// Token hangi context oturum açtıysa orada — sırayla bak.
+const AUTH_STORAGE_KEYS = ["courseintellect_user_auth", "courseintellect_auth"] as const
 
 const DEV_LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "10.0.2.2", "10.0.3.2"])
 
@@ -57,18 +59,20 @@ function readStoredAccessToken(): string | null {
     return null
   }
 
-  try {
-    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY)
-    if (!raw) {
-      return null
+  for (const key of AUTH_STORAGE_KEYS) {
+    try {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) continue
+      const parsed = JSON.parse(raw) as { accessToken?: string | null }
+      const storedToken = parsed?.accessToken
+      if (storedToken && storedToken !== "demo-token") {
+        return storedToken
+      }
+    } catch {
+      // try next key
     }
-
-    const parsed = JSON.parse(raw) as { accessToken?: string | null }
-    const storedToken = parsed?.accessToken
-    return storedToken && storedToken !== "demo-token" ? storedToken : null
-  } catch {
-    return null
   }
+  return null
 }
 
 export async function apiRequest<T>(path: string, options: ApiRequestOptions = {}): Promise<T> {

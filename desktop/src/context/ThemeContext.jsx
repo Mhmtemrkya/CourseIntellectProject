@@ -17,6 +17,7 @@ const ThemeContext = createContext({
   primaryColor: DEFAULT_PRIMARY,
   accentColor: DEFAULT_ACCENT,
   tenantLogo: null,
+  tenantFavicon: null,
   tenantName: '',
   isBrandingLoaded: false,
   refreshBranding: () => {},
@@ -67,6 +68,7 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
     primaryColor: DEFAULT_PRIMARY,
     accentColor: DEFAULT_ACCENT,
     tenantLogo: null,
+    tenantFavicon: null,
     tenantName: '',
   });
   const [isBrandingLoaded, setIsBrandingLoaded] = useState(false);
@@ -81,6 +83,7 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
           primaryColor: config.primaryColor || DEFAULT_PRIMARY,
           accentColor: config.accentColor || DEFAULT_ACCENT,
           tenantLogo: config.logoUrl || null,
+          tenantFavicon: config.faviconUrl || null,
           tenantName: config.appName || config.tenantName || '',
         });
       }
@@ -106,6 +109,28 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
     return () => removeBrandVariables(cssVars);
   }, [cssVars]);
 
+  // Dinamik favicon uygulaması — tenant favicon varsa <link rel="icon"> güncelle,
+  // yoksa orijinal favicon'a dön.
+  useEffect(() => {
+    const head = typeof document !== 'undefined' ? document.head : null;
+    if (!head) return;
+    const existing = head.querySelector("link[rel~='icon']");
+    const originalHref = existing?.dataset?.originalHref ?? existing?.getAttribute('href') ?? null;
+    if (existing && !existing.dataset.originalHref && originalHref) {
+      existing.dataset.originalHref = originalHref;
+    }
+
+    if (branding.tenantFavicon) {
+      const link = existing || document.createElement('link');
+      link.setAttribute('rel', 'icon');
+      link.setAttribute('type', 'image/x-icon');
+      link.setAttribute('href', branding.tenantFavicon);
+      if (!existing) head.appendChild(link);
+    } else if (existing && existing.dataset.originalHref) {
+      existing.setAttribute('href', existing.dataset.originalHref);
+    }
+  }, [branding.tenantFavicon]);
+
   // ─── Context Value ─────────────────────────────────────────────────
   const value = useMemo(
     () => ({
@@ -120,6 +145,7 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
       primaryColor: branding.primaryColor,
       accentColor: branding.accentColor,
       tenantLogo: branding.tenantLogo,
+      tenantFavicon: branding.tenantFavicon,
       tenantName: branding.tenantName,
       isBrandingLoaded,
       refreshBranding: fetchBranding,

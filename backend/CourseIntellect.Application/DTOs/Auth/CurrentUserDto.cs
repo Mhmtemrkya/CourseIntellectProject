@@ -12,5 +12,8 @@ public sealed record CurrentUserDto(
     Guid? TenantId,
     string? TenantName,
     string? TenantSlug,
-    bool IsPlatformAdmin
+    bool IsPlatformAdmin,
+    // Kurum aktif bir abonelik ödemesi yapmamışsa true.
+    // Desktop bu durumda girişi reddeder, marketing site checkout'a izin verir.
+    bool SubscriptionRequired
 );

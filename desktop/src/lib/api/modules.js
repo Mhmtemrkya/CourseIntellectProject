@@ -125,6 +125,70 @@ export async function upsertPlatformConfiguration(payload) {
   return response;
 }
 
+export async function fetchSystemStatus() {
+  // Public endpoint — token gönderme zorunlu değil
+  const response = await api.get('/api/system/status');
+  return response;
+}
+
+export async function setSystemMaintenance({ enabled, message }) {
+  const response = await api.put('/api/system/maintenance', {
+    enabled: Boolean(enabled),
+    message: message || null,
+  });
+  return response;
+}
+
+export async function fetchPlatformSubscriptionInvoices(params = {}) {
+  const response = await api.get('/api/platformsubscriptions', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  return response;
+}
+
+export async function fetchMyPlatformSubscriptionInvoices() {
+  const response = await api.get('/api/platformsubscriptions/mine');
+  return response;
+}
+
+export async function purchasePlatformSubscription(payload) {
+  const response = await api.post('/api/platformsubscriptions/purchase', payload);
+  return response;
+}
+
+export async function markPlatformInvoicePaid(invoiceId, payload = {}) {
+  const response = await api.put(`/api/platformsubscriptions/${invoiceId}/pay`, payload);
+  return response;
+}
+
+export async function cancelPlatformInvoice(invoiceId, payload = {}) {
+  const response = await api.put(`/api/platformsubscriptions/${invoiceId}/cancel`, payload);
+  return response;
+}
+
+export async function fetchSiteContentSection(sectionKey, language = 'tr') {
+  try {
+    const response = await api.get(`/api/sitecontents/${sectionKey}`, {
+      params: { language },
+    });
+    return response;
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function updateSiteContentSection(sectionKey, { language = 'tr', content, publish = true }) {
+  const response = await api.put(`/api/sitecontents/${sectionKey}`, {
+    language,
+    content,
+    publish,
+  });
+  return response;
+}
+
 export async function fetchPlatformTenants() {
   const response = await api.get('/api/platformops/tenants');
   return response;

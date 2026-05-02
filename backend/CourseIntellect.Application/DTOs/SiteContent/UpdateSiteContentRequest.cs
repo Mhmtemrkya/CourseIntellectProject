@@ -1,7 +1,9 @@
+using System.Text.Json;
+
 namespace CourseIntellect.Application.DTOs.SiteContent;
 
 public sealed record UpdateSiteContentRequest(
-    string ContentJson,
+    JsonElement Content,
     string Language,
     bool Publish
 );

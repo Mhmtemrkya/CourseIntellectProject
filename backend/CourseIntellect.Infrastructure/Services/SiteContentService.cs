@@ -1,3 +1,4 @@
+using System.Text.Json;
 using CourseIntellect.Application.DTOs.SiteContent;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -8,6 +9,12 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISiteContentService
 {
+    private static readonly JsonDocumentOptions DocumentOptions = new()
+    {
+        AllowTrailingCommas = true,
+        CommentHandling = JsonCommentHandling.Skip
+    };
+
     public async Task<SiteContentDto?> GetPublishedAsync(string sectionKey, string language, CancellationToken cancellationToken = default)
     {
         var entity = await dbContext.SiteContentItems
@@ -20,11 +27,12 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
 
     public async Task<IReadOnlyList<SiteContentDto>> GetHistoryAsync(string sectionKey, string language, CancellationToken cancellationToken = default)
     {
-        return await dbContext.SiteContentItems
+        var entities = await dbContext.SiteContentItems
             .Where(x => x.SectionKey == sectionKey.Trim() && x.Language == language.Trim())
             .OrderByDescending(x => x.Version)
-            .Select(x => ToDto(x))
             .ToListAsync(cancellationToken);
+
+        return entities.Select(ToDto).ToList();
     }
 
     public async Task<SiteContentDto> CreateOrUpdateAsync(string sectionKey, UpdateSiteContentRequest request, CancellationToken cancellationToken = default)
@@ -36,10 +44,21 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
             .Where(x => x.SectionKey == key && x.Language == lang)
             .MaxAsync(x => (int?)x.Version, cancellationToken) ?? 0;
 
+        if (request.Publish)
+        {
+            var previouslyPublished = await dbContext.SiteContentItems
+                .Where(x => x.SectionKey == key && x.Language == lang && x.IsPublished)
+                .ToListAsync(cancellationToken);
+            foreach (var item in previouslyPublished)
+            {
+                item.IsPublished = false;
+            }
+        }
+
         var entity = new SiteContentItem
         {
             SectionKey = key,
-            ContentJson = request.ContentJson,
+            ContentJson = request.Content.GetRawText(),
             Language = lang,
             Version = latestVersion + 1,
             IsPublished = request.Publish,
@@ -68,7 +87,6 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
             return null;
         }
 
-        // Unpublish all other versions for this section/language
         var allVersions = await dbContext.SiteContentItems
             .Where(x => x.SectionKey == key && x.Language == lang && x.IsPublished)
             .ToListAsync(cancellationToken);
@@ -85,15 +103,38 @@ public sealed class SiteContentService(CourseIntellectDbContext dbContext) : ISi
         return ToDto(latest);
     }
 
-    private static SiteContentDto ToDto(SiteContentItem x) => new(
-        x.Id,
-        x.SectionKey,
-        x.ContentJson,
-        x.Language,
-        x.Version,
-        x.IsPublished,
-        x.CreatedAtUtc,
-        x.UpdatedAtUtc,
-        x.UpdatedBy
-    );
+    private static SiteContentDto ToDto(SiteContentItem x)
+    {
+        JsonElement content;
+        if (string.IsNullOrWhiteSpace(x.ContentJson))
+        {
+            using var empty = JsonDocument.Parse("{}");
+            content = empty.RootElement.Clone();
+        }
+        else
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(x.ContentJson, DocumentOptions);
+                content = doc.RootElement.Clone();
+            }
+            catch (JsonException)
+            {
+                using var fallback = JsonDocument.Parse("{}");
+                content = fallback.RootElement.Clone();
+            }
+        }
+
+        return new SiteContentDto(
+            x.Id,
+            x.SectionKey,
+            content,
+            x.Language,
+            x.Version,
+            x.IsPublished,
+            x.CreatedAtUtc,
+            x.UpdatedAtUtc,
+            string.IsNullOrWhiteSpace(x.UpdatedBy) ? null : x.UpdatedBy
+        );
+    }
 }

@@ -1,5 +1,6 @@
 using CourseIntellect.Application.DTOs.Auth;
 using CourseIntellect.Application.DTOs.LoginAttempts;
+using CourseIntellect.Application.Exceptions;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
@@ -13,7 +14,8 @@ public sealed class AuthService(
     CourseIntellectDbContext dbContext,
     IJwtTokenService jwtTokenService,
     IPasswordHasher passwordHasher,
-    ILoginAttemptService loginAttemptService) : IAuthService
+    ILoginAttemptService loginAttemptService,
+    ISystemService systemService) : IAuthService
 {
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
@@ -32,6 +34,18 @@ public sealed class AuthService(
                 string.Empty), cancellationToken);
 
             return null;
+        }
+
+        // Bakım modu açıksa sadece platform admin (Developer + tenantId yok) login olabilir
+        var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
+        if (!isPlatformAdmin)
+        {
+            var maintenanceActive = await systemService.IsMaintenanceActiveAsync(cancellationToken);
+            if (maintenanceActive)
+            {
+                throw new MaintenanceModeException(
+                    "Sistem şu anda bakımda. Lütfen daha sonra tekrar deneyin.");
+            }
         }
 
         await loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
@@ -165,6 +179,17 @@ public sealed class AuthService(
 
         var isPlatformAdmin = user.PrimaryRole == UserRole.Developer && user.TenantId is null;
 
+        // Kurum üyesi mi? (platform admin değil ve tenant'a bağlı)
+        // En az bir "paid" abonelik faturası yoksa SubscriptionRequired = true.
+        var subscriptionRequired = false;
+        if (!isPlatformAdmin && tenant?.Id is Guid tenantId)
+        {
+            var hasPaid = await dbContext.PlatformSubscriptionInvoices
+                .AsNoTracking()
+                .AnyAsync(i => i.TenantId == tenantId && i.Status == "paid", cancellationToken);
+            subscriptionRequired = !hasPaid;
+        }
+
         return new CurrentUserDto(
             user.Id,
             user.FullName,
@@ -177,7 +202,8 @@ public sealed class AuthService(
             tenant?.Id,
             tenant?.Name,
             tenant?.Slug,
-            isPlatformAdmin);
+            isPlatformAdmin,
+            subscriptionRequired);
     }
 
     public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)

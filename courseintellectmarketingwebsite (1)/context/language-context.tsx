@@ -519,8 +519,8 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
   const loadCustomTranslations = useCallback(async () => {
     const basePath = "/api/translations"
     const [trItems, enItems] = await Promise.all([
-      apiRequest<TranslationItem[]>(`${basePath}/tr`),
-      apiRequest<TranslationItem[]>(`${basePath}/en`),
+      apiRequest<TranslationItem[]>(basePath, { query: { language: "tr" } }),
+      apiRequest<TranslationItem[]>(basePath, { query: { language: "en" } }),
     ])
 
     const nextCustom: Record<Language, Partial<Translations>> = { tr: {}, en: {} }

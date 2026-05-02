@@ -1,4 +1,5 @@
 using CourseIntellect.Application.DTOs.Auth;
+using CourseIntellect.Application.Exceptions;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -13,10 +14,22 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     [HttpPost("login")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
-        var result = await authService.LoginAsync(request, cancellationToken);
-        return result is null ? Unauthorized(new { message = "Kullanici adi veya sifre hatali." }) : Ok(result);
+        try
+        {
+            var result = await authService.LoginAsync(request, cancellationToken);
+            return result is null ? Unauthorized(new { message = "Kullanici adi veya sifre hatali." }) : Ok(result);
+        }
+        catch (MaintenanceModeException ex)
+        {
+            return StatusCode(StatusCodes.Status503ServiceUnavailable, new
+            {
+                code = "MAINTENANCE_MODE",
+                message = ex.Message,
+            });
+        }
     }
 
     [HttpPost("refresh")]

@@ -312,6 +312,7 @@ public sealed class PlatformOperationsService(
         }
 
         entity.Status = "rejected";
+        entity.RejectedAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToTenantDto(entity);
     }

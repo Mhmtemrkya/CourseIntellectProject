@@ -55,15 +55,19 @@ export default function Tenants() {
 
   const pendingTenants = useMemo(() => tenants.filter((t) => t.status === 'pending'), [tenants]);
 
+  // Ana liste sadece onaylanmış (ve onay bekleyen) kurumları gösterir.
+  // Reddedilen kurumlar kullanıcıya hiç görünmez; backend'de 30 gün sonra otomatik silinir.
+  const visibleTenants = useMemo(() => tenants.filter((t) => t.status !== 'rejected'), [tenants]);
+
   const filteredTenants = useMemo(() => {
-    return tenants.filter((tenant) => {
+    return visibleTenants.filter((tenant) => {
       const matchesSearch = tenant.name.toLowerCase().includes(search.toLowerCase())
         || tenant.email.toLowerCase().includes(search.toLowerCase());
       const matchesPlan = planFilter === 'all' || tenant.plan === planFilter;
       const matchesStatus = statusFilter === 'all' || tenant.status === statusFilter;
       return matchesSearch && matchesPlan && matchesStatus;
     });
-  }, [tenants, search, planFilter, statusFilter]);
+  }, [visibleTenants, search, planFilter, statusFilter]);
 
   const handleApprove = async (tenant) => {
     setActionLoading(tenant.id);
@@ -86,7 +90,7 @@ export default function Tenants() {
     try {
       await rejectTenant(tenant.id);
       setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, status: 'rejected' } : t)));
-      toast({ title: 'Kurum Reddedildi', description: `${tenant.name} reddedildi.` });
+      toast({ title: 'Kurum Reddedildi', description: `${tenant.name} reddedildi. 30 gün sonra otomatik olarak silinecek.` });
     } catch (err) {
       toast({ title: 'Red işlemi başarısız', description: err.message || 'Lütfen tekrar deneyin.', variant: 'destructive' });
     } finally {
@@ -168,7 +172,6 @@ export default function Tenants() {
                 <SelectItem value="all">Tüm Durumlar</SelectItem>
                 <SelectItem value="active">Aktif</SelectItem>
                 <SelectItem value="pending">Onay Bekliyor</SelectItem>
-                <SelectItem value="rejected">Reddedildi</SelectItem>
               </SelectContent>
             </Select>
             <Select value={planFilter} onValueChange={setPlanFilter}>

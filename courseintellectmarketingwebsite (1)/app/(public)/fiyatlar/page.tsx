@@ -123,7 +123,16 @@ export default function PricingPage() {
                     </ul>
 
                     {/* CTA */}
-                    <Link href={plan.name === "Kurumsal" ? "/iletisim" : "/kurum-kaydi"} className="block">
+                    <Link
+                      href={
+                        plan.name === "Kurumsal"
+                          ? "/iletisim"
+                          : plan.priceMonthly === 0
+                            ? "/kurum-kaydi"
+                            : `/satin-alma?plan=${encodeURIComponent(plan.id)}&period=${isYearly ? "yearly" : "monthly"}`
+                      }
+                      className="block"
+                    >
                       <Button
                         className={cn(
                           "w-full",
@@ -132,7 +141,7 @@ export default function PricingPage() {
                             : "bg-primary hover:bg-primary/90 text-primary-foreground",
                         )}
                       >
-                        {plan.ctaText}
+                        {plan.priceMonthly > 0 && plan.name !== "Kurumsal" ? "Satın Al" : plan.ctaText}
                       </Button>
                     </Link>
                   </CardContent>

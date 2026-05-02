@@ -250,6 +250,13 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
         return { success: true }
       } catch (error) {
         if (error instanceof ApiRequestError) {
+          if (error.code === "MAINTENANCE_MODE" || error.status === 503) {
+            return {
+              success: false,
+              errorCode: "MAINTENANCE_MODE",
+              error: error.message || "Sistem şu anda bakımda. Lütfen daha sonra tekrar deneyin.",
+            }
+          }
           if (error.code === "AUTH_APPROVAL_PENDING") {
             return {
               success: false,

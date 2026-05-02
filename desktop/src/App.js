@@ -137,6 +137,7 @@ import Ledger from "./pages/finance/Ledger";
 
 import { useApp } from "./context/AppContext";
 import { getUserHomePath } from "./lib/auth";
+import { MaintenanceGate } from "./components/system/MaintenanceGate";
 
 function RootRedirect() {
   const { isAuthenticated, isAuthLoading, user } = useApp();
@@ -161,6 +162,7 @@ function App() {
   return (
     <ThemeProvider defaultTheme="system" storageKey="courseintellect-theme">
       <AppProvider>
+        <MaintenanceGate>
         <RouterComponent>
           <Routes>
             {/* Auth */}
@@ -298,6 +300,7 @@ function App() {
           </Routes>
         </RouterComponent>
         <Toaster />
+        </MaintenanceGate>
       </AppProvider>
     </ThemeProvider>
   );

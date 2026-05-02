@@ -63,6 +63,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<CourseItem> CourseItems => Set<CourseItem>();
     public DbSet<LoginAttemptItem> LoginAttempts => Set<LoginAttemptItem>();
     public DbSet<AuthorizationCode> AuthorizationCodes => Set<AuthorizationCode>();
+    public DbSet<PlatformSubscriptionInvoice> PlatformSubscriptionInvoices => Set<PlatformSubscriptionInvoice>();
 
     public override int SaveChanges()
     {
@@ -367,7 +368,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ConfigurationType).HasColumnName("configuration_type").HasMaxLength(80).IsRequired();
             entity.Property(x => x.ScopeKey).HasColumnName("scope_key").HasMaxLength(180).IsRequired();
             entity.Property(x => x.DisplayName).HasColumnName("display_name").HasMaxLength(180).IsRequired();
-            entity.Property(x => x.PayloadJson).HasColumnName("payload_json").HasMaxLength(12000).IsRequired();
+            entity.Property(x => x.PayloadJson).HasColumnName("payload_json").HasColumnType("text").IsRequired();
             entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
             entity.HasIndex(x => new { x.TenantId, x.ConfigurationType, x.ScopeKey }).IsUnique();
         });
@@ -400,6 +401,32 @@ public sealed class CourseIntellectDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(x => x.AdminUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<PlatformSubscriptionInvoice>(entity =>
+        {
+            entity.ToTable("platform_subscription_invoices");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.TenantId).HasColumnName("tenant_id").IsRequired();
+            entity.Property(x => x.TenantName).HasColumnName("tenant_name").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.TenantContactEmail).HasColumnName("tenant_contact_email").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.InvoiceNumber).HasColumnName("invoice_number").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.PlanId).HasColumnName("plan_id").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.PlanName).HasColumnName("plan_name").HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Amount).HasColumnName("amount").HasColumnType("numeric(18,2)");
+            entity.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(8).IsRequired();
+            entity.Property(x => x.BillingPeriod).HasColumnName("billing_period").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.PeriodStartUtc).HasColumnName("period_start_utc");
+            entity.Property(x => x.PeriodEndUtc).HasColumnName("period_end_utc");
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.IssuedAtUtc).HasColumnName("issued_at_utc");
+            entity.Property(x => x.DueAtUtc).HasColumnName("due_at_utc");
+            entity.Property(x => x.PaidAtUtc).HasColumnName("paid_at_utc");
+            entity.Property(x => x.Notes).HasColumnName("notes").HasMaxLength(1000);
+            entity.HasIndex(x => x.InvoiceNumber).IsUnique();
+            entity.HasIndex(x => x.TenantId);
+            entity.HasIndex(x => x.Status);
         });
 
         modelBuilder.Entity<SupportTicket>(entity =>

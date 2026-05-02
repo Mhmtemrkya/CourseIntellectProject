@@ -172,10 +172,37 @@ export async function loginWithBackend(username, password) {
     throw new Error("Kullanıcı adı veya şifre yanlış.");
   }
 
+  // Bakım modu — 503 + code MAINTENANCE_MODE
+  if (response.status === 503) {
+    let body = null;
+    try { body = await response.json(); } catch {}
+    if (body?.code === "MAINTENANCE_MODE") {
+      const err = new Error(
+        body.message || "Sistem şu anda bakımda. Lütfen daha sonra tekrar deneyin."
+      );
+      err.code = "MAINTENANCE_MODE";
+      throw err;
+    }
+    throw new Error(body?.message || "Servis geçici olarak ulaşılamıyor.");
+  }
+
   if (!response.ok) {
     throw new Error(`Giriş sırasında sunucu hatası oluştu (${response.status}).`);
   }
 
   const payload = await response.json();
-  return unwrapBackendPayload(payload);
+  const data = unwrapBackendPayload(payload);
+
+  // Kurum üyesi ama abonelik ödemesi yapılmamış → desktop'a giriş reddedilir.
+  // Platform admin (kendi platformumuzun yöneticisi) bu kontrolden muaftır.
+  const user = data?.user;
+  if (user && user.subscriptionRequired === true && user.isPlatformAdmin !== true) {
+    const err = new Error(
+      "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın."
+    );
+    err.code = "SUBSCRIPTION_REQUIRED";
+    throw err;
+  }
+
+  return data;
 }

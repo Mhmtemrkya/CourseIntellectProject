@@ -117,7 +117,10 @@ export default function Limits() {
 
       {error ? <ErrorBanner title="Limitler alınamadı" message={error} onRetry={loadLimits} /> : null}
 
-      {tenantUsage.some((tenant) => tenant.users > planLimits[tenant.plan.toLowerCase()]?.users) ? (
+      {tenantUsage.some((tenant) => {
+        const lim = planLimits[(tenant.plan || '').toLowerCase()];
+        return lim?.users != null && tenant.users > lim.users;
+      }) ? (
         <Card className="border-yellow-200 bg-yellow-50/50 dark:bg-yellow-900/10">
           <CardContent className="p-4 flex items-center gap-4">
             <AlertTriangle className="h-6 w-6 text-yellow-600" />
@@ -188,15 +191,36 @@ export default function Limits() {
             </TableHeader>
             <TableBody>
               {tenantUsage.map((tenant) => {
-                const limits = planLimits[tenant.plan.toLowerCase()];
+                const limits = planLimits[(tenant.plan || '').toLowerCase()] || {};
+                const userLimit = Number(limits.users) || 0;
+                const storageLimit = Number(limits.storage) || 0;
+                const apiLimit = Number(limits.api) || 0;
+                const userPct = userLimit > 0 ? Math.min(100, (tenant.users / userLimit) * 100) : 0;
+                const storagePct = storageLimit > 0 ? Math.min(100, (tenant.storage / storageLimit) * 100) : 0;
+                const apiPct = apiLimit > 0 ? Math.min(100, (tenant.api / apiLimit) * 100) : 0;
                 return (
                   <TableRow key={tenant.id}>
                     <TableCell className="font-medium">{tenant.name}</TableCell>
-                    <TableCell><Badge variant="outline">{tenant.plan}</Badge></TableCell>
-                    <TableCell><div className="space-y-1"><p>{tenant.users} / {limits?.users}</p><Progress value={Math.min(100, (tenant.users / limits.users) * 100)} className="h-2" /></div></TableCell>
-                    <TableCell><div className="space-y-1"><p>{tenant.storage} GB / {limits?.storage} GB</p><Progress value={Math.min(100, (tenant.storage / limits.storage) * 100)} className="h-2" /></div></TableCell>
-                    <TableCell><div className="space-y-1"><p>{tenant.api} / {limits?.api}</p><Progress value={Math.min(100, (tenant.api / limits.api) * 100)} className="h-2" /></div></TableCell>
-                    <TableCell>{getUsageStatus(tenant.users, limits?.users || 1)}</TableCell>
+                    <TableCell><Badge variant="outline">{tenant.plan || '—'}</Badge></TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p>{tenant.users ?? 0} / {userLimit || '—'}</p>
+                        <Progress value={userPct} className="h-2" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p>{tenant.storage ?? 0} GB / {storageLimit ? `${storageLimit} GB` : '—'}</p>
+                        <Progress value={storagePct} className="h-2" />
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p>{tenant.api ?? 0} / {apiLimit || '—'}</p>
+                        <Progress value={apiPct} className="h-2" />
+                      </div>
+                    </TableCell>
+                    <TableCell>{getUsageStatus(tenant.users, userLimit || 1)}</TableCell>
                   </TableRow>
                 );
               })}

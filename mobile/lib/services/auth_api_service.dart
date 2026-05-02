@@ -9,8 +9,9 @@ import 'auth_session_store.dart';
 
 class AuthApiException implements Exception {
   final String message;
+  final String? code;
 
-  const AuthApiException(this.message);
+  const AuthApiException(this.message, {this.code});
 
   @override
   String toString() => message;
@@ -65,6 +66,21 @@ class AuthApiService {
 
     if (response.statusCode == 401) {
       throw const AuthApiException('Kullanıcı adı veya şifre yanlış.');
+    }
+
+    // Bakım modu — backend 503 + code MAINTENANCE_MODE döndürür
+    if (response.statusCode == 503) {
+      String message = 'Sistem şu anda bakımda. Lütfen daha sonra tekrar deneyin.';
+      String? code;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          code = decoded['code']?.toString();
+          final m = decoded['message']?.toString();
+          if (m != null && m.isNotEmpty) message = m;
+        }
+      } catch (_) {}
+      throw AuthApiException(message, code: code ?? 'MAINTENANCE_MODE');
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
