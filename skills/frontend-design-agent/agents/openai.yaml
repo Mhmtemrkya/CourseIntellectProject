@@ -1,0 +1,3 @@
+interface:
+  display_name: "Frontend Design Agent"
+  short_description: "Design and audit product UI for accessibility, responsiveness, workflow quality, and visual polish."

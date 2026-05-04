@@ -1,0 +1,3 @@
+interface:
+  display_name: "DevOps SRE Release Agent"
+  short_description: "Improve CI/CD, release readiness, deployment safety, observability, health checks, and rollback."

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Client Platform Agent"
+  short_description: "Coordinate React/Tauri, Flutter, Next.js, API clients, auth state, route guards, and platform config."

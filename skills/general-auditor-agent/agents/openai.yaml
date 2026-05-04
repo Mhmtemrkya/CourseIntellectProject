@@ -1,0 +1,3 @@
+interface:
+  display_name: "General Auditor Agent"
+  short_description: "Run evidence-based audits across code, architecture, security, tests, product, and delivery."

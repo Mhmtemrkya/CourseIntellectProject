@@ -185,6 +185,17 @@ public sealed class PlatformOperationsService(
         )).ToList();
     }
 
+    public async Task<IReadOnlyList<SupportTicketDto>> GetSupportTicketsByTenantAsync(string tenantName, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(tenantName)) return Array.Empty<SupportTicketDto>();
+        var trimmed = tenantName.Trim();
+        var rows = await dbContext.Set<SupportTicket>()
+            .Where(x => x.TenantName == trimmed)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .ToListAsync(cancellationToken);
+        return rows.Select(ToTicketDto).ToList();
+    }
+
     public async Task<SupportTicketDto> CreateSupportTicketAsync(CreateSupportTicketRequest request, CancellationToken cancellationToken = default)
     {
         var sequence = await dbContext.Set<SupportTicket>().CountAsync(cancellationToken) + 1;

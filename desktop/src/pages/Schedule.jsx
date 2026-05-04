@@ -69,6 +69,62 @@ const emptyForm = {
   room: 'Derslik 1',
 };
 
+const classCollator = new Intl.Collator('tr-TR', { sensitivity: 'base', numeric: true });
+
+function normalizeClassName(value) {
+  const raw = typeof value === 'string'
+    ? value
+    : value?.name || value?.className || value?.displayName || '';
+
+  return String(raw).trim();
+}
+
+function mergeClassNames(...groups) {
+  const classMap = new Map();
+
+  groups.flat().forEach((value) => {
+    const normalized = normalizeClassName(value);
+    if (!normalized) return;
+    classMap.set(normalized.toLocaleLowerCase('tr-TR'), normalized);
+  });
+
+  return Array.from(classMap.values()).sort(classCollator.compare);
+}
+
+const subjectBranchAliases = {
+  matematik: ['matematik'],
+  fizik: ['fizik'],
+  kimya: ['kimya'],
+  biyoloji: ['biyoloji'],
+  turkce: ['turkce', 'edebiyat'],
+  ingilizce: ['ingilizce'],
+  tarih: ['tarih'],
+  cografya: ['cografya'],
+};
+
+function normalizeBranchText(value) {
+  return String(value || '')
+    .replace(/\u0130/g, 'I')
+    .replace(/\u0131/g, 'i')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function teacherMatchesSubject(teacher, subject) {
+  const branch = normalizeBranchText(teacher?.departmentOrBranch);
+  const subjectKey = normalizeBranchText(subject);
+  if (!branch || !subjectKey) return false;
+
+  const aliases = subjectBranchAliases[subjectKey] || [subjectKey];
+  return aliases.some((alias) => branch.includes(alias));
+}
+
+function firstEligibleTeacher(teacherItems, subject) {
+  return teacherItems.find((item) => teacherMatchesSubject(item, subject))?.fullName || '';
+}
+
 function roleTitle(pathname = '') {
   return pathname.startsWith('/admin/') ? 'İdari Program Merkezi' : 'Yönetim Program Merkezi';
 }
@@ -119,23 +175,43 @@ export default function Schedule() {
     try {
       setLoading(true);
       setError('');
-      const [classItems, teacherItems, scheduleItems] = await Promise.all([
-        fetchClasses().catch(() => []),
-        fetchStaff('Teacher').catch(() => []),
-        fetchScheduleEntries().catch(() => []),
+      // Tek tek try/catch yerine settled — hangi kaynak başarısız olursa onun hatasını biliyoruz
+      const [classesResult, teachersResult, scheduleResult] = await Promise.allSettled([
+        fetchClasses(),
+        fetchStaff('Teacher'),
+        fetchScheduleEntries(),
       ]);
 
-      const scheduleClassNames = (scheduleItems || []).map((item) => item.className).filter(Boolean);
-      const teacherClasses = (teacherItems || []).flatMap((t) => t.assignedClasses || []).filter(Boolean);
-      const nextClasses = [...new Set([...(classItems || []).filter(Boolean), ...scheduleClassNames, ...teacherClasses])];
+      const classItems = classesResult.status === 'fulfilled' ? (classesResult.value || []) : [];
+      const teacherItems = teachersResult.status === 'fulfilled' ? (teachersResult.value || []) : [];
+      const scheduleItems = scheduleResult.status === 'fulfilled' ? (scheduleResult.value || []) : [];
+
+      if (teachersResult.status === 'rejected') {
+        console.warn('Öğretmen listesi alınamadı:', teachersResult.reason);
+      }
+
+      if (scheduleResult.status === 'rejected') {
+        console.warn('Ders programı alınamadı:', scheduleResult.reason);
+        setError(scheduleResult.reason?.message || 'Ders programı kayıtları yüklenemedi.');
+      }
+
+      const nextClasses = mergeClassNames(classItems);
+
+      if (classesResult.status === 'rejected') {
+        console.warn('Sınıf listesi alınamadı:', classesResult.reason);
+        setError(classesResult.reason?.message || 'Sınıf listesi yüklenemedi.');
+      }
+
       setClasses(nextClasses);
-      setTeachers(teacherItems || []);
-      setEntries(scheduleItems || []);
-      setSelectedClass((prev) => prev || nextClasses[0] || '');
+      setTeachers(teacherItems);
+      setEntries(scheduleItems);
+      setSelectedClass((prev) => (nextClasses.includes(prev) ? prev : nextClasses[0] || ''));
       setForm((prev) => ({
         ...prev,
-        className: prev.className || nextClasses[0] || '',
-        teacher: prev.teacher || teacherItems?.[0]?.fullName || '',
+        className: nextClasses.includes(prev.className) ? prev.className : nextClasses[0] || '',
+        teacher: prev.teacher && teacherItems.some((item) => item.fullName === prev.teacher && teacherMatchesSubject(item, prev.subject))
+          ? prev.teacher
+          : firstEligibleTeacher(teacherItems, prev.subject || emptyForm.subject),
       }));
     } catch (err) {
       setError(err.message || 'Ders programı alınamadı.');
@@ -147,6 +223,27 @@ export default function Schedule() {
   useEffect(() => {
     loadSchedule();
   }, [loadSchedule]);
+
+  const eligibleTeachers = useMemo(
+    () => teachers.filter((item) => teacherMatchesSubject(item, form.subject)),
+    [teachers, form.subject],
+  );
+
+  const subjectTeacherMismatch = useMemo(() => (
+    Boolean(form.teacher?.trim()) &&
+    !eligibleTeachers.some((item) => item.fullName === form.teacher)
+  ), [eligibleTeachers, form.teacher]);
+
+  useEffect(() => {
+    setForm((prev) => {
+      if (prev.teacher && teachers.some((item) => item.fullName === prev.teacher && teacherMatchesSubject(item, prev.subject))) {
+        return prev;
+      }
+
+      const nextTeacher = firstEligibleTeacher(teachers, prev.subject);
+      return prev.teacher === nextTeacher ? prev : { ...prev, teacher: nextTeacher };
+    });
+  }, [teachers, form.subject]);
 
   const currentLessons = useMemo(
     () => entries.filter((item) => item.className === selectedClass),
@@ -380,7 +477,16 @@ export default function Schedule() {
               </div>
               <div className="space-y-2">
                 <Label>Ders</Label>
-                <Select value={form.subject} onValueChange={(value) => setForm((prev) => ({ ...prev, subject: value }))}>
+                <Select
+                  value={form.subject}
+                  onValueChange={(value) => setForm((prev) => ({
+                    ...prev,
+                    subject: value,
+                    teacher: prev.teacher && teachers.some((item) => item.fullName === prev.teacher && teacherMatchesSubject(item, value))
+                      ? prev.teacher
+                      : firstEligibleTeacher(teachers, value),
+                  }))}
+                >
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>{subjects.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                 </Select>
@@ -410,11 +516,37 @@ export default function Schedule() {
 
             <div className="space-y-2">
               <Label>Öğretmen</Label>
-              <Select value={form.teacher} onValueChange={(value) => setForm((prev) => ({ ...prev, teacher: value }))}>
+              <Select
+                value={form.teacher}
+                onValueChange={(value) => setForm((prev) => ({ ...prev, teacher: value }))}
+                disabled={eligibleTeachers.length === 0}
+              >
                 <SelectTrigger><SelectValue placeholder="Öğretmen seçin" /></SelectTrigger>
-                <SelectContent>{teachers.map((item) => <SelectItem key={item.id} value={item.fullName}>{item.fullName}</SelectItem>)}</SelectContent>
+                <SelectContent>
+                  {eligibleTeachers.map((item) => (
+                    <SelectItem key={item.id} value={item.fullName}>
+                      <div className="flex min-w-0 flex-col">
+                        <span className="truncate">{item.fullName}</span>
+                        {item.departmentOrBranch ? <span className="truncate text-xs text-muted-foreground">{item.departmentOrBranch}</span> : null}
+                      </div>
+                    </SelectItem>
+                  ))}
+                  {eligibleTeachers.length === 0 ? <SelectItem value="__no_teacher" disabled>Uygun branşta öğretmen yok</SelectItem> : null}
+                </SelectContent>
               </Select>
             </div>
+
+            {eligibleTeachers.length === 0 ? (
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-800/50 dark:bg-amber-900/20 dark:text-amber-300">
+                {form.subject} dersi için branşı uygun öğretmen bulunamadı. Bu ders seçiliyken sadece aynı branştaki öğretmenler atanabilir.
+              </div>
+            ) : null}
+
+            {subjectTeacherMismatch ? (
+              <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700 dark:border-rose-800/50 dark:bg-rose-900/20 dark:text-rose-300">
+                Seçili öğretmenin branşı {form.subject} dersiyle uyumlu değil.
+              </div>
+            ) : null}
 
             {teacherConflict ? (
               <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800">
@@ -440,9 +572,26 @@ export default function Schedule() {
               </div>
             ) : null}
           </div>
+          {(!form.className?.trim() || !form.teacher?.trim()) ? (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:bg-amber-900/20 dark:border-amber-800/50 dark:text-amber-300">
+              Sınıf ve öğretmen seçimi zorunludur.
+            </div>
+          ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleCreate} disabled={saving}>
+            <Button
+              className="bg-brand-primary hover:bg-brand-primary/90"
+              onClick={handleCreate}
+              disabled={
+                saving ||
+                !form.className?.trim() ||
+                !form.teacher?.trim() ||
+                eligibleTeachers.length === 0 ||
+                subjectTeacherMismatch ||
+                Boolean(teacherConflict) ||
+                Boolean(classConflict)
+              }
+            >
               {saving ? 'Kaydediliyor...' : 'Programı Kaydet'}
             </Button>
           </DialogFooter>

@@ -2,19 +2,35 @@ using CourseIntellect.Application.DTOs.PlatformConfigurations;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class PlatformConfigurationService(CourseIntellectDbContext dbContext) : IPlatformConfigurationService
+public sealed class PlatformConfigurationService(
+    CourseIntellectDbContext dbContext,
+    IHttpContextAccessor httpContextAccessor) : IPlatformConfigurationService
 {
+    private const string ClassManagementConfigurationType = "class-management";
+    private const string ClassRegistryConfigurationType = "class-registry";
+
     public async Task<IReadOnlyList<PlatformConfigurationDto>> GetAsync(string? configurationType, CancellationToken cancellationToken = default)
     {
         var query = dbContext.Set<PlatformConfiguration>().AsQueryable();
+        var type = configurationType?.Trim();
 
-        if (!string.IsNullOrWhiteSpace(configurationType))
+        if (!string.IsNullOrWhiteSpace(type))
         {
-            query = query.Where(x => x.ConfigurationType == configurationType.Trim());
+            query = query.Where(x => x.ConfigurationType == type);
+        }
+
+        if (IsTenantBoundConfiguration(type))
+        {
+            var tenantId = await ResolveTenantIdAsync(cancellationToken);
+            query = tenantId.HasValue
+                ? query.IgnoreQueryFilters().Where(x => x.TenantId == tenantId.Value)
+                : query.Where(_ => false);
         }
 
         return await query
@@ -28,7 +44,7 @@ public sealed class PlatformConfigurationService(CourseIntellectDbContext dbCont
     {
         var type = request.ConfigurationType.Trim();
         var scopeKey = request.ScopeKey.Trim();
-        var explicitTenantId = ResolveExplicitTenantId(type, scopeKey);
+        var explicitTenantId = await ResolveExplicitTenantIdAsync(type, scopeKey, cancellationToken);
 
         if (string.IsNullOrWhiteSpace(type))
         {
@@ -66,12 +82,46 @@ public sealed class PlatformConfigurationService(CourseIntellectDbContext dbCont
         return ToDto(entity);
     }
 
-    private static Guid? ResolveExplicitTenantId(string configurationType, string scopeKey)
+    private async Task<Guid?> ResolveExplicitTenantIdAsync(string configurationType, string scopeKey, CancellationToken cancellationToken)
     {
-        return string.Equals(configurationType, "tenant-customization", StringComparison.OrdinalIgnoreCase)
-               && Guid.TryParse(scopeKey, out var tenantId)
-            ? tenantId
+        if (string.Equals(configurationType, "tenant-customization", StringComparison.OrdinalIgnoreCase)
+            && Guid.TryParse(scopeKey, out var explicitTenantId))
+        {
+            return explicitTenantId;
+        }
+
+        return IsTenantBoundConfiguration(configurationType)
+            ? await ResolveTenantIdAsync(cancellationToken)
             : null;
+    }
+
+    private async Task<Guid?> ResolveTenantIdAsync(CancellationToken cancellationToken)
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        var tenantRaw = user?.FindFirstValue("tenant_id");
+        if (Guid.TryParse(tenantRaw, out var tenantId))
+        {
+            return tenantId;
+        }
+
+        var userRaw = user?.FindFirstValue("user_id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userRaw, out var userId))
+        {
+            return null;
+        }
+
+        return await dbContext.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(item => item.Id == userId)
+            .Select(item => item.TenantId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static bool IsTenantBoundConfiguration(string? configurationType)
+    {
+        return string.Equals(configurationType, ClassManagementConfigurationType, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(configurationType, ClassRegistryConfigurationType, StringComparison.OrdinalIgnoreCase);
     }
 
     private static PlatformConfigurationDto ToDto(PlatformConfiguration entity) => new(

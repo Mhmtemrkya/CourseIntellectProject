@@ -27,7 +27,7 @@ import {
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { fetchAttendance, fetchContents, fetchPlatformConfigurations, fetchStaff, fetchStudents, upsertPlatformConfiguration } from '../lib/api/modules';
+import { createClass, fetchAttendance, fetchContents, fetchPlatformConfigurations, fetchStaff, fetchStudents, upsertPlatformConfiguration } from '../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -395,6 +395,11 @@ export default function Classes() {
             <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
             <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={async () => {
               try {
+                await createClass({ name: form.name }).catch((err) => {
+                  if (!String(err?.message || '').toLocaleLowerCase('tr-TR').includes('zaten')) {
+                    throw err;
+                  }
+                });
                 await upsertPlatformConfiguration({
                   configurationType: 'class-management',
                   scopeKey: form.name,

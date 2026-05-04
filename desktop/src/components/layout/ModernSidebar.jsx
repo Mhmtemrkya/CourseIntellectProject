@@ -39,6 +39,7 @@ import {
   X,
   Palette,
   Bot,
+  LifeBuoy,
 } from "lucide-react";
 import { Activity, Layers, Shield } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -185,6 +186,7 @@ const menuConfigs = {
     { path: "/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
     { path: "/reports", icon: BarChart3, label: "Raporlar", color: "#22c55e" },
     { path: "/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
+    { path: "/admin/destek", icon: LifeBuoy, label: "Destek", color: "#a855f7" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
   administrative: [
@@ -756,42 +758,65 @@ function StudentStats({ collapsed }) {
 export function ModernSidebar() {
   const { sidebarCollapsed, setSidebarCollapsed, user } = useApp();
   const location = useLocation();
-  const { tenantLogo, tenantName: rawTenantName, primaryColor, accentColor } = useTheme();
+  const {
+    tenantLogo,
+    tenantName: rawTenantName,
+    primaryColor,
+    accentColor,
+  } = useTheme();
 
   const userRole = user?.role || "student";
   const menuItems = menuConfigs[userRole] || menuConfigs.student;
   const isStudent = userRole === "student";
 
   const ROLE_TITLES = {
-    admin: 'Yönetim Paneli',
-    administrative: 'İdari Panel',
-    finance: 'Muhasebe Paneli',
-    superadmin: 'Platform Yönetimi',
-    teacher: 'Öğretmen Paneli',
-    student: 'Öğrenci Paneli',
-    parent: 'Veli Paneli',
+    admin: "Yönetim Paneli",
+    administrative: "İdari Panel",
+    finance: "Muhasebe Paneli",
+    superadmin: "Platform Yönetimi",
+    teacher: "Öğretmen Paneli",
+    student: "Öğrenci Paneli",
+    parent: "Veli Paneli",
   };
 
   // Normalize string for comparison (lowercase, remove Turkish chars)
   const normalizeStr = (s) =>
-    (s || '').toLowerCase()
-      .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's')
-      .replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c');
+    (s || "")
+      .toLowerCase()
+      .replace(/ğ/g, "g")
+      .replace(/ü/g, "u")
+      .replace(/ş/g, "s")
+      .replace(/ı/g, "i")
+      .replace(/ö/g, "o")
+      .replace(/ç/g, "c");
 
   const BLOCKED_KEYWORDS = [
-    'ogrenci isleri', 'idari isler', 'muhasebe', 'rehberlik', 'yonetim',
-    'kurum yoneticisi', 'idari personel', 'ogretmen', 'ogrenci', 'veli',
-    'platform admin', 'courseintellect', 'courseintellect desktop',
+    "ogrenci isleri",
+    "idari isler",
+    "muhasebe",
+    "rehberlik",
+    "yonetim",
+    "kurum yoneticisi",
+    "idari personel",
+    "ogretmen",
+    "ogrenci",
+    "veli",
+    "platform admin",
+    "courseintellect",
+    "courseintellect desktop",
   ];
   const normalizedRaw = normalizeStr(rawTenantName);
   const isBadName = BLOCKED_KEYWORDS.some((kw) => normalizedRaw === kw);
   const normalizedUserTenant = normalizeStr(user?.tenant);
-  const isUserTenantBad = BLOCKED_KEYWORDS.some((kw) => normalizedUserTenant === kw);
-  const tenantName = (rawTenantName && !isBadName)
-    ? rawTenantName
-    : (user?.tenant && !isUserTenantBad)
-      ? user.tenant
-      : (ROLE_TITLES[userRole] || 'CourseIntellect');
+  const isUserTenantBad = BLOCKED_KEYWORDS.some(
+    (kw) => normalizedUserTenant === kw,
+  );
+  const tenantName =
+    rawTenantName && !isBadName
+      ? rawTenantName
+      : user?.tenant && !isUserTenantBad
+        ? user.tenant
+        : ROLE_TITLES[userRole] || "CourseIntellect";
 
   // Sidebar variants for animation
   const sidebarVariants = {
@@ -1119,7 +1144,7 @@ export function ModernSidebar() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            © 2025 CourseIntellect
+            © 2026 CourseIntellect
           </motion.p>
         </div>
       </motion.aside>

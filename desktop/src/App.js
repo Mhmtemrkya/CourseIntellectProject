@@ -105,6 +105,7 @@ import AdminOperations from "./pages/admin/AdminOperations";
 import AdminTaskCenter from "./pages/admin/AdminTaskCenter";
 import AdminKpiDashboard from "./pages/admin/AdminKpiDashboard";
 import AdminGlobalSearch from "./pages/admin/AdminGlobalSearch";
+import Destek from "./pages/admin/Destek";
 import AdminPersonnelApprovals from "./pages/admin/AdminPersonnelApprovals";
 import AdminRoleManagement from "./pages/admin/AdminRoleManagement";
 import AdministrativeRecords from "./pages/admin/AdministrativeRecords";
@@ -202,6 +203,7 @@ function App() {
               <Route path="/admin/staff-registration" element={<AdminStaffRegistration />} />
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
+              <Route path="/admin/destek" element={<Destek />} />
 
               {/* Finance Routes */}
               <Route path="/finance" element={<FinanceDashboard />} />

@@ -1,0 +1,3 @@
+interface:
+  display_name: "QA Test Automation Agent"
+  short_description: "Design, add, and audit automated tests across backend, web, desktop, mobile, and API contracts."

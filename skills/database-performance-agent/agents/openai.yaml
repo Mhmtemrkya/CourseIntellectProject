@@ -1,0 +1,3 @@
+interface:
+  display_name: "Database Performance Agent"
+  short_description: "Review EF Core and PostgreSQL schema, queries, indexes, migrations, and data integrity."

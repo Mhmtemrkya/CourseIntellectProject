@@ -1,0 +1,3 @@
+interface:
+  display_name: "Cybersecurity Specialist Agent"
+  short_description: "Assess defensive security posture, hardening, risk, controls, and incident readiness."

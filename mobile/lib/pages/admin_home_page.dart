@@ -9,6 +9,7 @@ import 'admin_meeting_overview_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_students_page.dart';
 import 'admin_task_center_page.dart';
+import 'support_page.dart';
 import 'attendance_overview_page.dart';
 import 'teacher_exam_results_page.dart';
 import 'teacher_reports_page.dart';
@@ -458,6 +459,20 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const AdminKpiDashboardPage(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              _quickCard(
+                context,
+                title: 'Destek',
+                subtitle: 'CourseIntellect ekibine talep aç',
+                color: const Color(0xFFD9790B),
+                icon: Icons.support_agent_outlined,
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const SupportPage(),
                   ),
                 ),
               ),

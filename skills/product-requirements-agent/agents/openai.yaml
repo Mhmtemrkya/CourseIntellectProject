@@ -1,0 +1,3 @@
+interface:
+  display_name: "Product Requirements Agent"
+  short_description: "Clarify roles, workflows, acceptance criteria, edge cases, and release scope before implementation."

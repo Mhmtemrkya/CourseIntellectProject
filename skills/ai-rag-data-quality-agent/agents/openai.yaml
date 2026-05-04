@@ -1,0 +1,3 @@
+interface:
+  display_name: "AI RAG Data Quality Agent"
+  short_description: "Design and audit RAG quality, AI evals, source grounding, prompt safety, and data permissions."

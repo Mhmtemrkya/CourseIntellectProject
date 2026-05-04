@@ -38,6 +38,21 @@ export async function fetchReportStudents(params) {
 
 export async function fetchClasses() {
   const response = await api.get('/api/classes');
+  if (Array.isArray(response)) {
+    return response;
+  }
+  if (Array.isArray(response?.items)) {
+    return response.items;
+  }
+  if (Array.isArray(response?.classes)) {
+    return response.classes;
+  }
+  return [];
+}
+
+export async function createClass(payload) {
+  const name = typeof payload === 'string' ? payload : payload?.name;
+  const response = await api.post('/api/classes', { name });
   return response;
 }
 
@@ -122,6 +137,17 @@ export async function fetchPlatformConfigurations(configurationType) {
 
 export async function upsertPlatformConfiguration(payload) {
   const response = await api.put('/api/platformconfigurations', payload);
+  return response;
+}
+
+export async function fetchMySupportTickets() {
+  const response = await api.get('/api/support-tickets/mine');
+  return response;
+}
+
+// Kurum sahibi tarafı (tenant-side) — admin tarafı için createSupportTicket var
+export async function createMySupportTicket(payload) {
+  const response = await api.post('/api/support-tickets', payload);
   return response;
 }
 

@@ -1,9 +1,13 @@
+using System.Text;
 using System.Text.Json;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
+using System.Security.Claims;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -12,16 +16,36 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/schedule")]
 public sealed class ScheduleController(CourseIntellectDbContext dbContext) : ControllerBase
 {
+    private const string ClassManagementConfigurationType = "class-management";
+    private const string ClassRegistryConfigurationType = "class-registry";
     private const string LegacyConfigurationType = "class-schedule";
     private const string EntryConfigurationType = "class-schedule-entry";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly StringComparer ClassNameComparer = CreateClassNameComparer();
+    private static readonly IReadOnlyDictionary<string, string[]> SubjectBranchAliases = new Dictionary<string, string[]>
+    {
+        ["matematik"] = new[] { "matematik" },
+        ["fizik"] = new[] { "fizik" },
+        ["kimya"] = new[] { "kimya" },
+        ["biyoloji"] = new[] { "biyoloji" },
+        ["turkce"] = new[] { "turkce", "edebiyat" },
+        ["ingilizce"] = new[] { "ingilizce" },
+        ["tarih"] = new[] { "tarih" },
+        ["cografya"] = new[] { "cografya" },
+    };
 
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
-        var entries = await LoadEntriesAsync(cancellationToken);
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
+
+        var entries = await LoadEntriesAsync(tenantId.Value, cancellationToken);
         return Ok(entries
-            .OrderBy(item => item.ClassName, StringComparer.Create(new System.Globalization.CultureInfo("tr-TR"), false))
+            .OrderBy(item => item.ClassName, ClassNameComparer)
             .ThenBy(item => DayOrder(item.Day))
             .ThenBy(item => item.Time)
             .ToList());
@@ -30,54 +54,92 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UpsertScheduleEntryRequest request, CancellationToken cancellationToken)
     {
-        var normalized = Normalize(request) with { Id = Guid.NewGuid().ToString("N"), IsReadOnly = false };
-        var entries = await LoadEntriesAsync(cancellationToken);
-
-        ValidateConflicts(normalized, entries, normalized.Id);
-
-        var entity = new PlatformConfiguration
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
         {
-            ConfigurationType = EntryConfigurationType,
-            ScopeKey = normalized.Id,
-            DisplayName = $"SCHEDULE::{normalized.ClassName}::{normalized.Day}::{normalized.Time}",
-            PayloadJson = JsonSerializer.Serialize(normalized, JsonOptions),
-            UpdatedAtUtc = DateTime.UtcNow,
-        };
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
 
-        await dbContext.PlatformConfigurations.AddAsync(entity, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(normalized);
+        try
+        {
+            var normalized = Normalize(request) with { Id = Guid.NewGuid().ToString("N"), IsReadOnly = false };
+            var entries = await LoadEntriesAsync(tenantId.Value, cancellationToken);
+
+            await ValidateTeacherBranchAsync(tenantId.Value, normalized, cancellationToken);
+            ValidateConflicts(normalized, entries, normalized.Id);
+
+            var entity = new PlatformConfiguration
+            {
+                TenantId = tenantId.Value,
+                ConfigurationType = EntryConfigurationType,
+                ScopeKey = normalized.Id,
+                DisplayName = $"SCHEDULE::{normalized.ClassName}::{normalized.Day}::{normalized.Time}",
+                PayloadJson = JsonSerializer.Serialize(normalized, JsonOptions),
+                UpdatedAtUtc = DateTime.UtcNow,
+            };
+
+            await dbContext.PlatformConfigurations.AddAsync(entity, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return Ok(normalized);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(string id, [FromBody] UpsertScheduleEntryRequest request, CancellationToken cancellationToken)
     {
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
+
         var entity = await dbContext.PlatformConfigurations
-            .FirstOrDefaultAsync(item => item.ConfigurationType == EntryConfigurationType && item.ScopeKey == id, cancellationToken);
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item => item.TenantId == tenantId.Value && item.ConfigurationType == EntryConfigurationType && item.ScopeKey == id, cancellationToken);
 
         if (entity is null)
         {
             return NotFound(new { message = "Ders programı kaydı bulunamadı." });
         }
 
-        var normalized = Normalize(request) with { Id = id.Trim(), IsReadOnly = false };
-        var entries = await LoadEntriesAsync(cancellationToken);
+        try
+        {
+            var normalized = Normalize(request) with { Id = id.Trim(), IsReadOnly = false };
+            var entries = await LoadEntriesAsync(tenantId.Value, cancellationToken);
 
-        ValidateConflicts(normalized, entries, normalized.Id);
+            await ValidateTeacherBranchAsync(tenantId.Value, normalized, cancellationToken);
+            ValidateConflicts(normalized, entries, normalized.Id);
 
-        entity.DisplayName = $"SCHEDULE::{normalized.ClassName}::{normalized.Day}::{normalized.Time}";
-        entity.PayloadJson = JsonSerializer.Serialize(normalized, JsonOptions);
-        entity.UpdatedAtUtc = DateTime.UtcNow;
+            entity.TenantId = tenantId.Value;
+            entity.DisplayName = $"SCHEDULE::{normalized.ClassName}::{normalized.Day}::{normalized.Time}";
+            entity.PayloadJson = JsonSerializer.Serialize(normalized, JsonOptions);
+            entity.UpdatedAtUtc = DateTime.UtcNow;
 
-        await dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(normalized);
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return Ok(normalized);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id}")]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
+
         var entity = await dbContext.PlatformConfigurations
-            .FirstOrDefaultAsync(item => item.ConfigurationType == EntryConfigurationType && item.ScopeKey == id, cancellationToken);
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(item => item.TenantId == tenantId.Value && item.ConfigurationType == EntryConfigurationType && item.ScopeKey == id, cancellationToken);
 
         if (entity is null)
         {
@@ -89,10 +151,18 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
         return NoContent();
     }
 
-    private async Task<List<ScheduleEntryDto>> LoadEntriesAsync(CancellationToken cancellationToken)
+    private async Task<List<ScheduleEntryDto>> LoadEntriesAsync(Guid tenantId, CancellationToken cancellationToken)
     {
+        var validClasses = await LoadValidClassKeysAsync(tenantId, cancellationToken);
+        if (validClasses.Count == 0)
+        {
+            return [];
+        }
+
         var items = await dbContext.PlatformConfigurations
+            .IgnoreQueryFilters()
             .AsNoTracking()
+            .Where(item => item.TenantId == tenantId)
             .Where(item => item.ConfigurationType == LegacyConfigurationType || item.ConfigurationType == EntryConfigurationType)
             .OrderBy(item => item.ConfigurationType)
             .ThenBy(item => item.ScopeKey)
@@ -123,7 +193,161 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
             }
         }
 
-        return entries;
+        return entries
+            .Where(item => validClasses.Contains(NormalizeText(item.ClassName)))
+            .ToList();
+    }
+
+    private async Task<HashSet<string>> LoadValidClassKeysAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var classes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        void AddClass(string? value)
+        {
+            var normalized = CompatibilitySnapshotStore.NormalizeClassName(value);
+            if (!string.IsNullOrWhiteSpace(normalized))
+            {
+                classes.Add(NormalizeText(normalized));
+            }
+        }
+
+        var classConfigs = await dbContext.PlatformConfigurations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(item => item.TenantId == tenantId)
+            .Where(item => item.ConfigurationType == ClassManagementConfigurationType || item.ConfigurationType == ClassRegistryConfigurationType)
+            .ToListAsync(cancellationToken);
+
+        foreach (var item in classConfigs)
+        {
+            AddClass(ReadSavedClassName(item));
+        }
+
+        var studentClasses = await dbContext.Students
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(item => item.TenantId == tenantId)
+            .Select(item => item.ClassName)
+            .ToListAsync(cancellationToken);
+
+        foreach (var className in studentClasses)
+        {
+            AddClass(className);
+        }
+
+        return classes;
+    }
+
+    private static string? ReadSavedClassName(PlatformConfiguration item)
+    {
+        if (string.Equals(item.ConfigurationType, ClassRegistryConfigurationType, StringComparison.OrdinalIgnoreCase))
+        {
+            return item.DisplayName;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(item.PayloadJson);
+            if (document.RootElement.TryGetProperty("name", out var nameProperty))
+            {
+                return nameProperty.GetString();
+            }
+        }
+        catch
+        {
+            // Fall back to DisplayName parsing below.
+        }
+
+        const string prefix = "CLASS_MANAGEMENT::";
+        return item.DisplayName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+            ? item.DisplayName[prefix.Length..]
+            : item.ScopeKey;
+    }
+
+    private async Task ValidateTeacherBranchAsync(Guid tenantId, ScheduleEntryDto candidate, CancellationToken cancellationToken)
+    {
+        var teachers = await dbContext.Staff
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(item => item.TenantId == tenantId && item.Role == UserRole.Teacher)
+            .Select(item => new { item.FullName, item.DepartmentOrBranch })
+            .ToListAsync(cancellationToken);
+
+        var teacher = teachers.FirstOrDefault(item => NormalizeBranchText(item.FullName) == NormalizeBranchText(candidate.Teacher));
+        if (teacher is null)
+        {
+            throw new InvalidOperationException("Seçilen öğretmen kurum öğretmenleri arasında bulunamadı.");
+        }
+
+        if (!BranchMatchesSubject(teacher.DepartmentOrBranch, candidate.Subject))
+        {
+            throw new InvalidOperationException($"{teacher.FullName} öğretmeninin branşı {teacher.DepartmentOrBranch}; {candidate.Subject} dersine atanamaz.");
+        }
+    }
+
+    private static bool BranchMatchesSubject(string? branch, string? subject)
+    {
+        var normalizedBranch = NormalizeBranchText(branch);
+        var normalizedSubject = NormalizeBranchText(subject);
+        if (string.IsNullOrWhiteSpace(normalizedBranch) || string.IsNullOrWhiteSpace(normalizedSubject))
+        {
+            return false;
+        }
+
+        if (!SubjectBranchAliases.TryGetValue(normalizedSubject, out var aliases))
+        {
+            aliases = new[] { normalizedSubject };
+        }
+
+        return aliases.Any(alias => normalizedBranch.Contains(alias, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string NormalizeBranchText(string? value)
+    {
+        var normalized = (value ?? string.Empty).Normalize(NormalizationForm.FormD);
+        return string.Concat(normalized
+            .Where(ch => CharUnicodeInfo.GetUnicodeCategory(ch) != UnicodeCategory.NonSpacingMark)
+            .Select(ch => ch switch
+            {
+                '\u0130' => 'i',
+                '\u0131' => 'i',
+                _ => char.ToLowerInvariant(ch),
+            })
+            .Where(char.IsLetterOrDigit));
+    }
+
+    private async Task<Guid?> ResolveTenantIdAsync(CancellationToken cancellationToken)
+    {
+        var tenantRaw = User.FindFirstValue("tenant_id");
+        if (Guid.TryParse(tenantRaw, out var tenantId))
+        {
+            return tenantId;
+        }
+
+        var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (!Guid.TryParse(userRaw, out var userId))
+        {
+            return null;
+        }
+
+        return await dbContext.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => user.Id == userId)
+            .Select(user => user.TenantId)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private static StringComparer CreateClassNameComparer()
+    {
+        try
+        {
+            return StringComparer.Create(CultureInfo.GetCultureInfo("tr-TR"), false);
+        }
+        catch (CultureNotFoundException)
+        {
+            return StringComparer.InvariantCultureIgnoreCase;
+        }
     }
 
     private static ScheduleEntryDto? DeserializeEntry(string payloadJson)

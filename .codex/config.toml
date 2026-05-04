@@ -1,0 +1,72 @@
+[mcp_servers.21st-dev-magic]
+args = [
+    "-y",
+    "@21st-dev/magic@latest",
+]
+command = "npx"
+
+[mcp_servers.21st-dev-magic.env]
+API_KEY = "YOUR-21ST-DEV-API-KEY"
+
+[mcp_servers.context7]
+args = [
+    "-y",
+    "@upstash/context7-mcp@latest",
+]
+command = "npx"
+
+[mcp_servers.github]
+args = [
+    "-y",
+    "@modelcontextprotocol/server-github@latest",
+]
+command = "npx"
+
+[mcp_servers.github.env]
+GITHUB_PERSONAL_ACCESS_TOKEN = "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"
+
+[mcp_servers.memory]
+args = [
+    "-y",
+    "@modelcontextprotocol/server-memory@latest",
+]
+command = "npx"
+
+[mcp_servers.nano-banana-2]
+args = [
+    "-y",
+    "nano-banana-2-mcp",
+]
+command = "npx"
+
+[mcp_servers.nano-banana-2.env]
+GEMINI_API_KEY = "YOUR-GEMINI-API-KEY"
+IMAGE_OUTPUT_DIR = "./generated-images"
+
+[mcp_servers.playwright]
+args = [
+    "-y",
+    "@executeautomation/playwright-mcp-server@latest",
+]
+command = "npx"
+
+[mcp_servers.sequential-thinking]
+args = [
+    "-y",
+    "@modelcontextprotocol/server-sequential-thinking@latest",
+]
+command = "npx"
+
+[mcp_servers.stitch]
+args = [
+    "-y",
+    "@_davideast/stitch-mcp",
+    "proxy",
+]
+command = "npx"
+
+[mcp_servers.stitch.env]
+STITCH_API_KEY = "YOUR-GOOGLE-API-KEY"
+
+[mcp_servers.vercel]
+url = "https://mcp.vercel.com"

@@ -1,0 +1,3 @@
+interface:
+  display_name: "Supply Chain Dependency Agent"
+  short_description: "Audit dependencies, lockfiles, SBOMs, CVEs, licenses, and build-chain risk across project stacks."

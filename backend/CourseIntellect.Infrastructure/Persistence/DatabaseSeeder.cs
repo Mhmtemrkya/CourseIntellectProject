@@ -888,6 +888,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         {
             "admin-task-center",
             "class-management",
+            "class-registry",
             "class-schedule",
             "class-schedule-entry",
             "personnel-approvals",
