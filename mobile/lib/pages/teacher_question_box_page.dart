@@ -204,7 +204,7 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
                 icon: Icons.inbox_outlined,
                 message: selectedTab == 0
                     ? 'Bekleyen soru bulunmuyor.'
-                    : 'Yanitlanmis soru bulunmuyor.',
+                    : 'Yanıtlanmış soru bulunmuyor.',
               )
             else
               ...questions.map(

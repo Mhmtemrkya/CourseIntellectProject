@@ -48,7 +48,7 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Soru Detayi",
+        title: "Soru Detayı",
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${widget.thread['subject'] as String? ?? 'Genel'} Öğretmeni',
         showBackButton: true,

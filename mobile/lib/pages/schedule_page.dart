@@ -106,7 +106,7 @@ class _SchedulePageState extends State<SchedulePage>
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Ders Programi")),
+      appBar: AppBar(title: const Text("Ders Programı")),
       body: FadeTransition(
         opacity: _fadeAnim,
         child: SlideTransition(

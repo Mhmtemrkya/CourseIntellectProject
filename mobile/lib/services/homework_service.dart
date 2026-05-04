@@ -41,7 +41,7 @@ class HomeworkService extends ChangeNotifier {
       'teacher': 'Hasan Yildiz',
       'deadline': '18 Mart • 17:00',
       'description':
-          'Limit tekrar sorularini tamamlayiniz ve cozumu notlarla destekleyiniz.',
+          'Limit tekrar sorularını tamamlayınız ve çözümü notlarla destekleyiniz.',
       'materials': ['Limit_Özet.pdf'],
       'submissions': <Map<String, dynamic>>[
         {

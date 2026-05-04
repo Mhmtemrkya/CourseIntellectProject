@@ -16,7 +16,7 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.courseintellect.student"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -32,13 +32,9 @@ android {
     defaultConfig {
         applicationId = "com.courseintellect.student"
         minSdk = flutter.minSdkVersion
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        ndk {
-            abiFilters += listOf("arm64-v8a")
-        }
     }
 
     signingConfigs {
@@ -65,6 +61,18 @@ android {
                 signingConfigs.getByName("debug")
             }
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    val isReleaseTask = allTasks.any {
+        it.path.contains("Release", ignoreCase = true) ||
+            it.name.contains("Release", ignoreCase = true)
+    }
+    if (isReleaseTask && !keystorePropertiesFile.exists()) {
+        throw GradleException(
+            "Release signing is not configured. Copy android/key.properties.example to android/key.properties and point it to your Play upload keystore."
+        )
     }
 }
 

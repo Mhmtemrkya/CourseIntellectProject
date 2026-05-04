@@ -9,7 +9,6 @@ class ExamDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
-    final sources = (exam["sources"] as List?) ?? [];
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -42,47 +41,6 @@ class ExamDetailPage extends StatelessWidget {
                 ],
               ),
             ),
-            if (sources.isNotEmpty) ...[
-              const SizedBox(height: 16),
-              _card(
-                theme,
-                isDark,
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Sınav İçeriği",
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    ...sources.map(
-                      (item) => Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: theme.scaffoldBackgroundColor,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(
-                              item["type"] == "Deneme"
-                                  ? Icons.fact_check_rounded
-                                  : Icons.quiz_rounded,
-                              color: theme.colorScheme.primary,
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(child: Text(item["title"] as String)),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
           ],
         ),
       ),

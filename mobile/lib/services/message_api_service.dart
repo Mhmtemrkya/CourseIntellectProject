@@ -67,13 +67,7 @@ class MessageAttachmentRecord {
     required this.size,
   });
 
-  String get absoluteUrl {
-    if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
-      return fileUrl;
-    }
-
-    return '${ApiConfig.baseUrl}$fileUrl';
-  }
+  String get absoluteUrl => ApiConfig.resolveAssetUrl(fileUrl);
 
   bool get isImage {
     final type = fileType.toLowerCase();

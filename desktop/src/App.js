@@ -138,6 +138,7 @@ import Ledger from "./pages/finance/Ledger";
 import { useApp } from "./context/AppContext";
 import { getUserHomePath } from "./lib/auth";
 import { MaintenanceGate } from "./components/system/MaintenanceGate";
+import { LegalConsentGate } from "./components/legal/LegalConsentGate";
 
 function RootRedirect() {
   const { isAuthenticated, isAuthLoading, user } = useApp();
@@ -163,6 +164,7 @@ function App() {
     <ThemeProvider defaultTheme="system" storageKey="courseintellect-theme">
       <AppProvider>
         <MaintenanceGate>
+        <LegalConsentGate>
         <RouterComponent>
           <Routes>
             {/* Auth */}
@@ -299,6 +301,7 @@ function App() {
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </RouterComponent>
+        </LegalConsentGate>
         <Toaster />
         </MaintenanceGate>
       </AppProvider>

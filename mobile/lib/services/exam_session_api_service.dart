@@ -24,6 +24,8 @@ class ExamSessionQuestionRecord {
   final List<String> options;
   final int sortOrder;
   final int? selectedOptionIndex;
+  final String? openAnswer;
+  final bool requiresManualReview;
 
   const ExamSessionQuestionRecord({
     required this.id,
@@ -35,9 +37,17 @@ class ExamSessionQuestionRecord {
     required this.options,
     required this.sortOrder,
     required this.selectedOptionIndex,
+    this.openAnswer,
+    this.requiresManualReview = false,
   });
 
-  ExamSessionQuestionRecord copyWith({int? selectedOptionIndex}) {
+  bool get isOpenEnded => options.isEmpty;
+
+  ExamSessionQuestionRecord copyWith({
+    int? selectedOptionIndex,
+    String? openAnswer,
+    bool? requiresManualReview,
+  }) {
     return ExamSessionQuestionRecord(
       id: id,
       subject: subject,
@@ -48,6 +58,8 @@ class ExamSessionQuestionRecord {
       options: options,
       sortOrder: sortOrder,
       selectedOptionIndex: selectedOptionIndex,
+      openAnswer: openAnswer ?? this.openAnswer,
+      requiresManualReview: requiresManualReview ?? this.requiresManualReview,
     );
   }
 }
@@ -157,7 +169,8 @@ class ExamSessionApiService {
   Future<ExamSessionRecord> submitAnswer({
     required String sessionId,
     required String questionId,
-    required int selectedOptionIndex,
+    int? selectedOptionIndex,
+    String? openAnswer,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
@@ -174,7 +187,8 @@ class ExamSessionApiService {
       },
       body: jsonEncode({
         'questionId': questionId,
-        'selectedOptionIndex': selectedOptionIndex,
+        'selectedOptionIndex': selectedOptionIndex ?? -1,
+        if (openAnswer != null && openAnswer.isNotEmpty) 'openAnswer': openAnswer,
       }),
     );
 
@@ -254,6 +268,9 @@ class ExamSessionApiService {
                   .cast<String>(),
               sortOrder: item['sortOrder'] as int? ?? 0,
               selectedOptionIndex: item['selectedOptionIndex'] as int?,
+              openAnswer: item['openAnswer'] as String?,
+              requiresManualReview:
+                  item['requiresManualReview'] as bool? ?? false,
             ),
           )
           .toList(),

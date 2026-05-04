@@ -36,11 +36,10 @@ public sealed class LocalFileStorageService(IHostEnvironment environment) : IFil
 
         var info = new FileInfo(physicalPath);
         var relative = $"/uploads/{safeFolder}/{finalFileName}";
-        var fileUrl = $"{baseUrl.TrimEnd('/')}{relative}";
 
         return new UploadedAssetDto(
             fileName,
-            fileUrl,
+            relative,
             string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             info.Length);
     }

@@ -9,6 +9,7 @@ import 'admin_settings_page.dart';
 import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/legal_profile_tile.dart';
 
 class AdminProfilePage extends StatefulWidget {
   const AdminProfilePage({super.key});
@@ -196,6 +197,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                       ),
                     ),
                   ),
+                  const LegalProfileTile(contentPadding: EdgeInsets.zero),
                 ],
               ),
             ),

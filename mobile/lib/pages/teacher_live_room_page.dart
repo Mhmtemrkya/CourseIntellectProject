@@ -1,7 +1,9 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
+import 'package:student/services/content_api_service.dart';
 import 'package:student/services/live_room_api_service.dart';
+import 'package:student/services/material_download_service.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 class TeacherLiveRoomPage extends StatefulWidget {
@@ -21,7 +23,7 @@ class TeacherLiveRoomPage extends StatefulWidget {
 }
 
 class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
-  List<String> sharedFiles = const [];
+  List<LiveRoomAssetRecord> sharedFiles = const [];
   List<String> lessonNotes = const [];
   List<String> participants = const [];
   String _teacherName = '';
@@ -69,7 +71,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           ? teacherNameOverride!
           : room.teacherName;
       participants = room.participants;
-      sharedFiles = room.assets.map((item) => item.fileName).toList();
+      sharedFiles = room.assets;
       lessonNotes = room.notes.map((item) => item.text).toList();
       micOn = room.micOn;
       cameraOn = room.cameraOn;
@@ -87,13 +89,21 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
       final roomId = _roomId;
       if (roomId == null) return;
       try {
+        final uploaded = await ContentApiService.instance.uploadContentAsset(
+          file: result.files.single,
+          folder: 'live-room-materials',
+        );
         final room = await LiveRoomApiService.instance.addAsset(
           roomId,
-          result.files.single.name,
+          uploaded.fileName,
+          fileUrl: uploaded.fileUrl ?? '',
         );
         if (!mounted) return;
         _applyRoom(room);
-        _showSnack("${result.files.single.name} eklendi");
+        _showSnack("${uploaded.fileName} eklendi");
+      } on ContentApiException catch (error) {
+        if (!mounted) return;
+        _showSnack(error.message);
       } catch (error) {
         if (!mounted) return;
         _showSnack(error.toString());
@@ -136,8 +146,25 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
     controller.dispose();
   }
 
-  void _downloadFile(String fileName) {
-    _showSnack("$fileName indiriliyor");
+  Future<void> _downloadFile(LiveRoomAssetRecord asset) async {
+    if (asset.fileUrl.trim().isEmpty) {
+      _showSnack('${asset.fileName} için indirme bağlantısı bulunamadı.');
+      return;
+    }
+    try {
+      await MaterialDownloadService.instance.downloadAndOpen(
+        fileName: asset.fileName,
+        url: asset.fileUrl,
+      );
+      if (!mounted) return;
+      _showSnack("${asset.fileName} indirildi");
+    } on MaterialDownloadException catch (error) {
+      if (!mounted) return;
+      _showSnack(error.message);
+    } catch (_) {
+      if (!mounted) return;
+      _showSnack("Dosya indirilemedi");
+    }
   }
 
   Future<void> _addNote(String text) async {
@@ -294,7 +321,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                   const SizedBox(height: 12),
                   _participantsCard(theme, isDark),
                   const SizedBox(height: 18),
-                  _sectionTitle(theme, "Ders Araclari"),
+                  _sectionTitle(theme, "Ders Araçları"),
                   const SizedBox(height: 12),
                   _toolsGrid(context),
                   const SizedBox(height: 18),
@@ -443,7 +470,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           _infoRow(
             theme,
             Icons.link_rounded,
-            "Baglanti",
+            "Bağlantı",
             _roomId == null
                 ? "meet.courseintellect.live/${widget.className}"
                 : "meet.courseintellect.live/${widget.className}".toLowerCase(),
@@ -705,7 +732,9 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                     color: theme.colorScheme.primary,
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(item, overflow: TextOverflow.ellipsis)),
+                  Expanded(
+                    child: Text(item.fileName, overflow: TextOverflow.ellipsis),
+                  ),
                   IconButton(
                     onPressed: () => _downloadFile(item),
                     icon: const Icon(Icons.download_rounded),

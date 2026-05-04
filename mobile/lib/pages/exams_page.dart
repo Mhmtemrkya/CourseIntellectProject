@@ -128,6 +128,63 @@ class _ExamsPageState extends State<ExamsPage> {
     return _themeForSubject(subject).accent;
   }
 
+  DateTime? _plannedStartAt(String? label) {
+    final value = (label ?? '').replaceAll('•', ' ').trim();
+    if (value.isEmpty) return null;
+    final numeric = RegExp(
+      r'^(\d{2})\.(\d{2})\.(\d{4})(?:\s+(\d{2}):(\d{2}))?$',
+    ).firstMatch(value);
+    if (numeric != null) {
+      return DateTime(
+        int.parse(numeric.group(3)!),
+        int.parse(numeric.group(2)!),
+        int.parse(numeric.group(1)!),
+        int.tryParse(numeric.group(4) ?? '0') ?? 0,
+        int.tryParse(numeric.group(5) ?? '0') ?? 0,
+      );
+    }
+
+    final text = RegExp(
+      r'^(\d{1,2})\s+([A-Za-zÇĞİÖŞÜçğıöşü]+)(?:\s+(\d{4}))?\s+(\d{2}):(\d{2})$',
+    ).firstMatch(value);
+    if (text == null) return null;
+    const months = {
+      'ocak': 1,
+      'şubat': 2,
+      'subat': 2,
+      'mart': 3,
+      'nisan': 4,
+      'mayıs': 5,
+      'mayis': 5,
+      'haziran': 6,
+      'hazıran': 6,
+      'temmuz': 7,
+      'ağustos': 8,
+      'agustos': 8,
+      'eylül': 9,
+      'eylul': 9,
+      'ekim': 10,
+      'kasım': 11,
+      'kasim': 11,
+      'aralık': 12,
+      'aralik': 12,
+    };
+    final month = months[text.group(2)!.toLowerCase()];
+    if (month == null) return null;
+    return DateTime(
+      int.tryParse(text.group(3) ?? '') ?? DateTime.now().year,
+      month,
+      int.parse(text.group(1)!),
+      int.parse(text.group(4)!),
+      int.parse(text.group(5)!),
+    );
+  }
+
+  bool _canStartExam(Map<String, dynamic> item) {
+    final startsAt = _plannedStartAt(item["date"] as String?);
+    return startsAt == null || !DateTime.now().isBefore(startsAt);
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -341,8 +398,8 @@ class _ExamsPageState extends State<ExamsPage> {
   Widget _examCard(ThemeData theme, bool isDark, Map<String, dynamic> item) {
     final isCompleted = selectedTab == 1;
     final accent = item["accentColor"] as Color;
-    final sources = (item["sources"] as List<dynamic>? ?? const []);
     final subjectTheme = _themeForSubject(item["subject"]?.toString() ?? '');
+    final canStart = isCompleted || _canStartExam(item);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -526,10 +583,8 @@ class _ExamsPageState extends State<ExamsPage> {
                     Expanded(
                       child: _numberMetric(
                         theme,
-                        label: isCompleted ? 'Net' : 'Kaynak',
-                        value: isCompleted
-                            ? '${item["net"]}'
-                            : '${sources.length}',
+                        label: isCompleted ? 'Net' : 'Durum',
+                        value: isCompleted ? '${item["net"]}' : 'Planlı',
                       ),
                     ),
                     if (isCompleted) ...[
@@ -544,54 +599,6 @@ class _ExamsPageState extends State<ExamsPage> {
                     ],
                   ],
                 ),
-                if (!isCompleted && sources.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  Text(
-                    'Sınav İçeriği',
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  ...sources
-                      .take(3)
-                      .map(
-                        (source) => Container(
-                          width: double.infinity,
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 12,
-                          ),
-                          decoration: BoxDecoration(
-                            color: theme.scaffoldBackgroundColor,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.checklist_rtl_rounded,
-                                color: accent,
-                                size: 18,
-                              ),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  (source as Map<String, dynamic>)["title"]
-                                          ?.toString() ??
-                                      'Soru kaynağı',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                ],
                 const SizedBox(height: 16),
                 Row(
                   children: [
@@ -612,38 +619,46 @@ class _ExamsPageState extends State<ExamsPage> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: ElevatedButton.icon(
-                        onPressed: () {
-                          if (isCompleted) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => StudentExamHistoryPage(
-                                  studentName: _studentName,
-                                  title: 'Sınav Sonuçlarım',
-                                ),
-                              ),
-                            );
-                          } else {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ExamSolvePage(
-                                  plannedExamId: item["id"] as String?,
-                                  examTitle: item["title"] as String?,
-                                  subject: item["subject"] as String?,
-                                  questionCount:
-                                      item["questionCount"] as int? ?? 10,
-                                ),
-                              ),
-                            );
-                          }
-                        },
+                        onPressed: canStart
+                            ? () {
+                                if (isCompleted) {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => StudentExamHistoryPage(
+                                        studentName: _studentName,
+                                        title: 'Sınav Sonuçlarım',
+                                      ),
+                                    ),
+                                  );
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => ExamSolvePage(
+                                        plannedExamId: item["id"] as String?,
+                                        examTitle: item["title"] as String?,
+                                        subject: item["subject"] as String?,
+                                        questionCount:
+                                            item["questionCount"] as int? ?? 10,
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
+                            : null,
                         icon: Icon(
                           isCompleted
                               ? Icons.bar_chart_rounded
                               : Icons.play_arrow_rounded,
                         ),
-                        label: Text(isCompleted ? "Sonuçu Gör" : "Sınava Gir"),
+                        label: Text(
+                          isCompleted
+                              ? "Sonucu Gör"
+                              : canStart
+                              ? "Sınava Gir"
+                              : "Saatini Bekle",
+                        ),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: accent,
                           foregroundColor: Colors.white,

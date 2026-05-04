@@ -140,28 +140,105 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
         var normalizedClass = CompatibilitySnapshotStore.NormalizeText(plannedExam.ClassName);
         var normalizedSubject = CompatibilitySnapshotStore.NormalizeText(plannedExam.Subject);
 
-        var results = await dbContext.ExamResults
-            .AsNoTracking()
-            .ToListAsync(cancellationToken);
-
-        var response = results
+        var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, ExamSessionsController.SectionKey, cancellationToken);
+        var response = sessions
             .Where(item =>
-                CompatibilitySnapshotStore.NormalizeText(item.ExamTitle) == normalizedTitle &&
-                CompatibilitySnapshotStore.NormalizeText(item.ClassName) == normalizedClass &&
-                CompatibilitySnapshotStore.NormalizeText(item.Subject) == normalizedSubject)
-            .OrderByDescending(item => CompatibilitySnapshotStore.ParseDateLabel(item.DateLabel))
-            .Select(item => new
-            {
-                id = item.Id,
-                studentName = item.StudentName,
-                score = item.Score,
-                net = item.Net,
-                submittedAtUtc = CompatibilitySnapshotStore.ParseDateLabel(item.DateLabel),
-                status = "Teslim Edildi",
-            })
-            .ToList();
+                item.Status == "Completed" &&
+                (item.PlannedExamId == plannedExam.Id ||
+                    (item.PlannedExamId is null &&
+                        CompatibilitySnapshotStore.NormalizeText(item.ExamTitle) == normalizedTitle &&
+                        CompatibilitySnapshotStore.NormalizeText(item.ClassName) == normalizedClass &&
+                        CompatibilitySnapshotStore.NormalizeText(item.Subject) == normalizedSubject)))
+            .OrderByDescending(item => item.CompletedAtUtc ?? item.StartedAtUtc)
+            .Select(MapSubmission)
+            .ToList<object>();
+
+        if (response.Count == 0)
+        {
+            var results = await dbContext.ExamResults
+                .AsNoTracking()
+                .ToListAsync(cancellationToken);
+
+            response = results
+                .Where(item =>
+                    CompatibilitySnapshotStore.NormalizeText(item.ExamTitle) == normalizedTitle &&
+                    CompatibilitySnapshotStore.NormalizeText(item.ClassName) == normalizedClass &&
+                    CompatibilitySnapshotStore.NormalizeText(item.Subject) == normalizedSubject)
+                .OrderByDescending(item => CompatibilitySnapshotStore.ParseDateLabel(item.DateLabel))
+                .Select(item => (object)new
+                {
+                    id = item.Id,
+                    sessionId = (Guid?)null,
+                    studentName = item.StudentName,
+                    studentUsername = string.Empty,
+                    score = item.Score,
+                    net = item.Net,
+                    correct = item.Net,
+                    wrong = 0,
+                    blank = 0,
+                    total = item.Net,
+                    submittedAtUtc = CompatibilitySnapshotStore.ParseDateLabel(item.DateLabel),
+                    status = "Teslim Edildi",
+                    answers = Array.Empty<object>(),
+                })
+                .ToList();
+        }
 
         return Ok(response);
+    }
+
+    private static object MapSubmission(ExamSessionSnapshot session)
+    {
+        var total = session.Questions.Count;
+        var answered = session.Questions.Count(item => item.Answer is not null);
+        var correct = session.Questions.Count(item => item.Answer?.IsCorrect == true);
+        var wrong = answered - correct;
+        var blank = total - answered;
+        var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
+
+        return new
+        {
+            id = session.RecordedExamResultId ?? session.Id,
+            sessionId = session.Id,
+            studentName = session.StudentName,
+            studentUsername = session.StudentUsername,
+            score,
+            net = correct,
+            correct,
+            wrong,
+            blank,
+            total,
+            submittedAtUtc = session.CompletedAtUtc ?? session.StartedAtUtc,
+            status = "Teslim Edildi",
+            answers = session.Questions
+                .OrderBy(item => item.SortOrder)
+                .Select(item =>
+                {
+                    var selectedOptionIndex = item.Answer?.SelectedOptionIndex;
+                    var correctOptionIndex = item.CorrectOptionIndex;
+                    return new
+                    {
+                        questionId = item.Id,
+                        questionBankItemId = item.QuestionBankItemId,
+                        sortOrder = item.SortOrder,
+                        subject = item.Subject,
+                        topic = item.Topic,
+                        questionText = item.QuestionText,
+                        options = item.Options,
+                        selectedOptionIndex,
+                        selectedAnswerText = selectedOptionIndex.HasValue && selectedOptionIndex.Value >= 0 && selectedOptionIndex.Value < item.Options.Count
+                            ? item.Options[selectedOptionIndex.Value]
+                            : string.Empty,
+                        correctOptionIndex,
+                        correctAnswerText = correctOptionIndex >= 0 && correctOptionIndex < item.Options.Count
+                            ? item.Options[correctOptionIndex]
+                            : string.Empty,
+                        isCorrect = item.Answer?.IsCorrect,
+                        answeredAtUtc = item.Answer?.AnsweredAtUtc,
+                    };
+                })
+                .ToList(),
+        };
     }
 
     private static object MapResponse(PlannedExamSnapshot item)

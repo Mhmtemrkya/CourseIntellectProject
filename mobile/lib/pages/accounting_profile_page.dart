@@ -8,6 +8,7 @@ import 'profile_edit_page.dart';
 import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/accounting_ui.dart';
+import '../widgets/legal_profile_tile.dart';
 
 class AccountingProfilePage extends StatefulWidget {
   const AccountingProfilePage({super.key});
@@ -195,6 +196,7 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
                     ),
                   ),
                 ),
+                const LegalProfileTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
                   title: const Text(

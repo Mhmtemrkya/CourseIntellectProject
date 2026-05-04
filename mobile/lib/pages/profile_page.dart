@@ -6,6 +6,7 @@ import '../services/auth_session_store.dart';
 import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/adaptive_scaffold.dart';
+import '../widgets/legal_profile_tile.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -133,6 +134,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     "Profil verileri sadece yönetiçi ve idari birimler tarafından güncellenebilir.",
                   ),
                 ),
+                const LegalProfileTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
                   title: const Text(

@@ -1282,7 +1282,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           TextButton(
             onPressed: () {
               final action = item["action"] as String;
-              if (action == "Sinavlara Git") {
+              if (action == "Sınavlara Git") {
                 _openPage(const TeacherExamsPage());
               } else if (action == "Plani Ac") {
                 _openPage(const StudentStudyPlanPage());
@@ -1550,7 +1550,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             theme,
             icon: Icons.campaign_rounded,
             color: const Color(0xFFFFB020),
-            title: "Yarin zumre toplantisi var",
+            title: "Yarın zümre toplantısı var",
             subtitle: "Saat 14:30'da öğretmenler odasında yapılacak.",
           ),
           _divider(theme),
@@ -1674,7 +1674,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       },
       {
         "icon": Icons.help_center_rounded,
-        "title": "Soru\nBankasi",
+        "title": "Soru\nBankası",
         "color": const Color(0xFFFF6B6B),
         "page": const TeacherQuestionBankPage(),
       },

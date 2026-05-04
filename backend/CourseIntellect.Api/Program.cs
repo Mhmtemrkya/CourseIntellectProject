@@ -67,7 +67,13 @@ builder.Services.AddCors(options =>
     });
 });
 var jwtSection = builder.Configuration.GetSection("Jwt");
-var jwtKey = jwtSection["Key"] ?? "CourseIntellect-Super-Secret-Key-Change-In-Production-2026";
+var jwtKey = jwtSection["Key"];
+if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32)
+{
+    throw new InvalidOperationException(
+        "Jwt:Key configuration is missing or shorter than 32 bytes. " +
+        "Set it via environment variable 'Jwt__Key' or 'dotnet user-secrets set Jwt:Key <value>'.");
+}
 var jwtIssuer = jwtSection["Issuer"] ?? "CourseIntellect";
 var jwtAudience = jwtSection["Audience"] ?? "CourseIntellectClients";
 

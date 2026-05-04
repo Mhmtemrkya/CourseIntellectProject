@@ -323,7 +323,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sinavlarim",
+        title: "Sınavlarım",
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${completedExams.length} tamamlanan sınav',
         showBackButton: true,
@@ -374,7 +374,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                   child: Text(
                     selectedTab == 0
                         ? 'Henüz planlı sınav bulunmuyor.'
-                        : 'Henüz gosterilecek tamamlanmis sınav bulunmuyor.',
+                        : 'Henüz gösterilecek tamamlanmış sınav bulunmuyor.',
                   ),
                 ),
               ...currentList.asMap().entries.map((entry) {
@@ -769,6 +769,29 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                     ),
                   ],
                 ),
+                if (selectedTab == 0) ...[
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TeacherExamResultsPage(exam: item),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bar_chart_rounded),
+                      label: const Text("Öğrenci Sonuçları"),
+                      style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Align(
                   alignment: Alignment.centerRight,

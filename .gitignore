@@ -71,6 +71,13 @@ mcp.json
 # Embedded repos
 yeni/
 
+# Firebase config (contains client-side keys; managed per-environment)
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Runtime upload storage (server-managed user content)
+backend/CourseIntellect.Api/wwwroot/uploads/
+
 # Misc
 *.tgz
 *.zip
