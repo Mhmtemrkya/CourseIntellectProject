@@ -33,6 +33,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
   bool _submitting = false;
   String? _error;
   ExamSessionRecord? _session;
+  final Map<String, TextEditingController> _openControllers = {};
 
   @override
   void initState() {
@@ -43,7 +44,17 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
   @override
   void dispose() {
     timer?.cancel();
+    for (final controller in _openControllers.values) {
+      controller.dispose();
+    }
     super.dispose();
+  }
+
+  TextEditingController _controllerFor(ExamSessionQuestionRecord question) {
+    return _openControllers.putIfAbsent(
+      question.id,
+      () => TextEditingController(text: question.openAnswer ?? ''),
+    );
   }
 
   Future<void> _loadSession() async {
@@ -111,6 +122,45 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       setState(() {
         _session = updated;
       });
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) {
+        setState(() => _submitting = false);
+      }
+    }
+  }
+
+  Future<void> _saveOpenAnswer() async {
+    final session = _session;
+    if (session == null || _submitting) return;
+
+    final question = session.questions[currentQuestion];
+    final text = _controllerFor(question).text.trim();
+    if (text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cevap boş olamaz.')),
+      );
+      return;
+    }
+
+    setState(() => _submitting = true);
+    try {
+      final updated = await ExamSessionApiService.instance.submitAnswer(
+        sessionId: session.id,
+        questionId: question.id,
+        openAnswer: text,
+      );
+      if (!mounted) return;
+      setState(() {
+        _session = updated;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Cevabın kaydedildi.')),
+      );
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -371,6 +421,72 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  if (question.options.isEmpty) ...[
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: theme.colorScheme.primary.withValues(
+                            alpha: 0.25,
+                          ),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.edit_note_rounded,
+                            color: theme.colorScheme.primary,
+                          ),
+                          const SizedBox(width: 10),
+                          const Expanded(
+                            child: Text(
+                              'Açık uçlu soru: cevabını aşağıya yaz ve "Cevabı Kaydet"e bas. İstersen "Atla" ile geç, sonra "Geri" ile dönüp düzenleyebilirsin.',
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: _controllerFor(question),
+                      maxLines: 5,
+                      enabled: !_submitting,
+                      decoration: InputDecoration(
+                        hintText: 'Cevabını buraya yaz...',
+                        filled: true,
+                        fillColor: theme.cardColor,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        if (question.openAnswer != null &&
+                            question.openAnswer!.isNotEmpty)
+                          Expanded(
+                            child: Text(
+                              'Kayıtlı cevabın var. Düzenleyip tekrar kaydedebilirsin.',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                              ),
+                            ),
+                          )
+                        else
+                          const Spacer(),
+                        ElevatedButton.icon(
+                          onPressed: _submitting ? null : _saveOpenAnswer,
+                          icon: const Icon(Icons.save_rounded, size: 18),
+                          label: const Text('Cevabı Kaydet'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                  ],
                   ...List.generate(question.options.length, (index) {
                     final option = question.options[index];
                     final selected = selectedAnswer == index;
@@ -432,6 +548,21 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   ),
                 ),
               if (currentQuestion > 0) const SizedBox(width: 10),
+              if (currentQuestion < session.questions.length - 1) ...[
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _submitting
+                        ? null
+                        : () {
+                            setState(() {
+                              currentQuestion++;
+                            });
+                          },
+                    child: const Text('Atla'),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ],
               Expanded(
                 child: ElevatedButton(
                   onPressed: _submitting

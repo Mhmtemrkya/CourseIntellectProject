@@ -179,7 +179,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
           'time': 'Plan yok',
           'title': 'Takvim verisi bekleniyor',
           'subtitle':
-              'Yeni yoklama veya görüşme kaydı olustugünda burada görünecek',
+              'Yeni yoklama veya görüşme kaydı oluştuğunda burada görünecek',
           'type': 'Bilgi',
           'color': Color(0xFF9E9E9E),
         },
@@ -677,7 +677,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
   Widget _weeklyReportCard(BuildContext context) {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
     final attended = attendance
-        .where((item) => item.status == 'Katildi')
+        .where((item) => item.status == 'Katıldı')
         .length;
     final attendanceRate = attendance.isEmpty
         ? 0
@@ -825,7 +825,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
       {
         'label': 'Bugün tamamlanan ders',
         'value':
-            '${attendance.where((item) => item.status == 'Katildi').length} ders',
+            '${attendance.where((item) => item.status == 'Katıldı').length} ders',
         'note': 'Seçili öğrencinin yoklama ve plan verisi birlikte izleniyor',
         'icon': Icons.task_alt_rounded,
         'color': const Color(0xFF0F766E),
@@ -1432,7 +1432,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
   List<Widget> _studyTrackingLines() {
     final attendance = AttendanceService.instance.forStudent(_selectedChild);
     final attended = attendance
-        .where((item) => item.status == 'Katildi')
+        .where((item) => item.status == 'Katıldı')
         .length;
     final absent = attendance.where((item) => item.status == 'Devamsiz').length;
     final late = attendance.where((item) => item.status == 'Gec').length;
@@ -1617,7 +1617,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
       return 'Haftalık akademik özet, seçili öğrencinin yoklama, sınav ve plan takibine göre panelde derlenir.';
     }
     if (title.contains('görüşme')) {
-      return 'Görüşme notlari veli-talep ve rehberlik akışından olusur. Yeni toplanti olustukca burada güncellenir.';
+      return 'Görüşme notları veli-talep ve rehberlik akışından oluşur. Yeni toplantı oluştukça burada güncellenir.';
     }
     return 'Bu belge için önizleme hazır değil.';
   }

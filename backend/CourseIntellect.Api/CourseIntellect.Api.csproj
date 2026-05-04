@@ -17,7 +17,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <InvariantGlobalization>false</InvariantGlobalization>
     <UseAppHost>false</UseAppHost>
     <UserSecretsId>courseintellect-api-local-secrets</UserSecretsId>
   </PropertyGroup>

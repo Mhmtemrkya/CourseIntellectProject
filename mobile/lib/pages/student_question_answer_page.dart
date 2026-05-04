@@ -286,9 +286,8 @@ class StudentQuestionAnswerPage extends StatelessWidget {
 
   Future<void> _openAttachment(BuildContext context, String? value) async {
     if (value == null || value.isEmpty) return;
-    final normalized = value.startsWith('http')
-        ? value
-        : '${ApiConfig.baseUrl}${value.startsWith('/') ? '' : '/'}$value';
+    final normalized = ApiConfig.resolveAssetUrl(value);
+    if (normalized.isEmpty) return;
     final success = await launchUrl(
       Uri.parse(normalized),
       mode: LaunchMode.externalApplication,

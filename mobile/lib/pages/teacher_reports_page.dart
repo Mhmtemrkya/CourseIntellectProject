@@ -2018,7 +2018,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 children: [
                   Expanded(
                     child: Text(
-                      "${topic["questionCount"]} soru cozuldu",
+                      "${topic["questionCount"]} soru çözüldü",
                       style: TextStyle(color: reportTheme.subtleTextColor),
                     ),
                   ),

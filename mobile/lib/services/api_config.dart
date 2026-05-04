@@ -20,12 +20,21 @@ class ApiConfig {
 
   static String? _overrideBaseUrl;
 
+  static bool _isHttpsUrl(String value) {
+    final uri = Uri.tryParse(value);
+    return uri != null && uri.scheme == 'https' && uri.host.isNotEmpty;
+  }
+
   static List<String> get candidateBaseUrls {
     const configured = String.fromEnvironment('COURSE_INTELLECT_API_URL');
-    if (configured.isNotEmpty) return [configured];
+    if (configured.isNotEmpty) {
+      if (AppEnv.isProduction && !_isHttpsUrl(configured)) return const [];
+      return [configured];
+    }
 
     if (AppEnv.isProduction) {
-      return AppEnv.productionApiUrl.isNotEmpty
+      return AppEnv.productionApiUrl.isNotEmpty &&
+              _isHttpsUrl(AppEnv.productionApiUrl)
           ? [AppEnv.productionApiUrl]
           : const [];
     }
@@ -88,9 +97,16 @@ class ApiConfig {
   }
 
   static String get marketingBaseUrl {
-    if (_configuredMarketingUrl.isNotEmpty) return _configuredMarketingUrl;
+    if (_configuredMarketingUrl.isNotEmpty) {
+      if (AppEnv.isProduction && !_isHttpsUrl(_configuredMarketingUrl)) {
+        return '';
+      }
+      return _configuredMarketingUrl;
+    }
 
-    if (AppEnv.isProduction) return _productionMarketingUrl;
+    if (AppEnv.isProduction) {
+      return _isHttpsUrl(_productionMarketingUrl) ? _productionMarketingUrl : '';
+    }
 
     if (kIsWeb) return 'http://localhost:3000';
 
@@ -109,13 +125,39 @@ class ApiConfig {
   static String resolveAssetUrl(String? path) {
     final raw = (path ?? '').trim();
     if (raw.isEmpty) return '';
-    if (raw.startsWith('http://') || raw.startsWith('https://')) {
+
+    final uri = Uri.tryParse(raw);
+    if (uri != null && uri.hasScheme && uri.host.isNotEmpty) {
+      final currentBase = Uri.tryParse(baseUrl);
+      if (currentBase != null &&
+          currentBase.host.isNotEmpty &&
+          (uri.host != currentBase.host || uri.port != currentBase.port) &&
+          _isLocalOrPrivateHost(uri.host)) {
+        final query = uri.hasQuery ? '?${uri.query}' : '';
+        final fragment = uri.fragment.isNotEmpty ? '#${uri.fragment}' : '';
+        return '$baseUrl${uri.path}$query$fragment';
+      }
       return raw;
     }
     if (raw.startsWith('/')) {
       return '$baseUrl$raw';
     }
     return '$baseUrl/$raw';
+  }
+
+  static bool _isLocalOrPrivateHost(String host) {
+    if (host == 'localhost' || host == '127.0.0.1') return true;
+    if (host == '10.0.2.2' || host == '10.0.3.2') return true;
+    final parts = host.split('.');
+    if (parts.length != 4) return false;
+    final nums = parts.map(int.tryParse).toList();
+    if (nums.any((n) => n == null)) return false;
+    final a = nums[0]!;
+    final b = nums[1]!;
+    if (a == 10) return true;
+    if (a == 192 && b == 168) return true;
+    if (a == 172 && b >= 16 && b <= 31) return true;
+    return false;
   }
 
   static void useBaseUrl(String url) {
@@ -125,10 +167,10 @@ class ApiConfig {
   static String? get configurationError {
     if (candidateBaseUrls.isNotEmpty) return null;
     if (AppEnv.isProduction) {
-      return 'Production API adresi tanimli degil. COURSE_INTELLECT_PROD_API_URL verilmeli.';
+      return 'Production API adresi tanımlı değil veya HTTPS değil. COURSE_INTELLECT_PROD_API_URL HTTPS olarak verilmeli.';
     }
     if (AppEnv.isStaging) {
-      return 'Staging API adresi tanimli degil. COURSE_INTELLECT_STAGING_API_URL verilmeli.';
+      return 'Staging API adresi tanımlı değil. COURSE_INTELLECT_STAGING_API_URL verilmeli.';
     }
     return null;
   }

@@ -11,6 +11,7 @@ import { Switch } from '../../components/ui/switch';
 import { useApp } from '../../context/AppContext';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
 import { fetchStudents } from '../../lib/api/modules';
 
 const containerVariants = {
@@ -164,6 +165,8 @@ export default function ParentProfile() {
               <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /><span>Eksik bilgi için idari birime başvurun.</span></div>
             </CardContent>
           </Card>
+
+          <LegalDocumentsPanel compact />
         </div>
       </div>
     </motion.div>

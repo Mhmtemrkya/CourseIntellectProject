@@ -60,7 +60,7 @@ class AuthApiService {
 
     if (response == null) {
       throw AuthApiException(
-        'Backend baglantisi kurulamadi. Denenen adresler: ${triedUrls.join(", ")}',
+        'Backend bağlantısı kurulamadı. Denenen adresler: ${triedUrls.join(", ")}',
       );
     }
 

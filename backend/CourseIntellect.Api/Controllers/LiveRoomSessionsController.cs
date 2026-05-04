@@ -97,6 +97,7 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
         {
             Id = Guid.NewGuid(),
             FileName = request.FileName.Trim(),
+            FileUrl = request.FileUrl?.Trim() ?? string.Empty,
             CreatedAtUtc = DateTime.UtcNow,
         });
 
@@ -175,6 +176,7 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
             {
                 id = item.Id,
                 fileName = item.FileName,
+                fileUrl = item.FileUrl,
                 createdAtUtc = item.CreatedAtUtc,
             }).ToList(),
             notes = session.Notes.Select(item => new
@@ -206,6 +208,7 @@ public sealed class LiveRoomStateUpdateRequest
 public sealed class LiveRoomAssetCreateRequest
 {
     public string FileName { get; set; } = string.Empty;
+    public string? FileUrl { get; set; }
 }
 
 public sealed class LiveRoomNoteCreateRequest
@@ -236,6 +239,7 @@ public sealed class LiveRoomAssetSnapshot
 {
     public Guid Id { get; set; }
     public string FileName { get; set; } = string.Empty;
+    public string FileUrl { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 

@@ -254,6 +254,8 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
                     .toList(),
               ),
               const SizedBox(height: 18),
+              _operationQuickActions(context),
+              const SizedBox(height: 18),
               ResponsiveLayout.isTablet(context)
                   ? Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -450,57 +452,10 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     );
   }
 
-  Widget _leftColumn(BuildContext context) {
+  Widget _operationQuickActions(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionTitle(context, 'Son Tahsilatlar', 'Tümünü Gör', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AccountingReceiptsPage()),
-          );
-        }),
-        const SizedBox(height: 12),
-        AccountingPanel(
-          child: Column(
-            children: _store.collections.take(3).map((item) {
-              return _listRow(
-                context,
-                title: item.name,
-                subtitle: '${item.className} • ${item.method} • ${item.time}',
-                amount: item.amount,
-                color: const Color(0xFF0F766E),
-              );
-            }).toList(),
-          ),
-        ),
-        const SizedBox(height: 18),
-        _sectionTitle(context, 'Geciken Ödemeler', 'Detay', () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (_) => const AccountingOverduePage()),
-          );
-        }),
-        const SizedBox(height: 12),
-        AccountingPanel(
-          child: Column(
-            children: _store.installments
-                .where((item) => item.status == 'Geciken')
-                .take(3)
-                .map((item) {
-                  return _listRow(
-                    context,
-                    title: item.student,
-                    subtitle: '${item.due} • geciken plan',
-                    amount: item.amount,
-                    color: const Color(0xFFB42318),
-                    highlight: true,
-                  );
-                })
-                .toList(),
-          ),
-        ),
-        const SizedBox(height: 18),
         _sectionTitle(context, 'Operasyon', 'Kayıtlar', () {
           Navigator.push(
             context,
@@ -559,6 +514,60 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               ),
             ),
           ],
+        ),
+      ],
+    );
+  }
+
+  Widget _leftColumn(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle(context, 'Son Tahsilatlar', 'Tümünü Gör', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountingReceiptsPage()),
+          );
+        }),
+        const SizedBox(height: 12),
+        AccountingPanel(
+          child: Column(
+            children: _store.collections.take(3).map((item) {
+              return _listRow(
+                context,
+                title: item.name,
+                subtitle: '${item.className} • ${item.method} • ${item.time}',
+                amount: item.amount,
+                color: const Color(0xFF0F766E),
+              );
+            }).toList(),
+          ),
+        ),
+        const SizedBox(height: 18),
+        _sectionTitle(context, 'Geciken Ödemeler', 'Detay', () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AccountingOverduePage()),
+          );
+        }),
+        const SizedBox(height: 12),
+        AccountingPanel(
+          child: Column(
+            children: _store.installments
+                .where((item) => item.status == 'Geciken')
+                .take(3)
+                .map((item) {
+                  return _listRow(
+                    context,
+                    title: item.student,
+                    subtitle: '${item.due} • geciken plan',
+                    amount: item.amount,
+                    color: const Color(0xFFB42318),
+                    highlight: true,
+                  );
+                })
+                .toList(),
+          ),
         ),
       ],
     );

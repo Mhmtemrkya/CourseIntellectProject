@@ -12,6 +12,7 @@ import { Switch } from '../../components/ui/switch';
 import { useApp } from '../../context/AppContext';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
 import { fetchAttendance, fetchExamResults, fetchStudents } from '../../lib/api/modules';
 
 const containerVariants = {
@@ -175,6 +176,8 @@ export default function StudentProfile() {
               <div className="flex items-center gap-3"><Phone className="h-4 w-4 text-muted-foreground" /><span>Destek için idari birimle iletişime geçin.</span></div>
             </CardContent>
           </Card>
+
+          <LegalDocumentsPanel compact />
         </div>
       </div>
     </motion.div>

@@ -225,10 +225,16 @@ class _TeacherQuestionBatchCreatePageState
           questionText: draft.questionController.text.trim(),
           teacher: teacherName,
           imagePath: uploadedImagePath,
-          options: draft.type == 'Çoktan Seçmeli' ? options : const [],
+          options: draft.type == 'Çoktan Seçmeli'
+              ? options
+              : (draft.type == 'Doğru / Yanlış'
+                    ? const ['Doğru', 'Yanlış']
+                    : const <String>[]),
           correctOptionIndex: draft.type == 'Çoktan Seçmeli'
               ? draft.correctOptionIndex
-              : null,
+              : (draft.type == 'Doğru / Yanlış'
+                    ? (draft.answerController.text.trim() == 'Yanlış' ? 1 : 0)
+                    : null),
           classTargets: draft.selectedClasses.toList(),
           solutionAssetPath: uploadedSolutionPath,
           solutionAssetType: draft.solutionAssetType,

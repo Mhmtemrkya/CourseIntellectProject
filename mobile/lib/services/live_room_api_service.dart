@@ -17,8 +17,13 @@ class LiveRoomApiException implements Exception {
 class LiveRoomAssetRecord {
   final String id;
   final String fileName;
+  final String fileUrl;
 
-  const LiveRoomAssetRecord({required this.id, required this.fileName});
+  const LiveRoomAssetRecord({
+    required this.id,
+    required this.fileName,
+    required this.fileUrl,
+  });
 }
 
 class LiveRoomNoteRecord {
@@ -111,12 +116,16 @@ class LiveRoomApiService {
     return _mapOrThrow(response, fallback: 'Canlı oda durumu güncellenemedi.');
   }
 
-  Future<LiveRoomSessionRecord> addAsset(String roomId, String fileName) async {
+  Future<LiveRoomSessionRecord> addAsset(
+    String roomId,
+    String fileName, {
+    String fileUrl = '',
+  }) async {
     final session = await _session();
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/liveroomsessions/$roomId/assets'),
       headers: _jsonHeaders(session.accessToken),
-      body: jsonEncode({'fileName': fileName}),
+      body: jsonEncode({'fileName': fileName, 'fileUrl': fileUrl}),
     );
 
     return _mapOrThrow(response, fallback: 'Dosya kaydı eklenemedi.');
@@ -188,7 +197,8 @@ class LiveRoomApiService {
           .map(
             (item) => LiveRoomAssetRecord(
               id: item['id'] as String,
-              fileName: item['fileName'] as String,
+              fileName: item['fileName'] as String? ?? '',
+              fileUrl: item['fileUrl'] as String? ?? '',
             ),
           )
           .toList(),

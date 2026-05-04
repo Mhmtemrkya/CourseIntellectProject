@@ -25,6 +25,36 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
             ? plannedExams.FirstOrDefault(item => item.Id == request.PlannedExamId.Value)
             : null;
 
+        if (plannedExam is not null && TryResolvePlannedStartUtc(plannedExam.DateLabel, out var startsAtUtc) && DateTime.UtcNow < startsAtUtc)
+        {
+            return Conflict(new
+            {
+                message = $"Sınav saati gelmeden sınava giriş yapılamaz. Başlangıç: {plannedExam.DateLabel}",
+            });
+        }
+
+        var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
+        if (plannedExam is not null)
+        {
+            var normalizedUsername = CompatibilitySnapshotStore.NormalizeText(request.StudentUsername);
+            var existingSession = sessions
+                .Where(item =>
+                    item.PlannedExamId == plannedExam.Id &&
+                    CompatibilitySnapshotStore.NormalizeText(item.StudentUsername) == normalizedUsername)
+                .OrderByDescending(item => item.StartedAtUtc)
+                .FirstOrDefault();
+
+            if (existingSession?.Status == "Completed")
+            {
+                return Conflict(new { message = "Bu sınava daha önce girdiniz. İkinci kez giriş yapılamaz." });
+            }
+
+            if (existingSession is not null)
+            {
+                return Ok(MapSession(existingSession));
+            }
+        }
+
         var filteredQuestions = await ResolveSessionQuestions(request, plannedExam, resolvedClass, cancellationToken);
         if (filteredQuestions.Count == 0)
         {
@@ -35,6 +65,7 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
         var session = new ExamSessionSnapshot
         {
             Id = Guid.NewGuid(),
+            PlannedExamId = plannedExam?.Id,
             ExamTitle = ResolveExamTitle(plannedExam?.Title ?? request.ExamTitle, subject),
             Subject = subject,
             StudentName = resolvedStudentName,
@@ -52,13 +83,12 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
                 QuestionText = item.QuestionText,
                 ImagePath = item.ImagePath,
                 ImagePlacement = item.ImagePlacement,
-                Options = CompatibilitySnapshotStore.DeserializeStringList(item.OptionsSerialized),
+                Options = NormalizeQuestionOptions(item),
                 CorrectOptionIndex = item.CorrectOptionIndex ?? 0,
                 SortOrder = index,
             }).ToList(),
         };
 
-        var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
         sessions.Add(session);
 
         var sourceIds = filteredQuestions.Select(item => item.Id).ToHashSet();
@@ -102,17 +132,41 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
             return NotFound();
         }
 
-        if (request.SelectedOptionIndex >= question.Options.Count)
+        var hasOpenAnswer = !string.IsNullOrWhiteSpace(request.OpenAnswer);
+        var hasOptionAnswer = request.SelectedOptionIndex >= 0;
+
+        if (!hasOpenAnswer && !hasOptionAnswer)
+        {
+            return BadRequest(new { message = "Cevap boş olamaz." });
+        }
+
+        if (hasOptionAnswer && request.SelectedOptionIndex >= question.Options.Count)
         {
             return BadRequest(new { message = "Geçersiz cevap seçimi." });
         }
 
-        question.Answer = new ExamSessionAnswerSnapshot
+        if (question.Options.Count == 0 && hasOpenAnswer)
         {
-            SelectedOptionIndex = request.SelectedOptionIndex,
-            IsCorrect = question.CorrectOptionIndex == request.SelectedOptionIndex,
-            AnsweredAtUtc = DateTime.UtcNow,
-        };
+            // Açık uçlu — manuel değerlendirme gerekir; doğru/yanlış otomatik atılmaz.
+            question.Answer = new ExamSessionAnswerSnapshot
+            {
+                SelectedOptionIndex = -1,
+                OpenAnswer = request.OpenAnswer!.Trim(),
+                IsCorrect = false,
+                RequiresManualReview = true,
+                AnsweredAtUtc = DateTime.UtcNow,
+            };
+        }
+        else
+        {
+            question.Answer = new ExamSessionAnswerSnapshot
+            {
+                SelectedOptionIndex = request.SelectedOptionIndex,
+                OpenAnswer = hasOpenAnswer ? request.OpenAnswer!.Trim() : null,
+                IsCorrect = question.CorrectOptionIndex == request.SelectedOptionIndex,
+                AnsweredAtUtc = DateTime.UtcNow,
+            };
+        }
 
         await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, session.StudentUsername, cancellationToken);
         return Ok(MapSession(session));
@@ -188,6 +242,35 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
         string resolvedClass,
         CancellationToken cancellationToken)
     {
+        if (plannedExam is not null)
+        {
+            var sourceIds = plannedExam.Sources
+                .Where(source => source.QuestionId.HasValue)
+                .Select(source => source.QuestionId!.Value)
+                .ToHashSet();
+
+            if (sourceIds.Count > 0)
+            {
+                var fetched = await dbContext.QuestionBankItems
+                    .AsNoTracking()
+                    .Where(item => sourceIds.Contains(item.Id))
+                    .ToListAsync(cancellationToken);
+
+                var sourceOrder = plannedExam.Sources
+                    .Where(s => s.QuestionId.HasValue)
+                    .Select((s, i) => new { Id = s.QuestionId!.Value, Order = i })
+                    .ToDictionary(x => x.Id, x => x.Order);
+
+                var byId = fetched
+                    .OrderBy(q => sourceOrder.GetValueOrDefault(q.Id, int.MaxValue))
+                    .ToList();
+                if (byId.Count > 0)
+                {
+                    return byId;
+                }
+            }
+        }
+
         var allQuestions = await dbContext.QuestionBankItems
             .AsNoTracking()
             .Where(item => item.CorrectOptionIndex.HasValue)
@@ -197,12 +280,6 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
 
         if (plannedExam is not null)
         {
-            var sourceIds = plannedExam.Sources.Where(item => item.QuestionId.HasValue).Select(item => item.QuestionId!.Value).ToHashSet();
-            var byId = allQuestions.Where(item => sourceIds.Contains(item.Id)).ToList();
-            if (byId.Count > 0)
-            {
-                return byId;
-            }
 
             var sourceTitles = plannedExam.Sources
                 .Select(item => CompatibilitySnapshotStore.NormalizeText(item.Title))
@@ -224,9 +301,117 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
         }
 
         var classFiltered = FilterByClass(filtered.ToList(), resolvedClass);
+        var requestedCount = plannedExam?.QuestionCount > 0
+            ? plannedExam.QuestionCount
+            : request.QuestionCount > 0
+                ? request.QuestionCount
+                : 10;
         return (classFiltered.Count == 0 ? filtered.ToList() : classFiltered)
-            .Take(request.QuestionCount > 0 ? request.QuestionCount : 10)
+            .Take(requestedCount)
             .ToList();
+    }
+
+    public static bool TryResolvePlannedStartUtc(string? dateLabel, out DateTime startsAtUtc)
+    {
+        startsAtUtc = DateTime.MinValue;
+        if (string.IsNullOrWhiteSpace(dateLabel))
+        {
+            return false;
+        }
+
+        var normalized = dateLabel.Replace("•", " ").Replace("Hazıran", "Haziran").Trim();
+        normalized = TranslateTurkishMonths(normalized);
+        var formats = new[]
+        {
+            "dd MMMM HH:mm",
+            "dd MMMM yyyy HH:mm",
+            "dd.MM.yyyy HH:mm",
+            "yyyy-MM-dd HH:mm",
+            "dd.MM.yyyy",
+            "yyyy-MM-dd",
+        };
+        var cultures = TryGetCultures("tr-TR");
+
+        foreach (var culture in cultures)
+        {
+            foreach (var format in formats)
+            {
+                if (DateTime.TryParseExact(normalized, format, culture, System.Globalization.DateTimeStyles.None, out var parsed))
+                {
+                    if (parsed.Year == 1)
+                    {
+                        parsed = new DateTime(DateTime.Now.Year, parsed.Month, parsed.Day, parsed.Hour, parsed.Minute, 0);
+                    }
+
+                    startsAtUtc = DateTime.SpecifyKind(parsed, DateTimeKind.Local).ToUniversalTime();
+                    return true;
+                }
+            }
+
+            if (DateTime.TryParse(normalized, culture, System.Globalization.DateTimeStyles.None, out var parsedAny))
+            {
+                if (parsedAny.Year == 1)
+                {
+                    parsedAny = new DateTime(DateTime.Now.Year, parsedAny.Month, parsedAny.Day, parsedAny.Hour, parsedAny.Minute, 0);
+                }
+
+                startsAtUtc = DateTime.SpecifyKind(parsedAny, DateTimeKind.Local).ToUniversalTime();
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private static List<string> NormalizeQuestionOptions(QuestionBankItem item)
+    {
+        var options = CompatibilitySnapshotStore.DeserializeStringList(item.OptionsSerialized);
+        if (options.Count > 0)
+        {
+            return options;
+        }
+
+        var type = (item.Type ?? string.Empty).Trim().ToLowerInvariant();
+        if (type.Contains("doğru") || type.Contains("dogru") || type.Contains("yanlış") || type.Contains("yanlis"))
+        {
+            return new List<string> { "Doğru", "Yanlış" };
+        }
+
+        return options;
+    }
+
+    private static System.Globalization.CultureInfo[] TryGetCultures(params string[] preferredNames)
+    {
+        var list = new List<System.Globalization.CultureInfo>();
+        foreach (var name in preferredNames)
+        {
+            try
+            {
+                list.Add(System.Globalization.CultureInfo.GetCultureInfo(name));
+            }
+            catch (System.Globalization.CultureNotFoundException)
+            {
+                // Globalization-invariant runtime: skip unavailable culture.
+            }
+        }
+        list.Add(System.Globalization.CultureInfo.InvariantCulture);
+        return list.ToArray();
+    }
+
+    private static string TranslateTurkishMonths(string value)
+    {
+        var map = new (string tr, string en)[]
+        {
+            ("Ocak", "January"), ("Şubat", "February"), ("Mart", "March"),
+            ("Nisan", "April"), ("Mayıs", "May"), ("Haziran", "June"),
+            ("Temmuz", "July"), ("Ağustos", "August"), ("Eylül", "September"),
+            ("Ekim", "October"), ("Kasım", "November"), ("Aralık", "December"),
+        };
+        foreach (var (tr, en) in map)
+        {
+            value = value.Replace(tr, en, StringComparison.OrdinalIgnoreCase);
+        }
+        return value;
     }
 
     private async Task<string> ResolveClassName(string username, string? requestClassName, CancellationToken cancellationToken)
@@ -331,6 +516,8 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
                     options = item.Options,
                     sortOrder = item.SortOrder,
                     selectedOptionIndex = item.Answer?.SelectedOptionIndex,
+                    openAnswer = item.Answer?.OpenAnswer,
+                    requiresManualReview = item.Answer?.RequiresManualReview ?? false,
                 })
                 .ToList(),
         };
@@ -379,12 +566,14 @@ public sealed class ExamSessionStartRequest
 public sealed class ExamSessionAnswerRequest
 {
     public Guid QuestionId { get; set; }
-    public int SelectedOptionIndex { get; set; }
+    public int SelectedOptionIndex { get; set; } = -1;
+    public string? OpenAnswer { get; set; }
 }
 
 public sealed class ExamSessionSnapshot
 {
     public Guid Id { get; set; }
+    public Guid? PlannedExamId { get; set; }
     public string ExamTitle { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string StudentName { get; set; } = string.Empty;
@@ -415,7 +604,9 @@ public sealed class ExamSessionQuestionSnapshot
 
 public sealed class ExamSessionAnswerSnapshot
 {
-    public int SelectedOptionIndex { get; set; }
+    public int SelectedOptionIndex { get; set; } = -1;
+    public string? OpenAnswer { get; set; }
     public bool IsCorrect { get; set; }
+    public bool RequiresManualReview { get; set; }
     public DateTime AnsweredAtUtc { get; set; } = DateTime.UtcNow;
 }

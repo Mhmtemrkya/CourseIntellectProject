@@ -91,6 +91,102 @@ class PlannedExamRecord {
   }
 }
 
+class PlannedExamAnswerRecord {
+  final String questionId;
+  final String? questionBankItemId;
+  final int sortOrder;
+  final String topic;
+  final String questionText;
+  final List<String> options;
+  final int? selectedOptionIndex;
+  final String selectedAnswerText;
+  final int correctOptionIndex;
+  final String correctAnswerText;
+  final bool? isCorrect;
+
+  const PlannedExamAnswerRecord({
+    required this.questionId,
+    required this.questionBankItemId,
+    required this.sortOrder,
+    required this.topic,
+    required this.questionText,
+    required this.options,
+    required this.selectedOptionIndex,
+    required this.selectedAnswerText,
+    required this.correctOptionIndex,
+    required this.correctAnswerText,
+    required this.isCorrect,
+  });
+
+  factory PlannedExamAnswerRecord.fromMap(Map<String, dynamic> map) {
+    return PlannedExamAnswerRecord(
+      questionId: map['questionId'] as String? ?? '',
+      questionBankItemId: map['questionBankItemId'] as String?,
+      sortOrder: map['sortOrder'] as int? ?? 0,
+      topic: map['topic'] as String? ?? '',
+      questionText: map['questionText'] as String? ?? '',
+      options: (map['options'] as List<dynamic>? ?? const [])
+          .map((item) => item.toString())
+          .toList(),
+      selectedOptionIndex: map['selectedOptionIndex'] as int?,
+      selectedAnswerText: map['selectedAnswerText'] as String? ?? '',
+      correctOptionIndex: map['correctOptionIndex'] as int? ?? 0,
+      correctAnswerText: map['correctAnswerText'] as String? ?? '',
+      isCorrect: map['isCorrect'] as bool?,
+    );
+  }
+}
+
+class PlannedExamSubmissionRecord {
+  final String id;
+  final String? sessionId;
+  final String studentName;
+  final String studentUsername;
+  final int score;
+  final int net;
+  final int correct;
+  final int wrong;
+  final int blank;
+  final int total;
+  final String status;
+  final List<PlannedExamAnswerRecord> answers;
+
+  const PlannedExamSubmissionRecord({
+    required this.id,
+    required this.sessionId,
+    required this.studentName,
+    required this.studentUsername,
+    required this.score,
+    required this.net,
+    required this.correct,
+    required this.wrong,
+    required this.blank,
+    required this.total,
+    required this.status,
+    required this.answers,
+  });
+
+  factory PlannedExamSubmissionRecord.fromMap(Map<String, dynamic> map) {
+    return PlannedExamSubmissionRecord(
+      id: map['id'] as String? ?? '',
+      sessionId: map['sessionId'] as String?,
+      studentName: map['studentName'] as String? ?? '',
+      studentUsername: map['studentUsername'] as String? ?? '',
+      score: map['score'] as int? ?? 0,
+      net: map['net'] as int? ?? 0,
+      correct: map['correct'] as int? ?? 0,
+      wrong: map['wrong'] as int? ?? 0,
+      blank: map['blank'] as int? ?? 0,
+      total: map['total'] as int? ?? 0,
+      status: map['status'] as String? ?? 'Teslim Edildi',
+      answers: (map['answers'] as List<dynamic>? ?? const [])
+          .map((item) => Map<String, dynamic>.from(item as Map))
+          .map(PlannedExamAnswerRecord.fromMap)
+          .toList(),
+    );
+  }
+}
+
 class PlannedExamApiService {
   PlannedExamApiService._();
 
@@ -169,6 +265,25 @@ class PlannedExamApiService {
         'Planlı sınav silinemedi (${response.statusCode}).',
       );
     }
+  }
+
+  Future<List<PlannedExamSubmissionRecord>> fetchSubmissions(String id) async {
+    final session = await _session();
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/plannedexams/$id/submissions'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PlannedExamApiException(
+        'Sınav sonuçları alınamadı (${response.statusCode}).',
+      );
+    }
+
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .map(PlannedExamSubmissionRecord.fromMap)
+        .toList();
   }
 
   Future<AuthSession> _session() async {

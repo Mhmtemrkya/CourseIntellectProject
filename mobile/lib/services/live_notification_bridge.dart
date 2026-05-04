@@ -84,8 +84,6 @@ class LiveNotificationBridge {
       return;
     }
 
-    await _requestPermissions();
-
     final sessionKey = '${session.primaryRole}:${session.username}';
     if (_activeSessionKey != sessionKey) {
       _activeSessionKey = sessionKey;
@@ -185,26 +183,6 @@ class LiveNotificationBridge {
     } finally {
       _checking = false;
     }
-  }
-
-  Future<void> _requestPermissions() async {
-    final iosPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          IOSFlutterLocalNotificationsPlugin
-        >();
-    await iosPlugin?.requestPermissions(alert: true, badge: true, sound: true);
-
-    final macPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          MacOSFlutterLocalNotificationsPlugin
-        >();
-    await macPlugin?.requestPermissions(alert: true, badge: true, sound: true);
-
-    final androidPlugin = _plugin
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >();
-    await androidPlugin?.requestNotificationsPermission();
   }
 
   Future<List<_LiveNotificationItem>> _loadIncoming(AuthSession session) async {

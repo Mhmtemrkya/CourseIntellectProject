@@ -22,6 +22,4 @@ class AppEnv {
       environment.toLowerCase() == 'production' || kReleaseMode;
 
   static bool get isStaging => environment.toLowerCase() == 'staging';
-
-  static bool get allowDemoCredentials => !isProduction;
 }

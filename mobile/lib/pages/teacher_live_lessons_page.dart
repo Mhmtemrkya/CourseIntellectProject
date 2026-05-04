@@ -377,6 +377,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                       index: index,
                       title: lesson.title,
                       subtitle: lesson.subtitle,
+                      date: lesson.dateLabel,
                       time: lesson.timeLabel,
                       className: lesson.className,
                       platform: lesson.platform,
@@ -547,6 +548,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     required int index,
     required String title,
     required String subtitle,
+    required String date,
     required String time,
     required String className,
     required String platform,
@@ -646,8 +648,8 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
               Expanded(
                 child: _metaChip(
                   theme,
-                  icon: Icons.schedule_rounded,
-                  text: time,
+                  icon: Icons.calendar_today_rounded,
+                  text: date,
                   color: accentColor,
                 ),
               ),
@@ -655,8 +657,8 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
               Expanded(
                 child: _metaChip(
                   theme,
-                  icon: Icons.groups_rounded,
-                  text: "Sınıf $className",
+                  icon: Icons.schedule_rounded,
+                  text: time,
                   color: accentColor,
                 ),
               ),
@@ -665,6 +667,15 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
           const SizedBox(height: 10),
           Row(
             children: [
+              Expanded(
+                child: _metaChip(
+                  theme,
+                  icon: Icons.groups_rounded,
+                  text: "Sınıf $className",
+                  color: accentColor,
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: _metaChip(
                   theme,

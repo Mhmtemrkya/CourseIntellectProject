@@ -6,6 +6,7 @@ import '../services/auth_session_store.dart';
 import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/adaptive_scaffold.dart';
+import '../widgets/legal_profile_tile.dart';
 
 class TeacherProfilePage extends StatefulWidget {
   const TeacherProfilePage({super.key});
@@ -115,6 +116,7 @@ class _TeacherProfilePageState extends State<TeacherProfilePage> {
                     ),
                   ),
                 ),
+                const LegalProfileTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
                   title: const Text(

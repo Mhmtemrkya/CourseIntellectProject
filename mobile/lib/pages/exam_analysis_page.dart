@@ -306,7 +306,7 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Analiz Notlari",
+                          "Analiz Notları",
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -317,8 +317,8 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                           context,
                           Icons.trending_up,
                           strongest == null
-                              ? 'Guclu ders bekleniyor'
-                              : 'En guclu ders: $strongest',
+                              ? 'Güçlü ders bekleniyor'
+                              : 'En güçlü ders: $strongest',
                           strongest == null
                               ? 'Yeni sınav kaydı geldikce burada otomatik yorum olusacak.'
                               : 'Bu dersteki performans diğer derslere göre daha yüksek.',

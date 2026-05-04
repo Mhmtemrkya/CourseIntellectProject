@@ -57,7 +57,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
       return {
         'Bugün': {
           'label': 'Bugün',
-          'date': 'Planli ders yok',
+          'date': 'Planlı ders yok',
           'lessons': <Map<String, dynamic>>[],
         },
       };
@@ -115,7 +115,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
     final today = DateTime(now.year, now.month, now.day);
     final current = DateTime(date.year, date.month, date.day);
     if (current == today) return 'Bugün';
-    if (current == today.add(const Duration(days: 1))) return 'Yarin';
+    if (current == today.add(const Duration(days: 1))) return 'Yarın';
     return '${date.day}.${date.month}';
   }
 
@@ -257,7 +257,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
               backgroundColor: Colors.transparent,
               elevation: 0,
               title: Text(
-                "Ders Programim",
+                "Ders Programım",
                 style: TextStyle(
                   color: isDark ? Colors.white : Colors.black,
                   fontWeight: FontWeight.bold,

@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:student/services/app_env.dart';
 import 'package:student/services/auth_api_service.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/branding_service.dart';
@@ -11,6 +10,7 @@ import 'package:student/services/remote_push_service.dart';
 import 'package:student/services/role_router.dart';
 import 'package:student/theme_provider.dart';
 import 'package:student/widgets/course_intellect_logo.dart';
+import 'package:student/widgets/notification_primer_sheet.dart';
 import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
@@ -27,34 +27,6 @@ class _LoginPageState extends State<LoginPage> {
   final passwordController = TextEditingController();
 
   bool isLoading = false;
-
-  Map<String, String>? get _demoCredentials {
-    if (!AppEnv.allowDemoCredentials) return null;
-    switch (widget.role) {
-      case "Öğrenci":
-        return const {'username': 'ali10a241', 'password': 'ALI2026A'};
-      case "Veli":
-        return const {'username': 'veli.ayse', 'password': 'VLI2026A'};
-      case "Öğretmen":
-        return const {'username': 'ogrt.hasan', 'password': 'HYN2026A'};
-      case "Muhasebeci":
-        return const {'username': 'muhasebe.selim', 'password': 'MHS2026A'};
-      case "Yönetici":
-        return const {'username': 'kurum.admin', 'password': 'KRM2026A'};
-      case "İdari Birimler":
-        return const {'username': 'idari.ceren', 'password': 'CRN2026B'};
-      default:
-        return null;
-    }
-  }
-
-  void _fillDemoCredentials() {
-    final creds = _demoCredentials;
-    if (creds == null) return;
-    usernameController.text = creds['username']!;
-    passwordController.text = creds['password']!;
-    setState(() {});
-  }
 
   void login() async {
     final username = usernameController.text.trim();
@@ -140,6 +112,8 @@ class _LoginPageState extends State<LoginPage> {
 
     final themeProvider = context.read<ThemeProvider>();
     await BrandingService.instance.applyBranding(themeProvider);
+    if (!mounted) return;
+    await NotificationPrimer.showIfFirstTime(context);
     if (!mounted) return;
     _openRolePanel(session);
     unawaited(LiveNotificationBridge.instance.startForCurrentSession());
@@ -241,34 +215,6 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                       ),
                       const SizedBox(height: 22),
-                      if (_demoCredentials != null) ...[
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(14),
-                          decoration: BoxDecoration(
-                            color: theme.colorScheme.primary.withValues(
-                              alpha: 0.08,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.bolt_rounded, size: 18),
-                              const SizedBox(width: 8),
-                              const Expanded(
-                                child: Text(
-                                  'Geliştirme ortamında hızlı test için demo hesap bilgilerini otomatik doldur.',
-                                ),
-                              ),
-                              TextButton(
-                                onPressed: _fillDemoCredentials,
-                                child: const Text('Otomatik Doldur'),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 18),
-                      ],
                       const Text("Kullanıcı Adı"),
                       const SizedBox(height: 8),
                       TextField(

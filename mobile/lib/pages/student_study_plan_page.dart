@@ -44,7 +44,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     },
     {
       "id": 2,
-      "title": "Kisa soru taramasi",
+      "title": "Kısa soru taraması",
       "duration": "20 dk",
       "status": "Sıradaki",
       "reason":
