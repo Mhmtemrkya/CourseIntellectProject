@@ -25,11 +25,6 @@ class RemotePushService {
             badge: true,
             sound: true,
           );
-      await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
 
       FirebaseMessaging.onMessage.listen((_) {});
       FirebaseMessaging.instance.onTokenRefresh.listen((token) async {

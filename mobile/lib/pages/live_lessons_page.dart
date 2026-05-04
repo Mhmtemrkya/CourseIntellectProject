@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/material_download_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/responsive_overlays.dart';
@@ -79,6 +80,55 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
         : const Color(0xFF4E8DF5);
   }
 
+  ({String name, String url}) _parseMaterial(String raw) {
+    final value = raw.trim();
+    if (value.contains('::')) {
+      final parts = value.split('::');
+      return (
+        name: parts.first.trim(),
+        url: parts.length > 1
+            ? parts.sublist(1).join('::').trim()
+            : parts.first.trim(),
+      );
+    }
+    return (name: value.split('/').last, url: '');
+  }
+
+  Future<void> _downloadMaterial(BuildContext context, String raw) async {
+    final material = _parseMaterial(raw);
+    if (material.url.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${material.name} için indirme bağlantısı bulunamadı. Materyali yeniden yükleyip canlı dersi tekrar oluşturun.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await MaterialDownloadService.instance.downloadAndOpen(
+        fileName: material.name,
+        url: material.url,
+      );
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('${material.name} indirildi.')));
+    } on MaterialDownloadException catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (_) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Materyal indirilemedi.')));
+    }
+  }
+
   void _showMaterialsSheet(
     BuildContext context, {
     required String title,
@@ -89,55 +139,111 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: theme.cardColor,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (sheetContext) {
-        return ResponsiveSheetContainer(
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Wrap(
-              runSpacing: 12,
-              children: [
-                Center(
-                  child: Container(
-                    width: 48,
-                    height: 5,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
-                      borderRadius: BorderRadius.circular(99),
+        return SafeArea(
+          top: false,
+          child: ResponsiveSheetContainer(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade400,
+                        borderRadius: BorderRadius.circular(99),
+                      ),
                     ),
                   ),
-                ),
-                Text(
-                  "$title Materyalleri",
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                ...materials.map(
-                  (item) => Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: theme.scaffoldBackgroundColor,
-                      borderRadius: BorderRadius.circular(16),
+                  const SizedBox(height: 16),
+                  Text(
+                    '$title Materyalleri',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w800,
                     ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.insert_drive_file_rounded,
-                          color: theme.colorScheme.primary,
+                  ),
+                  const SizedBox(height: 16),
+                  if (materials.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 24),
+                      child: Center(
+                        child: Text(
+                          'Bu canlı derse ait materyal bulunmuyor.',
+                          style: theme.textTheme.bodyMedium,
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(child: Text(item)),
-                        const Icon(Icons.download_rounded),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                      ),
+                    )
+                  else
+                    ...materials.map((item) {
+                      final material = _parseMaterial(item);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(16),
+                          onTap: () => _downloadMaterial(context, item),
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: theme.scaffoldBackgroundColor,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 40,
+                                  height: 40,
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary
+                                        .withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(
+                                    Icons.insert_drive_file_rounded,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    material.name,
+                                    style: theme.textTheme.bodyMedium?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary,
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: const Icon(
+                                    Icons.download_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                ],
+              ),
             ),
           ),
         );
@@ -211,6 +317,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                       isDark,
                       title: lesson.title,
                       subtitle: lesson.subtitle,
+                      date: lesson.dateLabel,
                       time: lesson.timeLabel,
                       teacher: lesson.teacher,
                       platform: lesson.platform,
@@ -360,6 +467,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
     bool isDark, {
     required String title,
     required String subtitle,
+    required String date,
     required String time,
     required String teacher,
     required String platform,
@@ -453,8 +561,8 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
               Expanded(
                 child: _metaChip(
                   theme,
-                  icon: Icons.schedule_rounded,
-                  text: time,
+                  icon: Icons.calendar_today_rounded,
+                  text: date,
                   color: accentColor,
                 ),
               ),
@@ -462,8 +570,8 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
               Expanded(
                 child: _metaChip(
                   theme,
-                  icon: Icons.person_rounded,
-                  text: teacher,
+                  icon: Icons.schedule_rounded,
+                  text: time,
                   color: accentColor,
                 ),
               ),
@@ -472,6 +580,15 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
           const SizedBox(height: 10),
           Row(
             children: [
+              Expanded(
+                child: _metaChip(
+                  theme,
+                  icon: Icons.person_rounded,
+                  text: teacher,
+                  color: accentColor,
+                ),
+              ),
+              const SizedBox(width: 10),
               Expanded(
                 child: _metaChip(
                   theme,

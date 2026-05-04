@@ -81,7 +81,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
         .map(
           (item) => {
             'title': '${item.topic} • ${item.difficulty}',
-            'type': 'Soru Bankasi',
+            'type': 'Soru Bankası',
             'subject': item.subject,
             'className': item.classTargets.join(','),
             'questionId': item.id,
@@ -177,7 +177,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   void _openSourcePicker() {
     final items = selectedSource == "Denemelerden"
         ? mockExamItems
-        : selectedSource == "Soru Bankasindan"
+        : selectedSource == "Soru Bankasından"
         ? questionBankItems
         : [...questionBankItems, ...mockExamItems];
 
@@ -471,7 +471,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                         child: Text("Manuel Ekle"),
                       ),
                       DropdownMenuItem(
-                        value: "Soru Bankasindan",
+                        value: "Soru Bankasından",
                         child: Text("Soru Bankasından"),
                       ),
                       DropdownMenuItem(
@@ -523,7 +523,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                         OutlinedButton.icon(
                           onPressed: _addManualQuestion,
                           icon: const Icon(Icons.add_circle_outline_rounded),
-                          label: const Text("Soru Karti Ekle"),
+                          label: const Text("Soru Kartı Ekle"),
                         ),
                         if (_manualQuestions.isNotEmpty) ...[
                           const SizedBox(height: 14),
@@ -721,7 +721,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
       'Mart',
       'Nisan',
       'Mayıs',
-      'Hazıran',
+      'Haziran',
       'Temmuz',
       'Ağustos',
       'Eylül',

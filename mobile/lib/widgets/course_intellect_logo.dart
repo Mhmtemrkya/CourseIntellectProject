@@ -19,7 +19,7 @@ class CourseIntellectLogo extends StatelessWidget {
 
     if (!showWordmark) {
       return Image.asset(
-        'assets/logo/course_intellect.png',
+        'assets/logo/course_intellect2.png',
         width: width,
         height: height,
         fit: BoxFit.contain,
@@ -27,7 +27,7 @@ class CourseIntellectLogo extends StatelessWidget {
     }
 
     return Image.asset(
-      'assets/logo/course_intellect.png',
+      'assets/logo/course_intellect2.png',
       width: width,
       height: height,
       fit: BoxFit.contain,

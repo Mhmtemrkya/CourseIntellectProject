@@ -124,6 +124,8 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
               else ...[
                 _heroCard(context),
                 const SizedBox(height: 16),
+                _actionsCard(context),
+                const SizedBox(height: 16),
                 _summaryGrid(context),
                 const SizedBox(height: 16),
                 _teacherNoteCard(context),
@@ -133,8 +135,6 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                 _lessonPerformanceCard(context),
                 const SizedBox(height: 16),
                 _weeklyPlanCard(context),
-                const SizedBox(height: 16),
-                _actionsCard(context),
               ],
             ],
           ),
@@ -258,7 +258,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
   Widget _summaryGrid(BuildContext context) {
     final average = _averageScore();
     final completed = _attendanceRecords
-        .where((item) => item.status == 'Katildi')
+        .where((item) => item.status == 'Katıldı')
         .length;
     final total = _attendanceRecords.length;
     final overdueCount = AccountingFinanceStore.instance.installments
@@ -1120,7 +1120,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
   int _attendanceRate() {
     if (_attendanceRecords.isEmpty) return 0;
     final attended = _attendanceRecords
-        .where((item) => item.status == 'Katildi')
+        .where((item) => item.status == 'Katıldı')
         .length;
     return ((attended / _attendanceRecords.length) * 100).round();
   }

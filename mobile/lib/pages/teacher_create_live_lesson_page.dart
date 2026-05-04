@@ -1,6 +1,7 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
+import 'package:student/services/content_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
 import 'package:student/widgets/teacher_header.dart';
 
@@ -25,6 +26,7 @@ class _TeacherCreateLiveLessonPageState
   String _teacherName = '';
   List<String> _classOptions = const [];
   String _selectedClass = '';
+  bool _uploadingMaterial = false;
 
   @override
   void initState() {
@@ -53,10 +55,43 @@ class _TeacherCreateLiveLessonPageState
     final result = await FilePicker.platform.pickFiles();
 
     if (result != null && result.files.single.name.isNotEmpty) {
-      setState(() {
-        materials.add(result.files.single.name);
-      });
+      setState(() => _uploadingMaterial = true);
+      try {
+        final uploaded = await ContentApiService.instance.uploadContentAsset(
+          file: result.files.single,
+          folder: 'live-lesson-materials',
+        );
+        if (!mounted) return;
+        setState(() {
+          materials.add('${uploaded.fileName}::${uploaded.fileUrl}');
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${uploaded.fileName} yüklendi.')),
+        );
+      } on ContentApiException catch (error) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(error.message)));
+      } catch (_) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Materyal yüklenemedi.')));
+      } finally {
+        if (mounted) {
+          setState(() => _uploadingMaterial = false);
+        }
+      }
     }
+  }
+
+  String _materialName(String raw) {
+    final value = raw.trim();
+    if (value.contains('::')) {
+      return value.split('::').first.trim();
+    }
+    return value.split('/').last;
   }
 
   Future<void> _pickDate() async {
@@ -260,7 +295,7 @@ class _TeacherCreateLiveLessonPageState
                       const Spacer(),
                       GestureDetector(
                         behavior: HitTestBehavior.opaque,
-                        onTap: _pickMaterial,
+                        onTap: _uploadingMaterial ? null : _pickMaterial,
                         child: Container(
                           width: 40,
                           height: 40,
@@ -270,10 +305,18 @@ class _TeacherCreateLiveLessonPageState
                             ),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: Icon(
-                            Icons.add,
-                            color: theme.colorScheme.primary,
-                          ),
+                          child: _uploadingMaterial
+                              ? Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: theme.colorScheme.primary,
+                                  ),
+                                )
+                              : Icon(
+                                  Icons.add,
+                                  color: theme.colorScheme.primary,
+                                ),
                         ),
                       ),
                     ],
@@ -300,7 +343,7 @@ class _TeacherCreateLiveLessonPageState
                             color: theme.colorScheme.primary,
                           ),
                           const SizedBox(width: 10),
-                          Expanded(child: Text(item)),
+                          Expanded(child: Text(_materialName(item))),
                           IconButton(
                             onPressed: () {
                               setState(() {
@@ -321,7 +364,7 @@ class _TeacherCreateLiveLessonPageState
               width: double.infinity,
               height: 54,
               child: ElevatedButton.icon(
-                onPressed: _saveLesson,
+                onPressed: _uploadingMaterial ? null : _saveLesson,
                 icon: const Icon(Icons.check_circle_outline_rounded),
                 label: const Text("Canlı Dersi Oluştur"),
               ),

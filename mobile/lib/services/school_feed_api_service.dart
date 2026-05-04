@@ -127,6 +127,22 @@ class LiveLessonRecord {
     return '${_twoDigit(startsAt!.hour)}:${_twoDigit(startsAt!.minute)} - ${_twoDigit(end.hour)}:${_twoDigit(end.minute)}';
   }
 
+  String get dateLabel {
+    if (startsAt == null) return '--';
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final lessonDay = DateTime(startsAt!.year, startsAt!.month, startsAt!.day);
+    final diff = lessonDay.difference(today).inDays;
+    if (diff == 0) return 'Bugün';
+    if (diff == 1) return 'Yarın';
+    if (diff == -1) return 'Dün';
+    const months = [
+      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+    ];
+    return '${startsAt!.day} ${months[startsAt!.month - 1]} ${startsAt!.year}';
+  }
+
   static String _twoDigit(int value) => value.toString().padLeft(2, '0');
 }
 

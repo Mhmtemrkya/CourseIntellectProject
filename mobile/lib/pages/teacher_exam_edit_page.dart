@@ -148,7 +148,7 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
               const SizedBox(height: 14),
               TextField(
                 controller: questionController,
-                decoration: const InputDecoration(labelText: "Soru Sayisi"),
+                decoration: const InputDecoration(labelText: "Soru Sayısı"),
               ),
               const SizedBox(height: 14),
               TextField(

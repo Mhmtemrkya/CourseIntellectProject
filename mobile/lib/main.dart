@@ -8,6 +8,7 @@ import 'pages/splash_page.dart';
 import 'services/live_notification_bridge.dart';
 import 'services/remote_push_service.dart';
 import 'theme_provider.dart';
+import 'widgets/legal_consent_gate.dart';
 import 'widgets/maintenance_gate.dart';
 
 @pragma('vm:entry-point')
@@ -66,7 +67,9 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
           theme: themeProvider.lightTheme,
           darkTheme: themeProvider.darkTheme,
           themeMode: themeProvider.themeMode,
-          home: const MaintenanceGate(child: SplashPage()),
+          home: const MaintenanceGate(
+            child: LegalConsentGate(child: SplashPage()),
+          ),
         );
       },
     );

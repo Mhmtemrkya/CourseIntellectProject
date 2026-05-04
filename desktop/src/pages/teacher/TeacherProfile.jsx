@@ -11,6 +11,7 @@ import { Label } from '../../components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchStaff, fetchExamResults, fetchHomework } from '../../lib/api/modules';
@@ -169,6 +170,10 @@ export default function TeacherProfile() {
             </div>
           </CardContent>
         </Card>
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <LegalDocumentsPanel compact />
       </motion.div>
     </motion.div>
   );

@@ -250,6 +250,15 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
             );
       }
 
+      final savedOptions = _isMultipleChoice
+          ? optionValues
+          : (_isTrueFalse ? const ['Doğru', 'Yanlış'] : const <String>[]);
+      final savedCorrectIndex = _isMultipleChoice
+          ? _correctOptionIndex
+          : (_isTrueFalse
+                ? (_answerKeyController.text.trim() == 'Yanlış' ? 1 : 0)
+                : null);
+
       if (_isEditMode) {
         final initial = widget.initialQuestion!;
         await QuestionBankStore.instance.updateQuestion(
@@ -261,8 +270,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
             questionText: _questionController.text.trim(),
             teacher: teacherName,
             imagePath: uploadedImagePath,
-            options: optionValues,
-            correctOptionIndex: _isMultipleChoice ? _correctOptionIndex : null,
+            options: savedOptions,
+            correctOptionIndex: savedCorrectIndex,
             classTargets: _selectedClasses.toList(),
             solutionAssetPath: uploadedSolutionPath,
             solutionAssetType: _solutionAssetType,
@@ -282,8 +291,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
           questionText: _questionController.text.trim(),
           teacher: teacherName,
           imagePath: uploadedImagePath,
-          options: optionValues,
-          correctOptionIndex: _isMultipleChoice ? _correctOptionIndex : null,
+          options: savedOptions,
+          correctOptionIndex: savedCorrectIndex,
           classTargets: _selectedClasses.toList(),
           solutionAssetPath: uploadedSolutionPath,
           solutionAssetType: _solutionAssetType,
@@ -843,7 +852,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
   Widget _trueFalseSection(ThemeData theme) {
     final current = _answerKeyController.text.trim() == 'Yanlış'
         ? 'Yanlış'
-        : 'Doğru';
+        : (_answerKeyController.text.trim() == 'Doğru' ? 'Doğru' : null);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(14),
@@ -861,25 +870,82 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: ['Doğru', 'Yanlış'].map((item) {
-              final selected = current == item;
-              return ChoiceChip(
-                label: Text(item),
-                selected: selected,
-                onSelected: (_) =>
-                    setState(() => _answerKeyController.text = item),
-              );
-            }).toList(),
+          Row(
+            children: [
+              Expanded(
+                child: _trueFalseButton(
+                  theme,
+                  label: 'Doğru',
+                  icon: Icons.check_circle_rounded,
+                  color: const Color(0xFF16A34A),
+                  selected: current == 'Doğru',
+                  onTap: () =>
+                      setState(() => _answerKeyController.text = 'Doğru'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _trueFalseButton(
+                  theme,
+                  label: 'Yanlış',
+                  icon: Icons.cancel_rounded,
+                  color: const Color(0xFFDC2626),
+                  selected: current == 'Yanlış',
+                  onTap: () =>
+                      setState(() => _answerKeyController.text = 'Yanlış'),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 10),
           Text(
-            'Öğrenci bu soru için sadece Doğru veya Yanlış seçer.',
+            current == null
+                ? 'Lütfen doğru cevabı seç: Doğru veya Yanlış.'
+                : 'Doğru cevap olarak "$current" seçildi.',
             style: theme.textTheme.bodySmall,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _trueFalseButton(
+    ThemeData theme, {
+    required String label,
+    required IconData icon,
+    required Color color,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(14),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+        decoration: BoxDecoration(
+          color: selected ? color : theme.cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: selected ? color : theme.dividerColor,
+            width: selected ? 0 : 1.4,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: selected ? Colors.white : color, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: selected ? Colors.white : theme.textTheme.bodyLarge?.color,
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

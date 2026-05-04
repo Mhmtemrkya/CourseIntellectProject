@@ -293,7 +293,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
     return answered
         .map(
           (item) => {
-            'title': '${item["topic"]} soruna yanit geldi',
+            'title': '${item["topic"]} soruna yanıt geldi',
             'subtitle': '${item["teacher"]} çözüm adımlarını paylaştı.',
             'time':
                 item['answeredTime'] as String? ??
@@ -462,7 +462,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
   }
 
   Widget _tabs(ThemeData theme) {
-    final items = ["Yeni Soru", "Sorularim", "Gecmis"];
+    final items = ["Yeni Soru", "Sorularım", "Geçmiş"];
     return Row(
       children: List.generate(items.length, (index) {
         final selected = selectedTab == index;
@@ -1100,7 +1100,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Soru Gecmisi",
+          "Soru Geçmişi",
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
           ),

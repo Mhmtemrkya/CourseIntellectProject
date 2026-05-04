@@ -182,48 +182,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     .toList(),
               ),
               const SizedBox(height: 18),
-              const AdminSectionTitle(title: 'Öncelikli Uyarılar'),
-              const SizedBox(height: 12),
-              ...alerts.map(
-                (item) => AdminPanel(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 44,
-                        height: 44,
-                        decoration: BoxDecoration(
-                          color: item.$3.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Icon(
-                          Icons.priority_high_rounded,
-                          color: item.$3,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              item.$1,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              item.$2,
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(height: 18),
               const AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'),
               const SizedBox(height: 12),
               Row(
@@ -473,6 +431,48 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   context,
                   MaterialPageRoute(
                     builder: (_) => const SupportPage(),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const AdminSectionTitle(title: 'Öncelikli Uyarılar'),
+              const SizedBox(height: 12),
+              ...alerts.map(
+                (item) => AdminPanel(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: item.$3.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          Icons.priority_high_rounded,
+                          color: item.$3,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item.$1,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              item.$2,
+                              style: Theme.of(context).textTheme.bodySmall,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
