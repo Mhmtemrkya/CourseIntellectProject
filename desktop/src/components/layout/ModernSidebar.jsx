@@ -56,6 +56,7 @@ import {
 } from "../animations/AnimatedBackground";
 import logoImage from "../../assets/brand/logo.png";
 import { useTheme } from "../../context/ThemeContext";
+import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 
 // Menu items for each role
 const menuConfigs = {
@@ -73,10 +74,22 @@ const menuConfigs = {
       color: "#22c55e",
     },
     {
+      path: "/admin/academics",
+      icon: GraduationCap,
+      label: "Akademik Yönetim",
+      color: "#2563eb",
+    },
+    {
       path: "/admin/operations",
       icon: Activity,
       label: "Operasyon",
       color: "#14b8a6",
+    },
+    {
+      path: "/admin/finance",
+      icon: Wallet,
+      label: "Finans Kontrolü",
+      color: "#16a34a",
     },
     {
       path: "/admin/task-center",
@@ -103,6 +116,12 @@ const menuConfigs = {
       icon: Calendar,
       label: "Ders Programı",
       color: "#06b6d4",
+    },
+    {
+      path: "/attendance",
+      icon: ClipboardCheck,
+      label: "Devamsızlık",
+      color: "#84cc16",
     },
     {
       path: "/admin/finance-approvals",
@@ -141,10 +160,22 @@ const menuConfigs = {
       color: "#f97316",
     },
     {
+      path: "/admin/administrative-units",
+      icon: Building2,
+      label: "İdari Birimler",
+      color: "#0f766e",
+    },
+    {
       path: "/admin/announcements",
       icon: Bell,
       label: "Duyurular",
       color: "#f59e0b",
+    },
+    {
+      path: "/admin/notifications",
+      icon: Bell,
+      label: "Bildirimler",
+      color: "#ef4444",
     },
     {
       path: "/admin/documents",
@@ -171,12 +202,19 @@ const menuConfigs = {
       color: "#a855f7",
     },
     {
+      path: "/admin/accounting-registration",
+      icon: Wallet,
+      label: "Muhasebe Kaydı",
+      color: "#16a34a",
+    },
+    {
       path: "/admin/branch-comparison",
       icon: BarChart3,
       label: "Şube Karşılaştırma",
       color: "#f97316",
     },
     { path: "/content", icon: BookOpen, label: "İçerikler", color: "#f43f5e" },
+    { path: "/admin/courses", icon: BookOpen, label: "Kurs Yönetimi", color: "#f43f5e" },
     {
       path: "/questions",
       icon: HelpCircle,
@@ -187,6 +225,7 @@ const menuConfigs = {
     { path: "/reports", icon: BarChart3, label: "Raporlar", color: "#22c55e" },
     { path: "/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
     { path: "/admin/destek", icon: LifeBuoy, label: "Destek", color: "#a855f7" },
+    { path: "/admin/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
   administrative: [
@@ -680,6 +719,285 @@ const ROLE_LABELS = {
   parent: "Veli",
 };
 
+const MODULE_MENU_REGISTRY = {
+  dashboard: {
+    default: { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
+    administrative: { path: "/admin/operations", icon: Activity, label: "Operasyon", color: "#14b8a6" },
+    finance: { path: "/finance/dashboard", icon: LayoutDashboard, label: "Muhasebe Özet", color: "#3b82f6" },
+    superadmin: { path: "/sa/dashboard", icon: LayoutDashboard, label: "Platform Özet", color: "#3b82f6" },
+    teacher: { path: "/t/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
+    student: { path: "/s/dashboard", icon: LayoutDashboard, label: "Ana Sayfa", color: "#3b82f6", special: true },
+    parent: { path: "/p/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
+  },
+  kpi: { default: { path: "/admin/kpi", icon: BarChart3, label: "KPI Paneli", color: "#22c55e" } },
+  academics: { default: { path: "/admin/academics", icon: GraduationCap, label: "Akademik Yönetim", color: "#2563eb" } },
+  students: { default: { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" } },
+  parents: { default: { path: "/parents", icon: UserCheck, label: "Veliler", color: "#ec4899" }, parent: { path: "/p/children", icon: Users, label: "Çocuklarım", color: "#8b5cf6" } },
+  teachers: { default: { path: "/teachers", icon: GraduationCap, label: "Öğretmenler", color: "#10b981" } },
+  classes: {
+    default: { path: "/classes", icon: School, label: "Sınıflar & Gruplar", color: "#f59e0b" },
+    student: { path: "/s/classes", icon: School, label: "Sınıflar & Gruplar", color: "#f59e0b" },
+  },
+  schedule: {
+    default: { path: "/schedule", icon: Calendar, label: "Ders Programı", color: "#06b6d4" },
+    administrative: { path: "/admin/schedule", icon: Calendar, label: "Ders Programı", color: "#06b6d4" },
+    teacher: { path: "/t/schedule", icon: Calendar, label: "Ders Programı", color: "#06b6d4" },
+    student: { path: "/s/schedule", icon: Calendar, label: "Ders Programı", color: "#06b6d4" },
+  },
+  attendance: {
+    default: { path: "/attendance", icon: ClipboardCheck, label: "Devamsızlık", color: "#84cc16" },
+    teacher: { path: "/t/attendance", icon: ClipboardCheck, label: "Yoklama", color: "#84cc16" },
+    student: { path: "/s/attendance", icon: ClipboardCheck, label: "Devamsızlık", color: "#84cc16" },
+    parent: { path: "/p/attendance", icon: ClipboardCheck, label: "Devamsızlık", color: "#84cc16" },
+  },
+  content: {
+    default: { path: "/content", icon: BookOpen, label: "İçerikler", color: "#f43f5e" },
+    teacher: { path: "/t/content", icon: BookOpen, label: "Konu Anlatımı", color: "#f43f5e" },
+    student: { path: "/s/content", icon: BookOpen, label: "Konu Anlatımı", color: "#f43f5e" },
+  },
+  questions: {
+    default: { path: "/questions", icon: HelpCircle, label: "Sorular", color: "#14b8a6" },
+    teacher: { path: "/t/questions", icon: HelpCircle, label: "Soru Kutusu", color: "#14b8a6" },
+    student: { path: "/s/questions", icon: Brain, label: "Soru Bankası", color: "#14b8a6" },
+  },
+  "question-bank": {
+    default: { path: "/questions", icon: Brain, label: "Soru Bankası", color: "#8b5cf6" },
+    teacher: { path: "/t/question-bank", icon: Brain, label: "Soru Bankası", color: "#8b5cf6", special: true },
+    student: { path: "/s/questions", icon: Brain, label: "Soru Bankası", color: "#14b8a6" },
+  },
+  exams: {
+    default: { path: "/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
+    teacher: { path: "/t/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
+    student: { path: "/s/exams", icon: FileQuestion, label: "Deneme Sınavları", color: "#a855f7" },
+    parent: { path: "/p/exams", icon: FileQuestion, label: "Sınav Sonuçları", color: "#a855f7" },
+  },
+  assignments: {
+    teacher: { path: "/t/assignments", icon: FileText, label: "Ödevler", color: "#f59e0b" },
+    student: { path: "/s/assignments", icon: FileText, label: "Ödevler", color: "#f59e0b" },
+  },
+  "live-lessons": {
+    teacher: { path: "/t/live-lessons", icon: Video, label: "Canlı Dersler", color: "#ef4444", pulse: true },
+    student: { path: "/s/live", icon: Video, label: "Canlı Dersler", color: "#ef4444", pulse: true },
+  },
+  reports: {
+    default: { path: "/reports", icon: BarChart3, label: "Raporlar", color: "#22c55e" },
+    teacher: { path: "/t/reports", icon: BarChart3, label: "Raporlar", color: "#22c55e" },
+    student: { path: "/s/exam-results", icon: BarChart3, label: "Sınav Sonuçlarım", color: "#2563eb" },
+    parent: { path: "/p/weekly-report", icon: FileText, label: "Haftalık Rapor", color: "#f59e0b" },
+  },
+  operations: { default: { path: "/admin/operations", icon: Activity, label: "Operasyon", color: "#14b8a6" } },
+  tasks: { default: { path: "/admin/task-center", icon: CheckSquare, label: "Görev Merkezi", color: "#f59e0b" } },
+  approvals: { default: { path: "/admin/finance-approvals", icon: CheckSquare, label: "Onaylar", color: "#a855f7" } },
+  records: { default: { path: "/admin/records", icon: FileText, label: "İdari Kayıtlar", color: "#f97316" } },
+  documents: { default: { path: "/admin/documents", icon: FileText, label: "Belge Merkezi", color: "#ec4899" } },
+  notifications: {
+    default: { path: "/admin/announcements", icon: Bell, label: "Duyurular", color: "#f59e0b" },
+    teacher: { path: "/t/announcements", icon: Bell, label: "Duyurular", color: "#f59e0b" },
+    student: { path: "/s/announcements", icon: Bell, label: "Duyurular", color: "#f59e0b" },
+    parent: { path: "/p/announcements", icon: Bell, label: "Duyurular", color: "#f59e0b" },
+  },
+  meetings: {
+    default: { path: "/admin/meetings", icon: Calendar, label: "Görüşme Akışı", color: "#ec4899" },
+    teacher: { path: "/t/meeting-approvals", icon: Calendar, label: "Görüşme Onayları", color: "#ec4899" },
+    parent: { path: "/p/meetings", icon: Calendar, label: "Görüşmeler", color: "#ec4899" },
+  },
+  registrations: { default: { path: "/admin/student-registration", icon: Users, label: "Kayıt İşlemleri", color: "#06b6d4" } },
+  "branch-comparison": { default: { path: "/admin/branch-comparison", icon: BarChart3, label: "Şube Karşılaştırma", color: "#f97316" } },
+  "global-search": { default: { path: "/admin/global-search", icon: HelpCircle, label: "Global Arama", color: "#0ea5e9" } },
+  chat: {
+    default: { path: "/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
+    teacher: { path: "/t/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
+    student: { path: "/s/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
+    parent: { path: "/p/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
+  },
+  finance: { default: { path: "/finance/dashboard", icon: Wallet, label: "Finans Paneli", color: "#16a34a" } },
+  "student-accounts": { default: { path: "/finance/student-accounts", icon: Users, label: "Öğrenci Hesapları", color: "#8b5cf6" } },
+  collections: { default: { path: "/finance/collections", icon: CreditCard, label: "Tahsilatlar", color: "#10b981" } },
+  installments: { default: { path: "/finance/installments", icon: Receipt, label: "Taksitler", color: "#f59e0b" } },
+  "late-payments": { default: { path: "/finance/late-payments", icon: AlertCircle, label: "Gecikenler", color: "#ef4444" } },
+  billing: { default: { path: "/finance/invoices-receipts", icon: FileText, label: "Fatura & Makbuz", color: "#06b6d4" } },
+  "discounts-scholarships": { default: { path: "/finance/discounts-scholarships", icon: Gift, label: "İndirim & Burs", color: "#ec4899" } },
+  "finance-export": { default: { path: "/finance/export", icon: Download, label: "Dışa Aktar", color: "#84cc16" } },
+  "finance-audit-log": { default: { path: "/finance/audit-log", icon: Activity, label: "Audit Log", color: "#6366f1" } },
+  "collection-calendar": { default: { path: "/finance/collection-calendar", icon: Calendar, label: "Tahsilat Takvimi", color: "#14b8a6" } },
+  reconciliation: { default: { path: "/finance/reconciliation", icon: Shield, label: "Mutabakat", color: "#22c55e" } },
+  "bulk-actions": { default: { path: "/finance/bulk-actions", icon: Layers, label: "Toplu İşlemler", color: "#f97316" } },
+  "finance-detail-hub": { default: { path: "/finance/detail-hub", icon: Layers, label: "Finans Detay Merkezi", color: "#64748b" } },
+  salary: { default: { path: "/finance/salary", icon: Wallet, label: "Maaş Yönetimi", color: "#10b981" } },
+  "cash-report": { default: { path: "/finance/cash-report", icon: Receipt, label: "Kasa Raporu", color: "#a855f7" } },
+  "overdue-rules": { default: { path: "/finance/overdue-rules", icon: Bell, label: "Gecikme Kuralları", color: "#f43f5e" } },
+  ledger: { default: { path: "/finance/ledger", icon: BookOpen, label: "Hesap Defteri", color: "#6366f1" } },
+  platform: { default: { path: "/sa/dashboard", icon: LayoutDashboard, label: "Platform Yönetimi", color: "#3b82f6" } },
+  tenants: { default: { path: "/sa/tenants", icon: Building2, label: "Kurum Yönetimi", color: "#8b5cf6" } },
+  plans: { default: { path: "/sa/plans", icon: Package, label: "Paketler", color: "#10b981" } },
+  limits: { default: { path: "/sa/limits", icon: Server, label: "Limitler", color: "#ef4444" } },
+  "ai-management": { default: { path: "/sa/ai", icon: Bot, label: "AI Yönetimi", color: "#D9790B", special: true } },
+  customization: { default: { path: "/sa/customization", icon: Palette, label: "Kurum Özelleştirme", color: "#ec4899" } },
+  support: { default: { path: "/sa/support", icon: Ticket, label: "Destek", color: "#a855f7" } },
+  profile: {
+    default: { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
+    admin: { path: "/admin/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
+    teacher: { path: "/t/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
+    student: { path: "/s/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
+    parent: { path: "/p/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
+  },
+  system: { default: { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" }, superadmin: { path: "/sa/system", icon: Settings, label: "Sistem", color: "#06b6d4" } },
+};
+
+function getRegistryItem(moduleKey, primaryRole) {
+  const entry = MODULE_MENU_REGISTRY[moduleKey];
+  if (!entry) return null;
+  return entry[primaryRole] || entry.default || null;
+}
+
+function inferModuleKey(item) {
+  const path = item?.path || "";
+  if (!path) return "";
+
+  const exactPathMap = {
+    "/dashboard": "dashboard",
+    "/t/dashboard": "dashboard",
+    "/s/dashboard": "dashboard",
+    "/p/dashboard": "dashboard",
+    "/finance/dashboard": "finance",
+    "/admin/kpi": "kpi",
+    "/admin/academics": "academics",
+    "/students": "students",
+    "/parents": "parents",
+    "/teachers": "teachers",
+    "/classes": "classes",
+    "/s/classes": "classes",
+    "/schedule": "schedule",
+    "/admin/schedule": "schedule",
+    "/t/schedule": "schedule",
+    "/s/schedule": "schedule",
+    "/attendance": "attendance",
+    "/t/attendance": "attendance",
+    "/s/attendance": "attendance",
+    "/s/attendance-qr": "attendance",
+    "/p/attendance": "attendance",
+    "/content": "content",
+    "/t/content": "content",
+    "/s/content": "content",
+    "/questions": "questions",
+    "/t/questions": "questions",
+    "/s/questions": "questions",
+    "/t/question-bank": "question-bank",
+    "/exams": "exams",
+    "/t/exams": "exams",
+    "/s/exams": "exams",
+    "/p/exams": "exams",
+    "/t/assignments": "assignments",
+    "/s/assignments": "assignments",
+    "/t/submissions": "assignments",
+    "/t/live-lessons": "live-lessons",
+    "/t/live-room": "live-lessons",
+    "/s/live": "live-lessons",
+    "/reports": "reports",
+    "/t/reports": "reports",
+    "/s/exam-results": "reports",
+    "/s/wrong-answers": "reports",
+    "/p/weekly-report": "reports",
+    "/admin/operations": "operations",
+    "/admin/task-center": "tasks",
+    "/admin/finance-approvals": "approvals",
+    "/admin/personnel-approvals": "approvals",
+    "/admin/records": "records",
+    "/admin/documents": "documents",
+    "/admin/announcements": "notifications",
+    "/admin/notifications": "notifications",
+    "/t/announcements": "notifications",
+    "/s/announcements": "notifications",
+    "/p/announcements": "notifications",
+    "/admin/meetings": "meetings",
+    "/t/meeting-approvals": "meetings",
+    "/p/meetings": "meetings",
+    "/admin/student-registration": "registrations",
+    "/admin/parent-registration": "registrations",
+    "/admin/staff-registration": "registrations",
+    "/admin/accounting-registration": "registrations",
+    "/admin/branch-comparison": "branch-comparison",
+    "/admin/global-search": "global-search",
+    "/chat": "chat",
+    "/t/chat": "chat",
+    "/s/chat": "chat",
+    "/p/chat": "chat",
+    "/finance": "finance",
+    "/admin/finance": "finance",
+    "/finance/student-accounts": "student-accounts",
+    "/finance/collections": "collections",
+    "/finance/installments": "installments",
+    "/finance/late-payments": "late-payments",
+    "/finance/invoices-receipts": "billing",
+    "/finance/discounts-scholarships": "discounts-scholarships",
+    "/finance/export": "finance-export",
+    "/finance/audit-log": "finance-audit-log",
+    "/finance/collection-calendar": "collection-calendar",
+    "/finance/reconciliation": "reconciliation",
+    "/finance/bulk-actions": "bulk-actions",
+    "/finance/detail-hub": "finance-detail-hub",
+    "/finance/salary": "salary",
+    "/finance/cash-report": "cash-report",
+    "/finance/overdue-rules": "overdue-rules",
+    "/finance/ledger": "ledger",
+    "/sa/dashboard": "platform",
+    "/sa/tenants": "tenants",
+    "/sa/plans": "plans",
+    "/sa/billing": "billing",
+    "/sa/limits": "limits",
+    "/sa/ai": "ai-management",
+    "/sa/customization": "customization",
+    "/sa/support": "support",
+    "/admin/destek": "support",
+    "/admin/profile": "profile",
+    "/t/profile": "profile",
+    "/s/profile": "profile",
+    "/p/profile": "profile",
+    "/settings": "system",
+    "/s/settings": "system",
+    "/sa/system": "system",
+  };
+
+  if (exactPathMap[path]) return exactPathMap[path];
+  if (path.includes("/profile")) return "profile";
+  if (path.includes("/finance/")) return "finance";
+  if (path.startsWith("/sa/")) return "platform";
+  return "";
+}
+
+function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", hasRoleManagementPolicy = false) {
+  if (!hasRoleManagementPolicy) return baseItems;
+
+  const merged = [];
+  const seenPaths = new Set();
+  const visibleModuleKeys = new Set();
+
+  for (const item of baseItems) {
+    const moduleKey = inferModuleKey(item);
+    const uniqueKey = item.path || item.id || item.label;
+    if (!uniqueKey) continue;
+
+    const isAlwaysVisible = moduleKey === "profile" || moduleKey === "";
+    if (!isAlwaysVisible && !enabledModules.has(moduleKey)) continue;
+
+    seenPaths.add(uniqueKey);
+    if (moduleKey) visibleModuleKeys.add(moduleKey);
+    merged.push(item);
+  }
+
+  enabledModules.forEach((moduleKey) => {
+    if (visibleModuleKeys.has(moduleKey)) return;
+    const item = getRegistryItem(moduleKey, primaryRole);
+    const uniqueKey = item?.path || item?.id || item?.label;
+    if (!item || !uniqueKey || seenPaths.has(uniqueKey)) return;
+    seenPaths.add(uniqueKey);
+    visibleModuleKeys.add(moduleKey);
+    merged.push({ ...item, sourceRole: "role-management" });
+  });
+
+  return merged;
+}
+
 // Student stats component for sidebar — fetches real XP data from API
 function StudentStats({ collapsed }) {
   const [stats, setStats] = useState({
@@ -765,9 +1083,23 @@ export function ModernSidebar() {
     accentColor,
   } = useTheme();
 
-  const userRole = user?.role || "student";
-  const menuItems = menuConfigs[userRole] || menuConfigs.student;
-  const isStudent = userRole === "student";
+  // Primary role + admin tarafından atanan extraRoles + isPlatformAdmin
+  // birlikte değerlendirilir. Böylece bir öğrenciye "Teacher" rolü eklenince
+  // sidebar'a otomatik öğretmen menü item'ları katılır.
+  const userRoles = getUserRoles(user);
+  const primaryRole = userRoles[0] || "student";
+  const userRole = primaryRole; // mevcut başlık/ROLE_TITLES mantığı için geriye dönük
+  const baseMenuItems = userRoles.length > 0
+    ? mergeMenuItemsForRoles(menuConfigs, userRoles)
+    : (menuConfigs.student || []);
+  const enabledModules = new Set(
+    (Array.isArray(user?.modules) ? user.modules : [])
+      .map((moduleKey) => String(moduleKey).toLowerCase())
+      .filter(Boolean),
+  );
+  const hasRoleManagementPolicy = Boolean(user?.hasRoleManagementPolicy);
+  const menuItems = getModuleAwareMenuItems(baseMenuItems, enabledModules, primaryRole, hasRoleManagementPolicy);
+  const isStudent = userRoles.includes("student");
 
   const ROLE_TITLES = {
     admin: "Yönetim Paneli",

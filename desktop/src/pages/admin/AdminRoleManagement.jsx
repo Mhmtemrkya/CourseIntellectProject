@@ -42,9 +42,11 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
+  addExtraRole,
   fetchPlatformConfigurations,
   fetchStaff,
   fetchStudents,
+  undoRoleAssignment,
   upsertPlatformConfiguration,
 } from '../../lib/api/modules';
 
@@ -55,13 +57,20 @@ const MODULE_GROUPS = [
     title: 'Akademik',
     items: [
       { key: 'dashboard', label: 'Dashboard' },
+      { key: 'kpi', label: 'KPI Paneli' },
+      { key: 'academics', label: 'Akademik Yönetim' },
       { key: 'students', label: 'Öğrenciler' },
+      { key: 'parents', label: 'Veliler' },
       { key: 'teachers', label: 'Öğretmenler' },
       { key: 'classes', label: 'Sınıflar & Gruplar' },
       { key: 'schedule', label: 'Ders Programı' },
+      { key: 'attendance', label: 'Devamsızlık / Yoklama' },
       { key: 'content', label: 'İçerikler' },
       { key: 'questions', label: 'Sorular' },
+      { key: 'question-bank', label: 'Soru Bankası' },
       { key: 'exams', label: 'Sınavlar' },
+      { key: 'assignments', label: 'Ödevler' },
+      { key: 'live-lessons', label: 'Canlı Dersler' },
       { key: 'reports', label: 'Raporlar' },
     ],
   },
@@ -73,22 +82,53 @@ const MODULE_GROUPS = [
       { key: 'approvals', label: 'Onaylar' },
       { key: 'records', label: 'İdari Kayıtlar' },
       { key: 'documents', label: 'Belge Merkezi' },
-      { key: 'notifications', label: 'Duyurular' },
+      { key: 'notifications', label: 'Duyurular / Bildirimler' },
+      { key: 'meetings', label: 'Görüşme Akışı' },
+      { key: 'registrations', label: 'Kayıt İşlemleri' },
+      { key: 'branch-comparison', label: 'Şube Karşılaştırma' },
+      { key: 'global-search', label: 'Global Arama' },
       { key: 'chat', label: 'Mesajlar' },
     ],
   },
   {
-    title: 'Finans & Platform',
+    title: 'Finans',
     items: [
-      { key: 'finance', label: 'Finans Paneli' },
+      { key: 'finance', label: 'Finans / Muhasebe Özeti' },
+      { key: 'student-accounts', label: 'Öğrenci Hesapları' },
       { key: 'collections', label: 'Tahsilatlar' },
-      { key: 'billing', label: 'Faturalama' },
+      { key: 'installments', label: 'Taksitler' },
+      { key: 'late-payments', label: 'Gecikenler' },
+      { key: 'billing', label: 'Fatura & Makbuz' },
+      { key: 'discounts-scholarships', label: 'İndirim & Burs' },
+      { key: 'finance-export', label: 'Dışa Aktar' },
+      { key: 'finance-audit-log', label: 'Audit Log' },
+      { key: 'collection-calendar', label: 'Tahsilat Takvimi' },
+      { key: 'reconciliation', label: 'Mutabakat' },
+      { key: 'bulk-actions', label: 'Toplu İşlemler' },
+      { key: 'finance-detail-hub', label: 'Finans Detay Merkezi' },
+      { key: 'salary', label: 'Maaş Yönetimi' },
+      { key: 'cash-report', label: 'Kasa Raporu' },
+      { key: 'overdue-rules', label: 'Gecikme Kuralları' },
+      { key: 'ledger', label: 'Hesap Defteri' },
+    ],
+  },
+  {
+    title: 'Platform & Hesap',
+    items: [
       { key: 'platform', label: 'Platform Yönetimi' },
       { key: 'tenants', label: 'Kurum Yönetimi' },
-      { key: 'system', label: 'Sistem Ayarları' },
+      { key: 'plans', label: 'Paketler' },
+      { key: 'limits', label: 'Limitler' },
+      { key: 'ai-management', label: 'AI Yönetimi' },
+      { key: 'customization', label: 'Kurum Özelleştirme' },
+      { key: 'support', label: 'Destek' },
+      { key: 'profile', label: 'Profilim' },
+      { key: 'system', label: 'Sistem / Ayarlar' },
     ],
   },
 ];
+
+const ALL_MODULE_KEYS = MODULE_GROUPS.flatMap((group) => group.items.map((item) => item.key));
 
 const ACTION_FLAGS = [
   { key: 'canCreate', label: 'Yeni kayıt oluşturabilir' },
@@ -99,68 +139,62 @@ const ACTION_FLAGS = [
   { key: 'canAssignRoles', label: 'Rol ve yetki atayabilir' },
 ];
 
-const ROLE_PRESETS = {
-  Admin: {
-    modules: {
-      dashboard: true, students: true, teachers: true, classes: true, schedule: true, content: true, questions: true, exams: true, reports: true,
-      operations: true, tasks: true, approvals: true, records: true, documents: true, notifications: true, chat: true,
-      finance: true, collections: true, billing: true, platform: false, tenants: false, system: true,
-    },
-    actions: {
-      canCreate: true, canEdit: true, canDelete: true, canApprove: true, canExport: true, canAssignRoles: true,
-    },
-  },
-  Administrative: {
-    modules: {
-      dashboard: true, students: true, teachers: true, classes: true, schedule: true, content: false, questions: false, exams: false, reports: true,
-      operations: true, tasks: true, approvals: true, records: true, documents: true, notifications: true, chat: true,
-      finance: false, collections: false, billing: false, platform: false, tenants: false, system: false,
-    },
-    actions: {
-      canCreate: true, canEdit: true, canDelete: false, canApprove: true, canExport: true, canAssignRoles: false,
-    },
-  },
-  Teacher: {
-    modules: {
-      dashboard: true, students: false, teachers: false, classes: true, schedule: true, content: true, questions: true, exams: true, reports: true,
-      operations: false, tasks: false, approvals: false, records: false, documents: false, notifications: true, chat: true,
-      finance: false, collections: false, billing: false, platform: false, tenants: false, system: false,
-    },
-    actions: {
-      canCreate: true, canEdit: true, canDelete: false, canApprove: false, canExport: true, canAssignRoles: false,
-    },
-  },
-  Student: {
-    modules: {
-      dashboard: true, students: false, teachers: false, classes: false, schedule: true, content: true, questions: true, exams: true, reports: false,
-      operations: false, tasks: false, approvals: false, records: false, documents: false, notifications: true, chat: true,
-      finance: false, collections: false, billing: false, platform: false, tenants: false, system: false,
-    },
-    actions: {
-      canCreate: false, canEdit: false, canDelete: false, canApprove: false, canExport: false, canAssignRoles: false,
-    },
-  },
-  Parent: {
-    modules: {
-      dashboard: true, students: false, teachers: false, classes: false, schedule: false, content: false, questions: false, exams: true, reports: true,
-      operations: false, tasks: false, approvals: false, records: false, documents: false, notifications: true, chat: true,
-      finance: true, collections: false, billing: false, platform: false, tenants: false, system: false,
-    },
-    actions: {
-      canCreate: false, canEdit: false, canDelete: false, canApprove: false, canExport: true, canAssignRoles: false,
-    },
-  },
-  Accounting: {
-    modules: {
-      dashboard: true, students: true, teachers: false, classes: false, schedule: false, content: false, questions: false, exams: false, reports: true,
-      operations: true, tasks: false, approvals: true, records: true, documents: true, notifications: true, chat: true,
-      finance: true, collections: true, billing: true, platform: false, tenants: false, system: false,
-    },
-    actions: {
-      canCreate: true, canEdit: true, canDelete: false, canApprove: true, canExport: true, canAssignRoles: false,
-    },
-  },
+const ACTION_PRESETS = {
+  Admin: ['canCreate', 'canEdit', 'canDelete', 'canApprove', 'canExport', 'canAssignRoles'],
+  Administrative: ['canCreate', 'canEdit', 'canApprove', 'canExport'],
+  Teacher: ['canCreate', 'canEdit', 'canExport'],
+  Student: [],
+  Parent: ['canExport'],
+  Accounting: ['canCreate', 'canEdit', 'canApprove', 'canExport'],
 };
+
+const ROLE_MODULE_KEYS = {
+  Admin: ALL_MODULE_KEYS.filter((key) => !['platform', 'tenants', 'plans', 'limits', 'ai-management', 'customization', 'support'].includes(key)),
+  Administrative: [
+    'dashboard', 'kpi', 'students', 'parents', 'teachers', 'classes', 'schedule', 'attendance',
+    'operations', 'tasks', 'approvals', 'records', 'documents', 'notifications', 'meetings',
+    'registrations', 'branch-comparison', 'chat', 'profile', 'system',
+  ],
+  Teacher: [
+    'dashboard', 'classes', 'schedule', 'attendance', 'content', 'questions', 'question-bank',
+    'exams', 'assignments', 'live-lessons', 'reports', 'notifications', 'meetings', 'chat', 'profile', 'system',
+  ],
+  Student: [
+    'dashboard', 'schedule', 'attendance', 'content', 'questions', 'question-bank', 'exams',
+    'assignments', 'live-lessons', 'reports', 'notifications', 'chat', 'profile', 'system',
+  ],
+  Parent: [
+    'dashboard', 'attendance', 'exams', 'reports', 'finance', 'billing', 'notifications', 'meetings', 'chat', 'profile', 'system',
+  ],
+  Accounting: [
+    'dashboard', 'students', 'reports', 'operations', 'approvals', 'records', 'documents', 'notifications', 'chat',
+    'finance', 'student-accounts', 'collections', 'installments', 'late-payments', 'billing',
+    'discounts-scholarships', 'finance-export', 'finance-audit-log', 'collection-calendar',
+    'reconciliation', 'bulk-actions', 'finance-detail-hub', 'salary', 'cash-report', 'overdue-rules', 'ledger',
+    'profile', 'system',
+  ],
+};
+
+function modulePreset(keys = []) {
+  const modules = Object.fromEntries(ALL_MODULE_KEYS.map((key) => [key, false]));
+  keys.forEach((key) => { modules[key] = true; });
+  return modules;
+}
+
+function actionPreset(role) {
+  const enabled = new Set(ACTION_PRESETS[role] || []);
+  return Object.fromEntries(ACTION_FLAGS.map((item) => [item.key, enabled.has(item.key)]));
+}
+
+const ROLE_PRESETS = Object.fromEntries(
+  ROLE_OPTIONS.map((role) => [
+    role,
+    {
+      modules: modulePreset(ROLE_MODULE_KEYS[role] || ROLE_MODULE_KEYS.Student),
+      actions: actionPreset(role),
+    },
+  ]),
+);
 
 function createPolicy(role = 'Student') {
   const preset = ROLE_PRESETS[role] || ROLE_PRESETS.Student;
@@ -169,6 +203,10 @@ function createPolicy(role = 'Student') {
     modules: { ...preset.modules },
     actions: { ...preset.actions },
   };
+}
+
+function getPersonScopeKey(person) {
+  return person?.username || person?.id;
 }
 
 function roleTone(role) {
@@ -249,6 +287,8 @@ export default function AdminRoleManagement() {
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [extraRoleDraft, setExtraRoleDraft] = useState('Teacher');
+  const [extraRoleSaving, setExtraRoleSaving] = useState(false);
 
   const loadRoles = useCallback(async () => {
     try {
@@ -263,6 +303,8 @@ export default function AdminRoleManagement() {
       const nextPeople = [
         ...staff.map((item) => ({
           id: item.id,
+          username: item.username,
+          extraRoles: Array.isArray(item.extraRoles) ? item.extraRoles : [],
           fullName: item.fullName,
           role: item.role || 'Teacher',
           source: 'Personel',
@@ -270,6 +312,8 @@ export default function AdminRoleManagement() {
         })),
         ...students.map((item) => ({
           id: item.id,
+          username: item.username,
+          extraRoles: Array.isArray(item.extraRoles) ? item.extraRoles : [],
           fullName: item.fullName,
           role: 'Student',
           source: 'Öğrenci',
@@ -306,21 +350,22 @@ export default function AdminRoleManagement() {
 
   const grouped = useMemo(() => {
     return people.reduce((acc, item) => {
-      const key = policies[item.id]?.role || item.role || 'Unassigned';
+      const key = policies[getPersonScopeKey(item)]?.role || policies[item.id]?.role || item.role || 'Unassigned';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
   }, [people, policies]);
 
   const filteredPeople = useMemo(() => people.filter((item) => {
-    const currentRole = policies[item.id]?.role || item.role;
+    const currentRole = policies[getPersonScopeKey(item)]?.role || policies[item.id]?.role || item.role;
     const matchesRole = !selectedRole || currentRole === selectedRole;
     const matchesSearch = `${item.fullName} ${item.source} ${item.detail || ''}`.toLowerCase().includes(search.toLowerCase());
     return matchesRole && matchesSearch;
   }), [people, policies, search, selectedRole]);
 
   const openPerson = (person) => {
-    const current = policies[person.id] || createPolicy(person.role);
+    const scopeKey = getPersonScopeKey(person);
+    const current = policies[scopeKey] || policies[person.id] || createPolicy(person.role);
     setSelectedPerson(person);
     setDraftPolicy({
       role: current.role,
@@ -364,19 +409,72 @@ export default function AdminRoleManagement() {
     });
   };
 
+  const handleAssignExtraRole = async () => {
+    if (!selectedPerson?.username || !extraRoleDraft) return;
+    if ((selectedPerson.extraRoles || []).includes(extraRoleDraft) || selectedPerson.role === extraRoleDraft) {
+      toast({ title: 'Bu rol zaten atanmış', variant: 'destructive' });
+      return;
+    }
+    try {
+      setExtraRoleSaving(true);
+      await addExtraRole(selectedPerson.username, extraRoleDraft);
+      const nextExtras = [...(selectedPerson.extraRoles || []), extraRoleDraft];
+      setSelectedPerson({ ...selectedPerson, extraRoles: nextExtras });
+      setPeople((prev) => prev.map((p) => (p.id === selectedPerson.id ? { ...p, extraRoles: nextExtras } : p)));
+      toast({
+        title: 'Ek rol atandı',
+        description: `${selectedPerson.fullName} → ${extraRoleDraft}. Kullanıcı tekrar giriş yaptığında yeni menü item'ları görecek.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Rol atanamadı',
+        description: err?.response?.data?.message || err?.message || 'Tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExtraRoleSaving(false);
+    }
+  };
+
+  const handleUndoRoleAssignment = async () => {
+    if (!selectedPerson?.username) return;
+    try {
+      setExtraRoleSaving(true);
+      await undoRoleAssignment(selectedPerson.username);
+      // Backend role_history'den son aksiyonu geri alır; istemci tarafında listeleri tazelemek için
+      // people'ı yeniden çekmek en güvenlisi.
+      await loadRoles();
+      toast({
+        title: 'Son rol ataması geri alındı',
+        description: `${selectedPerson.fullName} için son atama iptal edildi.`,
+      });
+      setSelectedPerson(null);
+      setDraftPolicy(null);
+    } catch (err) {
+      toast({
+        title: 'Geri alınamadı',
+        description: err?.response?.data?.message || err?.message || 'Tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setExtraRoleSaving(false);
+    }
+  };
+
   const savePolicy = async () => {
     if (!selectedPerson || !draftPolicy) return;
     try {
       setSaving(true);
+      const scopeKey = getPersonScopeKey(selectedPerson);
       await upsertPlatformConfiguration({
         configurationType: 'role-management',
-        scopeKey: selectedPerson.id,
+        scopeKey,
         displayName: `ROLE_MANAGEMENT::${selectedPerson.fullName}`,
         payloadJson: JSON.stringify(draftPolicy),
       });
       setPolicies((prev) => ({
         ...prev,
-        [selectedPerson.id]: draftPolicy,
+        [scopeKey]: draftPolicy,
       }));
       toast({
         title: 'Yetki profili güncellendi',
@@ -494,8 +592,9 @@ export default function AdminRoleManagement() {
             </div>
             <div className="space-y-3">
               {filteredPeople.map((item) => {
-                const currentRole = policies[item.id]?.role || item.role;
-                const currentPolicy = policies[item.id] || createPolicy(item.role);
+                const scopeKey = getPersonScopeKey(item);
+                const currentRole = policies[scopeKey]?.role || policies[item.id]?.role || item.role;
+                const currentPolicy = policies[scopeKey] || policies[item.id] || createPolicy(item.role);
                 const enabledModules = Object.values(currentPolicy.modules).filter(Boolean).length;
                 return (
                   <button
@@ -636,6 +735,65 @@ export default function AdminRoleManagement() {
                     <p className="text-sm text-muted-foreground">
                       Preset seçimi modül ve işlem yetkilerini hızlıca doldurur. İstersen sonra tek tek özelleştirebilirsin.
                     </p>
+
+                    <div className="rounded-2xl border border-brand-primary/10 bg-brand-primary/5 p-4 space-y-3">
+                      <div>
+                        <p className="text-sm font-semibold flex items-center gap-2">
+                          <KeyRound className="h-4 w-4 text-brand-primary" />
+                          Ek Roller (Çoklu Erişim)
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Kullanıcıya ek bir rol verirsen, o rolün menü item'ları sidebar'a eklenir.
+                          Örn. bir öğrenciye <strong>Teacher</strong> rolü verilirse, sonraki giriş&apos;te öğretmen sayfaları görünür.
+                        </p>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Badge variant="outline" className="border-brand-primary/20 bg-card">
+                          Aktif: {selectedPerson.role}
+                        </Badge>
+                        {(selectedPerson.extraRoles || []).map((extra) => (
+                          <Badge key={extra} className="bg-brand-primary/10 text-brand-primary border border-brand-primary/20">
+                            +{extra}
+                          </Badge>
+                        ))}
+                        {(!selectedPerson.extraRoles || selectedPerson.extraRoles.length === 0) && (
+                          <span className="text-xs text-muted-foreground">Henüz ek rol yok</span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Select value={extraRoleDraft} onValueChange={setExtraRoleDraft}>
+                          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {ROLE_OPTIONS.map((role) => (
+                              <SelectItem key={role} value={role}>{role}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAssignExtraRole}
+                          disabled={extraRoleSaving || !selectedPerson.username}
+                          className="bg-brand-primary hover:bg-brand-primary/90"
+                        >
+                          {extraRoleSaving ? 'Atanıyor...' : 'Ek Rol Ata'}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={handleUndoRoleAssignment}
+                          disabled={extraRoleSaving || !selectedPerson.username}
+                        >
+                          Son Atamayı Geri Al
+                        </Button>
+                      </div>
+                      {!selectedPerson.username && (
+                        <p className="text-xs text-amber-700 dark:text-amber-400">
+                          Bu kişinin sistem kullanıcı adı yok; ek rol ataması için kullanıcı kaydı gerekir.
+                        </p>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
 
