@@ -9,6 +9,7 @@ public interface IAuthService
     Task<LoginResponse?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default);
     Task<CurrentUserDto?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default);
     Task<CurrentUserDto?> UpdateProfileAsync(Guid userId, UpdateProfileRequest request, CancellationToken cancellationToken = default);
+    Task<CurrentUserDto?> ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default);
     Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default);
     Task<PkceAuthorizeResponse?> PkceAuthorizeAsync(PkceAuthorizeRequest request, CancellationToken cancellationToken = default);
     Task<LoginResponse?> PkceTokenExchangeAsync(PkceTokenRequest request, CancellationToken cancellationToken = default);

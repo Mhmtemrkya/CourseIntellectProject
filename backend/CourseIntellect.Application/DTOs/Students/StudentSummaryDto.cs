@@ -15,5 +15,6 @@ public sealed record StudentSummaryDto(
     string Address,
     string Note,
     string Username,
-    string Status
+    string Status,
+    IReadOnlyList<string> ExtraRoles
 );

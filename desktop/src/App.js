@@ -7,6 +7,7 @@ import { Toaster } from "./components/ui/toaster";
 
 // Auth Pages
 import Login from "./pages/Login";
+import ForcePasswordChange from "./pages/ForcePasswordChange";
 
 // Admin/Common Pages
 import Dashboard from "./pages/Dashboard";
@@ -101,6 +102,10 @@ import CollectionCalendar from "./pages/finance/CollectionCalendar";
 import Reconciliation from "./pages/finance/Reconciliation";
 import BulkActions from "./pages/finance/BulkActions";
 import FinanceDetailHub from "./pages/finance/FinanceDetailHub";
+import AdminAcademics from "./pages/admin/AdminAcademics";
+import AdminCourses from "./pages/admin/AdminCourses";
+import AdminFinance from "./pages/admin/AdminFinance";
+import AdminProfile from "./pages/admin/AdminProfile";
 import AdminOperations from "./pages/admin/AdminOperations";
 import AdminTaskCenter from "./pages/admin/AdminTaskCenter";
 import AdminKpiDashboard from "./pages/admin/AdminKpiDashboard";
@@ -117,6 +122,8 @@ import AdminParentRegistration from "./pages/admin/AdminParentRegistration";
 import AdminStaffRegistration from "./pages/admin/AdminStaffRegistration";
 import AdminBranchComparison from "./pages/admin/AdminBranchComparison";
 import AdminMeetings from "./pages/admin/AdminMeetings";
+import AdminAdministrativeUnits from "./pages/admin/AdminAdministrativeUnits";
+import AdminAccountingRegistration from "./pages/admin/AdminAccountingRegistration";
 
 // New Student Pages
 import StudentNotifications from "./pages/student/StudentNotifications";
@@ -152,6 +159,10 @@ function RootRedirect() {
     return <Navigate to="/login" replace />;
   }
 
+  if (user?.mustChangePassword) {
+    return <Navigate to="/change-password-required" replace />;
+  }
+
   return <Navigate to={getUserHomePath(user)} replace />;
 }
 
@@ -170,6 +181,7 @@ function App() {
           <Routes>
             {/* Auth */}
             <Route path="/login" element={<Login />} />
+            <Route path="/change-password-required" element={<ForcePasswordChange />} />
             
             {/* Main Dashboard Layout */}
             <Route element={<DashboardLayout />}>
@@ -179,6 +191,7 @@ function App() {
               <Route path="/parents" element={<Parents />} />
               <Route path="/teachers" element={<Teachers />} />
               <Route path="/classes" element={<Classes />} />
+              <Route path="/s/classes" element={<Classes />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/admin/schedule" element={<Schedule />} />
               <Route path="/attendance" element={<Attendance />} />
@@ -189,6 +202,10 @@ function App() {
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/chat" element={<Chat />} />
+              <Route path="/admin/academics" element={<AdminAcademics />} />
+              <Route path="/admin/courses" element={<AdminCourses />} />
+              <Route path="/admin/finance" element={<AdminFinance />} />
+              <Route path="/admin/profile" element={<AdminProfile />} />
               <Route path="/admin/operations" element={<AdminOperations />} />
               <Route path="/admin/task-center" element={<AdminTaskCenter />} />
               <Route path="/admin/kpi" element={<AdminKpiDashboard />} />
@@ -197,12 +214,14 @@ function App() {
               <Route path="/admin/finance-approvals" element={<Approvals />} />
               <Route path="/admin/role-management" element={<AdminRoleManagement />} />
               <Route path="/admin/records" element={<AdministrativeRecords />} />
+              <Route path="/admin/administrative-units" element={<AdminAdministrativeUnits />} />
               <Route path="/admin/announcements" element={<AdministrativeAnnouncements />} />
               <Route path="/admin/notifications" element={<AdministrativeNotifications />} />
               <Route path="/admin/documents" element={<AdministrativeDocuments />} />
               <Route path="/admin/student-registration" element={<AdminStudentRegistration />} />
               <Route path="/admin/parent-registration" element={<AdminParentRegistration />} />
               <Route path="/admin/staff-registration" element={<AdminStaffRegistration />} />
+              <Route path="/admin/accounting-registration" element={<AdminAccountingRegistration />} />
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
               <Route path="/admin/destek" element={<Destek />} />

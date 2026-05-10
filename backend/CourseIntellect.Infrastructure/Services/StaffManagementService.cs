@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.Staff;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -12,6 +13,7 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class StaffManagementService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
+    UsernameGenerator usernameGenerator,
     IHttpContextAccessor httpContextAccessor) : IStaffManagementService
 {
     public async Task<IReadOnlyList<StaffSummaryDto>> GetStaffAsync(string? role, CancellationToken cancellationToken = default)
@@ -73,20 +75,30 @@ public sealed class StaffManagementService(
             throw new InvalidOperationException("Bu endpoint sadece Ogretmen veya Administrative kaydi icindir.");
         }
 
-        var username = await GenerateUniqueUsernameAsync(
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var primaryHint = parsedRole == UserRole.Teacher
+            ? (request.AssignedClasses.FirstOrDefault() ?? string.Empty)
+            : string.Empty;
+        var username = await usernameGenerator.GenerateAsync(
+            tenantId,
             request.FullName,
-            parsedRole == UserRole.Teacher ? "ogrt" : "idari",
+            new UsernameContext(
+                Role: parsedRole == UserRole.Teacher ? "Teacher" : "Administrative",
+                ClassName: primaryHint,
+                Branch: request.DepartmentOrBranch),
             cancellationToken);
-        var password = GeneratePassword();
+        var password = PasswordGenerator.Generate();
         var user = new AppUser
         {
-            TenantId = ResolveCurrentTenantId(),
+            TenantId = tenantId,
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = parsedRole,
             Campus = request.Campus,
-            DepartmentOrBranch = request.DepartmentOrBranch
+            DepartmentOrBranch = request.DepartmentOrBranch,
+            MustChangePassword = true
         };
 
         var staff = new StaffProfile
@@ -118,17 +130,24 @@ public sealed class StaffManagementService(
 
     public async Task<StaffCredentialsDto> CreateAccountingStaffAsync(CreateAccountingStaffRequest request, CancellationToken cancellationToken = default)
     {
-        var username = await GenerateUniqueUsernameAsync(request.FullName, "mhs", cancellationToken);
-        var password = GeneratePassword();
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var username = await usernameGenerator.GenerateAsync(
+            tenantId,
+            request.FullName,
+            new UsernameContext(Role: "Accounting"),
+            cancellationToken);
+        var password = PasswordGenerator.Generate();
         var user = new AppUser
         {
-            TenantId = ResolveCurrentTenantId(),
+            TenantId = tenantId,
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = UserRole.Accounting,
             Campus = request.Campus,
-            DepartmentOrBranch = "Muhasebe"
+            DepartmentOrBranch = "Muhasebe",
+            MustChangePassword = true
         };
 
         var staff = new StaffProfile

@@ -22,6 +22,22 @@ export async function fetchStudents() {
   return response;
 }
 
+export async function changePassword({ currentPassword, newPassword }) {
+  const payload = {
+    currentPassword: currentPassword || null,
+    newPassword,
+  };
+  return await api.post('/api/auth/change-password', payload);
+}
+
+export async function createParent({ fullName, phone, email }) {
+  return await api.post('/api/parents', {
+    fullName,
+    phone: phone || '',
+    email: email || '',
+  });
+}
+
 export async function fetchReportStudents(params) {
   try {
     const response = await api.get('/api/reports/students', {
@@ -90,6 +106,27 @@ export async function fetchStaff(role) {
 export async function createStaff(payload) {
   const response = await api.post('/api/staff', payload);
   return response;
+}
+
+export async function fetchCourses(params = {}) {
+  const response = await api.get('/api/courses', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  return response;
+}
+
+export async function createCourse(payload) {
+  const response = await api.post('/api/courses', payload);
+  return response;
+}
+
+export async function updateCourse(id, payload) {
+  const response = await api.put(`/api/courses/${id}`, payload);
+  return response;
+}
+
+export async function deleteCourse(id) {
+  await api.delete(`/api/courses/${id}`);
 }
 
 export async function updateStaff(staffId, payload) {

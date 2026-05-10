@@ -15,6 +15,7 @@ public sealed class StudentProfile : ITenantScopedEntity
     public string ParentName { get; set; } = string.Empty;
     public string ParentPhone { get; set; } = string.Empty;
     public string ParentEmail { get; set; } = string.Empty;
+    public Guid? ParentUserId { get; set; }
     public string Address { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
 }

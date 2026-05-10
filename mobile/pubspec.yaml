@@ -43,6 +43,8 @@ flutter:
   assets:
     - assets/logo/course_intellect2.png
     - assets/fonts/ArialUnicode.ttf
+    - assets/fonts/Roboto-Regular.ttf
+    - assets/fonts/Roboto-Bold.ttf
 
 flutter_launcher_icons:
   android: true

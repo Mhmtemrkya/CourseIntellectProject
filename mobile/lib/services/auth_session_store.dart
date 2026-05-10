@@ -15,6 +15,7 @@ class AuthSession {
   final String tenantName;
   final String tenantSlug;
   final bool isPlatformAdmin;
+  final bool mustChangePassword;
 
   const AuthSession({
     required this.accessToken,
@@ -29,6 +30,7 @@ class AuthSession {
     required this.tenantName,
     required this.tenantSlug,
     required this.isPlatformAdmin,
+    this.mustChangePassword = false,
   });
 
   factory AuthSession.fromMap(Map<String, dynamic> map) {
@@ -50,6 +52,7 @@ class AuthSession {
       tenantName: (map['tenantName'] as String?) ?? '',
       tenantSlug: (map['tenantSlug'] as String?) ?? '',
       isPlatformAdmin: map['isPlatformAdmin'] == true,
+      mustChangePassword: map['mustChangePassword'] == true,
     );
   }
 
@@ -66,6 +69,7 @@ class AuthSession {
     'tenantName': tenantName,
     'tenantSlug': tenantSlug,
     'isPlatformAdmin': isPlatformAdmin,
+    'mustChangePassword': mustChangePassword,
   };
 }
 

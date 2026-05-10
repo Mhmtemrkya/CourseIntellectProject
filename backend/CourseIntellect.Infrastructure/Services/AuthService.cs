@@ -7,6 +7,7 @@ using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using System.Text.Json;
 
 namespace CourseIntellect.Infrastructure.Services;
 
@@ -167,6 +168,43 @@ public sealed class AuthService(
         return await CreateCurrentUserDtoAsync(user, cancellationToken);
     }
 
+    public async Task<CurrentUserDto?> ChangePasswordAsync(Guid userId, ChangePasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        if (user is null) return null;
+
+        var newPassword = (request.NewPassword ?? string.Empty).Trim();
+        if (newPassword.Length < 8)
+        {
+            throw new InvalidOperationException("Yeni şifre en az 8 karakter olmalıdır.");
+        }
+
+        var hasUpper = newPassword.Any(char.IsUpper);
+        var hasLower = newPassword.Any(char.IsLower);
+        var hasDigit = newPassword.Any(char.IsDigit);
+        if (!(hasUpper && hasLower && hasDigit))
+        {
+            throw new InvalidOperationException("Şifre en az bir büyük harf, bir küçük harf ve bir rakam içermelidir.");
+        }
+
+        // İlk-giriş zorunlu değişimde mevcut şifre alanı boş gelebilir; bu durumda atla.
+        // Diğer durumlarda mevcut şifre doğrulaması yapılır.
+        if (!user.MustChangePassword)
+        {
+            var currentPassword = (request.CurrentPassword ?? string.Empty).Trim();
+            if (string.IsNullOrEmpty(currentPassword) || !passwordHasher.Verify(currentPassword, user.PasswordHash))
+            {
+                throw new InvalidOperationException("Mevcut şifre hatalı.");
+            }
+        }
+
+        user.PasswordHash = passwordHasher.Hash(newPassword);
+        user.MustChangePassword = false;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return await CreateCurrentUserDtoAsync(user, cancellationToken);
+    }
+
     private async Task<CurrentUserDto> CreateCurrentUserDtoAsync(AppUser user, CancellationToken cancellationToken)
     {
         var tenant = user.TenantId.HasValue
@@ -190,6 +228,8 @@ public sealed class AuthService(
             subscriptionRequired = !hasPaid;
         }
 
+        var rolePolicy = await LoadRoleManagementPolicyAsync(user.Id, user.Username, user.TenantId, cancellationToken);
+
         return new CurrentUserDto(
             user.Id,
             user.FullName,
@@ -203,7 +243,89 @@ public sealed class AuthService(
             tenant?.Name,
             tenant?.Slug,
             isPlatformAdmin,
-            subscriptionRequired);
+            subscriptionRequired,
+            user.MustChangePassword,
+            rolePolicy.Modules,
+            rolePolicy.Permissions,
+            rolePolicy.HasPolicy);
+    }
+
+    private async Task<(IReadOnlyList<string> Modules, IReadOnlyList<string> Permissions, bool HasPolicy)> LoadRoleManagementPolicyAsync(
+        Guid userId,
+        string username,
+        Guid? tenantId,
+        CancellationToken cancellationToken)
+    {
+        var scopeKeys = new List<string> { userId.ToString() };
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            scopeKeys.Add(username);
+        }
+
+        var profileScopeKeys = await dbContext.Students
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.UserId == userId)
+            .Select(x => x.Id.ToString())
+            .Concat(dbContext.Staff
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(x => x.UserId == userId)
+                .Select(x => x.Id.ToString()))
+            .ToListAsync(cancellationToken);
+        scopeKeys.AddRange(profileScopeKeys);
+        scopeKeys = scopeKeys
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var query = dbContext.PlatformConfigurations
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.ConfigurationType == "role-management" && scopeKeys.Contains(x.ScopeKey));
+
+        query = tenantId.HasValue
+            ? query.Where(x => x.TenantId == tenantId.Value || x.TenantId == null)
+            : query.Where(x => x.TenantId == null);
+
+        var payloadJson = await query
+            .OrderByDescending(x => x.TenantId != null)
+            .ThenByDescending(x => x.UpdatedAtUtc)
+            .Select(x => x.PayloadJson)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(payloadJson))
+        {
+            return (Array.Empty<string>(), Array.Empty<string>(), false);
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(payloadJson);
+            var root = document.RootElement;
+            var modules = ReadEnabledKeys(root, "modules");
+            var permissions = ReadEnabledKeys(root, "actions");
+            return (modules, permissions, true);
+        }
+        catch
+        {
+            return (Array.Empty<string>(), Array.Empty<string>(), false);
+        }
+    }
+
+    private static IReadOnlyList<string> ReadEnabledKeys(JsonElement root, string propertyName)
+    {
+        if (!root.TryGetProperty(propertyName, out var section) || section.ValueKind != JsonValueKind.Object)
+        {
+            return Array.Empty<string>();
+        }
+
+        return section.EnumerateObject()
+            .Where(item => item.Value.ValueKind == JsonValueKind.True)
+            .Select(item => item.Name)
+            .Where(item => !string.IsNullOrWhiteSpace(item))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     public async Task LogoutAsync(string refreshToken, CancellationToken cancellationToken = default)

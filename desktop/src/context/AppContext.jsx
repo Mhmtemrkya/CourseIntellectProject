@@ -101,6 +101,20 @@ export function AppProvider({ children }) {
     setUser(null);
   };
 
+  const markPasswordChanged = useCallback(() => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, mustChangePassword: false };
+      setSession((prevSession) => {
+        if (!prevSession) return prevSession;
+        const updated = { ...prevSession, user: next };
+        persistDesktopSession(updated);
+        return updated;
+      });
+      return next;
+    });
+  }, []);
+
   const setUserRole = useCallback((role) => {
     if (user) {
       setUser({ ...user, role });
@@ -127,6 +141,7 @@ export function AppProvider({ children }) {
     login,
     loginWithBrowser,
     logout,
+    markPasswordChanged,
     setUserRole,
     sidebarCollapsed,
     setSidebarCollapsed,
@@ -146,6 +161,7 @@ export function AppProvider({ children }) {
     drawerContent,
     commandPaletteOpen,
     setUserRole,
+    markPasswordChanged,
   ]);
 
   return (

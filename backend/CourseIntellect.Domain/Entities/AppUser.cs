@@ -17,6 +17,7 @@ public sealed class AppUser : ITenantScopedEntity
     public string DepartmentOrBranch { get; set; } = string.Empty;
     public string? Phone { get; set; }
     public bool IsEmailVerified { get; set; }
+    public bool MustChangePassword { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? LastLoginAtUtc { get; set; }
     public string ExtraRolesSerialized { get; set; } = string.Empty;

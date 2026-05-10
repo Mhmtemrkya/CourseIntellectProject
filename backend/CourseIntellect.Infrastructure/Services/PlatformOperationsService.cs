@@ -382,7 +382,8 @@ public sealed class PlatformOperationsService(
             IsEmailVerified = false,
             Campus = tenant.Name,
             DepartmentOrBranch = "Yonetim",
-            CreatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = DateTime.UtcNow,
+            MustChangePassword = true
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);

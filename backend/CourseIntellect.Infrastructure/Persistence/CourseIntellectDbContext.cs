@@ -104,6 +104,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.DepartmentOrBranch).HasMaxLength(120);
             entity.Property(x => x.ExtraRolesSerialized).HasColumnName("extra_roles").HasMaxLength(400);
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
+            entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
         });
 
         modelBuilder.Entity<StudentProfile>(entity =>
@@ -116,6 +117,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.TcNo).HasMaxLength(11).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.ParentEmail).HasMaxLength(120);
+            entity.Property(x => x.ParentUserId).HasColumnName("parent_user_id");
+            entity.HasIndex(x => x.ParentUserId);
         });
 
         modelBuilder.Entity<StaffProfile>(entity =>

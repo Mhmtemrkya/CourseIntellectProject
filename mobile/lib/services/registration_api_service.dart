@@ -17,8 +17,15 @@ class RegistrationApiException implements Exception {
 class GeneratedCredentials {
   final String username;
   final String password;
+  final String fullName;
+  final GeneratedCredentials? parent;
 
-  const GeneratedCredentials({required this.username, required this.password});
+  const GeneratedCredentials({
+    required this.username,
+    required this.password,
+    this.fullName = '',
+    this.parent,
+  });
 }
 
 class RegistrationApiService {
@@ -59,9 +66,21 @@ class RegistrationApiService {
     );
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    final parentRaw = map['parent'];
+    GeneratedCredentials? parentCreds;
+    if (parentRaw is Map) {
+      final parentMap = Map<String, dynamic>.from(parentRaw);
+      parentCreds = GeneratedCredentials(
+        username: (parentMap['username'] as String?) ?? '',
+        password: (parentMap['password'] as String?) ?? '',
+        fullName: (parentMap['fullName'] as String?) ?? '',
+      );
+    }
     return GeneratedCredentials(
       username: map['username'] as String,
       password: map['password'] as String,
+      fullName: (map['fullName'] as String?) ?? '',
+      parent: parentCreds,
     );
   }
 
@@ -105,6 +124,7 @@ class RegistrationApiService {
     return GeneratedCredentials(
       username: map['username'] as String,
       password: map['password'] as String,
+      fullName: (map['fullName'] as String?) ?? '',
     );
   }
 
@@ -140,6 +160,7 @@ class RegistrationApiService {
     return GeneratedCredentials(
       username: map['username'] as String,
       password: map['password'] as String,
+      fullName: (map['fullName'] as String?) ?? '',
     );
   }
 
@@ -157,6 +178,7 @@ class RegistrationApiService {
     return GeneratedCredentials(
       username: map['username'] as String,
       password: map['password'] as String,
+      fullName: (map['fullName'] as String?) ?? '',
     );
   }
 

@@ -5,6 +5,8 @@ import 'package:url_launcher/url_launcher.dart';
 import '../services/administrative_notice_store.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/announcement_store.dart';
+import '../services/auth_session_store.dart';
+import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -40,6 +42,18 @@ class _AdminStudentRegistrationPageState
   void initState() {
     super.initState();
     _loadClassOptions();
+    _loadTenantName();
+  }
+
+  Future<void> _loadTenantName() async {
+    final session = await AuthSessionStore.instance.load();
+    if (!mounted) return;
+    final tenantName = session?.tenantName ?? '';
+    if (tenantName.isNotEmpty) {
+      setState(() {
+        _schoolController.text = tenantName;
+      });
+    }
   }
 
   @override
@@ -154,7 +168,8 @@ class _AdminStudentRegistrationPageState
                   const SizedBox(height: 12),
                   _buildField(
                     controller: _schoolController,
-                    label: 'Okuduğu Okul',
+                    label: 'Mevcut Okul',
+                    readOnly: true,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -304,13 +319,15 @@ class _AdminStudentRegistrationPageState
     int maxLines = 1,
     int? maxLength,
     bool required = true,
+    bool readOnly = false,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       maxLength: maxLength,
-      validator: required
+      readOnly: readOnly,
+      validator: required && !readOnly
           ? (value) {
               if (value == null || value.trim().isEmpty) {
                 return '$label alanı zorunludur';
@@ -321,6 +338,7 @@ class _AdminStudentRegistrationPageState
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
+        filled: readOnly,
       ),
     );
   }
@@ -451,25 +469,90 @@ class _AdminStudentRegistrationPageState
                   ),
                 ),
                 const SizedBox(height: 16),
-                Container(
+                _buildCredentialBlock(
+                  context: dialogContext,
+                  badgeColor: const Color(0xFF1D4ED8),
+                  badgeText: 'Öğrenci',
+                  fullName: credentials.fullName.isNotEmpty
+                      ? credentials.fullName
+                      : _fullNameController.text.trim(),
+                  username: credentials.username,
+                  password: credentials.password,
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Theme.of(dialogContext).cardColor,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: Theme.of(
-                        dialogContext,
-                      ).dividerColor.withValues(alpha: 0.28),
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('Öğrenci PDF\'i İndir / Paylaş'),
+                    onPressed: () async {
+                      final session = await AuthSessionStore.instance.load();
+                      await CredentialsPdfService.generateAndShare(
+                        tenantName: session?.tenantName ?? '',
+                        fullName: credentials.fullName.isNotEmpty
+                            ? credentials.fullName
+                            : _fullNameController.text.trim(),
+                        role: 'Öğrenci',
+                        username: credentials.username,
+                        temporaryPassword: credentials.password,
+                        className: _classController.text.trim(),
+                      );
+                    },
+                  ),
+                ),
+                if (credentials.parent != null) ...[
+                  const SizedBox(height: 16),
+                  _buildCredentialBlock(
+                    context: dialogContext,
+                    badgeColor: const Color(0xFF047857),
+                    badgeText: 'Veli',
+                    fullName: credentials.parent!.fullName.isNotEmpty
+                        ? credentials.parent!.fullName
+                        : _parentNameController.text.trim(),
+                    username: credentials.parent!.username,
+                    password: credentials.parent!.password,
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: const Text('Veli PDF\'i İndir / Paylaş'),
+                      onPressed: () async {
+                        final session = await AuthSessionStore.instance.load();
+                        final studentName = credentials.fullName.isNotEmpty
+                            ? credentials.fullName
+                            : _fullNameController.text.trim();
+                        await CredentialsPdfService.generateAndShare(
+                          tenantName: session?.tenantName ?? '',
+                          fullName: credentials.parent!.fullName.isNotEmpty
+                              ? credentials.parent!.fullName
+                              : _parentNameController.text.trim(),
+                          role: 'Veli',
+                          username: credentials.parent!.username,
+                          temporaryPassword: credentials.parent!.password,
+                          extra:
+                              'Velisi olduğu öğrenci: $studentName (${_classController.text.trim()})',
+                        );
+                      },
                     ),
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _credentialRow('Kullanıcı Adı', credentials.username),
-                      const SizedBox(height: 10),
-                      _credentialRow('Şifre', credentials.password),
-                    ],
+                ],
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Text(
+                    'Tüm geçici şifreler ilk girişte zorunlu olarak değiştirilmelidir.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber.shade900,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -537,21 +620,89 @@ class _AdminStudentRegistrationPageState
     );
   }
 
-  Widget _credentialRow(String label, String value) {
-    return Row(
-      children: [
-        Expanded(
-          child: Text(
-            label,
-            style: const TextStyle(fontWeight: FontWeight.w700),
+  Widget _buildCredentialBlock({
+    required BuildContext context,
+    required Color badgeColor,
+    required String badgeText,
+    required String fullName,
+    required String username,
+    required String password,
+  }) {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: theme.dividerColor.withValues(alpha: 0.28),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: badgeColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  badgeText,
+                  style: TextStyle(
+                    color: badgeColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  fullName,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
           ),
-        ),
-        const SizedBox(width: 12),
-        SelectableText(
-          value,
-          style: const TextStyle(fontWeight: FontWeight.w800),
-        ),
-      ],
+          const SizedBox(height: 10),
+          const Text(
+            'Kullanıcı Adı',
+            style: TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          const SizedBox(height: 2),
+          SelectableText(
+            username,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Geçici Şifre',
+            style: TextStyle(fontSize: 11, color: Colors.grey),
+          ),
+          const SizedBox(height: 2),
+          SelectableText(
+            password,
+            style: const TextStyle(
+              fontFamily: 'monospace',
+              fontWeight: FontWeight.w800,
+              fontSize: 16,
+              letterSpacing: 1.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'change_password_page.dart';
 import 'notification_preferences_page.dart';
 import '../services/auth_session_store.dart';
 import '../services/linked_children_service.dart';
@@ -137,6 +138,20 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => const NotificationPreferencesPage(),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text("Şifre Değiştir"),
+                  subtitle: const Text(
+                    "Hesap güvenliği için şifrenizi güncelleyin.",
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordPage(),
                     ),
                   ),
                 ),

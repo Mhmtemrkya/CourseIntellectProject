@@ -52,7 +52,8 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStaff, updateStaff, fetchQuestionBank, fetchStaff } from '../lib/api/modules';
+import { createStaff, updateStaff, fetchQuestionBank, fetchStaff, fetchClasses } from '../lib/api/modules';
+import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -180,7 +181,6 @@ function TeacherFormFields({ form, setForm, branches, classes }) {
             <SelectContent>
               <SelectItem value="Teacher">Öğretmen</SelectItem>
               <SelectItem value="Administrative">İdari Personel</SelectItem>
-              <SelectItem value="Admin">Yönetici</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -203,10 +203,6 @@ function TeacherFormFields({ form, setForm, branches, classes }) {
       <div className="space-y-2">
         <Label>Telefon</Label>
         <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
-      </div>
-      <div className="space-y-2 col-span-2">
-        <Label>E-posta</Label>
-        <Input type="email" value={form.email} onChange={(e) => setForm((p) => ({ ...p, email: e.target.value }))} />
       </div>
       <div className="space-y-2">
         <Label>Eğitim</Label>
@@ -271,14 +267,16 @@ function AddTeacherDialog({
   open, onOpenChange, branches, classes, onCreated,
 }) {
   const { toast } = useToast();
+  const { user } = useApp();
+  const tenantName = user?.tenant || '';
   const [saving, setSaving] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
   const [form, setForm] = useState({
     fullName: '',
     role: 'Teacher',
     departmentOrBranch: '',
     tcNo: '',
     phone: '',
-    email: '',
     education: 'Lisans',
     startDate: '',
     campus: 'Merkez Kampus',
@@ -290,22 +288,94 @@ function AddTeacherDialog({
   });
 
   const handleSave = async () => {
-    if (!form.fullName || !form.departmentOrBranch || !form.email) {
-      toast({ title: 'Eksik bilgi', description: 'Ad, branş ve e-posta zorunlu.', variant: 'destructive' });
+    if (!form.fullName?.trim() || !form.departmentOrBranch) {
+      toast({ title: 'Eksik bilgi', description: 'Ad-soyad ve branş zorunlu.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
-      const created = await createStaff(form);
-      onCreated({ ...created, assignedClasses: form.assignedClasses, departmentOrBranch: form.departmentOrBranch, email: form.email, phone: form.phone });
-      toast({ title: 'Personel oluşturuldu', description: `${created.fullName} için ${created.username} kullanıcısı üretildi.` });
-      onOpenChange(false);
+      const created = await createStaff({ ...form, email: '' });
+      onCreated({ ...created, assignedClasses: form.assignedClasses, departmentOrBranch: form.departmentOrBranch, phone: form.phone });
+      const roleLabel = form.role === 'Administrative' ? 'İdari Personel'
+        : form.role === 'Accounting' ? 'Muhasebe'
+        : 'Öğretmen';
+      setCreatedCredentials({
+        fullName: created.fullName || form.fullName,
+        username: created.username,
+        password: created.password,
+        roleLabel,
+        branch: form.departmentOrBranch,
+      });
+      try {
+        await downloadCredentialsPdf({
+          tenantName,
+          fullName: created.fullName || form.fullName,
+          role: roleLabel,
+          username: created.username,
+          temporaryPassword: created.password,
+          extra: form.departmentOrBranch ? `Brans: ${form.departmentOrBranch}` : undefined,
+        });
+      } catch (pdfErr) {
+        console.warn('PDF üretimi başarısız', pdfErr);
+      }
+      toast({ title: 'Personel oluşturuldu', description: 'Bilgiler PDF olarak indirildi.' });
     } catch (err) {
       toast({ title: 'Personel oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
+
+  const handleClose = () => {
+    setCreatedCredentials(null);
+    onOpenChange(false);
+  };
+
+  const handleDownloadAgain = async () => {
+    if (!createdCredentials) return;
+    await downloadCredentialsPdf({
+      tenantName,
+      fullName: createdCredentials.fullName,
+      role: createdCredentials.roleLabel,
+      username: createdCredentials.username,
+      temporaryPassword: createdCredentials.password,
+      extra: createdCredentials.branch ? `Brans: ${createdCredentials.branch}` : undefined,
+    });
+  };
+
+  if (createdCredentials) {
+    return (
+      <Dialog open={open} onOpenChange={(value) => { if (!value) handleClose(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{createdCredentials.roleLabel} Oluşturuldu</DialogTitle>
+            <DialogDescription>
+              Bilgiler PDF olarak indirildi. Kaybederseniz aşağıdan tekrar indirebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="text-xs text-muted-foreground">Ad Soyad</div>
+              <div className="font-medium">{createdCredentials.fullName}</div>
+            </div>
+            <div className="rounded-lg border p-3 space-y-1">
+              <div className="text-xs text-muted-foreground">Kullanıcı Adı</div>
+              <div className="font-mono text-sm break-all">{createdCredentials.username}</div>
+            </div>
+            <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+              <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</div>
+              <div className="font-mono text-base font-bold tracking-wider">{createdCredentials.password}</div>
+              <div className="text-xs text-amber-700 dark:text-amber-400">İlk girişte değiştirilmesi zorunludur.</div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={handleDownloadAgain}>PDF İndir</Button>
+            <Button onClick={handleClose}>Tamam</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -333,7 +403,6 @@ function EditTeacherDialog({
     fullName: '',
     departmentOrBranch: '',
     phone: '',
-    email: '',
     education: '',
     campus: '',
     homeroomClass: '',
@@ -349,7 +418,6 @@ function EditTeacherDialog({
         fullName: teacher.fullName || '',
         departmentOrBranch: teacher.departmentOrBranch || '',
         phone: teacher.phone || '',
-        email: teacher.email || '',
         education: teacher.education || 'Lisans',
         campus: teacher.campus || 'Merkez Kampus',
         homeroomClass: teacher.homeroomClass || '',
@@ -362,13 +430,13 @@ function EditTeacherDialog({
   }, [teacher]);
 
   const handleSave = async () => {
-    if (!form.fullName || !form.departmentOrBranch || !form.email) {
-      toast({ title: 'Eksik bilgi', description: 'Ad, branş ve e-posta zorunlu.', variant: 'destructive' });
+    if (!form.fullName?.trim() || !form.departmentOrBranch) {
+      toast({ title: 'Eksik bilgi', description: 'Ad-soyad ve branş zorunlu.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
-      const updated = await updateStaff(teacher.id, form);
+      const updated = await updateStaff(teacher.id, { ...form, email: teacher?.email || '' });
       onUpdated(updated);
       toast({ title: 'Güncellendi', description: `${updated.fullName} bilgileri güncellendi.` });
       onOpenChange(false);
@@ -407,6 +475,7 @@ export default function Teachers() {
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [staff, setStaff] = useState([]);
   const [questionBank, setQuestionBank] = useState([]);
+  const [classNames, setClassNames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -414,12 +483,14 @@ export default function Teachers() {
     try {
       setLoading(true);
       setError('');
-      const [staffList, questions] = await Promise.all([
+      const [staffList, questions, classList] = await Promise.all([
         fetchStaff('Teacher'),
         fetchQuestionBank().catch(() => []),
+        fetchClasses().catch(() => []),
       ]);
       setStaff(staffList);
       setQuestionBank(questions);
+      setClassNames(Array.isArray(classList) ? classList : []);
     } catch (err) {
       setError(err.message || 'Öğretmen listesi alınamadı.');
     } finally {
@@ -436,13 +507,10 @@ export default function Teachers() {
     return [...new Set([...PREDEFINED_BRANCHES, ...fromStaff])];
   }, [staff]);
 
-  const classes = useMemo(() => {
-    const merged = [
-      ...staff.flatMap((t) => t.assignedClasses || []),
-      '9-A', '10-A', '10-B', '11-Sayisal', '12-Dil',
-    ];
-    return [...new Set(merged.filter(Boolean))];
-  }, [staff]);
+  const classes = useMemo(
+    () => [...new Set((classNames || []).filter(Boolean))],
+    [classNames],
+  );
 
   const enrichedTeachers = useMemo(() => staff.map((teacher) => ({
     ...teacher,

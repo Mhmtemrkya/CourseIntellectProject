@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:student/pages/change_password_page.dart';
 import 'package:student/services/auth_api_service.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/branding_service.dart';
@@ -141,6 +142,25 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _openRolePanel(AuthSession session) {
+    if (session.mustChangePassword) {
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ChangePasswordPage(
+            forceMode: true,
+            onSuccess: () {
+              final page = RoleRouter.panelFor(session);
+              if (page == null) return;
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => page),
+              );
+            },
+          ),
+        ),
+      );
+      return;
+    }
     final page = RoleRouter.panelFor(session);
     if (page == null) return;
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => page));

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/auth_session_store.dart';
+import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -19,7 +21,6 @@ class _AdminAccountingRegistrationPageState
   final _nameController = TextEditingController();
   final _tcController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _emailController = TextEditingController();
   final _educationController = TextEditingController();
   final _startDateController = TextEditingController();
   final _campusController = TextEditingController(text: 'Merkez Kampüs');
@@ -34,7 +35,6 @@ class _AdminAccountingRegistrationPageState
     _nameController.dispose();
     _tcController.dispose();
     _phoneController.dispose();
-    _emailController.dispose();
     _educationController.dispose();
     _startDateController.dispose();
     _campusController.dispose();
@@ -97,12 +97,6 @@ class _AdminAccountingRegistrationPageState
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 12),
-                  _field(
-                    controller: _emailController,
-                    label: 'E-Posta',
-                    keyboardType: TextInputType.emailAddress,
                   ),
                   const SizedBox(height: 12),
                   _field(
@@ -235,7 +229,7 @@ class _AdminAccountingRegistrationPageState
             fullName: _nameController.text.trim(),
             tcNo: _tcController.text.trim(),
             phone: _phoneController.text.trim(),
-            email: _emailController.text.trim(),
+            email: '',
             education: _educationController.text.trim(),
             startDate: _startDateController.text.trim(),
             campus: _campusController.text.trim(),
@@ -291,8 +285,45 @@ class _AdminAccountingRegistrationPageState
                 const SizedBox(height: 16),
                 _credentialTile(context, 'Kullanıcı Adı', credentials.username),
                 const SizedBox(height: 10),
-                _credentialTile(context, 'Geçiçi Şifre', credentials.password),
-                const SizedBox(height: 18),
+                _credentialTile(context, 'Geçici Şifre', credentials.password),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.amber.shade200),
+                  ),
+                  child: Text(
+                    'Bu şifre ilk girişte değiştirilmesi zorunludur.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.amber.shade900,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.picture_as_pdf_outlined),
+                    label: const Text('PDF Olarak Indir / Paylas'),
+                    onPressed: () async {
+                      final session = await AuthSessionStore.instance.load();
+                      await CredentialsPdfService.generateAndShare(
+                        tenantName: session?.tenantName ?? '',
+                        fullName: credentials.fullName.isNotEmpty
+                            ? credentials.fullName
+                            : _nameController.text.trim(),
+                        role: 'Muhasebe',
+                        username: credentials.username,
+                        temporaryPassword: credentials.password,
+                      );
+                    },
+                  ),
+                ),
+                const SizedBox(height: 10),
                 Row(
                   children: [
                     Expanded(

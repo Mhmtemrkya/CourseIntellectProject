@@ -422,6 +422,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("LastLoginAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("MustChangePassword")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("must_change_password");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasMaxLength(300)
@@ -1696,6 +1702,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<Guid?>("ParentUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("parent_user_id");
+
                     b.Property<string>("ProgramType")
                         .IsRequired()
                         .HasColumnType("text");
@@ -1717,6 +1727,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ParentUserId");
 
                     b.HasIndex("TenantId");
 

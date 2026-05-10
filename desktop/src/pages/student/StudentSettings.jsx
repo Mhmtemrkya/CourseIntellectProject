@@ -11,6 +11,7 @@ import { Switch } from '../../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
+import { changePassword } from '../../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -49,8 +50,14 @@ export default function StudentSettings() {
       toast({ title: 'Lutfen tum alanlari doldurun.', variant: 'destructive' });
       return;
     }
-    if (passwordForm.newPassword.length < 6) {
-      toast({ title: 'Yeni sifre en az 6 karakter olmali.', variant: 'destructive' });
+    if (passwordForm.newPassword.length < 8) {
+      toast({ title: 'Yeni sifre en az 8 karakter olmali.', variant: 'destructive' });
+      return;
+    }
+    if (!/[A-Z]/.test(passwordForm.newPassword) ||
+        !/[a-z]/.test(passwordForm.newPassword) ||
+        !/[0-9]/.test(passwordForm.newPassword)) {
+      toast({ title: 'Sifre buyuk harf, kucuk harf ve rakam icermeli.', variant: 'destructive' });
       return;
     }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
@@ -59,11 +66,15 @@ export default function StudentSettings() {
     }
     try {
       setSaving(true);
-      // API call would go here: await changePassword(passwordForm)
+      await changePassword({
+        currentPassword: passwordForm.currentPassword,
+        newPassword: passwordForm.newPassword,
+      });
       toast({ title: 'Sifreniz basariyla degistirildi.' });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err) {
-      toast({ title: err.message || 'Sifre degistirilemedi.', variant: 'destructive' });
+      const message = err?.response?.data?.message || err?.message || 'Sifre degistirilemedi.';
+      toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }

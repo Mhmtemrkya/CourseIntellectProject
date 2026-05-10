@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../services/auth_session_store.dart';
+import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -24,7 +26,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _teacherNameController = TextEditingController();
   final _teacherTcController = TextEditingController();
   final _teacherPhoneController = TextEditingController();
-  final _teacherEmailController = TextEditingController();
   final _teacherEducationController = TextEditingController();
   final _teacherStartDateController = TextEditingController();
   final _teacherCampusController = TextEditingController(text: 'Merkez Kampüs');
@@ -34,7 +35,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _personnelNameController = TextEditingController();
   final _personnelTcController = TextEditingController();
   final _personnelPhoneController = TextEditingController();
-  final _personnelEmailController = TextEditingController();
   final _personnelEducationController = TextEditingController();
   final _personnelStartDateController = TextEditingController();
   final _personnelCampusController = TextEditingController(
@@ -65,7 +65,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _teacherNameController.dispose();
     _teacherTcController.dispose();
     _teacherPhoneController.dispose();
-    _teacherEmailController.dispose();
     _teacherEducationController.dispose();
     _teacherStartDateController.dispose();
     _teacherCampusController.dispose();
@@ -74,7 +73,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _personnelNameController.dispose();
     _personnelTcController.dispose();
     _personnelPhoneController.dispose();
-    _personnelEmailController.dispose();
     _personnelEducationController.dispose();
     _personnelStartDateController.dispose();
     _personnelCampusController.dispose();
@@ -234,14 +232,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     controller: _teacherPhoneController,
                     label: 'Telefon',
                     keyboardType: TextInputType.phone,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _field(
-                    controller: _teacherEmailController,
-                    label: 'E-Posta',
-                    keyboardType: TextInputType.emailAddress,
                   ),
                 ),
               ],
@@ -448,14 +438,6 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     keyboardType: TextInputType.phone,
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _field(
-                    controller: _personnelEmailController,
-                    label: 'E-Posta',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 12),
@@ -598,7 +580,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         departmentOrBranch: _teacherBranch,
         tcNo: _teacherTcController.text.trim(),
         phone: _teacherPhoneController.text.trim(),
-        email: _teacherEmailController.text.trim(),
+        email: '',
         education: _teacherEducationController.text.trim(),
         startDate: _teacherStartDateController.text.trim(),
         campus: _teacherCampusController.text.trim(),
@@ -639,7 +621,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         departmentOrBranch: _personnelDepartment,
         tcNo: _personnelTcController.text.trim(),
         phone: _personnelPhoneController.text.trim(),
-        email: _personnelEmailController.text.trim(),
+        email: '',
         education: _personnelEducationController.text.trim(),
         startDate: _personnelStartDateController.text.trim(),
         campus: _personnelCampusController.text.trim(),
@@ -653,11 +635,11 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       if (!mounted) return;
       setState(() => _saving = false);
       await _showResultCard(
-        title: 'Personel kaydı tamamlandı',
+        title: 'İdari Personel',
         description:
-            'İdari profil oluşturuldu ve kurum içi iletişim listesine eklendi.',
+            'İdari profil oluşturuldu. Aşağıdaki giriş bilgileriyle kurum sistemine erişebilir; ilk girişte şifre değişimi zorunludur.',
         credentials: credentials,
-        withLogin: false,
+        withLogin: true,
       );
     } on RegistrationApiException catch (error) {
       if (!mounted) return;
@@ -743,6 +725,26 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   ),
                 ),
                 const SizedBox(height: 16),
+                if (withLogin) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final session = await AuthSessionStore.instance.load();
+                        await CredentialsPdfService.generateAndShare(
+                          tenantName: session?.tenantName ?? '',
+                          fullName: credentials.fullName,
+                          role: title,
+                          username: credentials.username,
+                          temporaryPassword: credentials.password,
+                        );
+                      },
+                      icon: const Icon(Icons.picture_as_pdf_outlined),
+                      label: const Text('PDF Olarak Indir / Paylas'),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
                 Row(
                   children: [
                     Expanded(

@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import {
-  UserPlus, Save, Briefcase, Mail, Phone, BookOpen,
-} from 'lucide-react';
+import { Save, Briefcase, Copy } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -11,10 +9,14 @@ import { Textarea } from '../../components/ui/textarea';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
-import { ErrorBanner } from '../../components/ui/AlertBanner';
+import {
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
+} from '../../components/ui/dialog';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { useApp } from '../../context/AppContext';
 import { createStaff, fetchStaff } from '../../lib/api/modules';
+import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,30 +29,52 @@ const itemVariants = {
 };
 
 const roles = [
-  { value: 'Teacher', label: 'Ogretmen' },
-  { value: 'Accounting', label: 'Muhasebe' },
-  { value: 'Administrative', label: 'Idari Personel' },
-  { value: 'Admin', label: 'Yonetici' },
+  { value: 'Teacher', label: 'Öğretmen' },
+  { value: 'Administrative', label: 'İdari Personel' },
+];
+
+const branchOptions = [
+  'Matematik', 'Fizik', 'Kimya', 'Biyoloji',
+  'Türkçe / Edebiyat', 'Tarih', 'Coğrafya',
+  'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca',
+  'Felsefe', 'Din Kültürü ve Ahlak Bilgisi',
+  'Beden Eğitimi', 'Müzik', 'Görsel Sanatlar',
+  'Bilgisayar / Bilişim Teknolojileri',
+  'Matematik (İlkokul)', 'Türkçe (İlkokul)',
+  'Hayat Bilgisi', 'Fen Bilimleri',
+  'Sosyal Bilgiler', 'Rehberlik',
+  'Okul Öncesi', 'Özel Eğitim',
+  'Diğer',
+];
+
+const administrativeBranches = [
+  'Öğrenci İşleri', 'İnsan Kaynakları', 'Halkla İlişkiler', 'Kalite', 'Bilgi İşlem', 'Diğer',
 ];
 
 const emptyForm = {
   fullName: '',
-  username: '',
-  password: '',
-  email: '',
-  phone: '',
-  primaryRole: 'Teacher',
+  role: 'Teacher',
   departmentOrBranch: '',
-  campus: '',
-  notes: '',
+  tcNo: '',
+  phone: '',
+  education: 'Lisans',
+  startDate: '',
+  campus: 'Merkez Kampus',
+  homeroomClass: '',
+  maritalStatus: 'Bekar',
+  childCount: 0,
+  note: '',
 };
 
 export default function AdminStaffRegistration() {
   const { toast } = useToast();
+  const { user } = useApp();
+  const tenantName = user?.tenant || '';
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [recentStaff, setRecentStaff] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [credentials, setCredentials] = useState(null);
 
   const loadRecent = useCallback(async () => {
     try {
@@ -69,48 +93,100 @@ export default function AdminStaffRegistration() {
   };
 
   const handleSubmit = async () => {
-    if (!form.fullName || !form.username || !form.password) {
-      toast({ title: 'Ad soyad, kullanici adi ve sifre zorunludur.', variant: 'destructive' });
+    if (!form.fullName.trim()) {
+      toast({ title: 'Ad soyad zorunludur.', variant: 'destructive' });
+      return;
+    }
+    if (!form.departmentOrBranch.trim()) {
+      toast({ title: 'Branş / bölüm seçimi zorunludur.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
-      await createStaff({
-        fullName: form.fullName,
-        username: form.username,
-        password: form.password,
-        email: form.email,
-        phone: form.phone,
-        primaryRole: form.primaryRole,
+      const response = await createStaff({
+        fullName: form.fullName.trim(),
+        role: form.role,
         departmentOrBranch: form.departmentOrBranch,
-        campus: form.campus,
-        notes: form.notes || undefined,
+        tcNo: form.tcNo.trim(),
+        phone: form.phone.trim(),
+        email: '',
+        education: form.education.trim(),
+        startDate: form.startDate.trim(),
+        campus: form.campus.trim(),
+        homeroomClass: form.homeroomClass.trim(),
+        assignedClasses: [],
+        maritalStatus: form.maritalStatus,
+        childCount: Number(form.childCount || 0),
+        note: form.note.trim(),
       });
-      toast({ title: 'Personel basariyla kaydedildi.' });
+      const roleLabel = form.role === 'Administrative' ? 'İdari Personel' : 'Öğretmen';
+      const fullName = response?.fullName || form.fullName.trim();
+      setCredentials({
+        fullName,
+        username: response?.username,
+        password: response?.password,
+        roleLabel,
+        branch: form.departmentOrBranch,
+      });
+      try {
+        await downloadCredentialsPdf({
+          tenantName,
+          fullName,
+          role: roleLabel,
+          username: response?.username,
+          temporaryPassword: response?.password,
+          extra: form.departmentOrBranch ? `Brans: ${form.departmentOrBranch}` : undefined,
+        });
+      } catch (pdfErr) {
+        console.warn('PDF üretimi başarısız', pdfErr);
+      }
+      toast({ title: 'Personel başarıyla kaydedildi.', description: 'Bilgiler PDF olarak indirildi.' });
       setForm(emptyForm);
       loadRecent();
     } catch (err) {
-      toast({ title: err.message || 'Kayit basarisiz.', variant: 'destructive' });
+      const message = err?.response?.data?.message || err?.message || 'Kayıt başarısız.';
+      toast({ title: message, variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
+  const copyCredentials = async () => {
+    if (!credentials) return;
+    const text = `Kullanıcı adı: ${credentials.username}\nGeçici Şifre: ${credentials.password}`;
+    await navigator.clipboard?.writeText(text);
+    toast({ title: 'Giriş bilgileri kopyalandı.' });
+  };
+
+  const downloadAgain = async () => {
+    if (!credentials) return;
+    await downloadCredentialsPdf({
+      tenantName,
+      fullName: credentials.fullName,
+      role: credentials.roleLabel,
+      username: credentials.username,
+      temporaryPassword: credentials.password,
+      extra: credentials.branch ? `Brans: ${credentials.branch}` : undefined,
+    });
+  };
+
+  const branchList = form.role === 'Administrative' ? administrativeBranches : branchOptions;
+
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
-      {/* Header */}
       <motion.div variants={itemVariants} className="flex items-center gap-3">
         <div className="p-2 bg-gradient-to-br from-purple-500 to-violet-600 rounded-xl text-white">
           <Briefcase className="h-6 w-6" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">Personel Kaydi</h1>
-          <p className="text-sm text-muted-foreground">Yeni personel kayit formu</p>
+          <h1 className="text-2xl font-bold">Personel Kaydı</h1>
+          <p className="text-sm text-muted-foreground">
+            Öğretmen veya idari personel kaydı. Kullanıcı adı ve geçici şifre otomatik üretilir.
+          </p>
         </div>
       </motion.div>
 
       <div className="grid grid-cols-3 gap-6">
-        {/* Form */}
         <motion.div variants={itemVariants} className="col-span-2">
           <Card>
             <CardHeader>
@@ -120,19 +196,11 @@ export default function AdminStaffRegistration() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Ad Soyad *</Label>
-                  <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Orn: Ayse Demir" />
-                </div>
-                <div>
-                  <Label>Kullanici Adi *</Label>
-                  <Input value={form.username} onChange={(e) => handleChange('username', e.target.value)} placeholder="Orn: ayse.demir" />
-                </div>
-                <div>
-                  <Label>Sifre *</Label>
-                  <Input type="password" value={form.password} onChange={(e) => handleChange('password', e.target.value)} placeholder="En az 6 karakter" />
+                  <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ayşe Demir" />
                 </div>
                 <div>
                   <Label>Rol *</Label>
-                  <Select value={form.primaryRole} onValueChange={(v) => handleChange('primaryRole', v)}>
+                  <Select value={form.role} onValueChange={(v) => handleChange('role', v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {roles.map((r) => (
@@ -142,46 +210,67 @@ export default function AdminStaffRegistration() {
                   </Select>
                 </div>
                 <div>
-                  <Label>E-posta</Label>
-                  <Input type="email" value={form.email} onChange={(e) => handleChange('email', e.target.value)} placeholder="ornek@email.com" />
-                </div>
-                <div>
-                  <Label>Telefon</Label>
-                  <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="05XX XXX XX XX" />
-                </div>
-                <div>
-                  <Label>Branş / Bölüm</Label>
+                  <Label>{form.role === 'Administrative' ? 'Birim *' : 'Branş *'}</Label>
                   <Select value={form.departmentOrBranch} onValueChange={(v) => handleChange('departmentOrBranch', v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Branş seçin..." />
+                      <SelectValue placeholder={form.role === 'Administrative' ? 'Birim seçin...' : 'Branş seçin...'} />
                     </SelectTrigger>
                     <SelectContent>
-                      {[
-                        'Matematik', 'Fizik', 'Kimya', 'Biyoloji',
-                        'Türkçe / Edebiyat', 'Tarih', 'Coğrafya',
-                        'İngilizce', 'Almanca', 'Fransızca', 'İspanyolca',
-                        'Felsefe', 'Din Kültürü ve Ahlak Bilgisi',
-                        'Beden Eğitimi', 'Müzik', 'Görsel Sanatlar',
-                        'Bilgisayar / Bilişim Teknolojileri',
-                        'Matematik (İlkokul)', 'Türkçe (İlkokul)',
-                        'Hayat Bilgisi', 'Fen Bilimleri',
-                        'Sosyal Bilgiler', 'Rehberlik',
-                        'Okul Öncesi', 'Özel Eğitim',
-                        'Diğer',
-                      ].map((b) => (
+                      {branchList.map((b) => (
                         <SelectItem key={b} value={b}>{b}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div>
-                  <Label>Kampus</Label>
-                  <Input value={form.campus} onChange={(e) => handleChange('campus', e.target.value)} placeholder="Orn: Merkez Kampus" />
+                  <Label>TC Kimlik No</Label>
+                  <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', e.target.value.replace(/\D/g, ''))} />
+                </div>
+                <div>
+                  <Label>Telefon</Label>
+                  <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="05XX XXX XX XX" />
+                </div>
+                <div>
+                  <Label>Eğitim</Label>
+                  <Input value={form.education} onChange={(e) => handleChange('education', e.target.value)} />
+                </div>
+                <div>
+                  <Label>İşe Başlama Tarihi</Label>
+                  <Input value={form.startDate} onChange={(e) => handleChange('startDate', e.target.value)} placeholder="gg.aa.yyyy" />
+                </div>
+                <div>
+                  <Label>Kampüs</Label>
+                  <Input value={form.campus} onChange={(e) => handleChange('campus', e.target.value)} />
+                </div>
+                {form.role === 'Teacher' && (
+                  <div>
+                    <Label>Sınıf Öğretmenliği (opsiyonel)</Label>
+                    <Input value={form.homeroomClass} onChange={(e) => handleChange('homeroomClass', e.target.value)} placeholder="Örn: 9-A" />
+                  </div>
+                )}
+                <div>
+                  <Label>Medeni Durum</Label>
+                  <Select value={form.maritalStatus} onValueChange={(v) => handleChange('maritalStatus', v)}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bekar">Bekar</SelectItem>
+                      <SelectItem value="Evli">Evli</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Çocuk Sayısı</Label>
+                  <Input type="number" min="0" value={form.childCount} onChange={(e) => handleChange('childCount', e.target.value)} />
                 </div>
               </div>
               <div>
                 <Label>Notlar</Label>
-                <Textarea value={form.notes} onChange={(e) => handleChange('notes', e.target.value)} placeholder="Ek bilgiler..." rows={2} />
+                <Textarea value={form.note} onChange={(e) => handleChange('note', e.target.value)} placeholder="Ek bilgiler..." rows={2} />
+              </div>
+
+              <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
+                <strong>Bilgi:</strong> Personel kaydedildiğinde kurum domain'inizi kullanan bir kullanıcı adı
+                ve güçlü bir geçici şifre otomatik üretilir. Personel ilk girişinde şifresini değiştirmek zorundadır.
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
@@ -194,17 +283,16 @@ export default function AdminStaffRegistration() {
           </Card>
         </motion.div>
 
-        {/* Recent */}
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Son Kayitlar</CardTitle>
+              <CardTitle className="text-base">Son Kayıtlar</CardTitle>
             </CardHeader>
             <CardContent>
               {loading ? (
                 <div className="flex justify-center py-4"><LoadingDots /></div>
               ) : recentStaff.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Henuz kayit yok.</p>
+                <p className="text-sm text-muted-foreground text-center py-4">Henüz kayıt yok.</p>
               ) : (
                 <div className="space-y-3">
                   {recentStaff.map((s, i) => (
@@ -214,7 +302,7 @@ export default function AdminStaffRegistration() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{s.fullName}</p>
-                        <p className="text-xs text-muted-foreground">{s.primaryRole || '-'}</p>
+                        <p className="text-xs text-muted-foreground">{s.primaryRole || s.role || '-'}</p>
                       </div>
                     </div>
                   ))}
@@ -224,6 +312,39 @@ export default function AdminStaffRegistration() {
           </Card>
         </motion.div>
       </div>
+
+      <Dialog open={!!credentials} onOpenChange={(open) => !open && setCredentials(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{credentials?.roleLabel} Oluşturuldu</DialogTitle>
+            <DialogDescription>
+              Bilgiler PDF olarak indirildi. Kaybederseniz aşağıdan tekrar indirebilirsiniz.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground">Ad Soyad</p>
+              <p className="mt-1 font-medium">{credentials?.fullName || '-'}</p>
+            </div>
+            <div className="rounded-xl border bg-muted/30 p-4">
+              <p className="text-sm text-muted-foreground">Kullanıcı Adı</p>
+              <p className="mt-1 font-mono text-base font-bold break-all">{credentials?.username || '-'}</p>
+            </div>
+            <div className="rounded-xl border bg-amber-50 dark:bg-amber-950/30 p-4">
+              <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</p>
+              <p className="mt-1 font-mono text-base font-bold tracking-wider">{credentials?.password || '-'}</p>
+              <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">İlk girişte değiştirilmesi zorunludur.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCredentials(null)}>Kapat</Button>
+            <Button variant="outline" onClick={copyCredentials}>
+              <Copy className="mr-2 h-4 w-4" /> Kopyala
+            </Button>
+            <Button onClick={downloadAgain}>PDF İndir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

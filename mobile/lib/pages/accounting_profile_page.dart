@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../services/auth_session_store.dart';
 import '../services/current_user_api_service.dart';
+import 'change_password_page.dart';
 import 'notification_preferences_page.dart';
 import 'profile_edit_page.dart';
 import '../theme_provider.dart';
@@ -193,6 +194,20 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => const NotificationPreferencesPage(),
+                    ),
+                  ),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.lock_outline),
+                  title: const Text("Şifre Değiştir"),
+                  subtitle: const Text(
+                    "Hesap güvenliği için şifrenizi güncelleyin.",
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const ChangePasswordPage(),
                     ),
                   ),
                 ),

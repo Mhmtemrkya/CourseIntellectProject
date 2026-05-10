@@ -51,13 +51,14 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStudent, fetchAttendance, fetchExamResults, fetchStudents } from '../lib/api/modules';
+import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents } from '../lib/api/modules';
+import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 
 const containerVariants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
-const FALLBACK_CLASSES = ['9-A', '10-A', '10-B', '11-Sayisal', '12-Dil'];
+const FALLBACK_CLASSES = [];
 
 function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
@@ -138,12 +139,15 @@ function AddStudentDialog({
   open, onOpenChange, classes, onCreated,
 }) {
   const { toast } = useToast();
+  const { user } = useApp();
+  const tenantName = user?.tenant || '';
   const [saving, setSaving] = useState(false);
+  const [createdCredentials, setCreatedCredentials] = useState(null);
   const [form, setForm] = useState({
     fullName: '',
     tcNo: '',
     className: '',
-    currentSchool: '',
+    currentSchool: tenantName,
     schoolNumber: '',
     birthDate: '',
     programType: 'Sayisal',
@@ -153,6 +157,10 @@ function AddStudentDialog({
     address: '',
     note: '',
   });
+
+  useEffect(() => {
+    setForm((prev) => ({ ...prev, currentSchool: tenantName }));
+  }, [tenantName]);
 
   const handleSave = async () => {
     if (!form.fullName || !form.className || !form.parentName) {
@@ -167,11 +175,48 @@ function AddStudentDialog({
       setSaving(true);
       const created = await createStudent(form);
       onCreated(created);
+      const studentInfo = {
+        fullName: created.fullName || form.fullName,
+        username: created.username,
+        password: created.password,
+        className: created.className || form.className,
+      };
+      const parentInfo = created.parent
+        ? {
+          fullName: created.parent.fullName || form.parentName,
+          username: created.parent.username,
+          password: created.parent.password,
+        }
+        : null;
+      setCreatedCredentials({ student: studentInfo, parent: parentInfo });
+      try {
+        await downloadCredentialsPdf({
+          tenantName,
+          fullName: studentInfo.fullName,
+          role: 'Öğrenci',
+          username: studentInfo.username,
+          temporaryPassword: studentInfo.password,
+          className: studentInfo.className,
+        });
+        if (parentInfo) {
+          await downloadCredentialsPdf({
+            tenantName,
+            fullName: parentInfo.fullName,
+            role: 'Veli',
+            username: parentInfo.username,
+            temporaryPassword: parentInfo.password,
+            extra: `Velisi olduğu öğrenci: ${studentInfo.fullName} (${studentInfo.className})`,
+          });
+        }
+      } catch (pdfErr) {
+        console.warn('PDF üretimi başarısız', pdfErr);
+      }
       toast({
         title: 'Öğrenci oluşturuldu',
-        description: `${created.fullName} için kullanıcı üretildi.`,
+        description: parentInfo
+          ? 'Öğrenci ve veli bilgileri PDF olarak indirildi.'
+          : 'Bilgiler PDF olarak indirildi.',
       });
-      onOpenChange(false);
     } catch (err) {
       toast({
         title: 'Öğrenci oluşturulamadı',
@@ -182,6 +227,98 @@ function AddStudentDialog({
       setSaving(false);
     }
   };
+
+  const handleClose = () => {
+    setCreatedCredentials(null);
+    onOpenChange(false);
+  };
+
+  const handleDownloadStudent = async () => {
+    if (!createdCredentials?.student) return;
+    const s = createdCredentials.student;
+    await downloadCredentialsPdf({
+      tenantName,
+      fullName: s.fullName,
+      role: 'Öğrenci',
+      username: s.username,
+      temporaryPassword: s.password,
+      className: s.className,
+    });
+  };
+
+  const handleDownloadParent = async () => {
+    if (!createdCredentials?.parent || !createdCredentials?.student) return;
+    const p = createdCredentials.parent;
+    const s = createdCredentials.student;
+    await downloadCredentialsPdf({
+      tenantName,
+      fullName: p.fullName,
+      role: 'Veli',
+      username: p.username,
+      temporaryPassword: p.password,
+      extra: `Velisi olduğu öğrenci: ${s.fullName} (${s.className})`,
+    });
+  };
+
+  if (createdCredentials) {
+    const s = createdCredentials.student;
+    const p = createdCredentials.parent;
+    return (
+      <Dialog open={open} onOpenChange={(value) => { if (!value) handleClose(); }}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Kayıt Tamamlandı</DialogTitle>
+            <DialogDescription>
+              {p ? 'Öğrenci ve veli bilgileri PDF olarak indirildi.' : 'Öğrenci bilgileri PDF olarak indirildi.'}
+              {' '}Her iki taraf da ilk girişte şifrelerini değiştirmek zorundadır.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <div className="text-sm font-semibold flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs">Öğrenci</span>
+                {s.fullName} {s.className ? `• ${s.className}` : ''}
+              </div>
+              <div className="rounded-lg border p-3 space-y-1">
+                <div className="text-xs text-muted-foreground">Kullanıcı Adı</div>
+                <div className="font-mono text-sm break-all">{s.username}</div>
+              </div>
+              <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+                <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</div>
+                <div className="font-mono text-base font-bold tracking-wider">{s.password}</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={handleDownloadStudent} className="w-full">
+                Öğrenci PDF'ini Tekrar İndir
+              </Button>
+            </div>
+
+            {p && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <span className="px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs">Veli</span>
+                  {p.fullName}
+                </div>
+                <div className="rounded-lg border p-3 space-y-1">
+                  <div className="text-xs text-muted-foreground">Kullanıcı Adı</div>
+                  <div className="font-mono text-sm break-all">{p.username}</div>
+                </div>
+                <div className="rounded-lg border bg-amber-50 dark:bg-amber-950/30 p-3 space-y-1">
+                  <div className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</div>
+                  <div className="font-mono text-base font-bold tracking-wider">{p.password}</div>
+                </div>
+                <Button variant="outline" size="sm" onClick={handleDownloadParent} className="w-full">
+                  Veli PDF'ini Tekrar İndir
+                </Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button onClick={handleClose}>Tamam</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -210,7 +347,7 @@ function AddStudentDialog({
           </div>
           <div className="space-y-2">
             <Label>Mevcut Okul</Label>
-            <Input value={form.currentSchool} onChange={(e) => setForm((p) => ({ ...p, currentSchool: e.target.value }))} />
+            <Input value={tenantName} readOnly className="bg-muted cursor-not-allowed" />
           </div>
           <div className="space-y-2">
             <Label>Okul No</Label>
@@ -273,6 +410,7 @@ export default function Students() {
   const [students, setStudents] = useState([]);
   const [attendance, setAttendance] = useState([]);
   const [examResults, setExamResults] = useState([]);
+  const [classNames, setClassNames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -280,14 +418,16 @@ export default function Students() {
     try {
       setLoading(true);
       setError('');
-      const [studentList, attendanceList, examList] = await Promise.all([
+      const [studentList, attendanceList, examList, classList] = await Promise.all([
         fetchStudents(),
         fetchAttendance().catch(() => []),
         fetchExamResults().catch(() => []),
+        fetchClasses().catch(() => []),
       ]);
       setStudents(studentList);
       setAttendance(attendanceList);
       setExamResults(examList);
+      setClassNames(Array.isArray(classList) ? classList : []);
     } catch (err) {
       setError(err.message || 'Öğrenci listesi alınamadı.');
     } finally {
@@ -299,10 +439,10 @@ export default function Students() {
     loadStudents();
   }, [loadStudents]);
 
-  const classes = useMemo(() => [...new Set([
-    ...students.map((s) => s.className).filter(Boolean),
-    ...FALLBACK_CLASSES,
-  ])], [students]);
+  const classes = useMemo(
+    () => [...new Set((classNames || []).filter(Boolean))],
+    [classNames],
+  );
 
   const enrichedStudents = useMemo(() => students.map((student) => {
     const studentAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(student.fullName));

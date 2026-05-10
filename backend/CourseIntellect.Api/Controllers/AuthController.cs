@@ -99,6 +99,28 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     [Authorize]
+    [HttpPost("change-password")]
+    [ProducesResponseType(typeof(CurrentUserDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordRequest request, CancellationToken cancellationToken)
+    {
+        var userIdClaim = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub");
+        if (userIdClaim is null || !Guid.TryParse(userIdClaim, out var userId))
+            return Unauthorized();
+
+        try
+        {
+            var user = await authService.ChangePasswordAsync(userId, request, cancellationToken);
+            return user is null ? Unauthorized() : Ok(user);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    [Authorize]
     [HttpPost("logout")]
     public async Task<IActionResult> Logout([FromBody] LogoutRequest request, CancellationToken cancellationToken)
     {

@@ -70,7 +70,96 @@ export function getHomePathForRole(role, options = {}) {
 }
 
 export function getUserHomePath(user) {
+  if (user?.mustChangePassword) {
+    return "/change-password-required";
+  }
+
+  if (user?.hasRoleManagementPolicy) {
+    const modules = Array.isArray(user.modules) ? user.modules.map((m) => String(m).toLowerCase()) : [];
+    for (const moduleKey of modules) {
+      const path = getHomePathForModule(user.role, moduleKey, { isPlatformAdmin: user?.isPlatformAdmin });
+      if (path) return path;
+    }
+
+    return getProfilePathForRole(user?.role);
+  }
+
   return getHomePathForRole(user?.role, { isPlatformAdmin: user?.isPlatformAdmin });
+}
+
+function getProfilePathForRole(role) {
+  switch (role) {
+    case "teacher":
+      return "/t/profile";
+    case "student":
+      return "/s/profile";
+    case "parent":
+      return "/p/profile";
+    case "admin":
+      return "/admin/profile";
+    default:
+      return "/settings";
+  }
+}
+
+function getHomePathForModule(role, moduleKey, options = {}) {
+  const byRole = {
+    dashboard: getHomePathForRole(role, options),
+    students: "/students",
+    teachers: "/teachers",
+    classes: role === "student" ? "/s/classes" : "/classes",
+    schedule: role === "teacher" ? "/t/schedule" : role === "student" ? "/s/schedule" : role === "administrative" ? "/admin/schedule" : "/schedule",
+    content: role === "teacher" ? "/t/content" : role === "student" ? "/s/content" : "/content",
+    questions: role === "teacher" ? "/t/questions" : role === "student" ? "/s/questions" : "/questions",
+    exams: role === "teacher" ? "/t/exams" : role === "student" ? "/s/exams" : role === "parent" ? "/p/exams" : "/exams",
+    reports: role === "teacher" ? "/t/reports" : role === "student" ? "/s/exam-results" : role === "parent" ? "/p/weekly-report" : "/reports",
+    kpi: "/admin/kpi",
+    academics: "/admin/academics",
+    parents: role === "parent" ? "/p/children" : "/parents",
+    attendance: role === "teacher" ? "/t/attendance" : role === "student" ? "/s/attendance" : role === "parent" ? "/p/attendance" : "/attendance",
+    "question-bank": role === "teacher" ? "/t/question-bank" : role === "student" ? "/s/questions" : "/questions",
+    assignments: role === "teacher" ? "/t/assignments" : role === "student" ? "/s/assignments" : "",
+    "live-lessons": role === "teacher" ? "/t/live-lessons" : role === "student" ? "/s/live" : "",
+    operations: "/admin/operations",
+    tasks: "/admin/task-center",
+    approvals: "/admin/finance-approvals",
+    records: "/admin/records",
+    documents: "/admin/documents",
+    notifications: role === "teacher" ? "/t/announcements" : role === "student" ? "/s/announcements" : role === "parent" ? "/p/announcements" : "/admin/announcements",
+    meetings: role === "teacher" ? "/t/meeting-approvals" : role === "parent" ? "/p/meetings" : "/admin/meetings",
+    registrations: "/admin/student-registration",
+    "branch-comparison": "/admin/branch-comparison",
+    "global-search": "/admin/global-search",
+    chat: role === "teacher" ? "/t/chat" : role === "student" ? "/s/chat" : role === "parent" ? "/p/chat" : "/chat",
+    finance: "/finance/dashboard",
+    "student-accounts": "/finance/student-accounts",
+    collections: "/finance/collections",
+    installments: "/finance/installments",
+    "late-payments": "/finance/late-payments",
+    billing: "/finance/invoices-receipts",
+    "discounts-scholarships": "/finance/discounts-scholarships",
+    "finance-export": "/finance/export",
+    "finance-audit-log": "/finance/audit-log",
+    "collection-calendar": "/finance/collection-calendar",
+    reconciliation: "/finance/reconciliation",
+    "bulk-actions": "/finance/bulk-actions",
+    "finance-detail-hub": "/finance/detail-hub",
+    salary: "/finance/salary",
+    "cash-report": "/finance/cash-report",
+    "overdue-rules": "/finance/overdue-rules",
+    ledger: "/finance/ledger",
+    platform: "/sa/dashboard",
+    tenants: "/sa/tenants",
+    plans: "/sa/plans",
+    limits: "/sa/limits",
+    "ai-management": "/sa/ai",
+    customization: "/sa/customization",
+    support: options?.isPlatformAdmin ? "/sa/support" : "/admin/destek",
+    profile: getProfilePathForRole(role),
+    system: options?.isPlatformAdmin ? "/sa/system" : "/settings",
+  };
+
+  return byRole[moduleKey] || "";
 }
 
 export function createDesktopUser(payload) {
@@ -94,7 +183,12 @@ export function createDesktopUser(payload) {
     branch: data?.user?.campus || "Merkez Kampus",
     department: data?.user?.departmentOrBranch || "",
     extraRoles: data?.user?.extraRoles || [],
-    homePath: getHomePathForRole(role, { isPlatformAdmin }),
+    modules: data?.user?.modules || [],
+    permissions: data?.user?.permissions || [],
+    hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy),
+    homePath: getUserHomePath({ role, isPlatformAdmin, modules: data?.user?.modules || [], hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy), mustChangePassword: Boolean(data?.user?.mustChangePassword) }),
+    mustChangePassword: Boolean(data?.user?.mustChangePassword),
+    subscriptionRequired: Boolean(data?.user?.subscriptionRequired),
   };
 }
 

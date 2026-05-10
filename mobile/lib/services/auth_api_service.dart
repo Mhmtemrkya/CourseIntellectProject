@@ -142,6 +142,7 @@ class AuthApiService {
         tenantName: tenantName,
         tenantSlug: tenantSlug,
         isPlatformAdmin: user['isPlatformAdmin'] == true,
+        mustChangePassword: user['mustChangePassword'] == true,
       );
     } on AuthApiException {
       rethrow;
@@ -150,6 +151,77 @@ class AuthApiService {
         'Giriş bilgileri işlendi ama oturum oluşturulamadı. Lütfen tekrar dene.',
       );
     }
+  }
+
+  Future<void> changePassword({
+    String? currentPassword,
+    required String newPassword,
+  }) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null || session.accessToken.isEmpty) {
+      throw const AuthApiException('Oturum bulunamadı.');
+    }
+
+    final baseUrl = ApiConfig.baseUrl;
+    final url = Uri.parse('$baseUrl/api/auth/change-password');
+
+    http.Response response;
+    try {
+      response = await http
+          .post(
+            url,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer ${session.accessToken}',
+            },
+            body: jsonEncode({
+              'currentPassword': currentPassword,
+              'newPassword': newPassword,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } on SocketException {
+      throw const AuthApiException('Sunucuya bağlanılamadı.');
+    } on TimeoutException {
+      throw const AuthApiException('İstek zaman aşımına uğradı.');
+    }
+
+    if (response.statusCode == 401) {
+      throw const AuthApiException('Oturum süresi dolmuş. Tekrar giriş yapın.');
+    }
+
+    if (response.statusCode == 400) {
+      String message = 'Şifre güncellenemedi.';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic> && decoded['message'] is String) {
+          message = decoded['message'] as String;
+        }
+      } catch (_) {}
+      throw AuthApiException(message);
+    }
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthApiException('Sunucu hatası (${response.statusCode}).');
+    }
+
+    // Update local session: mustChangePassword = false
+    final updated = AuthSession(
+      accessToken: session.accessToken,
+      refreshToken: session.refreshToken,
+      accessTokenExpiresAt: session.accessTokenExpiresAt,
+      refreshTokenExpiresAt: session.refreshTokenExpiresAt,
+      fullName: session.fullName,
+      username: session.username,
+      primaryRole: session.primaryRole,
+      extraRoles: session.extraRoles,
+      tenantId: session.tenantId,
+      tenantName: session.tenantName,
+      tenantSlug: session.tenantSlug,
+      isPlatformAdmin: session.isPlatformAdmin,
+      mustChangePassword: false,
+    );
+    await AuthSessionStore.instance.save(updated);
   }
 
   String _normalizeRole(Object? role) {

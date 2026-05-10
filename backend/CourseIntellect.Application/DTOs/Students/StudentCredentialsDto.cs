@@ -1,3 +1,5 @@
+using CourseIntellect.Application.DTOs.Parents;
+
 namespace CourseIntellect.Application.DTOs.Students;
 
 public sealed record StudentCredentialsDto(
@@ -5,5 +7,6 @@ public sealed record StudentCredentialsDto(
     string FullName,
     string Username,
     string Password,
-    string ClassName
+    string ClassName,
+    ParentCredentialsDto? Parent = null
 );

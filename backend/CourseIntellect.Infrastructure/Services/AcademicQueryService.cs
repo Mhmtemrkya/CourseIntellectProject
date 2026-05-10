@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.Students;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -14,6 +15,7 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class AcademicQueryService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
+    UsernameGenerator usernameGenerator,
     IHttpContextAccessor httpContextAccessor) : IAcademicQueryService
 {
     public async Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default)
@@ -53,7 +55,8 @@ public sealed class AcademicQueryService(
                 student.Address,
                 student.Note,
                 users[student.UserId].Username,
-                users[student.UserId].Status.ToString()))
+                users[student.UserId].Status.ToString(),
+                users[student.UserId].ExtraRoles.Select(r => r.ToString()).ToList()))
             .ToList();
     }
 
@@ -119,19 +122,52 @@ public sealed class AcademicQueryService(
 
     public async Task<StudentCredentialsDto> CreateStudentAsync(CreateStudentRequest request, CancellationToken cancellationToken = default)
     {
-        var username = await GenerateUniqueUsernameAsync(request.FullName, request.ClassName, cancellationToken);
-        var password = GeneratePassword();
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var username = await usernameGenerator.GenerateAsync(
+            tenantId,
+            request.FullName,
+            new UsernameContext(Role: "Student", ClassName: request.ClassName),
+            cancellationToken);
+        var password = PasswordGenerator.Generate();
 
         var user = new AppUser
         {
-            TenantId = ResolveCurrentTenantId(),
+            TenantId = tenantId,
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = UserRole.Student,
             Campus = "Merkez Kampus",
-            DepartmentOrBranch = request.ClassName
+            DepartmentOrBranch = request.ClassName,
+            MustChangePassword = true
         };
+
+        // Veli bilgileri girildiyse veli için de otomatik AppUser oluştur.
+        AppUser? parentUser = null;
+        string? parentPlainPassword = null;
+        var parentName = (request.ParentName ?? string.Empty).Trim();
+        if (!string.IsNullOrWhiteSpace(parentName))
+        {
+            var parentUsername = await usernameGenerator.GenerateAsync(
+                tenantId,
+                parentName,
+                new UsernameContext(Role: "Parent", StudentClassName: request.ClassName),
+                cancellationToken);
+            parentPlainPassword = PasswordGenerator.Generate();
+            parentUser = new AppUser
+            {
+                TenantId = tenantId,
+                FullName = parentName,
+                Username = parentUsername,
+                PasswordHash = passwordHasher.Hash(parentPlainPassword),
+                PrimaryRole = UserRole.Parent,
+                Campus = "Merkez Kampus",
+                DepartmentOrBranch = string.Empty,
+                Phone = (request.ParentPhone ?? string.Empty).Trim(),
+                MustChangePassword = true
+            };
+        }
 
         var student = new StudentProfile
         {
@@ -147,15 +183,30 @@ public sealed class AcademicQueryService(
             ParentName = request.ParentName,
             ParentPhone = request.ParentPhone,
             ParentEmail = request.ParentEmail,
+            ParentUserId = parentUser?.Id,
             Address = request.Address,
             Note = request.Note
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
+        if (parentUser is not null)
+        {
+            await dbContext.Users.AddAsync(parentUser, cancellationToken);
+        }
         await dbContext.Students.AddAsync(student, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        return new StudentCredentialsDto(user.Id, user.FullName, user.Username, password, student.ClassName);
+        ParentCredentialsDto? parentCreds = null;
+        if (parentUser is not null && parentPlainPassword is not null)
+        {
+            parentCreds = new ParentCredentialsDto(
+                parentUser.Id,
+                parentUser.FullName,
+                parentUser.Username,
+                parentPlainPassword);
+        }
+
+        return new StudentCredentialsDto(user.Id, user.FullName, user.Username, password, student.ClassName, parentCreds);
     }
 
     public async Task<StudentSummaryDto?> UpdateStudentAsync(Guid studentId, UpdateStudentRequest request, CancellationToken cancellationToken = default)
@@ -202,7 +253,8 @@ public sealed class AcademicQueryService(
             student.Address,
             student.Note,
             user.Username,
-            user.Status.ToString());
+            user.Status.ToString(),
+            user.ExtraRoles.Select(r => r.ToString()).ToList());
     }
 
     public async Task<bool> DeleteStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
@@ -224,18 +276,25 @@ public sealed class AcademicQueryService(
 
     public async Task<ParentCredentialsDto> CreateParentAsync(CreateParentRequest request, CancellationToken cancellationToken = default)
     {
-        var username = await GenerateUniqueUsernameAsync(request.FullName, "veli", cancellationToken);
-        var password = GeneratePassword();
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var username = await usernameGenerator.GenerateAsync(
+            tenantId,
+            request.FullName,
+            new UsernameContext(Role: "Parent"),
+            cancellationToken);
+        var password = PasswordGenerator.Generate();
 
         var user = new AppUser
         {
-            TenantId = ResolveCurrentTenantId(),
+            TenantId = tenantId,
             FullName = request.FullName.Trim(),
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = UserRole.Parent,
             Campus = "Merkez Kampus",
-            DepartmentOrBranch = string.Empty
+            DepartmentOrBranch = string.Empty,
+            MustChangePassword = true
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
