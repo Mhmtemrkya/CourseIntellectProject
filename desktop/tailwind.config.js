@@ -53,10 +53,10 @@ module.exports = {
                                 '4': 'hsl(var(--chart-4))',
                                 '5': 'hsl(var(--chart-5))'
                         },
-                        // CourseIntellect Brand Colors
+                        // CourseIntellect Brand Colors — dinamik tenant tema desteği
                         brand: {
-                                primary: '#00354F',
-                                accent: '#D9790B',
+                                primary: 'hsl(var(--brand-primary) / <alpha-value>)',
+                                accent: 'hsl(var(--brand-accent) / <alpha-value>)',
                         }
                 },
                 fontFamily: {

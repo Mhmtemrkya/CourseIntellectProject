@@ -305,7 +305,7 @@ export default function TeacherReports() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
-      <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_55%,#38bdf8_100%)] p-8 text-white shadow-[0_24px_80px_rgba(29,78,216,0.26)]">
+      <div className="relative overflow-hidden rounded-[32px] bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-8 text-white shadow-[0_24px_80px_rgba(15,23,42,0.18)]">
         <div className="absolute right-6 top-6 rounded-full bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">Haftalık Rapor Merkezi</div>
         <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
           <div className="space-y-4">
@@ -345,8 +345,8 @@ export default function TeacherReports() {
       ) : null}
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <Card className="overflow-hidden border-slate-200/70 shadow-sm">
-          <CardHeader className="border-b bg-slate-50/80">
+        <Card className="overflow-hidden border-brand-primary/10 shadow-sm">
+          <CardHeader className="border-b bg-brand-primary/5">
             <CardTitle>Gönderilen haftalık raporlar</CardTitle>
             <CardDescription>Velilere iletilen raporlar burada tutulur.</CardDescription>
           </CardHeader>
@@ -358,12 +358,12 @@ export default function TeacherReports() {
                 key={report.id}
                 type="button"
                 onClick={() => setSelectedReport(report)}
-                className="group w-full rounded-[26px] border border-slate-200 bg-[linear-gradient(135deg,#fff_0%,#f8fafc_100%)] p-0 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg"
+                className="group w-full rounded-[26px] border border-brand-primary/10 bg-card p-0 text-left shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg hover:border-brand-primary/20"
               >
                 <div className="flex flex-col gap-5 p-5 lg:flex-row lg:items-start lg:justify-between">
                   <div className="space-y-3">
                     <div className="flex flex-wrap items-center gap-2">
-                      <Badge className="rounded-full bg-sky-100 text-sky-700 hover:bg-sky-100">{report.className}</Badge>
+                      <Badge className="rounded-full bg-brand-primary/10 text-brand-primary hover:bg-brand-primary/10">{report.className}</Badge>
                       <Badge variant="outline" className="rounded-full">{report.subject}</Badge>
                       <Badge variant="outline" className="rounded-full">{report.weeklyPeriodLabel}</Badge>
                     </div>
@@ -375,7 +375,7 @@ export default function TeacherReports() {
                   </div>
                   <div className="grid shrink-0 gap-2 text-right">
                     <div className="text-sm font-semibold text-slate-500">{prettyDate(report.createdAtUtc)}</div>
-                    <div className="rounded-2xl bg-slate-900 px-4 py-3 text-white">
+                    <div className="rounded-2xl bg-brand-primary px-4 py-3 text-white">
                       <div className="text-xs uppercase tracking-[0.18em] text-white/60">Ekler</div>
                       <div className="mt-1 text-2xl font-bold">{report.attachments?.length || 0}</div>
                     </div>
@@ -386,8 +386,8 @@ export default function TeacherReports() {
           </CardContent>
         </Card>
 
-        <Card className="overflow-hidden border-slate-200/70 shadow-sm">
-          <CardHeader className="border-b bg-slate-50/80">
+        <Card className="overflow-hidden border-brand-primary/10 shadow-sm">
+          <CardHeader className="border-b bg-brand-primary/5">
             <CardTitle>Hızlı seçim paneli</CardTitle>
             <CardDescription>Rapor oluştururken kullanacağın sınıf, ders ve öğrenci kaynağı.</CardDescription>
           </CardHeader>
@@ -511,7 +511,7 @@ export default function TeacherReports() {
             </div>
 
             <div className="space-y-4">
-              <div className="rounded-[28px] bg-[linear-gradient(145deg,#0f172a_0%,#1e293b_100%)] p-5 text-white">
+              <div className="rounded-[28px] bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-5 text-white">
                 <div className="text-xs uppercase tracking-[0.2em] text-white/55">Veliye gidecek önizleme</div>
                 <h3 className="mt-3 text-2xl font-bold">{form.title.trim() || `${form.subject || 'Ders'} Haftalık Raporu`}</h3>
                 <p className="mt-2 text-sm text-white/70">{selectedStudent?.fullName || 'Öğrenci seçilmedi'} • {form.className || 'Sınıf'} • {form.weeklyPeriodLabel}</p>
@@ -520,13 +520,13 @@ export default function TeacherReports() {
                 </div>
               </div>
 
-              <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50/70 p-4">
+              <div className="rounded-[24px] border border-dashed border-brand-primary/15 bg-brand-primary/5 p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="font-semibold text-slate-900">Görsel, PDF veya dosya ekle</p>
                     <p className="text-sm text-slate-500">Veli rapor modalında açılabilir dosya olarak görünür.</p>
                   </div>
-                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white">
+                  <label className="inline-flex cursor-pointer items-center gap-2 rounded-full bg-brand-primary px-4 py-2 text-sm font-semibold text-white hover:bg-brand-primary/90">
                     <FilePlus2 className="h-4 w-4" />
                     Dosya Ekle
                     <input type="file" className="hidden" onChange={handleAttachmentPick} />
@@ -578,7 +578,7 @@ export default function TeacherReports() {
           </DialogHeader>
           {selectedReport ? (
             <div className="space-y-5">
-              <div className="rounded-[28px] bg-[linear-gradient(135deg,#111827_0%,#334155_100%)] p-6 text-white">
+              <div className="rounded-[28px] bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-6 text-white">
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedReport.subject}</Badge>
                   <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedReport.weeklyPeriodLabel}</Badge>
@@ -586,11 +586,11 @@ export default function TeacherReports() {
                 <p className="mt-4 text-lg leading-8 text-white/88">{selectedReport.summary}</p>
               </div>
               <div className="grid gap-4 lg:grid-cols-2">
-                <Card className="border-slate-200">
+                <Card className="border-brand-primary/10">
                   <CardHeader><CardTitle className="text-base">Güçlü yönler</CardTitle></CardHeader>
                   <CardContent className="text-sm leading-6 text-slate-600">{selectedReport.highlights || 'Bu raporda ayrıca güçlü yön notu eklenmedi.'}</CardContent>
                 </Card>
-                <Card className="border-slate-200">
+                <Card className="border-brand-primary/10">
                   <CardHeader><CardTitle className="text-base">Destek alanları</CardTitle></CardHeader>
                   <CardContent className="text-sm leading-6 text-slate-600">{selectedReport.supportNotes || 'Bu raporda ayrıca destek notu eklenmedi.'}</CardContent>
                 </Card>
@@ -602,7 +602,7 @@ export default function TeacherReports() {
                     key={`${item.url}-${index}`}
                     type="button"
                     onClick={() => window.open(item.url, '_blank', 'noopener,noreferrer')}
-                    className="flex w-full items-center justify-between rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-left"
+                    className="flex w-full items-center justify-between rounded-2xl border border-brand-primary/10 bg-brand-primary/5 px-4 py-3 text-left"
                   >
                     <div>
                       <p className="font-semibold text-slate-900">{item.name}</p>
@@ -632,9 +632,9 @@ function StatGlassCard({ icon: Icon, label, value }) {
 
 function InfoTile({ icon: Icon, label, value }) {
   return (
-    <div className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-[22px] border border-brand-primary/10 bg-white p-4 shadow-sm">
       <div className="flex items-center gap-3">
-        <div className="rounded-2xl bg-sky-100 p-3 text-sky-700"><Icon className="h-4 w-4" /></div>
+        <div className="rounded-2xl bg-brand-primary/10 p-3 text-brand-primary"><Icon className="h-4 w-4" /></div>
         <div>
           <p className="text-xs uppercase tracking-[0.16em] text-slate-400">{label}</p>
           <p className="mt-1 text-2xl font-bold text-slate-900">{value}</p>
@@ -646,7 +646,7 @@ function InfoTile({ icon: Icon, label, value }) {
 
 function EmptyHint({ title, description }) {
   return (
-    <div className="rounded-[24px] border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-center">
+    <div className="rounded-[24px] border border-dashed border-brand-primary/15 bg-brand-primary/5 px-5 py-8 text-center">
       <p className="font-semibold text-slate-900">{title}</p>
       <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
     </div>

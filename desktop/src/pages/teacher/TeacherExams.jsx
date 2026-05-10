@@ -727,7 +727,7 @@ export default function TeacherExams() {
         {[
           [stats.total, 'Toplam Sonuç', FileQuestion, 'text-brand-primary'],
           [stats.completed, 'Tamamlanan', CheckCircle, 'text-green-600'],
-          [stats.scheduled, 'Planlanan', Calendar, 'text-blue-600'],
+          [stats.scheduled, 'Planlanan', Calendar, 'text-brand-primary'],
           [stats.avgScore, 'Ortalama', BarChart3, 'text-brand-accent'],
         ].map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>

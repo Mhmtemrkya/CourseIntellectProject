@@ -28,7 +28,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const fallbackClasses = ['9-A', '10-A', '10-B', '11-Sayisal', '12-Dil'];
+const fallbackClasses = [];
 
 function contentTypeIcon(type) {
   return String(type).toLowerCase().includes('video') ? Video : FileText;
@@ -638,7 +638,7 @@ export default function TeacherContent() {
         {[
           [stats.total, 'Toplam İçerik', FolderOpen, 'text-brand-primary'],
           [stats.pdf, 'PDF', FileText, 'text-red-600'],
-          [stats.video, 'Video', Video, 'text-blue-600'],
+          [stats.video, 'Video', Video, 'text-brand-accent'],
           [stats.live, 'Yayında', CheckCircle2, 'text-green-600'],
         ].map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>

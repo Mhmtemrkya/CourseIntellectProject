@@ -113,7 +113,7 @@ export default function TeacherSchedule() {
         <p className="text-muted-foreground mt-1">Canlı backend planları, öğretmen adına filtrelenmiş program görünümü</p>
       </div>
       {error ? <ErrorBanner title="Program alınamadı" message={error} onRetry={loadSchedule} /> : null}
-      <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-950 via-slate-900 to-orange-500 text-white shadow-xl">
+      <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-950 via-slate-900 to-brand-accent text-white shadow-xl">
         <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.3fr_1fr]">
           <div className="space-y-4">
             <div className="inline-flex items-center rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/90">

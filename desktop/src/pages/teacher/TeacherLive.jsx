@@ -32,7 +32,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const fallbackClasses = ['Tüm Sınıflar', '9-A', '10-A', '10-B', '11-Sayisal'];
+const fallbackClasses = ['Tüm Sınıflar'];
 
 function buildLiveLessonDetail({
   teacher, date, time, duration, className, link,
@@ -370,7 +370,7 @@ export default function TeacherLive() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           [weeklyCount, 'Planlanan Ders', Calendar, 'text-brand-primary'],
-          [totalDuration, 'Toplam Süre', Clock, 'text-blue-600'],
+          [totalDuration, 'Toplam Süre', Clock, 'text-brand-accent'],
           [lessons.filter((lesson) => lesson.status === 'completed').length, 'Tamamlanan', CheckCircle, 'text-green-600'],
         ].map(([value, label, Icon, color]) => (
           <motion.div variants={itemVariants} key={label}>

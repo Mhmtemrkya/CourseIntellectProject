@@ -63,7 +63,7 @@ const createQuestionDraft = () => ({
 });
 
 const DEFAULT_SUBJECTS = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce'];
-const FALLBACK_CLASSES = ['9-A', '9-B', '10-A', '10-B', '11-A', '11-B', '12-A', '12-B'];
+const FALLBACK_CLASSES = [];
 
 function normalizeQuestionType(value = '') {
   return value
@@ -580,7 +580,7 @@ export default function TeacherQuestionBank() {
       <motion.div variants={itemVariants}>
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-500 shadow-lg">
+            <div className="p-4 rounded-2xl bg-gradient-to-br from-brand-primary to-brand-accent shadow-lg">
               <Brain className="h-8 w-8 text-white" />
             </div>
             <div>
@@ -614,7 +614,7 @@ export default function TeacherQuestionBank() {
               }}
             >
               <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white">
+                <Button className="bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 text-white">
                   <Plus className="h-4 w-4 mr-2" />
                   Yeni Soru Ekle
                 </Button>
@@ -796,7 +796,7 @@ export default function TeacherQuestionBank() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          [stats.total, 'Toplam Soru', BookOpen, 'from-blue-500 to-cyan-500'],
+          [stats.total, 'Toplam Soru', BookOpen, 'from-brand-primary to-brand-accent'],
           [stats.activeSubjects, 'Aktif Ders', Brain, 'from-green-500 to-emerald-500'],
           [stats.solvedUsage, 'Toplam Kullanım', Zap, 'from-yellow-500 to-orange-500'],
         ].map(([value, label, Icon, gradient]) => (

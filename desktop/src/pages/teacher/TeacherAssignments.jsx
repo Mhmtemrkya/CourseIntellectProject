@@ -28,7 +28,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const fallbackClasses = ['9-A', '10-A', '10-B', '11-Sayisal', '12-Dil'];
+const fallbackClasses = [];
 const defaultSubjects = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce', 'Tarih', 'Coğrafya'];
 
 export default function TeacherAssignments() {

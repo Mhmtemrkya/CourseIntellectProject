@@ -71,7 +71,7 @@ export default function TeacherDashboard() {
     { label: 'Yoklama Al', icon: ClipboardCheck, color: 'text-brand-primary', onClick: () => navigate('/t/attendance') },
     { label: 'Canlı Ders', icon: Video, color: 'text-brand-accent', onClick: () => navigate('/t/live-lessons') },
     { label: 'İçerik Yükle', icon: BookOpen, color: 'text-green-600', onClick: () => navigate('/t/content') },
-    { label: 'Duyurular', icon: Bell, color: 'text-blue-600', onClick: () => navigate('/t/announcements') },
+    { label: 'Duyurular', icon: Bell, color: 'text-brand-primary', onClick: () => navigate('/t/announcements') },
   ];
 
   const statRoutes = {
@@ -103,7 +103,7 @@ export default function TeacherDashboard() {
           ['Bugünkü Ders', stats.todayLessons || 0, Calendar, 'text-brand-primary', 'border-l-brand-primary'],
           ['Bekleyen Mesaj', stats.pendingQuestions || 0, HelpCircle, 'text-brand-accent', 'border-l-brand-accent'],
           ['Alınan Yoklama', `${stats.completedAttendance || 0}/${stats.todayLessons || 0}`, ClipboardCheck, 'text-green-600', 'border-l-green-500'],
-          ['Toplam Öğrenci', stats.totalStudents || 0, Users, 'text-blue-600', 'border-l-blue-500'],
+          ['Toplam Öğrenci', stats.totalStudents || 0, Users, 'text-brand-primary', 'border-l-brand-primary'],
         ].map(([title, value, Icon, iconColor, borderClass]) => (
           <motion.div variants={itemVariants} key={title}>
             <Card className={`border-l-4 cursor-pointer hover:shadow-card-hover transition-all ${borderClass}`} onClick={() => navigate(statRoutes[title])}>

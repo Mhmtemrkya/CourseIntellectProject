@@ -209,7 +209,7 @@ export default function TeacherAnnouncements() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="teacher-announcements-page">
-      <section className="rounded-[32px] border border-slate-200 bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_52%,#38bdf8_100%)] p-7 text-white shadow-xl">
+      <section className="rounded-[32px] border border-brand-primary/10 bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-7 text-white shadow-xl">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
             <Badge className="bg-white/12 text-white hover:bg-white/12">Öğretmen Duyuru Merkezi</Badge>
@@ -247,7 +247,7 @@ export default function TeacherAnnouncements() {
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl p-0 overflow-hidden">
             <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
-              <div className="bg-[linear-gradient(180deg,#0f172a_0%,#1d4ed8_100%)] px-7 py-8 text-white">
+              <div className="bg-[linear-gradient(180deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] px-7 py-8 text-white">
                 <Badge className="bg-white/12 text-white hover:bg-white/12">Hedefli yayın</Badge>
                 <DialogHeader className="mt-4 space-y-2 text-left">
                   <DialogTitle className="text-3xl font-bold text-white">Kime gideceğini sen belirle</DialogTitle>
@@ -307,7 +307,7 @@ export default function TeacherAnnouncements() {
                             key={item}
                             type="button"
                             onClick={() => setForm((prev) => ({ ...prev, targetRecipientType: item, recipientKeys: [], recipientLabels: [] }))}
-                            className={`rounded-2xl border px-4 py-3 text-left transition ${form.targetRecipientType === item ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-slate-50 text-slate-700'}`}
+                            className={`rounded-2xl border px-4 py-3 text-left transition ${form.targetRecipientType === item ? 'border-brand-primary bg-brand-primary text-white' : 'border-brand-primary/10 bg-brand-primary/5 text-slate-700'}`}
                           >
                             <p className="font-semibold">{item}</p>
                             <p className={`mt-1 text-xs ${form.targetRecipientType === item ? 'text-white/70' : 'text-slate-500'}`}>
@@ -328,14 +328,14 @@ export default function TeacherAnnouncements() {
                         <Label>Seçili Kişiler</Label>
                         <Badge variant="outline">{form.recipientKeys.length} seçildi</Badge>
                       </div>
-                      <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-3">
+                      <div className="rounded-[24px] border border-brand-primary/10 bg-brand-primary/5 p-3">
                         <ScrollArea className="h-64 pr-2">
                           <div className="space-y-2">
                             {recipientOptions.map((option) => {
                               const checked = form.recipientKeys.includes(option.keys[0]);
                               return (
-                                <label key={option.keys[0]} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${checked ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-800'}`}>
-                                  <Checkbox checked={checked} onCheckedChange={() => toggleRecipient(option)} className={checked ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-slate-900' : ''} />
+                                <label key={option.keys[0]} className={`flex cursor-pointer items-start gap-3 rounded-2xl border px-4 py-3 transition ${checked ? 'border-brand-primary bg-brand-primary text-white' : 'border-brand-primary/10 bg-white text-slate-800'}`}>
+                                  <Checkbox checked={checked} onCheckedChange={() => toggleRecipient(option)} className={checked ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-brand-primary' : ''} />
                                   <div className="min-w-0">
                                     <p className="font-medium">{option.label}</p>
                                     <p className={`text-xs ${checked ? 'text-white/70' : 'text-slate-500'}`}>{option.helper}</p>
@@ -344,7 +344,7 @@ export default function TeacherAnnouncements() {
                               );
                             })}
                             {recipientOptions.length === 0 ? (
-                              <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-4 py-10 text-center text-sm text-slate-500">
+                              <div className="rounded-2xl border border-dashed border-brand-primary/10 bg-white px-4 py-10 text-center text-sm text-slate-500">
                                 Önce sınıf seçin. Bu sınıfta kişi kaydı yoksa liste burada görünür olmayacak.
                               </div>
                             ) : null}
@@ -368,8 +368,8 @@ export default function TeacherAnnouncements() {
 
       <div className="grid gap-4 xl:grid-cols-2">
         {announcements.map((item) => (
-          <Card key={item.id || item.title} className="overflow-hidden border-slate-200 shadow-sm">
-            <div className="bg-[linear-gradient(135deg,#0f172a_0%,#1e3a8a_100%)] px-6 py-5 text-white">
+          <Card key={item.id || item.title} className="overflow-hidden border-brand-primary/10 shadow-sm">
+            <div className="bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] px-6 py-5 text-white">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
@@ -384,15 +384,15 @@ export default function TeacherAnnouncements() {
             <CardContent className="space-y-5 p-6">
               <p className="text-sm leading-7 text-slate-600">{item.detail}</p>
               <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="rounded-2xl bg-brand-primary/5 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Kime</p>
                   <p className="mt-2 font-semibold text-slate-900">{item.targetRecipientType || item.audience}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="rounded-2xl bg-brand-primary/5 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Seçili Kişi</p>
                   <p className="mt-2 font-semibold text-slate-900">{item.recipientCount || 0}</p>
                 </div>
-                <div className="rounded-2xl bg-slate-50 p-4">
+                <div className="rounded-2xl bg-brand-primary/5 p-4">
                   <p className="text-xs uppercase tracking-[0.16em] text-slate-400">Tarih</p>
                   <p className="mt-2 font-semibold text-slate-900">{item.dateLabel || item.date || 'Bugün'}</p>
                 </div>
