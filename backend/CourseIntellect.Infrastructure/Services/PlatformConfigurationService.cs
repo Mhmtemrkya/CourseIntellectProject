@@ -121,7 +121,8 @@ public sealed class PlatformConfigurationService(
     private static bool IsTenantBoundConfiguration(string? configurationType)
     {
         return string.Equals(configurationType, ClassManagementConfigurationType, StringComparison.OrdinalIgnoreCase)
-               || string.Equals(configurationType, ClassRegistryConfigurationType, StringComparison.OrdinalIgnoreCase);
+               || string.Equals(configurationType, ClassRegistryConfigurationType, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(configurationType, "role-management", StringComparison.OrdinalIgnoreCase);
     }
 
     private static PlatformConfigurationDto ToDto(PlatformConfiguration entity) => new(

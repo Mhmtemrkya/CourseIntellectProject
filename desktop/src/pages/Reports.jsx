@@ -106,7 +106,7 @@ export default function Reports() {
   const displayClasses = useMemo(() => {
     if (classes.length > 0) return classes;
     if (classFilter !== 'all') return [classFilter];
-    return ['9-A', '10-B', '11-Sayisal'];
+    return [];
   }, [classes, classFilter]);
 
   const filteredStudents = useMemo(() => (

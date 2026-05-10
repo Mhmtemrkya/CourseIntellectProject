@@ -28,6 +28,7 @@ import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createClass, fetchAttendance, fetchContents, fetchPlatformConfigurations, fetchStaff, fetchStudents, upsertPlatformConfiguration } from '../lib/api/modules';
+import { useApp } from '../context/AppContext';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -87,6 +88,8 @@ function buildClassModels(students, teachers, attendance, contents) {
 
 export default function Classes() {
   const { toast } = useToast();
+  const { user } = useApp();
+  const canCreateClass = ['admin', 'administrative'].includes(user?.role) || (user?.role !== 'student' && (user?.permissions || []).includes('canCreate'));
   const EMPTY_HOME_ROOM_TEACHER = '__none__';
   const [classes, setClasses] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
@@ -168,10 +171,12 @@ export default function Classes() {
           <h1 className="text-3xl font-bold font-heading">Sınıflar & Gruplar</h1>
           <p className="text-muted-foreground mt-1">{classStats.totalClasses} aktif sınıf</p>
         </div>
-        <Button variant="outline" onClick={() => setCreateOpen(true)}>
-          <Info className="h-4 w-4 mr-2" />
-          Yeni Sınıf Oluştur
-        </Button>
+        {canCreateClass ? (
+          <Button variant="outline" onClick={() => setCreateOpen(true)}>
+            <Info className="h-4 w-4 mr-2" />
+            Yeni Sınıf Oluştur
+          </Button>
+        ) : null}
       </div>
 
       {error ? <ErrorBanner title="Sınıflar alınamadı" message={error} onRetry={loadClasses} /> : null}

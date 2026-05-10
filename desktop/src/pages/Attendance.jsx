@@ -35,7 +35,7 @@ const statusOptions = [
   { value: 'Gec', label: 'Geç', icon: Clock, color: 'bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/30 dark:text-yellow-400 dark:border-yellow-700' },
   { value: 'Izinli', label: 'İzinli', icon: FileText, color: 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-700' },
 ];
-const FALLBACK_CLASSES = ['9-A', '10-A', '10-B', '11-Sayisal', '12-Dil'];
+const FALLBACK_CLASSES = [];
 
 function normalizeStatus(value = '') {
   const normalized = String(value).toLowerCase();

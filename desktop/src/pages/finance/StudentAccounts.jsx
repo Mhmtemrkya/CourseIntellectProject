@@ -41,7 +41,7 @@ const itemVariants = {
   hidden: { opacity: 0, y: 10 },
   visible: { opacity: 1, y: 0 },
 };
-const FALLBACK_CLASSES = ['9-A', '10-A', '10-B', '11-Sayisal', '12-Dil'];
+const FALLBACK_CLASSES = [];
 
 function parseMoney(value) {
   const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
