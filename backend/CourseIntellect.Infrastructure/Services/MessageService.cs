@@ -19,14 +19,18 @@ public sealed class MessageService(
             .OrderByDescending(x => x.LastMessageAtUtc)
             .ToListAsync(cancellationToken);
 
+        var threadIds = threads.Select(t => t.Id).ToList();
+
         var latestMessages = await dbContext.MessageItems
-            .Where(x => threads.Select(thread => thread.Id).Contains(x.ThreadId))
+            .Where(x => threadIds.Contains(x.ThreadId))
             .GroupBy(x => x.ThreadId)
             .Select(group => group.OrderByDescending(item => item.SentAtUtc).First())
             .ToDictionaryAsync(x => x.ThreadId, x => x, cancellationToken);
 
+        // unread count sadece kullanıcının kendi thread'leri kapsamında hesaplanır.
+        // Önceki hâli tüm tenant unread'lerini groupBy ediyordu — gereksiz veri taraması.
         var unreadGroups = await dbContext.MessageItems
-            .Where(x => !x.IsRead && x.SenderName != normalizedName)
+            .Where(x => threadIds.Contains(x.ThreadId) && !x.IsRead && x.SenderName != normalizedName)
             .GroupBy(x => x.ThreadId)
             .Select(group => new { ThreadId = group.Key, Count = group.Count() })
             .ToDictionaryAsync(x => x.ThreadId, x => x.Count, cancellationToken);
@@ -38,11 +42,6 @@ public sealed class MessageService(
 
     public async Task<IReadOnlyList<MessageItemDto>> GetMessagesAsync(Guid currentUserId, string currentUserName, Guid threadId, CancellationToken cancellationToken = default)
     {
-        var items = await dbContext.MessageItems
-            .Where(x => x.ThreadId == threadId)
-            .OrderBy(x => x.SentAtUtc)
-            .ToListAsync(cancellationToken);
-
         var thread = await dbContext.MessageThreads.FirstOrDefaultAsync(x => x.Id == threadId, cancellationToken);
         if (thread is null)
         {
@@ -50,6 +49,20 @@ public sealed class MessageService(
         }
 
         var normalizedCurrentName = Normalize(currentUserName);
+
+        // Yetkilendirme: yalnızca thread'in katılımcıları içeriği görebilir.
+        // Tenant query filter'ı zaten cross-tenant erişimi engelliyor; bu kontrol
+        // aynı tenant içindeki başka kullanıcıların thread içeriğini sızdırmasını önler.
+        if (thread.ParticipantOneName != normalizedCurrentName &&
+            thread.ParticipantTwoName != normalizedCurrentName)
+        {
+            return Array.Empty<MessageItemDto>();
+        }
+
+        var items = await dbContext.MessageItems
+            .Where(x => x.ThreadId == threadId)
+            .OrderBy(x => x.SentAtUtc)
+            .ToListAsync(cancellationToken);
 
         var participantKeys = new[] { thread.ParticipantOneName, thread.ParticipantTwoName };
         var updatedAny = false;
