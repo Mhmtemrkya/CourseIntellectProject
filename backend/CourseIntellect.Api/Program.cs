@@ -5,6 +5,7 @@ using CourseIntellect.Api.Realtime;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -40,27 +41,44 @@ builder.Services.AddControllers();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IMessageRealtimeNotifier, SignalRMessageRealtimeNotifier>();
+
+var devCorsOrigins = new[]
+{
+    // React dev (desktop & web)
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+    // Tauri dev
+    "http://localhost:1420",
+    "http://127.0.0.1:1420",
+    "tauri://localhost",
+    "https://tauri.localhost",
+    // Flutter web dev
+    "http://localhost:8080",
+    "http://127.0.0.1:8080",
+    "http://localhost:5000",
+    "http://127.0.0.1:5000"
+};
+var configuredCorsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
+    .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+    ?? Array.Empty<string>();
+var allowedCorsOrigins = devCorsOrigins.Concat(configuredCorsOrigins).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    // The API is exposed only through local Nginx/Cloudflare; allow forwarded headers from the reverse proxy path.
+    options.KnownNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DesktopDev", policy =>
+    options.AddPolicy("ConfiguredOrigins", policy =>
     {
         policy
-            .WithOrigins(
-                // React dev (desktop & web)
-                "http://localhost:3000",
-                "http://127.0.0.1:3000",
-                "http://localhost:3001",
-                "http://127.0.0.1:3001",
-                // Tauri dev
-                "http://localhost:1420",
-                "http://127.0.0.1:1420",
-                "tauri://localhost",
-                "https://tauri.localhost",
-                // Flutter web dev
-                "http://localhost:8080",
-                "http://127.0.0.1:8080",
-                "http://localhost:5000",
-                "http://127.0.0.1:5000")
+            .WithOrigins(allowedCorsOrigins)
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();
@@ -171,36 +189,55 @@ builder.Services
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
+var autoMigrateDatabase = builder.Configuration.GetValue<bool?>("Database:AutoMigrate") ?? true;
+var seedDatabase = builder.Configuration.GetValue<bool?>("Database:Seed") ?? true;
+
+if (autoMigrateDatabase || seedDatabase)
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<CourseIntellectDbContext>();
     var logger = scope.ServiceProvider
         .GetRequiredService<ILoggerFactory>()
         .CreateLogger("StartupMigration");
 
-    try
+    if (autoMigrateDatabase)
     {
-        await dbContext.Database.MigrateAsync();
+        try
+        {
+            await dbContext.Database.MigrateAsync();
+        }
+        catch (PostgresException ex) when (ex.SqlState == "42P07")
+        {
+            logger.LogWarning(ex, "Migration skipped because target schema objects already exist. Continuing with existing database.");
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException postgres && postgres.SqlState == "42P07")
+        {
+            logger.LogWarning(ex, "Migration skipped because target schema objects already exist. Continuing with existing database.");
+        }
     }
-    catch (PostgresException ex) when (ex.SqlState == "42P07")
+    else
     {
-        logger.LogWarning(ex, "Migration skipped because target schema objects already exist. Continuing with existing database.");
-    }
-    catch (DbUpdateException ex) when (ex.InnerException is PostgresException postgres && postgres.SqlState == "42P07")
-    {
-        logger.LogWarning(ex, "Migration skipped because target schema objects already exist. Continuing with existing database.");
+        logger.LogInformation("Database auto migration is disabled by Database:AutoMigrate=false.");
     }
 
-    var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
-    await seeder.SeedAsync();
+    if (seedDatabase)
+    {
+        var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
+        await seeder.SeedAsync();
+    }
+    else
+    {
+        logger.LogInformation("Database seed is disabled by Database:Seed=false.");
+    }
 }
 
+app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 app.UseStaticFiles();
-app.UseCors("DesktopDev");
+app.UseCors("ConfiguredOrigins");
 app.UseAuthentication();
 
 // ── Claims debug middleware (sadece Development) ─────────────────────────────
