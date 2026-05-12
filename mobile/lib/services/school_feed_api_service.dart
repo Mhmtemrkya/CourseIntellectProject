@@ -7,6 +7,7 @@ import 'api_config.dart';
 import 'auth_session_store.dart';
 import 'exam_results_store.dart';
 import 'linked_children_service.dart';
+import 'live_room_api_service.dart';
 import 'student_registry_store.dart';
 
 class SchoolFeedApiException implements Exception {
@@ -49,49 +50,7 @@ class AnnouncementFeedItem {
     required this.recipientCount,
   });
 
-  bool get isLiveLesson => detail.startsWith('LIVE_LESSON');
-
-  Map<String, String> get detailPayload {
-    if (!isLiveLesson) return const {};
-    final lines = detail.split('\n');
-    final map = <String, String>{};
-    for (final line in lines.skip(1)) {
-      final separator = line.indexOf('=');
-      if (separator <= 0) continue;
-      map[line.substring(0, separator)] = line.substring(separator + 1);
-    }
-    return map;
-  }
-
-  String get summaryDetail {
-    if (!isLiveLesson) return detail;
-    final payload = detailPayload;
-    final teacher = payload['teacher']?.trim();
-    final subtitle = payload['subtitle']?.trim();
-    final className = payload['class']?.trim();
-    final platform = payload['platform']?.trim();
-    final startsAt = DateTime.tryParse(payload['datetime'] ?? '');
-    final dateLabel = startsAt == null
-        ? ''
-        : '${startsAt.day.toString().padLeft(2, '0')}.${startsAt.month.toString().padLeft(2, '0')}.${startsAt.year}';
-    final timeLabel = startsAt == null
-        ? ''
-        : '${startsAt.hour.toString().padLeft(2, '0')}:${startsAt.minute.toString().padLeft(2, '0')}';
-
-    final parts = <String>[
-      if (subtitle != null && subtitle.isNotEmpty) subtitle,
-      if (teacher != null && teacher.isNotEmpty) teacher,
-      if (className != null && className.isNotEmpty) className,
-      if (platform != null && platform.isNotEmpty) platform,
-      if (dateLabel.isNotEmpty || timeLabel.isNotEmpty)
-        [
-          if (dateLabel.isNotEmpty) dateLabel,
-          if (timeLabel.isNotEmpty) timeLabel,
-        ].join(' • '),
-    ];
-
-    return parts.isEmpty ? 'Canlı ders duyurusu yayınlandı.' : parts.join('\n');
-  }
+  String get summaryDetail => detail;
 }
 
 class LiveLessonRecord {
@@ -359,16 +318,17 @@ class SchoolFeedApiService {
   }
 
   Future<List<LiveLessonRecord>> fetchLiveLessons() async {
-    final announcements = await fetchAnnouncements(audience: 'Öğrenci');
-    return announcements
-        .where((item) => item.detail.startsWith('LIVE_LESSON'))
-        .map(_parseLiveLesson)
-        .toList()
-      ..sort((a, b) {
-        final left = a.startsAt?.millisecondsSinceEpoch ?? 0;
-        final right = b.startsAt?.millisecondsSinceEpoch ?? 0;
-        return left.compareTo(right);
-      });
+    try {
+      final rooms = await LiveRoomApiService.instance.fetchRooms();
+      return rooms.map(_mapLiveRoomSession).toList()
+        ..sort((a, b) {
+          final left = a.startsAt?.millisecondsSinceEpoch ?? 0;
+          final right = b.startsAt?.millisecondsSinceEpoch ?? 0;
+          return right.compareTo(left);
+        });
+    } on LiveRoomApiException catch (error) {
+      throw SchoolFeedApiException(error.message);
+    }
   }
 
   Future<LiveLessonRecord> createLiveLesson({
@@ -382,21 +342,44 @@ class SchoolFeedApiService {
     required int durationMinutes,
     required List<String> materials,
   }) async {
-    final announcement = await createAnnouncement(
-      title: title,
-      detail: _buildLiveLessonDetail(
-        teacher: teacher,
-        startsAt: startsAt,
-        durationMinutes: durationMinutes,
+    try {
+      final room = await LiveRoomApiService.instance.openRoom(
+        lessonTitle: title,
+        teacherName: teacher,
         className: className,
-        platform: platform,
-        meetingUrl: meetingUrl,
-        subtitle: subtitle,
-        materials: materials,
-      ),
-      audience: 'Öğrenci',
-    );
-    return _parseLiveLesson(announcement);
+        timeLabel: _timeRangeLabel(startsAt, durationMinutes),
+        meetingLink: meetingUrl,
+      );
+
+      var currentRoom = room;
+      for (final material in materials) {
+        final parsed = _parseMaterialReference(material);
+        if (parsed.$1.isEmpty) continue;
+        currentRoom = await LiveRoomApiService.instance.addAsset(
+          currentRoom.id,
+          parsed.$1,
+          fileUrl: parsed.$2,
+        );
+      }
+
+      return _mapLiveRoomSession(
+        currentRoom,
+        subtitleOverride: subtitle,
+        platformOverride: platform,
+        startsAtOverride: startsAt,
+        durationMinutesOverride: durationMinutes,
+      );
+    } on LiveRoomApiException catch (error) {
+      throw SchoolFeedApiException(error.message);
+    }
+  }
+
+  Future<void> deleteLiveLesson(String id) async {
+    try {
+      await LiveRoomApiService.instance.deleteRoom(id);
+    } on LiveRoomApiException catch (error) {
+      throw SchoolFeedApiException(error.message);
+    }
   }
 
   Future<ExamScoreRecord> createExamResult({
@@ -466,68 +449,83 @@ class SchoolFeedApiService {
 
   static String normalizeStudentQuery(String value) => _normalizeText(value);
 
-  LiveLessonRecord _parseLiveLesson(AnnouncementFeedItem announcement) {
-    final lines = announcement.detail.split('\n');
-    final map = <String, String>{};
-    for (final line in lines.skip(1)) {
-      final separator = line.indexOf('=');
-      if (separator <= 0) continue;
-      map[line.substring(0, separator)] = line.substring(separator + 1);
-    }
-
-    final startsAt = DateTime.tryParse(map['datetime'] ?? '');
-    final durationMinutes = int.tryParse(map['duration'] ?? '') ?? 60;
-    final now = DateTime.now();
-    final endsAt = startsAt?.add(Duration(minutes: durationMinutes));
-    String status = 'Planlandı';
-    if (startsAt != null && endsAt != null) {
-      if (now.isAfter(startsAt) && now.isBefore(endsAt)) {
-        status = 'Şimdi Canlı';
-      } else if (now.isAfter(endsAt)) {
-        status = 'Tamamlandı';
-      }
-    }
+  LiveLessonRecord _mapLiveRoomSession(
+    LiveRoomSessionRecord room, {
+    String? subtitleOverride,
+    String? platformOverride,
+    DateTime? startsAtOverride,
+    int? durationMinutesOverride,
+  }) {
+    final startsAt = startsAtOverride ?? room.startedAtUtc?.toLocal();
+    final durationMinutes = durationMinutesOverride ??
+        _durationMinutesFromTimeLabel(room.timeLabel) ??
+        60;
 
     return LiveLessonRecord(
-      id: announcement.id,
-      title: announcement.title,
-      subtitle: map['subtitle'] ?? 'Canlı ders açıklaması',
-      teacher: map['teacher'] ?? 'Öğretmen',
-      className: map['class'] ?? 'Tüm Sınıflar',
-      platform: map['platform'] ?? 'Zoom',
-      meetingUrl: map['link'] ?? '',
-      materials: (map['materials'] ?? '')
-          .split('|')
-          .map((item) => item.trim())
-          .where((item) => item.isNotEmpty)
+      id: room.id,
+      title: room.lessonTitle,
+      subtitle: subtitleOverride?.trim().isNotEmpty == true
+          ? subtitleOverride!.trim()
+          : 'Canlı ders odası',
+      teacher: room.teacherName,
+      className: room.className,
+      platform: platformOverride?.trim().isNotEmpty == true
+          ? platformOverride!.trim()
+          : _platformFromLink(room.meetingLink),
+      meetingUrl: room.meetingLink,
+      materials: room.assets
+          .map((item) => '${item.fileName}::${item.fileUrl}')
           .toList(),
       startsAt: startsAt,
       durationMinutes: durationMinutes,
-      status: status,
+      status: _liveRoomStatusLabel(room.status),
     );
   }
 
-  String _buildLiveLessonDetail({
-    required String teacher,
-    required DateTime startsAt,
-    required int durationMinutes,
-    required String className,
-    required String platform,
-    required String meetingUrl,
-    required String subtitle,
-    required List<String> materials,
-  }) {
-    return [
-      'LIVE_LESSON',
-      'teacher=${teacher.trim()}',
-      'datetime=${startsAt.toIso8601String()}',
-      'duration=$durationMinutes',
-      'class=${className.trim()}',
-      'platform=${platform.trim()}',
-      'link=${meetingUrl.trim()}',
-      'subtitle=${subtitle.trim()}',
-      'materials=${materials.map((item) => item.trim()).where((item) => item.isNotEmpty).join('|')}',
-    ].join('\n');
+  String _liveRoomStatusLabel(String status) {
+    if (status.toLowerCase() == 'completed') return 'Tamamlandı';
+    if (status.toLowerCase() == 'active') return 'Şimdi Canlı';
+    return status;
+  }
+
+  String _platformFromLink(String link) {
+    final value = link.toLowerCase();
+    if (value.contains('zoom')) return 'Zoom';
+    if (value.contains('teams')) return 'Microsoft Teams';
+    if (value.contains('meet')) return 'Meet';
+    return 'Canlı Ders';
+  }
+
+  (String, String) _parseMaterialReference(String raw) {
+    final value = raw.trim();
+    if (value.isEmpty) return ('', '');
+    if (!value.contains('::')) return (value.split('/').last, '');
+    final parts = value.split('::');
+    return (parts.first.trim(), parts.sublist(1).join('::').trim());
+  }
+
+  String _timeRangeLabel(DateTime startsAt, int durationMinutes) {
+    final end = startsAt.add(Duration(minutes: durationMinutes));
+    return '${LiveLessonRecord._twoDigit(startsAt.hour)}:${LiveLessonRecord._twoDigit(startsAt.minute)} - '
+        '${LiveLessonRecord._twoDigit(end.hour)}:${LiveLessonRecord._twoDigit(end.minute)}';
+  }
+
+  int? _durationMinutesFromTimeLabel(String value) {
+    final parts = value.split('-').map((item) => item.trim()).toList();
+    if (parts.length < 2) return null;
+    final start = _minutesOfDay(parts.first);
+    final end = _minutesOfDay(parts[1]);
+    if (start == null || end == null || end <= start) return null;
+    return end - start;
+  }
+
+  int? _minutesOfDay(String value) {
+    final parts = value.split(':');
+    if (parts.length < 2) return null;
+    final hour = int.tryParse(parts[0]);
+    final minute = int.tryParse(parts[1]);
+    if (hour == null || minute == null) return null;
+    return hour * 60 + minute;
   }
 
   static Future<String> resolveLinkedStudentName(AuthSession? session) async {

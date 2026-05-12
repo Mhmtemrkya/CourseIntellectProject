@@ -45,6 +45,7 @@ class LiveRoomSessionRecord {
   final bool sharingOn;
   final bool recordingOn;
   final String status;
+  final DateTime? startedAtUtc;
   final List<String> participants;
   final List<LiveRoomAssetRecord> assets;
   final List<LiveRoomNoteRecord> notes;
@@ -61,6 +62,7 @@ class LiveRoomSessionRecord {
     required this.sharingOn,
     required this.recordingOn,
     required this.status,
+    required this.startedAtUtc,
     required this.participants,
     required this.assets,
     required this.notes,
@@ -77,6 +79,7 @@ class LiveRoomApiService {
     required String teacherName,
     required String className,
     required String timeLabel,
+    String meetingLink = '',
   }) async {
     final session = await _session();
 
@@ -88,10 +91,60 @@ class LiveRoomApiService {
         'teacherName': teacherName,
         'className': className,
         'timeLabel': timeLabel,
+        if (meetingLink.trim().isNotEmpty) 'meetingLink': meetingLink.trim(),
       }),
     );
 
     return _mapOrThrow(response, fallback: 'Canlı oda acilamadi.');
+  }
+
+  Future<List<LiveRoomSessionRecord>> fetchRooms({
+    String? teacherName,
+    String? className,
+    String? status,
+  }) async {
+    final session = await _session();
+    final queryParameters = <String, String>{
+      if (teacherName != null && teacherName.trim().isNotEmpty)
+        'teacherName': teacherName.trim(),
+      if (className != null && className.trim().isNotEmpty)
+        'className': className.trim(),
+      if (status != null && status.trim().isNotEmpty) 'status': status.trim(),
+    };
+
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/liveroomsessions').replace(
+        queryParameters: queryParameters.isEmpty ? null : queryParameters,
+      ),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw LiveRoomApiException(
+        _extractMessage(response.body) ??
+            'Canlı dersler alınamadı (${response.statusCode}).',
+      );
+    }
+
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .map(_mapSession)
+        .toList();
+  }
+
+  Future<void> deleteRoom(String roomId) async {
+    final session = await _session();
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/liveroomsessions/$roomId'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw LiveRoomApiException(
+        _extractMessage(response.body) ??
+            'Canlı ders silinemedi (${response.statusCode}).',
+      );
+    }
   }
 
   Future<LiveRoomSessionRecord> updateState(
@@ -190,6 +243,7 @@ class LiveRoomApiService {
       sharingOn: map['sharingOn'] as bool? ?? false,
       recordingOn: map['recordingOn'] as bool? ?? false,
       status: map['status'] as String? ?? 'Active',
+      startedAtUtc: DateTime.tryParse(map['startedAtUtc'] as String? ?? ''),
       participants: (map['participants'] as List<dynamic>? ?? const [])
           .cast<String>(),
       assets: (map['assets'] as List<dynamic>? ?? const [])

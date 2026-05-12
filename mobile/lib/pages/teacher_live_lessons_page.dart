@@ -57,7 +57,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     if (confirmed != true || !mounted) return;
 
     try {
-      await SchoolFeedApiService.instance.deleteAnnouncement(lesson.id);
+      await SchoolFeedApiService.instance.deleteLiveLesson(lesson.id);
       await _loadLessons();
       if (!mounted) return;
       messenger.showSnackBar(

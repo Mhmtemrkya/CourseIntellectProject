@@ -84,7 +84,9 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
                 TeacherName = request.TeacherName.Trim(),
                 ClassName = request.ClassName.Trim(),
                 TimeLabel = request.TimeLabel.Trim(),
-                MeetingLink = $"https://meet.courseintellect.live/{request.ClassName.Trim().ToLowerInvariant()}",
+                MeetingLink = string.IsNullOrWhiteSpace(request.MeetingLink)
+                    ? $"https://meet.courseintellect.live/{request.ClassName.Trim().ToLowerInvariant()}"
+                    : request.MeetingLink.Trim(),
                 Status = "Active",
                 StartedAtUtc = DateTime.UtcNow,
             };
@@ -93,6 +95,20 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
         }
 
         return Ok(await MapSession(existing, cancellationToken));
+    }
+
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        var sessions = await CompatibilitySnapshotStore.LoadListAsync<LiveRoomSessionSnapshot>(dbContext, SectionKey, cancellationToken);
+        var removed = sessions.RemoveAll(item => item.Id == id);
+        if (removed == 0)
+        {
+            return NotFound();
+        }
+
+        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, User.Identity?.Name ?? "system", cancellationToken);
+        return NoContent();
     }
 
     [HttpGet("{id:guid}")]
@@ -239,6 +255,7 @@ public sealed class LiveRoomOpenRequest
     public string TeacherName { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public string TimeLabel { get; set; } = string.Empty;
+    public string? MeetingLink { get; set; }
 }
 
 public sealed class LiveRoomStateUpdateRequest
