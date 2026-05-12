@@ -1,0 +1,670 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<title>CourseIntellect — Tri-fold A3 Brochure</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-0: #03070F;
+    --bg-1: #07101C;
+    --bg-2: #0B1828;
+    --ink: #F4F7FF;
+    --ink-soft: #C8D3E6;
+    --ink-mute: #8A99B5;
+    --line: rgba(255,255,255,0.08);
+    --line-strong: rgba(255,255,255,0.18);
+    --neon-orange: #FF8A1E;
+    --neon-amber: #FFB454;
+    --neon-cyan: #19E6FF;
+    --neon-violet: #A66BFF;
+    --grad-hot: linear-gradient(135deg, #FF6B00 0%, #FF8A1E 35%, #FFB454 100%);
+    --grad-cool: linear-gradient(135deg, #19E6FF 0%, #5C7BFF 50%, #A66BFF 100%);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  @page { size: A3 landscape; margin: 0; }
+
+  html, body {
+    background: #000;
+    color: var(--ink);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A3 landscape = 420 x 297mm, 3 panels of 140 x 297mm */
+  .sheet {
+    position: relative;
+    width: 420mm;
+    height: 297mm;
+    display: grid;
+    grid-template-columns: 140mm 140mm 140mm;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 700px at 100% 0%, rgba(255,138,30,0.18), transparent 55%),
+      radial-gradient(900px 700px at 0% 100%, rgba(166,107,255,0.18), transparent 55%),
+      linear-gradient(160deg, var(--bg-0) 0%, var(--bg-1) 50%, var(--bg-2) 100%);
+    color: var(--ink);
+    page-break-after: always;
+    break-after: page;
+  }
+  .sheet:last-child { page-break-after: auto; break-after: auto; }
+
+  .sheet::before {
+    content: ""; position: absolute; inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+    background-size: 48px 48px; pointer-events: none;
+  }
+
+  /* Fold guides (very faint, optional for printing) */
+  .sheet::after {
+    content: ""; position: absolute;
+    top: 0; bottom: 0;
+    width: 1px;
+    background:
+      linear-gradient(180deg,
+        transparent 0%, rgba(255,255,255,0.06) 4%,
+        rgba(255,255,255,0.06) 96%, transparent 100%);
+    pointer-events: none;
+    box-shadow:
+      280mm 0 0 0 rgba(255,255,255,0.06);
+    left: 140mm;
+    z-index: 1;
+  }
+
+  .panel {
+    position: relative;
+    padding: 18mm 14mm;
+    display: flex;
+    flex-direction: column;
+    z-index: 2;
+    overflow: hidden;
+  }
+
+  .orb {
+    position: absolute; border-radius: 50%;
+    filter: blur(70px); opacity: 0.55;
+    pointer-events: none; z-index: 0;
+  }
+  .orb-orange { background: var(--neon-orange); }
+  .orb-violet { background: var(--neon-violet); }
+  .orb-cyan   { background: var(--neon-cyan); }
+
+  .brand-row {
+    display: flex; align-items: center; gap: 10px;
+    font-weight: 800;
+  }
+  .brand-mark {
+    width: 32px; height: 32px;
+    background: white;
+    border-radius: 8px;
+    display: grid; place-items: center;
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(255,138,30,0.35);
+  }
+  .brand-mark img { width: 100%; height: 100%; object-fit: contain; }
+  .brand-name { font-size: 14px; }
+  .brand-name b { color: var(--neon-amber); }
+
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px;
+    border: 1px solid rgba(255,138,30,0.3);
+    border-radius: 999px;
+    font-size: 10px; font-weight: 700;
+    color: var(--neon-amber);
+    text-transform: uppercase; letter-spacing: 1.8px;
+    background: rgba(255,138,30,0.08);
+    width: max-content;
+  }
+  .eyebrow .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--neon-orange);
+    box-shadow: 0 0 10px var(--neon-orange);
+  }
+
+  .grad-text {
+    background: var(--grad-hot);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .grad-text-cool {
+    background: var(--grad-cool);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+
+  /* ============= OUTSIDE FACE ============= */
+  /* Reading order when folded: [Back | Cover | Inner-flap]
+     Print order: panel-1 (back) | panel-2 (inner-flap shown when first opened) | panel-3 (cover/front) */
+
+  .outside .panel-back {
+    justify-content: space-between;
+    background: linear-gradient(180deg, transparent, rgba(0,0,0,0.25));
+  }
+  .outside .panel-back h3 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 28px;
+    line-height: 1.05;
+    letter-spacing: -0.6px;
+    margin-top: 12mm;
+  }
+  .outside .panel-back .grad-text { display: inline; }
+  .outside .panel-back p {
+    margin-top: 16px;
+    font-size: 12px; line-height: 1.6;
+    color: var(--ink-soft);
+    max-width: 100mm;
+  }
+  .outside .panel-back .contact {
+    margin-top: auto;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .outside .panel-back .contact .row {
+    padding: 12px 14px;
+    border-radius: 12px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.03);
+  }
+  .outside .panel-back .contact .lab {
+    font-size: 9px; color: var(--ink-mute);
+    text-transform: uppercase; letter-spacing: 1.6px;
+  }
+  .outside .panel-back .contact .val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px; font-weight: 700;
+    color: var(--ink); margin-top: 4px;
+  }
+  .outside .panel-back .signoff {
+    margin-top: 14mm;
+    font-size: 9px; color: var(--ink-mute);
+    letter-spacing: 1.4px;
+  }
+  .outside .panel-back .signoff b { color: var(--neon-amber); }
+
+  /* INNER-FLAP (middle when outside is unfolded slightly) */
+  .outside .panel-flap {
+    background: linear-gradient(180deg, rgba(255,138,30,0.04), rgba(166,107,255,0.04));
+  }
+  .outside .panel-flap .stat-list {
+    margin-top: 14mm;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  .outside .panel-flap .s {
+    padding: 14px 16px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line);
+    position: relative; overflow: hidden;
+  }
+  .outside .panel-flap .s .num {
+    font-family: 'Manrope', sans-serif;
+    font-size: 36px; font-weight: 800;
+    line-height: 1;
+    background: var(--grad-hot);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent;
+  }
+  .outside .panel-flap .s .num.cool { background: var(--grad-cool); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .outside .panel-flap .s .lab { margin-top: 4px; font-size: 11px; color: var(--ink-soft); font-weight: 600; }
+  .outside .panel-flap .s .desc { margin-top: 2px; font-size: 9px; color: var(--ink-mute); line-height: 1.4; }
+
+  .outside .panel-flap h4 {
+    margin-top: 12mm;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 16px;
+    color: var(--ink);
+  }
+  .outside .panel-flap .pillars {
+    margin-top: 10px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .outside .panel-flap .pill {
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--line);
+    font-size: 10px;
+    color: var(--ink-soft);
+    display: flex; gap: 8px; align-items: center;
+  }
+  .outside .panel-flap .pill .ic {
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 800; font-size: 9px;
+    color: var(--neon-amber);
+  }
+
+  /* COVER FRONT (rightmost panel = visible when fully folded) */
+  .outside .panel-cover {
+    background:
+      radial-gradient(500px 350px at 50% 30%, rgba(255,138,30,0.18), transparent 60%),
+      radial-gradient(400px 300px at 50% 90%, rgba(166,107,255,0.14), transparent 60%);
+    justify-content: space-between;
+  }
+  .outside .panel-cover .hero {
+    margin-top: 28mm;
+    z-index: 2;
+  }
+  .outside .panel-cover .hero h1 {
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 60px;
+    line-height: 0.94;
+    letter-spacing: -1.8px;
+    margin-top: 18px;
+  }
+  .outside .panel-cover .hero h1 .l1 { color: var(--ink); display: block; }
+  .outside .panel-cover .hero h1 .l2 {
+    background: var(--grad-hot);
+    -webkit-background-clip: text; background-clip: text;
+    color: transparent; display: block;
+  }
+  .outside .panel-cover .hero .underline {
+    width: 56mm; height: 2px;
+    background: var(--grad-hot);
+    border-radius: 2px;
+    margin-top: 14px;
+  }
+  .outside .panel-cover .hero p {
+    margin-top: 16px;
+    font-size: 12px; line-height: 1.55;
+    color: var(--ink-soft);
+    max-width: 110mm;
+  }
+  .outside .panel-cover .preview {
+    margin: 12mm 0 0 0;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow:
+      0 30px 70px -10px rgba(0,0,0,0.85),
+      0 0 60px rgba(255,138,30,0.18),
+      0 0 90px rgba(166,107,255,0.12);
+  }
+  .outside .panel-cover .preview .bar {
+    height: 22px; padding: 0 10px; gap: 6px;
+    display: flex; align-items: center;
+    background: linear-gradient(180deg, #112236, #0B1626);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .outside .panel-cover .preview .bar i {
+    width: 7px; height: 7px; border-radius: 50%;
+  }
+  .outside .panel-cover .preview .bar .url {
+    margin-left: 10px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.04);
+    padding: 2px 10px; border-radius: 5px;
+    flex: 1;
+  }
+  .outside .panel-cover .preview img { display: block; width: 100%; }
+
+  .outside .panel-cover .meta-row {
+    display: flex; gap: 6px; flex-wrap: wrap;
+    margin-top: 14px;
+  }
+  .outside .panel-cover .chip {
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: rgba(255,255,255,0.03);
+    font-size: 9px; font-weight: 600;
+    color: var(--ink-soft);
+  }
+  .outside .panel-cover .chip b { color: var(--neon-amber); }
+
+  .outside .panel-cover .yearstamp {
+    margin-top: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--ink-mute);
+    letter-spacing: 2px;
+  }
+
+  /* ============= INSIDE FACE (3 feature panels) ============= */
+  .inside .panel-feat {
+    padding: 18mm 12mm;
+  }
+  .inside .panel-feat .ttl {
+    margin-top: 16mm;
+    font-family: 'Manrope', sans-serif;
+    font-weight: 800;
+    font-size: 36px;
+    line-height: 0.96;
+    letter-spacing: -1.2px;
+  }
+  .inside .panel-feat .desc {
+    margin-top: 10px;
+    font-size: 11px; line-height: 1.55;
+    color: var(--ink-soft);
+  }
+  .inside .panel-feat .shot {
+    margin-top: 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow:
+      0 20px 50px -10px rgba(0,0,0,0.7),
+      0 0 50px rgba(255,138,30,0.14);
+  }
+  .inside .panel-feat .shot .bar {
+    height: 20px; padding: 0 10px; gap: 5px;
+    display: flex; align-items: center;
+    background: linear-gradient(180deg, #112236, #0B1626);
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+  .inside .panel-feat .shot .bar i {
+    width: 6px; height: 6px; border-radius: 50%;
+  }
+  .inside .panel-feat .shot img { display: block; width: 100%; }
+
+  .inside .panel-feat .feats {
+    margin-top: 12px;
+    display: flex; flex-direction: column;
+    gap: 7px;
+  }
+  .inside .panel-feat .f {
+    padding: 9px 11px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line);
+    display: flex; gap: 9px; align-items: flex-start;
+  }
+  .inside .panel-feat .f .ic {
+    width: 24px; height: 24px;
+    flex-shrink: 0;
+    border-radius: 7px;
+    background: var(--grad-hot);
+    display: grid; place-items: center;
+    color: #0A1322; font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 9px;
+  }
+  .inside .panel-feat .f .ic.cool { background: var(--grad-cool); color: #06121F; }
+  .inside .panel-feat .f .ic.fire { background: linear-gradient(135deg, #FF6B00, #A66BFF); color: #fff; }
+  .inside .panel-feat .f h5 { font-size: 10px; font-weight: 700; }
+  .inside .panel-feat .f p { font-size: 9px; line-height: 1.4; color: var(--ink-mute); margin-top: 1px; }
+
+  /* phone wrap (for student/parent panel) */
+  .inside .phone-row {
+    margin-top: 14px;
+    display: flex; gap: 14px; justify-content: center;
+    align-items: flex-start;
+  }
+  .inside .phone {
+    width: 130px; height: 270px;
+    background: linear-gradient(160deg, #1a2438, #0d1424);
+    border-radius: 26px;
+    padding: 6px;
+    box-shadow:
+      0 20px 50px -10px rgba(0,0,0,0.85),
+      0 0 0 1px rgba(255,255,255,0.07),
+      0 0 40px rgba(166,107,255,0.18);
+    position: relative;
+  }
+  .inside .phone::before {
+    content: "";
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    width: 56px; height: 14px;
+    background: #000; border-radius: 8px; z-index: 3;
+  }
+  .inside .phone .scr {
+    width: 100%; height: 100%;
+    background: #fff;
+    border-radius: 20px;
+    overflow: hidden;
+    position: relative;
+  }
+  .inside .phone .scr img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+
+  .panel-num {
+    position: absolute;
+    top: 16mm; right: 14mm;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--ink-mute);
+    letter-spacing: 1.4px;
+    z-index: 2;
+  }
+  .panel-num b { color: var(--neon-amber); }
+
+  .panel-tag {
+    position: absolute;
+    bottom: 12mm; left: 14mm;
+    font-size: 9px;
+    color: var(--ink-mute);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    z-index: 2;
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== OUTSIDE (back | inner-flap | cover) ===== -->
+<section class="sheet outside">
+  <div class="orb orb-orange" style="width: 420px; height: 420px; top: -120px; right: -100px;"></div>
+  <div class="orb orb-violet" style="width: 380px; height: 380px; bottom: -120px; left: -100px;"></div>
+
+  <!-- PANEL 1 — BACK -->
+  <div class="panel panel-back">
+    <div class="brand-row">
+      <div class="brand-mark"><img src="logo.png" alt="logo"/></div>
+      <div class="brand-name">Course<b>Intellect</b></div>
+    </div>
+
+    <div>
+      <div class="eyebrow"><span class="dot"></span> Demo &amp; iletişim</div>
+      <h3>
+        Kurumunuza özel <span class="grad-text">demo planlayın.</span>
+      </h3>
+      <p>
+        İhtiyaç analizi, gerçek veri ile demo ortamı, geçiş planı ve eğitim takvimi —
+        ücretsiz ön görüşmede konuşalım. 30 dakikada CourseIntellect'in kurumunuza ne
+        getireceğini birlikte görelim.
+      </p>
+    </div>
+
+    <div class="contact">
+      <div class="row">
+        <div class="lab">Telefon</div>
+        <div class="val">+90 530 648 02 25</div>
+      </div>
+      <div class="row">
+        <div class="lab">Telefon</div>
+        <div class="val">+90 544 259 81 61</div>
+      </div>
+    </div>
+
+    <div class="signoff">© 2026 <b>CourseIntellect</b> · Tüm hakları saklıdır.</div>
+    <div class="panel-tag">— ARKA YÜZ —</div>
+  </div>
+
+  <!-- PANEL 2 — INNER FLAP -->
+  <div class="panel panel-flap">
+    <div class="brand-row">
+      <div class="brand-mark"><img src="logo.png" alt="logo"/></div>
+      <div class="brand-name">Course<b>Intellect</b></div>
+    </div>
+
+    <div style="margin-top: 16mm;">
+      <div class="eyebrow"><span class="dot"></span> Bir bakışta platform</div>
+    </div>
+
+    <div class="stat-list">
+      <div class="s">
+        <div class="num">6</div>
+        <div class="lab">Rol odaklı panel</div>
+        <div class="desc">Yönetici · Öğretmen · Öğrenci · Veli · Muhasebe · Platform</div>
+      </div>
+      <div class="s">
+        <div class="num cool">170+</div>
+        <div class="lab">Ekran ve iş akışı</div>
+        <div class="desc">Yoklama, sınav, soru bankası, finans, canlı ders, AI</div>
+      </div>
+      <div class="s">
+        <div class="num">7/24</div>
+        <div class="lab">AI öğretmen asistanı</div>
+        <div class="desc">Profil-aware kişisel öğrenme rehberi</div>
+      </div>
+      <div class="s">
+        <div class="num cool">∞</div>
+        <div class="lab">Multi-tenant SaaS</div>
+        <div class="desc">Sınırsız kurum, sınırsız şube, izole veri</div>
+      </div>
+    </div>
+
+    <h4>Neden CourseIntellect?</h4>
+    <div class="pillars">
+      <div class="pill"><span class="ic">/01</span> Tek gerçeklik kaynağı, anlık veri</div>
+      <div class="pill"><span class="ic">/02</span> Web · Masaüstü · iOS · Android</div>
+      <div class="pill"><span class="ic">/03</span> KVKK / GDPR uyumlu, audit log</div>
+      <div class="pill"><span class="ic">/04</span> .NET 10 · React · Flutter · PostgreSQL</div>
+    </div>
+
+    <div class="panel-tag">— İÇ KAPAK —</div>
+  </div>
+
+  <!-- PANEL 3 — FRONT COVER -->
+  <div class="panel panel-cover">
+    <div class="brand-row">
+      <div class="brand-mark"><img src="logo.png" alt="logo"/></div>
+      <div class="brand-name">Course<b>Intellect</b></div>
+    </div>
+
+    <div class="hero">
+      <div class="eyebrow"><span class="dot"></span> Yapay Zekâ Destekli Eğitim Platformu</div>
+      <h1>
+        <span class="l1">Tek platform.</span>
+        <span class="l2">Tüm kampüs.</span>
+      </h1>
+      <div class="underline"></div>
+      <p>
+        Yönetimden öğrenciye, veliden muhasebeye — bir kurumun tüm dijital sinirlerini
+        birbirine bağlayan kurumsal eğitim işletim sistemi.
+      </p>
+      <div class="meta-row">
+        <div class="chip"><b>6</b> rol</div>
+        <div class="chip"><b>170+</b> ekran</div>
+        <div class="chip"><b>Web · Masaüstü · iOS · Android</b></div>
+        <div class="chip"><b>AI</b> asistan</div>
+      </div>
+    </div>
+
+    <div class="preview">
+      <div class="bar">
+        <i style="background:#FF5F57"></i>
+        <i style="background:#FEBC2E"></i>
+        <i style="background:#28C840"></i>
+        <span class="url">app.courseintellect.com / yönetici</span>
+      </div>
+      <img src="screenshots/admin-dashboard.png" alt="dashboard"/>
+    </div>
+
+    <div class="yearstamp">— BROŞÜR · 2026 —</div>
+    <div class="panel-num">N°&nbsp;<b>01</b></div>
+  </div>
+</section>
+
+<!-- ===== INSIDE (3 panels of features, full landscape canvas) ===== -->
+<section class="sheet inside">
+  <div class="orb orb-orange" style="width: 360px; height: 360px; top: -100px; left: 30%; opacity: 0.4;"></div>
+  <div class="orb orb-violet" style="width: 380px; height: 380px; bottom: -100px; right: -100px;"></div>
+  <div class="orb orb-cyan" style="width: 280px; height: 280px; top: 40%; left: -80px; opacity: 0.18;"></div>
+
+  <!-- PANEL A — YÖNETİCİ + ÖĞRETMEN (or just admin focus) -->
+  <div class="panel panel-feat">
+    <div class="brand-row">
+      <div class="brand-mark"><img src="logo.png" alt="logo"/></div>
+      <div class="brand-name">Course<b>Intellect</b></div>
+    </div>
+    <div style="margin-top: 12mm;"><div class="eyebrow"><span class="dot"></span> Yönetici · Admin</div></div>
+    <div class="ttl">
+      Tüm kurumun nabzı<br/>
+      <span class="grad-text">tek ekranda.</span>
+    </div>
+    <p class="desc">
+      KPI paneli, operasyon merkezi, yoklama, finans onayları, ders programı —
+      canlı backend verisi üzerinde her şey tek panelde.
+    </p>
+    <div class="shot">
+      <div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+      <img src="screenshots/admin-dashboard.png" alt="admin"/>
+    </div>
+    <div class="feats">
+      <div class="f"><div class="ic">01</div><div><h5>Canlı KPI &amp; operasyon</h5><p>Devam, performans, finans gerçek zamanlı.</p></div></div>
+      <div class="f"><div class="ic cool">02</div><div><h5>Görev &amp; onay merkezi</h5><p>Tüm onaylar, talepler tek yerde.</p></div></div>
+      <div class="f"><div class="ic fire">03</div><div><h5>Personel &amp; öğrenci</h5><p>Kayıt, rol, şube, toplu işlem.</p></div></div>
+    </div>
+    <div class="panel-num">N°&nbsp;<b>02</b></div>
+    <div class="panel-tag">— YÖNETİCİ DENEYİMİ —</div>
+  </div>
+
+  <!-- PANEL B — ÖĞRENCİ + VELİ MOBİL -->
+  <div class="panel panel-feat">
+    <div class="brand-row">
+      <div class="brand-mark"><img src="logo.png" alt="logo"/></div>
+      <div class="brand-name">Course<b>Intellect</b></div>
+    </div>
+    <div style="margin-top: 12mm;"><div class="eyebrow"><span class="dot"></span> Mobil · Öğrenci &amp; Veli</div></div>
+    <div class="ttl">
+      Kampüs cebinde,<br/>
+      <span class="grad-text">veli yanı başında.</span>
+    </div>
+    <p class="desc">
+      Öğrenci için günlük plan, AI asistan, soru kutusu, çalışma serisi.
+      Veli için devamsızlık, sınav, ödeme, görüşme talebi — tek uygulama.
+    </p>
+    <div class="phone-row">
+      <div class="phone"><div class="scr"><img src="screenshots/student-mobile.png" alt="student"/></div></div>
+      <div class="phone"><div class="scr"><img src="screenshots/parent-mobile.png" alt="parent"/></div></div>
+    </div>
+    <div class="feats" style="margin-top: 14px;">
+      <div class="f"><div class="ic fire">01</div><div><h5>AI öğretmen asistanı</h5><p>Profile özel, anında cevap.</p></div></div>
+      <div class="f"><div class="ic">02</div><div><h5>QR ile yoklama</h5><p>Sınıf girişinde tek tarama.</p></div></div>
+      <div class="f"><div class="ic cool">03</div><div><h5>Online ödeme &amp; makbuz</h5><p>Veli mobilde tüm tahsilat.</p></div></div>
+      <div class="f"><div class="ic">04</div><div><h5>Anlık bildirim</h5><p>Devamsızlık, ödev, ödeme push.</p></div></div>
+    </div>
+    <div class="panel-num">N°&nbsp;<b>03</b></div>
+    <div class="panel-tag">— MOBİL DENEYİM —</div>
+  </div>
+
+  <!-- PANEL C — MUHASEBE + PLATFORM -->
+  <div class="panel panel-feat">
+    <div class="brand-row">
+      <div class="brand-mark"><img src="logo.png" alt="logo"/></div>
+      <div class="brand-name">Course<b>Intellect</b></div>
+    </div>
+    <div style="margin-top: 12mm;"><div class="eyebrow"><span class="dot"></span> Finans &amp; Platform</div></div>
+    <div class="ttl">
+      Para hareketleri ve<br/>
+      <span class="grad-text">çoklu kurum.</span>
+    </div>
+    <p class="desc">
+      Tahsilat, taksit, gecikmeler, makbuz arşivi tek ekranda. Birden fazla kurum,
+      tek beyin: zincir okullar için multi-tenant platform yönetimi.
+    </p>
+    <div class="shot">
+      <div class="bar"><i style="background:#FF5F57"></i><i style="background:#FEBC2E"></i><i style="background:#28C840"></i></div>
+      <img src="screenshots/finance-dashboard.png" alt="finance"/>
+    </div>
+    <div class="feats">
+      <div class="f"><div class="ic">01</div><div><h5>Tahsilat &amp; taksit</h5><p>Otomatik takip, hatırlatma kuralı.</p></div></div>
+      <div class="f"><div class="ic cool">02</div><div><h5>İndirim &amp; burs onay zinciri</h5><p>Yetkili çok aşamalı onay.</p></div></div>
+      <div class="f"><div class="ic fire">03</div><div><h5>Tenant izolasyonu</h5><p>Sınırsız kurum, izole veri katmanı.</p></div></div>
+    </div>
+    <div class="panel-num">N°&nbsp;<b>04</b></div>
+    <div class="panel-tag">— FİNANS &amp; PLATFORM —</div>
+  </div>
+</section>
+
+</body>
+</html>
