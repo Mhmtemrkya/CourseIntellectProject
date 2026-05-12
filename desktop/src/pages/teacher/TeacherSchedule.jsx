@@ -2,12 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, Clock3, MonitorPlay, Users } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import WeeklyScheduleGrid from '../../components/schedule/WeeklyScheduleGrid';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchScheduleEntries, fetchStudents } from '../../lib/api/modules';
 import { filterScheduleForTeacher } from '../../lib/userMatching';
+import { deriveScheduleGrid } from '../../lib/scheduleGrid';
 
 export default function TeacherSchedule() {
   const { user } = useApp();
@@ -16,6 +19,7 @@ export default function TeacherSchedule() {
   const [selectedDay, setSelectedDay] = useState('');
   const [lessons, setLessons] = useState([]);
   const [studentCounts, setStudentCounts] = useState({});
+  const [viewMode, setViewMode] = useState('list');
 
   const loadSchedule = useCallback(async () => {
     try {
@@ -72,38 +76,48 @@ export default function TeacherSchedule() {
   const totalStudents = currentLessons.reduce((sum, item) => sum + (studentCounts[item.className] || 0), 0);
   const totalWeeklyStudents = lessons.reduce((sum, item) => sum + (studentCounts[item.className] || 0), 0);
   const dayEntries = Object.entries(groupedDays);
+  const scheduleGrid = useMemo(() => deriveScheduleGrid(lessons), [lessons]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="teacher-schedule-page">
-      <div>
-        <h1 className="text-3xl font-bold font-heading">Ders Programım</h1>
-        <p className="text-muted-foreground mt-1">Canlı backend planları, öğretmen adına filtrelenmiş program görünümü</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold font-heading">Ders Programım</h1>
+          <p className="text-muted-foreground mt-1">Canlı backend planları, öğretmen adına filtrelenmiş program görünümü</p>
+        </div>
+        <Button type="button" variant="outline" onClick={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}>
+          {viewMode === 'grid' ? 'Liste Görünümü' : 'Haftalık Çizelgeyi Göster'}
+        </Button>
       </div>
       {error ? <ErrorBanner title="Program alınamadı" message={error} onRetry={loadSchedule} /> : null}
       <Card className="overflow-hidden border-0 bg-gradient-to-br from-slate-950 via-slate-900 to-brand-accent text-white shadow-xl">
         <CardContent className="grid gap-6 p-6 lg:grid-cols-[1.3fr_1fr]">
           <div className="space-y-4">
             <div className="inline-flex items-center rounded-full bg-white/12 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-white/90">
-              Haftalik gorunum
+              Haftalık görünüm
             </div>
             <div>
-              <h2 className="text-2xl font-bold sm:text-3xl">{groupedDays[selectedDay]?.label || 'Program Hazir'}</h2>
+              <h2 className="text-2xl font-bold sm:text-3xl">{groupedDays[selectedDay]?.label || 'Program Hazır'}</h2>
               <p className="mt-2 max-w-2xl text-sm text-white/72 sm:text-base">
                 Haftalık planın, sınıf yoğunluğu ve günlük oturumların tek ekranda. Gün seçip ders kartlarını detaylı görebilirsin.
               </p>
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-sky-200" /><div><p className="text-xs text-white/70">Haftalik ders</p><p className="text-2xl font-bold">{lessons.length}</p></div></div></CardContent></Card>
-            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><MonitorPlay className="h-5 w-5 text-violet-200" /><div><p className="text-xs text-white/70">Bugun</p><p className="text-2xl font-bold">{currentLessons.length}</p></div></div></CardContent></Card>
-            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-emerald-200" /><div><p className="text-xs text-white/70">Bugun ogrenci</p><p className="text-2xl font-bold">{totalStudents}</p></div></div></CardContent></Card>
-            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-amber-200" /><div><p className="text-xs text-white/70">Hafta toplami</p><p className="text-2xl font-bold">{totalWeeklyStudents}</p></div></div></CardContent></Card>
+            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><CalendarDays className="h-5 w-5 text-sky-200" /><div><p className="text-xs text-white/70">Haftalık ders</p><p className="text-2xl font-bold">{lessons.length}</p></div></div></CardContent></Card>
+            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><MonitorPlay className="h-5 w-5 text-violet-200" /><div><p className="text-xs text-white/70">Bugün</p><p className="text-2xl font-bold">{currentLessons.length}</p></div></div></CardContent></Card>
+            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-emerald-200" /><div><p className="text-xs text-white/70">Bugün öğrenci</p><p className="text-2xl font-bold">{totalStudents}</p></div></div></CardContent></Card>
+            <Card className="border-white/10 bg-white/10 text-white shadow-none"><CardContent className="p-4"><div className="flex items-center gap-3"><Users className="h-5 w-5 text-amber-200" /><div><p className="text-xs text-white/70">Hafta toplamı</p><p className="text-2xl font-bold">{totalWeeklyStudents}</p></div></div></CardContent></Card>
           </div>
         </CardContent>
       </Card>
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      {viewMode === 'grid' ? (
+        <WeeklyScheduleGrid days={scheduleGrid.days} timeSlots={scheduleGrid.timeSlots} lessons={lessons} />
+      ) : (
+        <>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {dayEntries.map(([key, value]) => {
           const isSelected = selectedDay === key;
           const dayLessons = value.lessons || [];
@@ -127,8 +141,8 @@ export default function TeacherSchedule() {
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
                 {dayLessons.length > 0
-                  ? `${dayLessons[0].time} ile baslar`
-                  : 'Planli oturum yok'}
+                  ? `${dayLessons[0].time} ile başlar`
+                  : 'Planlı oturum yok'}
               </p>
             </button>
           );
@@ -207,7 +221,9 @@ export default function TeacherSchedule() {
             </CardContent>
           </Card>
         ))}
-      </div>
+          </div>
+        </>
+      )}
     </motion.div>
   );
 }

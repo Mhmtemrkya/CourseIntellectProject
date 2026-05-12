@@ -2,19 +2,15 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarDays, Clock3 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
+import WeeklyScheduleGrid from '../../components/schedule/WeeklyScheduleGrid';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchScheduleEntries, fetchStudents } from '../../lib/api/modules';
 import { filterScheduleForStudent, resolveCurrentStudent } from '../../lib/userMatching';
-
-const DAY_ORDER = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi', 'Pazar'];
-
-function dayIndex(day) {
-  const idx = DAY_ORDER.indexOf(day);
-  return idx === -1 ? 99 : idx;
-}
+import { deriveScheduleGrid, scheduleDayIndex } from '../../lib/scheduleGrid';
 
 export default function StudentSchedule() {
   const { user } = useApp();
@@ -22,6 +18,7 @@ export default function StudentSchedule() {
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [viewMode, setViewMode] = useState('list');
 
   const loadSchedule = useCallback(async () => {
     try {
@@ -61,7 +58,7 @@ export default function StudentSchedule() {
         time: entry.time || '',
       }))
       .sort((a, b) => {
-        const dayDiff = dayIndex(a.day) - dayIndex(b.day);
+        const dayDiff = scheduleDayIndex(a.day) - scheduleDayIndex(b.day);
         if (dayDiff !== 0) return dayDiff;
         return String(a.time).localeCompare(String(b.time));
       });
@@ -78,15 +75,22 @@ export default function StudentSchedule() {
     return Array.from(map.entries());
   }, [lessons]);
 
+  const scheduleGrid = useMemo(() => deriveScheduleGrid(lessons), [lessons]);
+
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="student-schedule-page">
-      <div>
-        <h1 className="text-3xl font-bold font-heading">Ders Programı</h1>
-        <p className="text-muted-foreground mt-1">
-          {className ? `${className} sınıfının haftalık programı.` : 'Sınıf bilgisi alınamadı; lütfen kurum yönetimine başvurun.'}
-        </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold font-heading">Ders Programı</h1>
+          <p className="text-muted-foreground mt-1">
+            {className ? `${className} sınıfının haftalık programı.` : 'Sınıf bilgisi alınamadı; lütfen kurum yönetimine başvurun.'}
+          </p>
+        </div>
+        <Button type="button" variant="outline" onClick={() => setViewMode((prev) => (prev === 'grid' ? 'list' : 'grid'))}>
+          {viewMode === 'grid' ? 'Liste Görünümü' : 'Haftalık Çizelgeyi Göster'}
+        </Button>
       </div>
 
       {error ? <ErrorBanner title="Ders programı alınamadı" message={error} onRetry={loadSchedule} /> : null}
@@ -101,7 +105,10 @@ export default function StudentSchedule() {
         </Card>
       ) : null}
 
-      <div className="space-y-6">
+      {viewMode === 'grid' ? (
+        <WeeklyScheduleGrid days={scheduleGrid.days} timeSlots={scheduleGrid.timeSlots} lessons={lessons} />
+      ) : (
+        <div className="space-y-6">
         {groupedByDay.map(([day, items]) => (
           <div key={day} className="space-y-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
@@ -136,7 +143,8 @@ export default function StudentSchedule() {
             </div>
           </div>
         ))}
-      </div>
+        </div>
+      )}
     </motion.div>
   );
 }

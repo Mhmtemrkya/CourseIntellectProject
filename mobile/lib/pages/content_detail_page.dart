@@ -847,7 +847,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                 const SizedBox(width: 10),
                                 _youtubeAction(
                                   icon: Icons.download_rounded,
-                                  label: 'Indir',
+                                  label: 'İndir',
                                   onTap: _fileUri == null
                                       ? null
                                       : () => _openFile(download: true),

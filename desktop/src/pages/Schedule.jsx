@@ -36,17 +36,15 @@ import {
   fetchStaff,
 } from '../lib/api/modules';
 import { useToast } from '../hooks/use-toast';
+import {
+  ALL_SCHEDULE_DAYS,
+  DEFAULT_SCHEDULE_DAYS,
+  DEFAULT_TIME_SLOTS,
+  normalizeTimeSlot,
+  sortDays,
+  sortTimeSlots,
+} from '../lib/scheduleGrid';
 
-const days = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
-const timeSlots = [
-  '08:30-09:15',
-  '09:25-10:10',
-  '10:20-11:05',
-  '11:15-12:00',
-  '13:00-13:45',
-  '13:55-14:40',
-  '14:50-15:35',
-];
 const subjects = ['Matematik', 'Fizik', 'Kimya', 'Biyoloji', 'Türkçe', 'İngilizce', 'Tarih', 'Coğrafya'];
 
 const subjectColors = {
@@ -62,8 +60,8 @@ const subjectColors = {
 
 const emptyForm = {
   className: '',
-  day: 'Pazartesi',
-  time: timeSlots[0],
+  day: DEFAULT_SCHEDULE_DAYS[0],
+  time: DEFAULT_TIME_SLOTS[0],
   subject: subjects[0],
   teacher: '',
   room: 'Derslik 1',
@@ -164,6 +162,9 @@ export default function Schedule() {
   const [teachers, setTeachers] = useState([]);
   const [entries, setEntries] = useState([]);
   const [form, setForm] = useState(emptyForm);
+  const [activeDays, setActiveDays] = useState(DEFAULT_SCHEDULE_DAYS);
+  const [activeTimeSlots, setActiveTimeSlots] = useState(DEFAULT_TIME_SLOTS);
+  const [draftTimeSlot, setDraftTimeSlot] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -205,6 +206,8 @@ export default function Schedule() {
       setClasses(nextClasses);
       setTeachers(teacherItems);
       setEntries(scheduleItems);
+      setActiveDays((prev) => sortDays([...prev, ...scheduleItems.map((item) => item.day).filter(Boolean)]));
+      setActiveTimeSlots((prev) => sortTimeSlots([...prev, ...scheduleItems.map((item) => item.time).filter(Boolean)]));
       setSelectedClass((prev) => (nextClasses.includes(prev) ? prev : nextClasses[0] || ''));
       setForm((prev) => ({
         ...prev,
@@ -255,10 +258,10 @@ export default function Schedule() {
     return {
       lessons: currentLessons.length,
       teachers: teacherSet.size,
-      weeklySlots: days.length * timeSlots.length,
-      occupancy: Math.round((currentLessons.length / (days.length * timeSlots.length || 1)) * 100),
+      weeklySlots: activeDays.length * activeTimeSlots.length,
+      occupancy: Math.round((currentLessons.length / (activeDays.length * activeTimeSlots.length || 1)) * 100),
     };
-  }, [currentLessons]);
+  }, [currentLessons, activeDays, activeTimeSlots]);
 
   const lessonMap = useMemo(() => {
     const map = new Map();
@@ -329,6 +332,37 @@ export default function Schedule() {
     }
   };
 
+  const toggleActiveDay = (day) => {
+    setActiveDays((prev) => {
+      const next = prev.includes(day)
+        ? prev.filter((item) => item !== day)
+        : [...prev, day];
+      const sorted = sortDays(next.length > 0 ? next : [day]);
+      setForm((current) => (sorted.includes(current.day) ? current : { ...current, day: sorted[0] }));
+      return sorted;
+    });
+  };
+
+  const addTimeSlot = () => {
+    const normalized = normalizeTimeSlot(draftTimeSlot);
+    if (!normalized || !normalized.includes('-')) {
+      toast({ title: 'Saat aralığı geçersiz', description: 'Örn: 15:45-16:30 formatında yazın.', variant: 'destructive' });
+      return;
+    }
+    setActiveTimeSlots((prev) => sortTimeSlots([...prev, normalized]));
+    setForm((prev) => ({ ...prev, time: normalized }));
+    setDraftTimeSlot('');
+  };
+
+  const removeTimeSlot = (slot) => {
+    setActiveTimeSlots((prev) => {
+      const next = prev.filter((item) => item !== slot);
+      const sorted = next.length > 0 ? sortTimeSlots(next) : [slot];
+      setForm((current) => (sorted.includes(current.time) ? current : { ...current, time: sorted[0] }));
+      return sorted;
+    });
+  };
+
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
   }
@@ -388,24 +422,69 @@ export default function Schedule() {
         </CardContent>
       </Card>
 
+      <Card className="border-border shadow-sm">
+        <CardContent className="space-y-5 p-5">
+          <div className="flex flex-col gap-1">
+            <p className="text-sm font-semibold text-foreground">Zaman Çizelgesi Ayarları</p>
+            <p className="text-sm text-muted-foreground">Kurum yöneticisi çizelgede görünecek günleri ve saat aralıklarını istediği gibi düzenleyebilir.</p>
+          </div>
+          <div className="grid gap-5 xl:grid-cols-[1fr_1.2fr]">
+            <div className="space-y-3">
+              <Label>Günler</Label>
+              <div className="flex flex-wrap gap-2">
+                {ALL_SCHEDULE_DAYS.map((day) => {
+                  const selected = activeDays.includes(day);
+                  return (
+                    <Button
+                      key={day}
+                      type="button"
+                      variant={selected ? 'default' : 'outline'}
+                      className={selected ? 'bg-brand-primary hover:bg-brand-primary/90' : ''}
+                      onClick={() => toggleActiveDay(day)}
+                    >
+                      {day}
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="space-y-3">
+              <Label>Saat Aralıkları</Label>
+              <div className="flex flex-wrap gap-2">
+                {activeTimeSlots.map((slot) => (
+                  <Badge key={slot} variant="outline" className="gap-2 rounded-full px-3 py-2">
+                    {slot}
+                    <button type="button" className="text-muted-foreground hover:text-rose-600" onClick={() => removeTimeSlot(slot)}>×</button>
+                  </Badge>
+                ))}
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Input placeholder="15:45-16:30" value={draftTimeSlot} onChange={(event) => setDraftTimeSlot(event.target.value)} />
+                <Button type="button" variant="outline" onClick={addTimeSlot}>Saat Ekle</Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card className="overflow-hidden border-border shadow-sm">
         <CardContent className="overflow-x-auto p-0">
           <div className="min-w-[920px]">
-            <div className="grid grid-cols-6 border-b bg-muted/50">
+            <div className="grid border-b bg-muted/50" style={{ gridTemplateColumns: `150px repeat(${activeDays.length}, minmax(150px, 1fr))` }}>
               <div className="border-r p-4 text-sm font-semibold text-muted-foreground">Saat</div>
-              {days.map((day) => (
+              {activeDays.map((day) => (
                 <div key={day} className="border-r p-4 text-center font-semibold text-foreground last:border-r-0">
                   {day}
                 </div>
               ))}
             </div>
-            {timeSlots.map((time) => (
-              <div key={time} className="grid grid-cols-6 border-b last:border-b-0">
+            {activeTimeSlots.map((time) => (
+              <div key={time} className="grid border-b last:border-b-0" style={{ gridTemplateColumns: `150px repeat(${activeDays.length}, minmax(150px, 1fr))` }}>
                 <div className="border-r bg-muted/40 p-4 text-sm">
                   <p className="font-semibold text-foreground">{time.split('-')[0]}</p>
                   <p className="text-muted-foreground">{time.split('-')[1]}</p>
                 </div>
-                {days.map((day) => {
+                {activeDays.map((day) => {
                   const lesson = lessonMap.get(`${day}-${time}`);
                   return (
                     <div key={`${day}-${time}`} className="border-r p-2 last:border-r-0">
@@ -498,14 +577,14 @@ export default function Schedule() {
                 <Label>Gün</Label>
                 <Select value={form.day} onValueChange={(value) => setForm((prev) => ({ ...prev, day: value }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{days.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                  <SelectContent>{activeDays.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">
                 <Label>Saat</Label>
                 <Select value={form.time} onValueChange={(value) => setForm((prev) => ({ ...prev, time: value }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{timeSlots.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                  <SelectContent>{activeTimeSlots.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-2">

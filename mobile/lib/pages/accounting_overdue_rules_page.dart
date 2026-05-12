@@ -89,7 +89,7 @@ class _AccountingOverdueRulesPageState
     return AccountingScaffold(
       appBar: AppBar(
         title: const Text(
-          'Otomatik Gecikme Senaryolari',
+          'Otomatik Gecikme Senaryoları',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

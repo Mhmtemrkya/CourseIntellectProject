@@ -579,7 +579,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         ? null
                         : () => _openFile(download: true),
                     icon: const Icon(Icons.download_rounded),
-                    label: const Text('Indir'),
+                    label: const Text('İndir'),
                   ),
                 ),
               ],

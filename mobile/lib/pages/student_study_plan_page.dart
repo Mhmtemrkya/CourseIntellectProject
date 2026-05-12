@@ -566,7 +566,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     final completed = planItems.where((item) => item["done"] == true).length;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Çalışma Planim")),
+      appBar: AppBar(title: const Text("Çalışma Planım")),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(

@@ -223,7 +223,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
               MaterialPageRoute(builder: (_) => const AccountingHomePage()),
             ),
             icon: const Icon(Icons.open_in_new_rounded),
-            label: const Text('Muhasebe Modulunu Ac'),
+            label: const Text('Muhasebe Modülünü Aç'),
           ),
         ],
       ),

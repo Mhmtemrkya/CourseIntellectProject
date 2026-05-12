@@ -201,7 +201,7 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Detayli Analiz")),
+      appBar: AppBar(title: const Text("Detaylı Analiz")),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null

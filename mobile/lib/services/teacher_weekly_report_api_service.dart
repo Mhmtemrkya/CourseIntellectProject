@@ -313,7 +313,7 @@ class TeacherWeeklyReportApiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw TeacherWeeklyReportApiException(
-        'Haftalik raporlar alınamadı (${response.statusCode}).',
+        'Haftalık raporlar alınamadı (${response.statusCode}).',
       );
     }
 
@@ -365,7 +365,7 @@ class TeacherWeeklyReportApiService {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw TeacherWeeklyReportApiException(
-        'Haftalik rapor oluşturulamadi (${response.statusCode}).',
+        'Haftalık rapor oluşturulamadı (${response.statusCode}).',
       );
     }
 

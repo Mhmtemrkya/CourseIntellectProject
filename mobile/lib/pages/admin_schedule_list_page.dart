@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/schedule_api_service.dart';
 import '../services/schedule_store.dart';
+import '../widgets/schedule_grid_view.dart';
 import 'admin_class_management_page.dart';
 import 'admin_schedule_edit_page.dart';
 
@@ -18,6 +19,7 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
   String? _classFilter;
   String? _teacherFilter;
   String? _dayFilter;
+  bool _gridMode = true;
 
   static const _days = [
     'Pazartesi',
@@ -118,6 +120,9 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
       teacherFilter: _teacherFilter,
       dayFilter: _dayFilter,
     );
+    final filteredEntries = sortScheduleEntries(
+      _store.entries.where(_entryMatchesFilters).toList(),
+    );
     final classes = grouped.keys.toList()..sort();
 
     return Scaffold(
@@ -173,8 +178,26 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
                     ),
                   _buildFilters(theme),
                   const SizedBox(height: 12),
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: true,
+                        icon: Icon(Icons.calendar_view_week_rounded),
+                        label: Text('Çizelge'),
+                      ),
+                      ButtonSegment(
+                        value: false,
+                        icon: Icon(Icons.view_agenda_outlined),
+                        label: Text('Liste'),
+                      ),
+                    ],
+                    selected: {_gridMode},
+                    onSelectionChanged: (value) =>
+                        setState(() => _gridMode = value.first),
+                  ),
+                  const SizedBox(height: 12),
                   Text(
-                    '${_store.entries.where(_entryMatchesFilters).length} kayıt • ${classes.length} sınıf',
+                    '${filteredEntries.length} kayıt • ${classes.length} sınıf',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.textTheme.bodySmall?.color?.withValues(
                         alpha: 0.7,
@@ -182,7 +205,14 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  if (classes.isEmpty)
+                  if (_gridMode && filteredEntries.isNotEmpty)
+                    ScheduleGridView(
+                      entries: filteredEntries,
+                      showClassName: _classFilter == null,
+                      showTeacher: _teacherFilter == null,
+                      onEntryTap: _openEdit,
+                    )
+                  else if (classes.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 48),
                       child: Center(
@@ -463,6 +493,8 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
       'Çarşamba': 3,
       'Perşembe': 4,
       'Cuma': 5,
+      'Cumartesi': 6,
+      'Pazar': 7,
     };
     return order[day] ?? 99;
   }

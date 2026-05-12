@@ -157,6 +157,11 @@ class RoleSummaryRecord {
   });
 
   factory RoleSummaryRecord.fromMap(Map<String, dynamic> map) {
+    final moduleAccessPayload =
+        map['moduleAccess'] as List<dynamic>? ??
+        map['modüleAccess'] as List<dynamic>? ??
+        const [];
+
     return RoleSummaryRecord(
       roleName: map['roleName'] as String? ?? '',
       userCount: map['userCount'] as int? ?? 0,
@@ -165,8 +170,7 @@ class RoleSummaryRecord {
       requiresCriticalApproval:
           map['requiresCriticalApproval'] as bool? ?? false,
       messagingScope: map['messagingScope'] as String? ?? '',
-      moduleAccess: (map['modüleAccess'] as List<dynamic>? ?? const [])
-          .cast<String>(),
+      moduleAccess: moduleAccessPayload.cast<String>(),
     );
   }
 }
@@ -248,7 +252,7 @@ class AdminDirectoryApiService {
         'loginEnabled': loginEnabled,
         'requiresCriticalApproval': requiresCriticalApproval,
         'messagingScope': messagingScope,
-        'modüleAccess': moduleAccess,
+        'moduleAccess': moduleAccess,
       },
     );
   }

@@ -15,7 +15,7 @@ class AccountingReceiptArchivePage extends StatelessWidget {
     return AccountingScaffold(
       appBar: AppBar(
         title: const Text(
-          'Makbuz Arsivi',
+          'Makbuz Arşivi',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

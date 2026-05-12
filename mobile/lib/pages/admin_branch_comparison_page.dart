@@ -56,7 +56,7 @@ class _AdminBranchComparisonPageState extends State<AdminBranchComparisonPage> {
     return AdminScaffold(
       appBar: AppBar(
         title: const Text(
-          'Şube Karsilastirma',
+          'Şube Karşılaştırma',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

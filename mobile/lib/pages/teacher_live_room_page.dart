@@ -580,7 +580,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
         const SizedBox(width: 12),
         _toggleToolCard(
           context,
-          title: "Paylas",
+          title: "Paylaş",
           active: sharingOn,
           activeIcon: Icons.screen_share_rounded,
           inactiveIcon: Icons.stop_screen_share_rounded,

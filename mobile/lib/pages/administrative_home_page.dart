@@ -4,10 +4,13 @@ import '../services/accounting_finance_store.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
+import 'accounting_approvals_page.dart';
 import 'admin_class_management_page.dart';
 import 'admin_announcements_page.dart';
+import 'admin_meeting_overview_page.dart';
 import 'admin_operations_page.dart';
 import 'admin_parent_registration_page.dart';
+import 'admin_personnel_approvals_page.dart';
 import 'admin_schedule_list_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_staff_registration_page.dart';
@@ -252,9 +255,55 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
               Expanded(
                 child: _metricCard(
                   context,
+                  icon: Icons.verified_user_outlined,
+                  title: 'Personel Onayları',
+                  value: 'Bekleyen kadro talepleri',
+                  color: const Color(0xFF7C3AED),
+                  onTap: () => _openPage(const AdminPersonnelApprovalsPage()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.payments_outlined,
+                  title: 'Finans Onayları',
+                  value: 'Muhasebe onay akışı',
+                  color: const Color(0xFFB45309),
+                  onTap: () => _openPage(
+                    const AccountingApprovalsPage(
+                      canApprove: true,
+                      pageTitle: 'Finans Onayları',
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.forum_outlined,
+                  title: 'Görüşme Akışı',
+                  value: 'Veli talepleri ve onaylar',
+                  color: const Color(0xFF2563EB),
+                  onTap: () => _openPage(const AdminMeetingOverviewPage()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _metricCard(
+                  context,
                   icon: Icons.fact_check_outlined,
                   title: 'Devamsızlık Paneli',
-                  value: 'Tüm öğrencilerin günlük yoklamalari',
+                  value: 'Tüm öğrencilerin günlük yoklamaları',
                   color: const Color(0xFFB42318),
                   onTap: () => _openPage(const AttendanceOverviewPage()),
                 ),

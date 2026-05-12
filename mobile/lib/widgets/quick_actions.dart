@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:student/pages/announcements_page.dart';
+import 'package:student/pages/exam_analysis_page.dart';
+import 'package:student/pages/exams_page.dart';
+import 'package:student/pages/homework_page.dart';
 import 'package:student/pages/live_lessons_page.dart';
 import 'package:student/pages/messages_page.dart';
 import 'package:student/pages/question_bank_page.dart';
 import 'package:student/pages/schedule_page.dart';
+import 'package:student/pages/student_attendance_history_page.dart';
+import 'package:student/pages/student_exam_history_page.dart';
+import 'package:student/pages/student_wrong_answers_page.dart';
 import 'package:student/pages/student_attendance_scan_page.dart';
 import 'package:student/pages/student_study_plan_page.dart';
 import 'package:student/pages/student_question_page.dart';
@@ -30,9 +36,48 @@ class QuickActions extends StatelessWidget {
       ),
       (
         Icons.event_note_rounded,
-        "Çalışma Planim",
+        "Çalışma Planım",
         const Color(0xFF10B981),
         const StudentStudyPlanPage(),
+      ),
+      (
+        Icons.assignment_rounded,
+        "Ödevler",
+        const Color(0xFFF97316),
+        const HomeworkPage(),
+      ),
+      (
+        Icons.fact_check_rounded,
+        "Sınavlar",
+        const Color(0xFF7C3AED),
+        const ExamsPage(),
+      ),
+      (
+        Icons.insights_rounded,
+        "Sınav Sonuçları",
+        const Color(0xFF2563EB),
+        const StudentExamHistoryPage(
+          studentName: '',
+          title: 'Sınav Sonuçlarım',
+        ),
+      ),
+      (
+        Icons.error_outline_rounded,
+        "Yanlışlarım",
+        const Color(0xFFDC2626),
+        const StudentWrongAnswersPage(),
+      ),
+      (
+        Icons.event_busy_rounded,
+        "Devamsızlık",
+        const Color(0xFFB45309),
+        const StudentAttendanceHistoryPage(),
+      ),
+      (
+        Icons.analytics_rounded,
+        "Detaylı Analiz",
+        const Color(0xFF0891B2),
+        const ExamAnalysisPage(),
       ),
       (
         Icons.quiz_rounded,

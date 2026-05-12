@@ -417,7 +417,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
             Expanded(
               child: _toolCard(
                 context,
-                title: 'Makbuz Arsivi',
+                title: 'Makbuz Arşivi',
                 icon: Icons.folder_copy_outlined,
                 color: const Color(0xFF0F766E),
                 onTap: () => _openPage(context, const VeliReceiptArchivePage()),

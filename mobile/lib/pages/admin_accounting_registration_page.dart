@@ -308,7 +308,7 @@ class _AdminAccountingRegistrationPageState
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: const Text('PDF Olarak Indir / Paylas'),
+                    label: const Text('PDF Olarak İndir / Paylaş'),
                     onPressed: () async {
                       final session = await AuthSessionStore.instance.load();
                       await CredentialsPdfService.generateAndShare(

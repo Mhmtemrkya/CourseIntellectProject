@@ -324,7 +324,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Devamsızlık',
-                      subtitle: 'Tüm sube yoklama akışı',
+                      subtitle: 'Tüm şube yoklama akışı',
                       color: const Color(0xFFB42318),
                       icon: Icons.fact_check_outlined,
                       onTap: () => Navigator.push(
@@ -355,7 +355,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Şube Karsilastirma',
+                      title: 'Şube Karşılaştırma',
                       subtitle: 'Kampüs performans özeti',
                       color: const Color(0xFF14532D),
                       icon: Icons.apartment_outlined,
@@ -376,7 +376,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Rol Yönetimi',
-                      subtitle: 'Yetki ve erişim kontrolu',
+                      subtitle: 'Yetki ve erişim kontrolü',
                       color: const Color(0xFF7C3AED),
                       icon: Icons.admin_panel_settings_outlined,
                       onTap: () => Navigator.push(

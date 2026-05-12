@@ -197,18 +197,18 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
     return [
       ..._manualTasks,
       {
-        "title": "Aktif ödev akışıni kontrol et",
+        "title": "Aktif ödev akışını kontrol et",
         "subtitle":
             "Öğretmen panelinde açık ödevler ve teslimler seni bekliyor.",
         "icon": Icons.assignment_turned_in_rounded,
         "color": const Color(0xFFFF7A00),
-        "action": "Ödevleri Ac",
+        "action": "Ödevleri Aç",
         "page": const TeacherAssignmentsPage(),
       },
       {
         "title":
             "${AttendanceService.instance.all().length} yoklama kaydı izlendi",
-        "subtitle": "Sınıf devam bilgileri ve PDF yoklama dokumleri hazır.",
+        "subtitle": "Sınıf devam bilgileri ve PDF yoklama dökümleri hazır.",
         "icon": Icons.analytics_rounded,
         "color": const Color(0xFF27B3A2),
         "action": "Yoklamaya Git",
@@ -431,7 +431,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.campaign_rounded,
-                  title: "Duyuru Paylas",
+                  title: "Duyuru Paylaş",
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherAnnouncementsPage());
@@ -502,7 +502,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text("Yapilacak Ekle"),
+              title: const Text("Yapılacak Ekle"),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -511,7 +511,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     TextField(
                       controller: _taskTitleController,
                       decoration: const InputDecoration(
-                        labelText: "Baslik",
+                        labelText: "Başlık",
                         hintText: "Örnek: 11-A quiz sonucunu kontrol et",
                       ),
                     ),
@@ -521,7 +521,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       maxLines: 3,
                       decoration: const InputDecoration(
                         labelText: "Açıklama",
-                        hintText: "Bu görevin neden eklendigini yazın",
+                        hintText: "Bu görevin neden eklendiğini yazın",
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -557,7 +557,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     ),
                     const SizedBox(height: 16),
                     const Text(
-                      "Ikon",
+                      "İkon",
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 10),
@@ -604,7 +604,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     final subtitle = _taskSubtitleController.text.trim();
 
                     if (title.isEmpty || subtitle.isEmpty) {
-                      _showInfo("Baslik ve açıklama zorunlu.");
+                      _showInfo("Başlık ve açıklama zorunlu.");
                       return;
                     }
 
@@ -1337,7 +1337,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           shrinkWrap: true,
           children: [
             Text(
-              'Sınıf Karsilastirma Detayi',
+              'Sınıf Karşılaştırma Detayı',
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1680,7 +1680,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
       },
       {
         "icon": Icons.groups_2_rounded,
-        "title": "Görüşme\nOnaylari",
+        "title": "Görüşme\nOnayları",
         "color": const Color(0xFF7C3AED),
         "page": const TeacherMeetingApprovalsPage(),
       },

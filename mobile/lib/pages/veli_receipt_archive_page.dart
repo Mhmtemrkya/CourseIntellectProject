@@ -12,7 +12,7 @@ class VeliReceiptArchivePage extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text(
-          'Makbuz Arsivi',
+          'Makbuz Arşivi',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

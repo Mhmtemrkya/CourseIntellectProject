@@ -397,7 +397,7 @@ class _StudentHomePageState extends State<StudentHomePage>
                 onTap: goToExamResults,
               ),
               _miniAction(
-                title: "Detayli Analiz",
+                title: "Detaylı Analiz",
                 icon: Icons.insights_rounded,
                 color: const Color(0xFF7C3AED),
                 onTap: () => Navigator.push(
@@ -406,7 +406,7 @@ class _StudentHomePageState extends State<StudentHomePage>
                 ),
               ),
               _miniAction(
-                title: "Çalışma Planim",
+                title: "Çalışma Planım",
                 icon: Icons.event_note_rounded,
                 color: const Color(0xFF10B981),
                 onTap: goToStudyPlan,

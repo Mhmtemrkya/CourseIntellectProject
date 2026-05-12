@@ -740,7 +740,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                         );
                       },
                       icon: const Icon(Icons.picture_as_pdf_outlined),
-                      label: const Text('PDF Olarak Indir / Paylas'),
+                      label: const Text('PDF Olarak İndir / Paylaş'),
                     ),
                   ),
                   const SizedBox(height: 10),
