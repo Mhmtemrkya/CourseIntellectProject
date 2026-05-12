@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { CalendarClock, QrCode, ScanLine, ShieldCheck, Video } from 'lucide-react';
+import { CalendarClock, QrCode, ScanLine, ShieldCheck } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { fetchAttendance, fetchAnnouncements } from '../../lib/api/modules';
+import { checkInAttendanceQrSession, fetchActiveAttendanceQrSessions, fetchAttendance } from '../../lib/api/modules';
+import { useToast } from '../../hooks/use-toast';
 
 function normalize(value = '') {
   return String(value).toLowerCase().trim();
@@ -18,28 +19,31 @@ function normalize(value = '') {
 export default function StudentAttendanceScan() {
   const navigate = useNavigate();
   const { user } = useApp();
+  const { toast } = useToast();
   const [attendance, setAttendance] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
+  const [activeSessions, setActiveSessions] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [checkingInId, setCheckingInId] = useState('');
   const [error, setError] = useState('');
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [attendanceItems, announcementItems] = await Promise.all([
+      const className = user?.className || '';
+      const [attendanceItems, qrSessions] = await Promise.all([
         fetchAttendance().catch(() => []),
-        fetchAnnouncements().catch(() => []),
+        fetchActiveAttendanceQrSessions(className ? { className } : {}).catch(() => []),
       ]);
       setAttendance(attendanceItems);
-      setAnnouncements(announcementItems);
+      setActiveSessions(Array.isArray(qrSessions) ? qrSessions : []);
     } catch (err) {
       setError(err.message || 'QR yoklama görünümü alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.className]);
 
   useEffect(() => {
     loadData();
@@ -50,8 +54,24 @@ export default function StudentAttendanceScan() {
     [attendance, user?.name],
   );
   const latest = studentAttendance.slice(0, 6);
-  const activeSessions = announcements.filter((item) => /LIVE_LESSON|QR|YOKLAMA/i.test(`${item.title} ${item.detail || ''}`)).slice(0, 3);
-  const liveSession = activeSessions.find((item) => /LIVE_LESSON/i.test(`${item.title} ${item.detail || ''}`));
+  const liveSession = activeSessions[0] || null;
+
+  const handleCheckIn = async (session) => {
+    if (!session?.token) return;
+    try {
+      setCheckingInId(session.id);
+      await checkInAttendanceQrSession({ token: session.token, studentName: user?.name });
+      toast({ title: 'Yoklamanız kaydedildi.' });
+      await loadData();
+    } catch (err) {
+      toast({
+        title: err?.response?.data?.message || err?.message || 'Yoklama gönderilemedi.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCheckingInId('');
+    }
+  };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
@@ -73,27 +93,29 @@ export default function StudentAttendanceScan() {
           <CardContent className="space-y-3">
             {activeSessions.length === 0 ? (
               <div className="rounded-xl border border-dashed p-6 text-sm text-muted-foreground">Şu an aktif bir QR oturumu görünmüyor.</div>
-            ) : activeSessions.map((item, index) => (
-              <div key={item.id || index} className="rounded-xl border p-4">
+            ) : activeSessions.map((item) => (
+              <div key={item.id} className="rounded-xl border p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="font-medium">{item.title}</p>
-                    <p className="text-sm text-muted-foreground">{item.detail || 'Oturum ayrıntısı yükleniyor'}</p>
+                    <p className="font-medium">{item.lessonTitle || 'Yoklama Oturumu'}</p>
+                    <p className="text-sm text-muted-foreground">{item.className} • {item.teacherName}</p>
+                    <p className="text-xs text-muted-foreground mt-1">Bitiş: {item.expiresAtUtc ? new Date(item.expiresAtUtc).toLocaleTimeString('tr-TR') : '-'}</p>
                   </div>
-                  <Badge>Hazır</Badge>
+                  <Badge>Aktif</Badge>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    className="bg-brand-primary hover:bg-brand-primary/90"
+                    disabled={checkingInId === item.id}
+                    onClick={() => handleCheckIn(item)}
+                  >
+                    <ScanLine className="mr-2 h-4 w-4" />
+                    {checkingInId === item.id ? 'Gönderiliyor...' : 'Yoklamaya Katıl'}
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => navigate('/s/schedule')}>
                     <CalendarClock className="mr-2 h-4 w-4" />
                     Ders Programı
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(/LIVE_LESSON/i.test(`${item.title} ${item.detail || ''}`) ? '/s/live' : '/s/dashboard')}
-                  >
-                    <Video className="mr-2 h-4 w-4" />
-                    İlgili Akışı Aç
                   </Button>
                 </div>
               </div>

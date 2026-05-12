@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'content_detail_page.dart';
 
+import '../services/auth_session_store.dart';
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
+import '../services/school_feed_api_service.dart';
 import '../widgets/adaptive_scaffold.dart';
 import '../widgets/responsive_layout.dart';
 
@@ -23,6 +25,7 @@ class _ContentPageState extends State<ContentPage>
   List<ContentRecord> _contents = const [];
   String _selectedType = 'all';
   String _selectedSubject = 'Tümü';
+  String _studentGrade = '';
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -42,7 +45,25 @@ class _ContentPageState extends State<ContentPage>
     ).animate(_controller);
 
     _controller.forward();
-    _loadContents();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    final session = await AuthSessionStore.instance.load();
+    final resolvedClassName =
+        await SchoolFeedApiService.resolveLinkedStudentClassName(session);
+    final grade = _extractGrade(resolvedClassName);
+    if (mounted) {
+      setState(() {
+        _studentGrade = grade;
+      });
+    }
+    await _loadContents();
+  }
+
+  static String _extractGrade(String className) {
+    final match = RegExp(r'^\s*(\d{1,2})').firstMatch(className);
+    return match?.group(1) ?? '';
   }
 
   @override
@@ -119,6 +140,15 @@ class _ContentPageState extends State<ContentPage>
   List<ContentRecord> get _filteredContents {
     return _contents.where((item) {
       if (!item.isVisibleToStudents) return false;
+      // Sınıf/grade filtresi: içerik bir grade'e bağlıysa (ör. "10. Sınıf"),
+      // yalnızca öğrencinin grade'iyle eşleşenleri göster. Grade boşsa
+      // tüm sınıflara açıktır.
+      final contentGrade = _extractGrade(item.grade);
+      if (_studentGrade.isNotEmpty &&
+          contentGrade.isNotEmpty &&
+          contentGrade != _studentGrade) {
+        return false;
+      }
       final query = _searchController.text.trim().toLowerCase();
       final matchesQuery =
           query.isEmpty ||

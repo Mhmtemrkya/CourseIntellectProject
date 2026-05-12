@@ -13,7 +13,7 @@ public sealed class QuestionBankItem : ITenantScopedEntity
     public string CreatedAtLabel { get; set; } = string.Empty;
     public int UsageCount { get; set; }
     public string? ImagePath { get; set; }
-    public string ImagePlacement { get; set; } = "Ust";
+    public string ImagePlacement { get; set; } = "Top";
     public string OptionsSerialized { get; set; } = "[]";
     public int? CorrectOptionIndex { get; set; }
     public string ClassTargetsSerialized { get; set; } = "[\"Tum Siniflar\"]";

@@ -13,9 +13,13 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class AnnouncementsController(IAnnouncementQueryService announcementQueryService, CourseIntellectDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    public async Task<IActionResult> Get([FromQuery] string? audience, CancellationToken cancellationToken)
+    public async Task<IActionResult> Get(
+        [FromQuery] string? audience,
+        [FromQuery] string? className,
+        [FromQuery] string? teacherName,
+        CancellationToken cancellationToken)
     {
-        var list = await announcementQueryService.GetAnnouncementsAsync(audience, cancellationToken);
+        var list = await announcementQueryService.GetAnnouncementsAsync(audience, className, teacherName, cancellationToken);
         return Ok(list);
     }
 

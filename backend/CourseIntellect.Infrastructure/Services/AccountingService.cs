@@ -30,6 +30,9 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
             Amount = NormalizeAmount(request.Amount),
             Status = "Bekliyor"
         };
+        // ID stable. Önceden Title kullanılıyordu fakat title değişebilir/çakışabilir,
+        // onay sonrası ilgili invoice bulunamazdı. Artık entity Id ile bağlanır.
+        await dbContext.AccountingInvoices.AddAsync(invoice, cancellationToken);
         var approval = new AccountingApproval
         {
             Title = request.Title.Trim(),
@@ -37,9 +40,8 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
             Category = request.Category.Trim(),
             Status = "Bekliyor",
             SourceType = "invoice",
-            SourceKey = request.Title.Trim()
+            SourceKey = invoice.Id.ToString()
         };
-        await dbContext.AccountingInvoices.AddAsync(invoice, cancellationToken);
         await dbContext.AccountingApprovals.AddAsync(approval, cancellationToken);
         await AddNotificationAsync("Yeni fatura oluşturuldu", $"{invoice.Title} kaydı onay akışına gönderildi.", cancellationToken);
         await AddAuditAsync("Fatura kaydı açıldı", $"{invoice.Title} için {invoice.Amount} tutarında yeni kayıt oluşturuldu.", cancellationToken);
@@ -57,6 +59,7 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
             PayDate = request.PayDate.Trim(),
             Status = "Bekliyor"
         };
+        await dbContext.AccountingSalaries.AddAsync(salary, cancellationToken);
         var approval = new AccountingApproval
         {
             Title = $"{salary.Employee} bordro talebi",
@@ -64,7 +67,7 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
             Category = "Maaş",
             Status = "Bekliyor",
             SourceType = "salary",
-            SourceKey = salary.Employee
+            SourceKey = salary.Id.ToString()
         };
         await dbContext.AccountingSalaries.AddAsync(salary, cancellationToken);
         await dbContext.AccountingApprovals.AddAsync(approval, cancellationToken);

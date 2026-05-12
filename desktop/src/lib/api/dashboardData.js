@@ -23,6 +23,45 @@ function isToday(value) {
   );
 }
 
+// Bugünkü Türkçe gün adı (ScheduleController kayıtlarındaki 'day' field
+// ile aynı format: 'Pazartesi'...'Pazar').
+const SCHEDULE_DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+function todayScheduleDayName() {
+  return SCHEDULE_DAY_NAMES[new Date().getDay()];
+}
+
+function pickScheduleTodayForTeacher(scheduleEntries, teacherName) {
+  if (!Array.isArray(scheduleEntries) || !teacherName) return [];
+  const teacherKey = normalizeText(teacherName);
+  const todayKey = todayScheduleDayName();
+  return scheduleEntries
+    .filter((entry) => entry.day === todayKey && normalizeText(entry.teacher) === teacherKey)
+    .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')))
+    .map((entry) => ({
+      time: entry.time || '—',
+      subject: entry.subject || 'Ders',
+      class: entry.className || '',
+      teacher: entry.teacher || teacherName,
+      status: 'upcoming',
+    }));
+}
+
+function pickScheduleTodayForClass(scheduleEntries, className) {
+  if (!Array.isArray(scheduleEntries) || !className) return [];
+  const classKey = normalizeText(className);
+  const todayKey = todayScheduleDayName();
+  return scheduleEntries
+    .filter((entry) => entry.day === todayKey && normalizeText(entry.className) === classKey)
+    .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')))
+    .map((entry) => ({
+      time: entry.time || '—',
+      subject: entry.subject || 'Ders',
+      class: entry.className || className,
+      teacher: entry.teacher || '',
+      status: 'upcoming',
+    }));
+}
+
 function safeData(result, fallback) {
   return result.status === 'fulfilled' ? result.value : fallback;
 }
@@ -209,6 +248,7 @@ export async function fetchStudentDashboardData(user) {
     api.get('/api/announcements', { params: { audience: 'Ogrenci' } }),
     api.get('/api/messages/threads'),
     api.get('/api/attendance'),
+    api.get('/api/schedule'),
   ]);
 
   const students = safeData(results[0], []);
@@ -218,6 +258,7 @@ export async function fetchStudentDashboardData(user) {
   const announcements = safeData(results[4], []);
   const threads = safeData(results[5], []);
   const attendance = safeData(results[6], []);
+  const scheduleEntries = safeData(results[7], []);
 
   const student = resolveStudentFromSession(user, students);
   const studentName = student?.fullName || user?.name || 'Öğrenci';
@@ -232,7 +273,8 @@ export async function fetchStudentDashboardData(user) {
   const questionBank = safeData(questionBankResponse, []);
 
   const studentAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(studentName));
-  const todayLessons = groupLessons(attendance, { studentName }).slice(0, 4);
+  // Bugünkü program /api/schedule'dan, öğrencinin sınıfına göre.
+  const todayLessons = pickScheduleTodayForClass(scheduleEntries, className).slice(0, 4);
   const pendingAssignments = homework.filter((item) => !item.submissions?.some((submission) => normalizeText(submission.studentName) === normalizeText(studentName)));
   const contentProgress = contents.length > 0
     ? Math.round(contents.reduce((sum, item) => sum + safeNumber(item.progress), 0) / contents.length)
@@ -312,6 +354,7 @@ export async function fetchTeacherDashboardData(user) {
     api.get('/api/homework'),
     api.get('/api/contents', { params: { visibleOnly: false } }),
     api.get('/api/notifications', { params: { targetRole: 'Teacher' } }),
+    api.get('/api/schedule'),
   ]);
 
   const students = safeData(results[0], []);
@@ -320,8 +363,10 @@ export async function fetchTeacherDashboardData(user) {
   const homework = safeData(results[3], []);
   const contents = safeData(results[4], []);
   const notifications = safeData(results[5], []);
+  const scheduleEntries = safeData(results[6], []);
 
-  const todayLessons = groupLessons(attendance).slice(0, 4);
+  // Bugünkü program /api/schedule'dan; attendance sadece yoklama durumu için.
+  const todayLessons = pickScheduleTodayForTeacher(scheduleEntries, user?.name).slice(0, 4);
   const todayAttendanceGroups = new Set(
     attendance
       .filter((item) => isToday(item.lessonDate))

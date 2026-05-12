@@ -42,6 +42,48 @@ public sealed class AccountingController(IAccountingService accountingService, C
         return Ok(items.Select(MapBenefit).ToList());
     }
 
+    [HttpGet("exports/csv")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> ExportCsv(CancellationToken cancellationToken)
+    {
+        // Muhasebe ihracatı backend'de hazırlanır (mobil+desktop ortak kaynak).
+        // Tek bir CSV: tahsilatlar, taksitler, faturalar, bordrolar.
+        var data = await accountingService.GetDashboardAsync(cancellationToken);
+        var builder = new System.Text.StringBuilder();
+        builder.AppendLine("Tip,Ad/Sistem,Kategori/Sinif,Tutar,Durum/Tarih");
+
+        foreach (var c in data.Collections)
+        {
+            builder.AppendLine($"Tahsilat,{CsvEscape(c.Name)},{CsvEscape(c.ClassName)},{CsvEscape(c.Amount)},{CsvEscape(c.Time)}");
+        }
+        foreach (var i in data.Installments)
+        {
+            builder.AppendLine($"Taksit,{CsvEscape(i.Student)},{CsvEscape(i.Status)},{CsvEscape(i.Amount)},{CsvEscape(i.Due)}");
+        }
+        foreach (var inv in data.Invoices)
+        {
+            builder.AppendLine($"Fatura,{CsvEscape(inv.Title)},{CsvEscape(inv.Category)},{CsvEscape(inv.Amount)},{CsvEscape(inv.Status)}");
+        }
+        foreach (var s in data.Salaries)
+        {
+            builder.AppendLine($"Bordro,{CsvEscape(s.Employee)},{CsvEscape(s.Role)},{CsvEscape(s.Amount)},{CsvEscape(s.Status)}");
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetPreamble()
+            .Concat(System.Text.Encoding.UTF8.GetBytes(builder.ToString()))
+            .ToArray();
+        var fileName = $"muhasebe-{DateTime.UtcNow:yyyyMMddHHmm}.csv";
+        return File(bytes, "text/csv", fileName);
+    }
+
+    private static string CsvEscape(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        var needsQuote = value.Contains(',') || value.Contains('"') || value.Contains('\n') || value.Contains('\r');
+        var escaped = value.Replace("\"", "\"\"");
+        return needsQuote ? $"\"{escaped}\"" : escaped;
+    }
+
     [HttpPost("benefits")]
     [Authorize(Roles = "Accounting,Admin")]
     public async Task<IActionResult> CreateBenefit([FromBody] CreateAccountingBenefitRequest request, CancellationToken cancellationToken)

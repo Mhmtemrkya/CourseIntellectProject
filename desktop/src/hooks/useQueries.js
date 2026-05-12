@@ -1,4 +1,7 @@
-// CourseIntellect TanStack Query Hooks
+// Legacy TanStack Query hook katmanı.
+// Aktif sayfa kodları çoğunlukla lib/api/modules.js + sayfa içi fetch kullanıyor.
+// Bu hook'lar import edilirse de client.js'in direkt body döndürme davranışına
+// unwrapApiBody ile uyumlu çalışır; endpoints.js de /api route standardına hizalıdır.
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   studentsApi,
@@ -13,6 +16,8 @@ import {
   dashboardApi,
   reportsApi,
 } from '../lib/api/endpoints';
+
+const unwrapApiBody = (response) => (response && Object.prototype.hasOwnProperty.call(response, 'data') ? response.data : response);
 
 // Query Keys
 export const queryKeys = {
@@ -38,14 +43,14 @@ export const queryKeys = {
 export const useStudents = (params) => {
   return useQuery({
     queryKey: [...queryKeys.students, params],
-    queryFn: () => studentsApi.getAll(params).then(res => res.data),
+    queryFn: () => studentsApi.getAll(params).then(unwrapApiBody),
   });
 };
 
 export const useStudent = (id) => {
   return useQuery({
     queryKey: queryKeys.student(id),
-    queryFn: () => studentsApi.getById(id).then(res => res.data),
+    queryFn: () => studentsApi.getById(id).then(unwrapApiBody),
     enabled: !!id,
   });
 };
@@ -85,14 +90,14 @@ export const useDeleteStudent = () => {
 export const useParents = (params) => {
   return useQuery({
     queryKey: [...queryKeys.parents, params],
-    queryFn: () => parentsApi.getAll(params).then(res => res.data),
+    queryFn: () => parentsApi.getAll(params).then(unwrapApiBody),
   });
 };
 
 export const useParent = (id) => {
   return useQuery({
     queryKey: queryKeys.parent(id),
-    queryFn: () => parentsApi.getById(id).then(res => res.data),
+    queryFn: () => parentsApi.getById(id).then(unwrapApiBody),
     enabled: !!id,
   });
 };
@@ -111,14 +116,14 @@ export const useCreateParent = () => {
 export const useTeachers = (params) => {
   return useQuery({
     queryKey: [...queryKeys.teachers, params],
-    queryFn: () => teachersApi.getAll(params).then(res => res.data),
+    queryFn: () => teachersApi.getAll(params).then(unwrapApiBody),
   });
 };
 
 export const useTeacher = (id) => {
   return useQuery({
     queryKey: queryKeys.teacher(id),
-    queryFn: () => teachersApi.getById(id).then(res => res.data),
+    queryFn: () => teachersApi.getById(id).then(unwrapApiBody),
     enabled: !!id,
   });
 };
@@ -137,14 +142,14 @@ export const useCreateTeacher = () => {
 export const useClasses = (params) => {
   return useQuery({
     queryKey: [...queryKeys.classes, params],
-    queryFn: () => classesApi.getAll(params).then(res => res.data),
+    queryFn: () => classesApi.getAll(params).then(unwrapApiBody),
   });
 };
 
 export const useClass = (id) => {
   return useQuery({
     queryKey: queryKeys.class(id),
-    queryFn: () => classesApi.getById(id).then(res => res.data),
+    queryFn: () => classesApi.getById(id).then(unwrapApiBody),
     enabled: !!id,
   });
 };
@@ -163,7 +168,7 @@ export const useCreateClass = () => {
 export const useScheduleByClass = (classId, params) => {
   return useQuery({
     queryKey: [...queryKeys.scheduleByClass(classId), params],
-    queryFn: () => scheduleApi.getByClass(classId, params).then(res => res.data),
+    queryFn: () => scheduleApi.getByClass(classId, params).then(unwrapApiBody),
     enabled: !!classId,
   });
 };
@@ -182,7 +187,7 @@ export const useCreateSchedule = () => {
 export const useAttendanceByLesson = (lessonId) => {
   return useQuery({
     queryKey: [...queryKeys.attendance, lessonId],
-    queryFn: () => attendanceApi.getByLesson(lessonId).then(res => res.data),
+    queryFn: () => attendanceApi.getByLesson(lessonId).then(unwrapApiBody),
     enabled: !!lessonId,
   });
 };
@@ -201,7 +206,7 @@ export const useSubmitAttendance = () => {
 export const useContent = (params) => {
   return useQuery({
     queryKey: [...queryKeys.content, params],
-    queryFn: () => contentApi.getAll(params).then(res => res.data),
+    queryFn: () => contentApi.getAll(params).then(unwrapApiBody),
   });
 };
 
@@ -219,7 +224,7 @@ export const useCreateContent = () => {
 export const useQuestions = (params) => {
   return useQuery({
     queryKey: [...queryKeys.questions, params],
-    queryFn: () => questionsApi.getAll(params).then(res => res.data),
+    queryFn: () => questionsApi.getAll(params).then(unwrapApiBody),
   });
 };
 
@@ -237,7 +242,7 @@ export const useAnswerQuestion = () => {
 export const useExams = (params) => {
   return useQuery({
     queryKey: [...queryKeys.exams, params],
-    queryFn: () => examsApi.getAll(params).then(res => res.data),
+    queryFn: () => examsApi.getAll(params).then(unwrapApiBody),
   });
 };
 
@@ -255,7 +260,7 @@ export const useCreateExam = () => {
 export const useDashboardStats = () => {
   return useQuery({
     queryKey: [...queryKeys.dashboard, 'stats'],
-    queryFn: () => dashboardApi.getStats().then(res => res.data),
+    queryFn: () => dashboardApi.getStats().then(unwrapApiBody),
     staleTime: 30000, // 30 seconds
   });
 };
@@ -263,7 +268,7 @@ export const useDashboardStats = () => {
 export const useTodayLessons = () => {
   return useQuery({
     queryKey: [...queryKeys.dashboard, 'today-lessons'],
-    queryFn: () => dashboardApi.getTodayLessons().then(res => res.data),
+    queryFn: () => dashboardApi.getTodayLessons().then(unwrapApiBody),
     staleTime: 60000, // 1 minute
   });
 };
@@ -271,7 +276,7 @@ export const useTodayLessons = () => {
 export const useActivities = () => {
   return useQuery({
     queryKey: [...queryKeys.dashboard, 'activities'],
-    queryFn: () => dashboardApi.getActivities().then(res => res.data),
+    queryFn: () => dashboardApi.getActivities().then(unwrapApiBody),
   });
 };
 
@@ -279,13 +284,13 @@ export const useActivities = () => {
 export const useAttendanceReport = (params) => {
   return useQuery({
     queryKey: [...queryKeys.reports, 'attendance', params],
-    queryFn: () => reportsApi.getAttendance(params).then(res => res.data),
+    queryFn: () => reportsApi.getAttendance(params).then(unwrapApiBody),
   });
 };
 
 export const usePerformanceReport = (params) => {
   return useQuery({
     queryKey: [...queryKeys.reports, 'performance', params],
-    queryFn: () => reportsApi.getPerformance(params).then(res => res.data),
+    queryFn: () => reportsApi.getPerformance(params).then(unwrapApiBody),
   });
 };

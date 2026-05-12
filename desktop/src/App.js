@@ -127,6 +127,7 @@ import AdminAccountingRegistration from "./pages/admin/AdminAccountingRegistrati
 
 // New Student Pages
 import StudentNotifications from "./pages/student/StudentNotifications";
+import StudentAnnouncements from "./pages/student/StudentAnnouncements";
 import StudentSettings from "./pages/student/StudentSettings";
 
 // New Teacher Pages
@@ -297,7 +298,7 @@ function App() {
               <Route path="/s/profile" element={<StudentProfile />} />
               <Route path="/s/ai" element={<StudentAI />} />
               <Route path="/s/notifications" element={<StudentNotifications />} />
-              <Route path="/s/announcements" element={<StudentNotifications />} />
+              <Route path="/s/announcements" element={<StudentAnnouncements />} />
               <Route path="/s/settings" element={<StudentSettings />} />
               <Route path="/s/chat" element={<Chat />} />
 

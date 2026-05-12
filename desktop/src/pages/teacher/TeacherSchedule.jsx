@@ -6,41 +6,8 @@ import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { fetchAnnouncements, fetchStudents } from '../../lib/api/modules';
-
-function normalizeText(value = '') {
-  return String(value)
-    .trim()
-    .toLowerCase()
-    .replaceAll('ç', 'c')
-    .replaceAll('ğ', 'g')
-    .replaceAll('ı', 'i')
-    .replaceAll('ö', 'o')
-    .replaceAll('ş', 's')
-    .replaceAll('ü', 'u');
-}
-
-function parseLiveLesson(announcement) {
-  const lines = String(announcement.detail || '').split('\n');
-  const map = Object.fromEntries(lines.slice(1).map((line) => {
-    const [key, ...rest] = line.split('=');
-    return [key, rest.join('=')];
-  }));
-  const startsAt = map.datetime ? new Date(map.datetime) : null;
-  const timeLabel = startsAt
-    ? startsAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
-    : '09:00';
-  return {
-    id: announcement.id,
-    title: announcement.title,
-    time: timeLabel,
-    dateKey: startsAt ? startsAt.toISOString().slice(0, 10) : announcement.dateLabel,
-    dateLabel: startsAt ? startsAt.toLocaleDateString('tr-TR', { day: '2-digit', month: 'long', weekday: 'long' }) : announcement.dateLabel,
-    className: map.class || 'Tüm Sınıflar',
-    platform: map.link?.includes('zoom') ? 'Zoom' : 'Meet',
-    meetingLink: map.link || '',
-  };
-}
+import { fetchScheduleEntries, fetchStudents } from '../../lib/api/modules';
+import { filterScheduleForTeacher } from '../../lib/userMatching';
 
 export default function TeacherSchedule() {
   const { user } = useApp();
@@ -54,22 +21,24 @@ export default function TeacherSchedule() {
     try {
       setLoading(true);
       setError('');
-      const [announcements, students] = await Promise.all([
-        fetchAnnouncements('Ogrenci'),
+      // Tek doğruluk kaynağı: /api/schedule (PlatformConfigurations
+      // class-schedule-entry). LIVE_LESSON duyuruları artık burada değil;
+      // canlı dersler /t/live-lessons sayfasından gösterilir.
+      const [schedule, students] = await Promise.all([
+        fetchScheduleEntries().catch(() => []),
         fetchStudents().catch(() => []),
       ]);
-      const teacherName = normalizeText(user?.name || '');
-      const items = announcements
-        .filter((item) => String(item.detail || '').startsWith('LIVE_LESSON'))
-        .map(parseLiveLesson)
-        .filter((item) => {
-          const lines = String(announcements.find((a) => a.id === item.id)?.detail || '').split('\n');
-          const map = Object.fromEntries(lines.slice(1).map((line) => {
-            const [key, ...rest] = line.split('=');
-            return [key, rest.join('=')];
-          }));
-          return normalizeText(map.teacher || '') === teacherName;
-        })
+      const items = filterScheduleForTeacher(schedule, user)
+        .map((entry) => ({
+          id: entry.id,
+          title: entry.subject || 'Ders',
+          time: entry.time || '08:30',
+          dateKey: entry.day || 'Pazartesi',
+          dateLabel: entry.day || 'Pazartesi',
+          className: entry.className || 'Sınıf belirtilmedi',
+          platform: 'Yüz Yüze',
+          subject: entry.subject || '',
+        }))
         .sort((a, b) => `${a.dateKey}T${a.time}`.localeCompare(`${b.dateKey}T${b.time}`));
       const counts = students.reduce((acc, student) => {
         if (student.className) {
@@ -85,7 +54,7 @@ export default function TeacherSchedule() {
     } finally {
       setLoading(false);
     }
-  }, [user?.name]);
+  }, [user]);
 
   useEffect(() => {
     loadSchedule();

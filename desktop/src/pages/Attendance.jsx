@@ -22,7 +22,7 @@ import {
 import { useToast } from '../hooks/use-toast';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
-import { fetchAttendance, fetchStudents, saveAttendance } from '../lib/api/modules';
+import { fetchAttendance, fetchScheduleEntries, fetchStudents, saveAttendance } from '../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -51,6 +51,7 @@ export default function Attendance() {
   const [selectedLesson, setSelectedLesson] = useState('');
   const [students, setStudents] = useState([]);
   const [attendanceEntries, setAttendanceEntries] = useState([]);
+  const [scheduleEntries, setScheduleEntries] = useState([]);
   const [attendance, setAttendance] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -60,15 +61,18 @@ export default function Attendance() {
     try {
       setLoading(true);
       setError('');
-      const [studentList, attendanceList] = await Promise.all([
+      const [studentList, attendanceList, scheduleList] = await Promise.all([
         fetchStudents(),
         fetchAttendance().catch(() => []),
+        fetchScheduleEntries().catch(() => []),
       ]);
       setStudents(studentList);
       setAttendanceEntries(attendanceList);
+      setScheduleEntries(Array.isArray(scheduleList) ? scheduleList : []);
       const firstClass = [...new Set([
         ...studentList.map((item) => item.className).filter(Boolean),
         ...attendanceList.map((item) => item.className).filter(Boolean),
+        ...(Array.isArray(scheduleList) ? scheduleList : []).map((item) => item.className).filter(Boolean),
         ...FALLBACK_CLASSES,
       ])][0] || '';
       setSelectedClass((prev) => prev || firstClass);
@@ -86,10 +90,23 @@ export default function Attendance() {
   const classes = useMemo(() => [...new Set([
     ...students.map((item) => item.className).filter(Boolean),
     ...attendanceEntries.map((item) => item.className).filter(Boolean),
+    ...scheduleEntries.map((item) => item.className).filter(Boolean),
     ...FALLBACK_CLASSES,
-  ])], [students, attendanceEntries]);
+  ])], [students, attendanceEntries, scheduleEntries]);
   const classStudents = useMemo(() => students.filter((item) => item.className === selectedClass), [students, selectedClass]);
-  const lessons = useMemo(() => [...new Set(attendanceEntries.filter((item) => item.className === selectedClass).map((item) => item.lesson).filter(Boolean))], [attendanceEntries, selectedClass]);
+  // Ders seçimi: önce /api/schedule (programlanmış dersler — ilk yoklama
+  // bile düşer), sonra geçmiş attendance kayıtlarından ek dersler.
+  const lessons = useMemo(() => {
+    const fromSchedule = scheduleEntries
+      .filter((item) => item.className === selectedClass)
+      .map((item) => item.subject)
+      .filter(Boolean);
+    const fromAttendance = attendanceEntries
+      .filter((item) => item.className === selectedClass)
+      .map((item) => item.lesson)
+      .filter(Boolean);
+    return [...new Set([...fromSchedule, ...fromAttendance])];
+  }, [attendanceEntries, scheduleEntries, selectedClass]);
 
   useEffect(() => {
     if (!selectedLesson && lessons.length > 0) {

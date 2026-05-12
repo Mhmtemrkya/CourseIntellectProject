@@ -1,58 +1,52 @@
 # Role Smoke Report
 
-- Generated: 2026-03-30T20:05:11.189Z
+- Generated: 2026-05-11T17:44:48.297Z
 - Base URL: http://127.0.0.1:3000
 - Roles tested: 6
-- Pages visited: 110
+- Pages visited: 0
 - Failed pages: 6
 - Console errors: 0
-- Request failures: 6
+- Request failures: 0
 - Page errors: 0
 
 ## admin
-- Login: ok
-- Failed pages: 1/36
-
-### /dashboard
-- Heading: Dashboard
-- Requests: FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED
+- Login: failed (page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/login
+Call log:
+[2m  - navigating to "http://127.0.0.1:3000/login", waiting until "domcontentloaded"[22m
+)
+- Failed pages: 0/0
 
 ## administrative
-- Login: ok
-- Failed pages: 1/9
-
-### /dashboard
-- Heading: Dashboard
-- Requests: FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED
+- Login: failed (page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/login
+Call log:
+[2m  - navigating to "http://127.0.0.1:3000/login", waiting until "domcontentloaded"[22m
+)
+- Failed pages: 0/0
 
 ## finance
-- Login: ok
-- Failed pages: 1/17
-
-### /finance/dashboard
-- Heading: Muhasebe
-- Requests: FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED
+- Login: failed (page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/login
+Call log:
+[2m  - navigating to "http://127.0.0.1:3000/login", waiting until "domcontentloaded"[22m
+)
+- Failed pages: 0/0
 
 ## teacher
-- Login: ok
-- Failed pages: 1/18
-
-### /t/dashboard
-- Heading: Hoş Geldiniz, Hasan Ogretmen
-- Requests: FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED
+- Login: failed (page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/login
+Call log:
+[2m  - navigating to "http://127.0.0.1:3000/login", waiting until "domcontentloaded"[22m
+)
+- Failed pages: 0/0
 
 ## student
-- Login: ok
-- Failed pages: 1/17
-
-### /s/dashboard
-- Heading: Hoş geldin, Ali
-- Requests: FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED
+- Login: failed (page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/login
+Call log:
+[2m  - navigating to "http://127.0.0.1:3000/login", waiting until "domcontentloaded"[22m
+)
+- Failed pages: 0/0
 
 ## parent
-- Login: ok
-- Failed pages: 1/13
-
-### /p/dashboard
-- Heading: Hoş Geldiniz
-- Requests: FAILED GET http://127.0.0.1:5199/api/platformconfigurations/branding net::ERR_ABORTED
+- Login: failed (page.goto: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3000/login
+Call log:
+[2m  - navigating to "http://127.0.0.1:3000/login", waiting until "domcontentloaded"[22m
+)
+- Failed pages: 0/0

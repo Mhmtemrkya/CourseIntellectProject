@@ -91,6 +91,98 @@ export async function deleteScheduleEntry(id) {
   await api.delete(`/api/schedule/${id}`);
 }
 
+// ============ Live Room Sessions ============
+// Backend canlı ders modeli. Announcement LIVE_LESSON parse'ı yerine bu
+// endpoint'ler kullanılır. Tenant scope backend tarafında uygulanır.
+export async function fetchLiveRoomSessions(params = {}) {
+  const response = await api.get('/api/liveroomsessions', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function openLiveRoomSession(payload) {
+  const response = await api.post('/api/liveroomsessions/open', payload);
+  return response;
+}
+
+export async function endLiveRoomSession(id) {
+  const response = await api.post(`/api/liveroomsessions/${id}/end`);
+  return response;
+}
+
+// ============ User Preferences ============
+// Kullanıcıya özel ayarlar (bildirim tercihleri vb.) backend'de
+// PlatformConfigurations tablosunda saklanır. localStorage yerine bu kullanılır.
+export async function fetchUserPreferences() {
+  const response = await api.get('/api/user-preferences');
+  return response?.preferences ?? {};
+}
+
+export async function saveUserPreferences(preferences) {
+  const response = await api.put('/api/user-preferences', preferences ?? {});
+  return response?.preferences ?? {};
+}
+
+// ============ Overdue Rules ============
+// Finansta otomatik hatırlatma kuralları tenant bazlı backend'de tutulur.
+export async function fetchOverdueRules() {
+  const response = await api.get('/api/overdue-rules');
+  return Array.isArray(response?.rules) ? response.rules : [];
+}
+
+export async function saveOverdueRules(rules) {
+  const response = await api.put('/api/overdue-rules', { rules: Array.isArray(rules) ? rules : [] });
+  return Array.isArray(response?.rules) ? response.rules : [];
+}
+
+// ============ Excuse Requests ============
+// Veli mazeret bildirimleri tenant scope'lu kalıcı saklanır.
+export async function fetchExcuseRequests() {
+  const response = await api.get('/api/excuse-requests');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchMyExcuseRequests() {
+  const response = await api.get('/api/excuse-requests/my');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createExcuseRequest(payload) {
+  const response = await api.post('/api/excuse-requests', payload);
+  return response;
+}
+
+export async function decideExcuseRequest(id, payload) {
+  const response = await api.put(`/api/excuse-requests/${id}/decision`, payload);
+  return response;
+}
+
+// ============ Attendance QR Sessions ============
+// Öğretmen QR yoklama oturumları. LIVE_LESSON announcement parse'ı yerine kullanılır.
+export async function fetchAttendanceQrSessions(params = {}) {
+  const response = await api.get('/api/attendance-qr-sessions', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchActiveAttendanceQrSessions(params = {}) {
+  const response = await api.get('/api/attendance-qr-sessions/active', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function openAttendanceQrSession(payload) {
+  const response = await api.post('/api/attendance-qr-sessions/open', payload);
+  return response;
+}
+
+export async function checkInAttendanceQrSession(payload) {
+  const response = await api.post('/api/attendance-qr-sessions/check-in', payload);
+  return response;
+}
+
+export async function closeAttendanceQrSession(id) {
+  const response = await api.post(`/api/attendance-qr-sessions/${id}/close`);
+  return response;
+}
+
 export async function createStudent(payload) {
   const response = await api.post('/api/students', payload);
   return response;

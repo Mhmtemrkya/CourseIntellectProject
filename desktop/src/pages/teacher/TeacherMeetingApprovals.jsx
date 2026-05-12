@@ -86,8 +86,11 @@ export default function TeacherMeetingApprovals() {
       setLoading(true);
       setError('');
       const [requestData, availabilityData] = await Promise.all([
-        fetchMeetingRequests({ teacherName: user?.name }),
-        fetchMeetingAvailability({ teacherName: user?.name }).catch(() => []),
+        // Backend GET /api/meetingrequests yalnızca 'advisor' ve 'parentName'
+        // query parametrelerini destekliyor. 'teacherName' silent-ignored idi
+        // ve tüm tenant kayıtları dönüyordu — artık advisor ile sınırlandırılır.
+        fetchMeetingRequests({ advisor: user?.name }),
+        fetchMeetingAvailability({ advisor: user?.name }).catch(() => []),
       ]);
       setRequests(Array.isArray(requestData) ? requestData : []);
       setAvailability(Array.isArray(availabilityData) ? availabilityData : []);

@@ -82,13 +82,19 @@ function AddQuestionDialog({ open, onOpenChange, classes, onCreated }) {
 
     try {
       setSaving(true);
+      // Backend QuestionBank DTO 'answer' alanını desteklemiyor; çoktan
+      // seçmeli soru için 'correctOptionIndex' (0..3) bekleniyor. Eskiden
+      // gönderilen 'answer' silent-ignored idi → doğru cevap kaybediliyordu.
+      const letterToIndex = { A: 0, B: 1, C: 2, D: 3 };
+      const correctOptionIndex = letterToIndex[String(form.answer).toUpperCase()] ?? 0;
       const created = await createQuestionBankItem({
         subject: form.subject,
         topic: form.topic,
         difficulty: form.difficulty,
         questionText: form.questionText,
+        type: 'MultipleChoice',
         options: [form.optionA, form.optionB, form.optionC, form.optionD].filter(Boolean),
-        answer: form.answer,
+        correctOptionIndex,
         classTargets: form.classTargets,
         teacher: form.teacher || 'Öğretmen',
       });

@@ -147,7 +147,7 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
         item.QuestionText = request.QuestionText.Trim();
         item.Teacher = request.Teacher.Trim();
         item.ImagePath = NormalizeOptional(request.ImagePath);
-        item.ImagePlacement = string.IsNullOrWhiteSpace(request.ImagePlacement) ? "Ust" : request.ImagePlacement.Trim();
+        item.ImagePlacement = NormalizeImagePlacement(request.ImagePlacement);
         item.OptionsSerialized = JsonSerializer.Serialize(request.Options ?? []);
         item.CorrectOptionIndex = request.CorrectOptionIndex;
         item.ClassTargetsSerialized = JsonSerializer.Serialize(
@@ -197,6 +197,22 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
     private static string? NormalizeOptional(string? value)
     {
         return string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    }
+
+    private static string NormalizeImagePlacement(string? value)
+    {
+        // Resim yerleşimi standartlaştırılır. Türkçe/İngilizce alias'lar
+        // tek bir kanonik forma indirgenir ki backend filtre/serializasyonu
+        // tutarlı kalsın.
+        if (string.IsNullOrWhiteSpace(value)) return "Top";
+        return value.Trim().ToLowerInvariant() switch
+        {
+            "top" or "ust" or "üst" => "Top",
+            "bottom" or "alt" => "Bottom",
+            "left" or "sol" => "Left",
+            "right" or "sag" or "sağ" => "Right",
+            _ => "Top",
+        };
     }
 
     private static string BuildCreatedAtLabel()

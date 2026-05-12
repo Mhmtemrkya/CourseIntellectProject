@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchAnnouncements, fetchStudents } from '../../lib/api/modules';
+import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { openExternalUrl } from '../../lib/tauri';
 
 export default function TeacherLiveRoom() {
@@ -25,11 +25,13 @@ export default function TeacherLiveRoom() {
     try {
       setLoading(true);
       setError('');
-      const [announcementItems, studentItems] = await Promise.all([
-        fetchAnnouncements().catch(() => []),
+      // Canlı ders durumu artık /api/liveroomsessions modelinden geliyor;
+      // önceden announcement LIVE_LESSON parse ediliyordu.
+      const [sessionItems, studentItems] = await Promise.all([
+        fetchLiveRoomSessions().catch(() => []),
         fetchStudents().catch(() => []),
       ]);
-      setSessions(announcementItems.filter((item) => /LIVE_LESSON/i.test(item.detail || '') || /canli/i.test(item.title || '')));
+      setSessions(Array.isArray(sessionItems) ? sessionItems : []);
       setStudents(studentItems);
     } catch (err) {
       setError(err.message || 'Canlı ders odası alınamadı.');
@@ -42,21 +44,24 @@ export default function TeacherLiveRoom() {
     loadRoom();
   }, [loadRoom]);
 
-  const sessionsWithParticipants = useMemo(() => sessions.map((item) => {
-    const detail = String(item.detail || '');
-    const classMatch = detail.match(/class=(.+)/);
-    const className = classMatch?.[1]?.trim();
-    const participantCount = !className || className === 'Tüm Sınıflar'
-      ? students.length
-      : students.filter((student) => String(student.className || '').trim() === className).length;
-    const linkMatch = detail.match(/link=(.+)/);
-    const dateMatch = detail.match(/datetime=(.+)/);
+  const sessionsWithParticipants = useMemo(() => sessions.map((session) => {
+    const className = session.className || 'Tüm Sınıflar';
+    const participantCount = Array.isArray(session.participants) && session.participants.length > 0
+      ? session.participants.length
+      : (!className || className === 'Tüm Sınıflar'
+        ? students.length
+        : students.filter((student) => String(student.className || '').trim() === className).length);
     return {
-      ...item,
-      className: className || 'Tüm Sınıflar',
+      // Mevcut UI alan adlarıyla uyumlu kalsın diye eski şemaya map ediyoruz.
+      id: session.id,
+      title: session.lessonTitle || 'Canlı Ders',
+      detail: `class=${className}`,
+      className,
       participantCount,
-      joinLink: linkMatch?.[1]?.trim() || '',
-      startsAt: dateMatch?.[1]?.trim() || '',
+      joinLink: session.meetingLink || '',
+      startsAt: session.startedAtUtc || '',
+      status: session.status || 'Active',
+      teacherName: session.teacherName || '',
     };
   }), [sessions, students]);
 

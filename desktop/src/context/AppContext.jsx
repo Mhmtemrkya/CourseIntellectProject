@@ -9,6 +9,20 @@ import {
 } from '../lib/auth';
 import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
 
+// Module-level helper: aktif abonelik kontrolü. Component içinde tanımlanırsa
+// her render'da yeni reference oluşur ve login/loginWithBrowser useCallback
+// deps'ini kirletir.
+function enforceActiveSubscription(payload) {
+  const apiUser = payload?.user;
+  if (apiUser && apiUser.subscriptionRequired === true && apiUser.isPlatformAdmin !== true) {
+    const err = new Error(
+      "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın."
+    );
+    err.code = "SUBSCRIPTION_REQUIRED";
+    throw err;
+  }
+}
+
 const AppContext = createContext({
   user: null,
   session: null,
@@ -47,18 +61,7 @@ export function AppProvider({ children }) {
     setIsAuthLoading(false);
   }, []);
 
-  const enforceActiveSubscription = (payload) => {
-    const apiUser = payload?.user;
-    if (apiUser && apiUser.subscriptionRequired === true && apiUser.isPlatformAdmin !== true) {
-      const err = new Error(
-        "Kurum aboneliğiniz aktif değil. Lütfen kurum yöneticinizle iletişime geçin ve ödemeyi tamamlayın."
-      );
-      err.code = "SUBSCRIPTION_REQUIRED";
-      throw err;
-    }
-  };
-
-  const login = async ({ username, password }) => {
+  const login = useCallback(async ({ username, password }) => {
     const payload = await loginWithBackend(username, password);
     enforceActiveSubscription(payload);
     const desktopUser = createDesktopUser(payload);
@@ -74,9 +77,9 @@ export function AppProvider({ children }) {
     setSession(nextSession);
     setUser(desktopUser);
     return desktopUser;
-  };
+  }, []);
 
-  const loginWithBrowser = async () => {
+  const loginWithBrowser = useCallback(async () => {
     const pkceResult = await startPkceLogin(desktopApiBaseUrl);
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
     enforceActiveSubscription(payload);
@@ -93,13 +96,13 @@ export function AppProvider({ children }) {
     setSession(nextSession);
     setUser(desktopUser);
     return desktopUser;
-  };
+  }, []);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     clearDesktopSession();
     setSession(null);
     setUser(null);
-  };
+  }, []);
 
   const markPasswordChanged = useCallback(() => {
     setUser((prev) => {
@@ -162,6 +165,9 @@ export function AppProvider({ children }) {
     commandPaletteOpen,
     setUserRole,
     markPasswordChanged,
+    login,
+    loginWithBrowser,
+    logout,
   ]);
 
   return (

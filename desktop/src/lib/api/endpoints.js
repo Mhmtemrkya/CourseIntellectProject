@@ -1,140 +1,141 @@
-// CourseIntellect API Endpoints
+// Legacy TanStack Query API facade.
+// Aktif sayfa kodları çoğunlukla lib/api/modules.js kullanıyor; bu dosya import
+// edilirse de backend'in gerçek /api route standardına ve client.js'in direkt
+// body döndürme davranışına uyumlu kalmalıdır.
 import { api } from './client';
+
+const withParams = (params) => ({ params });
 
 // Auth Endpoints
 export const authApi = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  logout: () => api.post('/auth/logout'),
-  refresh: (refreshToken) => api.post('/auth/refresh', { refreshToken }),
-  me: () => api.get('/auth/me'),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (data) => api.post('/auth/reset-password', data),
+  login: (credentials) => api.post('/api/auth/login', credentials),
+  logout: () => api.post('/api/auth/logout'),
+  refresh: (refreshToken) => api.post('/api/auth/refresh', { refreshToken }),
+  me: () => api.get('/api/auth/me'),
+  forgotPassword: (email) => api.post('/api/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/api/auth/reset-password', data),
 };
 
 // Students Endpoints
 export const studentsApi = {
-  getAll: (params) => api.get('/students', { params }),
-  getById: (id) => api.get(`/students/${id}`),
-  create: (data) => api.post('/students', data),
-  update: (id, data) => api.put(`/students/${id}`, data),
-  delete: (id) => api.delete(`/students/${id}`),
-  getAttendance: (id, params) => api.get(`/students/${id}/attendance`, { params }),
-  getExams: (id) => api.get(`/students/${id}/exams`),
+  getAll: (params) => api.get('/api/students', withParams(params)),
+  getById: (id) => api.get(`/api/students/${id}`),
+  create: (data) => api.post('/api/students', data),
+  update: (id, data) => api.put(`/api/students/${id}`, data),
+  delete: (id) => api.delete(`/api/students/${id}`),
+  getAttendance: (id, params) => api.get('/api/attendance', withParams({ ...(params || {}), studentId: id })),
+  getExams: (id) => api.get('/api/examresults', withParams({ studentId: id })),
 };
 
 // Parents Endpoints
 export const parentsApi = {
-  getAll: (params) => api.get('/parents', { params }),
-  getById: (id) => api.get(`/parents/${id}`),
-  create: (data) => api.post('/parents', data),
-  update: (id, data) => api.put(`/parents/${id}`, data),
-  delete: (id) => api.delete(`/parents/${id}`),
-  linkStudent: (parentId, studentId) => api.post(`/parents/${parentId}/students/${studentId}`),
+  getAll: (params) => api.get('/api/parents', withParams(params)),
+  getById: (id) => api.get(`/api/parents/${id}`),
+  create: (data) => api.post('/api/parents', data),
+  update: (id, data) => api.put(`/api/parents/${id}`, data),
+  delete: (id) => api.delete(`/api/parents/${id}`),
+  linkStudent: (parentId, studentId) => api.post(`/api/parents/${parentId}/students/${studentId}`),
 };
 
-// Teachers Endpoints
+// Backend'de ayrı /teachers route'u yok; öğretmen dizini staff üzerinden gelir.
 export const teachersApi = {
-  getAll: (params) => api.get('/teachers', { params }),
-  getById: (id) => api.get(`/teachers/${id}`),
-  create: (data) => api.post('/teachers', data),
-  update: (id, data) => api.put(`/teachers/${id}`, data),
-  delete: (id) => api.delete(`/teachers/${id}`),
-  getSchedule: (id) => api.get(`/teachers/${id}/schedule`),
-  getPendingQuestions: (id) => api.get(`/teachers/${id}/questions/pending`),
+  getAll: (params) => api.get('/api/staff', withParams({ ...(params || {}), role: 'Teacher' })),
+  getById: (id) => api.get(`/api/staff/${id}`),
+  create: (data) => api.post('/api/staff', { ...data, role: data?.role || 'Teacher' }),
+  update: (id, data) => api.put(`/api/staff/${id}`, data),
+  delete: (id) => api.delete(`/api/staff/${id}`),
+  getSchedule: (id) => api.get('/api/schedule', withParams({ teacherId: id })),
+  getPendingQuestions: (id) => api.get('/api/questionthreads', withParams({ teacherId: id, status: 'pending' })),
 };
 
 // Classes Endpoints
 export const classesApi = {
-  getAll: (params) => api.get('/classes', { params }),
-  getById: (id) => api.get(`/classes/${id}`),
-  create: (data) => api.post('/classes', data),
-  update: (id, data) => api.put(`/classes/${id}`, data),
-  delete: (id) => api.delete(`/classes/${id}`),
-  getStudents: (id) => api.get(`/classes/${id}/students`),
-  getSchedule: (id) => api.get(`/classes/${id}/schedule`),
+  getAll: (params) => api.get('/api/classes', withParams(params)),
+  getById: (id) => api.get(`/api/classes/${id}`),
+  create: (data) => api.post('/api/classes', data),
+  update: (id, data) => api.put(`/api/classes/${id}`, data),
+  delete: (id) => api.delete(`/api/classes/${id}`),
+  getStudents: (id) => api.get('/api/students', withParams({ classId: id })),
+  getSchedule: (id) => api.get('/api/schedule', withParams({ classId: id })),
 };
 
-// Schedule Endpoints
+// Schedule Endpoints — tek kaynak /api/schedule.
 export const scheduleApi = {
-  getByClass: (classId, params) => api.get(`/schedule/class/${classId}`, { params }),
-  getByTeacher: (teacherId, params) => api.get(`/schedule/teacher/${teacherId}`, { params }),
-  create: (data) => api.post('/schedule', data),
-  update: (id, data) => api.put(`/schedule/${id}`, data),
-  delete: (id) => api.delete(`/schedule/${id}`),
+  getByClass: (classId, params) => api.get('/api/schedule', withParams({ ...(params || {}), classId })),
+  getByTeacher: (teacherId, params) => api.get('/api/schedule', withParams({ ...(params || {}), teacherId })),
+  create: (data) => api.post('/api/schedule', data),
+  update: (id, data) => api.put(`/api/schedule/${id}`, data),
+  delete: (id) => api.delete(`/api/schedule/${id}`),
 };
 
 // Attendance Endpoints
 export const attendanceApi = {
-  getByLesson: (lessonId) => api.get(`/attendance/lesson/${lessonId}`),
-  submit: (lessonId, data) => api.post(`/attendance/lesson/${lessonId}`, data),
-  update: (id, status) => api.patch(`/attendance/${id}`, { status }),
-  getReport: (params) => api.get('/attendance/report', { params }),
+  getByLesson: (lessonId) => api.get('/api/attendance', withParams({ lessonId })),
+  submit: (lessonId, data) => api.post('/api/attendance', { ...data, lessonId }),
+  update: (id, status) => api.patch(`/api/attendance/${id}`, { status }),
+  getReport: (params) => api.get('/api/attendance', withParams(params)),
 };
 
 // Content Endpoints
 export const contentApi = {
-  getAll: (params) => api.get('/content', { params }),
-  getById: (id) => api.get(`/content/${id}`),
-  create: (data) => api.post('/content', data),
-  update: (id, data) => api.put(`/content/${id}`, data),
-  delete: (id) => api.delete(`/content/${id}`),
-  getUploadUrl: (filename, contentType) => 
-    api.post('/content/upload-url', { filename, contentType }),
-  completeUpload: (id, data) => api.post(`/content/${id}/complete`, data),
+  getAll: (params) => api.get('/api/contents', withParams(params)),
+  getById: (id) => api.get(`/api/contents/${id}`),
+  create: (data) => api.post('/api/contents', data),
+  update: (id, data) => api.put(`/api/contents/${id}`, data),
+  delete: (id) => api.delete(`/api/contents/${id}`),
+  getUploadUrl: (filename, contentType) => api.post('/api/uploads/presign', { filename, contentType }),
+  completeUpload: (id, data) => api.post(`/api/contents/${id}/complete`, data),
 };
 
-// Questions Endpoints
+// Questions / threads Endpoints
 export const questionsApi = {
-  getAll: (params) => api.get('/questions', { params }),
-  getById: (id) => api.get(`/questions/${id}`),
-  create: (data) => api.post('/questions', data),
-  answer: (id, answer) => api.post(`/questions/${id}/answer`, { answer }),
-  delete: (id) => api.delete(`/questions/${id}`),
+  getAll: (params) => api.get('/api/questionthreads', withParams(params)),
+  getById: (id) => api.get(`/api/questionthreads/${id}`),
+  create: (data) => api.post('/api/questionthreads', data),
+  answer: (id, answer) => api.post(`/api/questionthreads/${id}/replies`, { answer }),
+  delete: (id) => api.delete(`/api/questionthreads/${id}`),
 };
 
-// Exams Endpoints
+// Exams Endpoints — sınav akışları planned/exam sessions/results olarak ayrık.
 export const examsApi = {
-  getAll: (params) => api.get('/exams', { params }),
-  getById: (id) => api.get(`/exams/${id}`),
-  create: (data) => api.post('/exams', data),
-  update: (id, data) => api.put(`/exams/${id}`, data),
-  delete: (id) => api.delete(`/exams/${id}`),
-  start: (id) => api.post(`/exams/${id}/start`),
-  getResults: (id) => api.get(`/exams/${id}/results`),
+  getAll: (params) => api.get('/api/plannedexams', withParams(params)),
+  getById: (id) => api.get(`/api/plannedexams/${id}`),
+  create: (data) => api.post('/api/plannedexams', data),
+  update: (id, data) => api.put(`/api/plannedexams/${id}`, data),
+  delete: (id) => api.delete(`/api/plannedexams/${id}`),
+  start: (id) => api.post('/api/examsessions', { plannedExamId: id }),
+  getResults: (id) => api.get('/api/examresults', withParams({ plannedExamId: id })),
 };
 
 // Question Bank Endpoints
 export const questionBankApi = {
-  getAll: (params) => api.get('/question-bank', { params }),
-  getById: (id) => api.get(`/question-bank/${id}`),
-  create: (data) => api.post('/question-bank', data),
-  update: (id, data) => api.put(`/question-bank/${id}`, data),
-  delete: (id) => api.delete(`/question-bank/${id}`),
+  getAll: (params) => api.get('/api/questionbank', withParams(params)),
+  getById: (id) => api.get(`/api/questionbank/${id}`),
+  create: (data) => api.post('/api/questionbank', data),
+  update: (id, data) => api.put(`/api/questionbank/${id}`, data),
+  delete: (id) => api.delete(`/api/questionbank/${id}`),
 };
 
 // Reports Endpoints
 export const reportsApi = {
-  getAttendance: (params) => api.get('/reports/attendance', { params }),
-  getPerformance: (params) => api.get('/reports/performance', { params }),
-  getStudents: (params) => api.get('/reports/students', { params }),
-  getTeachers: (params) => api.get('/reports/teachers', { params }),
-  export: (type, params) => api.get(`/reports/${type}/export`, { 
-    params,
-    responseType: 'blob',
-  }),
+  getAttendance: (params) => api.get('/api/reports/attendance', withParams(params)),
+  getPerformance: (params) => api.get('/api/reports/performance', withParams(params)),
+  getStudents: (params) => api.get('/api/reports/students', withParams(params)),
+  getTeachers: (params) => api.get('/api/reports/teachers', withParams(params)),
+  export: (type, params) => api.get(`/api/reports/${type}/export`, withParams(params)),
 };
 
 // Dashboard Endpoints
 export const dashboardApi = {
-  getStats: () => api.get('/dashboard/stats'),
-  getTodayLessons: () => api.get('/dashboard/today-lessons'),
-  getActivities: () => api.get('/dashboard/activities'),
-  getPendingQuestions: () => api.get('/dashboard/pending-questions'),
+  getStats: () => api.get('/api/dashboard/stats'),
+  getTodayLessons: () => api.get('/api/schedule'),
+  getActivities: () => api.get('/api/dashboard/activities'),
+  getPendingQuestions: () => api.get('/api/questionthreads', withParams({ status: 'pending' })),
 };
 
 // Settings/Config Endpoints
 export const settingsApi = {
-  get: () => api.get('/settings'),
-  update: (data) => api.put('/settings', data),
-  testConnection: (url) => api.post('/settings/test-connection', { url }),
+  get: () => api.get('/api/appsettings'),
+  update: (data) => api.put('/api/appsettings', data),
+  testConnection: (url) => api.post('/api/system/test-connection', { url }),
 };

@@ -19,6 +19,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
   bool _loading = true;
   String? _error;
   String _studentName = '';
+  String _studentClassName = '';
 
   final List<String> tabs = ["Aktif Ödevler", "Teslim Edilenler"];
 
@@ -32,11 +33,18 @@ class _HomeworkPageState extends State<HomeworkPage> {
     final session = await AuthSessionStore.instance.load();
     final resolvedStudentName =
         await SchoolFeedApiService.resolveLinkedStudentName(session);
+    final resolvedClassName =
+        await SchoolFeedApiService.resolveLinkedStudentClassName(session);
     if (mounted) {
-      setState(() => _studentName = resolvedStudentName);
+      setState(() {
+        _studentName = resolvedStudentName;
+        _studentClassName = resolvedClassName.trim();
+      });
     }
     await _loadAssignments();
   }
+
+  String _normalize(String value) => value.trim().toLowerCase();
 
   Future<void> _loadAssignments() async {
     setState(() {
@@ -46,8 +54,22 @@ class _HomeworkPageState extends State<HomeworkPage> {
     try {
       final items = await HomeworkApiService.instance.fetchAssignments();
       if (!mounted) return;
+      // Öğrencinin sınıfı çözümlenebilmişse yalnızca o sınıfa atanmış veya
+      // "Tüm Sınıflar" hedefli ödevleri göster. Çözümlenememişse hepsi gelir.
+      final filtered = _studentClassName.isEmpty
+          ? items
+          : items.where((entry) {
+              final c = (entry['className'] as String? ?? '').trim();
+              if (c.isEmpty) return true;
+              final ck = _normalize(c);
+              return ck == _normalize(_studentClassName) ||
+                  ck == 'tüm sınıflar' ||
+                  ck == 'tum siniflar' ||
+                  ck == 'tüm kurum' ||
+                  ck == 'tum kurum';
+            }).toList();
       setState(() {
-        _assignments = items;
+        _assignments = filtered;
       });
     } catch (error) {
       if (!mounted) return;

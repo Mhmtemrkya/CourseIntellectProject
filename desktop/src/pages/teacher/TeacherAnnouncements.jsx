@@ -81,7 +81,9 @@ export default function TeacherAnnouncements() {
       setLoading(true);
       setError('');
       const [teacherItems, parentItems, studentItems, classItems, studentList] = await Promise.all([
-        fetchAnnouncements('Teacher').catch(() => []),
+        // Backend audience normalize standardı: Ogrenci / Veli / Ogretmen / Tum Kurum.
+        // 'Teacher' alias backend tarafında eşlenmediği için 'Ogretmen' kullanılıyor.
+        fetchAnnouncements('Ogretmen').catch(() => []),
         fetchAnnouncements({
           audience: 'Veli',
           includeAll: true,

@@ -22,7 +22,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { fetchAttendance, fetchStudents, uploadFile } from '../../lib/api/modules';
+import { createExcuseRequest, fetchAttendance, fetchMyExcuseRequests, fetchStudents, uploadFile } from '../../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -60,9 +60,10 @@ export default function ParentExcuseRequest() {
     try {
       setLoading(true);
       setError('');
-      const [attendanceData, studentData] = await Promise.all([
+      const [attendanceData, studentData, myExcuses] = await Promise.all([
         fetchAttendance().catch(() => []),
         fetchStudents().catch(() => []),
+        fetchMyExcuseRequests().catch(() => []),
       ]);
       const att = Array.isArray(attendanceData) ? attendanceData : [];
       const absenceList = att.filter((a) => a.status === 'Absent' || a.status === 'Devamsiz');
@@ -74,18 +75,15 @@ export default function ParentExcuseRequest() {
         setForm((prev) => ({ ...prev, childName: kids[0]?.fullName || '' }));
       }
 
-      // Build excuse history from absences that have excuses
-      const excuseHistory = absenceList
-        .filter((a) => a.excuseReason || a.excuseStatus)
-        .map((a) => ({
-          id: a.id,
-          childName: a.studentName || a.fullName,
-          date: a.date,
-          reason: a.excuseReason || '',
-          status: a.excuseStatus || 'Beklemede',
-          attachmentName: a.excuseAttachmentName || '',
-        }));
-      setExcuses(excuseHistory);
+      const remoteExcuses = Array.isArray(myExcuses) ? myExcuses.map((item) => ({
+        id: item.id,
+        childName: item.childName,
+        date: item.date,
+        reason: item.reason,
+        status: item.status || 'Beklemede',
+        attachmentName: item.attachmentName || '',
+      })) : [];
+      setExcuses(remoteExcuses);
     } catch (err) {
       setError(err.message || 'Veriler yuklenemedi.');
     } finally {
@@ -102,16 +100,24 @@ export default function ParentExcuseRequest() {
     }
     try {
       setSaving(true);
-      // In a real implementation: await submitExcuseRequest(form)
-      const newExcuse = {
-        id: Date.now(),
+      const created = await createExcuseRequest({
         childName: form.childName,
         date: form.date,
+        type: form.type,
         reason: form.reason,
-        status: 'Beklemede',
+        notes: form.notes,
         attachmentName: form.attachmentName,
-      };
-      setExcuses((prev) => [newExcuse, ...prev]);
+        attachmentUrl: form.attachmentUrl,
+        attachmentType: form.attachmentType,
+      });
+      setExcuses((prev) => [{
+        id: created?.id || Date.now(),
+        childName: created?.childName || form.childName,
+        date: created?.date || form.date,
+        reason: created?.reason || form.reason,
+        status: created?.status || 'Beklemede',
+        attachmentName: created?.attachmentName || form.attachmentName,
+      }, ...prev]);
       toast({ title: 'Mazeret bildirimi gonderildi.' });
       setOpen(false);
       setForm({
@@ -125,7 +131,7 @@ export default function ParentExcuseRequest() {
         attachmentType: '',
       });
     } catch (err) {
-      toast({ title: err.message || 'Gonderilemedi.', variant: 'destructive' });
+      toast({ title: err?.response?.data?.message || err?.message || 'Gonderilemedi.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }

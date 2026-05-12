@@ -16,7 +16,9 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
     {
         var role = User.FindFirstValue("role") ?? "Student";
         var fullName = User.FindFirstValue("name") ?? string.Empty;
-        var username = string.Empty;
+        var username = User.FindFirstValue("unique_name")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? string.Empty;
         var items = await questionThreadService.GetThreadsAsync(role, fullName, username, cancellationToken);
         return Ok(items);
     }
@@ -26,7 +28,9 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
     public async Task<IActionResult> Create([FromBody] CreateQuestionThreadRequest request, CancellationToken cancellationToken)
     {
         var fullName = User.FindFirstValue("name") ?? string.Empty;
-        var username = string.Empty;
+        var username = User.FindFirstValue("unique_name")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? string.Empty;
         var item = await questionThreadService.CreateThreadAsync(fullName, username, request, cancellationToken);
         return Ok(item);
     }

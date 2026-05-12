@@ -1,35 +1,50 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { QrCode, Lock, Unlock, RotateCw } from 'lucide-react';
+import { Lock, Unlock, RotateCw } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import logo from '../assets/brand/logo.png';
+import { useApp } from '../context/AppContext';
+import { openAttendanceQrSession } from '../lib/api/modules';
 
 export default function KioskQR() {
   const navigate = useNavigate();
+  const { user } = useApp();
   const [isLocked, setIsLocked] = useState(false);
-  const [qrCode, setQrCode] = useState('');
-  const [countdown, setCountdown] = useState(60);
+  const [session, setSession] = useState(null);
+  const [countdown, setCountdown] = useState(900);
+  const [error, setError] = useState('');
 
-  const generateQR = () => {
-    // Generate a random session ID
-    const sessionId = Math.random().toString(36).substring(2, 15);
-    setQrCode(`courseintellect://attendance/${sessionId}`);
-    setCountdown(60);
-  };
+  const generateQR = useCallback(async () => {
+    try {
+      setError('');
+      const opened = await openAttendanceQrSession({
+        className: user?.className || 'Tum Kurum',
+        lessonTitle: 'QR Yoklama',
+        durationMinutes: 15,
+      });
+      setSession(opened || null);
+      const expiresAt = opened?.expiresAtUtc ? new Date(opened.expiresAtUtc).getTime() : Date.now() + 900_000;
+      setCountdown(Math.max(1, Math.round((expiresAt - Date.now()) / 1000)));
+    } catch (err) {
+      setError(err?.response?.data?.message || err?.message || 'QR oturumu açılamadı.');
+    }
+  }, [user?.className]);
 
   useEffect(() => {
     generateQR();
-  }, []);
+  }, [generateQR]);
 
   useEffect(() => {
     if (countdown > 0) {
       const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
       return () => clearTimeout(timer);
-    } else {
-      generateQR();
     }
-  }, [countdown]);
+    generateQR();
+    return undefined;
+  }, [countdown, generateQR]);
+
+  const qrPayload = session?.token ? `courseintellect://attendance/${session.token}` : '';
 
   const toggleLock = () => {
     setIsLocked(!isLocked);
@@ -108,22 +123,23 @@ export default function KioskQR() {
 
         {/* QR Container */}
         <div className="relative bg-white p-8 rounded-3xl shadow-2xl">
-          {/* Fake QR Code Display */}
           <div className="w-64 h-64 bg-white flex items-center justify-center">
-            <div className="grid grid-cols-8 gap-1">
-              {Array.from({ length: 64 }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className={`w-6 h-6 ${Math.random() > 0.5 ? 'bg-brand-primary' : 'bg-white'} rounded-sm`}
-                />
-              ))}
-            </div>
+            {qrPayload ? (
+              <img
+                alt="QR Yoklama"
+                className="w-64 h-64"
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrPayload)}`}
+              />
+            ) : (
+              <div className="text-xs text-muted-foreground text-center">QR oturumu hazırlanıyor...</div>
+            )}
           </div>
-          
+
           {/* Timer */}
           <div className="mt-4 text-center">
-            <p className="text-sm text-muted-foreground">Yeni kod:</p>
-            <p className="text-2xl font-bold text-brand-primary">{countdown}s</p>
+            <p className="text-sm text-muted-foreground">Süre:</p>
+            <p className="text-2xl font-bold text-brand-primary">{Math.floor(countdown / 60)}:{String(countdown % 60).padStart(2, '0')}</p>
+            {error ? <p className="text-xs text-red-500 mt-1">{error}</p> : null}
           </div>
         </div>
       </motion.div>

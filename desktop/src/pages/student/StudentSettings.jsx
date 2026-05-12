@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Settings, Lock, Bell, Palette, User, Eye, EyeOff, Save, Shield,
+  Settings, Lock, Bell, User, Eye, EyeOff, Save, Shield,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -11,7 +11,7 @@ import { Switch } from '../../components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { changePassword } from '../../lib/api/modules';
+import { changePassword, fetchUserPreferences, saveUserPreferences } from '../../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -80,16 +80,34 @@ export default function StudentSettings() {
     }
   };
 
-  const handleSavePrefs = () => {
-    localStorage.setItem('ci-student-prefs', JSON.stringify(prefs));
-    toast({ title: 'Tercihleriniz kaydedildi.' });
+  const handleSavePrefs = async () => {
+    try {
+      setSaving(true);
+      const next = await saveUserPreferences(prefs);
+      if (next && typeof next === 'object') {
+        setPrefs((current) => ({ ...current, ...next }));
+      }
+      toast({ title: 'Tercihleriniz kaydedildi.' });
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.message || 'Tercihler kaydedilemedi.';
+      toast({ title: message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   useEffect(() => {
-    const saved = localStorage.getItem('ci-student-prefs');
-    if (saved) {
-      try { setPrefs(JSON.parse(saved)); } catch { /* ignore */ }
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await fetchUserPreferences();
+        if (cancelled || !remote || typeof remote !== 'object') return;
+        setPrefs((current) => ({ ...current, ...remote }));
+      } catch {
+        /* sessiz: ilk girişte boş olabilir */
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   return (

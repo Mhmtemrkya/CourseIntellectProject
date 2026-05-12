@@ -319,6 +319,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(80)
                         .HasColumnType("character varying(80)");
 
+                    b.Property<string>("ClassName")
+                        .HasColumnType("text");
+
                     b.Property<string>("DateLabel")
                         .IsRequired()
                         .HasMaxLength(40)
@@ -326,6 +329,9 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Detail")
                         .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("TeacherName")
                         .HasColumnType("text");
 
                     b.Property<Guid?>("TenantId")

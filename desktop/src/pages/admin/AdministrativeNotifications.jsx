@@ -58,8 +58,8 @@ export default function AdministrativeNotifications() {
         {[
           [notifications.length, 'Toplam Bildirim'],
           [notifications.filter((item) => !item.isRead).length, 'Yeni'],
-          [notifications.filter((item) => /finans|odeme|fatura/i.test(`${item.title} ${item.detail}`)).length, 'Finans'],
-          [notifications.filter((item) => /mesaj|gorusme|talep/i.test(`${item.title} ${item.detail}`)).length, 'Etkileşim'],
+          [notifications.filter((item) => /finans|odeme|fatura/i.test(`${item.title} ${item.message || item.detail || ''}`)).length, 'Finans'],
+          [notifications.filter((item) => /mesaj|gorusme|talep/i.test(`${item.title} ${item.message || item.detail || ''}`)).length, 'Etkileşim'],
         ].map(([value, label]) => (
           <Card key={label}>
             <CardContent className="p-5">
@@ -94,7 +94,7 @@ export default function AdministrativeNotifications() {
             <CardHeader><CardTitle className="text-lg flex items-center gap-2"><BellRing className="h-5 w-5 text-brand-primary" />{item.title}</CardTitle></CardHeader>
             <CardContent className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">{item.detail || 'Detay yok'}</p>
+                <p className="text-sm text-muted-foreground">{item.message || item.detail || 'Detay yok'}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Badge variant="outline">{item.isRead ? 'Okundu' : 'Yeni'}</Badge>
@@ -115,7 +115,7 @@ export default function AdministrativeNotifications() {
           {selectedNotification ? (
             <div className="space-y-4">
               <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
-                {selectedNotification.detail || 'Bu bildirim için ek açıklama bulunmuyor.'}
+                {selectedNotification.message || selectedNotification.detail || 'Bu bildirim için ek açıklama bulunmuyor.'}
               </div>
               <div className="flex items-center justify-between gap-3 rounded-xl border p-4 text-sm">
                 <span className="text-muted-foreground">Durum</span>

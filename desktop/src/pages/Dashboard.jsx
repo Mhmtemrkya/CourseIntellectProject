@@ -21,7 +21,7 @@ import { Progress } from '../components/ui/progress';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
-import { fetchPlatformConfigurations } from '../lib/api/modules';
+import { fetchScheduleEntries } from '../lib/api/modules';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
 
 const containerVariants = {
@@ -136,20 +136,14 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError('');
-      const [payload, scheduleConfigs] = await Promise.all([
+      // Tek doğruluk kaynağı: /api/schedule (class-schedule-entry kayıtları).
+      // Eski 'class-schedule' platform-config tabanlı paralel okuma kaldırıldı.
+      const [payload, scheduleEntries] = await Promise.all([
         fetchAdminDashboardData(),
-        fetchPlatformConfigurations('class-schedule').catch(() => []),
+        fetchScheduleEntries().catch(() => []),
       ]);
       const todayName = todayKeyMap[new Date().getDay()];
-      const configuredLessons = (scheduleConfigs || [])
-        .flatMap((item) => {
-          try {
-            const parsed = JSON.parse(item.payloadJson || '[]');
-            return Array.isArray(parsed) ? parsed : [];
-          } catch {
-            return [];
-          }
-        })
+      const configuredLessons = (Array.isArray(scheduleEntries) ? scheduleEntries : [])
         .filter((lesson) => lesson.day === todayName)
         .sort((a, b) => String(a.time || '').localeCompare(String(b.time || '')))
         .map((lesson) => ({

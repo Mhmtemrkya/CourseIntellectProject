@@ -12,6 +12,50 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
 {
     public const string SectionKey = "live-room-sessions";
 
+    [HttpGet]
+    public async Task<IActionResult> List(
+        [FromQuery] string? teacherName,
+        [FromQuery] string? className,
+        [FromQuery] string? status,
+        CancellationToken cancellationToken)
+    {
+        // CompatibilitySnapshotStore.LoadListAsync zaten tenant-scoped çalışır
+        // (kullanıcı claim'inden TenantId çıkarır). Bu yüzden tüm tenant
+        // session'ları döner, sonra teacher/class filtre ile rol bazlı daraltılır.
+        var sessions = await CompatibilitySnapshotStore.LoadListAsync<LiveRoomSessionSnapshot>(dbContext, SectionKey, cancellationToken);
+
+        IEnumerable<LiveRoomSessionSnapshot> query = sessions;
+
+        if (!string.IsNullOrWhiteSpace(teacherName))
+        {
+            var teacherKey = CompatibilitySnapshotStore.NormalizeText(teacherName);
+            query = query.Where(item => CompatibilitySnapshotStore.NormalizeText(item.TeacherName) == teacherKey);
+        }
+
+        if (!string.IsNullOrWhiteSpace(className))
+        {
+            var classKey = CompatibilitySnapshotStore.NormalizeText(className);
+            query = query.Where(item => CompatibilitySnapshotStore.NormalizeText(item.ClassName) == classKey);
+        }
+
+        if (!string.IsNullOrWhiteSpace(status))
+        {
+            query = query.Where(item => string.Equals(item.Status, status, StringComparison.OrdinalIgnoreCase));
+        }
+
+        var ordered = query
+            .OrderByDescending(item => item.Status == "Active")
+            .ThenByDescending(item => item.StartedAtUtc)
+            .ToList();
+
+        var mapped = new List<object>(ordered.Count);
+        foreach (var session in ordered)
+        {
+            mapped.Add(await MapSession(session, cancellationToken));
+        }
+        return Ok(mapped);
+    }
+
     [HttpPost("open")]
     public async Task<IActionResult> Open([FromBody] LiveRoomOpenRequest request, CancellationToken cancellationToken)
     {

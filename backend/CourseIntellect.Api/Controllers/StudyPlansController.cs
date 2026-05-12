@@ -24,7 +24,17 @@ public sealed class StudyPlansController(IStudyPlanService studyPlanService) : C
     [Authorize(Roles = "Student,Teacher,Admin")]
     public async Task<IActionResult> Update([FromBody] UpdateStudyPlanStateRequest request, CancellationToken cancellationToken)
     {
-        var item = await studyPlanService.UpdateAsync(request, cancellationToken);
+        // Güvenlik: studentName client-supplied olamaz. GET claim'den okurken
+        // PUT request body'den alıyordu — kullanıcı başkasının planına yazabilirdi.
+        // Token claim'inden çözüp request'i o ad ile override ediyoruz.
+        var fullName = User.FindFirstValue("name");
+        if (string.IsNullOrWhiteSpace(fullName))
+        {
+            return Unauthorized(new { message = "Oturum bilgisi alınamadı." });
+        }
+
+        var scopedRequest = request with { StudentName = fullName };
+        var item = await studyPlanService.UpdateAsync(scopedRequest, cancellationToken);
         return Ok(item);
     }
 }

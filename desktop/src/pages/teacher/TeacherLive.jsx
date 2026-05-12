@@ -19,7 +19,12 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { createAnnouncement, deleteAnnouncement, fetchAnnouncements, fetchStudents } from '../../lib/api/modules';
+import {
+  endLiveRoomSession,
+  fetchLiveRoomSessions,
+  fetchStudents,
+  openLiveRoomSession,
+} from '../../lib/api/modules';
 import { openExternalUrl } from '../../lib/tauri';
 
 const containerVariants = {
@@ -34,44 +39,31 @@ const itemVariants = {
 
 const fallbackClasses = ['Tüm Sınıflar'];
 
-function buildLiveLessonDetail({
-  teacher, date, time, duration, className, link,
-}) {
-  return [
-    'LIVE_LESSON',
-    `teacher=${teacher}`,
-    `datetime=${date}T${time}:00`,
-    `duration=${duration}`,
-    `class=${className}`,
-    `link=${link}`,
-  ].join('\n');
-}
+// Tek doğruluk kaynağı: /api/liveroomsessions. Önceki sürüm announcement
+// LIVE_LESSON parse ediyordu; participants/status/duration alanları text
+// metaverisinden çıkarılıyordu — artık backend session modelinden geliyor.
 
-function parseLiveLesson(announcement) {
-  const lines = String(announcement.detail || '').split('\n');
-  const map = Object.fromEntries(lines.slice(1).map((line) => {
-    const [key, ...rest] = line.split('=');
-    return [key, rest.join('=')];
-  }));
-  const startsAt = map.datetime ? new Date(map.datetime) : null;
-  const now = new Date();
-  const duration = Number(map.duration || 60);
-  const endAt = startsAt ? new Date(startsAt.getTime() + duration * 60000) : null;
-  let status = 'scheduled';
-  if (startsAt && endAt && now >= startsAt && now <= endAt) status = 'live';
-  if (endAt && now > endAt) status = 'completed';
-
+function mapSessionToLesson(session) {
+  const startedAt = session.startedAtUtc ? new Date(session.startedAtUtc) : null;
+  const endedAt = session.endedAtUtc ? new Date(session.endedAtUtc) : null;
+  // Status: backend "Active" / "Completed" — frontend ile uyumlu olsun diye
+  // küçük harfe map ediyoruz.
+  const rawStatus = String(session.status || '').toLowerCase();
+  const status = rawStatus === 'active' ? 'live' : rawStatus === 'completed' ? 'completed' : 'scheduled';
+  const duration = startedAt && endedAt
+    ? Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000))
+    : 60;
   return {
-    id: announcement.id,
-    title: announcement.title,
-    date: startsAt ? startsAt.toISOString().slice(0, 10) : announcement.dateLabel,
-    time: startsAt ? startsAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '09:00',
+    id: session.id,
+    title: session.lessonTitle || 'Canlı Ders',
+    date: startedAt ? startedAt.toISOString().slice(0, 10) : '',
+    time: session.timeLabel || (startedAt ? startedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : ''),
     duration,
-    class: map.class || 'Tüm Sınıflar',
-    teacher: map.teacher || 'Öğretmen',
-    link: map.link || '',
+    class: session.className || 'Tüm Sınıflar',
+    teacher: session.teacherName || 'Öğretmen',
+    link: session.meetingLink || '',
     status,
-    participants: 0,
+    participants: Array.isArray(session.participants) ? session.participants.length : 0,
   };
 }
 
@@ -104,16 +96,16 @@ export default function TeacherLive() {
     try {
       setLoading(true);
       setError('');
-      const [announcements, students] = await Promise.all([
-        fetchAnnouncements('Ogrenci'),
+      // Öğretmenin kendi canlı dersleri (backend teacherName filtre uygular).
+      const [sessions, students] = await Promise.all([
+        fetchLiveRoomSessions({ teacherName: user?.name }).catch(() => []),
         fetchStudents().catch(() => []),
       ]);
-      const liveAnnouncements = announcements
-        .filter((item) => String(item.detail || '').startsWith('LIVE_LESSON'))
-        .map(parseLiveLesson)
-        .sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime());
+      const items = (Array.isArray(sessions) ? sessions : [])
+        .map(mapSessionToLesson)
+        .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`).getTime() - new Date(`${b.date}T${b.time || '00:00'}`).getTime());
       const classes = [...new Set(students.map((item) => item.className).filter(Boolean))];
-      setLessons(liveAnnouncements);
+      setLessons(items);
       setAvailableClasses(classes);
       setForm((prev) => ({ ...prev, className: prev.className || classes[0] || 'Tüm Sınıflar' }));
     } catch (err) {
@@ -121,7 +113,7 @@ export default function TeacherLive() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user?.name]);
 
   useEffect(() => {
     loadLessons();
@@ -160,22 +152,26 @@ export default function TeacherLive() {
 
   const handleDeleteLesson = async (lesson) => {
     if (!lesson?.id) return;
-    const confirmed = window.confirm(`"${lesson.title}" canli dersi silinsin mi?`);
+    // Session modelinde "silme" yerine "bitirme" semantiği var; backend
+    // oturum kaydını tutuyor, status='Completed' yapıyor.
+    const confirmed = window.confirm(`"${lesson.title}" canli dersi bitirilsin mi?`);
     if (!confirmed) return;
 
     try {
-      await deleteAnnouncement(lesson.id);
-      setLessons((prev) => prev.filter((item) => item.id !== lesson.id));
+      await endLiveRoomSession(lesson.id);
+      setLessons((prev) => prev.map((item) => (
+        item.id === lesson.id ? { ...item, status: 'completed' } : item
+      )));
       if (settingsOpen) {
         setSettingsOpen(false);
       }
       toast({
-        title: 'Canlı ders silindi',
-        description: 'Plan ogretmen takviminden kaldirildi.',
+        title: 'Canlı ders sonlandırıldı',
+        description: 'Oturum kapatıldı.',
       });
     } catch (err) {
       toast({
-        title: 'Canlı ders silinemedi',
+        title: 'Canlı ders bitirilemedi',
         description: err.message || 'Tekrar deneyin.',
       });
     }
@@ -201,25 +197,18 @@ export default function TeacherLive() {
       return;
     }
 
-    const generatedLink = form.meetingUrl.trim() || `https://meet.courseintellect.local/${encodeURIComponent(form.title.toLowerCase().replaceAll(' ', '-'))}`;
-
     try {
-      const created = await createAnnouncement({
-        title: form.title,
-        detail: buildLiveLessonDetail({
-          teacher: user?.name || 'Öğretmen',
-          date: form.date,
-          time: form.time,
-          duration: form.duration,
-          className: form.className || 'Tüm Sınıflar',
-          link: generatedLink,
-        }),
-        audience: 'Ogrenci',
+      const created = await openLiveRoomSession({
+        lessonTitle: form.title,
+        teacherName: user?.name || 'Öğretmen',
+        className: form.className || 'Tüm Sınıflar',
+        timeLabel: `${form.date} ${form.time}`,
       });
-      setLessons((prev) => [...prev, parseLiveLesson(created)].sort((a, b) => new Date(`${a.date}T${a.time}`).getTime() - new Date(`${b.date}T${b.time}`).getTime()));
+      const mapped = mapSessionToLesson(created);
+      setLessons((prev) => [...prev, mapped].sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`).getTime() - new Date(`${b.date}T${b.time || '00:00'}`).getTime()));
       toast({
         title: 'Canlı ders oluşturuldu',
-        description: 'Plan backend duyurularına kaydedildi.',
+        description: 'Oturum açıldı, link öğrenciye otomatik dağıtılacak.',
       });
       setCreateOpen(false);
     } catch (err) {

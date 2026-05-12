@@ -300,7 +300,7 @@ export function Topbar() {
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {notification.detail}
+                    {notification.message || notification.detail}
                   </p>
                   <span className="text-xs text-muted-foreground mt-1">
                     {notification.createdAt || notification.timeLabel || "Şimdi"}

@@ -27,7 +27,7 @@ import {
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createClass, fetchAttendance, fetchContents, fetchPlatformConfigurations, fetchStaff, fetchStudents, upsertPlatformConfiguration } from '../lib/api/modules';
+import { createClass, fetchAttendance, fetchContents, fetchPlatformConfigurations, fetchScheduleEntries, fetchStaff, fetchStudents, upsertPlatformConfiguration } from '../lib/api/modules';
 import { useApp } from '../context/AppContext';
 
 const containerVariants = {
@@ -40,14 +40,22 @@ const containerVariants = {
 
 const weekDays = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
 
-function buildClassModels(students, teachers, attendance, contents) {
+function buildClassModels(students, teachers, attendance, contents, scheduleEntries = []) {
   const classNames = [...new Set(students.map((item) => item.className).filter(Boolean))];
+  const dayOrder = weekDays.reduce((acc, day, idx) => ({ ...acc, [day]: idx }), {});
 
   return classNames.map((className, index) => {
     const classStudents = students.filter((student) => student.className === className);
     const classTeachers = teachers.filter((teacher) => (teacher.assignedClasses || []).includes(className));
     const classAttendance = attendance.filter((item) => item.className === className);
-    const lessons = [...new Set(classAttendance.map((item) => item.lesson).filter(Boolean))];
+    const classSchedule = (scheduleEntries || [])
+      .filter((entry) => entry.className === className)
+      .sort((a, b) => {
+        const dayDiff = (dayOrder[a.day] ?? 99) - (dayOrder[b.day] ?? 99);
+        if (dayDiff !== 0) return dayDiff;
+        return String(a.time || '').localeCompare(String(b.time || ''));
+      });
+    const lessons = [...new Set(classSchedule.map((entry) => entry.subject).filter(Boolean))];
     const classContents = contents.filter((item) => {
       const targetClasses = item.targetClasses || [];
       return targetClasses.length === 0 || targetClasses.includes(className);
@@ -62,13 +70,15 @@ function buildClassModels(students, teachers, attendance, contents) {
       students: classStudents,
       teachers: classTeachers,
       contents: classContents,
-      scheduleItems: lessons.slice(0, 6).map((lesson, lessonIndex) => ({
-        id: `${className}-${lesson}-${lessonIndex}`,
-        day: weekDays[lessonIndex % weekDays.length],
-        time: ['08:30-09:15', '09:25-10:10', '10:20-11:05', '11:15-12:00', '13:00-13:45', '13:55-14:40'][lessonIndex % 6],
-        subject: lesson,
-        teacher: classTeachers[lessonIndex % (classTeachers.length || 1)]?.fullName || 'Öğretmen',
-        room: classTeachers[lessonIndex % (classTeachers.length || 1)]?.campus || 'Merkez Kampus',
+      // Sınıf programı doğrudan /api/schedule kayıtlarından geliyor — daha önce
+      // attendance derslerinden uyduruluyordu ve gerçek programla ilgisi yoktu.
+      scheduleItems: classSchedule.map((entry) => ({
+        id: entry.id || `${className}-${entry.day}-${entry.time}`,
+        day: entry.day || 'Pazartesi',
+        time: entry.time || '—',
+        subject: entry.subject || 'Ders',
+        teacher: entry.teacher || classTeachers[0]?.fullName || 'Öğretmen',
+        room: classTeachers.find((t) => t.fullName === entry.teacher)?.campus || classTeachers[0]?.campus || 'Merkez Kampus',
       })),
       attendanceRate: classStudents.length > 0
         ? Math.round(
@@ -103,14 +113,15 @@ export default function Classes() {
     try {
       setLoading(true);
       setError('');
-      const [students, teacherList, attendance, contents, savedConfigs] = await Promise.all([
+      const [students, teacherList, attendance, contents, savedConfigs, scheduleEntries] = await Promise.all([
         fetchStudents(),
         fetchStaff('Teacher').catch(() => []),
         fetchAttendance().catch(() => []),
         fetchContents(false).catch(() => []),
         fetchPlatformConfigurations('class-management').catch(() => []),
+        fetchScheduleEntries().catch(() => []),
       ]);
-      const derivedModels = buildClassModels(students, teacherList, attendance, contents);
+      const derivedModels = buildClassModels(students, teacherList, attendance, contents, scheduleEntries);
       const savedModels = (savedConfigs || []).flatMap((item) => {
         try {
           const parsed = JSON.parse(item.payloadJson || '{}');

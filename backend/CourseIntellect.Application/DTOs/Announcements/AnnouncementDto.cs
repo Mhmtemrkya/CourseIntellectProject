@@ -5,5 +5,7 @@ public sealed record AnnouncementDto(
     string Title,
     string Detail,
     string Audience,
-    string DateLabel
+    string DateLabel,
+    string? ClassName,
+    string? TeacherName
 );

@@ -229,14 +229,14 @@ export default function Chat() {
         next.sort((a, b) => new Date(b.lastMessageAtUtc || b.lastMessageAt).getTime() - new Date(a.lastMessageAtUtc || a.lastMessageAt).getTime());
         return next;
       });
-      if (selectedThread?.id === payload.id) {
+      if (selectedThreadId === payload.id) {
         setSelectedThread((prev) => (prev ? { ...prev, ...payload } : prev));
       }
     });
 
     const disposeMessage = messageRealtimeClient.onMessageReceived((payload) => {
       if (cancelled || !payload?.threadId) return;
-      if (selectedThread?.id === payload.threadId) {
+      if (selectedThreadId === payload.threadId) {
         setMessages((prev) => (
           prev.some((item) => item.id === payload.id) ? prev : [...prev, payload]
         ));
@@ -244,7 +244,7 @@ export default function Chat() {
     });
 
     const disposeMessageStatus = messageRealtimeClient.onMessageStatusChanged((payload) => {
-      if (cancelled || !payload?.threadId || selectedThread?.id !== payload.threadId) return;
+      if (cancelled || !payload?.threadId || selectedThreadId !== payload.threadId) return;
       setMessages((prev) => prev.map((item) => (
         item.id === payload.messageId
           ? { ...item, status: payload.status, isRead: payload.status === 'read', readAtUtc: payload.readAtUtc || item.readAtUtc }
@@ -253,15 +253,15 @@ export default function Chat() {
     });
 
     const disposePresence = messageRealtimeClient.onPresenceChanged((payload) => {
-      if (cancelled || !payload?.actorKey || !selectedThread) return;
-      if (payload.actorKey === normalize(selectedThread.contactName)) {
+      if (cancelled || !payload?.actorKey || !selectedThreadName) return;
+      if (payload.actorKey === normalize(selectedThreadName)) {
         setIsContactOnline(Boolean(payload.isOnline));
       }
     });
 
     const disposeTyping = messageRealtimeClient.onTypingChanged((payload) => {
-      if (cancelled || !payload?.threadId || selectedThread?.id !== payload.threadId) return;
-      if (payload.actorKey === normalize(selectedThread.contactName)) {
+      if (cancelled || !payload?.threadId || selectedThreadId !== payload.threadId) return;
+      if (payload.actorKey === normalize(selectedThreadName)) {
         setIsContactTyping(Boolean(payload.isTyping));
       }
     });

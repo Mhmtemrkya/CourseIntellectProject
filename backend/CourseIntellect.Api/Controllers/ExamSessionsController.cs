@@ -187,9 +187,12 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
             session.Status = "Completed";
             session.CompletedAtUtc = DateTime.UtcNow;
 
-            var total = session.Questions.Count;
-            var answered = session.Questions.Count(item => item.Answer is not null);
-            var correct = session.Questions.Count(item => item.Answer?.IsCorrect == true);
+            // Açık uçlu sorular manuel değerlendirme bekler — otomatik skora dahil edilmez,
+            // aksi halde IsCorrect=false geldiği için öğrenciyi haksız yere düşürür.
+            var autoQuestions = session.Questions.Where(item => item.Answer?.RequiresManualReview != true).ToList();
+            var total = autoQuestions.Count;
+            var answered = autoQuestions.Count(item => item.Answer is not null);
+            var correct = autoQuestions.Count(item => item.Answer?.IsCorrect == true);
             var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
 
             if (!session.RecordedExamResultId.HasValue)
@@ -525,9 +528,11 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
 
     private static object BuildCompletionResponse(ExamSessionSnapshot session)
     {
-        var total = session.Questions.Count;
-        var answered = session.Questions.Count(item => item.Answer is not null);
-        var correct = session.Questions.Count(item => item.Answer?.IsCorrect == true);
+        var autoQuestions = session.Questions.Where(item => item.Answer?.RequiresManualReview != true).ToList();
+        var pendingReview = session.Questions.Count(item => item.Answer?.RequiresManualReview == true);
+        var total = autoQuestions.Count;
+        var answered = autoQuestions.Count(item => item.Answer is not null);
+        var correct = autoQuestions.Count(item => item.Answer?.IsCorrect == true);
         var wrong = answered - correct;
         var blank = total - answered;
         var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
@@ -546,6 +551,7 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
             wrong,
             blank,
             total,
+            pendingReview,
             completedAtUtc = session.CompletedAtUtc ?? DateTime.UtcNow,
         };
     }

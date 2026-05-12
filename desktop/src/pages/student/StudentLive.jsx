@@ -10,7 +10,8 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
-import { fetchAnnouncements } from '../../lib/api/modules';
+import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
+import { resolveCurrentStudent } from '../../lib/userMatching';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -22,31 +23,28 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-function parseLiveLesson(announcement) {
-  const lines = String(announcement.detail || '').split('\n');
-  const map = Object.fromEntries(lines.slice(1).map((line) => {
-    const [key, ...rest] = line.split('=');
-    return [key, rest.join('=')];
-  }));
-  const startsAt = map.datetime ? new Date(map.datetime) : null;
-  const now = new Date();
-  const duration = Number(map.duration || 60);
-  const endAt = startsAt ? new Date(startsAt.getTime() + duration * 60000) : null;
-  let status = 'scheduled';
-  if (startsAt && endAt && now >= startsAt && now <= endAt) status = 'live';
-  if (endAt && now > endAt) status = 'completed';
+// /api/liveroomsessions tek doğruluk kaynağı. Önceki LIVE_LESSON announcement
+// parse kaldırıldı: status/duration/participants artık session modelinden gelir.
 
+function mapSessionToLesson(session) {
+  const startedAt = session.startedAtUtc ? new Date(session.startedAtUtc) : null;
+  const endedAt = session.endedAtUtc ? new Date(session.endedAtUtc) : null;
+  const rawStatus = String(session.status || '').toLowerCase();
+  const status = rawStatus === 'active' ? 'live' : rawStatus === 'completed' ? 'completed' : 'scheduled';
+  const duration = startedAt && endedAt
+    ? Math.max(1, Math.round((endedAt.getTime() - startedAt.getTime()) / 60000))
+    : 60;
   return {
-    id: announcement.id,
-    subject: announcement.title,
-    teacher: map.teacher || 'Öğretmen',
-    startTime: startsAt ? startsAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '09:00',
+    id: session.id,
+    subject: session.lessonTitle || 'Canlı Ders',
+    teacher: session.teacherName || 'Öğretmen',
+    startTime: session.timeLabel || (startedAt ? startedAt.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—'),
     duration,
-    participants: 0,
+    participants: Array.isArray(session.participants) ? session.participants.length : 0,
     status,
-    meetLink: map.link || '',
-    className: map.class || 'Tüm Sınıflar',
-    date: startsAt ? startsAt.toISOString().slice(0, 10) : announcement.dateLabel,
+    meetLink: session.meetingLink || '',
+    className: session.className || 'Tüm Sınıflar',
+    date: startedAt ? startedAt.toISOString().slice(0, 10) : '',
   };
 }
 
@@ -60,11 +58,19 @@ export default function StudentLive() {
     try {
       setLoading(true);
       setError('');
-      const announcements = await fetchAnnouncements('Ogrenci');
-      const payload = announcements
-        .filter((item) => String(item.detail || '').startsWith('LIVE_LESSON'))
-        .map(parseLiveLesson)
-        .filter((item) => !user?.className || item.className === 'Tüm Sınıflar' || item.className.includes(user.className));
+      // Öğrencinin kendi sınıfını çöz → backend className filter ile sadece
+      // ilgili oturumları çek. user.className doğrudan varsa onu kullan,
+      // yoksa students listesinden eşleştir.
+      let studentClassName = user?.className || '';
+      if (!studentClassName) {
+        const students = await fetchStudents().catch(() => []);
+        const currentStudent = resolveCurrentStudent(user, Array.isArray(students) ? students : []);
+        studentClassName = currentStudent?.className || '';
+      }
+      const sessions = await fetchLiveRoomSessions(studentClassName ? { className: studentClassName } : {}).catch(() => []);
+      const payload = (Array.isArray(sessions) ? sessions : [])
+        .map(mapSessionToLesson)
+        .filter((item) => !studentClassName || item.className === 'Tüm Sınıflar' || item.className === studentClassName);
       setLessons(payload);
     } catch (err) {
       setError(err.message || 'Canlı dersler alınamadı.');

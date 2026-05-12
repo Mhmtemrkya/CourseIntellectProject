@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Bell, Plus, Settings, Clock, Mail, MessageSquare, AlertTriangle,
-  Edit, Trash2, Save, ToggleLeft, ToggleRight,
+  Edit, Trash2, Save,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -18,6 +18,7 @@ import {
 } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
+import { fetchOverdueRules, saveOverdueRules } from '../../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -70,31 +71,41 @@ export default function OverdueRules() {
   });
 
   useEffect(() => {
-    const saved = localStorage.getItem('ci-overdue-rules');
-    if (saved) {
-      try { setRules(JSON.parse(saved)); } catch { setRules(defaultRules); }
-    } else {
-      setRules(defaultRules);
-    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const remote = await fetchOverdueRules();
+        if (cancelled) return;
+        setRules(Array.isArray(remote) && remote.length > 0 ? remote : defaultRules);
+      } catch {
+        if (!cancelled) setRules(defaultRules);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  const saveRules = (updated) => {
+  const persistRules = async (updated) => {
     setRules(updated);
-    localStorage.setItem('ci-overdue-rules', JSON.stringify(updated));
+    try {
+      await saveOverdueRules(updated);
+    } catch (err) {
+      const message = err?.response?.data?.message || err?.message || 'Kurallar kaydedilemedi.';
+      toast({ title: message, variant: 'destructive' });
+    }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.template) {
       toast({ title: 'Ad ve sablon zorunludur.', variant: 'destructive' });
       return;
     }
     if (editingRule) {
       const updated = rules.map((r) => r.id === editingRule.id ? { ...r, ...form } : r);
-      saveRules(updated);
+      await persistRules(updated);
       toast({ title: 'Kural guncellendi.' });
     } else {
       const newRule = { ...form, id: Date.now() };
-      saveRules([...rules, newRule]);
+      await persistRules([...rules, newRule]);
       toast({ title: 'Yeni kural eklendi.' });
     }
     setOpen(false);
@@ -108,14 +119,14 @@ export default function OverdueRules() {
     setOpen(true);
   };
 
-  const handleDelete = (id) => {
-    saveRules(rules.filter((r) => r.id !== id));
+  const handleDelete = async (id) => {
+    await persistRules(rules.filter((r) => r.id !== id));
     toast({ title: 'Kural silindi.' });
   };
 
-  const handleToggle = (id) => {
+  const handleToggle = async (id) => {
     const updated = rules.map((r) => r.id === id ? { ...r, enabled: !r.enabled } : r);
-    saveRules(updated);
+    await persistRules(updated);
   };
 
   const channelLabel = (ch) => {

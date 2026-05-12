@@ -97,7 +97,6 @@ export default function ParentMeetings() {
     try {
       const payload = await fetchMeetingSlots({
         advisor: form.teacherName,
-        teacherName: form.teacherName,
         onlineMeeting: form.meetingType === 'online',
       });
       const normalized = Array.isArray(payload) ? payload.map((item) => ({ ...item, slotInfo: parseSlot(item.slot) })) : [];
@@ -147,7 +146,7 @@ export default function ParentMeetings() {
         topic: form.topic,
         parentName: user?.name || 'Veli',
         studentName: form.studentName,
-        teacherName: form.teacherName,
+        advisor: form.teacherName,
         slot: form.slot,
         onlineMeeting: form.meetingType === 'online',
         note: `${form.meetingType === 'online' ? 'Online' : 'Yüz yüze'} veli görüşme talebi`,
