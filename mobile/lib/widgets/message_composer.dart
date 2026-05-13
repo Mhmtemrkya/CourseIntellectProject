@@ -3,14 +3,38 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:mime/mime.dart';
 
 import '../services/message_api_service.dart';
 
 typedef MessageComposerSend =
     Future<void> Function(
       String text,
-      List<MessageAttachmentRecord> attachments,
+      List<PendingMessageAttachment> attachments,
     );
+
+class PendingMessageAttachment {
+  final File file;
+  final String fileName;
+  final String fileType;
+
+  const PendingMessageAttachment({
+    required this.file,
+    required this.fileName,
+    required this.fileType,
+  });
+
+  MessageAttachmentRecord toLocalRecord() {
+    return MessageAttachmentRecord(
+      fileName: fileName,
+      originalFileName: fileName,
+      fileUrl: '',
+      fileType: fileType,
+      size: file.existsSync() ? file.lengthSync() : 0,
+      localFilePath: file.path,
+    );
+  }
+}
 
 class MessageComposer extends StatefulWidget {
   final MessageComposerSend onSend;
@@ -29,7 +53,7 @@ class MessageComposer extends StatefulWidget {
 class _MessageComposerState extends State<MessageComposer> {
   final TextEditingController _controller = TextEditingController();
   final ImagePicker _picker = ImagePicker();
-  final List<_PendingAttachment> _pendingAttachments = [];
+  final List<PendingMessageAttachment> _pendingAttachments = [];
   bool _sending = false;
 
   @override
@@ -145,12 +169,15 @@ class _MessageComposerState extends State<MessageComposer> {
     final image = await _picker.pickImage(source: ImageSource.gallery);
     if (image == null) return;
 
+    final file = File(image.path);
+    final mimeType =
+        image.mimeType ?? lookupMimeType(image.path) ?? 'image/jpeg';
     setState(() {
       _pendingAttachments.add(
-        _PendingAttachment(
-          file: File(image.path),
-          fileName: image.name,
-          fileType: 'image',
+        PendingMessageAttachment(
+          file: file,
+          fileName: _imageFileName(image, mimeType),
+          fileType: mimeType,
         ),
       );
     });
@@ -163,7 +190,7 @@ class _MessageComposerState extends State<MessageComposer> {
     final file = result.files.single;
     setState(() {
       _pendingAttachments.add(
-        _PendingAttachment(
+        PendingMessageAttachment(
           file: File(file.path!),
           fileName: file.name,
           fileType: _resolveFileType(file.extension),
@@ -180,16 +207,10 @@ class _MessageComposerState extends State<MessageComposer> {
 
     setState(() => _sending = true);
     try {
-      final uploaded = <MessageAttachmentRecord>[];
-      for (final item in _pendingAttachments) {
-        final record = await MessageApiService.instance.uploadAttachment(
-          file: item.file,
-          fileName: item.fileName,
-        );
-        uploaded.add(record);
-      }
-
-      await widget.onSend(trimmed, uploaded);
+      final attachments = List<PendingMessageAttachment>.of(
+        _pendingAttachments,
+      );
+      await widget.onSend(trimmed, attachments);
       _controller.clear();
       widget.onTypingChanged?.call('');
       setState(() => _pendingAttachments.clear());
@@ -202,25 +223,60 @@ class _MessageComposerState extends State<MessageComposer> {
 
   String _resolveFileType(String? extension) {
     final value = (extension ?? '').toLowerCase();
-    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].contains(value)) return 'image';
+    if (value == 'jpg' || value == 'jpeg') return 'image/jpeg';
+    if (['png', 'gif', 'webp', 'heic'].contains(value)) return 'image/$value';
     if (['mp3', 'wav', 'm4a'].contains(value)) return 'audio';
     if (['mp4', 'mov', 'webm'].contains(value)) return 'video';
     if (value == 'pdf') return 'pdf';
     return 'file';
   }
+
+  String _imageFileName(XFile image, String mimeType) {
+    final name = image.name.trim();
+    if (_hasFileExtension(name)) return name;
+
+    final pathName = image.path.split(Platform.pathSeparator).last.trim();
+    if (_hasFileExtension(pathName)) return pathName;
+
+    final extension = _extensionForMime(mimeType);
+    final fallbackName = name.isEmpty ? 'image' : name;
+    return '$fallbackName.$extension';
+  }
+
+  bool _hasFileExtension(String value) {
+    final lastSegment = value.split(Platform.pathSeparator).last;
+    final dotIndex = lastSegment.lastIndexOf('.');
+    return dotIndex > 0 && dotIndex < lastSegment.length - 1;
+  }
+
+  String _extensionForMime(String mimeType) {
+    switch (mimeType.toLowerCase()) {
+      case 'image/png':
+        return 'png';
+      case 'image/gif':
+        return 'gif';
+      case 'image/webp':
+        return 'webp';
+      case 'image/heic':
+      case 'image/heif':
+        return 'heic';
+      default:
+        return 'jpg';
+    }
+  }
 }
 
 class _AttachmentChip extends StatelessWidget {
-  final _PendingAttachment item;
+  final PendingMessageAttachment item;
   final VoidCallback onRemove;
 
   const _AttachmentChip({required this.item, required this.onRemove});
 
   String _attachmentLabel() {
+    if (_isImage) return 'Görsel eklendi';
     switch (item.fileType) {
-      case 'image':
-        return 'Görsel eklendi';
       case 'pdf':
+      case 'application/pdf':
         return 'PDF eklendi';
       case 'video':
         return 'Video eklendi';
@@ -232,10 +288,10 @@ class _AttachmentChip extends StatelessWidget {
   }
 
   String _attachmentTag() {
+    if (_isImage) return 'IMG';
     switch (item.fileType) {
-      case 'image':
-        return 'IMG';
       case 'pdf':
+      case 'application/pdf':
         return 'PDF';
       case 'video':
         return 'VID';
@@ -244,6 +300,11 @@ class _AttachmentChip extends StatelessWidget {
       default:
         return 'DOS';
     }
+  }
+
+  bool get _isImage {
+    final type = item.fileType.toLowerCase();
+    return type == 'image' || type.startsWith('image/');
   }
 
   @override
@@ -266,12 +327,13 @@ class _AttachmentChip extends StatelessWidget {
                   color: const Color(0xFFE6FFFA),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  item.fileType == 'image'
-                      ? Icons.image_rounded
-                      : Icons.insert_drive_file_rounded,
-                  color: const Color(0xFF128C7E),
-                ),
+                clipBehavior: Clip.antiAlias,
+                child: _isImage
+                    ? Image.file(item.file, fit: BoxFit.cover)
+                    : const Icon(
+                        Icons.insert_drive_file_rounded,
+                        color: Color(0xFF128C7E),
+                      ),
               ),
               const SizedBox(width: 10),
               Expanded(
@@ -327,16 +389,4 @@ class _AttachmentChip extends StatelessWidget {
       ],
     );
   }
-}
-
-class _PendingAttachment {
-  final File file;
-  final String fileName;
-  final String fileType;
-
-  const _PendingAttachment({
-    required this.file,
-    required this.fileName,
-    required this.fileType,
-  });
 }

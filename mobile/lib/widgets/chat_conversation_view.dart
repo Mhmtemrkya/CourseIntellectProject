@@ -278,9 +278,20 @@ class _ChatConversationViewState extends State<ChatConversationView> {
 
     try {
       final latest = await MessageApiService.instance.fetchMessages(threadId);
-      if (!mounted || _sameMessages(latest, _messages)) return;
+      final localPending = _messages
+          .where(
+            (item) => item.id.startsWith('temp-') || item.status == 'failed',
+          )
+          .toList();
+      final merged = [
+        ...latest,
+        ...localPending.where(
+          (item) => !latest.any((serverItem) => serverItem.id == item.id),
+        ),
+      ];
+      if (!mounted || _sameMessages(merged, _messages)) return;
       setState(() {
-        _messages = latest;
+        _messages = merged;
         _error = null;
       });
       _jumpToBottom();
@@ -337,23 +348,26 @@ class _ChatConversationViewState extends State<ChatConversationView> {
 
   Future<void> _sendMessage(
     String text,
-    List<MessageAttachmentRecord> attachments,
+    List<PendingMessageAttachment> attachments,
   ) async {
     if (_resolvedThreadId == null) return;
 
     final optimisticId = 'temp-${DateTime.now().microsecondsSinceEpoch}';
+    final localAttachments = attachments
+        .map((attachment) => attachment.toLocalRecord())
+        .toList();
     final optimistic = MessageItemRecord(
       id: optimisticId,
       threadId: _resolvedThreadId!,
       senderName: 'Ben',
-      senderRole: widget.contactRole,
+      senderRole: _session?.primaryRole ?? '',
       isFromCurrentActor: true,
       text: text,
       isRead: false,
       deliveredAt: null,
       readAt: null,
       status: 'sent',
-      attachments: attachments,
+      attachments: localAttachments,
       sentAt: DateTime.now().toUtc(),
     );
 
@@ -363,32 +377,47 @@ class _ChatConversationViewState extends State<ChatConversationView> {
     _jumpToBottom();
 
     try {
+      final uploaded = <MessageAttachmentRecord>[];
+      for (final attachment in attachments) {
+        final record = await MessageApiService.instance.uploadAttachment(
+          file: attachment.file,
+          fileName: attachment.fileName,
+          contentType: attachment.fileType,
+        );
+        uploaded.add(_preserveLocalAttachment(record, attachment));
+      }
+
       final created = await MessageApiService.instance.sendMessage(
         threadId: _resolvedThreadId!,
         text: text,
-        attachments: attachments,
+        attachments: uploaded,
       );
+      final displayAttachments = uploaded.isNotEmpty
+          ? uploaded
+          : created.attachments;
       if (!mounted) return;
       setState(() {
-        _messages = _messages.map((item) {
-          if (item.id != optimisticId) return item;
-          return MessageItemRecord(
-            id: created.id,
-            threadId: created.threadId,
-            senderName: created.senderName,
-            senderRole: created.senderRole,
-            isFromCurrentActor: true,
-            text: created.text,
-            isRead: created.isRead,
-            deliveredAt: created.deliveredAt,
-            readAt: created.readAt,
-            status: created.status == 'read' ? 'read' : 'delivered',
-            attachments: created.attachments.isEmpty
-                ? item.attachments
-                : created.attachments,
-            sentAt: created.sentAt,
-          );
-        }).toList();
+        _messages = _dedupeMessages(
+          _messages.map((item) {
+            if (item.id != optimisticId) return item;
+            return MessageItemRecord(
+              id: created.id,
+              threadId: created.threadId,
+              senderName: created.senderName,
+              senderRole: created.senderRole,
+              isFromCurrentActor: true,
+              text: created.text,
+              isRead: created.isRead,
+              deliveredAt: created.deliveredAt,
+              readAt: created.readAt,
+              status: created.status == 'read' ? 'read' : 'delivered',
+              attachments: displayAttachments.isEmpty
+                  ? item.attachments
+                  : displayAttachments,
+              sentAt: created.sentAt,
+            );
+          }).toList(),
+        );
       });
     } catch (error) {
       if (!mounted) return;
@@ -418,6 +447,39 @@ class _ChatConversationViewState extends State<ChatConversationView> {
         ),
       );
     }
+  }
+
+  List<MessageItemRecord> _dedupeMessages(List<MessageItemRecord> items) {
+    final seen = <String>{};
+    final result = <MessageItemRecord>[];
+    for (final item in items.reversed) {
+      if (seen.add(item.id)) result.add(item);
+    }
+    return result.reversed.toList();
+  }
+
+  MessageAttachmentRecord _preserveLocalAttachment(
+    MessageAttachmentRecord uploaded,
+    PendingMessageAttachment pending,
+  ) {
+    final uploadedType = uploaded.fileType.toLowerCase();
+    final pendingType = pending.fileType.toLowerCase();
+    final fileType =
+        uploadedType == 'application/octet-stream' &&
+            (pendingType == 'image' || pendingType.startsWith('image/'))
+        ? pendingType
+        : uploaded.fileType;
+
+    return MessageAttachmentRecord(
+      fileName: uploaded.fileName,
+      originalFileName: uploaded.originalFileName.isEmpty
+          ? pending.fileName
+          : uploaded.originalFileName,
+      fileUrl: uploaded.fileUrl,
+      fileType: fileType,
+      size: uploaded.size,
+      localFilePath: pending.file.path,
+    );
   }
 
   void _handleTypingChanged(String value) {
@@ -497,6 +559,15 @@ class _ChatConversationViewState extends State<ChatConversationView> {
   }
 
   Future<void> _openAttachment(MessageAttachmentRecord attachment) async {
+    final localPath = attachment.localFilePath;
+    if (localPath != null && localPath.isNotEmpty) {
+      await launchUrl(
+        Uri.file(localPath),
+        mode: LaunchMode.externalApplication,
+      );
+      return;
+    }
+
     final uri = Uri.tryParse(attachment.absoluteUrl);
     if (uri == null) return;
     await launchUrl(uri, mode: LaunchMode.externalApplication);

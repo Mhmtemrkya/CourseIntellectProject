@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:http/http.dart';
 import 'package:http/http.dart' as http;
+import 'package:mime/mime.dart';
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
@@ -58,6 +59,7 @@ class MessageAttachmentRecord {
   final String fileUrl;
   final String fileType;
   final int size;
+  final String? localFilePath;
 
   const MessageAttachmentRecord({
     required this.fileName,
@@ -65,15 +67,18 @@ class MessageAttachmentRecord {
     required this.fileUrl,
     required this.fileType,
     required this.size,
+    this.localFilePath,
   });
 
   String get absoluteUrl => ApiConfig.resolveAssetUrl(fileUrl);
 
   bool get isImage {
     final type = fileType.toLowerCase();
-    final name = '$originalFileName $fileName $fileUrl'.toLowerCase();
+    final name = '$originalFileName $fileName $fileUrl $localFilePath'
+        .toLowerCase();
     return type == 'image' ||
         type.startsWith('image/') ||
+        name.contains('image_picker_') ||
         name.endsWith('.jpg') ||
         name.endsWith('.jpeg') ||
         name.endsWith('.png') ||
@@ -107,6 +112,7 @@ class MessageAttachmentRecord {
                   'file')
               .toLowerCase(),
       size: (map['size'] as num?)?.toInt() ?? 0,
+      localFilePath: map['localFilePath'] as String?,
     );
   }
 
@@ -337,6 +343,7 @@ class MessageApiService {
   Future<MessageAttachmentRecord> uploadAttachment({
     required File file,
     required String fileName,
+    String? contentType,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
@@ -350,8 +357,20 @@ class MessageApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/uploads?folder=messages'),
     );
     request.headers['Authorization'] = 'Bearer ${session.accessToken}';
+    final normalizedContentType = contentType?.contains('/') == true
+        ? contentType
+        : null;
+    final resolvedContentType =
+        normalizedContentType ??
+        lookupMimeType(file.path) ??
+        'application/octet-stream';
     request.files.add(
-      await MultipartFile.fromPath('file', file.path, filename: fileName),
+      await MultipartFile.fromPath(
+        'file',
+        file.path,
+        filename: fileName,
+        contentType: MediaType.parse(resolvedContentType),
+      ),
     );
 
     final streamed = await request.send();

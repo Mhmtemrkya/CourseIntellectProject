@@ -211,6 +211,7 @@
 				3B06AD1E1E4923F5004D2608 /* Thin Binary */,
 				7537C2689844046D67F42DF2 /* [CP] Embed Pods Frameworks */,
 				F9241258D0823F7042C1B12E /* [CP] Copy Pods Resources */,
+				4B7A9C6D2F3E4A5B6C7D8E9F /* Strip Signing Metadata */,
 			);
 			buildRules = (
 			);
@@ -299,6 +300,21 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "export COPYFILE_DISABLE=1\nxattr -dr com.apple.provenance \"$FLUTTER_ROOT/bin/cache/artifacts/engine/ios/Flutter.xcframework\" 2>/dev/null || true\nxattr -cr \"$TARGET_BUILD_DIR/$FRAMEWORKS_FOLDER_PATH/Flutter.framework\" 2>/dev/null || true\n/bin/sh \"$FLUTTER_ROOT/packages/flutter_tools/bin/xcode_backend.sh\" embed_and_thin";
+		};
+		4B7A9C6D2F3E4A5B6C7D8E9F /* Strip Signing Metadata */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Strip Signing Metadata";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "APP_BUNDLE=\"${TARGET_BUILD_DIR}/${WRAPPER_NAME}\"\nif [ -d \"$APP_BUNDLE\" ]; then\n  find \"$APP_BUNDLE\" -xattr -exec xattr -d com.apple.FinderInfo {} \\; 2>/dev/null || true\n  find \"$APP_BUNDLE\" -xattr -exec xattr -d com.apple.ResourceFork {} \\; 2>/dev/null || true\n  find \"$APP_BUNDLE\" -xattr -exec xattr -d com.apple.provenance {} \\; 2>/dev/null || true\n  find \"$APP_BUNDLE\" -xattr -exec xattr -d com.apple.macl {} \\; 2>/dev/null || true\n  find \"$APP_BUNDLE\" -xattr -exec xattr -d \"com.apple.fileprovider.fpfs#P\" {} \\; 2>/dev/null || true\n  find \"$APP_BUNDLE\" -xattr -exec xattr -c {} \\; 2>/dev/null || true\nfi\n";
 		};
 		7537C2689844046D67F42DF2 /* [CP] Embed Pods Frameworks */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -502,6 +518,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = N9H93ZUD86;
 				ENABLE_BITCODE = NO;
@@ -685,6 +702,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = N9H93ZUD86;
 				ENABLE_BITCODE = NO;
@@ -709,6 +727,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				"CODE_SIGNING_ALLOWED[sdk=iphonesimulator*]" = NO;
 				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				DEVELOPMENT_TEAM = N9H93ZUD86;
 				ENABLE_BITCODE = NO;

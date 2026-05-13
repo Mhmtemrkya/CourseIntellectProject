@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../services/message_api_service.dart';
@@ -200,6 +202,12 @@ class _AttachmentTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (attachment.isImage) {
+      final localPath = attachment.localFilePath;
+      final localFile = localPath == null || localPath.isEmpty
+          ? null
+          : File(localPath);
+      final hasLocalImage = localFile != null && localFile.existsSync();
+
       return Padding(
         padding: const EdgeInsets.only(bottom: 8),
         child: GestureDetector(
@@ -208,31 +216,37 @@ class _AttachmentTile extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 220),
-              child: Image.network(
-                attachment.absoluteUrl,
-                fit: BoxFit.cover,
-                width: double.infinity,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF1F5F9),
-                      borderRadius: BorderRadius.circular(14),
+              child: hasLocalImage
+                  ? Image.file(
+                      localFile,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                    )
+                  : Image.network(
+                      attachment.absoluteUrl,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 120,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            ),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return _fileTile();
+                      },
                     ),
-                    child: const Center(
-                      child: SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return _fileTile();
-                },
-              ),
             ),
           ),
         ),

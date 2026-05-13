@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../pages/role_select_page.dart';
+import '../pages/login_page.dart';
 import '../services/auth_session_store.dart';
 
 Future<void> logoutToRoleSelect(BuildContext context) async {
   await AuthSessionStore.instance.clear();
   if (!context.mounted) return;
   Navigator.of(context).pushAndRemoveUntil(
-    MaterialPageRoute(builder: (_) => const RoleSelectPage()),
+    MaterialPageRoute(builder: (_) => const LoginPage()),
     (route) => false,
   );
 }

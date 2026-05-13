@@ -15,9 +15,7 @@ import 'package:student/widgets/notification_primer_sheet.dart';
 import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
-  final String role;
-
-  const LoginPage({super.key, required this.role});
+  const LoginPage({super.key});
 
   @override
   State<LoginPage> createState() => _LoginPageState();
@@ -98,19 +96,6 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _handleSuccessfulSession(AuthSession session) async {
     if (!mounted) return;
 
-    if (!_canOpenSelectedRole(session)) {
-      await AuthSessionStore.instance.clear();
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            '${widget.role} rolü için uygun bir hesapla giriş yapmalısın.',
-          ),
-        ),
-      );
-      return;
-    }
-
     final themeProvider = context.read<ThemeProvider>();
     await BrandingService.instance.applyBranding(themeProvider);
     if (!mounted) return;
@@ -119,26 +104,6 @@ class _LoginPageState extends State<LoginPage> {
     _openRolePanel(session);
     unawaited(LiveNotificationBridge.instance.startForCurrentSession());
     unawaited(RemotePushService.instance.refreshRegistration());
-  }
-
-  bool _canOpenSelectedRole(AuthSession session) {
-    final roles = <String>{session.primaryRole, ...session.extraRoles};
-    switch (widget.role) {
-      case "Öğrenci":
-        return roles.contains('Student');
-      case "Veli":
-        return roles.contains('Parent');
-      case "Öğretmen":
-        return roles.contains('Teacher');
-      case "Muhasebeci":
-        return roles.contains('Accounting');
-      case "Yönetici":
-        return roles.contains('Admin');
-      case "İdari Birimler":
-        return roles.contains('Administrative');
-      default:
-        return false;
-    }
   }
 
   void _openRolePanel(AuthSession session) {
@@ -150,7 +115,10 @@ class _LoginPageState extends State<LoginPage> {
             forceMode: true,
             onSuccess: () {
               final page = RoleRouter.panelFor(session);
-              if (page == null) return;
+              if (page == null) {
+                _showUnsupportedRole(session);
+                return;
+              }
               Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(builder: (_) => page),
@@ -162,8 +130,28 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
     final page = RoleRouter.panelFor(session);
-    if (page == null) return;
+    if (page == null) {
+      _showUnsupportedRole(session);
+      return;
+    }
     Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => page));
+  }
+
+  void _showUnsupportedRole(AuthSession session) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${RoleRouter.displayLabel(session.primaryRole)} rolü için mobil panel bulunamadı.',
+        ),
+      ),
+    );
+  }
+
+  void _quickLogin(_QuickLoginAccount account) {
+    if (isLoading) return;
+    usernameController.text = account.username;
+    passwordController.text = account.password;
+    login();
   }
 
   @override
@@ -220,19 +208,35 @@ class _LoginPageState extends State<LoginPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "${widget.role} Girişi",
+                        "Giriş Yap",
                         style: theme.textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'CourseIntellect üzerinden hesap bilgilerinle güvenli giriş yap.',
+                        'CourseIntellect hesabınla giriş yap; panelin rolüne göre otomatik açılır.',
                         style: theme.textTheme.bodyMedium?.copyWith(
                           color: theme.textTheme.bodyMedium?.color?.withValues(
                             alpha: 0.72,
                           ),
                         ),
+                      ),
+                      const SizedBox(height: 18),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _quickLoginAccounts
+                            .map(
+                              (account) => ActionChip(
+                                avatar: Icon(account.icon, size: 18),
+                                label: Text(account.label),
+                                onPressed: isLoading
+                                    ? null
+                                    : () => _quickLogin(account),
+                              ),
+                            )
+                            .toList(),
                       ),
                       const SizedBox(height: 22),
                       const Text("Kullanıcı Adı"),
@@ -340,3 +344,56 @@ class _LoginPageState extends State<LoginPage> {
     );
   }
 }
+
+class _QuickLoginAccount {
+  final String label;
+  final String username;
+  final String password;
+  final IconData icon;
+
+  const _QuickLoginAccount({
+    required this.label,
+    required this.username,
+    required this.password,
+    required this.icon,
+  });
+}
+
+const _quickLoginAccounts = <_QuickLoginAccount>[
+  _QuickLoginAccount(
+    label: 'Öğrenci',
+    username: 'ali10a241',
+    password: 'ALI2026A',
+    icon: Icons.school_outlined,
+  ),
+  _QuickLoginAccount(
+    label: 'Veli',
+    username: 'veli.ayse',
+    password: 'VLI2026A',
+    icon: Icons.family_restroom_outlined,
+  ),
+  _QuickLoginAccount(
+    label: 'Öğretmen',
+    username: 'ogrt.hasan',
+    password: 'HYN2026A',
+    icon: Icons.menu_book_outlined,
+  ),
+  _QuickLoginAccount(
+    label: 'Muhasebe',
+    username: 'muhasebe.selim',
+    password: 'MHS2026A',
+    icon: Icons.calculate_outlined,
+  ),
+  _QuickLoginAccount(
+    label: 'İdari',
+    username: 'idari.ceren',
+    password: 'CRN2026B',
+    icon: Icons.apartment_outlined,
+  ),
+  _QuickLoginAccount(
+    label: 'Yönetici',
+    username: 'kurum.admin',
+    password: 'KRM2026A',
+    icon: Icons.admin_panel_settings_outlined,
+  ),
+];

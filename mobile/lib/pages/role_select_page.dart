@@ -69,8 +69,7 @@ class RoleSelectPage extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const LoginPage(role: "Öğrenci"),
+                                builder: (_) => const LoginPage(),
                               ),
                             );
                           },
@@ -85,7 +84,7 @@ class RoleSelectPage extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const LoginPage(role: "Veli"),
+                                builder: (_) => const LoginPage(),
                               ),
                             );
                           },
@@ -100,8 +99,7 @@ class RoleSelectPage extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const LoginPage(role: "Öğretmen"),
+                                builder: (_) => const LoginPage(),
                               ),
                             );
                           },
@@ -116,8 +114,7 @@ class RoleSelectPage extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const LoginPage(role: "Muhasebeci"),
+                                builder: (_) => const LoginPage(),
                               ),
                             );
                           },
@@ -132,8 +129,7 @@ class RoleSelectPage extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const LoginPage(role: "İdari Birimler"),
+                                builder: (_) => const LoginPage(),
                               ),
                             );
                           },
@@ -148,8 +144,7 @@ class RoleSelectPage extends StatelessWidget {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) =>
-                                    const LoginPage(role: "Yönetici"),
+                                builder: (_) => const LoginPage(),
                               ),
                             );
                           },

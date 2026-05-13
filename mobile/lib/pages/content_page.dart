@@ -128,7 +128,7 @@ class _ContentPageState extends State<ContentPage>
                     children: [
                       _filters(),
                       const SizedBox(height: 16),
-                      contentGrid(filtered),
+                      Expanded(child: contentGrid(filtered)),
                     ],
                   ),
           ),
@@ -228,8 +228,7 @@ class _ContentPageState extends State<ContentPage>
   /// GRID
   Widget contentGrid(List<ContentRecord> visible) {
     return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 24),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: ResponsiveLayout.columns(
           context,
@@ -239,7 +238,11 @@ class _ContentPageState extends State<ContentPage>
         ),
         crossAxisSpacing: 12,
         mainAxisSpacing: 12,
-        childAspectRatio: ResponsiveLayout.isLargeTablet(context) ? 1.02 : 0.92,
+        childAspectRatio: ResponsiveLayout.isLargeTablet(context)
+            ? 1.02
+            : ResponsiveLayout.isTablet(context)
+            ? 0.9
+            : 0.78,
       ),
       itemCount: visible.length,
       itemBuilder: (context, index) {
