@@ -91,7 +91,6 @@ export default function LoginPage() {
     back: { tr: "Geri", en: "Back" },
     forgotPassword: { tr: "Şifremi Unuttum", en: "Forgot Password" },
     adminLogin: { tr: "Platform Admin Girişi", en: "Platform Admin Login" },
-    demoCredentials: { tr: "Demo Hesap", en: "Demo Account" },
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -129,19 +128,6 @@ export default function LoginPage() {
     } finally {
       setIsLoading(false)
     }
-  }
-
-  const getDemoCredentials = (role: UserRole) => {
-    const demos: Record<UserRole, { email: string; password: string }> = {
-      student: { email: "ogrenci@courseintellect.com", password: "ogrenci123" },
-      parent: { email: "veli@courseintellect.com", password: "veli123" },
-      teacher: { email: "ogretmen@courseintellect.com", password: "ogretmen123" },
-      accountant: { email: "muhasebe@courseintellect.com", password: "muhasebe123" },
-      administrative: { email: "idari.ceren", password: "CRN2026B" },
-      admin: { email: "kurum.admin", password: "KRM2026A" },
-      editor: { email: "editor@courseintellect.com", password: "editor123" },
-    }
-    return demos[role]
   }
 
   const usesUsernameCredential = selectedRole === "admin" || selectedRole === "administrative"
@@ -406,13 +392,6 @@ export default function LoginPage() {
                         )}
                       </Button>
 
-                      {!isRegister && (
-                        <div className="p-3 bg-secondary rounded-lg">
-                          <p className="text-xs text-muted-foreground mb-2">{t.demoCredentials[language]}:</p>
-                          <p className="text-xs font-mono">{getDemoCredentials(selectedRole).email}</p>
-                          <p className="text-xs font-mono">{getDemoCredentials(selectedRole).password}</p>
-                        </div>
-                      )}
 
                       {selectedRole === "admin" ? (
                         <div className="text-center text-sm">
