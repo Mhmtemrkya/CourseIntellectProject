@@ -18,6 +18,7 @@ import {
   startExamSession,
   submitExamSessionAnswer,
 } from '../../lib/api/modules';
+import { desktopApiBaseUrl } from '../../lib/auth';
 
 const SUBJECT_COLORS = {
   Matematik: { gradient: 'from-sky-500 to-blue-600', tint: 'bg-sky-500/10 text-sky-700', mark: 'M', tagline: 'Sayısal akış ve hız kontrolü' },
@@ -51,7 +52,7 @@ function buildImageUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
   const trimmed = String(path).replace(/^\/+/, '');
-  return `http://127.0.0.1:5206/${trimmed}`;
+  return `${desktopApiBaseUrl}/${trimmed}`;
 }
 
 function formatDuration(value) {

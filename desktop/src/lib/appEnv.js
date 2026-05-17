@@ -15,9 +15,5 @@ export function getDesktopApiBaseUrl() {
     return explicit;
   }
 
-  if (desktopAppEnv.isDevelopment) {
-    return 'http://127.0.0.1:5206';
-  }
-
-  return '';
+  return 'https://api.courseintellect.com';
 }

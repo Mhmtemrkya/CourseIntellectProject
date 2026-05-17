@@ -31,15 +31,10 @@ export type ApiRequestOptions = {
 // Token hangi context oturum açtıysa orada — sırayla bak.
 const AUTH_STORAGE_KEYS = ["courseintellect_user_auth", "courseintellect_auth"] as const
 
-const DEV_LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "10.0.2.2", "10.0.3.2"])
-
 const DEFAULT_API_URL =
   typeof window !== "undefined"
-    ? DEV_LOOPBACK_HOSTS.has(window.location.hostname) &&
-      (window.location.port === "3000" || window.location.port === "3001")
-      ? `${window.location.protocol}//${window.location.hostname}:5206`
-      : window.location.origin
-    : "http://localhost:5206"
+    ? "https://api.courseintellect.com"
+    : "https://api.courseintellect.com"
 
 export const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || DEFAULT_API_URL).replace(/\/$/, "")
 

@@ -7,10 +7,6 @@ export const desktopApiBaseUrl = getDesktopApiBaseUrl();
 function getDesktopApiCandidates() {
   const candidates = [
     desktopApiBaseUrl,
-    "http://127.0.0.1:5206",
-    "http://localhost:5206",
-    "http://127.0.0.1:5199",
-    "http://localhost:5199",
   ]
     .map((value) => (value || "").trim().replace(/\/$/, ""))
     .filter(Boolean);

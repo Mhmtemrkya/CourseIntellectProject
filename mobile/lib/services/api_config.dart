@@ -32,11 +32,8 @@ class ApiConfig {
       return [configured];
     }
 
-    if (AppEnv.isProduction) {
-      return AppEnv.productionApiUrl.isNotEmpty &&
-              _isHttpsUrl(AppEnv.productionApiUrl)
-          ? [AppEnv.productionApiUrl]
-          : const [];
+    if (AppEnv.productionApiUrl.isNotEmpty && _isHttpsUrl(AppEnv.productionApiUrl)) {
+      return [AppEnv.productionApiUrl];
     }
 
     if (AppEnv.isStaging) {
