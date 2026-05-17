@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { Menu, X, Globe } from "lucide-react"
+import { Menu, X, Globe, LogOut } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"
@@ -19,10 +19,11 @@ export function Navbar() {
   const pathname = usePathname()
   const navContent = useSectionContent("navbar")
   const { language, setLanguage } = useLanguage()
-  const { user, isAuthenticated } = useUserAuth()
+  const { user, isAuthenticated, logout } = useUserAuth()
 
   const t = {
     login: { tr: "Giriş Yap", en: "Sign In" },
+    logout: { tr: "Çıkış Yap", en: "Sign Out" },
     support: { tr: "Destek", en: "Support" },
   }
 
@@ -53,6 +54,11 @@ export function Navbar() {
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/"
     return pathname.startsWith(href)
+  }
+
+  const handleLogout = () => {
+    setIsMobileMenuOpen(false)
+    logout()
   }
 
   return (
@@ -188,14 +194,32 @@ export function Navbar() {
               </DropdownMenu>
 
               {isAuthenticated ? (
-                <span
-                  className={cn(
-                    "text-sm px-3",
-                    isScrolled ? "text-muted-foreground" : "text-white/75",
-                  )}
-                >
-                  {user?.name}
-                </span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "max-w-[140px] truncate text-sm px-2",
+                      isScrolled ? "text-muted-foreground" : "text-white/75",
+                    )}
+                    title={user?.name}
+                  >
+                    {user?.name}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className={cn(
+                      "gap-2",
+                      isScrolled
+                        ? "text-muted-foreground hover:text-destructive"
+                        : "text-white/80 hover:bg-white/10 hover:text-white",
+                    )}
+                  >
+                    <LogOut className="w-4 h-4" />
+                    {t.logout[language]}
+                  </Button>
+                </div>
               ) : (
                 <Link href="/giris">
                   <Button
@@ -339,11 +363,33 @@ export function Navbar() {
                 </nav>
 
                 <div className="space-y-3 pt-6 border-t border-border">
-                  <Link href="/giris" onClick={() => setIsMobileMenuOpen(false)}>
-                    <Button variant="outline" className="w-full bg-transparent">
-                      {t.login[language]}
-                    </Button>
-                  </Link>
+                  {isAuthenticated ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-border bg-secondary/40 px-4 py-3">
+                        <p className="text-xs text-muted-foreground">
+                          {language === "tr" ? "Oturum açık" : "Signed in"}
+                        </p>
+                        <p className="truncate text-sm font-medium text-foreground" title={user?.name}>
+                          {user?.name}
+                        </p>
+                      </div>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleLogout}
+                        className="w-full gap-2 bg-transparent"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        {t.logout[language]}
+                      </Button>
+                    </div>
+                  ) : (
+                    <Link href="/giris" onClick={() => setIsMobileMenuOpen(false)}>
+                      <Button variant="outline" className="w-full bg-transparent">
+                        {t.login[language]}
+                      </Button>
+                    </Link>
+                  )}
                   <Link href={navContent.ctaButton.href} onClick={() => setIsMobileMenuOpen(false)}>
                     <Button className="w-full bg-accent hover:bg-accent/90 text-accent-foreground">
                       {navContent.ctaButton.text}
