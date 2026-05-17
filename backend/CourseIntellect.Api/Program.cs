@@ -42,8 +42,12 @@ builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IMessageRealtimeNotifier, SignalRMessageRealtimeNotifier>();
 
-var devCorsOrigins = new[]
+var defaultCorsOrigins = new[]
 {
+    // Production web/API domains
+    "https://courseintellect.com",
+    "https://www.courseintellect.com",
+    "https://api.courseintellect.com",
     // React dev (desktop & web)
     "http://localhost:3000",
     "http://127.0.0.1:3000",
@@ -63,7 +67,7 @@ var devCorsOrigins = new[]
 var configuredCorsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
     .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
     ?? Array.Empty<string>();
-var allowedCorsOrigins = devCorsOrigins.Concat(configuredCorsOrigins).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+var allowedCorsOrigins = defaultCorsOrigins.Concat(configuredCorsOrigins).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
