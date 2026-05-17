@@ -10,7 +10,7 @@ class AppEnv {
 
   static const String productionApiUrl = String.fromEnvironment(
     'COURSE_INTELLECT_PROD_API_URL',
-    defaultValue: '',
+    defaultValue: 'https://api.courseintellect.com',
   );
 
   static const String stagingApiUrl = String.fromEnvironment(
