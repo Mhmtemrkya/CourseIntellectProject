@@ -23,7 +23,12 @@ export function Navbar() {
 
   const t = {
     login: { tr: "Giriş Yap", en: "Sign In" },
+    support: { tr: "Destek", en: "Support" },
   }
+
+  const navLinks = navContent.links.some((link) => link.href === "/destek")
+    ? navContent.links
+    : [...navContent.links, { id: "support-ticket", label: t.support[language], href: "/destek" }]
 
   useEffect(() => {
     const handleScroll = () => {
@@ -129,7 +134,7 @@ export function Navbar() {
 
             {/* Desktop Navigation */}
             <div className="hidden lg:flex items-center gap-1">
-              {navContent.links.map((link) => {
+              {navLinks.map((link) => {
                 const active = isActive(link.href)
                 return (
                   <Link
@@ -309,7 +314,7 @@ export function Navbar() {
                 </div>
 
                 <nav className="flex-1 space-y-2">
-                  {navContent.links.map((link, index) => (
+                  {navLinks.map((link, index) => (
                     <motion.div
                       key={link.id}
                       initial={{ opacity: 0, x: 20 }}
