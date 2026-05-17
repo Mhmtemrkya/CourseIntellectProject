@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
+    [Migration("20260411000000_AddPendingAdminPasswordHash")]
     public partial class AddPendingAdminPasswordHash : Migration
     {
         /// <inheritdoc />
