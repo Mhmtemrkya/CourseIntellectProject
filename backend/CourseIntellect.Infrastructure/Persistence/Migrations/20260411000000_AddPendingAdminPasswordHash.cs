@@ -1,3 +1,5 @@
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(CourseIntellectDbContext))]
     [Migration("20260411000000_AddPendingAdminPasswordHash")]
     public partial class AddPendingAdminPasswordHash : Migration
     {
