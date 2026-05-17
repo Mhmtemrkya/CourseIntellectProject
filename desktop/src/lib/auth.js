@@ -70,6 +70,10 @@ export function getUserHomePath(user) {
     return "/change-password-required";
   }
 
+  if (user?.isPlatformAdmin) {
+    return "/sa/dashboard";
+  }
+
   if (user?.hasRoleManagementPolicy) {
     const modules = Array.isArray(user.modules) ? user.modules.map((m) => String(m).toLowerCase()) : [];
     for (const moduleKey of modules) {
@@ -162,7 +166,8 @@ export function createDesktopUser(payload) {
   const data = unwrapBackendPayload(payload);
   const backendRole = data?.user?.primaryRole || data?.user?.role || "";
   const role = mapBackendRoleToDesktopRole(backendRole);
-  const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin);
+  const tenantId = data?.user?.tenantId || null;
+  const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin) || ((backendRole || "").toLowerCase() === "developer" && tenantId == null);
   const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "CourseIntellect Desktop");
 
   return {
@@ -173,7 +178,7 @@ export function createDesktopUser(payload) {
     backendRole,
     isPlatformAdmin,
     username: data?.user?.username || data?.user?.email?.split("@")[0] || "",
-    tenantId: data?.user?.tenantId || null,
+    tenantId,
     tenantSlug: data?.user?.tenantSlug || "",
     tenant: tenantName,
     branch: data?.user?.campus || "Merkez Kampus",
