@@ -13,6 +13,7 @@ import {
   Shield,
   Edit,
   Code2,
+  Building2,
   RefreshCw,
   CheckCircle2,
   Clock,
@@ -37,6 +38,7 @@ const roleIcons: Record<AdminPanelRole, typeof GraduationCap> = {
   parent: Users,
   teacher: BookOpen,
   accountant: Calculator,
+  administrative: Building2,
   admin: Shield,
   editor: Edit,
 }
@@ -47,6 +49,7 @@ const roleColors: Record<AdminPanelRole, string> = {
   parent: "bg-green-100 text-green-700",
   teacher: "bg-purple-100 text-purple-700",
   accountant: "bg-orange-100 text-orange-700",
+  administrative: "bg-slate-100 text-slate-700",
   admin: "bg-red-100 text-red-700",
   editor: "bg-yellow-100 text-yellow-700",
 }
@@ -57,6 +60,7 @@ const roleLabels: Record<AdminPanelRole, { tr: string; en: string }> = {
   parent: { tr: "Veli", en: "Parent" },
   teacher: { tr: "Öğretmen", en: "Teacher" },
   accountant: { tr: "Muhasebeci", en: "Accountant" },
+  administrative: { tr: "Bilgi İşlem", en: "IT Staff" },
   admin: { tr: "Admin", en: "Admin" },
   editor: { tr: "Editör", en: "Editor" },
 }
@@ -78,6 +82,8 @@ function normalizeRole(role: string): AdminPanelRole {
     case "accounting":
     case "accountant":
       return "accountant"
+    case "administrative":
+      return "administrative"
     default:
       return "student"
   }

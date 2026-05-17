@@ -52,6 +52,13 @@ const userTypes: {
     description: { tr: "Finansal işlemleri yönetin", en: "Manage financial operations" },
     color: "bg-orange-500 hover:bg-orange-600",
   },
+  {
+    role: "administrative",
+    icon: Building2,
+    label: { tr: "Bilgi İşlem", en: "IT Staff" },
+    description: { tr: "Teknik ve idari işlemleri yönetin", en: "Manage technical and administrative operations" },
+    color: "bg-slate-600 hover:bg-slate-700",
+  },
 ]
 
 export default function LoginPage() {
@@ -130,11 +137,14 @@ export default function LoginPage() {
       parent: { email: "veli@courseintellect.com", password: "veli123" },
       teacher: { email: "ogretmen@courseintellect.com", password: "ogretmen123" },
       accountant: { email: "muhasebe@courseintellect.com", password: "muhasebe123" },
+      administrative: { email: "idari.ceren", password: "CRN2026B" },
       admin: { email: "kurum.admin", password: "KRM2026A" },
       editor: { email: "editor@courseintellect.com", password: "editor123" },
     }
     return demos[role]
   }
+
+  const usesUsernameCredential = selectedRole === "admin" || selectedRole === "administrative"
 
   return (
     <div className="min-h-screen flex">
@@ -217,7 +227,10 @@ export default function LoginPage() {
                           setIsRegister(false)
                           setSelectedRole(type.role)
                         }}
-                        className="group relative p-6 rounded-xl border-2 border-border hover:border-primary transition-all bg-card hover:shadow-lg"
+                        className={cn(
+                          "group relative p-6 rounded-xl border-2 border-border hover:border-primary transition-all bg-card hover:shadow-lg",
+                          type.role === "administrative" && "col-span-2",
+                        )}
                       >
                         <div className="flex flex-col items-center gap-3">
                           <div className={cn("p-3 rounded-full text-white", type.color)}>
@@ -340,15 +353,15 @@ export default function LoginPage() {
 
                       <div className="space-y-2">
                         <Label htmlFor="email">
-                          {selectedRole === "admin" ? language === "tr" ? "Kullanıcı adı" : "Username" : t.email[language]}
+                          {usesUsernameCredential ? language === "tr" ? "Kullanıcı adı" : "Username" : t.email[language]}
                         </Label>
                         <Input
                           id="email"
-                          type={selectedRole === "admin" ? "text" : "email"}
+                          type={usesUsernameCredential ? "text" : "email"}
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
                           required
-                          placeholder={selectedRole === "admin" ? "kurum.admin" : "ornek@email.com"}
+                          placeholder={selectedRole === "admin" ? "kurum.admin" : selectedRole === "administrative" ? "idari.ceren" : "ornek@email.com"}
                         />
                       </div>
 
