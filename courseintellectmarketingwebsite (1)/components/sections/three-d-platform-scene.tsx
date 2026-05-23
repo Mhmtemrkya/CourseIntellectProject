@@ -5,7 +5,6 @@ import * as THREE from "three"
 import { Canvas, useFrame } from "@react-three/fiber"
 import {
   Float,
-  Environment,
   ContactShadows,
   RoundedBox,
   PerspectiveCamera,
@@ -893,8 +892,6 @@ export default function ThreeDPlatformScene({ progress }: { progress: number }) 
       <directionalLight position={[-5, 2, 3]} intensity={0.7} color="#5499c7" />
       <pointLight position={[0, 1.5, 4]} intensity={0.7} color="#D9790B" distance={9} />
       <pointLight position={[2, -1, 3]} intensity={0.4} color="#FBB971" distance={6} />
-
-      <Environment preset="studio" environmentIntensity={0.32} />
 
       <Float speed={1.2} rotationIntensity={0.12} floatIntensity={0.4}>
         <group position={[-1.0, 0.1, 0]}>

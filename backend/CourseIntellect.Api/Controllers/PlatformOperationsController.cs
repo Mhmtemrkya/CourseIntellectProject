@@ -62,11 +62,6 @@ public sealed class PlatformOperationsController(IPlatformOperationsService plat
     [AllowAnonymous]
     public async Task<IActionResult> RegisterTenant([FromBody] RegisterTenantRequest request, CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8)
-        {
-            return BadRequest(new { message = "Kurum yöneticisi şifresi en az 8 karakter olmalı." });
-        }
-
         var item = await platformOperationsService.RegisterTenantAsync(request, cancellationToken);
         return Ok(item);
     }
@@ -87,6 +82,15 @@ public sealed class PlatformOperationsController(IPlatformOperationsService plat
         if (HasTenantContext()) return Forbid();
         var item = await platformOperationsService.RejectTenantAsync(id, cancellationToken);
         return item is null ? NotFound() : Ok(item);
+    }
+
+    [HttpDelete("tenants/{id:guid}")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> DeleteTenant(Guid id, CancellationToken cancellationToken)
+    {
+        if (HasTenantContext()) return Forbid();
+        var deleted = await platformOperationsService.DeleteTenantAsync(id, cancellationToken);
+        return deleted ? NoContent() : NotFound();
     }
 
     [HttpPut("support-tickets/{id:guid}")]

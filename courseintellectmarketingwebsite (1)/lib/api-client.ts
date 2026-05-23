@@ -92,11 +92,19 @@ export async function apiRequest<T>(path: string, options: ApiRequestOptions = {
     requestHeaders["Content-Type"] = "application/json"
   }
 
-  const response = await fetch(buildUrl(path, query), {
-    method,
-    headers: requestHeaders,
-    body: isJsonBody ? JSON.stringify(body) : (body as BodyInit | null | undefined),
-  })
+  let response: Response
+  try {
+    response = await fetch(buildUrl(path, query), {
+      method,
+      headers: requestHeaders,
+      body: isJsonBody ? JSON.stringify(body) : (body as BodyInit | null | undefined),
+    })
+  } catch (cause) {
+    const error = new ApiRequestError("Canlı sunucuya bağlantı kurulamadı. Lütfen daha sonra tekrar deneyin.")
+    error.code = "NETWORK_ERROR"
+    error.details = cause
+    throw error
+  }
 
   const contentType = response.headers.get("content-type") || ""
   const isJson = contentType.includes("application/json")

@@ -263,7 +263,7 @@ public sealed class PlatformOperationsService(
             ContactEmail = request.Email.Trim(),
             ContactName = request.ContactName.Trim(),
             ContactPhone = string.IsNullOrWhiteSpace(request.Phone) ? null : request.Phone.Trim(),
-            PendingAdminPasswordHash = passwordHasher.Hash(request.Password),
+            PendingAdminPasswordHash = string.IsNullOrWhiteSpace(request.Password) ? null : passwordHasher.Hash(request.Password),
             Plan = request.Plan,
             Status = "pending",
             UserCount = request.EstimatedStudents,
@@ -328,6 +328,83 @@ public sealed class PlatformOperationsService(
         return ToTenantDto(entity);
     }
 
+    public async Task<bool> DeleteTenantAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var tenant = await dbContext.Set<TenantWorkspace>()
+            .AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (tenant is null)
+        {
+            return false;
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        var tenantUserIds = await dbContext.Users
+            .IgnoreQueryFilters()
+            .Where(x => x.TenantId == id)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken);
+
+        if (tenantUserIds.Count > 0)
+        {
+            await dbContext.RefreshTokenSessions
+                .Where(x => tenantUserIds.Contains(x.UserId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await dbContext.Set<AuthorizationCode>()
+                .Where(x => tenantUserIds.Contains(x.UserId))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            await dbContext.LoginAttempts
+                .Where(x => x.UserId.HasValue && tenantUserIds.Contains(x.UserId.Value))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        await DeleteTenantScopedAsync<AccountingApproval>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AccountingAuditLog>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AccountingCollection>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AccountingInstallment>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AccountingInvoice>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AccountingNotification>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AccountingSalary>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AnnouncementItem>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AttendanceEntry>(id, cancellationToken);
+        await DeleteTenantScopedAsync<ContentItem>(id, cancellationToken);
+        await DeleteTenantScopedAsync<ExamResult>(id, cancellationToken);
+        await DeleteTenantScopedAsync<HomeworkSubmission>(id, cancellationToken);
+        await DeleteTenantScopedAsync<HomeworkAssignment>(id, cancellationToken);
+        await DeleteTenantScopedAsync<MeetingRequest>(id, cancellationToken);
+        await DeleteTenantScopedAsync<MessageItem>(id, cancellationToken);
+        await DeleteTenantScopedAsync<MessageThread>(id, cancellationToken);
+        await DeleteTenantScopedAsync<NotificationItem>(id, cancellationToken);
+        await DeleteTenantScopedAsync<PlatformConfiguration>(id, cancellationToken);
+        await DeleteTenantScopedAsync<QuestionPracticeAttempt>(id, cancellationToken);
+        await DeleteTenantScopedAsync<QuestionBankItem>(id, cancellationToken);
+        await DeleteTenantScopedAsync<SiteContentItem>(id, cancellationToken);
+        await DeleteTenantScopedAsync<StaffProfile>(id, cancellationToken);
+        await DeleteTenantScopedAsync<StudentQuestionReply>(id, cancellationToken);
+        await DeleteTenantScopedAsync<StudentQuestionThread>(id, cancellationToken);
+        await DeleteTenantScopedAsync<StudyPlanState>(id, cancellationToken);
+        await DeleteTenantScopedAsync<StudentProfile>(id, cancellationToken);
+        await DeleteTenantScopedAsync<AppUser>(id, cancellationToken);
+
+        await dbContext.Set<PlatformSubscriptionInvoice>()
+            .Where(x => x.TenantId == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await dbContext.Set<SupportTicket>()
+            .Where(x => x.TenantName == tenant.Name)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        var deleted = await dbContext.Set<TenantWorkspace>()
+            .Where(x => x.Id == id)
+            .ExecuteDeleteAsync(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+        return deleted > 0;
+    }
+
     private async Task<IReadOnlyList<TenantWorkspaceDto>> MapTenantDtosAsync(IReadOnlyList<TenantWorkspace> entities, CancellationToken cancellationToken)
     {
         var adminUserIds = entities
@@ -356,16 +433,20 @@ public sealed class PlatformOperationsService(
             .ToList();
     }
 
+    private Task<int> DeleteTenantScopedAsync<TEntity>(Guid tenantId, CancellationToken cancellationToken)
+        where TEntity : class, ITenantScopedEntity
+    {
+        return dbContext.Set<TEntity>()
+            .IgnoreQueryFilters()
+            .Where(x => x.TenantId == tenantId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     private async Task<(AppUser User, string TemporaryPassword)> CreateTenantAdminUserAsync(TenantWorkspace tenant, CancellationToken cancellationToken)
     {
         var username = await GenerateUniqueTenantAdminUsernameAsync(tenant, cancellationToken);
-        var temporaryPassword = string.Empty;
-        var passwordHash = tenant.PendingAdminPasswordHash;
-        if (string.IsNullOrWhiteSpace(passwordHash))
-        {
-            temporaryPassword = GenerateTemporaryPassword();
-            passwordHash = passwordHasher.Hash(temporaryPassword);
-        }
+        var temporaryPassword = GenerateTemporaryPassword();
+        var passwordHash = passwordHasher.Hash(temporaryPassword);
         var fullName = string.IsNullOrWhiteSpace(tenant.ContactName)
             ? $"{tenant.Name} Yonetici"
             : tenant.ContactName.Trim();

@@ -533,13 +533,15 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
 
     setCustomTranslations(nextCustom)
     localStorage.setItem(CUSTOM_TRANSLATIONS_KEY, JSON.stringify(nextCustom))
-  }, [isAdminRoute])
+  }, [])
 
   useEffect(() => {
     loadCustomTranslations().catch((error) => {
-      console.error("Translation load failed:", error)
+      if (isAdminRoute) {
+        console.warn("Translation load failed:", error)
+      }
     })
-  }, [loadCustomTranslations])
+  }, [isAdminRoute, loadCustomTranslations])
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang)

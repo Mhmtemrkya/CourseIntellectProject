@@ -4,7 +4,7 @@ import { useState } from "react"
 import { motion } from "framer-motion"
 import {
   Building2, Mail, Phone, Users, CheckCircle, Loader2, ArrowLeft,
-  ShieldCheck, BarChart3, Sparkles, Lock,
+  ShieldCheck, BarChart3, Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -14,7 +14,7 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useLanguage } from "@/context/language-context"
-import { apiRequest } from "@/lib/api-client"
+import { apiRequest, ApiRequestError } from "@/lib/api-client"
 
 const plans = [
   { value: "Starter", label: { tr: "Starter — Küçük Kurumlar", en: "Starter — Small Institutions" } },
@@ -50,8 +50,6 @@ export default function KurumKaydiPage() {
     contactName: "",
     email: "",
     phone: "",
-    password: "",
-    confirmPassword: "",
     plan: "Starter",
     estimatedStudents: 50,
   })
@@ -71,15 +69,13 @@ export default function KurumKaydiPage() {
     contactName: { tr: "Yetkili Adı Soyadı", en: "Contact Person" },
     email: { tr: "E-posta", en: "Email" },
     phone: { tr: "Telefon", en: "Phone" },
-    password: { tr: "Kurum Yöneticisi Şifresi", en: "Institution Admin Password" },
-    confirmPassword: { tr: "Şifre Tekrarı", en: "Confirm Password" },
     plan: { tr: "İlgilendiğiniz Plan", en: "Plan of Interest" },
     students: { tr: "Tahmini Öğrenci Sayısı", en: "Estimated Student Count" },
     submit: { tr: "Başvuruyu Gönder", en: "Submit Application" },
     successTitle: { tr: "Başvurunuz Alındı!", en: "Application Received!" },
     successDesc: {
-      tr: "Başvurunuz platform yönetimine iletildi. Onaylandıktan sonra e-postanız ve oluşturduğunuz şifreyle Kurum Girişi yapabilirsiniz.",
-      en: "Your application has been sent to platform management. After approval, you can sign in with your email and the password you created.",
+      tr: "Başvurunuz platform yönetimine iletildi. Onaylandıktan sonra kurum admin giriş bilgileriniz size iletilecek.",
+      en: "Your application has been sent to platform management. After approval, your institution admin credentials will be shared with you.",
     },
     backHome: { tr: "Ana Sayfaya Dön", en: "Back to Home" },
     back: { tr: "Geri", en: "Back" },
@@ -90,14 +86,6 @@ export default function KurumKaydiPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
-    if (form.password.length < 8) {
-      setError(language === "tr" ? "Şifre en az 8 karakter olmalı." : "Password must be at least 8 characters.")
-      return
-    }
-    if (form.password !== form.confirmPassword) {
-      setError(language === "tr" ? "Şifreler eşleşmiyor." : "Passwords do not match.")
-      return
-    }
     setLoading(true)
     try {
       await apiRequest("/api/platformops/tenants/register", {
@@ -108,14 +96,21 @@ export default function KurumKaydiPage() {
           contactName: form.contactName,
           email: form.email,
           phone: form.phone,
-          password: form.password,
           plan: form.plan,
           estimatedStudents: Number(form.estimatedStudents),
         },
       })
       setSubmitted(true)
-    } catch (err: any) {
-      setError(err?.message || "Bir hata oluştu. Lütfen tekrar deneyin.")
+    } catch (err: unknown) {
+      if (err instanceof ApiRequestError && err.code === "NETWORK_ERROR") {
+        setError(
+          language === "tr"
+            ? "Canlı sunucuya ulaşılamıyor. Lütfen kısa bir süre sonra tekrar deneyin."
+            : "The live server cannot be reached. Please try again shortly.",
+        )
+      } else {
+        setError(err instanceof Error ? err.message : "Bir hata oluştu. Lütfen tekrar deneyin.")
+      }
     } finally {
       setLoading(false)
     }
@@ -295,41 +290,6 @@ export default function KurumKaydiPage() {
                           value={form.phone}
                           onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))}
                           placeholder="05xx xxx xx xx"
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="password">{t.password[language]}</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="password"
-                          type="password"
-                          minLength={8}
-                          value={form.password}
-                          onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
-                          placeholder="En az 8 karakter"
-                          className="pl-10"
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">{t.confirmPassword[language]}</Label>
-                      <div className="relative">
-                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                        <Input
-                          id="confirmPassword"
-                          type="password"
-                          minLength={8}
-                          value={form.confirmPassword}
-                          onChange={(e) => setForm((p) => ({ ...p, confirmPassword: e.target.value }))}
-                          placeholder="Şifreyi tekrar girin"
                           className="pl-10"
                           required
                         />

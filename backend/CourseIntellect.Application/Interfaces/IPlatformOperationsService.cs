@@ -14,4 +14,5 @@ public interface IPlatformOperationsService
     Task<TenantWorkspaceDto> RegisterTenantAsync(RegisterTenantRequest request, CancellationToken cancellationToken = default);
     Task<TenantWorkspaceDto?> ApproveTenantAsync(Guid id, CancellationToken cancellationToken = default);
     Task<TenantWorkspaceDto?> RejectTenantAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteTenantAsync(Guid id, CancellationToken cancellationToken = default);
 }

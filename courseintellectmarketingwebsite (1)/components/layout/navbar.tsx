@@ -122,6 +122,7 @@ export function Navbar() {
                   alt="CourseIntellect Logo"
                   width={isScrolled ? 36 : 34}
                   height={isScrolled ? 36 : 34}
+                  priority
                   className="transition-all duration-300"
                 />
               </motion.div>

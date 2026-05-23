@@ -5,7 +5,7 @@ public sealed record RegisterTenantRequest(
     string ContactName,
     string Email,
     string Phone,
-    string Password,
+    string? Password,
     string Plan,
     int EstimatedStudents
 );

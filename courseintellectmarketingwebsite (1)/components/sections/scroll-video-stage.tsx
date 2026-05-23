@@ -15,6 +15,9 @@ type FrameManifest = {
 
 const MANIFEST_URL = "/frames/manifest.json"
 const FRAMES_BASE = "/frames"
+const FALLBACK_VIDEO_URL = "/hero-dimensional-portal.mp4"
+// Extracted frames are not included in the static deployment; use the bundled video.
+const FRAME_SEQUENCE_ENABLED = false
 const PRIMING_BATCH = 24 // first batch to load before dismissing loader (1 second of video)
 
 const ANNOTATIONS = [
@@ -98,9 +101,15 @@ export function ScrollVideoStage() {
   const [loaded, setLoaded] = useState(0)
   const [ready, setReady] = useState(false)
   const [primed, setPrimed] = useState(false)
+  const [useFallbackVideo, setUseFallbackVideo] = useState(!FRAME_SEQUENCE_ENABLED)
 
   // Preload frames (priming batch first, rest in background)
   useEffect(() => {
+    if (!FRAME_SEQUENCE_ENABLED) {
+      setReady(true)
+      return
+    }
+
     let aborted = false
     const ac = new AbortController()
     ;(async () => {
@@ -141,11 +150,10 @@ export function ScrollVideoStage() {
           )
         }
         if (!aborted) setReady(true)
-      } catch (err) {
-        // Fail gracefully — show whatever we have
-        console.error("Frame preload failed", err)
+      } catch {
+        // The exported site ships an MP4 fallback when extracted frames are absent.
         if (!aborted) {
-          setPrimed(true)
+          setUseFallbackVideo(true)
           setReady(true)
         }
       }
@@ -344,11 +352,31 @@ export function ScrollVideoStage() {
           className="sticky top-0 h-screen w-full overflow-hidden bg-[#021E2E]"
           style={{ contain: "paint" }}
         >
+          {useFallbackVideo && (
+            <video
+              aria-hidden
+              autoPlay
+              loop
+              muted
+              playsInline
+              preload="auto"
+              src={FALLBACK_VIDEO_URL}
+              onCanPlay={() => {
+                setLoaded(1)
+                setPrimed(true)
+              }}
+              className="absolute inset-0 h-full w-full object-cover"
+              style={{
+                filter: "brightness(0.6) saturate(0.95) contrast(1.05)",
+              }}
+            />
+          )}
+
           {/* Canvas (frame sequence renderer) */}
           <canvas
             ref={canvasRef}
             aria-hidden
-            className="absolute inset-0 h-full w-full"
+            className={`absolute inset-0 h-full w-full ${useFallbackVideo ? "hidden" : ""}`}
             style={{
               filter: "brightness(0.6) saturate(0.95) contrast(1.05)",
               willChange: "contents",

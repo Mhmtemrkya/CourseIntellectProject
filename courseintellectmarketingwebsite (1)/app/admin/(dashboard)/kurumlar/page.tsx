@@ -2,12 +2,12 @@
 
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
-import { CheckCircle, XCircle, Eye, X, Clock } from "lucide-react"
+import { CheckCircle, XCircle, Eye, X, Clock, Copy, KeyRound, Trash2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { DataTable, type Column, type Action } from "@/components/admin/data-table"
 import { cn } from "@/lib/utils"
-import { apiRequest } from "@/lib/api-client"
+import { apiRequest, ApiRequestError } from "@/lib/api-client"
 
 interface TenantData {
   id: string
@@ -23,6 +23,12 @@ interface TenantData {
   contactPhone?: string
   adminUsername?: string | null
   temporaryPassword?: string | null
+}
+
+interface TenantCredentials {
+  tenantName: string
+  adminUsername: string
+  temporaryPassword: string
 }
 
 const statusConfig = {
@@ -43,6 +49,8 @@ export default function KurumlarPage() {
   const [loadError, setLoadError] = useState<string | null>(null)
   const [viewingTenant, setViewingTenant] = useState<TenantData | null>(null)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [createdCredentials, setCreatedCredentials] = useState<TenantCredentials | null>(null)
+  const [copySuccess, setCopySuccess] = useState(false)
 
   useEffect(() => {
     const loadTenants = async () => {
@@ -63,16 +71,43 @@ export default function KurumlarPage() {
   const handleApprove = async (tenant: TenantData) => {
     if (tenant.status !== "pending") return
     setActionLoading(tenant.id)
+    setLoadError(null)
     try {
       const approved = await apiRequest<TenantData>(`/api/platformops/tenants/${tenant.id}/approve`, { method: "PUT" })
       setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, ...approved } : t)))
+      setViewingTenant((current) => (current?.id === tenant.id ? { ...current, ...approved } : current))
       if (approved.adminUsername && approved.temporaryPassword) {
-        alert(`Kurum admini oluşturuldu:\nKullanıcı adı: ${approved.adminUsername}\nGeçici şifre: ${approved.temporaryPassword}`)
+        setCopySuccess(false)
+        setCreatedCredentials({
+          tenantName: approved.name || tenant.name,
+          adminUsername: approved.adminUsername,
+          temporaryPassword: approved.temporaryPassword,
+        })
+      } else {
+        setLoadError("Kurum onaylandı ancak giriş bilgileri API yanıtında dönmedi.")
       }
     } catch {
       setLoadError("Onay işlemi başarısız.")
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  const copyCredentials = async () => {
+    if (!createdCredentials) return
+
+    const credentialsText = [
+      `Kurum: ${createdCredentials.tenantName}`,
+      `Kullanıcı adı: ${createdCredentials.adminUsername}`,
+      `Geçici şifre: ${createdCredentials.temporaryPassword}`,
+    ].join("\n")
+
+    try {
+      await navigator.clipboard.writeText(credentialsText)
+      setCopySuccess(true)
+      window.setTimeout(() => setCopySuccess(false), 2000)
+    } catch {
+      setLoadError("Giriş bilgileri kopyalanamadı. Lütfen ekrandan manuel alın.")
     }
   }
 
@@ -85,6 +120,34 @@ export default function KurumlarPage() {
       setTenants((prev) => prev.map((t) => (t.id === tenant.id ? { ...t, status: "rejected" } : t)))
     } catch {
       setLoadError("Red işlemi başarısız.")
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  const handleDelete = async (tenant: TenantData) => {
+    const confirmed = confirm(
+      `"${tenant.name}" kurumu kalıcı olarak silinsin mi?\n\nBu işlem kurumu ve kuruma bağlı verileri veri tabanından siler. Geri alınamaz.`,
+    )
+    if (!confirmed) return
+
+    setActionLoading(`delete:${tenant.id}`)
+    setLoadError(null)
+    try {
+      await apiRequest(`/api/platformops/tenants/${tenant.id}`, { method: "DELETE" })
+      setTenants((prev) => prev.filter((t) => t.id !== tenant.id))
+      setViewingTenant(null)
+      setCreatedCredentials((current) => (current?.tenantName === tenant.name ? null : current))
+    } catch (err: unknown) {
+      if (err instanceof ApiRequestError && err.status === 404) {
+        setLoadError("Kurum silinemedi: Canlı backend silme endpoint'ini henüz almamış olabilir. Backend deploy edilmeli.")
+      } else if (err instanceof ApiRequestError && err.status === 401) {
+        setLoadError("Kurum silinemedi: Admin oturumunuz düşmüş. Tekrar giriş yapın.")
+      } else if (err instanceof ApiRequestError && err.status === 403) {
+        setLoadError("Kurum silinemedi: Bu işlem için yetkiniz yok.")
+      } else {
+        setLoadError(err instanceof Error ? `Kurum silinemedi: ${err.message}` : "Kurum silinemedi.")
+      }
     } finally {
       setActionLoading(null)
     }
@@ -258,6 +321,12 @@ export default function KurumlarPage() {
                   <p className="text-xs text-muted-foreground">Plan</p>
                   <p className="font-medium">{viewingTenant.plan}</p>
                 </div>
+                {viewingTenant.adminUsername && (
+                  <div className="col-span-2 p-3 bg-muted/50 rounded-lg">
+                    <p className="text-xs text-muted-foreground">Kurum Admin Kullanıcı Adı</p>
+                    <p className="font-medium text-sm">{viewingTenant.adminUsername}</p>
+                  </div>
+                )}
                 <div className="p-3 bg-muted/50 rounded-lg">
                   <p className="text-xs text-muted-foreground">Durum</p>
                   <span className={cn("px-2 py-0.5 rounded-full text-xs font-medium", statusConfig[viewingTenant.status].color)}>
@@ -298,6 +367,76 @@ export default function KurumlarPage() {
                   </Button>
                 </div>
               )}
+              <div className="pt-4 border-t">
+                <p className="text-xs text-muted-foreground mb-3">
+                  Kalıcı silme işlemi kurumu ve kuruma bağlı kayıtları veri tabanından kaldırır.
+                </p>
+                <Button
+                  variant="outline"
+                  className="w-full border-red-300 text-red-600 hover:bg-red-50 gap-2"
+                  disabled={actionLoading === `delete:${viewingTenant.id}`}
+                  onClick={() => void handleDelete(viewingTenant)}
+                >
+                  <Trash2 className="w-4 h-4" />
+                  {actionLoading === `delete:${viewingTenant.id}` ? "Siliniyor..." : "Kurumu Kalıcı Sil"}
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+
+      {createdCredentials && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={() => setCreatedCredentials(null)}
+        >
+          <motion.div
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            onClick={(e) => e.stopPropagation()}
+            className="bg-card rounded-xl shadow-xl w-full max-w-lg"
+          >
+            <div className="flex items-center justify-between p-6 border-b">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100">
+                  <KeyRound className="w-5 h-5 text-green-700" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold">Kurum admini oluşturuldu</h2>
+                  <p className="text-sm text-muted-foreground">{createdCredentials.tenantName}</p>
+                </div>
+              </div>
+              <button onClick={() => setCreatedCredentials(null)} className="p-2 hover:bg-muted rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid gap-3">
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Kullanıcı adı</p>
+                  <p className="font-semibold break-all">{createdCredentials.adminUsername}</p>
+                </div>
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <p className="text-xs text-muted-foreground">Geçici şifre</p>
+                  <p className="font-semibold tracking-wide break-all">{createdCredentials.temporaryPassword}</p>
+                </div>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Bu şifre sadece onay anında gösterilir. Kuruma iletin; ilk girişte yeni şifre belirlemesi istenecek.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                <Button className="flex-1 gap-2" onClick={() => void copyCredentials()}>
+                  <Copy className="w-4 h-4" />
+                  {copySuccess ? "Kopyalandı" : "Bilgileri Kopyala"}
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={() => setCreatedCredentials(null)}>
+                  Tamam
+                </Button>
+              </div>
             </div>
           </motion.div>
         </motion.div>
