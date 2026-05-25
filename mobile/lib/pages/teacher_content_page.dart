@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
+import '../widgets/teacher_empty_state_panel.dart';
 import 'teacher_content_create_page.dart';
 import 'teacher_content_detail_page.dart';
 
@@ -115,12 +116,7 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                         vertical: 14,
                       ),
                     ),
-                    onPressed: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => const TeacherContentCreatePage(),
-                      ),
-                    ),
+                    onPressed: _openCreateContent,
                     icon: const Icon(Icons.add),
                     label: const Text("Yeni İçerik"),
                   ),
@@ -172,6 +168,26 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                   ),
                 ),
               )
+            else if (_contents.isEmpty)
+              TeacherEmptyStatePanel(
+                title: 'Henüz içerik yüklenmemiş',
+                description:
+                    'Bu derse ait henüz bir konu anlatımı içeriği bulunmuyor. Hemen içerik ekleyerek öğrencilerinize sunabilirsiniz.',
+                accentColor: const Color(0xFFF97316),
+                mainIcon: Icons.menu_book_rounded,
+                primaryLabel: 'Yeni İçerik Ekle',
+                onPrimary: _openCreateContent,
+                secondaryLabel: 'İçerik Yükle',
+                onSecondary: _openCreateContent,
+                tipTitle: 'Desteklenen İçerik Türleri',
+                tipDescription:
+                    'PDF, DOCX, PPTX, video, ses ve görsel dosyalarını yükleyebilirsiniz.',
+                floatingIcons: const [
+                  Icons.play_arrow_rounded,
+                  Icons.description_outlined,
+                  Icons.image_outlined,
+                ],
+              )
             else
               GridView.count(
                 shrinkWrap: true,
@@ -210,6 +226,15 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _openCreateContent() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const TeacherContentCreatePage()),
+    );
+    if (!mounted) return;
+    await _loadContents();
   }
 
   Future<void> _loadContents() async {

@@ -14,7 +14,8 @@ class SchedulePage extends StatefulWidget {
   State<SchedulePage> createState() => _SchedulePageState();
 }
 
-class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMixin {
+class _SchedulePageState extends State<SchedulePage>
+    with TickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _fadeAnim;
   late final Animation<Offset> _slideAnim;
@@ -31,10 +32,15 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
   void initState() {
     super.initState();
     if (_selectedDay < 0 || _selectedDay > 6) _selectedDay = 0;
-    _controller = AnimationController(vsync: this, duration: const Duration(milliseconds: 650));
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 650),
+    );
     _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(begin: const Offset(0, 0.06), end: Offset.zero)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
+    _slideAnim = Tween<Offset>(
+      begin: const Offset(0, 0.06),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
     _controller.forward();
     _loadSchedule();
   }
@@ -56,7 +62,8 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
       await _store.refresh();
       final filtered = _store.entries.where((entry) {
         if (className.isEmpty) return true;
-        return normalizeScheduleText(entry.className) == normalizeScheduleText(className);
+        return normalizeScheduleText(entry.className) ==
+            normalizeScheduleText(className);
       }).toList();
       if (!mounted) return;
       setState(() {
@@ -75,14 +82,16 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
 
   Future<String> _resolveViewerClass(AuthSession? session) async {
     if (session?.primaryRole == 'Parent') {
-      final children = await LinkedChildrenService.instance.loadLinkedChildren();
+      final children = await LinkedChildrenService.instance
+          .loadLinkedChildren();
       return children.isNotEmpty ? children.first.className : '';
     }
     await StudentRegistryStore.instance.ensureLoaded();
     final username = normalizeScheduleText(session?.username ?? '');
     final fullName = normalizeScheduleText(session?.fullName ?? '');
     for (final student in StudentRegistryStore.instance.students) {
-      if (normalizeScheduleText(student.username) == username || normalizeScheduleText(student.fullName) == fullName) {
+      if (normalizeScheduleText(student.username) == username ||
+          normalizeScheduleText(student.fullName) == fullName) {
         return student.className;
       }
     }
@@ -106,9 +115,16 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
           IconButton(
             tooltip: _gridMode ? 'Liste görünümü' : 'Haftalık çizelge',
             onPressed: () => setState(() => _gridMode = !_gridMode),
-            icon: Icon(_gridMode ? Icons.view_agenda_outlined : Icons.calendar_view_week_rounded),
+            icon: Icon(
+              _gridMode
+                  ? Icons.view_agenda_outlined
+                  : Icons.calendar_view_week_rounded,
+            ),
           ),
-          IconButton(onPressed: _loading ? null : _loadSchedule, icon: const Icon(Icons.refresh)),
+          IconButton(
+            onPressed: _loading ? null : _loadSchedule,
+            icon: const Icon(Icons.refresh),
+          ),
         ],
       ),
       body: FadeTransition(
@@ -124,30 +140,54 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
                 if (_loading) const SizedBox(height: 12),
                 if (_error != null) _errorCard(theme, _error!),
                 Text(
-                  _className.isEmpty ? 'Haftalık ders programı' : '$_className haftalık ders programı',
-                  style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                  _className.isEmpty
+                      ? 'Haftalık ders programı'
+                      : '$_className haftalık ders programı',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 SegmentedButton<bool>(
                   segments: const [
-                    ButtonSegment(value: true, icon: Icon(Icons.calendar_view_week_rounded), label: Text('Çizelge')),
-                    ButtonSegment(value: false, icon: Icon(Icons.view_agenda_outlined), label: Text('Liste')),
+                    ButtonSegment(
+                      value: true,
+                      icon: Icon(Icons.calendar_view_week_rounded),
+                      label: Text('Çizelge'),
+                    ),
+                    ButtonSegment(
+                      value: false,
+                      icon: Icon(Icons.view_agenda_outlined),
+                      label: Text('Liste'),
+                    ),
                   ],
                   selected: {_gridMode},
-                  onSelectionChanged: (value) => setState(() => _gridMode = value.first),
+                  onSelectionChanged: (value) =>
+                      setState(() => _gridMode = value.first),
                 ),
                 const SizedBox(height: 16),
                 if (_gridMode)
-                  ScheduleGridView(entries: _lessons, showClassName: false, showTeacher: true)
+                  ScheduleGridView(
+                    entries: _lessons,
+                    showClassName: false,
+                    showTeacher: true,
+                  )
                 else ...[
                   _dayTabs(theme),
                   const SizedBox(height: 16),
-                  Text('${scheduleDayOrder[_selectedDay]} günü programı', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text(
+                    '${scheduleDayOrder[_selectedDay]} günü programı',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   if (selectedLessons.isEmpty)
                     _emptyCard(theme)
                   else
-                    ...selectedLessons.map((lesson) => _lessonTile(theme, lesson)),
+                    ...selectedLessons.map(
+                      (lesson) => _lessonTile(theme, lesson),
+                    ),
                 ],
               ],
             ),
@@ -163,7 +203,7 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
         itemCount: scheduleDayOrder.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 10),
+        separatorBuilder: (_, _) => const SizedBox(width: 10),
         itemBuilder: (context, index) {
           final isSelected = _selectedDay == index;
           return InkWell(
@@ -177,7 +217,16 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Center(
-                child: Text(scheduleDayShort[scheduleDayOrder[index]] ?? scheduleDayOrder[index], style: TextStyle(color: isSelected ? Colors.white : theme.textTheme.bodyMedium?.color, fontWeight: FontWeight.bold)),
+                child: Text(
+                  scheduleDayShort[scheduleDayOrder[index]] ??
+                      scheduleDayOrder[index],
+                  style: TextStyle(
+                    color: isSelected
+                        ? Colors.white
+                        : theme.textTheme.bodyMedium?.color,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
           );
@@ -190,17 +239,50 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(18), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 4))]),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
-          Column(children: [const Icon(Icons.access_time), const SizedBox(height: 4), Text(lesson.time, style: const TextStyle(fontWeight: FontWeight.bold))]),
+          Column(
+            children: [
+              const Icon(Icons.access_time),
+              const SizedBox(height: 4),
+              Text(
+                lesson.time,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
           const SizedBox(width: 16),
           Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(lesson.subject, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 4),
-              Text('${lesson.teacher} • ${lesson.room.isEmpty ? 'Derslik' : lesson.room}', style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
-            ]),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  lesson.subject,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${lesson.teacher} • ${lesson.room.isEmpty ? 'Derslik' : lesson.room}',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.hintColor,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -208,16 +290,25 @@ class _SchedulePageState extends State<SchedulePage> with TickerProviderStateMix
   }
 
   Widget _emptyCard(ThemeData theme) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(18)),
-        child: const Text('Bu gün için planlı ders yok.', textAlign: TextAlign.center),
-      );
+    width: double.infinity,
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: theme.cardColor,
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: const Text(
+      'Bu gün için planlı ders yok.',
+      textAlign: TextAlign.center,
+    ),
+  );
 
   Widget _errorCard(ThemeData theme, String text) => Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.red.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(12)),
-        child: Text(text, style: const TextStyle(color: Colors.red)),
-      );
+    margin: const EdgeInsets.only(bottom: 12),
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: Colors.red.withValues(alpha: 0.08),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Text(text, style: const TextStyle(color: Colors.red)),
+  );
 }

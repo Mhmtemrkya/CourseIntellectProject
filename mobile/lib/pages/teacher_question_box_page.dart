@@ -3,6 +3,7 @@ import 'package:student/pages/teacher_question_detail_page.dart';
 import 'package:student/pages/teacher_question_reply_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/question_thread_api_service.dart';
+import 'package:student/widgets/teacher_empty_state_panel.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 class QuestionBoxPage extends StatefulWidget {
@@ -197,6 +198,23 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
                 theme,
                 icon: Icons.wifi_off_rounded,
                 message: _error!,
+              )
+            else if (_questions.isEmpty)
+              TeacherEmptyStatePanel(
+                title: 'Henüz soru eklenmemiş',
+                description:
+                    'Öğrencilerin sana soru gönderdiğinde bu alanda toplanacak. Bekleyen soruları buradan takip edip yanıtlayabilirsin.',
+                accentColor: const Color(0xFF7C3AED),
+                mainIcon: Icons.help_outline_rounded,
+                primaryLabel: 'Soruları Yenile',
+                onPrimary: _loadQuestions,
+                tipDescription:
+                    'Farklı kaynaklardan gelen sorular burada düzenli şekilde görünür.',
+                floatingIcons: const [
+                  Icons.question_answer_outlined,
+                  Icons.description_outlined,
+                  Icons.star_border_rounded,
+                ],
               )
             else if (questions.isEmpty)
               _messageCard(

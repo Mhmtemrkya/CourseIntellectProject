@@ -5,6 +5,7 @@ import 'package:student/pages/teacher_assignment_submissions_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
+import 'package:student/widgets/teacher_empty_state_panel.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 class TeacherAssignmentsPage extends StatefulWidget {
@@ -191,6 +192,28 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                   const SizedBox(height: 18),
                   _tabBar(theme),
                   const SizedBox(height: 18),
+                  if (currentList.isEmpty)
+                    TeacherEmptyStatePanel(
+                      title: selectedTab == 0
+                          ? 'Henüz ödev paylaşılmamış'
+                          : 'Henüz teslim edilen ödev yok',
+                      description: selectedTab == 0
+                          ? 'Öğrencilerin için ödevler oluştur ve ilerlemelerini kolayca takip et.'
+                          : 'Öğrenciler ödev teslim ettikçe teslim listesi ve ilerleme bilgileri burada görünecek.',
+                      accentColor: const Color(0xFFF97316),
+                      mainIcon: Icons.assignment_rounded,
+                      primaryLabel: 'Ödev Oluştur',
+                      onPrimary: _showCreateHomeworkDialog,
+                      secondaryLabel: 'Yenile',
+                      onSecondary: _loadAssignments,
+                      tipDescription:
+                          'Düzenli ödevlerle öğrencilerinin öğrenme sürecini pekiştirip gelişimlerini takip edebilirsin.',
+                      floatingIcons: const [
+                        Icons.event_note_outlined,
+                        Icons.send_outlined,
+                        Icons.upload_file_outlined,
+                      ],
+                    ),
                   ...currentList.map(
                     (item) => _assignmentCard(theme, isDark, item),
                   ),

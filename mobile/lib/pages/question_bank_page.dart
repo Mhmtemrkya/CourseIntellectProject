@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/linked_children_service.dart';
 import '../services/question_bank_store.dart';
 import '../widgets/responsive_layout.dart';
+import '../widgets/student_empty_state_panel.dart';
 import 'student_question_bank_detail_page.dart';
 
 class QuestionBankPage extends StatefulWidget {
@@ -133,6 +134,16 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                           ],
                         ),
                       ),
+                    )
+                  else if (topics.isEmpty)
+                    StudentEmptyStatePanel(
+                      title: 'Henüz soru çözmedin',
+                      description:
+                          'Soru bankamızdan konu çalışmaya başlayın. Sana özel sorular ve çözümler burada olacak.',
+                      accentColor: const Color(0xFF2563EB),
+                      icon: Icons.help_outline_rounded,
+                      primaryLabel: 'Soru Çözmeye Başla',
+                      onPrimary: _load,
                     )
                   else
                     ...topics.map((item) => topicQuestionCard(item)),

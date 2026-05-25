@@ -17,6 +17,7 @@ import {
 } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import {
@@ -387,7 +388,19 @@ export default function TeacherLive() {
             <CardDescription>Planlanmış ve tamamlanmış canlı dersler</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {lessons.map((lesson) => (
+            {lessons.length === 0 ? (
+              <TeacherEmptyState
+                variant="live"
+                accent="red"
+                title="Henüz canlı ders oluşturulmamış"
+                description="Öğrencilerle buluşmak için ilk canlı dersini oluştur ve etkileşimli bir öğrenme deneyimi başlat."
+                primaryLabel="Canlı Ders Oluştur"
+                onPrimary={() => setCreateOpen(true)}
+                secondaryLabel="Nasıl Çalışır?"
+                onSecondary={() => setSettingsOpen(true)}
+                tipDescription="Canlı dersler, öğrencilerle gerçek zamanlı etkileşim kurmanın en etkili yoludur."
+              />
+            ) : lessons.map((lesson) => (
               <motion.div
                 key={lesson.id}
                 whileHover={{ scale: 1.01 }}

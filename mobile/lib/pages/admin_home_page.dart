@@ -9,6 +9,7 @@ import 'admin_meeting_overview_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_students_page.dart';
 import 'admin_task_center_page.dart';
+import 'service_routes_page.dart';
 import 'support_page.dart';
 import 'attendance_overview_page.dart';
 import 'teacher_exam_results_page.dart';
@@ -183,6 +184,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
               const SizedBox(height: 18),
               const AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _quickCard(
+                      context,
+                      title: 'Servis Takip',
+                      subtitle: 'Araç, rota, durak ve öğrenci atama',
+                      color: const Color(0xFF0F766E),
+                      icon: Icons.directions_bus_filled_outlined,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const ServiceRoutesPage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -429,9 +450,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 icon: Icons.support_agent_outlined,
                 onTap: () => Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (_) => const SupportPage(),
-                  ),
+                  MaterialPageRoute(builder: (_) => const SupportPage()),
                 ),
               ),
               const SizedBox(height: 18),

@@ -4,6 +4,8 @@ import '../services/material_download_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/responsive_overlays.dart';
+import '../widgets/student_empty_state_panel.dart';
+import 'schedule_page.dart';
 
 class LiveLessonsPage extends StatefulWidget {
   const LiveLessonsPage({super.key});
@@ -203,8 +205,9 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary
-                                        .withValues(alpha: 0.1),
+                                    color: theme.colorScheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Icon(
@@ -304,10 +307,19 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                     icon: Icons.wifi_off_rounded,
                   )
                 else if (lessons.isEmpty)
-                  _infoCard(
-                    theme,
-                    message: 'Henüz planlanmış canlı ders bulunmuyor.',
-                    icon: Icons.event_busy_rounded,
+                  StudentEmptyStatePanel(
+                    title: 'Henüz canlı ders bulunmuyor',
+                    description:
+                        'Programına eklenen canlı dersler burada listelenecek. Sakın kaçırma, bildirimlerini açık tut.',
+                    accentColor: const Color(0xFF8B5CF6),
+                    icon: Icons.video_camera_front_rounded,
+                    primaryLabel: 'Ders Programını Görüntüle',
+                    onPrimary: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const SchedulePage()),
+                    ),
+                    secondaryLabel: 'Geçmiş Ders Kayıtları',
+                    onSecondary: _loadLessons,
                   )
                 else
                   ...lessons.map(

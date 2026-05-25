@@ -19,6 +19,7 @@ import 'admin_students_page.dart';
 import 'attendance_overview_page.dart';
 import 'administrative_documents_page.dart';
 import 'administrative_notifications_page.dart';
+import 'service_routes_page.dart';
 
 class AdministrativeHomePage extends StatefulWidget {
   const AdministrativeHomePage({super.key});
@@ -132,6 +133,21 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   value: 'Kadro işlemleri',
                   color: const Color(0xFF7C3AED),
                   onTap: () => _openPage(const AdminStaffRegistrationPage()),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.directions_bus_filled_outlined,
+                  title: 'Servis Takip',
+                  value: 'Araç, rota, durak ve öğrenci atama',
+                  color: const Color(0xFF0F766E),
+                  onTap: () => _openPage(const ServiceRoutesPage()),
                 ),
               ),
             ],

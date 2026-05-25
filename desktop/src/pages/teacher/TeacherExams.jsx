@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/pop
 import { Calendar as DateCalendar } from '../../components/ui/calendar';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createExamResult, createPlannedExam, createQuestionBankItem, deletePlannedExam, fetchExamResults, fetchPlannedExams, fetchQuestionBank, fetchStudents, uploadFile } from '../../lib/api/modules';
@@ -808,7 +809,19 @@ export default function TeacherExams() {
               </Card>
             </motion.div>
           ))}
-          {plannedExams.length === 0 ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Henüz planlı sınav yok.</CardContent></Card> : null}
+          {plannedExams.length === 0 ? (
+            <TeacherEmptyState
+              variant="exam"
+              accent="green"
+              title="Henüz sınav oluşturulmamış"
+              description="Öğrencilerin başarısını ölçmek için ilk sınavını oluştur ve değerlendirme sürecini başlat."
+              primaryLabel="Sınav Oluştur"
+              onPrimary={() => setPlannedOpen(true)}
+              secondaryLabel="Sınav Şablonları"
+              onSecondary={() => navigate('/t/question-bank')}
+              tipDescription="Hazır soru kaynaklarını kullanarak hızlıca sınav oluşturabilir veya tamamen kendi sınavını tasarlayabilirsin."
+            />
+          ) : null}
         </TabsContent>
         <TabsContent value="completed" className="space-y-4">
           {groupedResults.map((exam, index) => (
@@ -897,7 +910,19 @@ export default function TeacherExams() {
               </Card>
             </motion.div>
           ))}
-          {groupedResults.length === 0 ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Henüz gösterilecek sonuç yok.</CardContent></Card> : null}
+          {groupedResults.length === 0 ? (
+            <TeacherEmptyState
+              variant="exam"
+              accent="green"
+              title="Henüz gösterilecek sonuç yok"
+              description="Sınav sonuçları kaydedildiğinde başarı özetleri ve değerlendirme kayıtları burada görünecek."
+              primaryLabel="Sonuç Gir"
+              onPrimary={() => setCreateOpen(true)}
+              secondaryLabel="Planlı Sınav"
+              onSecondary={() => setPlannedOpen(true)}
+              tipDescription="Sonuç girdikçe sınıf başarılarını ve öğrenci gelişimini bu ekrandan takip edebilirsin."
+            />
+          ) : null}
         </TabsContent>
       </Tabs>
     </motion.div>

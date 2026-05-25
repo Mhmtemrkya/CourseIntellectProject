@@ -5,6 +5,7 @@ import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useApp } from '../../context/AppContext';
 import { fetchExamResults } from '../../lib/api/modules';
 
@@ -69,7 +70,16 @@ export default function StudentExamResults() {
       </div>
 
       <div className="grid gap-4">
-        {records.map((item, index) => (
+        {records.length === 0 ? (
+          <StudentEmptyState
+            variant="exam"
+            accent="green"
+            title="Henüz sınav sonucunuz bulunmuyor"
+            description="Girdiğiniz sınavların sonuçları ve analizleri burada görüntülenecek."
+            primaryLabel="Deneme Sınavlarına Git"
+            onPrimary={() => window.location.assign('/s/exams')}
+          />
+        ) : records.map((item, index) => (
           <Card key={`${item.examTitle}-${index}`}>
             <CardContent className="p-5 flex items-center justify-between gap-4">
               <div>

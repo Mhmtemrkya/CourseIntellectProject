@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
+import 'package:student/widgets/student_empty_state_panel.dart';
 
 class AssignmentsPage extends StatefulWidget {
   const AssignmentsPage({super.key});
@@ -72,7 +73,20 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
                 ),
               )
             : assignments.isEmpty
-            ? const Center(child: Text('Henüz gösterilecek ödev bulunmuyor.'))
+            ? Padding(
+                padding: const EdgeInsets.all(20),
+                child: StudentEmptyStatePanel(
+                  title: 'Henüz ödev bulunmuyor',
+                  description:
+                      'Öğretmenlerin sana verdiği ödevler burada listelenecek. Takipte kal, hiçbirini kaçırma.',
+                  accentColor: const Color(0xFF2563EB),
+                  icon: Icons.folder_copy_rounded,
+                  primaryLabel: 'Derslerime Geri Dön',
+                  onPrimary: () => Navigator.maybePop(context),
+                  secondaryLabel: 'Yenile',
+                  onSecondary: _loadAssignments,
+                ),
+              )
             : ListView.builder(
                 padding: const EdgeInsets.all(20),
                 itemCount: assignments.length,

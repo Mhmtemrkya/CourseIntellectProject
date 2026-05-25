@@ -60,6 +60,8 @@ import TeacherAssignments from "./pages/teacher/TeacherAssignments";
 import TeacherLive from "./pages/teacher/TeacherLive";
 import TeacherReports from "./pages/teacher/TeacherReports";
 import TeacherQuestionBank from "./pages/teacher/TeacherQuestionBank";
+import ExamSolvingPage from "./pages/solving/ExamSolvingPage";
+import TeacherQuestionStudio from "./pages/teacher/TeacherQuestionStudio";
 
 // Student Pages
 import StudentDashboard from "./pages/student/StudentDashboard";
@@ -271,6 +273,8 @@ function App() {
               <Route path="/t/live-room" element={<TeacherLiveRoom />} />
               <Route path="/t/reports" element={<TeacherReports />} />
               <Route path="/t/question-bank" element={<TeacherQuestionBank />} />
+              <Route path="/t/question-studio" element={<TeacherQuestionStudio />} />
+              <Route path="/t/solve-preview" element={<ExamSolvingPage />} />
               <Route path="/t/content-studio" element={<TeacherContentStudio />} />
               <Route path="/t/question-workflow" element={<TeacherQuestionWorkflow />} />
               <Route path="/t/exam-workbench" element={<TeacherExamWorkbench />} />
@@ -284,6 +288,7 @@ function App() {
               <Route path="/s/schedule" element={<StudentSchedule />} />
               <Route path="/s/content" element={<StudentContent />} />
               <Route path="/s/exams" element={<StudentExams />} />
+              <Route path="/s/solve" element={<ExamSolvingPage />} />
               <Route path="/s/questions" element={<StudentQuestions />} />
               <Route path="/s/live" element={<StudentLive />} />
               <Route path="/s/attendance" element={<StudentAttendance />} />

@@ -7,6 +7,7 @@ import '../services/content_store.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/adaptive_scaffold.dart';
 import '../widgets/responsive_layout.dart';
+import '../widgets/student_empty_state_panel.dart';
 
 class ContentPage extends StatefulWidget {
   const ContentPage({super.key});
@@ -128,7 +129,21 @@ class _ContentPageState extends State<ContentPage>
                     children: [
                       _filters(),
                       const SizedBox(height: 16),
-                      Expanded(child: contentGrid(filtered)),
+                      Expanded(
+                        child: filtered.isEmpty
+                            ? SingleChildScrollView(
+                                child: StudentEmptyStatePanel(
+                                  title: 'Henüz içerik bulunmuyor',
+                                  description:
+                                      'Bu derse ait konu anlatımı içerikleri henüz eklenmemiş. Yeni içerikler eklendiğinde burada görebilirsin.',
+                                  accentColor: const Color(0xFF6366F1),
+                                  icon: Icons.menu_book_rounded,
+                                  primaryLabel: 'İçeriklere Göz At',
+                                  onPrimary: _loadContents,
+                                ),
+                              )
+                            : contentGrid(filtered),
+                      ),
                     ],
                   ),
           ),

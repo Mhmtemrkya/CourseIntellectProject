@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Textarea } from '../../components/ui/textarea';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useApp } from '../../context/AppContext';
 import { getDesktopApiBaseUrl } from '../../lib/appEnv';
 import { fetchHomework, submitHomework, uploadFile } from '../../lib/api/modules';
@@ -261,7 +262,18 @@ export default function StudentAssignments() {
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6 space-y-4">
-          {filteredAssignments.map((assignment) => (
+          {filteredAssignments.length === 0 ? (
+            <StudentEmptyState
+              variant="assignment"
+              accent="purple"
+              title="Henüz ödev bulunmuyor"
+              description="Öğretmenlerin sana verdiği ödevler burada listelenecek. Takipte kal, hiçbirini kaçırma."
+              primaryLabel="Derslerime Geri Dön"
+              onPrimary={() => window.location.assign('/s/content')}
+              secondaryLabel="Yenile"
+              onSecondary={loadAssignments}
+            />
+          ) : filteredAssignments.map((assignment) => (
             <motion.div key={assignment.id} variants={itemVariants}>
               <Card className="hover:shadow-card-hover transition-all">
                 <CardContent className="p-6">

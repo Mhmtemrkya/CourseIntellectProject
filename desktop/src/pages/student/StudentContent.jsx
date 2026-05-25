@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { fetchContents } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { setAppFullscreen } from '../../lib/tauri';
@@ -313,6 +314,16 @@ export default function StudentContent() {
         </TabsList>
 
         <TabsContent value={activeTab} className="mt-6">
+          {filteredContent.length === 0 ? (
+            <StudentEmptyState
+              variant="content"
+              accent="purple"
+              title="Henüz içerik bulunmuyor"
+              description="Bu derse ait konu anlatımı içerikleri henüz eklenmemiş. Yeni içerikler eklendiğinde burada görebilirsin."
+              primaryLabel="İçeriklere Göz At"
+              onPrimary={loadContent}
+            />
+          ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredContent.map((item) => {
               const normalizedType = normalizeType(item.fileType);
@@ -354,6 +365,7 @@ export default function StudentContent() {
               );
             })}
           </div>
+          )}
         </TabsContent>
       </Tabs>
 

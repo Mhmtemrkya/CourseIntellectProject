@@ -8,6 +8,7 @@ import 'package:student/services/planned_exam_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/responsive_overlays.dart';
+import 'package:student/widgets/teacher_empty_state_panel.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 class TeacherExamsPage extends StatefulWidget {
@@ -364,18 +365,31 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
               _tabBar(theme),
               const SizedBox(height: 18),
               if (currentList.isEmpty)
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(18),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(22),
+                TeacherEmptyStatePanel(
+                  title: selectedTab == 0
+                      ? 'Henüz sınav oluşturulmamış'
+                      : 'Henüz tamamlanmış sınav yok',
+                  description: selectedTab == 0
+                      ? 'Öğrencilerin başarısını ölçmek için ilk sınavını oluştur ve değerlendirme sürecini başlat.'
+                      : 'Sınavlar tamamlandığında sonuçlar ve değerlendirme özetleri burada görünecek.',
+                  accentColor: const Color(0xFF22C55E),
+                  mainIcon: Icons.fact_check_rounded,
+                  primaryLabel: 'Sınav Oluştur',
+                  onPrimary: _createExam,
+                  secondaryLabel: 'Not Gir',
+                  onSecondary: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const TeacherExamScoreEntryPage(),
+                    ),
                   ),
-                  child: Text(
-                    selectedTab == 0
-                        ? 'Henüz planlı sınav bulunmuyor.'
-                        : 'Henüz gösterilecek tamamlanmış sınav bulunmuyor.',
-                  ),
+                  tipDescription:
+                      'Hazır şablonlarla hızlıca sınav oluşturabilir veya kendi sınav akışını tasarlayabilirsin.',
+                  floatingIcons: const [
+                    Icons.timer_outlined,
+                    Icons.bar_chart_rounded,
+                    Icons.check_circle_outline_rounded,
+                  ],
                 ),
               ...currentList.asMap().entries.map((entry) {
                 final index = entry.key;

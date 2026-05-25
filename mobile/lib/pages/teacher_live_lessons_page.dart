@@ -4,6 +4,7 @@ import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/responsive_overlays.dart';
+import 'package:student/widgets/teacher_empty_state_panel.dart';
 import 'package:student/widgets/teacher_header.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -360,10 +361,31 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                     icon: Icons.wifi_off_rounded,
                   )
                 else if (lessons.isEmpty)
-                  _infoCard(
-                    theme,
-                    message: 'Henüz oluşturduğun bir canlı ders bulunmuyor.',
-                    icon: Icons.videocam_off_rounded,
+                  TeacherEmptyStatePanel(
+                    title: 'Henüz canlı ders oluşturulmamış',
+                    description:
+                        'Öğrencilerinle buluşmak için ilk canlı dersini oluştur ve etkileşimli bir öğrenme deneyimi başlat.',
+                    accentColor: const Color(0xFFEF4444),
+                    mainIcon: Icons.videocam_rounded,
+                    primaryLabel: 'Canlı Ders Oluştur',
+                    onPrimary: _createLesson,
+                    secondaryLabel: 'Nasıl Çalışır?',
+                    onSecondary: () => _showToolSheet(
+                      context,
+                      title: 'Canlı Ders Akışı',
+                      icon: Icons.video_call_rounded,
+                      color: const Color(0xFFEF4444),
+                      description:
+                          'Ders başlığı, sınıf ve bağlantı bilgisiyle canlı dersi planlayabilirsin. Öğrenciler ders ekranından katılır.',
+                      actionText: 'Anladım',
+                    ),
+                    tipDescription:
+                        'Canlı dersler, öğrencilerle gerçek zamanlı etkileşim kurmanın en etkili yoludur.',
+                    floatingIcons: const [
+                      Icons.play_circle_outline_rounded,
+                      Icons.chat_bubble_outline_rounded,
+                      Icons.person_outline_rounded,
+                    ],
                   )
                 else
                   ...lessons.asMap().entries.map((entry) {

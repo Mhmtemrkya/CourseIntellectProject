@@ -5,6 +5,7 @@ import 'package:student/pages/student_exam_history_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/planned_exam_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
+import 'package:student/widgets/student_empty_state_panel.dart';
 import '../widgets/responsive_layout.dart';
 
 class ExamsPage extends StatefulWidget {
@@ -221,18 +222,22 @@ class _ExamsPageState extends State<ExamsPage> {
                     message: _error!,
                   )
                 else if (currentList.isEmpty)
-                  selectedTab == 0
-                      ? _messageCard(
-                          theme,
-                          icon: Icons.play_lesson_outlined,
-                          message:
-                              'Yaklaşan sınav bulunmuyor. Yeni planlanan sınavlar burada listelenecek.',
-                        )
-                      : _messageCard(
-                          theme,
-                          icon: Icons.fact_check_outlined,
-                          message: 'Henüz tamamlanmış sınav sonucu bulunmuyor.',
-                        )
+                  StudentEmptyStatePanel(
+                    title: selectedTab == 0
+                        ? 'Henüz deneme sınavı yok'
+                        : 'Henüz sınav sonucunuz bulunmuyor',
+                    description: selectedTab == 0
+                        ? 'Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol.'
+                        : 'Girdiğiniz sınavların sonuçları ve analizleri burada görüntülenecek.',
+                    accentColor: const Color(0xFF8B5CF6),
+                    icon: selectedTab == 0
+                        ? Icons.fact_check_rounded
+                        : Icons.bar_chart_rounded,
+                    primaryLabel: selectedTab == 0
+                        ? 'Tüm Deneme Sınavlarını Keşfet'
+                        : 'Deneme Sınavlarına Git',
+                    onPrimary: _loadExams,
+                  )
                 else
                   ...currentList.map((item) => _examCard(theme, isDark, item)),
               ],

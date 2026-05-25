@@ -65,6 +65,9 @@ public static class DependencyInjection
         services.AddScoped<ICourseService, CourseService>();
         services.AddScoped<ILoginAttemptService, LoginAttemptService>();
         services.AddScoped<IDashboardService, DashboardService>();
+        services.AddScoped<IETAService, BasicETAService>();
+        services.AddScoped<IServiceTrackingService, ServiceTrackingService>();
+        services.AddScoped<IExamSolvingService, ExamSolvingService>();
 
         return services;
     }

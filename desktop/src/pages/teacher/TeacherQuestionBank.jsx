@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil,
+  Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, Wand2, BarChart3, Users, FileText, Lightbulb,
 } from 'lucide-react';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -188,9 +189,68 @@ function decodeSubject(subject = '') {
     .replaceAll('&amp;', '&');
 }
 
+function EmptyQuestionBankState({ onCreate, onImport }) {
+  const floatingIcons = [
+    { Icon: FileText, className: 'left-[16%] top-[76px]', color: 'text-orange-400 border-orange-400/25 shadow-orange-500/10' },
+    { Icon: Wand2, className: 'right-[16%] top-[78px]', color: 'text-purple-400 border-purple-400/25 shadow-purple-500/10' },
+    { Icon: Users, className: 'left-[22%] bottom-[44px]', color: 'text-sky-400 border-sky-400/25 shadow-sky-500/10' },
+    { Icon: BarChart3, className: 'right-[22%] bottom-[48px]', color: 'text-emerald-400 border-emerald-400/25 shadow-emerald-500/10' },
+  ];
+
+  return (
+    <motion.div variants={itemVariants} className="flex justify-center">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#070c16] px-6 py-9 text-center shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)] dark:bg-[#070c16]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_29%,rgba(249,115,22,0.16),transparent_25%),radial-gradient(circle_at_50%_45%,rgba(59,130,246,0.10),transparent_32%)]" />
+        <div className="relative mx-auto h-[245px] max-w-3xl">
+          <div className="absolute left-[13%] right-[13%] top-[106px] h-[90px] rounded-[50%] border border-dashed border-white/20" />
+          <Brain className="absolute left-1/2 top-3 h-20 w-20 -translate-x-1/2 text-white drop-shadow-[0_0_22px_rgba(255,255,255,0.35)]" />
+          <div className="absolute left-1/2 top-[96px] h-[126px] w-[220px] -translate-x-1/2">
+            <div className="absolute left-1/2 top-8 h-28 w-28 -translate-x-1/2 rounded-xl bg-gradient-to-b from-slate-800 to-slate-950 shadow-[0_-22px_55px_rgba(249,115,22,0.35)]">
+              <Brain className="mx-auto mt-12 h-8 w-8 text-orange-300/80" />
+            </div>
+            <div className="absolute left-6 top-3 h-12 w-24 -rotate-[24deg] rounded-md border border-white/10 bg-gradient-to-br from-slate-500 to-slate-900" />
+            <div className="absolute right-6 top-3 h-12 w-24 rotate-[24deg] rounded-md border border-white/10 bg-gradient-to-bl from-slate-500 to-slate-900" />
+            <div className="absolute left-1/2 top-12 h-24 w-5 -translate-x-1/2 bg-gradient-to-b from-orange-400/70 to-transparent blur-sm" />
+          </div>
+          {floatingIcons.map(({ Icon, className, color }) => (
+            <div key={className} className={`absolute ${className} flex h-14 w-14 items-center justify-center rounded-2xl border bg-white/[0.035] shadow-xl ${color}`}>
+              <Icon className="h-7 w-7" />
+            </div>
+          ))}
+        </div>
+        <div className="relative">
+          <h2 className="text-3xl font-black tracking-tight text-white">Henüz soru oluşturulmadı</h2>
+          <p className="mx-auto mt-4 max-w-xl text-lg leading-8 text-slate-300">
+            Soru bankanızı oluşturmak için hemen yeni soru ekleyebilir veya içe aktararak arşivinizi zenginleştirebilirsiniz.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
+            <Button onClick={onCreate} className="h-14 rounded-2xl bg-orange-500 px-9 text-base font-bold text-white shadow-[0_16px_35px_-18px_rgba(249,115,22,0.9)] hover:bg-orange-600">
+              <Plus className="mr-2 h-5 w-5" />
+              Yeni Soru Ekle
+            </Button>
+            <Button onClick={onImport} variant="outline" className="h-14 rounded-2xl border-white/15 bg-white/[0.02] px-9 text-base font-bold text-white hover:bg-white/10 hover:text-white">
+              <Upload className="mr-2 h-5 w-5" />
+              İçe Aktar
+            </Button>
+          </div>
+          <div className="mx-auto mt-8 flex max-w-xl items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-left">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/15">
+              <Lightbulb className="h-6 w-6 text-blue-300" />
+            </div>
+            <p className="text-sm leading-6 text-slate-300">
+              PDF veya JSON dosyalarından içe aktararak sorularınızı hızlıca sisteme ekleyebilirsiniz.
+            </p>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
+
 export default function TeacherQuestionBank() {
   const { toast } = useToast();
   const { user } = useApp();
+  const navigate = useNavigate();
   const importInputRef = useRef(null);
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [search, setSearch] = useState('');
@@ -248,6 +308,7 @@ export default function TeacherQuestionBank() {
     return matchesSearch && matchesSubject;
   }), [questions, search, selectedSubject]);
   const filteredQuestionSets = useMemo(() => buildQuestionSets(filteredQuestions), [filteredQuestions]);
+  const hasNoQuestions = !loading && !error && questions.length === 0;
 
   const stats = {
     total: questions.length,
@@ -604,6 +665,10 @@ export default function TeacherQuestionBank() {
               <Download className="h-4 w-4 mr-2" />
               Dışa Aktar
             </Button>
+            <Button variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white" onClick={() => navigate('/t/question-studio')}>
+              <Wand2 className="h-4 w-4 mr-2" />
+              Soru Stüdyosu
+            </Button>
             <Dialog
               open={showAddDialog}
               onOpenChange={(open) => {
@@ -794,6 +859,13 @@ export default function TeacherQuestionBank() {
 
       {error ? <ErrorBanner title="Soru bankası alınamadı" message={error} onRetry={loadQuestions} /> : null}
 
+      {hasNoQuestions ? (
+        <EmptyQuestionBankState
+          onCreate={() => navigate('/t/question-studio')}
+          onImport={handleImportClick}
+        />
+      ) : (
+      <>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           [stats.total, 'Toplam Soru', BookOpen, 'from-brand-primary to-brand-accent'],
@@ -843,7 +915,13 @@ export default function TeacherQuestionBank() {
 
       <motion.div variants={itemVariants}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredQuestionSets.map((set) => (
+          {filteredQuestionSets.length === 0 ? (
+            <Card className="col-span-full border border-slate-200/80 bg-white dark:border-white/10 dark:bg-slate-950">
+              <CardContent className="p-8 text-center text-muted-foreground">
+                Bu filtrelere uygun soru bulunamadı.
+              </CardContent>
+            </Card>
+          ) : filteredQuestionSets.map((set) => (
             <Card key={set.key} className="overflow-hidden border border-slate-200/80 bg-white shadow-[0_16px_40px_-24px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-slate-950">
               <CardContent className="p-5 space-y-4">
                 {(() => {
@@ -905,6 +983,8 @@ export default function TeacherQuestionBank() {
           ))}
         </div>
       </motion.div>
+      </>
+      )}
     </motion.div>
   );
 }

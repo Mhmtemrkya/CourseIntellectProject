@@ -42,6 +42,7 @@ import {
 } from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
+import { TeacherEmptyState } from '../components/teacher/TeacherEmptyState';
 import { useToast } from '../hooks/use-toast';
 import { useApp } from '../context/AppContext';
 import { desktopApiBaseUrl } from '../lib/auth';
@@ -427,6 +428,21 @@ export default function Questions() {
         </Card>
       </div>
 
+      {visibleThreads.length === 0 ? (
+        <TeacherEmptyState
+          variant="question"
+          accent="purple"
+          title="Henüz soru eklenmemiş"
+          description={isStudent
+            ? 'Öğretmenine soru gönderdiğinde soru kutusu burada düzenli şekilde görünür.'
+            : 'Öğrencilerin soru gönderdiğinde bu alanda toplanacak. Bekleyen soruları buradan takip edip yanıtlayabilirsin.'}
+          primaryLabel={isStudent ? 'Soru Sor' : 'Soruları Yenile'}
+          onPrimary={isStudent ? () => setDialogOpen(true) : loadThreads}
+          secondaryLabel={isStudent ? undefined : 'Yenile'}
+          onSecondary={isStudent ? undefined : loadThreads}
+          tipDescription="Farklı kaynaklardan gelen sorular burada düzenli şekilde görünür."
+        />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-1">
           <Card>
@@ -672,6 +688,7 @@ export default function Questions() {
           )}
         </div>
       </div>
+      )}
 
       <NewQuestionDialog
         open={dialogOpen}

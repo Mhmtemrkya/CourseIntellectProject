@@ -11,11 +11,11 @@ import {
 } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useApp } from '../../context/AppContext';
 import {
   completeExamSession,
   fetchPlannedExams,
-  startExamSession,
   submitExamSessionAnswer,
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
@@ -101,25 +101,17 @@ export default function StudentExams() {
   })), [plannedExams]);
 
   const startExam = async (exam) => {
-    try {
-      setSubmitting(true);
-      setActiveExam(exam);
-      const started = await startExamSession({
-        plannedExamId: exam.id,
-        examTitle: exam.name,
-        subject: exam.subject,
-        studentName: user?.name || '',
-        studentUsername: user?.username || '',
-        questionCount: exam.questionCount || 10,
-      });
-      setSession(started);
-      setCurrentIndex(0);
-    } catch (err) {
-      setActiveExam(null);
-      setError(err.message || 'Sınav oturumu başlatılamadı.');
-    } finally {
-      setSubmitting(false);
-    }
+    const params = new URLSearchParams({
+      title: exam.name || 'Deneme Sınavı',
+      subject: exam.subject || 'Genel',
+      className: exam.className || '',
+      questionCount: String(exam.questionCount || 20),
+      durationSeconds: String(Number.parseInt(String(exam.duration || '').replace(/\D/g, ''), 10) * 60 || 5400),
+      studentName: user?.name || '',
+      studentUsername: user?.username || '',
+    });
+    if (exam.id) params.set('plannedExamId', exam.id);
+    navigate(`/s/solve?${params.toString()}`);
   };
 
   const submitAnswer = async (optionIndex) => {
@@ -211,7 +203,16 @@ export default function StudentExams() {
       </div>
 
       <div className="space-y-4">
-        {upcomingExams.map((exam) => {
+        {upcomingExams.length === 0 ? (
+          <StudentEmptyState
+            variant="exam"
+            accent="purple"
+            title="Henüz deneme sınavı yok"
+            description="Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol."
+            primaryLabel="Tüm Deneme Sınavlarını Keşfet"
+            onPrimary={loadExams}
+          />
+        ) : upcomingExams.map((exam) => {
           const theme = subjectMeta(exam.subject);
           return (
             <Card key={exam.id} className="overflow-hidden border-0 shadow-sm">

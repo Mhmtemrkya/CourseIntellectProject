@@ -13,6 +13,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createContent, deleteContent, fetchContents, fetchStudents, updateContent, updateContentStatus, uploadFile } from '../../lib/api/modules';
@@ -676,8 +677,31 @@ export default function TeacherContent() {
         </Select>
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-        {filteredContent.map((item) => {
+      {content.length === 0 ? (
+        <motion.div variants={itemVariants}>
+          <TeacherEmptyState
+            variant="content"
+            accent="orange"
+            large
+            title="Henüz içerik yüklenmemiş"
+            description="Bu derse ait henüz bir konu anlatımı içeriği bulunmuyor. Hemen içerik ekleyerek öğrencilerinize sunabilirsiniz."
+            primaryLabel="Yeni İçerik Ekle"
+            onPrimary={() => setUploadOpen(true)}
+            secondaryLabel="İçerik Yükle"
+            onSecondary={() => setUploadOpen(true)}
+            tipTitle="Desteklenen İçerik Türleri"
+            tipDescription="PDF, DOCX, PPTX, video, ses ve görsel dosyalarını yükleyebilirsiniz."
+          />
+        </motion.div>
+      ) : filteredContent.length === 0 ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-muted-foreground">
+            Bu filtrelere uygun içerik bulunamadı.
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredContent.map((item) => {
           const Icon = contentTypeIcon(item.fileType);
           return (
             <motion.div key={item.id || item.title} variants={itemVariants}>
@@ -739,8 +763,9 @@ export default function TeacherContent() {
               </Card>
             </motion.div>
           );
-        })}
-      </div>
+          })}
+        </div>
+      )}
 
       <Dialog open={Boolean(selectedContent)} onOpenChange={(open) => {
         if (!open) {

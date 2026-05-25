@@ -869,3 +869,81 @@ export async function saveTenantBranding(tenantId, brandingPayload) {
     payloadJson: JSON.stringify(brandingPayload),
   });
 }
+
+// --- Exam / Question Solving ---
+
+export async function startSolutionSession(payload) {
+  const response = await api.post('/api/solution-sessions/start', payload);
+  return response;
+}
+
+export async function fetchSolutionSession(sessionId) {
+  const response = await api.get(`/api/solution-sessions/${sessionId}`);
+  return response;
+}
+
+export async function saveSolutionAnswer(sessionId, payload) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/answers`, payload);
+  return response;
+}
+
+export async function saveSolutionFlag(sessionId, payload) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/flags`, payload);
+  return response;
+}
+
+export async function saveSolutionNote(sessionId, payload) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/notes`, payload);
+  return response;
+}
+
+export async function saveSolutionCanvasStroke(sessionId, payload) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/canvas/strokes`, payload);
+  return response;
+}
+
+export async function saveSolutionCanvasSnapshot(sessionId, payload) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/canvas/snapshot`, payload);
+  return response;
+}
+
+export async function completeSolutionSession(sessionId) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/complete`);
+  return response;
+}
+
+export async function queueSolutionPdf(sessionId) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/pdf`);
+  return response;
+}
+
+export async function addSolutionTeacherReview(sessionId, payload) {
+  const response = await api.post(`/api/solution-sessions/${sessionId}/reviews`, payload);
+  return response;
+}
+
+export async function fetchTeacherPdfReports() {
+  const response = await api.get('/api/teacher/pdf-reports');
+  return Array.isArray(response) ? response : [];
+}
+
+// --- Question Studio ---
+
+export async function fetchQuestionStudioDrafts() {
+  const response = await api.get('/api/question-studio/drafts');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function saveQuestionStudioDraft(payload) {
+  const response = await api.post('/api/question-studio/drafts', payload);
+  return response;
+}
+
+export async function deleteQuestionStudioDraft(id) {
+  await api.delete(`/api/question-studio/drafts/${id}`);
+}
+
+export async function generateQuestionStudioAi(payload) {
+  const response = await api.post('/api/question-studio/ai/generate', payload);
+  return response;
+}

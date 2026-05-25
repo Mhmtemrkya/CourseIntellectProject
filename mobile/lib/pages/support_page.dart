@@ -57,8 +57,8 @@ class _SupportPageState extends State<SupportPage> {
       _session = session;
       _isTenantAdmin =
           session != null &&
-              session.primaryRole.toLowerCase() == 'admin' &&
-              !session.isPlatformAdmin;
+          session.primaryRole.toLowerCase() == 'admin' &&
+          !session.isPlatformAdmin;
     });
     if (_isTenantAdmin) {
       await _loadTickets();
@@ -116,8 +116,10 @@ class _SupportPageState extends State<SupportPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             backgroundColor: Colors.red.shade900,
-            content: Text(e.message,
-                style: const TextStyle(color: Colors.white)),
+            content: Text(
+              e.message,
+              style: const TextStyle(color: Colors.white),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -151,44 +153,41 @@ class _SupportPageState extends State<SupportPage> {
         child: _session == null
             ? const _Centered(child: CircularProgressIndicator(color: _orange))
             : !_isTenantAdmin
-                ? _NotAdminMessage()
-                : RefreshIndicator(
-                    onRefresh: _loadTickets,
-                    color: _orange,
-                    backgroundColor: _navyDeep,
-                    child: ListView(
-                      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-                      children: [
-                        _buildHeader(),
-                        const SizedBox(height: 20),
-                        _buildForm(),
-                        const SizedBox(height: 28),
-                        _buildTicketsHeader(),
-                        const SizedBox(height: 12),
-                        if (_loadingTickets)
-                          const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 32),
-                            child: Center(
-                              child: CircularProgressIndicator(color: _orange),
-                            ),
-                          )
-                        else if (_error != null)
-                          _ErrorBanner(
-                            message: _error!,
-                            onRetry: _loadTickets,
-                          )
-                        else if (_tickets.isEmpty)
-                          _EmptyTickets()
-                        else
-                          ..._tickets
-                              .map((t) => Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: _TicketCard(ticket: t),
-                                  ))
-                              .toList(),
-                      ],
-                    ),
-                  ),
+            ? _NotAdminMessage()
+            : RefreshIndicator(
+                onRefresh: _loadTickets,
+                color: _orange,
+                backgroundColor: _navyDeep,
+                child: ListView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+                  children: [
+                    _buildHeader(),
+                    const SizedBox(height: 20),
+                    _buildForm(),
+                    const SizedBox(height: 28),
+                    _buildTicketsHeader(),
+                    const SizedBox(height: 12),
+                    if (_loadingTickets)
+                      const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 32),
+                        child: Center(
+                          child: CircularProgressIndicator(color: _orange),
+                        ),
+                      )
+                    else if (_error != null)
+                      _ErrorBanner(message: _error!, onRetry: _loadTickets)
+                    else if (_tickets.isEmpty)
+                      _EmptyTickets()
+                    else
+                      ..._tickets.map(
+                        (t) => Padding(
+                          padding: const EdgeInsets.only(bottom: 10),
+                          child: _TicketCard(ticket: t),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
       ),
     );
   }
@@ -274,9 +273,14 @@ class _SupportPageState extends State<SupportPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Yeni talep',
-                style: TextStyle(
-                    color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
+            const Text(
+              'Yeni talep',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
             const SizedBox(height: 14),
 
             _label('Konu'),
@@ -355,8 +359,10 @@ class _SupportPageState extends State<SupportPage> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  textStyle:
-                      const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+                  textStyle: const TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 15,
+                  ),
                 ),
               ),
             ),
@@ -373,7 +379,10 @@ class _SupportPageState extends State<SupportPage> {
         const Text(
           'Açtığım talepler',
           style: TextStyle(
-              color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         Text(
           '${_tickets.length} talep',
@@ -388,16 +397,16 @@ class _SupportPageState extends State<SupportPage> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.7),
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: TextStyle(
+        color: Colors.white.withOpacity(0.7),
+        fontSize: 12,
+        fontWeight: FontWeight.w500,
+      ),
+    ),
+  );
 
   Widget _input({
     required TextEditingController controller,
@@ -422,8 +431,10 @@ class _SupportPageState extends State<SupportPage> {
           color: Colors.white.withOpacity(0.4),
           fontSize: 11,
         ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
@@ -464,10 +475,7 @@ class _SupportPageState extends State<SupportPage> {
         style: const TextStyle(color: Colors.white, fontSize: 14),
         iconEnabledColor: _orangeWarm,
         items: items
-            .map((e) => DropdownMenuItem(
-                  value: e.key,
-                  child: Text(e.value),
-                ))
+            .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
             .toList(),
         onChanged: (v) {
           if (v != null) onChanged(v);
@@ -570,8 +578,11 @@ class _TicketCard extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.verified_user_outlined,
-                          color: _orangeWarm, size: 12),
+                      const Icon(
+                        Icons.verified_user_outlined,
+                        color: _orangeWarm,
+                        size: 12,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         'COURSEINTELLECT YANITI',
@@ -667,7 +678,10 @@ class _TicketCard extends StatelessWidget {
       child: Text(
         label,
         style: TextStyle(
-            color: color, fontSize: 10, fontWeight: FontWeight.w600),
+          color: color,
+          fontSize: 10,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -722,8 +736,11 @@ class _NotAdminMessage extends StatelessWidget {
                 shape: BoxShape.circle,
                 border: Border.all(color: _orange.withOpacity(0.35)),
               ),
-              child: const Icon(Icons.shield_outlined,
-                  color: _orangeWarm, size: 28),
+              child: const Icon(
+                Icons.shield_outlined,
+                color: _orangeWarm,
+                size: 28,
+              ),
             ),
             const SizedBox(height: 18),
             const Text(
@@ -764,8 +781,11 @@ class _EmptyTickets extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Icon(Icons.support_agent,
-              size: 32, color: Colors.white.withOpacity(0.3)),
+          Icon(
+            Icons.support_agent,
+            size: 32,
+            color: Colors.white.withOpacity(0.3),
+          ),
           const SizedBox(height: 10),
           Text(
             'Henüz talep oluşturmadınız.',

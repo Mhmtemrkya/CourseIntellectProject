@@ -64,6 +64,26 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<LoginAttemptItem> LoginAttempts => Set<LoginAttemptItem>();
     public DbSet<AuthorizationCode> AuthorizationCodes => Set<AuthorizationCode>();
     public DbSet<PlatformSubscriptionInvoice> PlatformSubscriptionInvoices => Set<PlatformSubscriptionInvoice>();
+    public DbSet<ServiceVehicle> ServiceVehicles => Set<ServiceVehicle>();
+    public DbSet<ServiceDriver> ServiceDrivers => Set<ServiceDriver>();
+    public DbSet<ServiceRoute> ServiceRoutes => Set<ServiceRoute>();
+    public DbSet<ServiceRouteStop> ServiceRouteStops => Set<ServiceRouteStop>();
+    public DbSet<StudentServiceAssignment> StudentServiceAssignments => Set<StudentServiceAssignment>();
+    public DbSet<ServiceTrip> ServiceTrips => Set<ServiceTrip>();
+    public DbSet<ServiceAttendance> ServiceAttendances => Set<ServiceAttendance>();
+    public DbSet<ServiceVehicleLocation> ServiceVehicleLocations => Set<ServiceVehicleLocation>();
+    public DbSet<ServiceAbsenceRequest> ServiceAbsenceRequests => Set<ServiceAbsenceRequest>();
+    public DbSet<ExamSession> ExamSessions => Set<ExamSession>();
+    public DbSet<ExamQuestion> ExamQuestions => Set<ExamQuestion>();
+    public DbSet<QuestionAttempt> QuestionAttempts => Set<QuestionAttempt>();
+    public DbSet<AnswerSelection> AnswerSelections => Set<AnswerSelection>();
+    public DbSet<CanvasStroke> CanvasStrokes => Set<CanvasStroke>();
+    public DbSet<CanvasSnapshot> CanvasSnapshots => Set<CanvasSnapshot>();
+    public DbSet<StudentNote> StudentNotes => Set<StudentNote>();
+    public DbSet<PdfReport> PdfReports => Set<PdfReport>();
+    public DbSet<TeacherReviewComment> TeacherReviewComments => Set<TeacherReviewComment>();
+    public DbSet<ReportRecipient> ReportRecipients => Set<ReportRecipient>();
+    public DbSet<LiveExamState> LiveExamStates => Set<LiveExamState>();
 
     public override int SaveChanges()
     {
@@ -622,6 +642,416 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ClientId).HasMaxLength(80).IsRequired();
             entity.Property(x => x.RedirectUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CodeChallengeHash).HasMaxLength(200).IsRequired();
+        });
+
+        ConfigureServiceTracking(modelBuilder);
+    }
+
+    private void ConfigureServiceTracking(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ServiceVehicle>(entity =>
+        {
+            entity.ToTable("service_vehicles");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.PlateNumber).HasColumnName("plate_number").HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Brand).HasColumnName("brand").HasMaxLength(80);
+            entity.Property(x => x.Model).HasColumnName("model").HasMaxLength(80);
+            entity.Property(x => x.Capacity).HasColumnName("capacity");
+            entity.Property(x => x.IsActive).HasColumnName("is_active");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(x => x.PlateNumber);
+        });
+
+        modelBuilder.Entity<ServiceDriver>(entity =>
+        {
+            entity.ToTable("service_drivers");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id");
+            entity.Property(x => x.PhoneNumber).HasColumnName("phone_number").HasMaxLength(40);
+            entity.Property(x => x.LicenseNumber).HasColumnName("license_number").HasMaxLength(80);
+            entity.Property(x => x.IsActive).HasColumnName("is_active");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(x => x.UserId);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ServiceRoute>(entity =>
+        {
+            entity.ToTable("service_routes");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.RouteType).HasColumnName("route_type").HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(x => x.DriverId).HasColumnName("driver_id");
+            entity.Property(x => x.StartTime).HasColumnName("start_time");
+            entity.Property(x => x.EndTime).HasColumnName("end_time");
+            entity.Property(x => x.IsActive).HasColumnName("is_active");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.Property(x => x.UpdatedAt).HasColumnName("updated_at");
+            entity.HasIndex(x => new { x.TenantId, x.RouteType, x.IsActive });
+            entity.HasOne<ServiceVehicle>()
+                .WithMany()
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceDriver>()
+                .WithMany()
+                .HasForeignKey(x => x.DriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ServiceRouteStop>(entity =>
+        {
+            entity.ToTable("service_route_stops");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.RouteId).HasColumnName("route_id");
+            entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Address).HasColumnName("address").HasMaxLength(600).IsRequired();
+            entity.Property(x => x.Latitude).HasColumnName("latitude");
+            entity.Property(x => x.Longitude).HasColumnName("longitude");
+            entity.Property(x => x.SortOrder).HasColumnName("sort_order");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(x => new { x.RouteId, x.SortOrder }).IsUnique();
+            entity.HasOne<ServiceRoute>()
+                .WithMany()
+                .HasForeignKey(x => x.RouteId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<StudentServiceAssignment>(entity =>
+        {
+            entity.ToTable("student_service_assignments");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.StudentId).HasColumnName("student_id");
+            entity.Property(x => x.ParentId).HasColumnName("parent_id");
+            entity.Property(x => x.RouteId).HasColumnName("route_id");
+            entity.Property(x => x.StopId).HasColumnName("stop_id");
+            entity.Property(x => x.IsActive).HasColumnName("is_active");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(x => new { x.StudentId, x.RouteId, x.IsActive });
+            entity.HasOne<StudentProfile>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceRoute>()
+                .WithMany()
+                .HasForeignKey(x => x.RouteId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceRouteStop>()
+                .WithMany()
+                .HasForeignKey(x => x.StopId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ServiceTrip>(entity =>
+        {
+            entity.ToTable("service_trips");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.RouteId).HasColumnName("route_id");
+            entity.Property(x => x.DriverId).HasColumnName("driver_id");
+            entity.Property(x => x.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(x => x.TripDate).HasColumnName("trip_date");
+            entity.Property(x => x.TripType).HasColumnName("trip_type").HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30);
+            entity.Property(x => x.StartedAt).HasColumnName("started_at");
+            entity.Property(x => x.ArrivedAtSchoolAt).HasColumnName("arrived_at_school_at");
+            entity.Property(x => x.CompletedAt).HasColumnName("completed_at");
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(x => new { x.RouteId, x.TripDate, x.TripType }).IsUnique();
+            entity.HasOne<ServiceRoute>()
+                .WithMany()
+                .HasForeignKey(x => x.RouteId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceDriver>()
+                .WithMany()
+                .HasForeignKey(x => x.DriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceVehicle>()
+                .WithMany()
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ServiceAttendance>(entity =>
+        {
+            entity.ToTable("service_attendances");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.TripId).HasColumnName("trip_id");
+            entity.Property(x => x.StudentId).HasColumnName("student_id");
+            entity.Property(x => x.ParentId).HasColumnName("parent_id");
+            entity.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30);
+            entity.Property(x => x.MarkedByDriverId).HasColumnName("marked_by_driver_id");
+            entity.Property(x => x.MarkedAt).HasColumnName("marked_at");
+            entity.Property(x => x.Note).HasColumnName("note").HasMaxLength(500);
+            entity.HasIndex(x => new { x.TripId, x.StudentId }).IsUnique();
+            entity.HasOne<ServiceTrip>()
+                .WithMany()
+                .HasForeignKey(x => x.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudentProfile>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceDriver>()
+                .WithMany()
+                .HasForeignKey(x => x.MarkedByDriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ServiceVehicleLocation>(entity =>
+        {
+            entity.ToTable("service_vehicle_locations");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.VehicleId).HasColumnName("vehicle_id");
+            entity.Property(x => x.DriverId).HasColumnName("driver_id");
+            entity.Property(x => x.TripId).HasColumnName("trip_id");
+            entity.Property(x => x.Latitude).HasColumnName("latitude");
+            entity.Property(x => x.Longitude).HasColumnName("longitude");
+            entity.Property(x => x.Speed).HasColumnName("speed");
+            entity.Property(x => x.Heading).HasColumnName("heading");
+            entity.Property(x => x.RecordedAt).HasColumnName("recorded_at");
+            entity.HasIndex(x => new { x.VehicleId, x.RecordedAt });
+            entity.HasOne<ServiceVehicle>()
+                .WithMany()
+                .HasForeignKey(x => x.VehicleId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceDriver>()
+                .WithMany()
+                .HasForeignKey(x => x.DriverId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceTrip>()
+                .WithMany()
+                .HasForeignKey(x => x.TripId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ServiceAbsenceRequest>(entity =>
+        {
+            entity.ToTable("service_absence_requests");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.StudentId).HasColumnName("student_id");
+            entity.Property(x => x.ParentId).HasColumnName("parent_id");
+            entity.Property(x => x.RouteId).HasColumnName("route_id");
+            entity.Property(x => x.Date).HasColumnName("date");
+            entity.Property(x => x.TripType).HasColumnName("trip_type").HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.Reason).HasColumnName("reason").HasMaxLength(500);
+            entity.Property(x => x.Status).HasColumnName("status").HasConversion<string>().HasMaxLength(30);
+            entity.Property(x => x.CreatedAt).HasColumnName("created_at");
+            entity.HasIndex(x => new { x.StudentId, x.Date, x.TripType });
+            entity.HasOne<StudentProfile>()
+                .WithMany()
+                .HasForeignKey(x => x.StudentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<ServiceRoute>()
+                .WithMany()
+                .HasForeignKey(x => x.RouteId)
+                .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<ExamSession>(entity =>
+        {
+            entity.ToTable("exam_sessions");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.PlannedExamId).HasColumnName("planned_exam_id");
+            entity.Property(x => x.StudentUserId).HasColumnName("student_user_id");
+            entity.Property(x => x.TeacherPreviewUserId).HasColumnName("teacher_preview_user_id");
+            entity.Property(x => x.StudentName).HasColumnName("student_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StudentUsername).HasColumnName("student_username").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.ClassName).HasColumnName("class_name").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Title).HasColumnName("title").HasMaxLength(220).IsRequired();
+            entity.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(100).IsRequired();
+            entity.Property(x => x.DurationSeconds).HasColumnName("duration_seconds");
+            entity.Property(x => x.IsTeacherPreview).HasColumnName("is_teacher_preview");
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.StartedAtUtc).HasColumnName("started_at_utc");
+            entity.Property(x => x.CompletedAtUtc).HasColumnName("completed_at_utc");
+            entity.HasIndex(x => new { x.TenantId, x.StudentUsername, x.Status });
+            entity.HasIndex(x => x.PlannedExamId);
+        });
+
+        modelBuilder.Entity<ExamQuestion>(entity =>
+        {
+            entity.ToTable("exam_questions");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.PlannedExamId).HasColumnName("planned_exam_id");
+            entity.Property(x => x.QuestionBankItemId).HasColumnName("question_bank_item_id");
+            entity.Property(x => x.SortOrder).HasColumnName("sort_order");
+            entity.Property(x => x.Point).HasColumnName("point");
+            entity.HasIndex(x => new { x.PlannedExamId, x.SortOrder });
+            entity.HasOne<QuestionBankItem>().WithMany().HasForeignKey(x => x.QuestionBankItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<QuestionAttempt>(entity =>
+        {
+            entity.ToTable("question_attempts");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.ExamSessionId).HasColumnName("exam_session_id");
+            entity.Property(x => x.QuestionBankItemId).HasColumnName("question_bank_item_id");
+            entity.Property(x => x.SortOrder).HasColumnName("sort_order");
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.IsFlagged).HasColumnName("is_flagged");
+            entity.Property(x => x.FlagType).HasColumnName("flag_type").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.TimeSpentSeconds).HasColumnName("time_spent_seconds");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.Property(x => x.LastInteractionAtUtc).HasColumnName("last_interaction_at_utc");
+            entity.HasIndex(x => new { x.ExamSessionId, x.SortOrder }).IsUnique();
+            entity.HasIndex(x => x.QuestionBankItemId);
+            entity.HasOne<ExamSession>().WithMany().HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<QuestionBankItem>().WithMany().HasForeignKey(x => x.QuestionBankItemId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AnswerSelection>(entity =>
+        {
+            entity.ToTable("answer_selections");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.QuestionAttemptId).HasColumnName("question_attempt_id");
+            entity.Property(x => x.SelectedOptionIndex).HasColumnName("selected_option_index");
+            entity.Property(x => x.OpenAnswer).HasColumnName("open_answer").HasMaxLength(4000);
+            entity.Property(x => x.IsCorrect).HasColumnName("is_correct");
+            entity.Property(x => x.SavedAtUtc).HasColumnName("saved_at_utc");
+            entity.HasIndex(x => x.QuestionAttemptId);
+            entity.HasOne<QuestionAttempt>().WithMany().HasForeignKey(x => x.QuestionAttemptId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CanvasStroke>(entity =>
+        {
+            entity.ToTable("canvas_strokes");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.QuestionAttemptId).HasColumnName("question_attempt_id");
+            entity.Property(x => x.Tool).HasColumnName("tool").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Color).HasColumnName("color").HasMaxLength(24).IsRequired();
+            entity.Property(x => x.Width).HasColumnName("width");
+            entity.Property(x => x.Opacity).HasColumnName("opacity");
+            entity.Property(x => x.Pressure).HasColumnName("pressure");
+            entity.Property(x => x.PointsJson).HasColumnName("points_json").HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.QuestionAttemptId, x.CreatedAtUtc });
+            entity.HasOne<QuestionAttempt>().WithMany().HasForeignKey(x => x.QuestionAttemptId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<CanvasSnapshot>(entity =>
+        {
+            entity.ToTable("canvas_snapshots");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.QuestionAttemptId).HasColumnName("question_attempt_id");
+            entity.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(700).IsRequired();
+            entity.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.QuestionAttemptId, x.CreatedAtUtc });
+            entity.HasOne<QuestionAttempt>().WithMany().HasForeignKey(x => x.QuestionAttemptId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<StudentNote>(entity =>
+        {
+            entity.ToTable("student_notes");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.QuestionAttemptId).HasColumnName("question_attempt_id");
+            entity.Property(x => x.Note).HasColumnName("note").HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
+            entity.HasIndex(x => x.QuestionAttemptId).IsUnique();
+            entity.HasOne<QuestionAttempt>().WithMany().HasForeignKey(x => x.QuestionAttemptId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<PdfReport>(entity =>
+        {
+            entity.ToTable("pdf_reports");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.ExamSessionId).HasColumnName("exam_session_id");
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(700);
+            entity.Property(x => x.ErrorMessage).HasColumnName("error_message").HasMaxLength(1000);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.Property(x => x.ReadyAtUtc).HasColumnName("ready_at_utc");
+            entity.HasIndex(x => new { x.ExamSessionId, x.Status });
+            entity.HasOne<ExamSession>().WithMany().HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<TeacherReviewComment>(entity =>
+        {
+            entity.ToTable("teacher_review_comments");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.QuestionAttemptId).HasColumnName("question_attempt_id");
+            entity.Property(x => x.TeacherUserId).HasColumnName("teacher_user_id");
+            entity.Property(x => x.TeacherName).HasColumnName("teacher_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Comment).HasColumnName("comment").HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.QuestionAttemptId, x.TeacherUserId });
+            entity.HasOne<QuestionAttempt>().WithMany().HasForeignKey(x => x.QuestionAttemptId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<ReportRecipient>(entity =>
+        {
+            entity.ToTable("report_recipients");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.PdfReportId).HasColumnName("pdf_report_id");
+            entity.Property(x => x.UserId).HasColumnName("user_id");
+            entity.Property(x => x.Role).HasColumnName("role").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.PdfReportId, x.Role });
+            entity.HasOne<PdfReport>().WithMany().HasForeignKey(x => x.PdfReportId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LiveExamState>(entity =>
+        {
+            entity.ToTable("live_exam_states");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.ExamSessionId).HasColumnName("exam_session_id");
+            entity.Property(x => x.ActiveQuestionAttemptId).HasColumnName("active_question_attempt_id");
+            entity.Property(x => x.RemainingSeconds).HasColumnName("remaining_seconds");
+            entity.Property(x => x.StatusSummaryJson).HasColumnName("status_summary_json").HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
+            entity.HasIndex(x => x.ExamSessionId).IsUnique();
+            entity.HasOne<ExamSession>().WithMany().HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
         });
     }
 

@@ -9,6 +9,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useApp } from '../../context/AppContext';
 import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { resolveCurrentStudent } from '../../lib/userMatching';
@@ -148,6 +149,18 @@ export default function StudentLive() {
         </motion.div>
       ) : null}
 
+      {lessons.length === 0 ? (
+        <StudentEmptyState
+          variant="live"
+          accent="purple"
+          title="Henüz canlı ders bulunmuyor"
+          description="Programına eklenen canlı dersler burada listelenecek. Sakın kaçırma, bildirimlerini açık tut."
+          primaryLabel="Ders Programını Görüntüle"
+          onPrimary={() => window.location.assign('/s/schedule')}
+          secondaryLabel="Geçmiş Ders Kayıtları"
+          onSecondary={loadLessons}
+        />
+      ) : (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>
           <Card>
@@ -211,6 +224,7 @@ export default function StudentLive() {
           </Card>
         </motion.div>
       </div>
+      )}
 
       <motion.div variants={itemVariants}>
         <Card className="bg-brand-primary/5 border-brand-primary/20">

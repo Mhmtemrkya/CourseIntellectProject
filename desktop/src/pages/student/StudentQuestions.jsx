@@ -13,6 +13,7 @@ import { DialogFooter } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { AnimatedCounter, CircularProgress } from '../../components/animations/AnimatedCounter';
+import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import {
@@ -554,6 +555,16 @@ export default function StudentQuestions() {
       </motion.div>
 
       <motion.div variants={itemVariants}>
+        {filteredQuestionSets.length === 0 ? (
+          <StudentEmptyState
+            variant="question"
+            accent="purple"
+            title="Henüz soru çözmedin"
+            description="Soru bankamızdan konu çalışmaya başlayın. Sana özel sorular ve çözümler burada olacak."
+            primaryLabel="Soru Çözmeye Başla"
+            onPrimary={loadQuestions}
+          />
+        ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQuestionSets.map((set) => (
             <motion.div key={set.key} variants={itemVariants}>
@@ -587,6 +598,7 @@ export default function StudentQuestions() {
             </motion.div>
           ))}
         </div>
+        )}
       </motion.div>
 
       <Dialog

@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createHomework, deleteHomework, fetchHomework, fetchStudents, uploadFile } from '../../lib/api/modules';
@@ -290,7 +291,23 @@ export default function TeacherAssignments() {
             <CardTitle>Ödevlerim</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {filteredAssignments.map((assignment) => {
+            {assignments.length === 0 ? (
+              <TeacherEmptyState
+                variant="assignment"
+                accent="orange"
+                title="Henüz ödev paylaşılmamış"
+                description="Öğrencilerin için ödevler oluştur ve ilerlemelerini kolayca takip et."
+                primaryLabel="Ödev Oluştur"
+                onPrimary={() => setCreateOpen(true)}
+                secondaryLabel="Yenile"
+                onSecondary={loadAssignments}
+                tipDescription="Düzenli ödevlerle öğrencilerinin öğrenme sürecini pekiştirip gelişimlerini takip edebilirsin."
+              />
+            ) : filteredAssignments.length === 0 ? (
+              <div className="rounded-xl border p-6 text-sm text-muted-foreground">
+                Bu aramaya uygun ödev bulunamadı.
+              </div>
+            ) : filteredAssignments.map((assignment) => {
               const submissionRate = assignment.total ? Math.round(((assignment.submitted || 0) / assignment.total) * 100) : 0;
               return (
                 <div key={assignment.id} className="p-4 rounded-xl border hover:border-brand-primary/40 transition-colors">

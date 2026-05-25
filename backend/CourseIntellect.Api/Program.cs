@@ -41,6 +41,8 @@ builder.Services.AddControllers();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<IMessageRealtimeNotifier, SignalRMessageRealtimeNotifier>();
+builder.Services.AddSingleton<IServiceTrackingRealtimeNotifier, SignalRServiceTrackingRealtimeNotifier>();
+builder.Services.AddSingleton<IExamSolvingRealtimeNotifier, SignalRExamSolvingRealtimeNotifier>();
 
 var defaultCorsOrigins = new[]
 {
@@ -141,7 +143,9 @@ builder.Services
             {
                 var accessToken = context.Request.Query["access_token"];
                 var path = context.HttpContext.Request.Path;
-                if (!string.IsNullOrWhiteSpace(accessToken) && path.StartsWithSegments("/hubs/messages"))
+                if (!string.IsNullOrWhiteSpace(accessToken)
+                    && (path.StartsWithSegments("/hubs/messages")
+                        || path.StartsWithSegments("/hubs/exam-solving")))
                 {
                     context.Token = accessToken;
                 }
@@ -290,5 +294,7 @@ if (app.Environment.IsDevelopment())
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<MessagesHub>("/hubs/messages");
+app.MapHub<ServiceTrackingHub>("/hubs/service-tracking");
+app.MapHub<ExamSolvingHub>("/hubs/exam-solving");
 
 app.Run();
