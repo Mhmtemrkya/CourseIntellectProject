@@ -10,7 +10,7 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/service")]
 public sealed class ServiceController(IServiceTrackingService serviceTrackingService) : ControllerBase
 {
-    private const string ServiceManagers = "Admin,Administrative";
+    private const string ServiceManagers = "Admin,Administrative,InstitutionAdmin,Idare";
 
     [HttpPost("vehicles")]
     [Authorize(Roles = ServiceManagers)]

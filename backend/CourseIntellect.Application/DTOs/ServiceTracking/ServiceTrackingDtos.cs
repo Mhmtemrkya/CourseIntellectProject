@@ -35,7 +35,25 @@ public sealed record DriverTodayRouteDto(Guid RouteId, string RouteName, string 
 public sealed record UpdateVehicleLocationRequest(Guid TripId, double Latitude, double Longitude, double? Speed, double? Heading);
 public sealed record VehicleLocationDto(Guid Id, Guid VehicleId, Guid DriverId, Guid TripId, double Latitude, double Longitude, double? Speed, double? Heading, DateTime RecordedAt);
 
-public sealed record ParentServiceStatusDto(Guid StudentId, string StudentFullName, Guid RouteId, string RouteName, string RouteType, Guid StopId, string StopName, string AttendanceStatus, string? TripStatus, int? EtaMinutes);
+public sealed record ParentServiceStatusDto(
+    Guid StudentId,
+    string StudentFullName,
+    Guid RouteId,
+    string RouteName,
+    string RouteType,
+    Guid StopId,
+    string StopName,
+    string AttendanceStatus,
+    string? TripStatus,
+    Guid? TripId,
+    Guid? VehicleId,
+    int? EtaMinutes,
+    double StopLatitude,
+    double StopLongitude,
+    double? VehicleLatitude,
+    double? VehicleLongitude,
+    double? DistanceMeters,
+    DateTime? LastLocationAt);
 public sealed record ServiceHistoryItemDto(Guid TripId, DateOnly TripDate, string TripType, string RouteName, string AttendanceStatus, DateTime? MarkedAt);
 public sealed record CreateServiceAbsenceRequestRequest(Guid StudentId, Guid RouteId, DateOnly Date, string TripType, string? Reason);
 public sealed record ServiceAbsenceRequestDto(Guid Id, Guid StudentId, string StudentFullName, Guid ParentId, string ParentFullName, Guid RouteId, string RouteName, DateOnly Date, string TripType, string Reason, string Status, DateTime CreatedAt);

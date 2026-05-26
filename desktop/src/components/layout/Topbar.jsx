@@ -50,7 +50,11 @@ const pathLabels = {
   "kiosk-qr": "Kiosk QR",
   content: "İçerikler",
   questions: "Sorular",
+  "question-bank": "Soru Bankası",
+  "question-studio": "Soru Oluştur",
   exams: "Sınavlar",
+  "mock-exams": "Deneme Sınavları",
+  create: "Oluştur",
   reports: "Raporlar",
   settings: "Ayarlar",
   chat: "Mesajlar",
@@ -85,6 +89,7 @@ const roleLabels = {
   teacher: { label: "Öğretmen", icon: GraduationCap, color: "text-blue-600" },
   student: { label: "Öğrenci", icon: Users, color: "text-orange-600" },
   parent: { label: "Veli", icon: User, color: "text-teal-600" },
+  cafeteria: { label: "Yemekhaneci", icon: Building2, color: "text-orange-600" },
 };
 
 export function Topbar() {
@@ -104,6 +109,7 @@ export function Topbar() {
     parent: "Parent",
     finance: "Accounting",
     superadmin: "Admin",
+    cafeteria: "Cafeteria",
   }), []);
 
   useEffect(() => {
@@ -140,6 +146,7 @@ export function Topbar() {
       teacher: "/t/dashboard",
       student: "/s/dashboard",
       parent: "/p/dashboard",
+      cafeteria: "/cafeteria/menu",
     };
     navigate(roleHomePaths[role] || "/dashboard");
   };

@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import 'question_bank_api_service.dart';
@@ -23,6 +25,11 @@ class QuestionBankRecord {
   final int? questionOrder;
   final bool revealCorrectAnswerToStudent;
   final String? expectedAnswer;
+  final String imagePlacement;
+  final String? richTextHtml;
+  final String? solutionTextHtml;
+  final String? editorMetadataJson;
+  final String publicationStatus;
 
   QuestionBankRecord({
     required this.id,
@@ -45,6 +52,11 @@ class QuestionBankRecord {
     this.questionOrder,
     this.revealCorrectAnswerToStudent = false,
     this.expectedAnswer,
+    this.imagePlacement = 'Top',
+    this.richTextHtml,
+    this.solutionTextHtml,
+    this.editorMetadataJson,
+    this.publicationStatus = 'Published',
   });
 
   factory QuestionBankRecord.fromMap(Map<String, dynamic> map) {
@@ -72,7 +84,38 @@ class QuestionBankRecord {
       revealCorrectAnswerToStudent:
           map['revealCorrectAnswerToStudent'] as bool? ?? false,
       expectedAnswer: map['expectedAnswer'] as String?,
+      imagePlacement: map['imagePlacement'] as String? ?? 'Top',
+      richTextHtml: map['richTextHtml'] as String?,
+      solutionTextHtml: map['solutionTextHtml'] as String?,
+      editorMetadataJson: map['editorMetadataJson'] as String?,
+      publicationStatus: map['publicationStatus'] as String? ?? 'Published',
     );
+  }
+
+  List<String?> get optionImagePaths {
+    final raw = editorMetadataJson;
+    if (raw == null || raw.trim().isEmpty) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return const [];
+      final assets = decoded['optionAssets'];
+      if (assets is! List) return const [];
+      final paths = List<String?>.filled(options.length, null);
+      for (var position = 0; position < assets.length; position++) {
+        final asset = assets[position];
+        if (asset is! Map) continue;
+        final value = asset['imagePath']?.toString().trim();
+        if (value == null || value.isEmpty) continue;
+        final rawIndex = asset['index'];
+        final index = rawIndex is num ? rawIndex.toInt() : position;
+        if (index >= 0 && index < paths.length) {
+          paths[index] = value;
+        }
+      }
+      return paths;
+    } catch (_) {
+      return const [];
+    }
   }
 
   QuestionBankRecord copyWith({
@@ -95,6 +138,11 @@ class QuestionBankRecord {
     int? questionOrder,
     bool? revealCorrectAnswerToStudent,
     String? expectedAnswer,
+    String? imagePlacement,
+    String? richTextHtml,
+    String? solutionTextHtml,
+    String? editorMetadataJson,
+    String? publicationStatus,
   }) {
     return QuestionBankRecord(
       id: id,
@@ -118,6 +166,11 @@ class QuestionBankRecord {
       revealCorrectAnswerToStudent:
           revealCorrectAnswerToStudent ?? this.revealCorrectAnswerToStudent,
       expectedAnswer: expectedAnswer ?? this.expectedAnswer,
+      imagePlacement: imagePlacement ?? this.imagePlacement,
+      richTextHtml: richTextHtml ?? this.richTextHtml,
+      solutionTextHtml: solutionTextHtml ?? this.solutionTextHtml,
+      editorMetadataJson: editorMetadataJson ?? this.editorMetadataJson,
+      publicationStatus: publicationStatus ?? this.publicationStatus,
     );
   }
 
@@ -142,6 +195,11 @@ class QuestionBankRecord {
     'questionOrder': questionOrder,
     'revealCorrectAnswerToStudent': revealCorrectAnswerToStudent,
     'expectedAnswer': expectedAnswer,
+    'imagePlacement': imagePlacement,
+    'richTextHtml': richTextHtml,
+    'solutionTextHtml': solutionTextHtml,
+    'editorMetadataJson': editorMetadataJson,
+    'publicationStatus': publicationStatus,
   };
 }
 
@@ -179,6 +237,11 @@ class QuestionBankStore extends ChangeNotifier {
     int? questionOrder,
     bool revealCorrectAnswerToStudent = false,
     String? expectedAnswer,
+    String imagePlacement = 'Top',
+    String? richTextHtml,
+    String? solutionTextHtml,
+    String? editorMetadataJson,
+    String publicationStatus = 'Published',
   }) async {
     final created = await QuestionBankApiService.instance.createQuestion(
       QuestionBankRecord(
@@ -202,6 +265,11 @@ class QuestionBankStore extends ChangeNotifier {
         questionOrder: questionOrder,
         revealCorrectAnswerToStudent: revealCorrectAnswerToStudent,
         expectedAnswer: expectedAnswer,
+        imagePlacement: imagePlacement,
+        richTextHtml: richTextHtml,
+        solutionTextHtml: solutionTextHtml,
+        editorMetadataJson: editorMetadataJson,
+        publicationStatus: publicationStatus,
       ),
     );
     questions.insert(0, created);

@@ -4,9 +4,14 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class BasicETAService : IETAService
 {
+    public double CalculateDistanceKm(double fromLatitude, double fromLongitude, double toLatitude, double toLongitude)
+    {
+        return HaversineKm(fromLatitude, fromLongitude, toLatitude, toLongitude);
+    }
+
     public int CalculateEtaMinutes(double fromLatitude, double fromLongitude, double toLatitude, double toLongitude, double? speedKmh)
     {
-        var distanceKm = HaversineKm(fromLatitude, fromLongitude, toLatitude, toLongitude);
+        var distanceKm = CalculateDistanceKm(fromLatitude, fromLongitude, toLatitude, toLongitude);
         var effectiveSpeed = speedKmh.HasValue && speedKmh.Value > 1 ? speedKmh.Value : 30;
         return Math.Max(1, (int)Math.Ceiling(distanceKm / effectiveSpeed * 60));
     }

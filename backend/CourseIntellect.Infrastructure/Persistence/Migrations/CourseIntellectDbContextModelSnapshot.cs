@@ -1343,6 +1343,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)");
 
+                    b.Property<string>("EditorMetadataJson")
+                        .HasMaxLength(30000)
+                        .HasColumnType("character varying(30000)")
+                        .HasColumnName("editor_metadata_json");
+
                     b.Property<string>("ImagePath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1358,6 +1363,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(4000)")
                         .HasColumnName("options");
 
+                    b.Property<string>("PublicationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasDefaultValue("Published")
+                        .HasColumnName("publication_status");
+
                     b.Property<string>("QuestionText")
                         .IsRequired()
                         .HasMaxLength(4000)
@@ -1366,6 +1379,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<bool>("RevealCorrectAnswerToStudent")
                         .HasColumnType("boolean");
 
+                    b.Property<string>("RichTextHtml")
+                        .HasMaxLength(16000)
+                        .HasColumnType("character varying(16000)")
+                        .HasColumnName("rich_text_html");
+
                     b.Property<string>("SolutionAssetPath")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
@@ -1373,6 +1391,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("SolutionAssetType")
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
+
+                    b.Property<string>("SolutionTextHtml")
+                        .HasMaxLength(16000)
+                        .HasColumnType("character varying(16000)")
+                        .HasColumnName("solution_text_html");
 
                     b.Property<string>("Subject")
                         .IsRequired()

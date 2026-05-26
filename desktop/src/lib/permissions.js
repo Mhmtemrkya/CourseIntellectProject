@@ -43,6 +43,8 @@ const ROLE_ALIASES = {
   administrative: 'administrative',
   idari: 'administrative',
   idaripersonel: 'administrative',
+  cafeteria: 'cafeteria',
+  yemekhaneci: 'cafeteria',
 };
 
 export function aliasRole(value) {

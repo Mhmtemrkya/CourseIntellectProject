@@ -70,9 +70,9 @@ public sealed class StaffManagementService(
     public async Task<StaffCredentialsDto> CreateStaffAsync(CreateStaffRequest request, CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<UserRole>(request.Role, true, out var parsedRole) ||
-            parsedRole is not UserRole.Teacher and not UserRole.Administrative)
+            parsedRole is not UserRole.Teacher and not UserRole.Administrative and not UserRole.Cafeteria)
         {
-            throw new InvalidOperationException("Bu endpoint sadece Ogretmen veya Administrative kaydi icindir.");
+            throw new InvalidOperationException("Bu endpoint sadece Ogretmen, Administrative veya Cafeteria kaydi icindir.");
         }
 
         var tenantId = ResolveCurrentTenantId()
@@ -80,13 +80,22 @@ public sealed class StaffManagementService(
         var primaryHint = parsedRole == UserRole.Teacher
             ? (request.AssignedClasses.FirstOrDefault() ?? string.Empty)
             : string.Empty;
+        var roleName = parsedRole switch
+        {
+            UserRole.Teacher => "Teacher",
+            UserRole.Cafeteria => "Cafeteria",
+            _ => "Administrative"
+        };
+        var departmentOrBranch = parsedRole == UserRole.Cafeteria
+            ? "Yemekhane"
+            : request.DepartmentOrBranch;
         var username = await usernameGenerator.GenerateAsync(
             tenantId,
             request.FullName,
             new UsernameContext(
-                Role: parsedRole == UserRole.Teacher ? "Teacher" : "Administrative",
+                Role: roleName,
                 ClassName: primaryHint,
-                Branch: request.DepartmentOrBranch),
+                Branch: departmentOrBranch),
             cancellationToken);
         var password = PasswordGenerator.Generate();
         var user = new AppUser
@@ -97,7 +106,7 @@ public sealed class StaffManagementService(
             PasswordHash = passwordHasher.Hash(password),
             PrimaryRole = parsedRole,
             Campus = request.Campus,
-            DepartmentOrBranch = request.DepartmentOrBranch,
+            DepartmentOrBranch = departmentOrBranch,
             MustChangePassword = true
         };
 
@@ -112,7 +121,7 @@ public sealed class StaffManagementService(
             Education = request.Education,
             StartDate = request.StartDate,
             Campus = request.Campus,
-            DepartmentOrBranch = request.DepartmentOrBranch,
+            DepartmentOrBranch = departmentOrBranch,
             HomeroomClass = parsedRole == UserRole.Teacher ? request.HomeroomClass : "Sinif ogretmenligi yok",
             AssignedClasses = parsedRole == UserRole.Teacher ? request.AssignedClasses.ToList() : [],
             MaritalStatus = request.MaritalStatus,

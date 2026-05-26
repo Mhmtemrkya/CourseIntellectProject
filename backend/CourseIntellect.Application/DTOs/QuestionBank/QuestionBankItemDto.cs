@@ -18,4 +18,8 @@ public sealed record QuestionBankItemDto(
     string? SolutionAssetPath,
     string? SolutionAssetType,
     bool RevealCorrectAnswerToStudent,
-    string? ExpectedAnswer);
+    string? ExpectedAnswer,
+    string? RichTextHtml,
+    string? SolutionTextHtml,
+    string? EditorMetadataJson,
+    string PublicationStatus);

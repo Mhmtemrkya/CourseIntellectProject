@@ -1,3 +1,5 @@
+using System.Buffers.Binary;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using CourseIntellect.Application.DTOs.ExamSolving;
@@ -39,6 +41,13 @@ public sealed class ExamSolvingService(
         }
 
         var questions = await questionsQuery.AsNoTracking().ToListAsync(cancellationToken);
+        if (request.QuestionIds is { Count: > 0 })
+        {
+            var order = request.QuestionIds
+                .Select((id, index) => new { id, index })
+                .ToDictionary(item => item.id, item => item.index);
+            questions = questions.OrderBy(item => order.GetValueOrDefault(item.Id, int.MaxValue)).ToList();
+        }
         if (questions.Count == 0)
         {
             throw new InvalidOperationException("Çözüm oturumu için uygun soru bulunamadı.");
@@ -122,6 +131,7 @@ public sealed class ExamSolvingService(
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
 
+        var revealAnswers = session.Status == "Completed" || session.IsTeacherPreview;
         var questionResponses = attempts
             .Where(attempt => questions.ContainsKey(attempt.QuestionBankItemId))
             .Select(attempt =>
@@ -142,7 +152,8 @@ public sealed class ExamSolvingService(
                     question.ImagePath,
                     question.ImagePlacement,
                     DeserializeList(question.OptionsSerialized),
-                    question.CorrectOptionIndex,
+                    revealAnswers ? question.CorrectOptionIndex : null,
+                    revealAnswers ? question.ExpectedAnswer : null,
                     attempt.Status,
                     attempt.IsFlagged,
                     attempt.FlagType,
@@ -175,16 +186,21 @@ public sealed class ExamSolvingService(
     public async Task<SolutionSessionResponse> SaveAnswerAsync(Guid sessionId, SaveSolutionAnswerRequest request, CancellationToken cancellationToken)
     {
         var (session, attempt, question) = await ResolveWritableAttempt(sessionId, request.QuestionAttemptId, cancellationToken);
-        var isCorrect = request.SelectedOptionIndex >= 0 && question.CorrectOptionIndex == request.SelectedOptionIndex;
+        var openAnswer = request.OpenAnswer?.Trim();
+        var hasOptionAnswer = request.SelectedOptionIndex >= 0;
+        var hasOpenAnswer = !string.IsNullOrWhiteSpace(openAnswer);
+        var isCorrect = hasOptionAnswer
+            ? question.CorrectOptionIndex == request.SelectedOptionIndex
+            : hasOpenAnswer && !string.IsNullOrWhiteSpace(question.ExpectedAnswer) && AnswersEqual(openAnswer!, question.ExpectedAnswer!);
         var answer = new AnswerSelection
         {
             QuestionAttemptId = attempt.Id,
             SelectedOptionIndex = request.SelectedOptionIndex,
-            OpenAnswer = request.OpenAnswer?.Trim(),
+            OpenAnswer = openAnswer,
             IsCorrect = isCorrect,
             SavedAtUtc = DateTime.UtcNow,
         };
-        attempt.Status = request.SelectedOptionIndex < 0 && string.IsNullOrWhiteSpace(request.OpenAnswer) ? "Empty" : isCorrect ? "Correct" : "Answered";
+        attempt.Status = !hasOptionAnswer && !hasOpenAnswer ? "Empty" : isCorrect ? "Correct" : "Answered";
         attempt.TimeSpentSeconds = Math.Max(attempt.TimeSpentSeconds, request.TimeSpentSeconds);
         attempt.LastInteractionAtUtc = DateTime.UtcNow;
 
@@ -269,7 +285,8 @@ public sealed class ExamSolvingService(
         var response = await GetAsync(sessionId, cancellationToken) ?? throw new InvalidOperationException("Oturum bulunamadı.");
         var total = response.Questions.Count;
         var correct = response.Questions.Count(item => item.Answer?.IsCorrect == true);
-        var answered = response.Questions.Count(item => item.Answer is not null && item.Answer.SelectedOptionIndex >= 0);
+        var answered = response.Questions.Count(item => item.Answer is not null
+            && (item.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(item.Answer.OpenAnswer)));
         var empty = Math.Max(0, total - answered);
         var wrong = Math.Max(0, answered - correct);
         var net = correct - wrong / 4m;
@@ -300,7 +317,8 @@ public sealed class ExamSolvingService(
         try
         {
             var session = await GetAsync(sessionId, cancellationToken) ?? throw new InvalidOperationException("Oturum bulunamadı.");
-            var bytes = BuildBrandedPdf(session);
+            var snapshotImages = await LoadSnapshotImagesAsync(session, cancellationToken);
+            var bytes = BuildBrandedPdf(session, snapshotImages);
             await using var stream = new MemoryStream(bytes);
             var upload = await fileStorageService.SaveAsync(stream, $"cozum-raporu-{session.Id}.pdf", "application/pdf", "solution-reports", baseUrl, cancellationToken);
             report.Status = "Ready";
@@ -394,11 +412,32 @@ public sealed class ExamSolvingService(
         return new PdfReportResponse(report.Id, report.ExamSessionId, report.Status, report.StorageKey, report.ErrorMessage, report.CreatedAtUtc, report.ReadyAtUtc);
     }
 
-    private static byte[] BuildBrandedPdf(SolutionSessionResponse session)
+    private static bool AnswersEqual(string submitted, string expected)
+    {
+        return string.Equals(submitted.Trim(), expected.Trim(), StringComparison.OrdinalIgnoreCase);
+    }
+
+    private async Task<IReadOnlyDictionary<Guid, byte[]>> LoadSnapshotImagesAsync(SolutionSessionResponse session, CancellationToken cancellationToken)
+    {
+        var images = new Dictionary<Guid, byte[]>();
+        foreach (var question in session.Questions.Where(item => !string.IsNullOrWhiteSpace(item.SnapshotUrl)))
+        {
+            var bytes = await fileStorageService.ReadBytesAsync(question.SnapshotUrl!, cancellationToken);
+            if (bytes is { Length: > 0 })
+            {
+                images[question.AttemptId] = bytes;
+            }
+        }
+
+        return images;
+    }
+
+    private static byte[] BuildBrandedPdf(SolutionSessionResponse session, IReadOnlyDictionary<Guid, byte[]> snapshotImages)
     {
         var total = session.Questions.Count;
         var correct = session.Questions.Count(item => item.Answer?.IsCorrect == true);
-        var answered = session.Questions.Count(item => item.Answer is not null);
+        var answered = session.Questions.Count(item => item.Answer is not null
+            && (item.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(item.Answer.OpenAnswer)));
         var empty = total - answered;
         var wrong = answered - correct;
         var net = correct - (wrong * 0.25m);
@@ -432,7 +471,7 @@ public sealed class ExamSolvingService(
         page.FillRoundedCard(36, 338, 524, 70, PdfColor.WarningCard);
         page.SetText(54, 384, 10, "Rapor Notu", PdfColor.Brown, bold: true);
         page.SetText(54, 364, 9, "Öğrencinin cevapları, soru notları, öğretmen yorumları ve çizimli çözüm kayıtları bu raporda özetlenir.", PdfColor.Brown);
-        page.SetText(54, 348, 9, "Çizim görselleri sistemde saklanır; rapordaki her soru için varsa çözüm kaydı bilgisi gösterilir.", PdfColor.Brown);
+        page.SetText(54, 348, 9, "Çizimli çözümler, ilgili soru detaylarının altında görsel olarak rapora eklenir.", PdfColor.Brown);
 
         page.SetText(36, 295, 10, $"Rapor Türü: {(session.IsTeacherPreview ? "Öğretmen Önizleme/Test Çözümü" : "Öğrenci Çözümü")}", PdfColor.DeepBlue);
         page.SetText(36, 55, 8, "CourseIntellect • Eğitim Yönetim Platformu", PdfColor.DeepBlue, bold: true);
@@ -451,10 +490,18 @@ public sealed class ExamSolvingService(
                 y = 690;
             }
 
-            var answerLabel = question.Answer is null ? "Boş" : OptionLabel(question.Answer.SelectedOptionIndex);
-            var correctLabel = question.CorrectOptionIndex.HasValue ? OptionLabel(question.CorrectOptionIndex.Value) : "-";
-            var statusColor = question.Answer is null ? PdfColor.GrayText : question.Answer.IsCorrect ? PdfColor.Green : PdfColor.Red;
-            var statusText = question.Answer is null ? "Boş" : question.Answer.IsCorrect ? "Doğru" : "Yanlış";
+            var hasAnswer = question.Answer is not null
+                && (question.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(question.Answer.OpenAnswer));
+            var answerLabel = !hasAnswer
+                ? "Boş"
+                : question.Answer!.SelectedOptionIndex >= 0
+                    ? OptionLabel(question.Answer!.SelectedOptionIndex)
+                    : EmptyDash(question.Answer!.OpenAnswer);
+            var correctLabel = question.CorrectOptionIndex.HasValue
+                ? OptionLabel(question.CorrectOptionIndex.Value)
+                : EmptyDash(question.ExpectedAnswer);
+            var statusColor = !hasAnswer ? PdfColor.GrayText : question.Answer!.IsCorrect ? PdfColor.Green : PdfColor.Red;
+            var statusText = !hasAnswer ? "Boş" : question.Answer!.IsCorrect ? "Doğru" : "Yanlış";
 
             questionPage.FillRoundedCard(36, y - 18, 524, 30, PdfColor.DarkCard);
             questionPage.SetText(52, y - 2, 11, $"Soru {question.SortOrder + 1}", PdfColor.White, bold: true);
@@ -489,8 +536,30 @@ public sealed class ExamSolvingService(
 
             if (!string.IsNullOrWhiteSpace(question.SnapshotUrl))
             {
-                questionPage.SetText(52, y, 8, "Çizimli çözüm kaydı mevcut.", PdfColor.Green, bold: true);
-                y -= 16;
+                if (snapshotImages.TryGetValue(question.AttemptId, out var imageBytes)
+                    && document.TryAddPngImage(imageBytes, out var solutionImage))
+                {
+                    var imageWidth = 454d;
+                    var imageHeight = Math.Min(235d, imageWidth * solutionImage.Height / solutionImage.Width);
+                    if (y - imageHeight < 95)
+                    {
+                        questionPage.SetText(36, 55, 8, "CourseIntellect • Eğitim Yönetim Platformu", PdfColor.DeepBlue, bold: true);
+                        questionPage = document.AddPage();
+                        DrawReportHeader(questionPage, $"Soru {question.SortOrder + 1} - Çizimli Çözüm", session.Title);
+                        y = 690;
+                    }
+
+                    questionPage.SetText(52, y, 9, "Öğrencinin Çizimli Çözümü", PdfColor.Green, bold: true);
+                    y -= 18;
+                    questionPage.FillRoundedCard(52, y - imageHeight - 12, 478, imageHeight + 24, PdfColor.LightCard);
+                    questionPage.DrawImage(solutionImage, 64, y - imageHeight, imageWidth, imageHeight);
+                    y -= imageHeight + 25;
+                }
+                else
+                {
+                    questionPage.SetText(52, y, 8, "Çizimli çözüm görseli rapora yüklenemedi.", PdfColor.GrayText, bold: true);
+                    y -= 16;
+                }
             }
 
             foreach (var review in question.TeacherReviews.Take(2))
@@ -552,6 +621,7 @@ public sealed class ExamSolvingService(
     private sealed class BrandedPdfDocument
     {
         private readonly List<PdfPageCanvas> pages = [];
+        private readonly List<PdfImage> images = [];
 
         public PdfPageCanvas AddPage()
         {
@@ -561,8 +631,25 @@ public sealed class ExamSolvingService(
             return page;
         }
 
+        public bool TryAddPngImage(byte[] bytes, out PdfImage image)
+        {
+            if (!PngImageDecoder.TryDecode(bytes, out var decoded))
+            {
+                image = null!;
+                return false;
+            }
+
+            image = new PdfImage($"Im{images.Count + 1}", decoded.Width, decoded.Height, Compress(decoded.RgbBytes));
+            images.Add(image);
+            return true;
+        }
+
         public byte[] Build()
         {
+            var imageObjectStart = 5 + (pages.Count * 2);
+            var imageResources = string.Join(
+                ' ',
+                images.Select((image, index) => $"/{image.Name} {imageObjectStart + index} 0 R"));
             var objects = new List<string>
             {
                 "<< /Type /Catalog /Pages 2 0 R >>",
@@ -576,8 +663,15 @@ public sealed class ExamSolvingService(
                 var pageObjectNumber = 5 + (index * 2);
                 var contentObjectNumber = pageObjectNumber + 1;
                 var content = page.Content;
-                objects.Add($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents {contentObjectNumber} 0 R >>");
+                var xObjects = images.Count == 0 ? string.Empty : $" /XObject << {imageResources} >>";
+                objects.Add($"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >>{xObjects} >> /Contents {contentObjectNumber} 0 R >>");
                 objects.Add($"<< /Length {Encoding.UTF8.GetByteCount(content)} >>\nstream\n{content}\nendstream");
+            }
+
+            foreach (var image in images)
+            {
+                var hexData = Convert.ToHexString(image.CompressedRgbBytes) + ">";
+                objects.Add($"<< /Type /XObject /Subtype /Image /Width {image.Width} /Height {image.Height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter [/ASCIIHexDecode /FlateDecode] /Length {hexData.Length} >>\nstream\n{hexData}\nendstream");
             }
 
             var pdf = new StringBuilder("%PDF-1.4\n");
@@ -601,6 +695,17 @@ public sealed class ExamSolvingService(
                 .Append(xrefOffset)
                 .Append("\n%%EOF");
             return Encoding.UTF8.GetBytes(pdf.ToString());
+        }
+
+        private static byte[] Compress(byte[] value)
+        {
+            using var target = new MemoryStream();
+            using (var compression = new ZLibStream(target, CompressionLevel.SmallestSize, leaveOpen: true))
+            {
+                compression.Write(value, 0, value.Length);
+            }
+
+            return target.ToArray();
         }
     }
 
@@ -626,6 +731,11 @@ public sealed class ExamSolvingService(
             content.AppendLine($"BT /{font} {Fmt(size)} Tf {color.Fill} {Fmt(x)} {Fmt(y)} Td <{ToUtf16Hex(text)}> Tj ET");
         }
 
+        public void DrawImage(PdfImage image, double x, double y, double width, double height)
+        {
+            content.AppendLine($"q {Fmt(width)} 0 0 {Fmt(height)} {Fmt(x)} {Fmt(y)} cm /{image.Name} Do Q");
+        }
+
         private static string Fmt(double value)
         {
             return value.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture);
@@ -640,6 +750,156 @@ public sealed class ExamSolvingService(
                 builder.Append(item.ToString("X2"));
             }
             return builder.ToString();
+        }
+    }
+
+    private sealed record PdfImage(string Name, int Width, int Height, byte[] CompressedRgbBytes);
+
+    private sealed record DecodedPng(int Width, int Height, byte[] RgbBytes);
+
+    private static class PngImageDecoder
+    {
+        private static readonly byte[] Signature = [137, 80, 78, 71, 13, 10, 26, 10];
+
+        public static bool TryDecode(byte[] value, out DecodedPng image)
+        {
+            image = null!;
+            if (value.Length < Signature.Length || !value.AsSpan(0, Signature.Length).SequenceEqual(Signature))
+            {
+                return false;
+            }
+
+            var width = 0;
+            var height = 0;
+            byte bitDepth = 0;
+            byte colorType = 0;
+            byte interlace = 0;
+            using var idat = new MemoryStream();
+
+            var offset = Signature.Length;
+            while (offset + 12 <= value.Length)
+            {
+                var length = BinaryPrimitives.ReadInt32BigEndian(value.AsSpan(offset, 4));
+                offset += 4;
+                if (length < 0 || offset + 8 + length > value.Length) return false;
+                var type = Encoding.ASCII.GetString(value, offset, 4);
+                offset += 4;
+                var chunk = value.AsSpan(offset, length);
+                offset += length + 4;
+
+                if (type == "IHDR" && length >= 13)
+                {
+                    width = BinaryPrimitives.ReadInt32BigEndian(chunk[..4]);
+                    height = BinaryPrimitives.ReadInt32BigEndian(chunk.Slice(4, 4));
+                    bitDepth = chunk[8];
+                    colorType = chunk[9];
+                    interlace = chunk[12];
+                }
+                else if (type == "IDAT")
+                {
+                    idat.Write(chunk);
+                }
+                else if (type == "IEND")
+                {
+                    break;
+                }
+            }
+
+            var channels = colorType switch
+            {
+                0 => 1,
+                2 => 3,
+                4 => 2,
+                6 => 4,
+                _ => 0,
+            };
+            if (width <= 0 || height <= 0 || channels == 0 || bitDepth != 8 || interlace != 0
+                || (long)width * height > 24_000_000)
+            {
+                return false;
+            }
+
+            var rowLength = width * channels;
+            byte[] filtered;
+            try
+            {
+                idat.Position = 0;
+                using var inflater = new ZLibStream(idat, CompressionMode.Decompress);
+                using var raw = new MemoryStream();
+                inflater.CopyTo(raw);
+                filtered = raw.ToArray();
+            }
+            catch
+            {
+                return false;
+            }
+
+            if (filtered.Length < (rowLength + 1) * height) return false;
+            var pixels = new byte[rowLength * height];
+            var previous = new byte[rowLength];
+            var current = new byte[rowLength];
+            var sourceOffset = 0;
+            for (var row = 0; row < height; row++)
+            {
+                var filter = filtered[sourceOffset++];
+                for (var index = 0; index < rowLength; index++)
+                {
+                    var rawValue = filtered[sourceOffset++];
+                    var left = index >= channels ? current[index - channels] : (byte)0;
+                    var up = previous[index];
+                    var upperLeft = index >= channels ? previous[index - channels] : (byte)0;
+                    current[index] = filter switch
+                    {
+                        0 => rawValue,
+                        1 => unchecked((byte)(rawValue + left)),
+                        2 => unchecked((byte)(rawValue + up)),
+                        3 => unchecked((byte)(rawValue + ((left + up) / 2))),
+                        4 => unchecked((byte)(rawValue + Paeth(left, up, upperLeft))),
+                        _ => (byte)0,
+                    };
+                }
+
+                if (filter > 4) return false;
+                current.CopyTo(pixels, row * rowLength);
+                (previous, current) = (current, previous);
+            }
+
+            var rgb = new byte[width * height * 3];
+            var target = 0;
+            for (var source = 0; source < pixels.Length; source += channels, target += 3)
+            {
+                var red = channels is 1 or 2 ? pixels[source] : pixels[source];
+                var green = channels is 1 or 2 ? pixels[source] : pixels[source + 1];
+                var blue = channels is 1 or 2 ? pixels[source] : pixels[source + 2];
+                var alpha = colorType switch
+                {
+                    4 => pixels[source + 1],
+                    6 => pixels[source + 3],
+                    _ => (byte)255,
+                };
+                rgb[target] = BlendOnWhite(red, alpha);
+                rgb[target + 1] = BlendOnWhite(green, alpha);
+                rgb[target + 2] = BlendOnWhite(blue, alpha);
+            }
+
+            image = new DecodedPng(width, height, rgb);
+            return true;
+        }
+
+        private static byte BlendOnWhite(byte channel, byte alpha)
+        {
+            return (byte)((channel * alpha + 255 * (255 - alpha)) / 255);
+        }
+
+        private static byte Paeth(byte left, byte up, byte upperLeft)
+        {
+            var prediction = left + up - upperLeft;
+            var distanceLeft = Math.Abs(prediction - left);
+            var distanceUp = Math.Abs(prediction - up);
+            var distanceUpperLeft = Math.Abs(prediction - upperLeft);
+            return distanceLeft <= distanceUp && distanceLeft <= distanceUpperLeft
+                ? left
+                : distanceUp <= distanceUpperLeft ? up : upperLeft;
         }
     }
 

@@ -16,6 +16,32 @@ class QuestionBankApiException implements Exception {
   String toString() => message;
 }
 
+class QuestionStudioDraftRecord {
+  final String id;
+  final String title;
+  final String mode;
+  final String payloadJson;
+  final String updatedAtUtc;
+
+  const QuestionStudioDraftRecord({
+    required this.id,
+    required this.title,
+    required this.mode,
+    required this.payloadJson,
+    required this.updatedAtUtc,
+  });
+
+  factory QuestionStudioDraftRecord.fromMap(Map<String, dynamic> map) {
+    return QuestionStudioDraftRecord(
+      id: map['id']?.toString() ?? '',
+      title: map['title']?.toString() ?? '',
+      mode: map['mode']?.toString() ?? 'QuestionBank',
+      payloadJson: map['payloadJson']?.toString() ?? '{}',
+      updatedAtUtc: map['updatedAtUtc']?.toString() ?? '',
+    );
+  }
+}
+
 class QuestionBankApiService {
   QuestionBankApiService._();
 
@@ -155,6 +181,44 @@ class QuestionBankApiService {
     );
   }
 
+  Future<QuestionStudioDraftRecord> saveStudioDraft({
+    String? id,
+    required String title,
+    required String mode,
+    required Map<String, dynamic> payload,
+  }) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const QuestionBankApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/question-studio/drafts'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      body: jsonEncode({
+        if (id != null && id.isNotEmpty) 'id': id,
+        'title': title.trim().isEmpty ? 'Adsız Soru Taslağı' : title.trim(),
+        'mode': mode,
+        'payloadJson': jsonEncode(payload),
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw QuestionBankApiException(
+        'Taslak kaydedilemedi (${response.statusCode}).',
+      );
+    }
+
+    return QuestionStudioDraftRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
   Future<String> uploadQuestionAsset({
     required String path,
     required String folder,
@@ -262,6 +326,11 @@ class QuestionBankApiService {
       revealCorrectAnswerToStudent:
           map['revealCorrectAnswerToStudent'] as bool? ?? false,
       expectedAnswer: map['expectedAnswer'] as String?,
+      imagePlacement: map['imagePlacement'] as String? ?? 'Top',
+      richTextHtml: map['richTextHtml'] as String?,
+      solutionTextHtml: map['solutionTextHtml'] as String?,
+      editorMetadataJson: map['editorMetadataJson'] as String?,
+      publicationStatus: map['publicationStatus'] as String? ?? 'Published',
     );
   }
 
@@ -273,10 +342,13 @@ class QuestionBankApiService {
       'type': record.type,
       'questionText': record.questionText,
       'teacher': record.teacher,
-      'imagePlacement': record.imagePath == null ? 'None' : 'Top',
+      'imagePlacement': record.imagePath == null
+          ? 'None'
+          : record.imagePlacement,
       'options': record.options,
       'classTargets': record.classTargets,
       'revealCorrectAnswerToStudent': record.revealCorrectAnswerToStudent,
+      'publicationStatus': record.publicationStatus,
     };
     if (record.imagePath != null) {
       payload['imagePath'] = record.imagePath;
@@ -301,6 +373,15 @@ class QuestionBankApiService {
     }
     if (record.expectedAnswer != null) {
       payload['expectedAnswer'] = record.expectedAnswer;
+    }
+    if (record.richTextHtml != null) {
+      payload['richTextHtml'] = record.richTextHtml;
+    }
+    if (record.solutionTextHtml != null) {
+      payload['solutionTextHtml'] = record.solutionTextHtml;
+    }
+    if (record.editorMetadataJson != null) {
+      payload['editorMetadataJson'] = record.editorMetadataJson;
     }
     return payload;
   }

@@ -4,6 +4,7 @@ import '../navigation/accounting_bottom_nav.dart';
 import '../navigation/admin_bottom_nav.dart';
 import '../navigation/administrative_bottom_nav.dart';
 import '../navigation/bottom_nav.dart';
+import '../navigation/cafeteria_bottom_nav.dart';
 import '../navigation/teacher_bottom_nav.dart';
 import '../navigation/veli_bottom_nav.dart';
 import 'auth_session_store.dart';
@@ -34,6 +35,8 @@ class RoleRouter {
         return 'Yönetici';
       case 'Administrative':
         return 'İdari Birimler';
+      case 'Cafeteria':
+        return 'Yemekhaneci';
       default:
         return role;
     }
@@ -53,6 +56,8 @@ class RoleRouter {
         return const AdminBottomNav();
       case 'Administrative':
         return const AdministrativeBottomNav();
+      case 'Cafeteria':
+        return const CafeteriaBottomNav();
       default:
         return null;
     }

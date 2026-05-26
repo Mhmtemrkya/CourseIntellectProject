@@ -15,4 +15,8 @@ public sealed record CreateQuestionBankItemRequest(
     string? SolutionAssetPath,
     string? SolutionAssetType,
     bool RevealCorrectAnswerToStudent,
-    string? ExpectedAnswer);
+    string? ExpectedAnswer,
+    string? RichTextHtml = null,
+    string? SolutionTextHtml = null,
+    string? EditorMetadataJson = null,
+    string? PublicationStatus = null);

@@ -44,6 +44,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _personnelNoteController = TextEditingController();
 
   String _teacherBranch = 'Matematik';
+  String _personnelRole = 'Administrative';
   String _personnelDepartment = 'Öğrenci Isleri';
   String _teacherHomeroomClass = 'Sınıf öğretmenliği yok';
   final Set<String> _teacherAssignedClasses = {};
@@ -118,13 +119,13 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           const AdminHeroCard(
             eyebrow: 'İnsan kaynağı kayıt merkezi',
             title:
-                'Öğretmen ve idari personel profillerini kurumsal standartta oluşturun.',
+                'Öğretmen, idari personel ve yemekhaneci profillerini kurumsal standartta oluşturun.',
             description:
                 'Branş, departman, kampüs ve iletişim bilgileri tek akışta toplanır. Öğretmen hesapları için sistem giriş bilgisi otomatik üretilir.',
             colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
             metrics: [
               AdminHeroMetric(label: 'Öğretmen', value: 'Hesap oluşur'),
-              AdminHeroMetric(label: 'Personel', value: 'Profil kaydı'),
+              AdminHeroMetric(label: 'Personel', value: 'Hesap oluşur'),
             ],
           ),
           const SizedBox(height: 16),
@@ -384,6 +385,33 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           children: [
             _field(controller: _personnelNameController, label: 'Ad Soyad'),
             const SizedBox(height: 12),
+            DropdownButtonFormField<String>(
+              initialValue: _personnelRole,
+              decoration: const InputDecoration(
+                labelText: 'Personel Rolü',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'Administrative',
+                  child: Text('İdari Personel'),
+                ),
+                DropdownMenuItem(
+                  value: 'Cafeteria',
+                  child: Text('Yemekhaneci'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _personnelRole = value;
+                  _personnelDepartment = value == 'Cafeteria'
+                      ? 'Yemekhane'
+                      : 'Öğrenci Isleri';
+                });
+              },
+            ),
+            const SizedBox(height: 12),
             Row(
               children: [
                 Expanded(
@@ -397,29 +425,37 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 const SizedBox(width: 12),
                 Expanded(
                   child: DropdownButtonFormField<String>(
+                    key: ValueKey(_personnelRole),
                     initialValue: _personnelDepartment,
                     decoration: const InputDecoration(
                       labelText: 'Departman',
                       border: OutlineInputBorder(),
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: 'Öğrenci Isleri',
-                        child: Text('Öğrenci İşleri'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Muhasebe',
-                        child: Text('Muhasebe'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Destek ve IT',
-                        child: Text('Destek ve IT'),
-                      ),
-                      DropdownMenuItem(
-                        value: 'Operasyon',
-                        child: Text('Operasyon'),
-                      ),
-                    ],
+                    items: _personnelRole == 'Cafeteria'
+                        ? const [
+                            DropdownMenuItem(
+                              value: 'Yemekhane',
+                              child: Text('Yemekhane'),
+                            ),
+                          ]
+                        : const [
+                            DropdownMenuItem(
+                              value: 'Öğrenci Isleri',
+                              child: Text('Öğrenci İşleri'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Muhasebe',
+                              child: Text('Muhasebe'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Destek ve IT',
+                              child: Text('Destek ve IT'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Operasyon',
+                              child: Text('Operasyon'),
+                            ),
+                          ],
                     onChanged: (value) => setState(
                       () =>
                           _personnelDepartment = value ?? _personnelDepartment,
@@ -496,7 +532,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             _field(
               controller: _personnelNoteController,
-              label: 'İdari Not',
+              label: _personnelRole == 'Cafeteria'
+                  ? 'Yemekhane Notu'
+                  : 'İdari Not',
               maxLines: 4,
               required: false,
             ),
@@ -507,9 +545,11 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               title: 'Personel Profili',
               value: 'Departman ve kampus kaydı kurumsal listede yer alir',
             ),
-            const _InfoRow(
-              title: 'Duyuru Akışı',
-              value: 'İdari duyurular ve kurum içi görev akışlarıyla eşleşir',
+            _InfoRow(
+              title: 'Erişim',
+              value: _personnelRole == 'Cafeteria'
+                  ? 'Sadece haftalık yemek programı yönetim paneline erişir'
+                  : 'İdari duyurular ve kurum içi görev akışlarıyla eşleşir',
             ),
             const SizedBox(height: 16),
             _submitButton(
@@ -617,7 +657,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     try {
       final credentials = await RegistrationApiService.instance.createStaff(
         fullName: _personnelNameController.text.trim(),
-        role: 'Administrative',
+        role: _personnelRole,
         departmentOrBranch: _personnelDepartment,
         tcNo: _personnelTcController.text.trim(),
         phone: _personnelPhoneController.text.trim(),
@@ -635,9 +675,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       if (!mounted) return;
       setState(() => _saving = false);
       await _showResultCard(
-        title: 'İdari Personel',
-        description:
-            'İdari profil oluşturuldu. Aşağıdaki giriş bilgileriyle kurum sistemine erişebilir; ilk girişte şifre değişimi zorunludur.',
+        title: _personnelRole == 'Cafeteria' ? 'Yemekhaneci' : 'İdari Personel',
+        description: _personnelRole == 'Cafeteria'
+            ? 'Yemekhaneci hesabı oluşturuldu. Bu hesap haftalık yemek programını doldurabilir; ilk girişte şifre değişimi zorunludur.'
+            : 'İdari profil oluşturuldu. Aşağıdaki giriş bilgileriyle kurum sistemine erişebilir; ilk girişte şifre değişimi zorunludur.',
         credentials: credentials,
         withLogin: true,
       );

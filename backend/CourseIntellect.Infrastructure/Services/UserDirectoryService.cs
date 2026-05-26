@@ -139,6 +139,7 @@ public sealed class UserDirectoryService(
             CreateRole(UserRole.Teacher, false, "Ogrenci, veli, yonetici", ["Akademik", "Icerik", "Sinavlar"], users, policies),
             CreateRole(UserRole.Accounting, true, "Veli, yonetici", ["Finans", "Tahsilatlar", "Taksitler"], users, policies),
             CreateRole(UserRole.Administrative, false, "Veli, yonetici, muhasebe", ["Kayit", "Evrak", "Duyurular"], users, policies),
+            CreateRole(UserRole.Cafeteria, false, "Yonetici", ["Yemekhane"], users, policies),
             CreateRole(UserRole.Parent, false, "Ogretmen, yonetici", ["Ogrenci", "Odeme", "Raporlar"], users, policies),
             CreateRole(UserRole.Student, false, "Ogretmen", ["Sinavlar", "Icerikler", "Odevler"], users, policies)
         ];

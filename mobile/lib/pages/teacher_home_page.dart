@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:student/pages/teacher_assignments_page.dart';
 import 'package:student/pages/teacher_attendance_page.dart';
 import 'package:student/pages/teacher_exams_page.dart';
+import 'package:student/pages/teacher_mock_exams_page.dart';
 import 'package:student/pages/teacher_live_lessons_page.dart';
 import 'package:student/pages/teacher_meeting_approvals_page.dart';
 import 'package:student/pages/teacher_chat_page.dart';
@@ -415,10 +416,10 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               children: [
                 _sheetAction(
                   icon: Icons.fact_check_rounded,
-                  title: "Sınav Oluştur",
+                  title: "Deneme Sınavı Oluştur",
                   onTap: () {
                     Navigator.pop(context);
-                    _openPage(const TeacherExamsPage());
+                    _openPage(const TeacherMockExamsPage());
                   },
                 ),
                 _sheetAction(
@@ -1641,6 +1642,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         "title": "Sınavlar",
         "color": Colors.green,
         "page": const TeacherExamsPage(),
+      },
+      {
+        "icon": Icons.timer_outlined,
+        "title": "Deneme\nSınavları",
+        "color": const Color(0xFFFF7A00),
+        "page": const TeacherMockExamsPage(),
       },
       {
         "icon": Icons.message_rounded,

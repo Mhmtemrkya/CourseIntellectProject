@@ -43,4 +43,25 @@ public sealed class LocalFileStorageService(IHostEnvironment environment) : IFil
             string.IsNullOrWhiteSpace(contentType) ? "application/octet-stream" : contentType,
             info.Length);
     }
+
+    public async Task<byte[]?> ReadBytesAsync(string fileUrl, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(fileUrl)) return null;
+
+        var relativePath = Uri.TryCreate(fileUrl, UriKind.Absolute, out var absoluteUri)
+            ? absoluteUri.AbsolutePath
+            : fileUrl;
+        relativePath = relativePath.Replace('\\', '/').TrimStart('/');
+        if (!relativePath.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)) return null;
+
+        var webRoot = Path.GetFullPath(Path.Combine(environment.ContentRootPath, "wwwroot"));
+        var physicalPath = Path.GetFullPath(Path.Combine(webRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
+        if (!physicalPath.StartsWith(webRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+            || !File.Exists(physicalPath))
+        {
+            return null;
+        }
+
+        return await File.ReadAllBytesAsync(physicalPath, cancellationToken);
+    }
 }

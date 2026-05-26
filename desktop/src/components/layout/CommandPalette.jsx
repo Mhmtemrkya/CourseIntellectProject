@@ -78,6 +78,7 @@ const navigationByRole = {
     { path: '/t/question-bank', icon: Brain, label: 'Soru Bankası', keywords: ['soru bankası', 'practice'] },
     { path: '/t/questions', icon: HelpCircle, label: 'Soru Kutusu', keywords: ['question box', 'soru'] },
     { path: '/t/exams', icon: FileQuestion, label: 'Sınavlar', keywords: ['exam', 'sınav'] },
+    { path: '/t/mock-exams', icon: ClipboardCheck, label: 'Deneme Sınavları', keywords: ['deneme', 'mock exam'] },
     { path: '/t/assignments', icon: FileText, label: 'Ödevler', keywords: ['assignment', 'ödev'] },
     { path: '/t/submissions', icon: ClipboardCheck, label: 'Teslim Merkezi', keywords: ['teslim', 'submission'] },
     { path: '/t/chat', icon: MessageSquare, label: 'Mesajlar', keywords: ['mesaj', 'chat'] },
@@ -163,6 +164,7 @@ export function CommandPalette() {
           { path: '/t/assignments', icon: FileText, label: 'Ödev Oluştur' },
           { path: '/t/live-lessons', icon: Video, label: 'Canlı Ders Planla' },
           { path: '/t/question-bank', icon: Brain, label: 'Soru Ekle' },
+          { path: '/t/mock-exams', icon: ClipboardCheck, label: 'Deneme Sınavı Oluştur' },
         ];
       case 'student':
         return [

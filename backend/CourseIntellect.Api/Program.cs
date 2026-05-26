@@ -145,7 +145,8 @@ builder.Services
                 var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrWhiteSpace(accessToken)
                     && (path.StartsWithSegments("/hubs/messages")
-                        || path.StartsWithSegments("/hubs/exam-solving")))
+                        || path.StartsWithSegments("/hubs/exam-solving")
+                        || path.StartsWithSegments("/hubs/service-tracking")))
                 {
                     context.Token = accessToken;
                 }

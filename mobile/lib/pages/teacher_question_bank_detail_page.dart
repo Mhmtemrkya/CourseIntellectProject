@@ -151,7 +151,8 @@ class _TeacherQuestionBankDetailPageState
                   ],
                 ),
               ),
-              if (item.type == 'Çoktan Seçmeli') ...[
+              if (item.type == 'Çoktan Seçmeli' ||
+                  item.type == 'Doğru / Yanlış') ...[
                 const SizedBox(height: 16),
                 _panel(
                   theme,
@@ -168,6 +169,10 @@ class _TeacherQuestionBankDetailPageState
                       const SizedBox(height: 12),
                       ...item.options.asMap().entries.map((entry) {
                         final isCorrect = item.correctOptionIndex == entry.key;
+                        final optionImage =
+                            item.optionImagePaths.length > entry.key
+                            ? item.optionImagePaths[entry.key]
+                            : null;
                         return Container(
                           width: double.infinity,
                           margin: const EdgeInsets.only(bottom: 10),
@@ -196,6 +201,29 @@ class _TeacherQuestionBankDetailPageState
                               ),
                               const SizedBox(width: 10),
                               Expanded(child: Text(entry.value)),
+                              if ((optionImage ?? '').isNotEmpty) ...[
+                                const SizedBox(width: 10),
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    ApiConfig.resolveAssetUrl(optionImage),
+                                    width: 54,
+                                    height: 54,
+                                    fit: BoxFit.cover,
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            Container(
+                                              width: 54,
+                                              height: 54,
+                                              color:
+                                                  theme.scaffoldBackgroundColor,
+                                              child: const Icon(
+                                                Icons.broken_image_outlined,
+                                              ),
+                                            ),
+                                  ),
+                                ),
+                              ],
                               if (isCorrect)
                                 const Text(
                                   'Doğru',
@@ -237,6 +265,31 @@ class _TeacherQuestionBankDetailPageState
                             height: 220,
                             theme: theme,
                           ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              if ((item.solutionTextHtml ?? '').trim().isNotEmpty) ...[
+                const SizedBox(height: 16),
+                _panel(
+                  theme,
+                  isDark,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Çözüm Metni',
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        item.solutionTextHtml!.trim(),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          height: 1.45,
                         ),
                       ),
                     ],

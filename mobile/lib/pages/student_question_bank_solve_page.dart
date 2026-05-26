@@ -35,6 +35,8 @@ class _StudentQuestionBankSolvePageState
   bool _finished = false;
 
   QuestionBankRecord get _currentQuestion => widget.questions[_currentIndex];
+  bool _usesOptions(QuestionBankRecord question) =>
+      question.type == 'Çoktan Seçmeli' || question.type == 'Doğru / Yanlış';
 
   @override
   void initState() {
@@ -52,12 +54,12 @@ class _StudentQuestionBankSolvePageState
   }
 
   void _syncTypedAnswer() {
-    if (_currentQuestion.type == 'Çoktan Seçmeli') return;
+    if (_usesOptions(_currentQuestion)) return;
     _typedAnswers[_currentQuestion.id] = _answerController.text;
   }
 
   void _loadCurrentAnswer() {
-    if (_currentQuestion.type == 'Çoktan Seçmeli') {
+    if (_usesOptions(_currentQuestion)) {
       _answerController.text = '';
       return;
     }
@@ -86,7 +88,7 @@ class _StudentQuestionBankSolvePageState
 
   Future<void> _skipQuestion() async {
     _typedAnswers[_currentQuestion.id] = '';
-    if (_currentQuestion.type == 'Çoktan Seçmeli') {
+    if (_usesOptions(_currentQuestion)) {
       _selectedOptions.remove(_currentQuestion.id);
     }
 
@@ -159,7 +161,7 @@ class _StudentQuestionBankSolvePageState
       return;
     }
 
-    final answerText = _currentQuestion.type == 'Çoktan Seçmeli'
+    final answerText = _usesOptions(_currentQuestion)
         ? (_selectedOptions[_currentQuestion.id] != null
               ? _currentQuestion.options[_selectedOptions[_currentQuestion.id]!]
               : '')
@@ -184,7 +186,7 @@ class _StudentQuestionBankSolvePageState
 
   bool _isCorrectFor(QuestionBankRecord question) {
     final expected = (question.expectedAnswer ?? '').trim().toLowerCase();
-    if (question.type == 'Çoktan Seçmeli') {
+    if (_usesOptions(question)) {
       return _selectedOptions[question.id] == question.correctOptionIndex;
     }
 
@@ -529,7 +531,7 @@ class _StudentQuestionBankSolvePageState
               _panel(
                 theme,
                 isDark,
-                child: _currentQuestion.type == 'Çoktan Seçmeli'
+                child: _usesOptions(_currentQuestion)
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -546,6 +548,11 @@ class _StudentQuestionBankSolvePageState
                             final selected =
                                 _selectedOptions[_currentQuestion.id] ==
                                 entry.key;
+                            final optionImage =
+                                _currentQuestion.optionImagePaths.length >
+                                    entry.key
+                                ? _currentQuestion.optionImagePaths[entry.key]
+                                : null;
                             return GestureDetector(
                               behavior: HitTestBehavior.opaque,
                               onTap: () => setState(
@@ -586,6 +593,25 @@ class _StudentQuestionBankSolvePageState
                                     ),
                                     const SizedBox(width: 10),
                                     Expanded(child: Text(entry.value)),
+                                    if ((optionImage ?? '').isNotEmpty) ...[
+                                      const SizedBox(width: 10),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          ApiConfig.resolveAssetUrl(
+                                            optionImage,
+                                          ),
+                                          width: 54,
+                                          height: 54,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
+                                                    Icons.broken_image_outlined,
+                                                  ),
+                                        ),
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),

@@ -5,6 +5,8 @@ import '../pages/veli_duyurular_page.dart';
 import '../pages/veli_mesajlar_page.dart';
 import '../pages/veli_odeme_page.dart';
 import '../pages/veli_profile_page.dart';
+import '../pages/service_live_status_page.dart';
+import '../pages/cafeteria_weekly_menu_page.dart';
 import '../widgets/adaptive_scaffold.dart';
 
 class VeliBottomNav extends StatelessWidget {
@@ -26,6 +28,18 @@ class VeliBottomNav extends StatelessWidget {
           label: 'Devamsızlık',
           pageBuilder: (_) => const VeliDevamsizlikPage(),
           sidebarColor: const Color(0xFFEF4444),
+        ),
+        AdaptiveDestination(
+          icon: Icons.directions_bus_filled_outlined,
+          label: 'Servis',
+          pageBuilder: (_) => const ServiceLiveStatusPage(parentMode: true),
+          sidebarColor: const Color(0xFF0F766E),
+        ),
+        AdaptiveDestination(
+          icon: Icons.restaurant_menu_rounded,
+          label: 'Yemekhane',
+          pageBuilder: (_) => const CafeteriaWeeklyMenuPage(canEdit: false),
+          sidebarColor: const Color(0xFFF97316),
         ),
         AdaptiveDestination(
           icon: Icons.campaign_outlined,

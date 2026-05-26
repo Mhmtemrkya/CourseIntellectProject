@@ -236,6 +236,8 @@ class StaffRegistryStore extends ChangeNotifier {
         return 'Öğretmen';
       case 'Administrative':
         return 'Personel';
+      case 'Cafeteria':
+        return 'Yemekhaneci';
       case 'Accounting':
         return 'Muhasebeci';
       default:
@@ -252,6 +254,8 @@ class StaffRegistryStore extends ChangeNotifier {
         return 'Administrative';
       case 'Muhasebeci':
         return 'Accounting';
+      case 'Yemekhaneci':
+        return 'Cafeteria';
       default:
         return role;
     }

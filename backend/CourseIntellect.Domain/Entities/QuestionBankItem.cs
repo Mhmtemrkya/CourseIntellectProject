@@ -21,4 +21,8 @@ public sealed class QuestionBankItem : ITenantScopedEntity
     public string? SolutionAssetType { get; set; }
     public bool RevealCorrectAnswerToStudent { get; set; }
     public string? ExpectedAnswer { get; set; }
+    public string? RichTextHtml { get; set; }
+    public string? SolutionTextHtml { get; set; }
+    public string? EditorMetadataJson { get; set; }
+    public string PublicationStatus { get; set; } = "Published";
 }

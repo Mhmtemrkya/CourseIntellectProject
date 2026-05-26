@@ -445,9 +445,13 @@ export default function TeacherExams() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" onClick={() => navigate('/t/exam-workbench')}>Çalışma Alanı</Button>
+          <Button variant="outline" onClick={() => navigate('/t/mock-exams')}>
+            <Calendar className="h-4 w-4 mr-2" />
+            Deneme Sınavları
+          </Button>
           <Dialog open={plannedOpen} onOpenChange={setPlannedOpen}>
             <DialogTrigger asChild>
-              <Button variant="outline">
+              <Button variant="outline" className="hidden">
                 <Calendar className="h-4 w-4 mr-2" />
                 Yeni Sınav Oluştur
               </Button>

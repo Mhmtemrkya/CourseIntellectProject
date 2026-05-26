@@ -371,6 +371,181 @@ class DriverRouteStudentRecord {
   }
 }
 
+class ServiceLiveStatusRecord {
+  final String studentId;
+  final String studentFullName;
+  final String routeId;
+  final String routeName;
+  final String routeType;
+  final String stopId;
+  final String stopName;
+  final String attendanceStatus;
+  final String tripStatus;
+  final String tripId;
+  final String vehicleId;
+  final int? etaMinutes;
+  final double stopLatitude;
+  final double stopLongitude;
+  final double? vehicleLatitude;
+  final double? vehicleLongitude;
+  final double? distanceMeters;
+  final String lastLocationAt;
+
+  const ServiceLiveStatusRecord({
+    required this.studentId,
+    required this.studentFullName,
+    required this.routeId,
+    required this.routeName,
+    required this.routeType,
+    required this.stopId,
+    required this.stopName,
+    required this.attendanceStatus,
+    required this.tripStatus,
+    required this.tripId,
+    required this.vehicleId,
+    required this.etaMinutes,
+    required this.stopLatitude,
+    required this.stopLongitude,
+    required this.vehicleLatitude,
+    required this.vehicleLongitude,
+    required this.distanceMeters,
+    required this.lastLocationAt,
+  });
+
+  factory ServiceLiveStatusRecord.fromMap(Map<String, dynamic> map) {
+    final vehicleLatitude = map['vehicleLatitude'];
+    final vehicleLongitude = map['vehicleLongitude'];
+    final distanceMeters = map['distanceMeters'];
+    return ServiceLiveStatusRecord(
+      studentId: _asString(map['studentId']),
+      studentFullName: _asString(map['studentFullName']),
+      routeId: _asString(map['routeId']),
+      routeName: _asString(map['routeName']),
+      routeType: _asString(map['routeType']),
+      stopId: _asString(map['stopId']),
+      stopName: _asString(map['stopName']),
+      attendanceStatus: _asString(map['attendanceStatus']),
+      tripStatus: _asString(map['tripStatus']),
+      tripId: _asString(map['tripId']),
+      vehicleId: _asString(map['vehicleId']),
+      etaMinutes: map['etaMinutes'] is num
+          ? (map['etaMinutes'] as num).round()
+          : null,
+      stopLatitude: _asDouble(map['stopLatitude']),
+      stopLongitude: _asDouble(map['stopLongitude']),
+      vehicleLatitude: vehicleLatitude is num
+          ? vehicleLatitude.toDouble()
+          : null,
+      vehicleLongitude: vehicleLongitude is num
+          ? vehicleLongitude.toDouble()
+          : null,
+      distanceMeters: distanceMeters is num ? distanceMeters.toDouble() : null,
+      lastLocationAt: _asString(map['lastLocationAt']),
+    );
+  }
+
+  bool get hasVehicleLocation =>
+      vehicleLatitude != null && vehicleLongitude != null;
+
+  ServiceLiveStatusRecord copyWith({
+    String? attendanceStatus,
+    String? tripStatus,
+    int? etaMinutes,
+    double? vehicleLatitude,
+    double? vehicleLongitude,
+    double? distanceMeters,
+    String? lastLocationAt,
+  }) {
+    return ServiceLiveStatusRecord(
+      studentId: studentId,
+      studentFullName: studentFullName,
+      routeId: routeId,
+      routeName: routeName,
+      routeType: routeType,
+      stopId: stopId,
+      stopName: stopName,
+      attendanceStatus: attendanceStatus ?? this.attendanceStatus,
+      tripStatus: tripStatus ?? this.tripStatus,
+      tripId: tripId,
+      vehicleId: vehicleId,
+      etaMinutes: etaMinutes ?? this.etaMinutes,
+      stopLatitude: stopLatitude,
+      stopLongitude: stopLongitude,
+      vehicleLatitude: vehicleLatitude ?? this.vehicleLatitude,
+      vehicleLongitude: vehicleLongitude ?? this.vehicleLongitude,
+      distanceMeters: distanceMeters ?? this.distanceMeters,
+      lastLocationAt: lastLocationAt ?? this.lastLocationAt,
+    );
+  }
+}
+
+class ServiceHistoryRecord {
+  final String tripId;
+  final String tripDate;
+  final String tripType;
+  final String routeName;
+  final String attendanceStatus;
+  final String markedAt;
+
+  const ServiceHistoryRecord({
+    required this.tripId,
+    required this.tripDate,
+    required this.tripType,
+    required this.routeName,
+    required this.attendanceStatus,
+    required this.markedAt,
+  });
+
+  factory ServiceHistoryRecord.fromMap(Map<String, dynamic> map) {
+    return ServiceHistoryRecord(
+      tripId: _asString(map['tripId']),
+      tripDate: _asString(map['tripDate']),
+      tripType: _asString(map['tripType']),
+      routeName: _asString(map['routeName']),
+      attendanceStatus: _asString(map['attendanceStatus']),
+      markedAt: _asString(map['markedAt']),
+    );
+  }
+}
+
+class ServiceAbsenceRequestRecord {
+  final String id;
+  final String studentId;
+  final String studentFullName;
+  final String routeId;
+  final String routeName;
+  final String date;
+  final String tripType;
+  final String reason;
+  final String status;
+
+  const ServiceAbsenceRequestRecord({
+    required this.id,
+    required this.studentId,
+    required this.studentFullName,
+    required this.routeId,
+    required this.routeName,
+    required this.date,
+    required this.tripType,
+    required this.reason,
+    required this.status,
+  });
+
+  factory ServiceAbsenceRequestRecord.fromMap(Map<String, dynamic> map) {
+    return ServiceAbsenceRequestRecord(
+      id: _asString(map['id']),
+      studentId: _asString(map['studentId']),
+      studentFullName: _asString(map['studentFullName']),
+      routeId: _asString(map['routeId']),
+      routeName: _asString(map['routeName']),
+      date: _asString(map['date']),
+      tripType: _asString(map['tripType']),
+      reason: _asString(map['reason']),
+      status: _asString(map['status']),
+    );
+  }
+}
+
 class ServiceTrackingApiService {
   ServiceTrackingApiService._();
 
@@ -397,6 +572,28 @@ class ServiceTrackingApiService {
       'isActive': true,
     });
     return ServiceVehicleRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<ServiceVehicleRecord> updateVehicle({
+    required String vehicleId,
+    required String plateNumber,
+    required String brand,
+    required String model,
+    required int capacity,
+    required bool isActive,
+  }) async {
+    final response = await _send('PUT', '/api/service/vehicles/$vehicleId', {
+      'plateNumber': plateNumber,
+      'brand': brand,
+      'model': model,
+      'capacity': capacity,
+      'isActive': isActive,
+    });
+    return ServiceVehicleRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<void> deleteVehicle(String vehicleId) async {
+    await _send('DELETE', '/api/service/vehicles/$vehicleId', null);
   }
 
   Future<List<ServiceDriverRecord>> fetchDrivers() async {
@@ -432,6 +629,26 @@ class ServiceTrackingApiService {
       'isActive': true,
     });
     return ServiceDriverRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<ServiceDriverRecord> updateDriver({
+    required String driverId,
+    required String userId,
+    required String phoneNumber,
+    required String licenseNumber,
+    required bool isActive,
+  }) async {
+    final response = await _send('PUT', '/api/service/drivers/$driverId', {
+      'userId': userId,
+      'phoneNumber': phoneNumber,
+      'licenseNumber': licenseNumber,
+      'isActive': isActive,
+    });
+    return ServiceDriverRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<void> deleteDriver(String driverId) async {
+    await _send('DELETE', '/api/service/drivers/$driverId', null);
   }
 
   Future<List<ServiceRouteRecord>> fetchRoutes({
@@ -489,6 +706,10 @@ class ServiceTrackingApiService {
     return ServiceRouteDetailRecord.fromMap(_decodeMap(response));
   }
 
+  Future<void> deleteRoute(String routeId) async {
+    await _send('DELETE', '/api/service/routes/$routeId', null);
+  }
+
   Future<ServiceStopRecord> createStop({
     required String routeId,
     required String name,
@@ -505,6 +726,39 @@ class ServiceTrackingApiService {
       'sortOrder': sortOrder,
     });
     return ServiceStopRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<ServiceStopRecord> updateStop({
+    required String stopId,
+    required String name,
+    required String address,
+    required double latitude,
+    required double longitude,
+    required int sortOrder,
+  }) async {
+    final response = await _send('PUT', '/api/service/stops/$stopId', {
+      'name': name,
+      'address': address,
+      'latitude': latitude,
+      'longitude': longitude,
+      'sortOrder': sortOrder,
+    });
+    return ServiceStopRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<void> deleteStop(String stopId) async {
+    await _send('DELETE', '/api/service/stops/$stopId', null);
+  }
+
+  Future<void> reorderStops({
+    required String routeId,
+    required List<ServiceStopRecord> stops,
+  }) async {
+    await _send('PUT', '/api/service/routes/$routeId/stops/reorder', {
+      'stops': stops
+          .map((stop) => {'stopId': stop.id, 'sortOrder': stop.sortOrder})
+          .toList(),
+    });
   }
 
   Future<List<ServiceStudentSearchRecord>> searchStudents(
@@ -531,6 +785,10 @@ class ServiceTrackingApiService {
       'stopId': stopId,
     });
     return AssignedServiceStudentRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<void> deleteAssignment(String assignmentId) async {
+    await _send('DELETE', '/api/service/assignments/$assignmentId', null);
   }
 
   Future<List<DriverTodayRouteRecord>> fetchDriverTodayRoutes() async {
@@ -575,6 +833,79 @@ class ServiceTrackingApiService {
 
   Future<void> completeTrip(String tripId) async {
     await _send('POST', '/api/service/trips/$tripId/completed', null);
+  }
+
+  Future<void> sendDriverLocation({
+    required String tripId,
+    required double latitude,
+    required double longitude,
+    double? speed,
+    double? heading,
+  }) async {
+    await _send('POST', '/api/service/driver/location', {
+      'tripId': tripId,
+      'latitude': latitude,
+      'longitude': longitude,
+      'speed': speed,
+      'heading': heading,
+    });
+  }
+
+  Future<List<ServiceLiveStatusRecord>> fetchParentLiveStatus() async {
+    final response = await _get('/api/service/parent/live-status');
+    return _decodeList(
+      response,
+    ).map((item) => ServiceLiveStatusRecord.fromMap(item)).toList();
+  }
+
+  Future<List<ServiceHistoryRecord>> fetchParentHistory() async {
+    final response = await _get('/api/service/parent/history');
+    return _decodeList(
+      response,
+    ).map((item) => ServiceHistoryRecord.fromMap(item)).toList();
+  }
+
+  Future<List<ServiceAbsenceRequestRecord>> fetchParentAbsenceRequests() async {
+    final response = await _get('/api/service/parent/absence-requests');
+    return _decodeList(
+      response,
+    ).map((item) => ServiceAbsenceRequestRecord.fromMap(item)).toList();
+  }
+
+  Future<ServiceAbsenceRequestRecord> createParentAbsenceRequest({
+    required String studentId,
+    required String routeId,
+    required String date,
+    required String tripType,
+    String? reason,
+  }) async {
+    final response =
+        await _send('POST', '/api/service/parent/absence-request', {
+          'studentId': studentId,
+          'routeId': routeId,
+          'date': date,
+          'tripType': tripType,
+          'reason': reason ?? '',
+        });
+    return ServiceAbsenceRequestRecord.fromMap(_decodeMap(response));
+  }
+
+  Future<void> cancelParentAbsenceRequest(String id) async {
+    await _send('DELETE', '/api/service/parent/absence-requests/$id', null);
+  }
+
+  Future<List<ServiceLiveStatusRecord>> fetchStudentLiveStatus() async {
+    final response = await _get('/api/service/student/live-status');
+    return _decodeList(
+      response,
+    ).map((item) => ServiceLiveStatusRecord.fromMap(item)).toList();
+  }
+
+  Future<List<ServiceHistoryRecord>> fetchStudentHistory() async {
+    final response = await _get('/api/service/student/history');
+    return _decodeList(
+      response,
+    ).map((item) => ServiceHistoryRecord.fromMap(item)).toList();
   }
 
   Future<http.Response> _get(String path) async {

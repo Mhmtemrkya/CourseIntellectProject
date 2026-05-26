@@ -18,7 +18,7 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Administrative")]
     [ProducesResponseType(typeof(StaffCredentialsDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(
         [FromBody] CreateStaffRequest request,
@@ -29,7 +29,7 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
     }
 
     [HttpPut("{id:guid}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Administrative")]
     [ProducesResponseType(typeof(StaffSummaryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(
         Guid id,

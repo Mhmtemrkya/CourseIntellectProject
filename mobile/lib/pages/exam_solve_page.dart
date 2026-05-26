@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:student/services/api_config.dart';
 import 'package:student/services/solution_session_api_service.dart';
 import 'package:student/widgets/solution_drawing_canvas.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ExamSolvePage extends StatefulWidget {
   final String? plannedExamId;
@@ -36,6 +37,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
   SolutionSessionRecord? _session;
   SolutionSummaryRecord? _summary;
   final TextEditingController _noteController = TextEditingController();
+  final TextEditingController _answerController = TextEditingController();
 
   SolutionQuestionRecord? get _question {
     final session = _session;
@@ -53,6 +55,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
   void dispose() {
     _timer?.cancel();
     _noteController.dispose();
+    _answerController.dispose();
     super.dispose();
   }
 
@@ -76,6 +79,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
         _noteController.text = session.questions.isEmpty
             ? ''
             : session.questions.first.note ?? '';
+        _answerController.text = session.questions.isEmpty
+            ? ''
+            : session.questions.first.answer?.openAnswer ?? '';
         _loading = false;
       });
       _startTimer();
@@ -110,6 +116,8 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     setState(() {
       _currentIndex = index.clamp(0, session.questions.length - 1);
       _noteController.text = session.questions[_currentIndex].note ?? '';
+      _answerController.text =
+          session.questions[_currentIndex].answer?.openAnswer ?? '';
     });
   }
 
@@ -136,6 +144,38 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     } catch (error) {
       if (!mounted) return;
       setState(() => _autosave = 'Cevap kaydedilemedi');
+      _showSnack(error.toString());
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  Future<void> _saveOpenAnswer() async {
+    final session = _session;
+    final question = _question;
+    if (session == null || question == null || _saving) return;
+    if (_answerController.text.trim().isEmpty) {
+      _showSnack('Cevabınızı yazmadan kaydedemezsiniz.');
+      return;
+    }
+    setState(() {
+      _saving = true;
+      _autosave = 'Cevap kaydediliyor...';
+    });
+    try {
+      final updated = await SolutionSessionApiService.instance.saveAnswer(
+        sessionId: session.id,
+        questionAttemptId: question.attemptId,
+        selectedOptionIndex: -1,
+        openAnswer: _answerController.text.trim(),
+        timeSpentSeconds: question.timeSpentSeconds,
+      );
+      if (!mounted) return;
+      setState(() {
+        _session = updated;
+        _autosave = 'Cevap kaydedildi';
+      });
+    } catch (error) {
       _showSnack(error.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -211,6 +251,10 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
         questionAttemptId: question.attemptId,
         dataUrl: dataUrl,
       );
+      final updated = await SolutionSessionApiService.instance.getSession(
+        session.id,
+      );
+      if (mounted) setState(() => _session = updated);
     } catch (_) {
       if (mounted) {
         setState(() => _autosave = 'Snapshot daha sonra eşitlenecek');
@@ -227,21 +271,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       final summary = await SolutionSessionApiService.instance.complete(
         session.id,
       );
-      final report = await SolutionSessionApiService.instance.queuePdf(
-        session.id,
-      );
       if (!mounted) return;
       setState(() {
-        _summary = SolutionSummaryRecord(
-          sessionId: summary.sessionId,
-          total: summary.total,
-          correct: summary.correct,
-          wrong: summary.wrong,
-          empty: summary.empty,
-          net: summary.net,
-          successPercent: summary.successPercent,
-          report: report,
-        );
+        _summary = summary;
         _saving = false;
       });
       _showCompletionSheet();
@@ -257,6 +289,19 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     final min = seconds ~/ 60;
     final sec = seconds % 60;
     return '${min.toString().padLeft(2, '0')}:${sec.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _openPdf(PdfReportRecord? report) async {
+    final url = ApiConfig.resolveAssetUrl(report?.downloadUrl);
+    if (url.isEmpty) {
+      _showSnack('PDF raporu henüz hazır değil.');
+      return;
+    }
+    final opened = await launchUrl(
+      Uri.parse(url),
+      mode: LaunchMode.externalApplication,
+    );
+    if (!opened) _showSnack('PDF raporu açılamadı.');
   }
 
   void _showSnack(String message) {
@@ -312,7 +357,9 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: summary.report?.downloadUrl == null
+                      ? null
+                      : () => _openPdf(summary.report),
                   icon: const Icon(Icons.picture_as_pdf_rounded),
                   label: Text(
                     summary.report?.downloadUrl == null
@@ -510,18 +557,54 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
           ),
         ),
         const SizedBox(height: 14),
-        ...List.generate(question.options.length, (index) {
-          final selected = question.answer?.selectedOptionIndex == index;
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _OptionButton(
-              label: String.fromCharCode(65 + index),
-              text: question.options[index],
-              selected: selected,
-              onTap: _saving ? null : () => _selectAnswer(index),
+        if (question.options.isNotEmpty)
+          ...List.generate(question.options.length, (index) {
+            final selected = question.answer?.selectedOptionIndex == index;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _OptionButton(
+                label: String.fromCharCode(65 + index),
+                text: question.options[index],
+                selected: selected,
+                onTap: _saving ? null : () => _selectAnswer(index),
+              ),
+            );
+          })
+        else
+          _GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Cevabın',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _answerController,
+                  minLines: 3,
+                  maxLines: 6,
+                  decoration: InputDecoration(
+                    hintText: 'Cevabını buraya yaz...',
+                    filled: true,
+                    fillColor: Colors.black.withValues(alpha: 0.22),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: FilledButton.icon(
+                    onPressed: _saving ? null : _saveOpenAnswer,
+                    icon: const Icon(Icons.save_rounded, size: 18),
+                    label: const Text('Cevabı Kaydet'),
+                  ),
+                ),
+              ],
             ),
-          );
-        }),
+          ),
         const SizedBox(height: 10),
         _GlassCard(
           child: Column(
@@ -568,6 +651,8 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     return Padding(
       padding: const EdgeInsets.fromLTRB(8, 8, 16, 24),
       child: SolutionDrawingCanvas(
+        key: ValueKey(_question?.attemptId),
+        initialSnapshotUrl: ApiConfig.resolveAssetUrl(_question?.snapshotUrl),
         onStrokeSaved: _saveStroke,
         onSnapshotSaved: _saveSnapshot,
       ),

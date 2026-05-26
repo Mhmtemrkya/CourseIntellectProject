@@ -13,7 +13,8 @@ public sealed class QuestionBankController(IQuestionBankService questionBankServ
     [HttpGet]
     public async Task<IActionResult> Get([FromQuery] string? className, CancellationToken cancellationToken = default)
     {
-        var items = await questionBankService.GetQuestionsAsync(className, cancellationToken);
+        var includeDrafts = User.IsInRole("Teacher") || User.IsInRole("Admin");
+        var items = await questionBankService.GetQuestionsAsync(className, includeDrafts, cancellationToken);
         return Ok(items);
     }
 

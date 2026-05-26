@@ -772,6 +772,9 @@ export async function uploadFile(formData, folder) {
     return response;
   }
 
+  if (folder && formData?.set) {
+    formData.set('folder', folder);
+  }
   const response = await api.post('/api/uploads', formData, {
     params: folder ? { folder } : undefined,
   });
@@ -783,6 +786,92 @@ export async function uploadFile(formData, folder) {
 export async function fetchUsers(page = 1, pageSize = 200) {
   const response = await api.get('/api/users', { params: { page, pageSize } });
   return response;
+}
+
+// --- Service Tracking ---
+
+export async function fetchServiceVehicles() {
+  const response = await api.get('/api/service/vehicles');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createServiceVehicle(payload) {
+  return await api.post('/api/service/vehicles', payload);
+}
+
+export async function updateServiceVehicle(id, payload) {
+  return await api.put(`/api/service/vehicles/${id}`, payload);
+}
+
+export async function deleteServiceVehicle(id) {
+  await api.delete(`/api/service/vehicles/${id}`);
+}
+
+export async function fetchServiceDrivers() {
+  const response = await api.get('/api/service/drivers');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createServiceDriver(payload) {
+  return await api.post('/api/service/drivers', payload);
+}
+
+export async function updateServiceDriver(id, payload) {
+  return await api.put(`/api/service/drivers/${id}`, payload);
+}
+
+export async function deleteServiceDriver(id) {
+  await api.delete(`/api/service/drivers/${id}`);
+}
+
+export async function fetchServiceRoutes(params = {}) {
+  const response = await api.get('/api/service/routes', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchServiceRouteDetail(id) {
+  return await api.get(`/api/service/routes/${id}`);
+}
+
+export async function createServiceRoute(payload) {
+  return await api.post('/api/service/routes', payload);
+}
+
+export async function setServiceRouteActive(id, active) {
+  return await api.patch(`/api/service/routes/${id}/${active ? 'activate' : 'deactivate'}`);
+}
+
+export async function createServiceRouteStop(routeId, payload) {
+  return await api.post(`/api/service/routes/${routeId}/stops`, payload);
+}
+
+export async function updateServiceRouteStop(stopId, payload) {
+  return await api.put(`/api/service/stops/${stopId}`, payload);
+}
+
+export async function deleteServiceRouteStop(stopId) {
+  await api.delete(`/api/service/stops/${stopId}`);
+}
+
+export async function reorderServiceRouteStops(routeId, stops) {
+  return await api.put(`/api/service/routes/${routeId}/stops/reorder`, { stops });
+}
+
+export async function searchServiceStudents(keyword) {
+  const response = await api.get('/api/service/students/search', {
+    params: { keyword: keyword || '' },
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function assignServiceStudent(payload) {
+  return await api.post('/api/service/assignments', payload);
+}
+
+export async function deleteServiceAssignment(id) {
+  await api.delete(`/api/service/assignments/${id}`);
 }
 
 export async function fetchUserRoles() {
@@ -943,7 +1032,14 @@ export async function deleteQuestionStudioDraft(id) {
   await api.delete(`/api/question-studio/drafts/${id}`);
 }
 
-export async function generateQuestionStudioAi(payload) {
-  const response = await api.post('/api/question-studio/ai/generate', payload);
-  return response;
+// --- Cafeteria / Weekly Menu ---
+
+export async function fetchCafeteriaWeek(weekStart) {
+  return api.get('/api/cafeteria/week', {
+    params: weekStart ? { weekStart } : undefined,
+  });
+}
+
+export async function saveCafeteriaWeek(payload) {
+  return api.post('/api/cafeteria/weeks', payload);
 }

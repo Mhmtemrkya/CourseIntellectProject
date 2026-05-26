@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/service_tracking_api_service.dart';
 import '../widgets/admin_ui.dart';
+import '../widgets/service_tracking_ui.dart';
 import 'driver_route_students_page.dart';
 
 class ServiceRoutesPage extends StatefulWidget {
@@ -66,17 +67,28 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                AdminHeroCard(
-                  eyebrow: 'Servis takip modülü',
-                  title: 'Araç, şoför, rota ve öğrenci atamalarını yönetin.',
+                ServiceHeroPanel(
+                  eyebrow: 'Servis Operasyon Merkezi',
+                  title: 'Araç, şoför ve rotaları tek ekrandan yönetin.',
                   description:
-                      'Kurum servisleri sabah/akşam rotaları, durak sırası ve yoklama akışıyla burada yönetilir.',
-                  colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
-                  metrics: [
-                    AdminHeroMetric(label: 'Rota', value: '${_routes.length}'),
-                    AdminHeroMetric(
+                      'Sabah/akşam rotaları, durak sırası, kapasite ve öğrenci atamaları mobilde profesyonel bir operasyon paneli gibi çalışır.',
+                  icon: Icons.route_rounded,
+                  colors: const [Color(0xFF07111F), Color(0xFF0F766E)],
+                  stats: [
+                    ServiceHeroStat(
+                      label: 'Rota',
+                      value: '${_routes.length}',
+                      icon: Icons.alt_route_rounded,
+                    ),
+                    ServiceHeroStat(
                       label: 'Araç',
                       value: '${_vehicles.length}',
+                      icon: Icons.directions_bus_rounded,
+                    ),
+                    ServiceHeroStat(
+                      label: 'Şoför',
+                      value: '${_drivers.length}',
+                      icon: Icons.badge_rounded,
                     ),
                   ],
                 ),
@@ -85,43 +97,49 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                   _errorBox(_error!),
                 ],
                 const SizedBox(height: 16),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    FilledButton.icon(
-                      onPressed: _showCreateVehicleDialog,
-                      icon: const Icon(Icons.directions_bus_outlined),
-                      label: const Text('Araç Ekle'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: _showCreateDriverDialog,
-                      icon: const Icon(Icons.badge_outlined),
-                      label: const Text('Şoför Ata'),
-                    ),
-                    FilledButton.icon(
-                      onPressed: _showCreateRouteDialog,
-                      icon: const Icon(Icons.alt_route_rounded),
-                      label: const Text('Rota Oluştur'),
-                    ),
-                    OutlinedButton.icon(
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DriverRouteStudentsPage(),
-                        ),
-                      ),
-                      icon: const Icon(Icons.fact_check_outlined),
-                      label: const Text('Şoför Ekranı'),
-                    ),
-                  ],
-                ),
+                _quickActionGrid(),
                 const SizedBox(height: 18),
-                const AdminSectionTitle(title: 'Rotalar'),
+                const ServiceSectionHeader(
+                  title: 'Servis Araçları',
+                  subtitle: 'Plaka, kapasite ve aktiflik durumunu yönetin.',
+                ),
+                const SizedBox(height: 10),
+                if (_vehicles.isEmpty)
+                  const ServiceEmptyPanel(
+                    title: 'Henüz servis aracı eklenmedi',
+                    description:
+                        'İlk aracı ekleyerek rota planlamasına başlayabilirsiniz.',
+                    icon: Icons.directions_bus_filled_outlined,
+                  )
+                else
+                  ..._vehicles.map((vehicle) => _vehicleCard(vehicle)),
+                const SizedBox(height: 18),
+                const ServiceSectionHeader(
+                  title: 'Servis Şoförleri',
+                  subtitle: 'Mevcut kullanıcıları servis şoförü olarak atayın.',
+                ),
+                const SizedBox(height: 10),
+                if (_drivers.isEmpty)
+                  const ServiceEmptyPanel(
+                    title: 'Henüz servis şoförü yok',
+                    description:
+                        'Personel/kullanıcı kaydını seçerek şoför profili oluşturabilirsiniz.',
+                    icon: Icons.badge_outlined,
+                  )
+                else
+                  ..._drivers.map((driver) => _driverCard(driver)),
+                const SizedBox(height: 18),
+                const ServiceSectionHeader(
+                  title: 'Rotalar',
+                  subtitle: 'Sabah ve akşam rotalarını kapasiteyle izleyin.',
+                ),
                 const SizedBox(height: 10),
                 if (_routes.isEmpty)
-                  const AdminPanel(
-                    child: Text('Henüz servis rotası oluşturulmadı.'),
+                  const ServiceEmptyPanel(
+                    title: 'Henüz servis rotası yok',
+                    description:
+                        'Araç ve şoför seçerek sabah veya akşam rotası oluşturun.',
+                    icon: Icons.alt_route_rounded,
                   )
                 else
                   ..._routes.map((route) => _routeCard(route)),
@@ -130,75 +148,270 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
     );
   }
 
+  Widget _quickActionGrid() {
+    final actions = [
+      ServiceQuickAction(
+        title: 'Araç Ekle',
+        subtitle: 'Plaka ve kapasite',
+        icon: Icons.directions_bus_filled_outlined,
+        color: serviceBlue,
+        onTap: _showCreateVehicleDialog,
+      ),
+      ServiceQuickAction(
+        title: 'Şoför Oluştur',
+        subtitle: 'Kullanıcıyı ata',
+        icon: Icons.badge_outlined,
+        color: serviceGreen,
+        onTap: _showCreateDriverDialog,
+      ),
+      ServiceQuickAction(
+        title: 'Rota Oluştur',
+        subtitle: 'Sabah / akşam',
+        icon: Icons.alt_route_rounded,
+        color: serviceOrange,
+        onTap: _showCreateRouteDialog,
+      ),
+      ServiceQuickAction(
+        title: 'Şoför Ekranı',
+        subtitle: 'Yoklama ve GPS',
+        icon: Icons.fact_check_outlined,
+        color: servicePurple,
+        onTap: () => Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DriverRouteStudentsPage()),
+        ),
+      ),
+    ];
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final twoColumns = constraints.maxWidth >= 520;
+        final itemWidth = twoColumns
+            ? (constraints.maxWidth - 12) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: actions
+              .map((action) => SizedBox(width: itemWidth, child: action))
+              .toList(),
+        );
+      },
+    );
+  }
+
   Widget _routeCard(ServiceRouteRecord route) {
-    final color = route.routeType == 'Morning'
-        ? const Color(0xFF2563EB)
-        : const Color(0xFFB45309);
-    return AdminPanel(
+    final color = route.routeType == 'Morning' ? serviceBlue : serviceOrange;
+    return ServiceGlassCard(
       margin: const EdgeInsets.only(bottom: 12),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(20),
-        onTap: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) => ServiceRouteDetailPage(routeId: route.id),
-            ),
-          );
-          _load();
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: Row(
-            children: [
-              CircleAvatar(
-                backgroundColor: color.withValues(alpha: 0.12),
-                foregroundColor: color,
-                child: Icon(
-                  route.routeType == 'Morning'
-                      ? Icons.wb_sunny_outlined
-                      : Icons.nights_stay_outlined,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      glowColors: [color, serviceCyan],
+      onTap: () async {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ServiceRouteDetailPage(routeId: route.id),
+          ),
+        );
+        _load();
+      },
+      child: Row(
+        children: [
+          ServiceIconBadge(
+            icon: route.routeType == 'Morning'
+                ? Icons.wb_sunny_outlined
+                : Icons.nights_stay_outlined,
+            color: color,
+          ),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
                   children: [
-                    Text(
-                      route.name,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w900,
+                    Expanded(
+                      child: Text(
+                        route.name,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_routeTypeLabel(route.routeType)} • ${route.startTime}-${route.endTime}',
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${route.vehiclePlate.isEmpty ? 'Araç seçilmedi' : route.vehiclePlate} • ${route.driverName.isEmpty ? 'Şoför seçilmedi' : route.driverName}',
-                      style: Theme.of(context).textTheme.bodySmall,
+                    ServiceStatusPill(
+                      label: route.isActive ? 'Aktif' : 'Pasif',
+                      color: route.isActive
+                          ? serviceGreen
+                          : const Color(0xFF64748B),
+                      icon: route.isActive
+                          ? Icons.check_circle_outline
+                          : Icons.pause_circle_outline,
                     ),
                   ],
                 ),
-              ),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  AdminAccentBadge(
-                    label: route.isActive ? 'Aktif' : 'Pasif',
-                    color: route.isActive
-                        ? const Color(0xFF0F766E)
-                        : const Color(0xFF64748B),
+                const SizedBox(height: 8),
+                ServiceInfoRow(
+                  icon: Icons.schedule_rounded,
+                  label: _routeTypeLabel(route.routeType),
+                  value: '${route.startTime} - ${route.endTime}',
+                  color: color,
+                ),
+                const SizedBox(height: 5),
+                ServiceInfoRow(
+                  icon: Icons.directions_bus_outlined,
+                  label: 'Araç',
+                  value: route.vehiclePlate.isEmpty
+                      ? 'Araç seçilmedi'
+                      : route.vehiclePlate,
+                  color: serviceBlue,
+                ),
+                const SizedBox(height: 5),
+                ServiceInfoRow(
+                  icon: Icons.person_pin_circle_outlined,
+                  label: 'Şoför',
+                  value: route.driverName.isEmpty
+                      ? 'Şoför seçilmedi'
+                      : route.driverName,
+                  color: serviceGreen,
+                ),
+                const SizedBox(height: 12),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(999),
+                  child: LinearProgressIndicator(
+                    minHeight: 7,
+                    value: route.capacity == 0
+                        ? 0.0
+                        : (route.totalStudents / route.capacity)
+                              .clamp(0.0, 1.0)
+                              .toDouble(),
+                    backgroundColor: color.withValues(alpha: 0.12),
+                    valueColor: AlwaysStoppedAnimation<Color>(color),
                   ),
-                  const SizedBox(height: 8),
-                  Text('${route.totalStudents}/${route.capacity} öğrenci'),
-                ],
-              ),
-            ],
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '${route.totalStudents}/${route.capacity} öğrenci kapasitesi',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.color?.withValues(alpha: 0.62),
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
+          const SizedBox(width: 8),
+          Icon(
+            Icons.arrow_forward_ios_rounded,
+            size: 15,
+            color: Theme.of(
+              context,
+            ).textTheme.bodySmall?.color?.withValues(alpha: 0.42),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _vehicleCard(ServiceVehicleRecord vehicle) {
+    return ServiceGlassCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      glowColors: const [serviceBlue, serviceCyan],
+      child: Row(
+        children: [
+          const ServiceIconBadge(
+            icon: Icons.directions_bus_filled_outlined,
+            color: serviceBlue,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vehicle.plateNumber,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${vehicle.brand} ${vehicle.model} • ${vehicle.capacity} koltuk',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.color?.withValues(alpha: 0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ServiceStatusPill(
+            label: vehicle.isActive ? 'Aktif' : 'Pasif',
+            color: vehicle.isActive ? serviceGreen : const Color(0xFF64748B),
+            icon: vehicle.isActive
+                ? Icons.check_circle_outline
+                : Icons.pause_circle_outline,
+          ),
+          IconButton(
+            tooltip: vehicle.isActive ? 'Pasifleştir' : 'Aktifleştir',
+            onPressed: () => _toggleVehicle(vehicle),
+            icon: Icon(vehicle.isActive ? Icons.block_outlined : Icons.check),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _driverCard(ServiceDriverRecord driver) {
+    return ServiceGlassCard(
+      margin: const EdgeInsets.only(bottom: 12),
+      glowColors: const [serviceGreen, serviceBlue],
+      child: Row(
+        children: [
+          const ServiceIconBadge(
+            icon: Icons.badge_outlined,
+            color: serviceGreen,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  driver.fullName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  [
+                    if (driver.phoneNumber.isNotEmpty) driver.phoneNumber,
+                    if (driver.licenseNumber.isNotEmpty)
+                      'Ehliyet: ${driver.licenseNumber}',
+                  ].join(' • '),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(
+                      context,
+                    ).textTheme.bodySmall?.color?.withValues(alpha: 0.65),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ServiceStatusPill(
+            label: driver.isActive ? 'Aktif' : 'Pasif',
+            color: driver.isActive ? serviceGreen : const Color(0xFF64748B),
+            icon: driver.isActive
+                ? Icons.check_circle_outline
+                : Icons.pause_circle_outline,
+          ),
+          IconButton(
+            tooltip: 'Pasifleştir',
+            onPressed: driver.isActive ? () => _deactivateDriver(driver) : null,
+            icon: const Icon(Icons.block_outlined),
+          ),
+        ],
       ),
     );
   }
@@ -257,8 +470,33 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
     if (saved == true) _load();
   }
 
+  Future<void> _toggleVehicle(ServiceVehicleRecord vehicle) async {
+    try {
+      await _api.updateVehicle(
+        vehicleId: vehicle.id,
+        plateNumber: vehicle.plateNumber,
+        brand: vehicle.brand,
+        model: vehicle.model,
+        capacity: vehicle.capacity,
+        isActive: !vehicle.isActive,
+      );
+      _showMessage(
+        vehicle.isActive ? 'Araç pasifleştirildi.' : 'Araç aktifleştirildi.',
+      );
+      _load();
+    } catch (e) {
+      _showMessage(e.toString());
+    }
+  }
+
   Future<void> _showCreateDriverDialog() async {
-    final users = await _api.fetchUsers();
+    List<ServiceUserRecord> users;
+    try {
+      users = await _api.fetchUsers();
+    } catch (e) {
+      _showMessage(e.toString());
+      return;
+    }
     if (!mounted) return;
     ServiceUserRecord? selected = users.isNotEmpty ? users.first : null;
     final phone = TextEditingController(text: selected?.phone ?? '');
@@ -267,29 +505,37 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Şoför Ata'),
+          title: const Text('Servis Şoförü Oluştur'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<ServiceUserRecord>(
-                initialValue: selected,
-                isExpanded: true,
-                items: users
-                    .map(
-                      (user) => DropdownMenuItem(
-                        value: user,
-                        child: Text('${user.fullName} • ${user.role}'),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (value) {
-                  setDialogState(() {
-                    selected = value;
-                    phone.text = value?.phone ?? '';
-                  });
-                },
-                decoration: const InputDecoration(labelText: 'Kullanıcı'),
-              ),
+              if (users.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 12),
+                  child: Text(
+                    'Şoför oluşturmak için önce kullanıcı/personel kaydı olmalı.',
+                  ),
+                )
+              else
+                DropdownButtonFormField<ServiceUserRecord>(
+                  initialValue: selected,
+                  isExpanded: true,
+                  items: users
+                      .map(
+                        (user) => DropdownMenuItem(
+                          value: user,
+                          child: Text('${user.fullName} • ${user.role}'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    setDialogState(() {
+                      selected = value;
+                      phone.text = value?.phone ?? '';
+                    });
+                  },
+                  decoration: const InputDecoration(labelText: 'Kullanıcı'),
+                ),
               TextField(
                 controller: phone,
                 decoration: const InputDecoration(labelText: 'Telefon'),
@@ -309,12 +555,20 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
               onPressed: selected == null
                   ? null
                   : () async {
-                      await _api.createDriver(
-                        userId: selected!.id,
-                        phoneNumber: phone.text,
-                        licenseNumber: license.text,
-                      );
-                      if (context.mounted) Navigator.pop(context, true);
+                      try {
+                        await _api.createDriver(
+                          userId: selected!.id,
+                          phoneNumber: phone.text.trim(),
+                          licenseNumber: license.text.trim(),
+                        );
+                        if (context.mounted) Navigator.pop(context, true);
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(
+                            context,
+                          ).showSnackBar(SnackBar(content: Text(e.toString())));
+                        }
+                      }
                     },
               child: const Text('Kaydet'),
             ),
@@ -323,6 +577,36 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
       ),
     );
     if (saved == true) _load();
+  }
+
+  Future<void> _deactivateDriver(ServiceDriverRecord driver) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Şoförü Pasifleştir'),
+        content: Text(
+          '${driver.fullName} servis şoförü olarak pasifleştirilsin mi?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pasifleştir'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.deleteDriver(driver.id);
+      _showMessage('Şoför kaydı pasifleştirildi.');
+      _load();
+    } catch (e) {
+      _showMessage(e.toString());
+    }
   }
 
   Future<void> _showCreateRouteDialog() async {
@@ -428,8 +712,26 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
   }
 
   Widget _errorBox(String message) {
-    return AdminPanel(
-      child: Text(message, style: const TextStyle(color: Color(0xFFB42318))),
+    return ServiceGlassCard(
+      glowColors: const [serviceRed, serviceOrange],
+      child: Row(
+        children: [
+          const ServiceIconBadge(
+            icon: Icons.warning_amber_rounded,
+            color: serviceRed,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(
+                color: serviceRed,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -480,43 +782,67 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                AdminPanel(
+                ServiceHeroPanel(
+                  eyebrow: detail.isActive ? 'Aktif rota' : 'Pasif rota',
+                  title: detail.name,
+                  description:
+                      '${_routeTypeLabel(detail.routeType)} servisi • ${detail.startTime}-${detail.endTime}\n${detail.vehiclePlate} • ${detail.driverName}',
+                  icon: detail.routeType == 'Morning'
+                      ? Icons.wb_sunny_outlined
+                      : Icons.nights_stay_outlined,
+                  colors: const [Color(0xFF07111F), Color(0xFF1D4ED8)],
+                  stats: [
+                    ServiceHeroStat(
+                      label: 'Öğrenci',
+                      value: '${detail.totalStudents}',
+                      icon: Icons.school_outlined,
+                    ),
+                    ServiceHeroStat(
+                      label: 'Kapasite',
+                      value: '${detail.capacity}',
+                      icon: Icons.event_seat_outlined,
+                    ),
+                    ServiceHeroStat(
+                      label: 'Boş',
+                      value: '${detail.availableSeats}',
+                      icon: Icons.airline_seat_recline_normal_outlined,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ServiceGlassCard(
+                  glowColors: const [serviceOrange, serviceGreen],
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              detail.name,
-                              style: Theme.of(context).textTheme.titleLarge
-                                  ?.copyWith(fontWeight: FontWeight.w900),
-                            ),
-                          ),
-                          AdminAccentBadge(
-                            label: detail.isActive ? 'Aktif' : 'Pasif',
-                            color: detail.isActive
-                                ? const Color(0xFF0F766E)
-                                : const Color(0xFF64748B),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        '${_routeTypeLabel(detail.routeType)} • ${detail.startTime}-${detail.endTime}',
-                      ),
-                      Text(
-                        'Araç: ${detail.vehiclePlate} • Şoför: ${detail.driverName}',
+                      const ServiceSectionHeader(
+                        title: 'Rota Doluluğu',
+                        subtitle: 'Araç kapasitesi ve aktif öğrenci sayısı',
                       ),
                       const SizedBox(height: 12),
-                      LinearProgressIndicator(
-                        value: detail.capacity == 0
-                            ? 0
-                            : detail.totalStudents / detail.capacity,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(999),
+                        child: LinearProgressIndicator(
+                          minHeight: 9,
+                          value: detail.capacity == 0
+                              ? 0.0
+                              : (detail.totalStudents / detail.capacity)
+                                    .clamp(0.0, 1.0)
+                                    .toDouble(),
+                          backgroundColor: serviceOrange.withValues(
+                            alpha: 0.14,
+                          ),
+                          valueColor: const AlwaysStoppedAnimation<Color>(
+                            serviceOrange,
+                          ),
+                        ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 10),
                       Text(
                         'Doluluk: ${detail.totalStudents}/${detail.capacity} • Boş koltuk: ${detail.availableSeats}',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                     ],
                   ),
@@ -552,14 +878,26 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                         detail.isActive ? 'Pasifleştir' : 'Aktifleştir',
                       ),
                     ),
+                    OutlinedButton.icon(
+                      onPressed: _deleteRoute,
+                      icon: const Icon(Icons.delete_outline),
+                      label: const Text('Rotayı Sil/Pasifleştir'),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                const AdminSectionTitle(title: 'Duraklar ve Öğrenciler'),
+                const ServiceSectionHeader(
+                  title: 'Duraklar ve Öğrenciler',
+                  subtitle:
+                      'Şoför ekranındaki sıralama bu listeye göre oluşur.',
+                ),
                 const SizedBox(height: 10),
                 if (detail.stops.isEmpty)
-                  const AdminPanel(
-                    child: Text('Bu rotaya henüz durak eklenmedi.'),
+                  const ServiceEmptyPanel(
+                    title: 'Bu rotada durak yok',
+                    description:
+                        'Durak ekleyip öğrencileri uygun durağa atayabilirsiniz.',
+                    icon: Icons.add_location_alt_outlined,
                   )
                 else
                   ...detail.stops.map((stop) => _stopCard(stop)),
@@ -569,14 +907,35 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
   }
 
   Widget _stopCard(ServiceStopRecord stop) {
-    return AdminPanel(
+    return ServiceGlassCard(
       margin: const EdgeInsets.only(bottom: 12),
+      glowColors: const [serviceOrange, serviceBlue],
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              CircleAvatar(child: Text('${stop.sortOrder}')),
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: serviceOrange.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: serviceOrange.withValues(alpha: 0.26),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    '${stop.sortOrder}',
+                    style: const TextStyle(
+                      color: serviceOrange,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 18,
+                    ),
+                  ),
+                ),
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -590,25 +949,104 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                     ),
                     Text(
                       stop.address,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).textTheme.bodySmall?.color?.withValues(alpha: 0.64),
+                      ),
                     ),
                   ],
                 ),
+              ),
+              IconButton(
+                tooltip: 'Yukarı taşı',
+                onPressed: stop.sortOrder <= 1
+                    ? null
+                    : () => _moveStop(stop, -1),
+                icon: const Icon(Icons.arrow_upward_rounded),
+              ),
+              IconButton(
+                tooltip: 'Aşağı taşı',
+                onPressed: () => _moveStop(stop, 1),
+                icon: const Icon(Icons.arrow_downward_rounded),
+              ),
+              IconButton(
+                tooltip: 'Düzenle',
+                onPressed: () => _showEditStopDialog(stop),
+                icon: const Icon(Icons.edit_outlined),
+              ),
+              IconButton(
+                tooltip: 'Sil',
+                onPressed: () => _deleteStop(stop),
+                icon: const Icon(Icons.delete_outline),
               ),
             ],
           ),
           const SizedBox(height: 10),
           if (stop.students.isEmpty)
-            const Text('Bu durakta öğrenci yok.')
+            const ServiceStatusPill(
+              label: 'Bu durakta öğrenci yok',
+              color: Color(0xFF64748B),
+              icon: Icons.info_outline_rounded,
+            )
           else
             ...stop.students.map(
-              (student) => ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.school_outlined),
-                title: Text(student.studentFullName),
-                subtitle: Text(
-                  '${student.className} • ${student.parentFullName} • ${student.parentPhone}',
+              (student) => Container(
+                margin: const EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).scaffoldBackgroundColor.withValues(alpha: 0.58),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(
+                    color: Theme.of(
+                      context,
+                    ).dividerColor.withValues(alpha: 0.18),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const ServiceIconBadge(
+                      icon: Icons.school_outlined,
+                      color: serviceBlue,
+                      size: 38,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            student.studentFullName,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            '${student.className} • ${student.parentFullName} • ${student.parentPhone}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(context)
+                                      .textTheme
+                                      .bodySmall
+                                      ?.color
+                                      ?.withValues(alpha: 0.62),
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Atamayı kaldır',
+                      onPressed: () => _deleteAssignment(student),
+                      icon: const Icon(Icons.person_remove_outlined),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -680,6 +1118,197 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
       ),
     );
     if (saved == true) _load();
+  }
+
+  Future<void> _showEditStopDialog(ServiceStopRecord stop) async {
+    final name = TextEditingController(text: stop.name);
+    final address = TextEditingController(text: stop.address);
+    final lat = TextEditingController(text: '${stop.latitude}');
+    final lng = TextEditingController(text: '${stop.longitude}');
+    final order = TextEditingController(text: '${stop.sortOrder}');
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Durak Düzenle'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: name,
+                decoration: const InputDecoration(labelText: 'Durak adı'),
+              ),
+              TextField(
+                controller: address,
+                decoration: const InputDecoration(labelText: 'Adres'),
+              ),
+              TextField(
+                controller: lat,
+                decoration: const InputDecoration(labelText: 'Latitude'),
+              ),
+              TextField(
+                controller: lng,
+                decoration: const InputDecoration(labelText: 'Longitude'),
+              ),
+              TextField(
+                controller: order,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Sıra'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              await _api.updateStop(
+                stopId: stop.id,
+                name: name.text,
+                address: address.text,
+                latitude: double.tryParse(lat.text.replaceAll(',', '.')) ?? 0,
+                longitude: double.tryParse(lng.text.replaceAll(',', '.')) ?? 0,
+                sortOrder: int.tryParse(order.text) ?? stop.sortOrder,
+              );
+              if (context.mounted) Navigator.pop(context, true);
+            },
+            child: const Text('Kaydet'),
+          ),
+        ],
+      ),
+    );
+    if (saved == true) _load();
+  }
+
+  Future<void> _moveStop(ServiceStopRecord stop, int direction) async {
+    final detail = _detail;
+    if (detail == null) return;
+    final sorted = [...detail.stops]
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    final index = sorted.indexWhere((item) => item.id == stop.id);
+    final target = index + direction;
+    if (index < 0 || target < 0 || target >= sorted.length) return;
+    final currentOrder = sorted[index].sortOrder;
+    final targetOrder = sorted[target].sortOrder;
+    sorted[index] = ServiceStopRecord(
+      id: sorted[index].id,
+      routeId: sorted[index].routeId,
+      name: sorted[index].name,
+      address: sorted[index].address,
+      latitude: sorted[index].latitude,
+      longitude: sorted[index].longitude,
+      sortOrder: targetOrder,
+      students: sorted[index].students,
+    );
+    sorted[target] = ServiceStopRecord(
+      id: sorted[target].id,
+      routeId: sorted[target].routeId,
+      name: sorted[target].name,
+      address: sorted[target].address,
+      latitude: sorted[target].latitude,
+      longitude: sorted[target].longitude,
+      sortOrder: currentOrder,
+      students: sorted[target].students,
+    );
+    try {
+      await _api.reorderStops(routeId: widget.routeId, stops: sorted);
+      _load();
+    } catch (e) {
+      _showMessage(e.toString());
+    }
+  }
+
+  Future<void> _deleteStop(ServiceStopRecord stop) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Durak Sil'),
+        content: Text(
+          '${stop.name} durağı silinsin mi? Bu durakta aktif öğrenci varsa backend engeller.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Sil'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.deleteStop(stop.id);
+      _showMessage('Durak silindi.');
+      _load();
+    } catch (e) {
+      _showMessage(e.toString());
+    }
+  }
+
+  Future<void> _deleteAssignment(AssignedServiceStudentRecord student) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Öğrenciyi Servisten Çıkar'),
+        content: Text(
+          '${student.studentFullName} servis ataması pasifleştirilsin mi?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Çıkar'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.deleteAssignment(student.assignmentId);
+      _showMessage('Öğrenci servis ataması kaldırıldı.');
+      _load();
+    } catch (e) {
+      _showMessage(e.toString());
+    }
+  }
+
+  Future<void> _deleteRoute() async {
+    final detail = _detail;
+    if (detail == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Rota Sil/Pasifleştir'),
+        content: Text('${detail.name} rotası pasifleştirilsin mi?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Vazgeç'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pasifleştir'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+    try {
+      await _api.deleteRoute(detail.id);
+      _showMessage('Rota pasifleştirildi.');
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      _showMessage(e.toString());
+    }
   }
 
   Future<void> _showAssignStudentDialog() async {
@@ -784,6 +1413,12 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
       ),
     );
     if (saved == true) _load();
+  }
+
+  void _showMessage(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

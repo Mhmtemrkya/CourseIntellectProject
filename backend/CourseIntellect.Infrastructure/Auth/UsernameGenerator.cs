@@ -99,6 +99,9 @@ public sealed class UsernameGenerator(CourseIntellectDbContext dbContext)
             case "administrative":
                 yield return baseLocal + "idari";
                 break;
+            case "cafeteria":
+                yield return baseLocal + "yemekhane";
+                break;
             case "accounting":
                 yield return baseLocal + "muhasebe";
                 break;

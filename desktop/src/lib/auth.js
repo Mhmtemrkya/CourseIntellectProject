@@ -37,6 +37,8 @@ export function mapBackendRoleToDesktopRole(role) {
       return "parent";
     case "administrative":
       return "administrative";
+    case "cafeteria":
+      return "cafeteria";
     default:
       return "student";
   }
@@ -60,6 +62,8 @@ export function getHomePathForRole(role, options = {}) {
       return "/p/dashboard";
     case "administrative":
       return "/admin/operations";
+    case "cafeteria":
+      return "/cafeteria/menu";
     default:
       return "/dashboard";
   }
@@ -97,6 +101,8 @@ function getProfilePathForRole(role) {
       return "/p/profile";
     case "admin":
       return "/admin/profile";
+    case "cafeteria":
+      return "/cafeteria/menu";
     default:
       return "/settings";
   }
@@ -126,6 +132,7 @@ function getHomePathForModule(role, moduleKey, options = {}) {
     records: "/admin/records",
     documents: "/admin/documents",
     notifications: role === "teacher" ? "/t/announcements" : role === "student" ? "/s/announcements" : role === "parent" ? "/p/announcements" : "/admin/announcements",
+    cafeteria: role === "student" ? "/s/cafeteria" : role === "parent" ? "/p/cafeteria" : "/cafeteria/menu",
     meetings: role === "teacher" ? "/t/meeting-approvals" : role === "parent" ? "/p/meetings" : "/admin/meetings",
     registrations: "/admin/student-registration",
     "branch-comparison": "/admin/branch-comparison",

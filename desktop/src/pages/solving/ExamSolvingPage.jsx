@@ -9,9 +9,9 @@ import { DrawingCanvas } from '../../features/solving/canvas/DrawingCanvas';
 import { useApp } from '../../context/AppContext';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import {
+  addSolutionTeacherReview,
   completeSolutionSession,
   fetchSolutionSession,
-  queueSolutionPdf,
   saveSolutionAnswer,
   saveSolutionCanvasSnapshot,
   saveSolutionCanvasStroke,
@@ -33,13 +33,6 @@ function formatSeconds(seconds) {
   return `${minutes}:${rest}`;
 }
 
-function normalizeOptions(options) {
-  if (!Array.isArray(options) || options.length === 0) {
-    return ['A', 'B', 'C', 'D', 'E'].map((label) => `${label}) Seçenek`);
-  }
-  return options;
-}
-
 export default function ExamSolvingPage() {
   const { user } = useApp();
   const navigate = useNavigate();
@@ -51,12 +44,15 @@ export default function ExamSolvingPage() {
   const [autosaveLabel, setAutosaveLabel] = useState('Hazır');
   const [error, setError] = useState('');
   const [noteDraft, setNoteDraft] = useState('');
+  const [openAnswerDraft, setOpenAnswerDraft] = useState('');
   const [teacherComment, setTeacherComment] = useState('');
   const [summary, setSummary] = useState(null);
   const [panel, setPanel] = useState('solution');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
 
-  const isTeacherPreview = searchParams.get('teacherPreview') === 'true' || String(user?.role || '').toLowerCase().includes('teacher');
+  const normalizedRole = String(user?.role || '').toLowerCase();
+  const canReview = ['teacher', 'admin', 'institutionadmin', 'idare'].some((role) => normalizedRole.includes(role));
+  const isTeacherPreview = canReview && (searchParams.get('teacherPreview') === 'true' || normalizedRole.includes('teacher'));
 
   const loadOrStart = useCallback(async () => {
     try {
@@ -114,8 +110,9 @@ export default function ExamSolvingPage() {
 
   useEffect(() => {
     setNoteDraft(question?.note || '');
+    setOpenAnswerDraft(question?.answer?.openAnswer || '');
     setTeacherComment('');
-  }, [question?.attemptId, question?.note]);
+  }, [question?.answer?.openAnswer, question?.attemptId, question?.note]);
 
   const refreshSession = useCallback(async () => {
     if (!session?.id) return;
@@ -123,7 +120,7 @@ export default function ExamSolvingPage() {
     setSession(loaded);
   }, [session?.id]);
 
-  const handleAnswer = async (optionIndex) => {
+  const handleAnswer = async (optionIndex, openAnswer = null) => {
     if (!session?.id || !question || saving) return;
     try {
       setSaving(true);
@@ -131,7 +128,7 @@ export default function ExamSolvingPage() {
       const updated = await saveSolutionAnswer(session.id, {
         questionAttemptId: question.attemptId,
         selectedOptionIndex: optionIndex,
-        openAnswer: null,
+        openAnswer,
         timeSpentSeconds: question.timeSpentSeconds || 0,
       });
       setSession(updated);
@@ -175,6 +172,24 @@ export default function ExamSolvingPage() {
     }
   };
 
+  const handleTeacherReview = async () => {
+    if (!session?.id || !question || !teacherComment.trim()) return;
+    try {
+      setSaving(true);
+      const updated = await addSolutionTeacherReview(session.id, {
+        questionAttemptId: question.attemptId,
+        comment: teacherComment.trim(),
+      });
+      setSession(updated);
+      setTeacherComment('');
+      setAutosaveLabel('Öğretmen yorumu kaydedildi');
+    } catch (err) {
+      setError(err.message || 'Öğretmen yorumu kaydedilemedi.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleStroke = async (stroke) => {
     if (!session?.id || !question) return;
     try {
@@ -207,20 +222,25 @@ export default function ExamSolvingPage() {
     }
   };
 
-  const finish = async () => {
+  const finish = useCallback(async () => {
     if (!session?.id || saving) return;
     try {
       setSaving(true);
       const completed = await completeSolutionSession(session.id);
-      const report = await queueSolutionPdf(session.id);
-      setSummary({ ...completed, report });
+      setSummary(completed);
       await refreshSession();
     } catch (err) {
       setError(err.message || 'Sınav bitirilemedi.');
     } finally {
       setSaving(false);
     }
-  };
+  }, [refreshSession, saving, session?.id]);
+
+  useEffect(() => {
+    if (remainingSeconds === 0 && session?.status === 'Active' && !summary && !saving) {
+      finish();
+    }
+  }, [finish, remainingSeconds, saving, session?.status, summary]);
 
   const imageUrl = buildImageUrl(question?.imagePath);
   const optionLabels = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -262,11 +282,11 @@ export default function ExamSolvingPage() {
             <Sparkles className="h-6 w-6" />
           </div>
           {[
-            [ClipboardList, 'Soru Listesi'],
-            [NotebookPen, 'Notlar'],
-            [Grid2X2, 'Kağıt'],
-          ].map(([Icon, label]) => (
-            <button key={label} type="button" className="mb-4 flex w-full flex-col items-center gap-2 rounded-2xl px-2 py-3 text-xs text-slate-300 hover:bg-white/10 hover:text-white">
+            [ClipboardList, 'Soru Listesi', 'solution'],
+            [NotebookPen, 'Notlar', 'note'],
+            [Grid2X2, 'Kağıt', 'solution'],
+          ].map(([Icon, label, targetPanel]) => (
+            <button key={label} type="button" onClick={() => setPanel(targetPanel)} className="mb-4 flex w-full flex-col items-center gap-2 rounded-2xl px-2 py-3 text-xs text-slate-300 hover:bg-white/10 hover:text-white">
               <Icon className="h-5 w-5" />
               {label}
             </button>
@@ -343,8 +363,9 @@ export default function ExamSolvingPage() {
                 </div>
               )}
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                {normalizeOptions(question?.options).map((option, index) => {
+              {question?.options?.length ? (
+                <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                {question.options.map((option, index) => {
                   const selected = question?.answer?.selectedOptionIndex === index;
                   return (
                     <button
@@ -358,7 +379,16 @@ export default function ExamSolvingPage() {
                     </button>
                   );
                 })}
-              </div>
+                </div>
+              ) : (
+                <div className="mt-6 rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                  <label className="mb-3 block text-sm font-bold text-slate-200">Cevabın</label>
+                  <textarea value={openAnswerDraft} onChange={(event) => setOpenAnswerDraft(event.target.value)} placeholder="Cevabını buraya yaz..." className="min-h-[120px] w-full resize-none rounded-2xl border border-white/10 bg-slate-950/65 p-4 text-white outline-none placeholder:text-slate-500 focus:border-orange-400" />
+                  <button type="button" onClick={() => handleAnswer(-1, openAnswerDraft)} disabled={saving || !openAnswerDraft.trim()} className="mt-3 rounded-2xl bg-orange-500 px-5 py-3 font-black text-white disabled:opacity-50">
+                    <Save className="mr-2 inline h-4 w-4" /> Cevabı Kaydet
+                  </button>
+                </div>
+              )}
             </section>
 
             <section className="space-y-4">
@@ -381,8 +411,9 @@ export default function ExamSolvingPage() {
 
               {panel === 'solution' ? (
                 <DrawingCanvas
+                  key={question?.attemptId}
                   questionAttemptId={question?.attemptId}
-                  initialSnapshotUrl={question?.snapshotUrl}
+                  initialSnapshotUrl={buildImageUrl(question?.snapshotUrl)}
                   onStrokeComplete={handleStroke}
                   onSnapshot={handleSnapshot}
                 />
@@ -410,7 +441,7 @@ export default function ExamSolvingPage() {
                       </div>
                     ))}
                   </div>
-                  {isTeacherPreview ? (
+                  {canReview ? (
                     <>
                       <textarea
                         value={teacherComment}
@@ -418,7 +449,9 @@ export default function ExamSolvingPage() {
                         placeholder="Öğrenci çözümüne yorum ekle..."
                         className="mt-4 min-h-[170px] w-full resize-none rounded-3xl border border-white/10 bg-slate-900/70 p-5 text-white outline-none placeholder:text-slate-500 focus:border-orange-400"
                       />
-                      <p className="mt-3 text-xs text-slate-500">Yorum API'si backendde hazır. Öğretmen inceleme merkezinden bu alan genişletilecek.</p>
+                      <button type="button" disabled={saving || !teacherComment.trim()} onClick={handleTeacherReview} className="mt-4 rounded-2xl bg-orange-500 px-5 py-3 font-black text-white disabled:opacity-50">
+                        <Send className="mr-2 inline h-4 w-4" /> Yorumu Kaydet
+                      </button>
                     </>
                   ) : null}
                 </div>

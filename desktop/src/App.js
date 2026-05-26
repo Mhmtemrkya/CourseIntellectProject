@@ -62,6 +62,7 @@ import TeacherReports from "./pages/teacher/TeacherReports";
 import TeacherQuestionBank from "./pages/teacher/TeacherQuestionBank";
 import ExamSolvingPage from "./pages/solving/ExamSolvingPage";
 import TeacherQuestionStudio from "./pages/teacher/TeacherQuestionStudio";
+import TeacherMockExams from "./pages/teacher/TeacherMockExams";
 
 // Student Pages
 import StudentDashboard from "./pages/student/StudentDashboard";
@@ -126,6 +127,8 @@ import AdminBranchComparison from "./pages/admin/AdminBranchComparison";
 import AdminMeetings from "./pages/admin/AdminMeetings";
 import AdminAdministrativeUnits from "./pages/admin/AdminAdministrativeUnits";
 import AdminAccountingRegistration from "./pages/admin/AdminAccountingRegistration";
+import ServiceTrackingPage from "./pages/admin/ServiceTrackingPage";
+import CafeteriaWeeklyMenu from "./pages/cafeteria/CafeteriaWeeklyMenu";
 
 // New Student Pages
 import StudentNotifications from "./pages/student/StudentNotifications";
@@ -227,6 +230,8 @@ function App() {
               <Route path="/admin/accounting-registration" element={<AdminAccountingRegistration />} />
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
+              <Route path="/admin/service-tracking" element={<ServiceTrackingPage />} />
+              <Route path="/cafeteria/menu" element={<CafeteriaWeeklyMenu editable />} />
               <Route path="/admin/destek" element={<Destek />} />
 
               {/* Finance Routes */}
@@ -274,6 +279,8 @@ function App() {
               <Route path="/t/reports" element={<TeacherReports />} />
               <Route path="/t/question-bank" element={<TeacherQuestionBank />} />
               <Route path="/t/question-studio" element={<TeacherQuestionStudio />} />
+              <Route path="/t/mock-exams" element={<TeacherMockExams />} />
+              <Route path="/t/mock-exams/create" element={<TeacherQuestionStudio />} />
               <Route path="/t/solve-preview" element={<ExamSolvingPage />} />
               <Route path="/t/content-studio" element={<TeacherContentStudio />} />
               <Route path="/t/question-workflow" element={<TeacherQuestionWorkflow />} />
@@ -306,6 +313,7 @@ function App() {
               <Route path="/s/announcements" element={<StudentAnnouncements />} />
               <Route path="/s/settings" element={<StudentSettings />} />
               <Route path="/s/chat" element={<Chat />} />
+              <Route path="/s/cafeteria" element={<CafeteriaWeeklyMenu />} />
 
               {/* Parent Routes */}
               <Route path="/p/dashboard" element={<ParentDashboard />} />
@@ -321,6 +329,7 @@ function App() {
               <Route path="/p/excuse-request" element={<ParentExcuseRequest />} />
               <Route path="/p/profile" element={<ParentProfile />} />
               <Route path="/p/chat" element={<Chat />} />
+              <Route path="/p/cafeteria" element={<CafeteriaWeeklyMenu />} />
             </Route>
 
             {/* Redirects */}

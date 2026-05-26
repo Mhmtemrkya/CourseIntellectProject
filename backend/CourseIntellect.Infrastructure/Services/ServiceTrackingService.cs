@@ -973,6 +973,7 @@ public sealed class ServiceTrackingService(
             var location = trip is null ? null : latestLocations.FirstOrDefault(x => x.TripId == trip.Id);
             var stop = stops[item.StopId];
             int? eta = location is null ? null : etaService.CalculateEtaMinutes(location.Latitude, location.Longitude, stop.Latitude, stop.Longitude, location.Speed);
+            double? distanceMeters = location is null ? null : Math.Round(etaService.CalculateDistanceKm(location.Latitude, location.Longitude, stop.Latitude, stop.Longitude) * 1000, 0);
             return new ParentServiceStatusDto(
                 item.StudentId,
                 item.StudentFullName,
@@ -983,7 +984,15 @@ public sealed class ServiceTrackingService(
                 item.StopName,
                 attendance?.Status.ToString() ?? ServiceAttendanceStatus.Pending.ToString(),
                 trip?.Status.ToString(),
-                eta);
+                trip?.Id,
+                trip?.VehicleId,
+                eta,
+                stop.Latitude,
+                stop.Longitude,
+                location?.Latitude,
+                location?.Longitude,
+                distanceMeters,
+                location?.RecordedAt);
         }).ToList();
     }
 

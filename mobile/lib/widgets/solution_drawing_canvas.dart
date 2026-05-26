@@ -11,11 +11,13 @@ typedef SnapshotSaved = FutureOr<void> Function(String dataUrl);
 class SolutionDrawingCanvas extends StatefulWidget {
   final StrokeSaved? onStrokeSaved;
   final SnapshotSaved? onSnapshotSaved;
+  final String? initialSnapshotUrl;
 
   const SolutionDrawingCanvas({
     super.key,
     this.onStrokeSaved,
     this.onSnapshotSaved,
+    this.initialSnapshotUrl,
   });
 
   @override
@@ -31,6 +33,7 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
   double _width = 4;
   String _tool = 'pen';
   bool _grid = true;
+  bool _showInitialSnapshot = true;
 
   void _start(PointerDownEvent event) {
     setState(() {
@@ -96,17 +99,20 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
   void _undo() {
     if (_strokes.isEmpty) return;
     setState(() => _redoStack.add(_strokes.removeLast()));
+    _emitSnapshot();
   }
 
   void _redo() {
     if (_redoStack.isEmpty) return;
     setState(() => _strokes.add(_redoStack.removeLast()));
+    _emitSnapshot();
   }
 
   void _clear() {
     setState(() {
       _redoStack.addAll(_strokes);
       _strokes.clear();
+      _showInitialSnapshot = false;
     });
     _emitSnapshot();
   }
@@ -228,20 +234,40 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
                 maxScale: 3.2,
                 child: RepaintBoundary(
                   key: _canvasKey,
-                  child: Listener(
-                    onPointerDown: _start,
-                    onPointerMove: _move,
-                    onPointerUp: _end,
-                    onPointerCancel: (_) =>
-                        setState(() => _activeStroke = null),
-                    child: CustomPaint(
-                      painter: _SolutionCanvasPainter(
-                        strokes: _strokes,
-                        activeStroke: _activeStroke,
-                        showGrid: _grid,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      CustomPaint(
+                        painter: _SolutionCanvasPainter(
+                          strokes: const [],
+                          activeStroke: null,
+                          showGrid: _grid,
+                        ),
                       ),
-                      child: const SizedBox.expand(),
-                    ),
+                      if (_showInitialSnapshot &&
+                          (widget.initialSnapshotUrl ?? '').isNotEmpty)
+                        Image.network(
+                          widget.initialSnapshotUrl!,
+                          fit: BoxFit.fill,
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                      Listener(
+                        onPointerDown: _start,
+                        onPointerMove: _move,
+                        onPointerUp: _end,
+                        onPointerCancel: (_) =>
+                            setState(() => _activeStroke = null),
+                        child: CustomPaint(
+                          painter: _SolutionCanvasPainter(
+                            strokes: _strokes,
+                            activeStroke: _activeStroke,
+                            showGrid: false,
+                            drawBackground: false,
+                          ),
+                          child: const SizedBox.expand(),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -285,22 +311,26 @@ class _SolutionCanvasPainter extends CustomPainter {
   final List<_CanvasStroke> strokes;
   final _CanvasStroke? activeStroke;
   final bool showGrid;
+  final bool drawBackground;
 
   const _SolutionCanvasPainter({
     required this.strokes,
     required this.activeStroke,
     required this.showGrid,
+    this.drawBackground = true,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
-    final background = Paint()
-      ..shader = const LinearGradient(
-        colors: [Color(0xFF07111F), Color(0xFF0E1A2D)],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ).createShader(Offset.zero & size);
-    canvas.drawRect(Offset.zero & size, background);
+    if (drawBackground) {
+      final background = Paint()
+        ..shader = const LinearGradient(
+          colors: [Color(0xFF07111F), Color(0xFF0E1A2D)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(Offset.zero & size);
+      canvas.drawRect(Offset.zero & size, background);
+    }
 
     if (showGrid) {
       final gridPaint = Paint()

@@ -8,7 +8,8 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "Teacher,Admin")]
 [Route("api/question-studio")]
-public sealed class QuestionStudioController(CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class QuestionStudioController(
+    CourseIntellectDbContext dbContext) : ControllerBase
 {
     private const string DraftSectionKey = "question-studio-drafts";
 
@@ -66,36 +67,6 @@ public sealed class QuestionStudioController(CourseIntellectDbContext dbContext)
         return NoContent();
     }
 
-    [HttpPost("ai/generate")]
-    public IActionResult GenerateWithAi([FromBody] QuestionStudioAiRequest request)
-    {
-        var subject = string.IsNullOrWhiteSpace(request.Subject) ? "Matematik" : request.Subject.Trim();
-        var topic = string.IsNullOrWhiteSpace(request.Topic) ? "Fonksiyonlar" : request.Topic.Trim();
-        var difficulty = string.IsNullOrWhiteSpace(request.Difficulty) ? "Orta" : request.Difficulty.Trim();
-
-        var stem = request.Prompt?.Trim();
-        if (string.IsNullOrWhiteSpace(stem))
-        {
-            stem = $"{topic} kazanımını ölçen {difficulty.ToLowerInvariant()} seviyede bir soru oluştur.";
-        }
-
-        return Ok(new
-        {
-            subject,
-            topic,
-            difficulty,
-            type = request.Type ?? "Çoktan Seçmeli",
-            questionText = $"{stem}\n\nAşağıdaki seçeneklerden hangisi doğrudur?",
-            options = new[] { "Kavramı doğru yorumlayan ifade", "Kısmen doğru fakat eksik ifade", "Tanımla ilgisiz ifade", "Çeldirici işlem sonucu", "Genelleme hatası" },
-            correctOptionIndex = 0,
-            solution = $"{topic} için önce tanımı belirle, ardından verilen bilgiyi adım adım uygula. Doğru seçenek kazanımı eksiksiz karşılayan ifadedir.",
-            bloomLevel = difficulty.Equals("Zor", StringComparison.OrdinalIgnoreCase) ? "Analiz" : "Uygulama",
-            estimatedSeconds = difficulty.Equals("Zor", StringComparison.OrdinalIgnoreCase) ? 150 : 90,
-            tags = new[] { subject.ToLowerInvariant(), topic.ToLowerInvariant(), "ai-oneri" },
-            note = "Bu endpoint AI entegrasyon noktasını hazır tutar. Gerçek LLM anahtarı bağlandığında prompt aynı sözleşmeyle üretime alınabilir."
-        });
-    }
-
     private string ResolveUsername()
     {
         return User.FindFirstValue("unique_name")
@@ -116,15 +87,6 @@ public sealed class QuestionStudioDraftRequest
     public string? Title { get; set; }
     public string? Mode { get; set; }
     public string? PayloadJson { get; set; }
-}
-
-public sealed class QuestionStudioAiRequest
-{
-    public string? Subject { get; set; }
-    public string? Topic { get; set; }
-    public string? Difficulty { get; set; }
-    public string? Type { get; set; }
-    public string? Prompt { get; set; }
 }
 
 public sealed class QuestionStudioDraftSnapshot

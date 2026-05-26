@@ -320,6 +320,14 @@ class SolutionSessionApiService {
     return _decodeSession(response, 'Not kaydedilemedi');
   }
 
+  Future<SolutionSessionRecord> getSession(String sessionId) async {
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/solution-sessions/$sessionId'),
+      headers: await _headers(),
+    );
+    return _decodeSession(response, 'Çözüm oturumu alınamadı');
+  }
+
   Future<void> saveStroke({
     required String sessionId,
     required String questionAttemptId,

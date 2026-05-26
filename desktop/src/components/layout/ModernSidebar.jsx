@@ -40,6 +40,8 @@ import {
   Palette,
   Bot,
   LifeBuoy,
+  BusFront,
+  UtensilsCrossed,
 } from "lucide-react";
 import { Activity, Layers, Shield } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -84,6 +86,18 @@ const menuConfigs = {
       icon: Activity,
       label: "Operasyon",
       color: "#14b8a6",
+    },
+    {
+      path: "/admin/service-tracking",
+      icon: BusFront,
+      label: "Servis Takip",
+      color: "#0f766e",
+    },
+    {
+      path: "/cafeteria/menu",
+      icon: UtensilsCrossed,
+      label: "Yemekhane",
+      color: "#f97316",
     },
     {
       path: "/admin/finance",
@@ -236,6 +250,18 @@ const menuConfigs = {
       color: "#14b8a6",
     },
     {
+      path: "/admin/service-tracking",
+      icon: BusFront,
+      label: "Servis Takip",
+      color: "#0f766e",
+    },
+    {
+      path: "/cafeteria/menu",
+      icon: UtensilsCrossed,
+      label: "Yemekhane",
+      color: "#f97316",
+    },
+    {
       path: "/admin/task-center",
       icon: CheckSquare,
       label: "Görev Merkezi",
@@ -294,6 +320,12 @@ const menuConfigs = {
       icon: UserCheck,
       label: "Veli Kaydı",
       color: "#7c3aed",
+    },
+    {
+      path: "/admin/staff-registration",
+      icon: UserCheck,
+      label: "Personel Kaydı",
+      color: "#a855f7",
     },
     { path: "/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
@@ -494,6 +526,12 @@ const menuConfigs = {
       color: "#a855f7",
     },
     {
+      path: "/t/mock-exams",
+      icon: ClipboardCheck,
+      label: "Deneme Sınavları",
+      color: "#f97316",
+    },
+    {
       path: "/t/assignments",
       icon: FileText,
       label: "Ödevler",
@@ -614,6 +652,12 @@ const menuConfigs = {
       color: "#f59e0b",
     },
     {
+      path: "/s/cafeteria",
+      icon: UtensilsCrossed,
+      label: "Yemekhane",
+      color: "#f97316",
+    },
+    {
       path: "/s/ai",
       icon: Sparkles,
       label: "CourseIntellect AI",
@@ -675,6 +719,12 @@ const menuConfigs = {
       color: "#f59e0b",
     },
     {
+      path: "/p/cafeteria",
+      icon: UtensilsCrossed,
+      label: "Yemekhane",
+      color: "#f97316",
+    },
+    {
       path: "/p/feedback",
       icon: Bell,
       label: "Geri Bildirim",
@@ -707,6 +757,15 @@ const menuConfigs = {
     { path: "/p/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
+  cafeteria: [
+    {
+      path: "/cafeteria/menu",
+      icon: UtensilsCrossed,
+      label: "Haftalık Yemek Programı",
+      color: "#f97316",
+      special: true,
+    },
+  ],
 };
 
 const ROLE_LABELS = {
@@ -717,6 +776,7 @@ const ROLE_LABELS = {
   teacher: "Öğretmen",
   student: "Öğrenci",
   parent: "Veli",
+  cafeteria: "Yemekhaneci",
 };
 
 const MODULE_MENU_REGISTRY = {
@@ -770,6 +830,9 @@ const MODULE_MENU_REGISTRY = {
     teacher: { path: "/t/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
     student: { path: "/s/exams", icon: FileQuestion, label: "Deneme Sınavları", color: "#a855f7" },
     parent: { path: "/p/exams", icon: FileQuestion, label: "Sınav Sonuçları", color: "#a855f7" },
+  },
+  "mock-exams": {
+    teacher: { path: "/t/mock-exams", icon: ClipboardCheck, label: "Deneme Sınavları", color: "#f97316" },
   },
   assignments: {
     teacher: { path: "/t/assignments", icon: FileText, label: "Ödevler", color: "#f59e0b" },
@@ -885,6 +948,8 @@ function inferModuleKey(item) {
     "/t/question-bank": "question-bank",
     "/exams": "exams",
     "/t/exams": "exams",
+    "/t/mock-exams": "mock-exams",
+    "/t/mock-exams/create": "mock-exams",
     "/s/exams": "exams",
     "/p/exams": "exams",
     "/t/assignments": "assignments",

@@ -47,6 +47,12 @@
 		<string>Odev ve soru eklerini kaydetmek icin fotograf erisimi gerekir.</string>
 		<key>NSMicrophoneUsageDescription</key>
 		<string>Sesli soru kaydi ozelligi icin mikrofon kullanilir.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Servis soforu rotadayken anlik konumunu veli ve okul ile paylasmak icin kullanilir.</string>
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Servis aktifken telefon kilitli olsa bile sofor konumunu veli ve okul ile paylasmak icin kullanilir.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Servis aktifken arka planda anlik rota takibi yapmak icin konum izni gerekir.</string>
 		<key>NSAppTransportSecurity</key>
 		<dict>
 			<key>NSAllowsLocalNetworking</key>
@@ -83,6 +89,7 @@
 		<array>
 			<string>remote-notification</string>
 			<string>fetch</string>
+			<string>location</string>
 		</array>
 		<key>UILaunchStoryboardName</key>
 		<string>LaunchScreen</string>

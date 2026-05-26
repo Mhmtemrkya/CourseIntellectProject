@@ -66,7 +66,7 @@ function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset })
 }
 
 function isMultipleChoice(type = '') {
-  return /secmeli|çoktan/i.test(type);
+  return /secmeli|çoktan|doğru\s*\/\s*yanlış|dogru\s*\/\s*yanlis/i.test(type);
 }
 
 function buildQuestionSetKey(item) {
@@ -311,7 +311,7 @@ export default function StudentQuestions() {
     }
 
     const answerValue = hasChoice
-      ? `${String.fromCharCode(65 + selectedOption)} - ${selectedQuestion.options[selectedOption]}`
+      ? selectedQuestion.options[selectedOption]
       : openEndedAnswer.trim();
 
     setSubmittedAnswers((prev) => ({

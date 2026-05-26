@@ -9,9 +9,14 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQuestionBankService
 {
-    public async Task<IReadOnlyList<QuestionBankItemDto>> GetQuestionsAsync(string? className, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<QuestionBankItemDto>> GetQuestionsAsync(string? className, bool includeDrafts = false, CancellationToken cancellationToken = default)
     {
         var query = dbContext.QuestionBankItems.AsQueryable();
+
+        if (!includeDrafts)
+        {
+            query = query.Where(x => x.PublicationStatus == "Published");
+        }
 
         if (!string.IsNullOrWhiteSpace(className))
         {
@@ -156,6 +161,10 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
         item.SolutionAssetType = NormalizeOptional(request.SolutionAssetType);
         item.RevealCorrectAnswerToStudent = request.RevealCorrectAnswerToStudent;
         item.ExpectedAnswer = NormalizeOptional(request.ExpectedAnswer);
+        item.RichTextHtml = NormalizeOptional(request.RichTextHtml);
+        item.SolutionTextHtml = NormalizeOptional(request.SolutionTextHtml);
+        item.EditorMetadataJson = NormalizeOptional(request.EditorMetadataJson);
+        item.PublicationStatus = NormalizePublicationStatus(request.PublicationStatus);
     }
 
     private static QuestionBankItemDto ToDto(QuestionBankItem item)
@@ -181,7 +190,11 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
             item.SolutionAssetPath,
             item.SolutionAssetType,
             item.RevealCorrectAnswerToStudent,
-            item.ExpectedAnswer);
+            item.ExpectedAnswer,
+            item.RichTextHtml,
+            item.SolutionTextHtml,
+            item.EditorMetadataJson,
+            item.PublicationStatus);
     }
 
     private static IReadOnlyList<string> DeserializeList(string? value)
@@ -213,6 +226,13 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
             "right" or "sag" or "sağ" => "Right",
             _ => "Top",
         };
+    }
+
+    private static string NormalizePublicationStatus(string? value)
+    {
+        return string.Equals(value?.Trim(), "Draft", StringComparison.OrdinalIgnoreCase)
+            ? "Draft"
+            : "Published";
     }
 
     private static string BuildCreatedAtLabel()

@@ -3,6 +3,8 @@ import 'package:student/pages/content_page.dart';
 import 'package:student/pages/messages_page.dart';
 import 'package:student/pages/student_home_page.dart';
 import 'package:student/pages/profile_page.dart';
+import 'package:student/pages/service_live_status_page.dart';
+import 'package:student/pages/cafeteria_weekly_menu_page.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
 
 class BottomNav extends StatelessWidget {
@@ -24,6 +26,18 @@ class BottomNav extends StatelessWidget {
           label: 'İçerikler',
           pageBuilder: (_) => const ContentPage(),
           sidebarColor: const Color(0xFF8B5CF6),
+        ),
+        AdaptiveDestination(
+          icon: Icons.directions_bus_filled_outlined,
+          label: 'Servis',
+          pageBuilder: (_) => const ServiceLiveStatusPage(parentMode: false),
+          sidebarColor: const Color(0xFF0F766E),
+        ),
+        AdaptiveDestination(
+          icon: Icons.restaurant_menu_rounded,
+          label: 'Yemekhane',
+          pageBuilder: (_) => const CafeteriaWeeklyMenuPage(canEdit: false),
+          sidebarColor: const Color(0xFFF97316),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

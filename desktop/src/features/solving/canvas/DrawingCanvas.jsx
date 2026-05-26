@@ -77,6 +77,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
   const canvasRef = useRef(null);
   const wrapperRef = useRef(null);
   const activeStrokeRef = useRef(null);
+  const loadedAttemptRef = useRef(null);
   const [tool, setTool] = useState('pen');
   const [color, setColor] = useState('#fb923c');
   const [width, setWidth] = useState(4);
@@ -84,6 +85,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
   const [strokes, setStrokes] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [baseImage, setBaseImage] = useState(null);
 
   const activeTool = useMemo(() => TOOLS.find((item) => item.key === tool), [tool]);
 
@@ -91,12 +93,16 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    drawPaper(ctx, canvas.width, canvas.height, paperMode);
+    const rect = canvas.getBoundingClientRect();
+    drawPaper(ctx, rect.width, rect.height, paperMode);
+    if (baseImage) {
+      ctx.drawImage(baseImage, 0, 0, rect.width, rect.height);
+    }
     strokes.forEach((stroke) => drawStroke(ctx, stroke));
     if (activeStrokeRef.current) {
       drawStroke(ctx, activeStrokeRef.current);
     }
-  }, [paperMode, strokes]);
+  }, [baseImage, paperMode, strokes]);
 
   const resizeCanvas = useCallback(() => {
     const canvas = canvasRef.current;
@@ -111,8 +117,11 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
     const ctx = canvas.getContext('2d');
     ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
     drawPaper(ctx, rect.width, rect.height, paperMode);
+    if (baseImage) {
+      ctx.drawImage(baseImage, 0, 0, rect.width, rect.height);
+    }
     strokes.forEach((stroke) => drawStroke(ctx, stroke));
-  }, [paperMode, strokes]);
+  }, [baseImage, paperMode, strokes]);
 
   useEffect(() => {
     resizeCanvas();
@@ -121,9 +130,23 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
   }, [resizeCanvas]);
 
   useEffect(() => {
+    if (loadedAttemptRef.current === questionAttemptId) return undefined;
+    loadedAttemptRef.current = questionAttemptId;
     activeStrokeRef.current = null;
-    redraw();
-  }, [questionAttemptId, redraw]);
+    setBaseImage(null);
+    if (!initialSnapshotUrl) {
+      return undefined;
+    }
+    const image = new window.Image();
+    image.crossOrigin = 'anonymous';
+    image.onload = () => {
+      setBaseImage(image);
+    };
+    image.src = initialSnapshotUrl;
+    return () => {
+      image.onload = null;
+    };
+  }, [initialSnapshotUrl, questionAttemptId]);
 
   const emitSnapshot = useCallback(() => {
     const canvas = canvasRef.current;
@@ -176,6 +199,7 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
       setRedoStack((redoItems) => [items[items.length - 1], ...redoItems]);
       return next;
     });
+    emitSnapshot();
   };
 
   const redo = () => {
@@ -185,10 +209,12 @@ export function DrawingCanvas({ questionAttemptId, initialSnapshotUrl, onStrokeC
       setStrokes((strokeItems) => [...strokeItems, first]);
       return rest;
     });
+    emitSnapshot();
   };
 
   const clear = () => {
     setRedoStack((items) => [...strokes, ...items]);
+    setBaseImage(null);
     setStrokes([]);
     emitSnapshot();
   };

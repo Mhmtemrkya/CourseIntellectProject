@@ -31,6 +31,7 @@ const itemVariants = {
 const roles = [
   { value: 'Teacher', label: 'Öğretmen' },
   { value: 'Administrative', label: 'İdari Personel' },
+  { value: 'Cafeteria', label: 'Yemekhaneci' },
 ];
 
 const branchOptions = [
@@ -50,6 +51,8 @@ const branchOptions = [
 const administrativeBranches = [
   'Öğrenci İşleri', 'İnsan Kaynakları', 'Halkla İlişkiler', 'Kalite', 'Bilgi İşlem', 'Diğer',
 ];
+
+const cafeteriaBranches = ['Yemekhane'];
 
 const emptyForm = {
   fullName: '',
@@ -89,7 +92,13 @@ export default function AdminStaffRegistration() {
   useEffect(() => { loadRecent(); }, [loadRecent]);
 
   const handleChange = (field, value) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+    setForm((prev) => ({
+      ...prev,
+      [field]: value,
+      ...(field === 'role'
+        ? { departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane' : '' }
+        : {}),
+    }));
   };
 
   const handleSubmit = async () => {
@@ -119,7 +128,9 @@ export default function AdminStaffRegistration() {
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
       });
-      const roleLabel = form.role === 'Administrative' ? 'İdari Personel' : 'Öğretmen';
+      const roleLabel = form.role === 'Cafeteria'
+        ? 'Yemekhaneci'
+        : form.role === 'Administrative' ? 'İdari Personel' : 'Öğretmen';
       const fullName = response?.fullName || form.fullName.trim();
       setCredentials({
         fullName,
@@ -170,7 +181,9 @@ export default function AdminStaffRegistration() {
     });
   };
 
-  const branchList = form.role === 'Administrative' ? administrativeBranches : branchOptions;
+  const branchList = form.role === 'Cafeteria'
+    ? cafeteriaBranches
+    : form.role === 'Administrative' ? administrativeBranches : branchOptions;
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
@@ -181,7 +194,7 @@ export default function AdminStaffRegistration() {
         <div>
           <h1 className="text-2xl font-bold">Personel Kaydı</h1>
           <p className="text-sm text-muted-foreground">
-            Öğretmen veya idari personel kaydı. Kullanıcı adı ve geçici şifre otomatik üretilir.
+            Öğretmen, idari personel veya yemekhaneci kaydı. Kullanıcı adı ve geçici şifre otomatik üretilir.
           </p>
         </div>
       </motion.div>
@@ -210,10 +223,10 @@ export default function AdminStaffRegistration() {
                   </Select>
                 </div>
                 <div>
-                  <Label>{form.role === 'Administrative' ? 'Birim *' : 'Branş *'}</Label>
+                  <Label>{form.role === 'Teacher' ? 'Branş *' : 'Birim *'}</Label>
                   <Select value={form.departmentOrBranch} onValueChange={(v) => handleChange('departmentOrBranch', v)}>
                     <SelectTrigger>
-                      <SelectValue placeholder={form.role === 'Administrative' ? 'Birim seçin...' : 'Branş seçin...'} />
+                      <SelectValue placeholder={form.role === 'Teacher' ? 'Branş seçin...' : 'Birim seçin...'} />
                     </SelectTrigger>
                     <SelectContent>
                       {branchList.map((b) => (

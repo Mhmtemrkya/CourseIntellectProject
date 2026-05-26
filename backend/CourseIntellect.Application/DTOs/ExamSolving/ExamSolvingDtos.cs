@@ -68,6 +68,7 @@ public sealed record SolutionQuestionResponse(
     string ImagePlacement,
     IReadOnlyList<string> Options,
     int? CorrectOptionIndex,
+    string? ExpectedAnswer,
     string Status,
     bool IsFlagged,
     string FlagType,

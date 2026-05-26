@@ -11,4 +11,8 @@ public interface IFileStorageService
         string folder,
         string baseUrl,
         CancellationToken cancellationToken = default);
+
+    Task<byte[]?> ReadBytesAsync(
+        string fileUrl,
+        CancellationToken cancellationToken = default);
 }

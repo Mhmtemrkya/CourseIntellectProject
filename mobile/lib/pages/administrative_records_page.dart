@@ -125,7 +125,7 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
                 child: _actionCard(
                   context,
                   title: 'Personel Kaydı',
-                  subtitle: 'Öğretmen ve idari personel ekleme',
+                  subtitle: 'Öğretmen, idari personel ve yemekhaneci',
                   icon: Icons.badge_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: () => _openPage(const AdminStaffRegistrationPage()),
