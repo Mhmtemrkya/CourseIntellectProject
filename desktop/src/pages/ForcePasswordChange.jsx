@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, Eye, EyeOff, Lock } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Lock, LogOut } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { changePassword } from '../lib/api/modules';
 import { clearDesktopSession } from '../lib/auth';
@@ -47,6 +47,13 @@ export default function ForcePasswordChange() {
   }), [newPassword, confirm]);
 
   const allValid = Object.values(validations).every(Boolean);
+
+  const handleBackToLogin = () => {
+    clearDesktopSession();
+    setUser(null);
+    setSession(null);
+    navigate('/login', { replace: true });
+  };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -126,7 +133,14 @@ export default function ForcePasswordChange() {
               />
             </div>
 
-            <ul className="text-xs text-slate-400 space-y-1 pt-1">
+            {!allValid && (
+              <div className="rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-100">
+                Butonun açılması için aşağıdaki tüm maddeler yeşil olmalı. Örnek güçlü şifre:
+                <span className="font-semibold text-amber-50"> Course2026</span>
+              </div>
+            )}
+
+            <ul className="text-xs space-y-1 pt-1">
               <ValidationRow ok={validations.length} text="En az 8 karakter" />
               <ValidationRow ok={validations.upper} text="Büyük harf (A-Z)" />
               <ValidationRow ok={validations.lower} text="Küçük harf (a-z)" />
@@ -134,9 +148,21 @@ export default function ForcePasswordChange() {
               <ValidationRow ok={validations.match} text="Şifreler eşleşiyor" />
             </ul>
 
-            <Button type="submit" disabled={!allValid || saving} className="w-full">
+            <Button
+              type="submit"
+              disabled={!allValid || saving}
+              className="w-full disabled:bg-slate-700 disabled:text-slate-300"
+            >
               {saving ? 'Kaydediliyor...' : 'Şifreyi Güncelle ve Devam Et'}
             </Button>
+            <button
+              type="button"
+              onClick={handleBackToLogin}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900/70 px-4 py-3 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800"
+            >
+              <LogOut className="h-4 w-4" />
+              Giriş ekranına dön
+            </button>
           </form>
         </CardContent>
       </Card>
@@ -146,8 +172,8 @@ export default function ForcePasswordChange() {
 
 function ValidationRow({ ok, text }) {
   return (
-    <li className={`flex items-center gap-2 ${ok ? 'text-emerald-400' : 'text-slate-500'}`}>
-      <span className={`w-1.5 h-1.5 rounded-full ${ok ? 'bg-emerald-400' : 'bg-slate-600'}`} />
+    <li className={`flex items-center gap-2 ${ok ? 'text-emerald-300' : 'text-amber-200'}`}>
+      <span className={`w-2 h-2 rounded-full ${ok ? 'bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.9)]' : 'bg-amber-400/80'}`} />
       {text}
     </li>
   );
