@@ -19,10 +19,12 @@ import '../pages/student_question_page.dart';
 import '../pages/student_wrong_answers_page.dart';
 import '../pages/student_attendance_history_page.dart';
 import '../pages/exam_analysis_page.dart';
+import '../pages/cafeteria_weekly_menu_page.dart';
 
 import '../pages/lessons_page.dart';
 import '../pages/exams_page.dart';
 import '../pages/homework_page.dart';
+import '../pages/service_live_status_page.dart';
 import '../services/auth_session_store.dart';
 import '../services/school_feed_api_service.dart';
 
@@ -217,6 +219,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                               const SizedBox(height: 16),
                               const QuickActions(),
                               const SizedBox(height: 20),
+                              _campusServiceCards(),
+                              const SizedBox(height: 20),
                               SummaryCards(
                                 onLessonsTap: goToLessons,
                                 onExamTap: goToExams,
@@ -249,6 +253,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                         HeaderWidget(key: ValueKey(achievementRefreshKey)),
                         const SizedBox(height: 16),
                         const QuickActions(),
+                        const SizedBox(height: 20),
+                        _campusServiceCards(),
                         const SizedBox(height: 20),
                         SummaryCards(
                           onLessonsTap: goToLessons,
@@ -327,6 +333,119 @@ class _StudentHomePageState extends State<StudentHomePage>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _campusServiceCards() {
+    final theme = Theme.of(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.18)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Günlük okul hizmetleri',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Servis konumunu ve haftalık yemekhane listesini buradan takip edebilirsin.',
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+            ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _serviceHomeCard(
+                  title: 'Servisim',
+                  subtitle: 'Canlı konum ve ETA',
+                  icon: Icons.directions_bus_filled_outlined,
+                  color: const Color(0xFF0F766E),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const ServiceLiveStatusPage(parentMode: false),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _serviceHomeCard(
+                  title: 'Yemekhane',
+                  subtitle: 'Haftalık menü',
+                  icon: Icons.restaurant_menu_rounded,
+                  color: const Color(0xFFF97316),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) =>
+                          const CafeteriaWeeklyMenuPage(canEdit: false),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _serviceHomeCard({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(20),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              color.withValues(alpha: 0.16),
+              color.withValues(alpha: 0.06),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.26)),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 12),
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+            const SizedBox(height: 4),
+            Text(
+              subtitle,
+              style: TextStyle(
+                color: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.color?.withValues(alpha: 0.66),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

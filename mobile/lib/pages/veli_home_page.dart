@@ -21,6 +21,8 @@ import 'veli_receipt_archive_page.dart';
 import 'veli_support_plan_page.dart';
 import 'veli_teacher_feedback_page.dart';
 import 'veli_weekly_report_page.dart';
+import 'cafeteria_weekly_menu_page.dart';
+import 'service_live_status_page.dart';
 import '../widgets/responsive_layout.dart';
 
 class VeliHomePage extends StatefulWidget {
@@ -303,6 +305,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
+          title: 'Günlük okul hizmetleri',
+          actionLabel: 'Takip et',
+          onAction: () =>
+              _openPage(context, const ServiceLiveStatusPage(parentMode: true)),
+        ),
+        const SizedBox(height: 12),
+        _campusServicesSection(context),
+        const SizedBox(height: 18),
+        _sectionTitle(
+          context,
           title: 'Finans ve ödeme takibi',
           actionLabel: 'Ödemeler',
           onAction: () => _openPage(context, const VeliOdemePage()),
@@ -432,6 +444,38 @@ class _VeliHomePageState extends State<VeliHomePage> {
           icon: Icons.feedback_outlined,
           color: const Color(0xFF7C3AED),
           onTap: () => _openPage(context, const VeliTeacherFeedbackPage()),
+        ),
+      ],
+    );
+  }
+
+  Widget _campusServicesSection(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _toolCard(
+            context,
+            title: 'Servis Takip',
+            icon: Icons.directions_bus_filled_outlined,
+            color: const Color(0xFF0F766E),
+            onTap: () => _openPage(
+              context,
+              const ServiceLiveStatusPage(parentMode: true),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _toolCard(
+            context,
+            title: 'Yemekhane',
+            icon: Icons.restaurant_menu_rounded,
+            color: const Color(0xFFF97316),
+            onTap: () => _openPage(
+              context,
+              const CafeteriaWeeklyMenuPage(canEdit: false),
+            ),
+          ),
         ),
       ],
     );

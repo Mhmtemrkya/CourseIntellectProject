@@ -2023,6 +2023,12 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
 
+                    b.Property<string>("VehicleNumber")
+                        .IsRequired()
+                        .HasMaxLength(40)
+                        .HasColumnType("character varying(40)")
+                        .HasColumnName("vehicle_number");
+
                     b.HasKey("Id");
 
                     b.HasIndex("PlateNumber");

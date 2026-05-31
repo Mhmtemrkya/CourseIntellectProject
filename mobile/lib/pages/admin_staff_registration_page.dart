@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
+import '../services/service_tracking_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/responsive_layout.dart';
@@ -42,10 +43,20 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   );
   final _personnelChildCountController = TextEditingController(text: '0');
   final _personnelNoteController = TextEditingController();
+  final _driverLicenseController = TextEditingController();
+  final _vehicleNumberController = TextEditingController();
+  final _vehiclePlateController = TextEditingController();
+  final _vehicleBrandController = TextEditingController();
+  final _vehicleModelController = TextEditingController();
+  final _vehicleCapacityController = TextEditingController(text: '15');
+  final _routeNameController = TextEditingController();
+  final _routeStartController = TextEditingController(text: '07:30');
+  final _routeEndController = TextEditingController(text: '09:00');
 
   String _teacherBranch = 'Matematik';
   String _personnelRole = 'Administrative';
   String _personnelDepartment = 'Öğrenci Isleri';
+  String _routeType = 'Morning';
   String _teacherHomeroomClass = 'Sınıf öğretmenliği yok';
   final Set<String> _teacherAssignedClasses = {};
   List<String> _classOptions = const [];
@@ -79,6 +90,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _personnelCampusController.dispose();
     _personnelChildCountController.dispose();
     _personnelNoteController.dispose();
+    _driverLicenseController.dispose();
+    _vehicleNumberController.dispose();
+    _vehiclePlateController.dispose();
+    _vehicleBrandController.dispose();
+    _vehicleModelController.dispose();
+    _vehicleCapacityController.dispose();
+    _routeNameController.dispose();
+    _routeStartController.dispose();
+    _routeEndController.dispose();
     super.dispose();
   }
 
@@ -159,7 +179,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ),
                 const SizedBox(height: 16),
                 SizedBox(
-                  height: ResponsiveLayout.isTablet(context) ? 1100 : 840,
+                  height: ResponsiveLayout.isTablet(context) ? 1380 : 1120,
                   child: TabBarView(
                     controller: _tabController,
                     children: [
@@ -400,6 +420,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   value: 'Cafeteria',
                   child: Text('Yemekhaneci'),
                 ),
+                DropdownMenuItem(
+                  value: 'ServiceDriver',
+                  child: Text('Servis Şoförü'),
+                ),
               ],
               onChanged: (value) {
                 if (value == null) return;
@@ -407,6 +431,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   _personnelRole = value;
                   _personnelDepartment = value == 'Cafeteria'
                       ? 'Yemekhane'
+                      : value == 'ServiceDriver'
+                      ? 'Servis Şoförü'
                       : 'Öğrenci Isleri';
                 });
               },
@@ -436,6 +462,13 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                             DropdownMenuItem(
                               value: 'Yemekhane',
                               child: Text('Yemekhane'),
+                            ),
+                          ]
+                        : _personnelRole == 'ServiceDriver'
+                        ? const [
+                            DropdownMenuItem(
+                              value: 'Servis Şoförü',
+                              child: Text('Servis Şoförü'),
                             ),
                           ]
                         : const [
@@ -481,6 +514,108 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               controller: _personnelEducationController,
               label: 'Egitim / Uzmanlik',
             ),
+            if (_personnelRole == 'ServiceDriver') ...[
+              const SizedBox(height: 12),
+              _field(
+                controller: _driverLicenseController,
+                label: 'Ehliyet No / Sınıfı',
+              ),
+              const SizedBox(height: 16),
+              const AdminSectionTitle(title: 'Servis Aracı ve Rota Bilgileri'),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      controller: _vehicleNumberController,
+                      label: 'Araç No',
+                      required: false,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _field(
+                      controller: _vehiclePlateController,
+                      label: 'Plaka',
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      controller: _vehicleBrandController,
+                      label: 'Araç Marka',
+                      required: false,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _field(
+                      controller: _vehicleModelController,
+                      label: 'Araç Model',
+                      required: false,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      controller: _vehicleCapacityController,
+                      label: 'Kapasite',
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _routeType,
+                      decoration: const InputDecoration(
+                        labelText: 'Rota Tipi',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: const [
+                        DropdownMenuItem(
+                          value: 'Morning',
+                          child: Text('Sabah'),
+                        ),
+                        DropdownMenuItem(
+                          value: 'Evening',
+                          child: Text('Akşam'),
+                        ),
+                      ],
+                      onChanged: (value) =>
+                          setState(() => _routeType = value ?? _routeType),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              _field(controller: _routeNameController, label: 'Rota Adı'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _field(
+                      controller: _routeStartController,
+                      label: 'Başlangıç Saati',
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _field(
+                      controller: _routeEndController,
+                      label: 'Bitiş Saati',
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -547,7 +682,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             ),
             _InfoRow(
               title: 'Erişim',
-              value: _personnelRole == 'Cafeteria'
+              value: _personnelRole == 'ServiceDriver'
+                  ? 'Şoför hesabı, aracı ve ilk rotası tek kayıtta oluşturulur'
+                  : _personnelRole == 'Cafeteria'
                   ? 'Sadece haftalık yemek programı yönetim paneline erişir'
                   : 'İdari duyurular ve kurum içi görev akışlarıyla eşleşir',
             ),
@@ -652,13 +789,28 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     if (!_personnelFormKey.currentState!.validate()) {
       return;
     }
+    if (_personnelRole == 'ServiceDriver') {
+      final capacity =
+          int.tryParse(_vehicleCapacityController.text.trim()) ?? 0;
+      if (capacity < 2) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Araç kapasitesi en az 2 olmalı.')),
+        );
+        return;
+      }
+    }
 
     setState(() => _saving = true);
     try {
+      final isServiceDriver = _personnelRole == 'ServiceDriver';
+      final backendRole = isServiceDriver ? 'Administrative' : _personnelRole;
+      final department = isServiceDriver
+          ? 'Servis Şoförü'
+          : _personnelDepartment;
       final credentials = await RegistrationApiService.instance.createStaff(
         fullName: _personnelNameController.text.trim(),
-        role: _personnelRole,
-        departmentOrBranch: _personnelDepartment,
+        role: backendRole,
+        departmentOrBranch: department,
         tcNo: _personnelTcController.text.trim(),
         phone: _personnelPhoneController.text.trim(),
         email: '',
@@ -672,15 +824,64 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
         note: _personnelNoteController.text.trim(),
       );
+      String serviceSummary = '';
+      if (isServiceDriver) {
+        if (credentials.userId.isEmpty) {
+          throw const RegistrationApiException(
+            'Şoför kullanıcısı oluşturuldu fakat kullanıcı ID alınamadı.',
+          );
+        }
+        final capacity =
+            int.tryParse(_vehicleCapacityController.text.trim()) ?? 0;
+        if (_driverLicenseController.text.trim().isEmpty ||
+            _vehiclePlateController.text.trim().isEmpty ||
+            capacity < 2 ||
+            _routeNameController.text.trim().isEmpty) {
+          throw const RegistrationApiException(
+            'Servis şoförü için ehliyet, plaka, kapasite ve rota adı zorunludur.',
+          );
+        }
+        final api = ServiceTrackingApiService.instance;
+        final vehicle = await api.createVehicle(
+          vehicleNumber: _vehicleNumberController.text.trim(),
+          plateNumber: _vehiclePlateController.text.trim().toUpperCase(),
+          brand: _vehicleBrandController.text.trim(),
+          model: _vehicleModelController.text.trim(),
+          capacity: capacity,
+        );
+        final driver = await api.createDriver(
+          userId: credentials.userId,
+          phoneNumber: _personnelPhoneController.text.trim(),
+          licenseNumber: _driverLicenseController.text.trim(),
+        );
+        final route = await api.createRoute(
+          name: _routeNameController.text.trim(),
+          routeType: _routeType,
+          vehicleId: vehicle.id,
+          driverId: driver.id,
+          startTime: _routeStartController.text.trim(),
+          endTime: _routeEndController.text.trim(),
+          isActive: false,
+        );
+        serviceSummary =
+            '${vehicle.plateNumber}${vehicle.vehicleNumber.isEmpty ? '' : ' / ${vehicle.vehicleNumber}'} • ${route.name}';
+      }
       if (!mounted) return;
       setState(() => _saving = false);
       await _showResultCard(
-        title: _personnelRole == 'Cafeteria' ? 'Yemekhaneci' : 'İdari Personel',
-        description: _personnelRole == 'Cafeteria'
+        title: isServiceDriver
+            ? 'Servis Şoförü'
+            : _personnelRole == 'Cafeteria'
+            ? 'Yemekhaneci'
+            : 'İdari Personel',
+        description: isServiceDriver
+            ? 'Şoför hesabı, servis aracı ve ilk rota oluşturuldu. Rota pasif kaydedildi; durak ve öğrenci atamasından sonra aktifleştirebilirsiniz.'
+            : _personnelRole == 'Cafeteria'
             ? 'Yemekhaneci hesabı oluşturuldu. Bu hesap haftalık yemek programını doldurabilir; ilk girişte şifre değişimi zorunludur.'
             : 'İdari profil oluşturuldu. Aşağıdaki giriş bilgileriyle kurum sistemine erişebilir; ilk girişte şifre değişimi zorunludur.',
         credentials: credentials,
         withLogin: true,
+        serviceSummary: serviceSummary,
       );
     } on RegistrationApiException catch (error) {
       if (!mounted) return;
@@ -696,6 +897,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     required String description,
     required GeneratedCredentials credentials,
     required bool withLogin,
+    String serviceSummary = '',
   }) {
     return showDialog<void>(
       context: context,
@@ -755,6 +957,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       _resultRow('Kullanıcı Adı', credentials.username),
                       const SizedBox(height: 10),
                       _resultRow('Şifre', credentials.password),
+                      if (serviceSummary.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _resultRow('Servis', serviceSummary),
+                      ],
                       if (!withLogin) ...[
                         const SizedBox(height: 10),
                         Text(
@@ -778,6 +984,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                           role: title,
                           username: credentials.username,
                           temporaryPassword: credentials.password,
+                          extra: serviceSummary.isEmpty ? null : serviceSummary,
                         );
                       },
                       icon: const Icon(Icons.picture_as_pdf_outlined),

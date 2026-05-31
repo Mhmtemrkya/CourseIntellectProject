@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ShieldCheck, Eye, EyeOff, Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { changePassword } from '../lib/api/modules';
-import { getUserHomePath } from '../lib/auth';
+import { clearDesktopSession } from '../lib/auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -28,7 +28,7 @@ function evaluateStrength(value) {
 }
 
 export default function ForcePasswordChange() {
-  const { user, markPasswordChanged } = useApp();
+  const { setUser, setSession } = useApp();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [newPassword, setNewPassword] = useState('');
@@ -57,12 +57,11 @@ export default function ForcePasswordChange() {
     try {
       setSaving(true);
       await changePassword({ currentPassword: null, newPassword });
-      toast({ title: 'Şifre güncellendi', description: 'Hoş geldiniz.', variant: 'default' });
-      if (typeof markPasswordChanged === 'function') {
-        markPasswordChanged();
-      }
-      const target = user ? getUserHomePath({ ...user, mustChangePassword: false }) : '/dashboard';
-      navigate(target, { replace: true });
+      clearDesktopSession();
+      setUser(null);
+      setSession(null);
+      toast({ title: 'Şifre güncellendi', description: 'Yeni şifrenizle tekrar giriş yapın.', variant: 'default' });
+      navigate('/login', { replace: true });
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Şifre güncellenemedi.';
       toast({ title: 'Hata', description: message, variant: 'destructive' });

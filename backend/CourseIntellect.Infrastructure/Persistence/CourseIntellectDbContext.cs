@@ -693,6 +693,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             ConfigureTenantScope(entity);
             entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.VehicleNumber).HasColumnName("vehicle_number").HasMaxLength(40);
             entity.Property(x => x.PlateNumber).HasColumnName("plate_number").HasMaxLength(20).IsRequired();
             entity.Property(x => x.Brand).HasColumnName("brand").HasMaxLength(80);
             entity.Property(x => x.Model).HasColumnName("model").HasMaxLength(80);

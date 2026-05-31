@@ -19,22 +19,43 @@ class AdminScaffold extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final hasSidebar = SidebarState.of(context);
+    final showFallbackBackButton =
+        !hasSidebar && appBar == null && Navigator.of(context).canPop();
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: hasSidebar ? null : appBar,
       floatingActionButton: floatingActionButton,
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? const [Color(0xFF0E141B), Color(0xFF101A23)]
-                : const [Color(0xFFF4F7FB), Color(0xFFEAF1F6)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      body: Stack(
+        children: [
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: isDark
+                    ? const [Color(0xFF0E141B), Color(0xFF101A23)]
+                    : const [Color(0xFFF4F7FB), Color(0xFFEAF1F6)],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              ),
+            ),
+            child: ResponsiveContent(child: child),
           ),
-        ),
-        child: ResponsiveContent(child: child),
+          if (showFallbackBackButton)
+            Positioned(
+              top: MediaQuery.paddingOf(context).top + 10,
+              left: 12,
+              child: Material(
+                color: theme.cardColor.withValues(alpha: 0.88),
+                borderRadius: BorderRadius.circular(16),
+                elevation: 10,
+                child: IconButton(
+                  tooltip: 'Geri',
+                  onPressed: () => Navigator.of(context).maybePop(),
+                  icon: const Icon(Icons.arrow_back_ios_new_rounded),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

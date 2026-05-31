@@ -16,6 +16,7 @@ class ServiceTrackingApiException implements Exception {
 
 class ServiceVehicleRecord {
   final String id;
+  final String vehicleNumber;
   final String plateNumber;
   final String brand;
   final String model;
@@ -24,6 +25,7 @@ class ServiceVehicleRecord {
 
   const ServiceVehicleRecord({
     required this.id,
+    required this.vehicleNumber,
     required this.plateNumber,
     required this.brand,
     required this.model,
@@ -34,6 +36,7 @@ class ServiceVehicleRecord {
   factory ServiceVehicleRecord.fromMap(Map<String, dynamic> map) {
     return ServiceVehicleRecord(
       id: _asString(map['id']),
+      vehicleNumber: _asString(map['vehicleNumber']),
       plateNumber: _asString(map['plateNumber']),
       brand: _asString(map['brand']),
       model: _asString(map['model']),
@@ -559,6 +562,7 @@ class ServiceTrackingApiService {
   }
 
   Future<ServiceVehicleRecord> createVehicle({
+    String vehicleNumber = '',
     required String plateNumber,
     required String brand,
     required String model,
@@ -566,6 +570,7 @@ class ServiceTrackingApiService {
   }) async {
     final response = await _send('POST', '/api/service/vehicles', {
       'plateNumber': plateNumber,
+      'vehicleNumber': vehicleNumber,
       'brand': brand,
       'model': model,
       'capacity': capacity,
@@ -576,6 +581,7 @@ class ServiceTrackingApiService {
 
   Future<ServiceVehicleRecord> updateVehicle({
     required String vehicleId,
+    String vehicleNumber = '',
     required String plateNumber,
     required String brand,
     required String model,
@@ -584,6 +590,7 @@ class ServiceTrackingApiService {
   }) async {
     final response = await _send('PUT', '/api/service/vehicles/$vehicleId', {
       'plateNumber': plateNumber,
+      'vehicleNumber': vehicleNumber,
       'brand': brand,
       'model': model,
       'capacity': capacity,

@@ -48,6 +48,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   String? _imagePath;
   String? _solutionAssetPath;
   final List<QuestionBankRecord> _examQuestions = [];
+  final List<QuestionBankRecord> _savedQuestions = [];
   String _autosave = 'Canlı kayda hazır';
   String? _draftId;
   Timer? _autosaveTimer;
@@ -248,29 +249,38 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
       if (widget.examMode) {
         setState(() {
           _examQuestions.add(created);
-          _questionController.clear();
-          _solutionController.clear();
-          _expectedAnswerController.clear();
-          for (final controller in _optionControllers) {
-            controller.clear();
-          }
-          for (var index = 0; index < _optionImagePaths.length; index++) {
-            _optionImagePaths[index] = null;
-          }
-          _imagePath = null;
-          _solutionAssetPath = null;
+          _clearCurrentQuestionFields();
           _autosave = '${_examQuestions.length} soru denemeye eklendi';
         });
         _snack('Soru canlı olarak denemeye eklendi.');
       } else {
-        _snack('Soru bankasına kaydedildi.');
-        Navigator.pop(context);
+        setState(() {
+          _savedQuestions.add(created);
+          _clearCurrentQuestionFields();
+          _autosave = '${_savedQuestions.length} soru bankasına eklendi';
+        });
+        _snack('Soru kaydedildi. Yeni soru için editör hazır.');
       }
     } catch (error) {
       _snack(error.toString());
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  void _clearCurrentQuestionFields() {
+    _questionController.clear();
+    _solutionController.clear();
+    _expectedAnswerController.clear();
+    for (final controller in _optionControllers) {
+      controller.clear();
+    }
+    for (var index = 0; index < _optionImagePaths.length; index++) {
+      _optionImagePaths[index] = null;
+    }
+    _correctIndex = 0;
+    _imagePath = null;
+    _solutionAssetPath = null;
   }
 
   Future<void> _pickAsset({required bool solution}) async {
@@ -563,7 +573,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.check_rounded),
-              label: const Text('Kaydet'),
+              label: Text(widget.examMode ? 'Ekle' : 'Kaydet'),
             ),
             const SizedBox(width: 8),
           ],
@@ -670,6 +680,38 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
             ),
           ),
           const SizedBox(height: 14),
+        ] else ...[
+          _GlassCard(
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF8A1C).withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(
+                    Icons.playlist_add_check_rounded,
+                    color: Color(0xFFFF8A1C),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    '${_savedQuestions.length} soru bu oturumda soru bankasına eklendi',
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
+                ),
+                if (_savedQuestions.isNotEmpty)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('Bitir'),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
         ],
         _GlassCard(
           child: Column(
@@ -678,7 +720,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               Text(
                 widget.examMode
                     ? 'Deneme İçin Soru Oluştur'
-                    : 'Yeni Soru Oluştur',
+                    : 'Yeni Soru Oluştur / Seri Kayıt',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.w900,
@@ -971,7 +1013,11 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.save_rounded),
-                label: const Text('Soruyu Kaydet'),
+                label: Text(
+                  widget.examMode
+                      ? 'Soruyu Denemeye Ekle'
+                      : 'Soruyu Kaydet ve Yeni Soru',
+                ),
               ),
             ],
           ),

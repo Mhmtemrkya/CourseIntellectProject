@@ -1,8 +1,8 @@
 namespace CourseIntellect.Application.DTOs.ServiceTracking;
 
-public sealed record ServiceVehicleDto(Guid Id, Guid? InstitutionId, string PlateNumber, string Brand, string Model, int Capacity, bool IsActive, DateTime CreatedAt, DateTime? UpdatedAt);
-public sealed record CreateServiceVehicleRequest(string PlateNumber, string Brand, string Model, int Capacity, bool IsActive = true);
-public sealed record UpdateServiceVehicleRequest(string PlateNumber, string Brand, string Model, int Capacity, bool IsActive);
+public sealed record ServiceVehicleDto(Guid Id, Guid? InstitutionId, string VehicleNumber, string PlateNumber, string Brand, string Model, int Capacity, bool IsActive, DateTime CreatedAt, DateTime? UpdatedAt);
+public sealed record CreateServiceVehicleRequest(string PlateNumber, string Brand, string Model, int Capacity, bool IsActive = true, string VehicleNumber = "");
+public sealed record UpdateServiceVehicleRequest(string PlateNumber, string Brand, string Model, int Capacity, bool IsActive, string VehicleNumber = "");
 
 public sealed record ServiceDriverDto(Guid Id, Guid? InstitutionId, Guid UserId, string FullName, string PhoneNumber, string LicenseNumber, bool IsActive, DateTime CreatedAt, DateTime? UpdatedAt);
 public sealed record CreateServiceDriverRequest(Guid UserId, string PhoneNumber, string LicenseNumber, bool IsActive = true);
@@ -11,7 +11,7 @@ public sealed record UpdateServiceDriverRequest(Guid UserId, string PhoneNumber,
 public sealed record CreateServiceRouteRequest(string Name, string RouteType, Guid VehicleId, Guid DriverId, TimeOnly StartTime, TimeOnly EndTime, bool IsActive);
 public sealed record UpdateServiceRouteRequest(string Name, string RouteType, Guid VehicleId, Guid DriverId, TimeOnly StartTime, TimeOnly EndTime, bool IsActive);
 public sealed record ServiceRouteListDto(Guid Id, Guid? InstitutionId, string Name, string RouteType, ServiceVehicleBriefDto? Vehicle, ServiceDriverBriefDto? Driver, TimeOnly StartTime, TimeOnly EndTime, bool IsActive, int TotalStudents, int Capacity, int AvailableSeats);
-public sealed record ServiceVehicleBriefDto(Guid Id, string PlateNumber, string Brand, string Model, int Capacity);
+public sealed record ServiceVehicleBriefDto(Guid Id, string VehicleNumber, string PlateNumber, string Brand, string Model, int Capacity);
 public sealed record ServiceDriverBriefDto(Guid Id, Guid UserId, string FullName, string PhoneNumber);
 public sealed record ServiceRouteDetailResponse(Guid Id, string Name, string RouteType, ServiceVehicleBriefDto? Vehicle, ServiceDriverBriefDto? Driver, TimeOnly StartTime, TimeOnly EndTime, bool IsActive, int TotalStudents, int Capacity, int AvailableSeats, IReadOnlyList<StopWithStudentsResponse> Stops);
 

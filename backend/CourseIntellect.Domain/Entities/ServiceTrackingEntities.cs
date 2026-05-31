@@ -6,6 +6,7 @@ public sealed class ServiceVehicle : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public string VehicleNumber { get; set; } = string.Empty;
     public string PlateNumber { get; set; } = string.Empty;
     public string Brand { get; set; } = string.Empty;
     public string Model { get; set; } = string.Empty;

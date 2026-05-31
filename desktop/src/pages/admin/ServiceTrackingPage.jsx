@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   AlertCircle,
@@ -43,6 +44,7 @@ import {
 } from '../../lib/api/modules';
 
 const emptyVehicleForm = {
+  vehicleNumber: '',
   plateNumber: '',
   brand: '',
   model: '',
@@ -90,6 +92,7 @@ function getUserName(user) {
 }
 
 export default function ServiceTrackingPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -208,6 +211,7 @@ export default function ServiceTrackingPage() {
     }
     await submit(async () => {
       await createServiceVehicle({
+        vehicleNumber: vehicleForm.vehicleNumber.trim(),
         plateNumber: vehicleForm.plateNumber.trim(),
         brand: vehicleForm.brand.trim(),
         model: vehicleForm.model.trim(),
@@ -404,16 +408,16 @@ export default function ServiceTrackingPage() {
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-primary">Servis takip</p>
           <h1 className="mt-2 text-3xl font-bold font-heading">Servis Yönetimi</h1>
-          <p className="mt-1 text-muted-foreground">Araç, şoför ve rotaları canlı backend üzerinden yönetin.</p>
+          <p className="mt-1 text-muted-foreground">Araç, şoför ve rotaları canlı backend üzerinden yönetin. Yeni şoför kayıtları personel kaydı içinden tek formda yapılır.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={load}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Yenile
           </Button>
-          <Button onClick={() => openDialog('driver')} className="bg-brand-primary hover:bg-brand-primary/90">
+          <Button onClick={() => navigate('/admin/staff-registration')} className="bg-brand-primary hover:bg-brand-primary/90">
             <UserRoundCheck className="mr-2 h-4 w-4" />
-            Şoför Oluştur
+            Personelden Şoför Kaydet
           </Button>
         </div>
       </div>
@@ -440,9 +444,9 @@ export default function ServiceTrackingPage() {
               <UserRoundCheck className="h-5 w-5 text-brand-primary" />
               Servis Şoförleri
             </CardTitle>
-            <Button size="sm" onClick={() => openDialog('driver')}>
+            <Button size="sm" onClick={() => navigate('/admin/staff-registration')}>
               <Plus className="mr-2 h-4 w-4" />
-              Şoför Oluştur
+              Personelden Kaydet
             </Button>
           </CardHeader>
           <CardContent>
@@ -497,13 +501,13 @@ export default function ServiceTrackingPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full justify-start" variant="outline" onClick={() => openDialog('vehicle')}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/staff-registration')}>
               <BusFront className="mr-2 h-4 w-4" />
-              Servis Aracı Ekle
+              Şoför + Araç + Rota Kaydet
             </Button>
-            <Button className="w-full justify-start" variant="outline" onClick={() => openDialog('driver')}>
+            <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/staff-registration')}>
               <UserRoundCheck className="mr-2 h-4 w-4" />
-              Şoför Oluştur
+              Personelden Şoför Kaydet
             </Button>
             <Button
               className="w-full justify-start"
@@ -515,7 +519,7 @@ export default function ServiceTrackingPage() {
               Rota Oluştur
             </Button>
             <div className="rounded-2xl border border-orange-500/20 bg-orange-500/10 p-4 text-sm text-muted-foreground">
-              Rota aktif olmadan önce araç, şoför ve durak bilgileri tamamlanmalı. Şoför uygulaması sadece aktif rotaları ve kendi öğrencilerini görür.
+              Yeni servis şoförü, kişisel bilgiler + araç + rota bilgileriyle Personel Kaydı ekranından tek seferde oluşturulur. Durak ve öğrenci ataması burada tamamlanır.
             </div>
           </CardContent>
         </Card>
@@ -528,9 +532,9 @@ export default function ServiceTrackingPage() {
               <BusFront className="h-5 w-5 text-brand-primary" />
               Araçlar
             </CardTitle>
-            <Button size="sm" variant="outline" onClick={() => openDialog('vehicle')}>
+            <Button size="sm" variant="outline" onClick={() => navigate('/admin/staff-registration')}>
               <Plus className="mr-2 h-4 w-4" />
-              Araç Ekle
+              Personelden Kaydet
             </Button>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -540,7 +544,7 @@ export default function ServiceTrackingPage() {
               <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4">
                 <div>
                   <p className="font-semibold">{vehicle.plateNumber}</p>
-                  <p className="text-sm text-muted-foreground">{vehicle.brand || '-'} {vehicle.model || ''} • {vehicle.capacity} koltuk</p>
+                  <p className="text-sm text-muted-foreground">{vehicle.vehicleNumber ? `${vehicle.vehicleNumber} • ` : ''}{vehicle.brand || '-'} {vehicle.model || ''} • {vehicle.capacity} koltuk</p>
                 </div>
                 <Badge variant={vehicle.isActive ? 'default' : 'outline'}>{vehicle.isActive ? 'Aktif' : 'Pasif'}</Badge>
               </div>
@@ -597,7 +601,10 @@ export default function ServiceTrackingPage() {
               <DialogDescription>Plaka ve kapasite bilgileri canlı servis veritabanına kaydedilir.</DialogDescription>
             </DialogHeader>
             <div className="mt-5 grid gap-4">
-              <Field label="Plaka"><Input value={vehicleForm.plateNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, plateNumber: event.target.value }))} placeholder="34 ABC 123" /></Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Araç No"><Input value={vehicleForm.vehicleNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, vehicleNumber: event.target.value }))} placeholder="S-01" /></Field>
+                <Field label="Plaka"><Input value={vehicleForm.plateNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, plateNumber: event.target.value.toUpperCase() }))} placeholder="34 ABC 123" /></Field>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Marka"><Input value={vehicleForm.brand} onChange={(event) => setVehicleForm((form) => ({ ...form, brand: event.target.value }))} placeholder="Mercedes" /></Field>
                 <Field label="Model"><Input value={vehicleForm.model} onChange={(event) => setVehicleForm((form) => ({ ...form, model: event.target.value }))} placeholder="Sprinter" /></Field>

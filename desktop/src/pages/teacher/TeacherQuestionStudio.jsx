@@ -99,6 +99,7 @@ export default function TeacherQuestionStudio() {
   const [uploading, setUploading] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [canvasOpen, setCanvasOpen] = useState(false);
+  const [savedQuestions, setSavedQuestions] = useState([]);
   const [examQuestions, setExamQuestions] = useState([]);
   const [examForm, setExamForm] = useState({
     title: '', className: '', dateLabel: '', duration: '40 dk', type: 'MockExam',
@@ -351,8 +352,9 @@ export default function TeacherQuestionStudio() {
         resetQuestion();
         toast({ title: 'Soru sınava eklendi', description: 'Yeni soru için editör temizlendi.' });
       } else {
-        toast({ title: 'Soru kaydedildi', description: 'Biçim, görsel ve çözüm verileriyle soru bankasına kaydedildi.' });
-        navigate('/t/question-bank');
+        setSavedQuestions((current) => [...current, created]);
+        resetQuestion();
+        toast({ title: 'Soru kaydedildi', description: 'Yeni soru için editör temizlendi. Seri şekilde devam edebilirsin.' });
       }
     } catch (error) {
       toast({ title: 'Soru kaydedilemedi', description: error.message, variant: 'destructive' });
@@ -403,8 +405,13 @@ export default function TeacherQuestionStudio() {
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" onClick={() => setPreviewOpen(true)} className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><Eye className="mr-2 h-4 w-4" />Önizleme</Button>
+              {!isExamMode && savedQuestions.length > 0 && (
+                <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  Soru Bankasına Dön
+                </Button>
+              )}
               <Button variant="outline" disabled={saving} onClick={() => persistDraft(true)} className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><Bookmark className="mr-2 h-4 w-4" />Taslak Kaydet</Button>
-              <Button disabled={saving} onClick={saveQuestion} className="bg-orange-500 text-white hover:bg-orange-600">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{isExamMode ? 'Soruyu Sınava Ekle' : 'Soruyu Kaydet'}</Button>
+              <Button disabled={saving} onClick={saveQuestion} className="bg-orange-500 text-white hover:bg-orange-600">{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Check className="mr-2 h-4 w-4" />}{isExamMode ? 'Soruyu Sınava Ekle' : 'Kaydet ve Yeni Soru'}</Button>
             </div>
           </div>
 
@@ -422,6 +429,29 @@ export default function TeacherQuestionStudio() {
                   {examQuestions.map((question, index) => (
                     <span key={question.id} className="rounded-xl border border-orange-400/20 bg-black/20 px-3 py-2 text-xs text-orange-100">
                       {index + 1}. {question.questionText.slice(0, 42)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+          {!isExamMode && (
+            <section className="mb-5 rounded-[28px] border border-orange-400/20 bg-orange-500/[0.07] p-5">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-200">Seri soru oluşturma</p>
+                  <h2 className="mt-1 text-xl font-black">{savedQuestions.length} soru bu oturumda soru bankasına eklendi</h2>
+                  <p className="mt-1 text-sm text-slate-400">Her kayıttan sonra editör temizlenir; onlarca soruyu art arda oluşturabilirsin.</p>
+                </div>
+                <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white">
+                  Bitir ve Soru Bankasına Dön
+                </Button>
+              </div>
+              {savedQuestions.length > 0 && (
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {savedQuestions.map((question, index) => (
+                    <span key={question.id} className="rounded-xl border border-orange-400/20 bg-black/20 px-3 py-2 text-xs text-orange-100">
+                      {index + 1}. {question.questionText?.slice(0, 42) || 'Soru'}
                     </span>
                   ))}
                 </div>

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Save, Briefcase, Copy } from 'lucide-react';
+import { Save, Briefcase, Copy, BusFront, Route } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -15,7 +15,13 @@ import {
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { createStaff, fetchStaff } from '../../lib/api/modules';
+import {
+  createServiceDriver,
+  createServiceRoute,
+  createServiceVehicle,
+  createStaff,
+  fetchStaff,
+} from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 
 const containerVariants = {
@@ -31,6 +37,7 @@ const itemVariants = {
 const roles = [
   { value: 'Teacher', label: 'Öğretmen' },
   { value: 'Administrative', label: 'İdari Personel' },
+  { value: 'ServiceDriver', label: 'Servis Şoförü' },
   { value: 'Cafeteria', label: 'Yemekhaneci' },
 ];
 
@@ -49,7 +56,7 @@ const branchOptions = [
 ];
 
 const administrativeBranches = [
-  'Öğrenci İşleri', 'İnsan Kaynakları', 'Halkla İlişkiler', 'Kalite', 'Bilgi İşlem', 'Diğer',
+  'Öğrenci İşleri', 'İnsan Kaynakları', 'Halkla İlişkiler', 'Kalite', 'Bilgi İşlem', 'Servis Şoförü', 'Diğer',
 ];
 
 const cafeteriaBranches = ['Yemekhane'];
@@ -67,6 +74,16 @@ const emptyForm = {
   maritalStatus: 'Bekar',
   childCount: 0,
   note: '',
+  licenseNumber: '',
+  vehicleNumber: '',
+  plateNumber: '',
+  vehicleBrand: '',
+  vehicleModel: '',
+  vehicleCapacity: '15',
+  routeName: '',
+  routeType: 'Morning',
+  routeStartTime: '07:30',
+  routeEndTime: '09:00',
 };
 
 export default function AdminStaffRegistration() {
@@ -96,7 +113,7 @@ export default function AdminStaffRegistration() {
       ...prev,
       [field]: value,
       ...(field === 'role'
-        ? { departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane' : '' }
+        ? { departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane' : value === 'ServiceDriver' ? 'Servis Şoförü' : '' }
         : {}),
     }));
   };
@@ -110,12 +127,25 @@ export default function AdminStaffRegistration() {
       toast({ title: 'Branş / bölüm seçimi zorunludur.', variant: 'destructive' });
       return;
     }
+    if (form.role === 'ServiceDriver') {
+      const capacity = Number(form.vehicleCapacity);
+      if (!form.phone.trim() || !form.licenseNumber.trim() || !form.plateNumber.trim() || !Number.isFinite(capacity) || capacity < 2) {
+        toast({ title: 'Servis şoförü için telefon, ehliyet, plaka ve geçerli kapasite zorunludur.', variant: 'destructive' });
+        return;
+      }
+      if (!form.routeName.trim()) {
+        toast({ title: 'Şoförün kullanacağı rota adı zorunludur.', variant: 'destructive' });
+        return;
+      }
+    }
     try {
       setSaving(true);
+      const backendRole = form.role === 'ServiceDriver' ? 'Administrative' : form.role;
+      const departmentOrBranch = form.role === 'ServiceDriver' ? 'Servis Şoförü' : form.departmentOrBranch;
       const response = await createStaff({
         fullName: form.fullName.trim(),
-        role: form.role,
-        departmentOrBranch: form.departmentOrBranch,
+        role: backendRole,
+        departmentOrBranch,
         tcNo: form.tcNo.trim(),
         phone: form.phone.trim(),
         email: '',
@@ -128,7 +158,39 @@ export default function AdminStaffRegistration() {
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
       });
-      const roleLabel = form.role === 'Cafeteria'
+      let serviceSummary = '';
+      if (form.role === 'ServiceDriver') {
+        if (!response?.userId) {
+          throw new Error('Şoför kullanıcısı oluşturuldu fakat kullanıcı ID alınamadı.');
+        }
+        const vehicle = await createServiceVehicle({
+          vehicleNumber: form.vehicleNumber.trim(),
+          plateNumber: form.plateNumber.trim(),
+          brand: form.vehicleBrand.trim(),
+          model: form.vehicleModel.trim(),
+          capacity: Number(form.vehicleCapacity),
+          isActive: true,
+        });
+        const driver = await createServiceDriver({
+          userId: response?.userId,
+          phoneNumber: form.phone.trim(),
+          licenseNumber: form.licenseNumber.trim(),
+          isActive: true,
+        });
+        const route = await createServiceRoute({
+          name: form.routeName.trim(),
+          routeType: form.routeType,
+          vehicleId: vehicle?.id,
+          driverId: driver?.id,
+          startTime: form.routeStartTime,
+          endTime: form.routeEndTime,
+          isActive: false,
+        });
+        serviceSummary = `Araç: ${form.plateNumber.trim()}${form.vehicleNumber.trim() ? ` / No: ${form.vehicleNumber.trim()}` : ''} • Rota: ${route?.name || form.routeName.trim()}`;
+      }
+      const roleLabel = form.role === 'ServiceDriver'
+        ? 'Servis Şoförü'
+        : form.role === 'Cafeteria'
         ? 'Yemekhaneci'
         : form.role === 'Administrative' ? 'İdari Personel' : 'Öğretmen';
       const fullName = response?.fullName || form.fullName.trim();
@@ -137,7 +199,8 @@ export default function AdminStaffRegistration() {
         username: response?.username,
         password: response?.password,
         roleLabel,
-        branch: form.departmentOrBranch,
+        branch: departmentOrBranch,
+        serviceSummary,
       });
       try {
         await downloadCredentialsPdf({
@@ -146,12 +209,15 @@ export default function AdminStaffRegistration() {
           role: roleLabel,
           username: response?.username,
           temporaryPassword: response?.password,
-          extra: form.departmentOrBranch ? `Brans: ${form.departmentOrBranch}` : undefined,
+          extra: serviceSummary || (departmentOrBranch ? `Brans: ${departmentOrBranch}` : undefined),
         });
       } catch (pdfErr) {
         console.warn('PDF üretimi başarısız', pdfErr);
       }
-      toast({ title: 'Personel başarıyla kaydedildi.', description: 'Bilgiler PDF olarak indirildi.' });
+      toast({
+        title: form.role === 'ServiceDriver' ? 'Servis şoförü, aracı ve rotası oluşturuldu.' : 'Personel başarıyla kaydedildi.',
+        description: 'Bilgiler PDF olarak indirildi.',
+      });
       setForm(emptyForm);
       loadRecent();
     } catch (err) {
@@ -177,13 +243,14 @@ export default function AdminStaffRegistration() {
       role: credentials.roleLabel,
       username: credentials.username,
       temporaryPassword: credentials.password,
-      extra: credentials.branch ? `Brans: ${credentials.branch}` : undefined,
+      extra: credentials.serviceSummary || (credentials.branch ? `Brans: ${credentials.branch}` : undefined),
     });
   };
 
   const branchList = form.role === 'Cafeteria'
     ? cafeteriaBranches
-    : form.role === 'Administrative' ? administrativeBranches : branchOptions;
+    : form.role === 'Administrative' || form.role === 'ServiceDriver' ? administrativeBranches : branchOptions;
+  const isServiceDriver = form.role === 'ServiceDriver';
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
@@ -261,6 +328,12 @@ export default function AdminStaffRegistration() {
                     <Input value={form.homeroomClass} onChange={(e) => handleChange('homeroomClass', e.target.value)} placeholder="Örn: 9-A" />
                   </div>
                 )}
+                {isServiceDriver && (
+                  <div>
+                    <Label>Ehliyet No / Sınıfı *</Label>
+                    <Input value={form.licenseNumber} onChange={(e) => handleChange('licenseNumber', e.target.value)} placeholder="D sınıfı / belge no" />
+                  </div>
+                )}
                 <div>
                   <Label>Medeni Durum</Label>
                   <Select value={form.maritalStatus} onValueChange={(v) => handleChange('maritalStatus', v)}>
@@ -281,6 +354,69 @@ export default function AdminStaffRegistration() {
                 <Textarea value={form.note} onChange={(e) => handleChange('note', e.target.value)} placeholder="Ek bilgiler..." rows={2} />
               </div>
 
+              {isServiceDriver && (
+                <div className="space-y-4 rounded-2xl border border-orange-500/20 bg-orange-500/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="rounded-xl bg-orange-500/10 p-2 text-orange-500">
+                      <BusFront className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">Servis Aracı ve Rota Bilgileri</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Şoför hesabı, aracı ve ilk rotası tek kayıt akışında oluşturulur.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Araç No</Label>
+                      <Input value={form.vehicleNumber} onChange={(e) => handleChange('vehicleNumber', e.target.value)} placeholder="Örn: S-01" />
+                    </div>
+                    <div>
+                      <Label>Plaka *</Label>
+                      <Input value={form.plateNumber} onChange={(e) => handleChange('plateNumber', e.target.value.toUpperCase())} placeholder="34 ABC 123" />
+                    </div>
+                    <div>
+                      <Label>Marka</Label>
+                      <Input value={form.vehicleBrand} onChange={(e) => handleChange('vehicleBrand', e.target.value)} placeholder="Mercedes" />
+                    </div>
+                    <div>
+                      <Label>Model</Label>
+                      <Input value={form.vehicleModel} onChange={(e) => handleChange('vehicleModel', e.target.value)} placeholder="Sprinter" />
+                    </div>
+                    <div>
+                      <Label>Kapasite *</Label>
+                      <Input type="number" min="2" value={form.vehicleCapacity} onChange={(e) => handleChange('vehicleCapacity', e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Rota Adı *</Label>
+                      <Input value={form.routeName} onChange={(e) => handleChange('routeName', e.target.value)} placeholder="Sabah 1. Bölge" />
+                    </div>
+                    <div>
+                      <Label>Rota Tipi</Label>
+                      <Select value={form.routeType} onValueChange={(v) => handleChange('routeType', v)}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Morning">Sabah</SelectItem>
+                          <SelectItem value="Evening">Akşam</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Rota Saati</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input value={form.routeStartTime} onChange={(e) => handleChange('routeStartTime', e.target.value)} />
+                        <Input value={form.routeEndTime} onChange={(e) => handleChange('routeEndTime', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-xl border bg-background/40 p-3 text-sm text-muted-foreground">
+                    <Route className="h-4 w-4 text-orange-500" />
+                    Rota pasif oluşturulur. Durak ve öğrenci ataması tamamlanınca servis yönetiminden aktifleştirilir.
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-xl border bg-muted/30 p-3 text-xs text-muted-foreground">
                 <strong>Bilgi:</strong> Personel kaydedildiğinde kurum domain'inizi kullanan bir kullanıcı adı
                 ve güçlü bir geçici şifre otomatik üretilir. Personel ilk girişinde şifresini değiştirmek zorundadır.
@@ -289,7 +425,7 @@ export default function AdminStaffRegistration() {
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setForm(emptyForm)}>Temizle</Button>
                 <Button onClick={handleSubmit} disabled={saving}>
-                  <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Personeli Kaydet'}
+                  <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : isServiceDriver ? 'Şoför, Araç ve Rota Kaydet' : 'Personeli Kaydet'}
                 </Button>
               </div>
             </CardContent>
@@ -348,6 +484,12 @@ export default function AdminStaffRegistration() {
               <p className="mt-1 font-mono text-base font-bold tracking-wider">{credentials?.password || '-'}</p>
               <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">İlk girişte değiştirilmesi zorunludur.</p>
             </div>
+            {credentials?.serviceSummary ? (
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">Servis Bağlantısı</p>
+                <p className="mt-1 font-medium">{credentials.serviceSummary}</p>
+              </div>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setCredentials(null)}>Kapat</Button>

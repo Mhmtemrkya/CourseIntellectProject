@@ -33,6 +33,7 @@ public sealed class ServiceTrackingService(
         var item = new ServiceVehicle
         {
             TenantId = tenantId,
+            VehicleNumber = request.VehicleNumber.Trim(),
             PlateNumber = request.PlateNumber.Trim().ToUpperInvariant(),
             Brand = request.Brand.Trim(),
             Model = request.Model.Trim(),
@@ -71,6 +72,7 @@ public sealed class ServiceTrackingService(
             return null;
         }
 
+        item.VehicleNumber = request.VehicleNumber.Trim();
         item.PlateNumber = request.PlateNumber.Trim().ToUpperInvariant();
         item.Brand = request.Brand.Trim();
         item.Model = request.Model.Trim();
@@ -243,7 +245,7 @@ public sealed class ServiceTrackingService(
                 route.TenantId,
                 route.Name,
                 route.RouteType.ToString(),
-                vehicle is null ? null : new ServiceVehicleBriefDto(vehicle.Id, vehicle.PlateNumber, vehicle.Brand, vehicle.Model, vehicle.Capacity),
+                vehicle is null ? null : new ServiceVehicleBriefDto(vehicle.Id, vehicle.VehicleNumber, vehicle.PlateNumber, vehicle.Brand, vehicle.Model, vehicle.Capacity),
                 drivers.GetValueOrDefault(route.DriverId),
                 route.StartTime,
                 route.EndTime,
@@ -847,7 +849,7 @@ public sealed class ServiceTrackingService(
             route.Id,
             route.Name,
             route.RouteType.ToString(),
-            vehicle is null ? null : new ServiceVehicleBriefDto(vehicle.Id, vehicle.PlateNumber, vehicle.Brand, vehicle.Model, vehicle.Capacity),
+            vehicle is null ? null : new ServiceVehicleBriefDto(vehicle.Id, vehicle.VehicleNumber, vehicle.PlateNumber, vehicle.Brand, vehicle.Model, vehicle.Capacity),
             driver is null ? null : new ServiceDriverBriefDto(driver.Id, driver.UserId, driverUser?.FullName ?? "Şoför", driver.PhoneNumber),
             route.StartTime,
             route.EndTime,
@@ -1267,7 +1269,7 @@ public sealed class ServiceTrackingService(
             : throw new UnauthorizedAccessException("Kullanıcı bilgisi bulunamadı.");
     }
 
-    private static ServiceVehicleDto MapVehicle(ServiceVehicle x) => new(x.Id, x.TenantId, x.PlateNumber, x.Brand, x.Model, x.Capacity, x.IsActive, x.CreatedAt, x.UpdatedAt);
+    private static ServiceVehicleDto MapVehicle(ServiceVehicle x) => new(x.Id, x.TenantId, x.VehicleNumber, x.PlateNumber, x.Brand, x.Model, x.Capacity, x.IsActive, x.CreatedAt, x.UpdatedAt);
 
     private static ServiceDriverDto MapDriver(ServiceDriver x, AppUser? user) => new(x.Id, x.TenantId, x.UserId, user?.FullName ?? "Şoför", x.PhoneNumber, x.LicenseNumber, x.IsActive, x.CreatedAt, x.UpdatedAt);
 

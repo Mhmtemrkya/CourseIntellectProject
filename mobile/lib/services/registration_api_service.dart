@@ -15,12 +15,14 @@ class RegistrationApiException implements Exception {
 }
 
 class GeneratedCredentials {
+  final String userId;
   final String username;
   final String password;
   final String fullName;
   final GeneratedCredentials? parent;
 
   const GeneratedCredentials({
+    this.userId = '',
     required this.username,
     required this.password,
     this.fullName = '',
@@ -71,12 +73,14 @@ class RegistrationApiService {
     if (parentRaw is Map) {
       final parentMap = Map<String, dynamic>.from(parentRaw);
       parentCreds = GeneratedCredentials(
+        userId: (parentMap['userId'] as String?) ?? '',
         username: (parentMap['username'] as String?) ?? '',
         password: (parentMap['password'] as String?) ?? '',
         fullName: (parentMap['fullName'] as String?) ?? '',
       );
     }
     return GeneratedCredentials(
+      userId: (map['userId'] as String?) ?? '',
       username: map['username'] as String,
       password: map['password'] as String,
       fullName: (map['fullName'] as String?) ?? '',
@@ -122,6 +126,7 @@ class RegistrationApiService {
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     return GeneratedCredentials(
+      userId: (map['userId'] as String?) ?? '',
       username: map['username'] as String,
       password: map['password'] as String,
       fullName: (map['fullName'] as String?) ?? '',
@@ -158,6 +163,7 @@ class RegistrationApiService {
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     return GeneratedCredentials(
+      userId: (map['userId'] as String?) ?? '',
       username: map['username'] as String,
       password: map['password'] as String,
       fullName: (map['fullName'] as String?) ?? '',
@@ -176,6 +182,7 @@ class RegistrationApiService {
 
     final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
     return GeneratedCredentials(
+      userId: (map['userId'] as String?) ?? '',
       username: map['username'] as String,
       password: map['password'] as String,
       fullName: (map['fullName'] as String?) ?? '',

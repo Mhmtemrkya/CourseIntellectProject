@@ -101,6 +101,7 @@ class _LoginPageState extends State<LoginPage> {
     );
     var submitting = false;
     var sheetClosed = false;
+    String? successMessage;
 
     await showModalBottomSheet<void>(
       context: context,
@@ -126,11 +127,9 @@ class _LoginPageState extends State<LoginPage> {
                 final message = await AuthApiService.instance
                     .requestPasswordReset(email: email);
                 if (!mounted || !sheetContext.mounted) return;
-                ScaffoldMessenger.of(
-                  sheetContext,
-                ).showSnackBar(SnackBar(content: Text(message)));
-                Navigator.pop(sheetContext);
+                successMessage = message;
                 sheetClosed = true;
+                Navigator.of(sheetContext).pop();
               } on AuthApiException catch (error) {
                 if (!sheetContext.mounted) return;
                 ScaffoldMessenger.of(
@@ -225,6 +224,10 @@ class _LoginPageState extends State<LoginPage> {
     );
 
     emailController.dispose();
+    if (!mounted || successMessage == null) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(successMessage!)));
   }
 
   Future<void> _handleSuccessfulSession(AuthSession session) async {
@@ -247,15 +250,13 @@ class _LoginPageState extends State<LoginPage> {
         MaterialPageRoute(
           builder: (_) => ChangePasswordPage(
             forceMode: true,
-            onSuccess: () {
-              final page = RoleRouter.panelFor(session);
-              if (page == null) {
-                _showUnsupportedRole(session);
-                return;
-              }
-              Navigator.pushReplacement(
+            onSuccess: () async {
+              await AuthSessionStore.instance.clear();
+              if (!mounted) return;
+              Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (_) => page),
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+                (_) => false,
               );
             },
           ),

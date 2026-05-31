@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/service_tracking_api_service.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/service_tracking_ui.dart';
+import 'admin_staff_registration_page.dart';
 import 'driver_route_students_page.dart';
 
 class ServiceRoutesPage extends StatefulWidget {
@@ -71,7 +72,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                   eyebrow: 'Servis Operasyon Merkezi',
                   title: 'Araç, şoför ve rotaları tek ekrandan yönetin.',
                   description:
-                      'Sabah/akşam rotaları, durak sırası, kapasite ve öğrenci atamaları mobilde profesyonel bir operasyon paneli gibi çalışır.',
+                      'Yeni şoför kayıtları personel kaydında kişisel bilgi, araç ve rota bilgisiyle tek akışta yapılır. Burada durak ve öğrenci atamaları tamamlanır.',
                   icon: Icons.route_rounded,
                   colors: const [Color(0xFF07111F), Color(0xFF0F766E)],
                   stats: [
@@ -151,18 +152,34 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
   Widget _quickActionGrid() {
     final actions = [
       ServiceQuickAction(
-        title: 'Araç Ekle',
-        subtitle: 'Plaka ve kapasite',
+        title: 'Şoför + Araç',
+        subtitle: 'Tek kayıt formu',
         icon: Icons.directions_bus_filled_outlined,
         color: serviceBlue,
-        onTap: _showCreateVehicleDialog,
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminStaffRegistrationPage(),
+            ),
+          );
+          _load();
+        },
       ),
       ServiceQuickAction(
-        title: 'Şoför Oluştur',
-        subtitle: 'Kullanıcıyı ata',
+        title: 'Şoför Kaydı',
+        subtitle: 'Personelden tek form',
         icon: Icons.badge_outlined,
         color: serviceGreen,
-        onTap: _showCreateDriverDialog,
+        onTap: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => const AdminStaffRegistrationPage(),
+            ),
+          );
+          _load();
+        },
       ),
       ServiceQuickAction(
         title: 'Rota Oluştur',
@@ -335,7 +352,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '${vehicle.brand} ${vehicle.model} • ${vehicle.capacity} koltuk',
+                  '${vehicle.vehicleNumber.isEmpty ? '' : '${vehicle.vehicleNumber} • '}${vehicle.brand} ${vehicle.model} • ${vehicle.capacity} koltuk',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(
                       context,
@@ -416,65 +433,12 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
     );
   }
 
-  Future<void> _showCreateVehicleDialog() async {
-    final plate = TextEditingController();
-    final brand = TextEditingController();
-    final model = TextEditingController();
-    final capacity = TextEditingController(text: '15');
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Servis Aracı Ekle'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: plate,
-              decoration: const InputDecoration(labelText: 'Plaka'),
-            ),
-            TextField(
-              controller: brand,
-              decoration: const InputDecoration(labelText: 'Marka'),
-            ),
-            TextField(
-              controller: model,
-              decoration: const InputDecoration(labelText: 'Model'),
-            ),
-            TextField(
-              controller: capacity,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Kapasite'),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              await _api.createVehicle(
-                plateNumber: plate.text,
-                brand: brand.text,
-                model: model.text,
-                capacity: int.tryParse(capacity.text) ?? 0,
-              );
-              if (context.mounted) Navigator.pop(context, true);
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
-      ),
-    );
-    if (saved == true) _load();
-  }
-
   Future<void> _toggleVehicle(ServiceVehicleRecord vehicle) async {
     try {
       await _api.updateVehicle(
         vehicleId: vehicle.id,
         plateNumber: vehicle.plateNumber,
+        vehicleNumber: vehicle.vehicleNumber,
         brand: vehicle.brand,
         model: vehicle.model,
         capacity: vehicle.capacity,
@@ -487,96 +451,6 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
     } catch (e) {
       _showMessage(e.toString());
     }
-  }
-
-  Future<void> _showCreateDriverDialog() async {
-    List<ServiceUserRecord> users;
-    try {
-      users = await _api.fetchUsers();
-    } catch (e) {
-      _showMessage(e.toString());
-      return;
-    }
-    if (!mounted) return;
-    ServiceUserRecord? selected = users.isNotEmpty ? users.first : null;
-    final phone = TextEditingController(text: selected?.phone ?? '');
-    final license = TextEditingController();
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Servis Şoförü Oluştur'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (users.isEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Şoför oluşturmak için önce kullanıcı/personel kaydı olmalı.',
-                  ),
-                )
-              else
-                DropdownButtonFormField<ServiceUserRecord>(
-                  initialValue: selected,
-                  isExpanded: true,
-                  items: users
-                      .map(
-                        (user) => DropdownMenuItem(
-                          value: user,
-                          child: Text('${user.fullName} • ${user.role}'),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: (value) {
-                    setDialogState(() {
-                      selected = value;
-                      phone.text = value?.phone ?? '';
-                    });
-                  },
-                  decoration: const InputDecoration(labelText: 'Kullanıcı'),
-                ),
-              TextField(
-                controller: phone,
-                decoration: const InputDecoration(labelText: 'Telefon'),
-              ),
-              TextField(
-                controller: license,
-                decoration: const InputDecoration(labelText: 'Ehliyet No'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Vazgeç'),
-            ),
-            FilledButton(
-              onPressed: selected == null
-                  ? null
-                  : () async {
-                      try {
-                        await _api.createDriver(
-                          userId: selected!.id,
-                          phoneNumber: phone.text.trim(),
-                          licenseNumber: license.text.trim(),
-                        );
-                        if (context.mounted) Navigator.pop(context, true);
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(
-                            context,
-                          ).showSnackBar(SnackBar(content: Text(e.toString())));
-                        }
-                      }
-                    },
-              child: const Text('Kaydet'),
-            ),
-          ],
-        ),
-      ),
-    );
-    if (saved == true) _load();
   }
 
   Future<void> _deactivateDriver(ServiceDriverRecord driver) async {

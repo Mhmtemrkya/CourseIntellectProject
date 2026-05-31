@@ -1280,7 +1280,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             ),
           ),
           const SizedBox(width: 12),
-          TextButton(
+          FilledButton.tonal(
             onPressed: () {
               final action = item["action"] as String;
               if (action == "Sınavlara Git") {
@@ -1293,6 +1293,17 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 _showInfo("$action aksiyonu başlatıldı.");
               }
             },
+            style: FilledButton.styleFrom(
+              backgroundColor: isDark
+                  ? const Color(0xFFFF8A1C)
+                  : const Color(0xFF1D4ED8),
+              foregroundColor: Colors.white,
+              textStyle: const TextStyle(fontWeight: FontWeight.w900),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
             child: Text(item["action"] as String),
           ),
         ],

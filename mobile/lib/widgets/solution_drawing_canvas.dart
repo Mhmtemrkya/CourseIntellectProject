@@ -138,40 +138,43 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
         children: [
           Padding(
             padding: const EdgeInsets.fromLTRB(14, 14, 14, 8),
-            child: Row(
-              children: [
-                _ToolChip(
-                  icon: Icons.edit_rounded,
-                  label: 'Kalem',
-                  active: _tool == 'pen',
-                  onTap: () => setState(() => _tool = 'pen'),
-                ),
-                _ToolChip(
-                  icon: Icons.highlight_rounded,
-                  label: 'Fosfor',
-                  active: _tool == 'highlighter',
-                  onTap: () => setState(() => _tool = 'highlighter'),
-                ),
-                _ToolChip(
-                  icon: Icons.auto_fix_high_rounded,
-                  label: 'Silgi',
-                  active: _tool == 'eraser',
-                  onTap: () => setState(() => _tool = 'eraser'),
-                ),
-                const Spacer(),
-                IconButton(
-                  onPressed: _undo,
-                  icon: const Icon(Icons.undo_rounded),
-                ),
-                IconButton(
-                  onPressed: _redo,
-                  icon: const Icon(Icons.redo_rounded),
-                ),
-                IconButton(
-                  onPressed: _clear,
-                  icon: const Icon(Icons.delete_outline_rounded),
-                ),
-              ],
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _ToolChip(
+                    icon: Icons.edit_rounded,
+                    label: 'Kalem',
+                    active: _tool == 'pen',
+                    onTap: () => setState(() => _tool = 'pen'),
+                  ),
+                  _ToolChip(
+                    icon: Icons.highlight_rounded,
+                    label: 'Fosfor',
+                    active: _tool == 'highlighter',
+                    onTap: () => setState(() => _tool = 'highlighter'),
+                  ),
+                  _ToolChip(
+                    icon: Icons.auto_fix_high_rounded,
+                    label: 'Silgi',
+                    active: _tool == 'eraser',
+                    onTap: () => setState(() => _tool = 'eraser'),
+                  ),
+                  const SizedBox(width: 10),
+                  IconButton(
+                    onPressed: _undo,
+                    icon: const Icon(Icons.undo_rounded),
+                  ),
+                  IconButton(
+                    onPressed: _redo,
+                    icon: const Icon(Icons.redo_rounded),
+                  ),
+                  IconButton(
+                    onPressed: _clear,
+                    icon: const Icon(Icons.delete_outline_rounded),
+                  ),
+                ],
+              ),
             ),
           ),
           SingleChildScrollView(
