@@ -129,6 +129,7 @@ import AdminAdministrativeUnits from "./pages/admin/AdminAdministrativeUnits";
 import AdminAccountingRegistration from "./pages/admin/AdminAccountingRegistration";
 import ServiceTrackingPage from "./pages/admin/ServiceTrackingPage";
 import CafeteriaWeeklyMenu from "./pages/cafeteria/CafeteriaWeeklyMenu";
+import PasswordResetRequests from "./pages/admin/PasswordResetRequests";
 
 // New Student Pages
 import StudentNotifications from "./pages/student/StudentNotifications";
@@ -231,6 +232,7 @@ function App() {
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
               <Route path="/admin/service-tracking" element={<ServiceTrackingPage />} />
+              <Route path="/admin/password-reset-requests" element={<PasswordResetRequests />} />
               <Route path="/cafeteria/menu" element={<CafeteriaWeeklyMenu editable />} />
               <Route path="/admin/destek" element={<Destek />} />
 

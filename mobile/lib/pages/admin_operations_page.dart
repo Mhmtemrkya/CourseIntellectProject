@@ -5,6 +5,7 @@ import 'admin_announcements_page.dart';
 import 'admin_branch_detail_page.dart';
 import 'admin_personnel_approvals_page.dart';
 import 'admin_staff_list_page.dart';
+import 'password_reset_requests_page.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/attendance_service.dart';
 import '../services/staff_registry_store.dart';
@@ -94,6 +95,12 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
         '${_finance.notifications.length} bildirim/duyuru akışına bagli',
         Icons.campaign_outlined,
         const Color(0xFFB45309),
+      ),
+      (
+        'Şifre Talepleri',
+        'Geçici şifre ve zorunlu şifre yenileme akışı',
+        Icons.key_rounded,
+        const Color(0xFFF97316),
       ),
       (
         'Destek ve IT',
@@ -237,6 +244,14 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => const AdminAnnouncementsPage()),
+      );
+      return;
+    }
+
+    if (title == 'Şifre Talepleri') {
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => const PasswordResetRequestsPage()),
       );
       return;
     }

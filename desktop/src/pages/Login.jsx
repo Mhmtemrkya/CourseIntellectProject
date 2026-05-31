@@ -23,10 +23,19 @@ import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { getUserHomePath } from "../lib/auth";
 import { desktopAppEnv } from "../lib/appEnv";
+import { requestPasswordReset } from "../lib/api/modules";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { Checkbox } from "../components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../components/ui/dialog";
 import {
   Card,
   CardContent,
@@ -34,6 +43,7 @@ import {
   CardHeader,
   CardTitle,
 } from "../components/ui/card";
+import { useToast } from "../hooks/use-toast";
 import logo from "../assets/brand/logo.png";
 
 const features = [
@@ -233,6 +243,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { login, loginWithBrowser, isAuthenticated, user } = useApp();
   const { refreshBranding } = useTheme();
+  const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -240,6 +251,10 @@ export default function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [hoveredUser, setHoveredUser] = useState(null);
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState("");
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotSuccess, setForgotSuccess] = useState("");
 
   useEffect(() => {
     if (isAuthenticated && user?.role) {
@@ -274,6 +289,46 @@ export default function Login() {
       setError(err?.message || "Tarayıcı ile giriş başarısız oldu");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const openForgotDialog = () => {
+    setForgotEmail(username.includes("@") ? username : "");
+    setForgotSuccess("");
+    setForgotOpen(true);
+  };
+
+  const handleForgotPassword = async (event) => {
+    event.preventDefault();
+    const email = forgotEmail.trim();
+    if (!email || !email.includes("@")) {
+      toast({
+        title: "E-posta gerekli",
+        description: "Kayıtlı e-posta adresinizi girin.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setForgotLoading(true);
+      const result = await requestPasswordReset(email);
+      setForgotSuccess(
+        result?.message ||
+          "E-posta sistemde kayıtlıysa talep kurum yetkililerine iletildi."
+      );
+      toast({
+        title: "Talep alındı",
+        description: "Yetkili onayladığında size geçici şifre verilecek.",
+      });
+    } catch (err) {
+      toast({
+        title: "Talep gönderilemedi",
+        description: err?.message || "Lütfen daha sonra tekrar deneyin.",
+        variant: "destructive",
+      });
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -604,8 +659,10 @@ export default function Login() {
                     </Label>
                   </div>
                   <Button
+                    type="button"
                     variant="link"
                     className="px-0 text-[#D9790B] hover:text-[#D9790B]/80"
+                    onClick={openForgotDialog}
                   >
                     Şifremi unuttum
                   </Button>
@@ -753,6 +810,55 @@ export default function Login() {
               ) : null}
             </CardContent>
           </Card>
+
+          <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+            <DialogContent className="sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#D9790B]/15 text-[#D9790B]">
+                    <Mail className="h-4 w-4" />
+                  </span>
+                  Şifremi Unuttum
+                </DialogTitle>
+                <DialogDescription>
+                  Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari
+                  yetkili ekranına düşer; onaylanınca size tek kullanımlık
+                  geçici şifre verilir.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleForgotPassword} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="forgot-email">Kayıtlı E-posta</Label>
+                  <Input
+                    id="forgot-email"
+                    type="email"
+                    placeholder="ornek@kurum.com"
+                    value={forgotEmail}
+                    onChange={(event) => setForgotEmail(event.target.value)}
+                    autoFocus
+                  />
+                </div>
+                {forgotSuccess ? (
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+                    {forgotSuccess}
+                  </div>
+                ) : null}
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setForgotOpen(false)}
+                    disabled={forgotLoading}
+                  >
+                    Kapat
+                  </Button>
+                  <Button type="submit" disabled={forgotLoading}>
+                    {forgotLoading ? "Gönderiliyor..." : "Talebi Gönder"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           {/* Footer */}
           <motion.p

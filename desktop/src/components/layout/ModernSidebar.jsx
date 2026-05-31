@@ -42,6 +42,7 @@ import {
   LifeBuoy,
   BusFront,
   UtensilsCrossed,
+  KeyRound,
 } from "lucide-react";
 import { Activity, Layers, Shield } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -148,6 +149,12 @@ const menuConfigs = {
       icon: CheckSquare,
       label: "Personel Onayları",
       color: "#a855f7",
+    },
+    {
+      path: "/admin/password-reset-requests",
+      icon: KeyRound,
+      label: "Şifre Talepleri",
+      color: "#f97316",
     },
     {
       path: "/admin/role-management",
@@ -296,6 +303,12 @@ const menuConfigs = {
       icon: CheckSquare,
       label: "Personel Onayları",
       color: "#a855f7",
+    },
+    {
+      path: "/admin/password-reset-requests",
+      icon: KeyRound,
+      label: "Şifre Talepleri",
+      color: "#f97316",
     },
     {
       path: "/admin/finance-approvals",

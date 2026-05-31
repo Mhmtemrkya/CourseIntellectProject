@@ -50,6 +50,43 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return result is null ? Conflict(new { message = "Bu kullanici adi zaten kayitli." }) : Ok(result);
     }
 
+    [HttpPost("forgot-password")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
+    {
+        await authService.RequestPasswordResetAsync(request, cancellationToken);
+        return Ok(new
+        {
+            message = "E-posta sistemde kayıtlıysa şifre sıfırlama talebiniz kurum yetkililerine iletildi."
+        });
+    }
+
+    [Authorize(Roles = "Admin,Administrative")]
+    [HttpGet("password-reset-requests")]
+    [ProducesResponseType(typeof(IReadOnlyList<PasswordResetRequestDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> PasswordResetRequests([FromQuery] string? status, CancellationToken cancellationToken)
+    {
+        var requests = await authService.GetPasswordResetRequestsAsync(status, cancellationToken);
+        return Ok(requests);
+    }
+
+    [Authorize(Roles = "Admin,Administrative")]
+    [HttpPost("password-reset-requests/{id:guid}/review")]
+    [ProducesResponseType(typeof(PasswordResetReviewResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ReviewPasswordResetRequest(Guid id, [FromBody] ReviewPasswordResetRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await authService.ReviewPasswordResetRequestAsync(id, request, cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [Authorize]
     [HttpGet("me")]
     [ProducesResponseType(typeof(CurrentUserDto), StatusCodes.Status200OK)]

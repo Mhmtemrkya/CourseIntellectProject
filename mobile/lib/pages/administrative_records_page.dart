@@ -9,6 +9,7 @@ import 'admin_role_management_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
 import 'admin_students_page.dart';
+import 'password_reset_requests_page.dart';
 
 class AdministrativeRecordsPage extends StatefulWidget {
   const AdministrativeRecordsPage({super.key});
@@ -155,6 +156,17 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
                   icon: Icons.folder_open_outlined,
                   color: const Color(0xFFB45309),
                   onTap: () => _openPage(const AdministrativeDocumentsPage()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _actionCard(
+                  context,
+                  title: 'Şifre Talepleri',
+                  subtitle: 'Geçici şifre onay akışı',
+                  icon: Icons.key_rounded,
+                  color: const Color(0xFFF97316),
+                  onTap: () => _openPage(const PasswordResetRequestsPage()),
                 ),
               ),
             ],

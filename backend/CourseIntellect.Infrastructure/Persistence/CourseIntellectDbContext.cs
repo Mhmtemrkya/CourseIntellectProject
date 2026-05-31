@@ -56,6 +56,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<TenantWorkspace> TenantWorkspaces => Set<TenantWorkspace>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<RefreshTokenSession> RefreshTokenSessions => Set<RefreshTokenSession>();
+    public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
     public DbSet<SiteContentItem> SiteContentItems => Set<SiteContentItem>();
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
     public DbSet<TranslationItem> TranslationItems => Set<TranslationItem>();
@@ -561,6 +562,39 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             entity.HasIndex(x => x.TokenHash).IsUnique();
             entity.Property(x => x.TokenHash).HasMaxLength(300).IsRequired();
+        });
+
+        modelBuilder.Entity<PasswordResetRequest>(entity =>
+        {
+            entity.ToTable("password_reset_requests");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id");
+            entity.Property(x => x.RequestedEmail).HasColumnName("requested_email").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Username).HasColumnName("username").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.PrimaryRole).HasColumnName("primary_role").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Status).HasColumnName("status").HasMaxLength(30).IsRequired();
+            entity.Property(x => x.ReviewNote).HasColumnName("review_note").HasMaxLength(600).IsRequired();
+            entity.Property(x => x.ReviewedByUserId).HasColumnName("reviewed_by_user_id");
+            entity.Property(x => x.ReviewedByName).HasColumnName("reviewed_by_name").HasMaxLength(150).IsRequired();
+            entity.Property(x => x.RequestedAtUtc).HasColumnName("requested_at_utc");
+            entity.Property(x => x.ReviewedAtUtc).HasColumnName("reviewed_at_utc");
+            entity.Property(x => x.TemporaryPasswordCreatedAtUtc).HasColumnName("temporary_password_created_at_utc");
+            entity.Property(x => x.ExpiresAtUtc).HasColumnName("expires_at_utc");
+            entity.Property(x => x.UsedAtUtc).HasColumnName("used_at_utc");
+            entity.HasIndex(x => new { x.TenantId, x.Status, x.RequestedAtUtc });
+            entity.HasIndex(x => new { x.TenantId, x.RequestedEmail });
+            entity.HasIndex(x => new { x.UserId, x.Status });
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ReviewedByUserId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SiteContentItem>(entity =>

@@ -30,6 +30,24 @@ export async function changePassword({ currentPassword, newPassword }) {
   return await api.post('/api/auth/change-password', payload);
 }
 
+export async function requestPasswordReset(email) {
+  return await api.post('/api/auth/forgot-password', { email });
+}
+
+export async function fetchPasswordResetRequests(status = 'Pending') {
+  const response = await api.get('/api/auth/password-reset-requests', {
+    params: status && status !== 'All' ? { status } : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function reviewPasswordResetRequest(id, { approved, note = '' }) {
+  return await api.post(`/api/auth/password-reset-requests/${id}/review`, {
+    approved,
+    note,
+  });
+}
+
 export async function createParent({ fullName, phone, email }) {
   return await api.post('/api/parents', {
     fullName,

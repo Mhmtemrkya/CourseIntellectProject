@@ -4,9 +4,12 @@ using CourseIntellect.Application.Exceptions;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Cryptography;
+using System.Security.Claims;
 using System.Text.Json;
 
 namespace CourseIntellect.Infrastructure.Services;
@@ -16,8 +19,15 @@ public sealed class AuthService(
     IJwtTokenService jwtTokenService,
     IPasswordHasher passwordHasher,
     ILoginAttemptService loginAttemptService,
-    ISystemService systemService) : IAuthService
+    ISystemService systemService,
+    IHttpContextAccessor httpContextAccessor) : IAuthService
 {
+    private const string PasswordResetPending = "Pending";
+    private const string PasswordResetApproved = "Approved";
+    private const string PasswordResetRejected = "Rejected";
+    private const string PasswordResetUsed = "Used";
+    private const string PasswordResetExpired = "Expired";
+
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var user = await dbContext.Users
@@ -29,6 +39,20 @@ public sealed class AuthService(
                 user?.Id,
                 request.Username,
                 user?.PrimaryRole.ToString() ?? string.Empty,
+                false,
+                string.Empty,
+                string.Empty,
+                string.Empty), cancellationToken);
+
+            return null;
+        }
+
+        if (await ExpireApprovedPasswordResetIfNeededAsync(user, cancellationToken))
+        {
+            await loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
+                user.Id,
+                user.Username,
+                user.PrimaryRole.ToString(),
                 false,
                 string.Empty,
                 string.Empty,
@@ -201,8 +225,237 @@ public sealed class AuthService(
         user.PasswordHash = passwordHasher.Hash(newPassword);
         user.MustChangePassword = false;
 
+        var approvedReset = await dbContext.PasswordResetRequests
+            .IgnoreQueryFilters()
+            .Where(x => x.UserId == user.Id && x.Status == PasswordResetApproved)
+            .OrderByDescending(x => x.ReviewedAtUtc ?? x.RequestedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (approvedReset is not null)
+        {
+            approvedReset.Status = PasswordResetUsed;
+            approvedReset.UsedAtUtc = DateTime.UtcNow;
+        }
+
         await dbContext.SaveChangesAsync(cancellationToken);
         return await CreateCurrentUserDtoAsync(user, cancellationToken);
+    }
+
+    public async Task RequestPasswordResetAsync(ForgotPasswordRequest request, CancellationToken cancellationToken = default)
+    {
+        var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return;
+        }
+
+        var userIds = new List<Guid>();
+
+        userIds.AddRange(await dbContext.Users
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.Username.ToLower() == email)
+            .Select(x => x.Id)
+            .ToListAsync(cancellationToken));
+
+        userIds.AddRange(await dbContext.Staff
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.Email.ToLower() == email)
+            .Select(x => x.UserId)
+            .ToListAsync(cancellationToken));
+
+        userIds.AddRange(await dbContext.Students
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.ParentEmail.ToLower() == email && x.ParentUserId != null)
+            .Select(x => x.ParentUserId!.Value)
+            .ToListAsync(cancellationToken));
+
+        userIds = userIds.Distinct().ToList();
+        if (userIds.Count == 0)
+        {
+            return;
+        }
+
+        var users = await dbContext.Users
+            .IgnoreQueryFilters()
+            .Where(x => userIds.Contains(x.Id) && x.Status == UserStatus.Active)
+            .ToListAsync(cancellationToken);
+
+        foreach (var user in users)
+        {
+            var hasPendingRequest = await dbContext.PasswordResetRequests
+                .IgnoreQueryFilters()
+                .AnyAsync(x => x.UserId == user.Id && x.Status == PasswordResetPending, cancellationToken);
+
+            if (hasPendingRequest)
+            {
+                continue;
+            }
+
+            dbContext.PasswordResetRequests.Add(new PasswordResetRequest
+            {
+                TenantId = user.TenantId,
+                UserId = user.Id,
+                RequestedEmail = email,
+                FullName = user.FullName,
+                Username = user.Username,
+                PrimaryRole = user.PrimaryRole.ToString(),
+                Status = PasswordResetPending,
+                RequestedAtUtc = DateTime.UtcNow
+            });
+
+            AddPasswordResetNotification(user, "Admin");
+            AddPasswordResetNotification(user, "Administrative");
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<PasswordResetRequestDto>> GetPasswordResetRequestsAsync(string? status, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.PasswordResetRequests
+            .AsNoTracking()
+            .AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(status) && !status.Equals("All", StringComparison.OrdinalIgnoreCase))
+        {
+            query = query.Where(x => x.Status == status);
+        }
+
+        return await query
+            .OrderByDescending(x => x.RequestedAtUtc)
+            .Take(200)
+            .Select(x => new PasswordResetRequestDto(
+                x.Id,
+                x.UserId,
+                x.RequestedEmail,
+                x.FullName,
+                x.Username,
+                x.PrimaryRole,
+                x.Status,
+                x.ReviewNote,
+                x.ReviewedByName,
+                x.RequestedAtUtc,
+                x.ReviewedAtUtc,
+                x.ExpiresAtUtc,
+                x.UsedAtUtc))
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<PasswordResetReviewResponse> ReviewPasswordResetRequestAsync(Guid id, ReviewPasswordResetRequest request, CancellationToken cancellationToken = default)
+    {
+        var resetRequest = await dbContext.PasswordResetRequests
+            .FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+
+        if (resetRequest is null)
+        {
+            throw new InvalidOperationException("Şifre talebi bulunamadı.");
+        }
+
+        if (resetRequest.Status != PasswordResetPending)
+        {
+            throw new InvalidOperationException("Bu şifre talebi daha önce sonuçlandırılmış.");
+        }
+
+        var reviewer = await ResolveCurrentUserAsync(cancellationToken);
+        var now = DateTime.UtcNow;
+        resetRequest.ReviewNote = (request.Note ?? string.Empty).Trim();
+        resetRequest.ReviewedAtUtc = now;
+        resetRequest.ReviewedByUserId = reviewer?.Id;
+        resetRequest.ReviewedByName = reviewer?.FullName ?? "Yetkili";
+
+        if (!request.Approved)
+        {
+            resetRequest.Status = PasswordResetRejected;
+            await dbContext.SaveChangesAsync(cancellationToken);
+
+            return new PasswordResetReviewResponse(
+                resetRequest.Id,
+                resetRequest.Status,
+                "Şifre sıfırlama talebi reddedildi.",
+                null,
+                null);
+        }
+
+        var user = await dbContext.Users
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(x => x.Id == resetRequest.UserId, cancellationToken);
+
+        if (user is null || user.Status != UserStatus.Active)
+        {
+            throw new InvalidOperationException("Aktif kullanıcı bulunamadı.");
+        }
+
+        var currentTenantId = dbContext.CurrentTenantId;
+        if (currentTenantId.HasValue && user.TenantId != currentTenantId.Value)
+        {
+            throw new InvalidOperationException("Bu kullanıcı kurum kapsamınızda değil.");
+        }
+
+        var temporaryPassword = PasswordGenerator.Generate(10);
+        user.PasswordHash = passwordHasher.Hash(temporaryPassword);
+        user.MustChangePassword = true;
+
+        resetRequest.Status = PasswordResetApproved;
+        resetRequest.TemporaryPasswordCreatedAtUtc = now;
+        resetRequest.ExpiresAtUtc = now.AddHours(24);
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return new PasswordResetReviewResponse(
+            resetRequest.Id,
+            resetRequest.Status,
+            "Geçici şifre üretildi. Kullanıcı ilk girişte yeni şifre belirleyecek.",
+            temporaryPassword,
+            resetRequest.ExpiresAtUtc);
+    }
+
+    private async Task<bool> ExpireApprovedPasswordResetIfNeededAsync(AppUser user, CancellationToken cancellationToken)
+    {
+        if (!user.MustChangePassword)
+        {
+            return false;
+        }
+
+        var approvedReset = await dbContext.PasswordResetRequests
+            .IgnoreQueryFilters()
+            .Where(x => x.UserId == user.Id && x.Status == PasswordResetApproved)
+            .OrderByDescending(x => x.ReviewedAtUtc ?? x.RequestedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (approvedReset?.ExpiresAtUtc is null || approvedReset.ExpiresAtUtc > DateTime.UtcNow)
+        {
+            return false;
+        }
+
+        approvedReset.Status = PasswordResetExpired;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    private void AddPasswordResetNotification(AppUser user, string targetRole)
+    {
+        dbContext.Notifications.Add(new NotificationItem
+        {
+            TenantId = user.TenantId,
+            Title = "Şifre sıfırlama talebi",
+            Message = $"{user.FullName} hesabı için şifre sıfırlama talebi oluşturuldu.",
+            TimeLabel = "Az önce",
+            Audience = targetRole,
+            TargetRole = targetRole,
+            Category = "PasswordReset"
+        });
+    }
+
+    private async Task<AppUser?> ResolveCurrentUserAsync(CancellationToken cancellationToken)
+    {
+        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("nameid")
+            ?? httpContextAccessor.HttpContext?.User?.FindFirstValue("sub");
+        return Guid.TryParse(raw, out var userId)
+            ? await dbContext.Users.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == userId, cancellationToken)
+            : null;
     }
 
     private async Task<CurrentUserDto> CreateCurrentUserDtoAsync(AppUser user, CancellationToken cancellationToken)

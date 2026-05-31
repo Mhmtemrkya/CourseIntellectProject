@@ -93,6 +93,140 @@ class _LoginPageState extends State<LoginPage> {
     });
   }
 
+  Future<void> _openForgotPasswordSheet() async {
+    final emailController = TextEditingController(
+      text: usernameController.text.contains('@')
+          ? usernameController.text.trim()
+          : '',
+    );
+    var submitting = false;
+    var sheetClosed = false;
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) {
+        final theme = Theme.of(sheetContext);
+        return StatefulBuilder(
+          builder: (modalContext, setModalState) {
+            Future<void> submit() async {
+              final email = emailController.text.trim();
+              if (!email.contains('@')) {
+                ScaffoldMessenger.of(sheetContext).showSnackBar(
+                  const SnackBar(
+                    content: Text('Kayıtlı e-posta adresinizi girin.'),
+                  ),
+                );
+                return;
+              }
+
+              setModalState(() => submitting = true);
+              try {
+                final message = await AuthApiService.instance
+                    .requestPasswordReset(email: email);
+                if (!mounted || !sheetContext.mounted) return;
+                ScaffoldMessenger.of(
+                  sheetContext,
+                ).showSnackBar(SnackBar(content: Text(message)));
+                Navigator.pop(sheetContext);
+                sheetClosed = true;
+              } on AuthApiException catch (error) {
+                if (!sheetContext.mounted) return;
+                ScaffoldMessenger.of(
+                  sheetContext,
+                ).showSnackBar(SnackBar(content: Text(error.message)));
+              } finally {
+                if (!sheetClosed && modalContext.mounted) {
+                  setModalState(() => submitting = false);
+                }
+              }
+            }
+
+            return SafeArea(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 20,
+                  right: 20,
+                  bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
+                  top: 8,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF97316).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.key_rounded,
+                        color: Color(0xFFF97316),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Şifremi Unuttum',
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari yetkili ekranına düşer.',
+                      style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
+                    ),
+                    const SizedBox(height: 18),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      textCapitalization: TextCapitalization.none,
+                      autocorrect: false,
+                      enableSuggestions: false,
+                      decoration: InputDecoration(
+                        labelText: 'Kayıtlı E-posta',
+                        hintText: 'ornek@kurum.com',
+                        prefixIcon: const Icon(Icons.mail_outline_rounded),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 52,
+                      child: ElevatedButton.icon(
+                        onPressed: submitting ? null : submit,
+                        icon: submitting
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.send_rounded),
+                        label: Text(
+                          submitting ? 'Gönderiliyor...' : 'Talebi Gönder',
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    emailController.dispose();
+  }
+
   Future<void> _handleSuccessfulSession(AuthSession session) async {
     if (!mounted) return;
 
@@ -285,6 +419,15 @@ class _LoginPageState extends State<LoginPage> {
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide.none,
                           ),
+                        ),
+                      ),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: isLoading
+                              ? null
+                              : _openForgotPasswordSheet,
+                          child: const Text('Şifremi unuttum'),
                         ),
                       ),
                       const SizedBox(height: 30),
