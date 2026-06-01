@@ -17,10 +17,9 @@ import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import {
+  addStudyPlanXp,
   fetchQuestionBank,
-  fetchStudyPlan,
   incrementQuestionUsage,
-  saveStudyPlan,
   submitQuestionPracticeAttempt,
 } from '../../lib/api/modules';
 import { Textarea } from '../../components/ui/textarea';
@@ -381,14 +380,7 @@ export default function StudentQuestions() {
     });
 
     try {
-      const studyPlan = await fetchStudyPlan();
-      await saveStudyPlan({
-        studentName: user?.name || 'Ogrenci',
-        planItemsSerialized: studyPlan?.planItemsSerialized ?? '[]',
-        streakCount: studyPlan?.streakCount ?? 0,
-        xpPoints: (studyPlan?.xpPoints ?? 0) + summary.totalXp,
-        lastCompletedAt: studyPlan?.lastCompletedAt ?? null,
-      });
+      await addStudyPlanXp(summary.totalXp);
     } catch {
       // ignore xp sync errors
     }
@@ -440,14 +432,7 @@ export default function StudentQuestions() {
     });
 
     try {
-      const studyPlan = await fetchStudyPlan();
-      await saveStudyPlan({
-        studentName: user?.name || 'Ogrenci',
-        planItemsSerialized: studyPlan?.planItemsSerialized ?? '[]',
-        streakCount: studyPlan?.streakCount ?? 0,
-        xpPoints: (studyPlan?.xpPoints ?? 0) + summary.totalXp,
-        lastCompletedAt: studyPlan?.lastCompletedAt ?? null,
-      });
+      await addStudyPlanXp(summary.totalXp);
     } catch {
       // ignore xp sync errors
     }

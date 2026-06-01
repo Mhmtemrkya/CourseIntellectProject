@@ -24,16 +24,8 @@ class StudentXpService {
     if (session == null) {
       return amount;
     }
-    final state = await StudyPlanApiService.instance.fetch();
-    final updated = state.xpPoints + amount;
-    await StudyPlanApiService.instance.save(
-      studentName: session.fullName,
-      planItems: state.planItems,
-      streakCount: state.streakCount,
-      xpPoints: updated,
-      lastCompletedAt: state.lastCompletedAt,
-    );
-    return updated;
+    final state = await StudyPlanApiService.instance.addXp(amount);
+    return state.xpPoints;
   }
 
   static Future<(int xp, int streak)> getProgress() async {

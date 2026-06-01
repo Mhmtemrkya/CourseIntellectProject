@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../services/linked_children_service.dart';
 import '../services/question_bank_store.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/student_empty_state_panel.dart';
@@ -61,12 +60,8 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       _errorMessage = null;
     });
     try {
-      final linkedChildren = await LinkedChildrenService.instance
-          .loadLinkedChildren();
-      _studentClass = linkedChildren.isNotEmpty
-          ? linkedChildren.first.className
-          : '';
-      await _store.loadQuestions(className: _studentClass);
+      _studentClass = '';
+      await _store.loadQuestions();
       final subjects =
           _store.questions
               .map((item) => item.subject.trim())
@@ -298,6 +293,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
   List<QuestionBankRecord> _filteredQuestions() {
     final selectedSubject = tabs[selectedTab];
     final query = _searchController.text.trim().toLowerCase();
+    final studentClassKey = _normalizeFilterText(_studentClass);
     return _store.questions.where((item) {
       final subjectMatch =
           selectedSubject == 'Tümü' || item.subject == selectedSubject;
@@ -306,10 +302,24 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       final searchMatch = query.isEmpty || text.contains(query);
       final classMatch =
           _studentClass.isEmpty ||
-          item.classTargets.contains('Tüm Sınıflar') ||
-          item.classTargets.contains(_studentClass);
+          item.classTargets.any((target) {
+            final targetKey = _normalizeFilterText(target);
+            return targetKey == 'tum siniflar' || targetKey == studentClassKey;
+          });
       return subjectMatch && searchMatch && classMatch;
     }).toList();
+  }
+
+  String _normalizeFilterText(String value) {
+    return value
+        .trim()
+        .toLowerCase()
+        .replaceAll('ı', 'i')
+        .replaceAll('ğ', 'g')
+        .replaceAll('ü', 'u')
+        .replaceAll('ş', 's')
+        .replaceAll('ö', 'o')
+        .replaceAll('ç', 'c');
   }
 
   List<_QuestionTopicGroup> _groupedQuestions() {

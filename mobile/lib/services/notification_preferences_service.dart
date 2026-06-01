@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'api_config.dart';
 import 'auth_session_store.dart';
 
 class NotificationPreferences {
@@ -156,16 +158,43 @@ class NotificationPreferencesService {
   NotificationPreferencesService._();
 
   static const _prefix = 'course_intellect_notification_preferences_v1';
+  static const _remoteKey = 'notificationPreferences';
   static final NotificationPreferencesService instance =
       NotificationPreferencesService._();
 
   Future<NotificationPreferences> load(AuthSession session) async {
+    final remote = await _fetchRemotePreferences(session);
+    final remotePrefs = remote?[_remoteKey];
+    if (remotePrefs is Map) {
+      final preferences = NotificationPreferences.fromMap(
+        Map<String, dynamic>.from(remotePrefs),
+        session.primaryRole,
+      );
+      await _saveLocal(session, preferences);
+      return preferences;
+    }
+
+    return _loadLocal(session);
+  }
+
+  Future<void> save(
+    AuthSession session,
+    NotificationPreferences preferences,
+  ) async {
+    await _saveLocal(session, preferences);
+
+    final remote =
+        await _fetchRemotePreferences(session) ?? <String, dynamic>{};
+    remote[_remoteKey] = preferences.toMap();
+    await _saveRemotePreferences(session, remote);
+  }
+
+  Future<NotificationPreferences> _loadLocal(AuthSession session) async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_key(session));
     if (raw == null || raw.isEmpty) {
       return NotificationPreferences.defaultsForRole(session.primaryRole);
     }
-
     try {
       return NotificationPreferences.fromMap(
         Map<String, dynamic>.from(jsonDecode(raw) as Map),
@@ -176,12 +205,63 @@ class NotificationPreferencesService {
     }
   }
 
-  Future<void> save(
+  Future<void> _saveLocal(
     AuthSession session,
     NotificationPreferences preferences,
   ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_key(session), jsonEncode(preferences.toMap()));
+  }
+
+  Future<Map<String, dynamic>?> _fetchRemotePreferences(
+    AuthSession session,
+  ) async {
+    final baseUrl = ApiConfig.baseUrl;
+    if (baseUrl.isEmpty || session.accessToken.isEmpty) return null;
+
+    try {
+      final response = await http
+          .get(
+            Uri.parse('$baseUrl/api/user-preferences'),
+            headers: {
+              'Authorization': 'Bearer ${session.accessToken}',
+              'Accept': 'application/json',
+            },
+          )
+          .timeout(const Duration(seconds: 8));
+      if (response.statusCode < 200 || response.statusCode >= 300) return null;
+
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map) return null;
+      final preferences = decoded['preferences'];
+      if (preferences is! Map) return <String, dynamic>{};
+      return Map<String, dynamic>.from(preferences);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _saveRemotePreferences(
+    AuthSession session,
+    Map<String, dynamic> preferences,
+  ) async {
+    final baseUrl = ApiConfig.baseUrl;
+    if (baseUrl.isEmpty || session.accessToken.isEmpty) return;
+
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl/api/user-preferences'),
+          headers: {
+            'Authorization': 'Bearer ${session.accessToken}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode(preferences),
+        )
+        .timeout(const Duration(seconds: 8));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Bildirim tercihleri kaydedilemedi.');
+    }
   }
 
   String _key(AuthSession session) =>

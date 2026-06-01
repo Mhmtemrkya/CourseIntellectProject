@@ -546,6 +546,20 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
       data: Theme.of(context).copyWith(
         brightness: Brightness.dark,
         scaffoldBackgroundColor: const Color(0xFF050B16),
+        textTheme: Theme.of(
+          context,
+        ).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF050B16),
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: false,
+        ),
+        tabBarTheme: const TabBarThemeData(
+          indicatorColor: Color(0xFF9B5CFF),
+          labelColor: Colors.white,
+          unselectedLabelColor: Color(0xFF9AA7BC),
+        ),
         colorScheme: const ColorScheme.dark(
           primary: Color(0xFFFF8A1C),
           secondary: Color(0xFF7C3AED),
@@ -573,6 +587,9 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.check_rounded),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFFFFA24A),
+              ),
               label: Text(widget.examMode ? 'Ekle' : 'Kaydet'),
             ),
             const SizedBox(width: 8),
@@ -622,8 +639,15 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   }
 
   Widget _editorPane() {
+    final isCompact = MediaQuery.sizeOf(context).width < 600;
+
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.fromLTRB(
+        isCompact ? 14 : 16,
+        isCompact ? 14 : 16,
+        isCompact ? 14 : 16,
+        28,
+      ),
       children: [
         if (widget.examMode) ...[
           _GlassCard(
@@ -632,11 +656,11 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
                         'Deneme Sınavı Oluştur',
                         style: TextStyle(
-                          fontSize: 20,
+                          fontSize: isCompact ? 19 : 20,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -700,7 +724,11 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                 Expanded(
                   child: Text(
                     '${_savedQuestions.length} soru bu oturumda soru bankasına eklendi',
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      height: 1.25,
+                    ),
                   ),
                 ),
                 if (_savedQuestions.isNotEmpty)
@@ -720,38 +748,23 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               Text(
                 widget.examMode
                     ? 'Deneme İçin Soru Oluştur'
+                    : isCompact
+                    ? 'Yeni Soru / Seri Kayıt'
                     : 'Yeni Soru Oluştur / Seri Kayıt',
-                style: const TextStyle(
-                  fontSize: 24,
+                style: TextStyle(
+                  fontSize: isCompact ? 21 : 24,
+                  height: 1.08,
                   fontWeight: FontWeight.w900,
+                  color: Colors.white,
                 ),
               ),
               const SizedBox(height: 6),
               const Text(
                 'Rich editor, seçenek yönetimi, çözüm ve çizim tek akışta.',
-                style: TextStyle(color: Colors.white60),
+                style: TextStyle(color: Color(0xFFA8B3C7), height: 1.35),
               ),
               const SizedBox(height: 16),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children:
-                    [
-                      'Çoktan Seçmeli',
-                      'Açık Uçlu',
-                      'Doğru / Yanlış',
-                      'Boşluk Doldurma',
-                      'Grafik Yorumlama',
-                      'Kod Sorusu',
-                      'Matematik Sorusu',
-                    ].map((item) {
-                      return ChoiceChip(
-                        selected: _type == item,
-                        label: Text(item),
-                        onSelected: (_) => _changeQuestionType(item),
-                      );
-                    }).toList(),
-              ),
+              _questionTypeSelector(isCompact),
               const SizedBox(height: 16),
               TextField(
                 controller: _questionController,
@@ -768,6 +781,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                         : () => _pickAsset(solution: false),
                     icon: const Icon(Icons.add_photo_alternate_outlined),
                     label: const Text('Görsel Yükle'),
+                    style: _secondaryButtonStyle(),
                   ),
                   if (_imagePath != null) ...[
                     const SizedBox(width: 8),
@@ -857,6 +871,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                           child: TextField(
                             controller: _optionControllers[index],
                             decoration: _input('Seçenek metni'),
+                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                         if (_optionImagePaths.length > index &&
@@ -930,6 +945,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                       ? 'Çözüm Dosyası Yükle'
                       : 'Çözüm Dosyası Yüklendi',
                 ),
+                style: _secondaryButtonStyle(),
               ),
               const SizedBox(height: 10),
               Text(
@@ -1018,6 +1034,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                       ? 'Soruyu Denemeye Ekle'
                       : 'Soruyu Kaydet ve Yeni Soru',
                 ),
+                style: _secondaryButtonStyle(),
               ),
             ],
           ),
@@ -1026,19 +1043,96 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
     );
   }
 
+  Widget _questionTypeSelector(bool isCompact) {
+    const types = [
+      'Çoktan Seçmeli',
+      'Açık Uçlu',
+      'Doğru / Yanlış',
+      'Boşluk Doldurma',
+      'Grafik Yorumlama',
+      'Kod Sorusu',
+      'Matematik Sorusu',
+    ];
+
+    if (!isCompact) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: types.map(_questionTypeChip).toList(),
+      );
+    }
+
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        itemCount: types.length,
+        separatorBuilder: (_, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) => _questionTypeChip(types[index]),
+      ),
+    );
+  }
+
+  Widget _questionTypeChip(String item) {
+    final selected = _type == item;
+
+    return ChoiceChip(
+      selected: selected,
+      label: Text(item),
+      avatar: selected
+          ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
+          : null,
+      labelStyle: TextStyle(
+        color: selected ? Colors.white : const Color(0xFFD7DFEF),
+        fontWeight: FontWeight.w800,
+        fontSize: 12.5,
+      ),
+      selectedColor: const Color(0xFFFF8A1C),
+      backgroundColor: const Color(0xFF121C2B),
+      disabledColor: const Color(0xFF121C2B),
+      side: BorderSide(
+        color: selected
+            ? const Color(0xFFFFB166)
+            : Colors.white.withValues(alpha: 0.10),
+      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      onSelected: (_) => _changeQuestionType(item),
+    );
+  }
+
   InputDecoration _input(String label) {
     return InputDecoration(
-      labelText: label,
+      hintText: label,
+      hintStyle: const TextStyle(color: Color(0xFF7F8CA3)),
+      labelStyle: const TextStyle(color: Color(0xFFA8B3C7)),
+      floatingLabelStyle: const TextStyle(color: Color(0xFFFFA24A)),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.05),
+      fillColor: const Color(0xFF101927),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
       ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(18),
+        borderSide: const BorderSide(color: Color(0xFFFF8A1C), width: 1.4),
+      ),
+    );
+  }
+
+  ButtonStyle _secondaryButtonStyle() {
+    return OutlinedButton.styleFrom(
+      foregroundColor: const Color(0xFFFFB166),
+      side: BorderSide(color: const Color(0xFFFF8A1C).withValues(alpha: 0.45)),
+      backgroundColor: const Color(0xFFFF8A1C).withValues(alpha: 0.08),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
   }
 

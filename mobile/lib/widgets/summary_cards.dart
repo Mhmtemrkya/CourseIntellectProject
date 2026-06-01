@@ -42,11 +42,18 @@ class _SummaryCardsState extends State<SummaryCards> {
       final studentName = session == null
           ? ''
           : await SchoolFeedApiService.resolveLinkedStudentName(session);
+      final studentClassName = session == null
+          ? ''
+          : await SchoolFeedApiService.resolveLinkedStudentClassName(session);
 
       final liveLessons = await SchoolFeedApiService.instance
           .fetchLiveLessons();
       final plannedExams = await PlannedExamApiService.instance
-          .fetchPlannedExams(studentName: studentName);
+          .fetchPlannedExams(
+            studentName: studentName,
+            studentUsername: session?.username,
+            className: studentClassName,
+          );
       final examResults = await SchoolFeedApiService.instance.fetchExamResults(
         studentName: studentName,
       );
@@ -91,11 +98,11 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.track_changes_rounded,
-        title: "Yaklaşan Sınav",
+        title: "Deneme Sınavları",
         value: _loading ? "..." : "$_upcomingExamCount",
         hint: _upcomingExamCount > 0
-            ? "Planlı sınavlar hazır"
-            : "Yaklaşan sınav bulunmuyor",
+            ? "Çözmeye hazır denemeler var"
+            : "Yaklaşan deneme bulunmuyor",
         color: const Color(0xFF7C3AED),
         onTap: widget.onExamTap,
       ),

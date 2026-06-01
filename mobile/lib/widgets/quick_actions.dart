@@ -48,7 +48,7 @@ class QuickActions extends StatelessWidget {
       ),
       (
         Icons.fact_check_rounded,
-        "Sınavlar",
+        "Deneme Sınavları",
         const Color(0xFF7C3AED),
         const ExamsPage(),
       ),

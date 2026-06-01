@@ -55,9 +55,13 @@ class QuestionBankApiService {
       );
     }
 
+    final normalizedClassName = className?.trim();
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/questionbank').replace(
-        queryParameters: className == null ? null : {'className': className},
+        queryParameters:
+            normalizedClassName == null || normalizedClassName.isEmpty
+            ? null
+            : {'className': normalizedClassName},
       ),
       headers: {'Authorization': 'Bearer ${session.accessToken}'},
     );
@@ -390,6 +394,9 @@ class QuestionBankApiService {
     return switch (value) {
       'Coktan Secmeli' => 'Çoktan Seçmeli',
       'Acik Uclu' => 'Açık Uçlu',
+      'Tum Siniflar' => 'Tüm Sınıflar',
+      'Tum Sınıflar' => 'Tüm Sınıflar',
+      'Tüm Siniflar' => 'Tüm Sınıflar',
       'Tüm Sınıflar' => 'Tüm Sınıflar',
       _ => value,
     };

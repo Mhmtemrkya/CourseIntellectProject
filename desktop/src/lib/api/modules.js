@@ -728,6 +728,26 @@ export async function saveStudyPlan(payload) {
   return response;
 }
 
+export async function addStudyPlanXp(amount) {
+  const response = await api.post('/api/studyplans/xp', { amount });
+  return response;
+}
+
+export async function addStudyPlanItem(item) {
+  const response = await api.post('/api/studyplans/items', { item });
+  return response;
+}
+
+export async function setStudyPlanItemDone(itemId, done) {
+  const response = await api.patch(`/api/studyplans/items/${itemId}/done`, { done });
+  return response;
+}
+
+export async function deleteStudyPlanItem(itemId) {
+  const response = await api.delete(`/api/studyplans/items/${itemId}`);
+  return response;
+}
+
 export async function fetchPlannedExams(params) {
   const response = await api.get('/api/plannedexams', { params });
   return response;

@@ -140,12 +140,28 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
     );
   }
 
+  void _applyStudyPlanRecord(StudyPlanStateRecord record) {
+    setState(() {
+      planItems = record.planItems;
+      streakCount = record.streakCount;
+      xpPoints = record.xpPoints;
+      _lastCompletedAt = record.lastCompletedAt;
+      isLoading = false;
+    });
+  }
+
   int _nextPlanId() {
     if (planItems.isEmpty) return 1;
     return planItems
-            .map((item) => item["id"] as int? ?? 0)
+            .map((item) => _planIdAsInt(item["id"]))
             .reduce((a, b) => a > b ? a : b) +
         1;
+  }
+
+  int _planIdAsInt(Object? value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
   List<Map<String, dynamic>> get _priorityTopics {
@@ -177,60 +193,50 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
 
   Future<void> _toggleDone(int index) async {
     final wasDone = planItems[index]["done"] as bool? ?? false;
+    final itemId = planItems[index]["id"]?.toString();
+    if (itemId == null || itemId.isEmpty) return;
+
     setState(() {
       planItems[index]["done"] = !wasDone;
     });
 
-    if (!wasDone) {
-      await _applyCompletionRewards();
-    } else {
+    try {
+      final record = await StudyPlanApiService.instance.setItemDone(
+        itemId,
+        !wasDone,
+      );
+      _applyStudyPlanRecord(record);
+    } catch (_) {
+      if (!mounted) return;
       setState(() {
-        xpPoints = (xpPoints - 25).clamp(0, 1 << 31);
+        planItems[index]["done"] = wasDone;
       });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Çalışma planı güncellenemedi.")),
+      );
     }
-
-    await _savePlans();
-  }
-
-  Future<void> _applyCompletionRewards() async {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    DateTime? lastDate = _lastCompletedAt;
-    if (lastDate != null) {
-      lastDate = DateTime(lastDate.year, lastDate.month, lastDate.day);
-    }
-
-    setState(() {
-      xpPoints += 25;
-      if (lastDate == null) {
-        streakCount = 1;
-      } else {
-        final diff = today.difference(lastDate).inDays;
-        if (diff == 0) {
-          streakCount = streakCount == 0 ? 1 : streakCount;
-        } else if (diff == 1) {
-          streakCount += 1;
-        } else {
-          streakCount = 1;
-        }
-      }
-    });
-
-    _lastCompletedAt = today;
   }
 
   Future<void> _deletePlan(int index) async {
     final deleted = planItems[index]["title"] as String;
     final notificationId = planItems[index]["notificationId"] as int?;
+    final itemId = planItems[index]["id"]?.toString();
     if (notificationId != null) {
       await _notifications.cancel(notificationId);
     }
 
-    setState(() {
-      planItems.removeAt(index);
-    });
+    if (itemId == null || itemId.isEmpty) return;
 
-    await _savePlans();
+    try {
+      final record = await StudyPlanApiService.instance.deleteItem(itemId);
+      _applyStudyPlanRecord(record);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Çalışma planı silinemedi.")),
+      );
+      return;
+    }
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
@@ -478,7 +484,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
 
                     final plan = {
                       "id": editing
-                          ? planItems[editIndex]["id"] as int? ?? _nextPlanId()
+                          ? _planIdAsInt(planItems[editIndex]["id"]) == 0
+                                ? _nextPlanId()
+                                : planItems[editIndex]["id"]
                           : _nextPlanId(),
                       "title": title,
                       "duration": duration,
@@ -493,21 +501,23 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage> {
                       "notificationId": currentNotificationId,
                     };
 
-                    setState(() {
-                      if (editing) {
-                        planItems[editIndex] = plan;
-                      } else {
-                        planItems.insert(0, plan);
-                      }
-                    });
-
                     if (notificationEnabled) {
                       await _schedulePlanReminder(plan);
                     } else if (editing) {
                       await _notifications.cancel(currentNotificationId);
                     }
 
-                    await _savePlans();
+                    if (editing) {
+                      setState(() {
+                        planItems[editIndex] = plan;
+                      });
+                      await _savePlans();
+                    } else {
+                      final record = await StudyPlanApiService.instance.addItem(
+                        plan,
+                      );
+                      _applyStudyPlanRecord(record);
+                    }
                     if (!mounted) return;
                     Navigator.of(this.context).pop();
                     ScaffoldMessenger.of(this.context).showSnackBar(

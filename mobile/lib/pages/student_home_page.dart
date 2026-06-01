@@ -510,6 +510,12 @@ class _StudentHomePageState extends State<StudentHomePage>
                 onTap: goToAttendanceScan,
               ),
               _miniAction(
+                title: "Deneme Sınavları",
+                icon: Icons.fact_check_rounded,
+                color: const Color(0xFF7C3AED),
+                onTap: goToExams,
+              ),
+              _miniAction(
                 title: "Sınav Sonuçlarım",
                 icon: Icons.bar_chart_rounded,
                 color: const Color(0xFFF59E0B),

@@ -10,11 +10,9 @@ import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
-import { fetchStudyPlan, saveStudyPlan } from '../../lib/api/modules';
+import { addStudyPlanItem, fetchStudyPlan, setStudyPlanItemDone } from '../../lib/api/modules';
 
 export default function StudentStudyPlan() {
-  const { user } = useApp();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -47,39 +45,24 @@ export default function StudentStudyPlan() {
     Aylik: planItems.filter((item) => item.planType === 'Aylik'),
   }), [planItems]);
 
-  const persistPlan = useCallback(async (nextItems, nextMeta = {}) => {
-    await saveStudyPlan({
-      studentName: user?.name || 'Ogrenci',
-      planItemsSerialized: JSON.stringify(nextItems),
-      streakCount: nextMeta.streakCount ?? data?.streakCount ?? 0,
-      xpPoints: nextMeta.xpPoints ?? data?.xpPoints ?? 0,
-      lastCompletedAt: nextMeta.lastCompletedAt ?? data?.lastCompletedAt ?? null,
-    });
-    setData((prev) => ({
-      ...(prev || {}),
-      planItemsSerialized: JSON.stringify(nextItems),
-      streakCount: nextMeta.streakCount ?? prev?.streakCount ?? 0,
-      xpPoints: nextMeta.xpPoints ?? prev?.xpPoints ?? 0,
-      lastCompletedAt: nextMeta.lastCompletedAt ?? prev?.lastCompletedAt ?? null,
-    }));
-  }, [data?.lastCompletedAt, data?.streakCount, data?.xpPoints, user?.name]);
-
   const handleAddPlan = async () => {
-    const nextItems = [
-      ...planItems,
-      {
-        id: Date.now(),
-        title: form.title,
-        duration: form.duration,
-        status: form.status,
-        reason: form.reason,
-        planType: form.planType,
-        done: false,
-      },
-    ];
-    await persistPlan(nextItems);
+    const next = await addStudyPlanItem({
+      id: Date.now(),
+      title: form.title,
+      duration: form.duration,
+      status: form.status,
+      reason: form.reason,
+      planType: form.planType,
+      done: false,
+    });
+    setData(next);
     setOpen(false);
     setForm({ title: '', duration: '30 dk', status: 'Bugun', reason: '', planType: 'Gunluk' });
+  };
+
+  const handleToggleDone = async (item) => {
+    const next = await setStudyPlanItemDone(String(item.id), !Boolean(item.done));
+    setData(next);
   };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
@@ -133,12 +116,17 @@ export default function StudentStudyPlan() {
                 </div>
                 {items.length === 0 ? <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Bu grupta henüz plan yok.</div> : null}
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between rounded-xl border p-4">
+                  <div key={item.id} className="flex items-center justify-between gap-4 rounded-xl border p-4">
                     <div>
                       <p className="font-medium">{item.title}</p>
                       <p className="text-sm text-muted-foreground">{item.duration} • {item.reason || item.status}</p>
                     </div>
-                    <Badge variant="outline">{item.status}</Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">{item.status}</Badge>
+                      <Button size="sm" variant={item.done ? 'secondary' : 'outline'} onClick={() => handleToggleDone(item)}>
+                        {item.done ? 'Tamamlandı' : 'Tamamla'}
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -152,13 +140,13 @@ export default function StudentStudyPlan() {
           </CardHeader>
           <CardContent className="space-y-3">
             {planItems.slice(0, 5).map((item) => (
-              <div key={item.id} className="flex items-start gap-3 rounded-xl bg-muted/40 p-4">
+              <button type="button" key={item.id} onClick={() => handleToggleDone(item)} className="flex w-full items-start gap-3 rounded-xl bg-muted/40 p-4 text-left transition hover:bg-muted/60">
                 <CheckCircle2 className={`h-5 w-5 mt-0.5 ${item.done ? 'text-green-600' : 'text-muted-foreground'}`} />
                 <div>
                   <p className="font-medium">{item.title}</p>
                   <p className="text-sm text-muted-foreground">{item.reason || item.status}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </CardContent>
         </Card>

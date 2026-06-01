@@ -23,6 +23,23 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+const desktopNotificationKeys = [
+  'emailNotifications',
+  'pushNotifications',
+  'examReminders',
+  'homeworkReminders',
+  'messageAlerts',
+];
+
+function pickDesktopNotificationPrefs(source) {
+  return desktopNotificationKeys.reduce((acc, key) => {
+    if (typeof source?.[key] === 'boolean') {
+      acc[key] = source[key];
+    }
+    return acc;
+  }, {});
+}
+
 export default function StudentSettings() {
   const { user } = useApp();
   const { toast } = useToast();
@@ -30,6 +47,7 @@ export default function StudentSettings() {
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [remotePreferences, setRemotePreferences] = useState({});
 
   const [passwordForm, setPasswordForm] = useState({
     currentPassword: '',
@@ -83,9 +101,10 @@ export default function StudentSettings() {
   const handleSavePrefs = async () => {
     try {
       setSaving(true);
-      const next = await saveUserPreferences(prefs);
+      const next = await saveUserPreferences({ ...remotePreferences, ...prefs });
       if (next && typeof next === 'object') {
-        setPrefs((current) => ({ ...current, ...next }));
+        setRemotePreferences(next);
+        setPrefs((current) => ({ ...current, ...pickDesktopNotificationPrefs(next) }));
       }
       toast({ title: 'Tercihleriniz kaydedildi.' });
     } catch (err) {
@@ -102,7 +121,8 @@ export default function StudentSettings() {
       try {
         const remote = await fetchUserPreferences();
         if (cancelled || !remote || typeof remote !== 'object') return;
-        setPrefs((current) => ({ ...current, ...remote }));
+        setRemotePreferences(remote);
+        setPrefs((current) => ({ ...current, ...pickDesktopNotificationPrefs(remote) }));
       } catch {
         /* sessiz: ilk girişte boş olabilir */
       }

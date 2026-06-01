@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:student/pages/content_page.dart';
+import 'package:student/pages/exams_page.dart';
 import 'package:student/pages/messages_page.dart';
 import 'package:student/pages/student_home_page.dart';
 import 'package:student/pages/profile_page.dart';
@@ -24,6 +25,12 @@ class BottomNav extends StatelessWidget {
           label: 'İçerikler',
           pageBuilder: (_) => const ContentPage(),
           sidebarColor: const Color(0xFF8B5CF6),
+        ),
+        AdaptiveDestination(
+          icon: Icons.fact_check_rounded,
+          label: 'Deneme',
+          pageBuilder: (_) => const ExamsPage(),
+          sidebarColor: const Color(0xFF7C3AED),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

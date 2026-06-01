@@ -9,7 +9,19 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { fetchQuestionBank, fetchQuestionPracticeAttempts, submitQuestionPracticeAttempt } from '../../lib/api/modules';
+import {
+  addStudyPlanXp,
+  fetchQuestionBank,
+  fetchQuestionPracticeAttempts,
+  submitQuestionPracticeAttempt,
+} from '../../lib/api/modules';
+
+function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset }) {
+  let amount = isCorrect ? 18 : 6;
+  if (hasImage) amount += 4;
+  if (hasSolutionAsset) amount += 3;
+  return amount;
+}
 
 export default function StudentQuestionPractice() {
   const { toast } = useToast();
@@ -62,6 +74,8 @@ export default function StudentQuestionPractice() {
       return;
     }
 
+    const hadAttempt = Boolean(attemptsByQuestion[question.id]);
+
     try {
       setSubmittingId(question.id);
       const saved = await submitQuestionPracticeAttempt(question.id, {
@@ -69,6 +83,14 @@ export default function StudentQuestionPractice() {
         studentUsername: user?.username || 'student',
         answerText: answer,
       });
+      if (!hadAttempt) {
+        const xpAmount = buildQuestionBankSolveReward({
+          isCorrect: Boolean(saved.isCorrect),
+          hasImage: Boolean(question.imagePath),
+          hasSolutionAsset: Boolean(question.solutionAssetPath),
+        });
+        await addStudyPlanXp(xpAmount).catch(() => null);
+      }
       setAttempts((prev) => [saved, ...prev.filter((item) => item.questionId !== saved.questionId)]);
       toast({
         title: 'Cevap kaydedildi',

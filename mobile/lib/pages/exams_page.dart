@@ -23,7 +23,7 @@ class _ExamsPageState extends State<ExamsPage> {
   List<Map<String, dynamic>> _completedExams = const [];
   List<Map<String, dynamic>> _upcomingExams = const [];
 
-  final List<String> tabs = ["Sınavlarım", "Sonuçlarım"];
+  final List<String> tabs = ["Deneme Sınavları", "Sonuçlarım"];
 
   @override
   void initState() {
@@ -194,7 +194,7 @@ class _ExamsPageState extends State<ExamsPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Sınavlarım")),
+      appBar: AppBar(title: const Text("Deneme Sınavları")),
       body: RefreshIndicator(
         onRefresh: _loadExams,
         child: SingleChildScrollView(
