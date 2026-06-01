@@ -220,9 +220,14 @@ class RegistrationApiService {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw RegistrationApiException(
-        'Kayıt işlemi başarısız oldu (${response.statusCode}).',
-      );
+      var message = 'Kayıt işlemi başarısız oldu (${response.statusCode}).';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] is String) {
+          message = decoded['message'] as String;
+        }
+      } catch (_) {}
+      throw RegistrationApiException(message);
     }
 
     return response;

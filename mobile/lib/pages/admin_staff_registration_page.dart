@@ -36,6 +36,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final _personnelNameController = TextEditingController();
   final _personnelTcController = TextEditingController();
   final _personnelPhoneController = TextEditingController();
+  final _personnelEmailController = TextEditingController();
   final _personnelEducationController = TextEditingController();
   final _personnelStartDateController = TextEditingController();
   final _personnelCampusController = TextEditingController(
@@ -85,6 +86,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _personnelNameController.dispose();
     _personnelTcController.dispose();
     _personnelPhoneController.dispose();
+    _personnelEmailController.dispose();
     _personnelEducationController.dispose();
     _personnelStartDateController.dispose();
     _personnelCampusController.dispose();
@@ -511,6 +513,18 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             ),
             const SizedBox(height: 12),
             _field(
+              controller: _personnelEmailController,
+              label: _personnelRole == 'ServiceDriver'
+                  ? 'Giriş E-postası'
+                  : 'E-posta',
+              keyboardType: TextInputType.emailAddress,
+              required: _personnelRole == 'ServiceDriver',
+              validator: _personnelRole == 'ServiceDriver'
+                  ? _validateEmail
+                  : _validateOptionalEmail,
+            ),
+            const SizedBox(height: 12),
+            _field(
               controller: _personnelEducationController,
               label: 'Egitim / Uzmanlik',
             ),
@@ -706,22 +720,43 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     int maxLines = 1,
     int? maxLength,
     bool required = true,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       maxLength: maxLength,
-      validator: required
-          ? (value) => value == null || value.trim().isEmpty
-                ? '$label zorunludur'
-                : null
-          : null,
+      validator:
+          validator ??
+          (required
+              ? (value) => value == null || value.trim().isEmpty
+                    ? '$label zorunludur'
+                    : null
+              : null),
       decoration: InputDecoration(
         labelText: label,
         border: const OutlineInputBorder(),
       ),
     );
+  }
+
+  String? _validateEmail(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) {
+      return 'Giriş e-postası zorunludur';
+    }
+    return _isValidEmail(text) ? null : 'Geçerli bir e-posta girin';
+  }
+
+  String? _validateOptionalEmail(String? value) {
+    final text = value?.trim() ?? '';
+    if (text.isEmpty) return null;
+    return _isValidEmail(text) ? null : 'Geçerli bir e-posta girin';
+  }
+
+  bool _isValidEmail(String value) {
+    return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
   }
 
   Widget _submitButton({
@@ -813,7 +848,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         departmentOrBranch: department,
         tcNo: _personnelTcController.text.trim(),
         phone: _personnelPhoneController.text.trim(),
-        email: '',
+        email: _personnelEmailController.text.trim(),
         education: _personnelEducationController.text.trim(),
         startDate: _personnelStartDateController.text.trim(),
         campus: _personnelCampusController.text.trim(),
@@ -864,7 +899,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           isActive: false,
         );
         serviceSummary =
-            '${vehicle.plateNumber}${vehicle.vehicleNumber.isEmpty ? '' : ' / ${vehicle.vehicleNumber}'} • ${route.name}';
+            'E-posta: ${_personnelEmailController.text.trim()} • ${vehicle.plateNumber}${vehicle.vehicleNumber.isEmpty ? '' : ' / ${vehicle.vehicleNumber}'} • ${route.name}';
       }
       if (!mounted) return;
       setState(() => _saving = false);
@@ -1001,7 +1036,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                           await Clipboard.setData(
                             ClipboardData(
                               text:
-                                  'Kullanıcı Adı: ${credentials.username}\nŞifre: ${credentials.password}',
+                                  'Kullanıcı Adı: ${credentials.username}${serviceSummary.isEmpty ? '' : '\n$serviceSummary'}\nŞifre: ${credentials.password}',
                             ),
                           );
                           if (!mounted) return;

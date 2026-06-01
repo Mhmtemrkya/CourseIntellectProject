@@ -24,8 +24,15 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
         [FromBody] CreateStaffRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await staffManagementService.CreateStaffAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { role = result.Role }, result);
+        try
+        {
+            var result = await staffManagementService.CreateStaffAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(Get), new { role = result.Role }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}")]

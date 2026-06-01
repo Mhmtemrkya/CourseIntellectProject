@@ -8,21 +8,12 @@ import {
   Lock,
   Mail,
   User,
-  Shield,
-  GraduationCap,
-  Users,
-  Wallet,
-  Building2,
-  Sparkles,
-  Zap,
   Star,
   ArrowRight,
-  ExternalLink,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
 import { getUserHomePath } from "../lib/auth";
-import { desktopAppEnv } from "../lib/appEnv";
 import { requestPasswordReset } from "../lib/api/modules";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -53,66 +44,6 @@ const features = [
   "Soru-cevap platformu",
   "Sınav oluşturma ve analiz",
   "Detaylı raporlama",
-];
-
-const quickUsers = [
-  {
-    username: "admin@courseintlecct.com",
-    password: "Admin2026!",
-    role: "admin",
-    name: "Geliştirici",
-    icon: Zap,
-    color: "from-purple-600 to-pink-500",
-    homePath: "/sa/dashboard",
-  },
-  {
-    username: "kurum.admin",
-    password: "KRM2026A",
-    role: "admin",
-    name: "Kurum Yöneticisi",
-    icon: Shield,
-    color: "from-blue-600 to-cyan-500",
-  },
-  {
-    username: "muhasebe.selim",
-    password: "MHS2026A",
-    role: "finance",
-    name: "Muhasebeci",
-    icon: Wallet,
-    color: "from-green-600 to-emerald-500",
-  },
-  {
-    username: "ogrt.hasan",
-    password: "HYN2026A",
-    role: "teacher",
-    name: "Öğretmen",
-    icon: GraduationCap,
-    color: "from-blue-500 to-indigo-500",
-  },
-  {
-    username: "ali10a241",
-    password: "ALI2026A",
-    role: "student",
-    name: "Öğrenci",
-    icon: Users,
-    color: "from-orange-500 to-amber-500",
-  },
-  {
-    username: "veli.ayse",
-    password: "VLI2026A",
-    role: "parent",
-    name: "Veli",
-    icon: User,
-    color: "from-teal-500 to-cyan-500",
-  },
-  {
-    username: "idari.ceren",
-    password: "CRN2026B",
-    role: "administrative",
-    name: "İdari Birimler",
-    icon: Building2,
-    color: "from-slate-600 to-sky-500",
-  },
 ];
 
 const containerVariants = {
@@ -241,7 +172,7 @@ function AnimatedText({ text, className, delay = 0 }) {
 
 export default function Login() {
   const navigate = useNavigate();
-  const { login, loginWithBrowser, isAuthenticated, user } = useApp();
+  const { login, isAuthenticated, user } = useApp();
   const { refreshBranding } = useTheme();
   const { toast } = useToast();
   const [username, setUsername] = useState("");
@@ -250,7 +181,6 @@ export default function Login() {
   const [remember, setRemember] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [hoveredUser, setHoveredUser] = useState(null);
   const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
   const [forgotLoading, setForgotLoading] = useState(false);
@@ -273,20 +203,6 @@ export default function Login() {
       navigate(getUserHomePath(loggedUser), { replace: true });
     } catch (err) {
       setError(err?.message || "Giriş başarısız oldu");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBrowserLogin = async () => {
-    setError("");
-    setLoading(true);
-    try {
-      const loggedUser = await loginWithBrowser();
-      refreshBranding();
-      navigate(getUserHomePath(loggedUser), { replace: true });
-    } catch (err) {
-      setError(err?.message || "Tarayıcı ile giriş başarısız oldu");
     } finally {
       setLoading(false);
     }
@@ -329,24 +245,6 @@ export default function Login() {
       });
     } finally {
       setForgotLoading(false);
-    }
-  };
-
-  const handleQuickLogin = async (quickUser) => {
-    setUsername(quickUser.username);
-    setPassword(quickUser.password);
-    try {
-      setLoading(true);
-      const loggedUser = await login({
-        username: quickUser.username,
-        password: quickUser.password,
-      });
-      refreshBranding();
-      navigate(quickUser.homePath || getUserHomePath(loggedUser), { replace: true });
-    } catch (err) {
-      setError(err?.message || "Giriş başarısız oldu");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -574,7 +472,7 @@ export default function Login() {
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <Label htmlFor="username">Kullanıcı Adı</Label>
+                  <Label htmlFor="username">Kullanıcı Adı veya E-posta</Label>
                   <div className="relative group">
                     <motion.div
                       className="absolute inset-0 rounded-md bg-gradient-to-r from-brand-primary to-[#D9790B] opacity-0 group-focus-within:opacity-100 -m-0.5"
@@ -586,7 +484,7 @@ export default function Login() {
                     <Input
                       id="username"
                       type="text"
-                      placeholder="kullaniciadi"
+                      placeholder="kullaniciadi veya e-posta"
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
                       className="pl-10 relative bg-background"
@@ -704,110 +602,7 @@ export default function Login() {
                   </Button>
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.8 }}
-                  className="relative flex items-center gap-3 py-2"
-                >
-                  <div className="flex-1 border-t border-border" />
-                  <span className="text-xs text-muted-foreground">veya</span>
-                  <div className="flex-1 border-t border-border" />
-                </motion.div>
-
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.9 }}
-                >
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full"
-                    disabled={loading}
-                    onClick={handleBrowserLogin}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Tarayıcı ile Giriş Yap
-                  </Button>
-                </motion.div>
               </form>
-
-              {desktopAppEnv.allowDemoCredentials ? (
-                <motion.div
-                  className="mt-6"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.8 }}
-                >
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center">
-                      <span className="w-full border-t" />
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                      <span className="bg-card px-2 text-muted-foreground">
-                        Demo Hesapları
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 mt-4">
-                    {quickUsers.map((user, index) => {
-                      const Icon = user.icon;
-                      return (
-                        <motion.button
-                          key={user.username}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{
-                            delay: 0.9 + index * 0.1,
-                            type: "spring",
-                          }}
-                          whileHover={{ scale: 1.05, y: -2 }}
-                          whileTap={{ scale: 0.95 }}
-                          onHoverStart={() => setHoveredUser(user.username)}
-                          onHoverEnd={() => setHoveredUser(null)}
-                          onClick={() => handleQuickLogin(user)}
-                          className="relative flex items-center gap-2 p-2 rounded-lg border border-border hover:border-[#D9790B]/50 transition-all text-left overflow-hidden group"
-                          data-testid={`demo-${user.role}`}
-                        >
-                          <motion.div
-                            className={`absolute inset-0 bg-gradient-to-r ${user.color} opacity-0 group-hover:opacity-10 transition-opacity`}
-                          />
-                          <motion.div
-                            className={`p-1.5 rounded-md bg-gradient-to-r ${user.color}`}
-                            animate={
-                              hoveredUser === user.username
-                                ? { rotate: [0, -10, 10, 0] }
-                                : {}
-                            }
-                            transition={{ duration: 0.3 }}
-                          >
-                            <Icon className="h-3.5 w-3.5 text-white" />
-                          </motion.div>
-                          <div className="flex-1 min-w-0 relative z-10">
-                            <p className="text-xs font-medium truncate">
-                              {user.name}
-                            </p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {user.username}
-                            </p>
-                          </div>
-                          <motion.div
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{
-                              opacity: hoveredUser === user.username ? 1 : 0,
-                              x: hoveredUser === user.username ? 0 : -10,
-                            }}
-                          >
-                            <Sparkles className="h-3 w-3 text-[#D9790B]" />
-                          </motion.div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              ) : null}
             </CardContent>
           </Card>
 

@@ -77,6 +77,22 @@ public sealed class StaffManagementService(
 
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        if (!string.IsNullOrWhiteSpace(email))
+        {
+            if (!email.Contains('@') || !email.Contains('.'))
+            {
+                throw new InvalidOperationException("Geçerli bir e-posta adresi girin.");
+            }
+
+            var emailExists = await dbContext.Staff
+                .AnyAsync(x => x.Email.ToLower() == email, cancellationToken);
+            if (emailExists)
+            {
+                throw new InvalidOperationException("Bu e-posta adresi başka bir personel hesabında kullanılıyor.");
+            }
+        }
+
         var primaryHint = parsedRole == UserRole.Teacher
             ? (request.AssignedClasses.FirstOrDefault() ?? string.Empty)
             : string.Empty;
@@ -107,6 +123,7 @@ public sealed class StaffManagementService(
             PrimaryRole = parsedRole,
             Campus = request.Campus,
             DepartmentOrBranch = departmentOrBranch,
+            Phone = request.Phone.Trim(),
             MustChangePassword = true
         };
 
@@ -117,7 +134,7 @@ public sealed class StaffManagementService(
             FullName = request.FullName,
             TcNo = request.TcNo,
             Phone = request.Phone,
-            Email = request.Email,
+            Email = email,
             Education = request.Education,
             StartDate = request.StartDate,
             Campus = request.Campus,

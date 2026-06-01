@@ -14,8 +14,17 @@ public sealed class ServiceController(IServiceTrackingService serviceTrackingSer
 
     [HttpPost("vehicles")]
     [Authorize(Roles = ServiceManagers)]
-    public async Task<IActionResult> CreateVehicle(CreateServiceVehicleRequest request, CancellationToken cancellationToken) =>
-        Ok(await serviceTrackingService.CreateVehicleAsync(request, cancellationToken));
+    public async Task<IActionResult> CreateVehicle(CreateServiceVehicleRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await serviceTrackingService.CreateVehicleAsync(request, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 
     [HttpGet("vehicles")]
     [Authorize(Roles = ServiceManagers)]
@@ -45,8 +54,17 @@ public sealed class ServiceController(IServiceTrackingService serviceTrackingSer
 
     [HttpPost("drivers")]
     [Authorize(Roles = ServiceManagers)]
-    public async Task<IActionResult> CreateDriver(CreateServiceDriverRequest request, CancellationToken cancellationToken) =>
-        Ok(await serviceTrackingService.CreateDriverAsync(request, cancellationToken));
+    public async Task<IActionResult> CreateDriver(CreateServiceDriverRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await serviceTrackingService.CreateDriverAsync(request, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 
     [HttpGet("drivers")]
     [Authorize(Roles = ServiceManagers)]
@@ -76,8 +94,17 @@ public sealed class ServiceController(IServiceTrackingService serviceTrackingSer
 
     [HttpPost("routes")]
     [Authorize(Roles = ServiceManagers)]
-    public async Task<IActionResult> CreateRoute(CreateServiceRouteRequest request, CancellationToken cancellationToken) =>
-        Ok(await serviceTrackingService.CreateRouteAsync(request, cancellationToken));
+    public async Task<IActionResult> CreateRoute(CreateServiceRouteRequest request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return Ok(await serviceTrackingService.CreateRouteAsync(request, cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
 
     [HttpGet("routes")]
     [Authorize(Roles = ServiceManagers)]

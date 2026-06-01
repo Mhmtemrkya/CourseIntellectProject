@@ -30,8 +30,23 @@ public sealed class AuthService(
 
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
+        var login = request.Username.Trim().ToLowerInvariant();
         var user = await dbContext.Users
-            .FirstOrDefaultAsync(x => x.Username.ToLower() == request.Username.ToLower(), cancellationToken);
+            .FirstOrDefaultAsync(x => x.Username.ToLower() == login, cancellationToken);
+
+        if (user is null && login.Contains('@'))
+        {
+            var staffUserId = await dbContext.Staff
+                .Where(x => x.Email.ToLower() == login)
+                .Select(x => (Guid?)x.UserId)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (staffUserId.HasValue)
+            {
+                user = await dbContext.Users
+                    .FirstOrDefaultAsync(x => x.Id == staffUserId.Value, cancellationToken);
+            }
+        }
 
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {

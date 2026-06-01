@@ -67,6 +67,7 @@ const emptyForm = {
   departmentOrBranch: '',
   tcNo: '',
   phone: '',
+  email: '',
   education: 'Lisans',
   startDate: '',
   campus: 'Merkez Kampus',
@@ -129,8 +130,9 @@ export default function AdminStaffRegistration() {
     }
     if (form.role === 'ServiceDriver') {
       const capacity = Number(form.vehicleCapacity);
-      if (!form.phone.trim() || !form.licenseNumber.trim() || !form.plateNumber.trim() || !Number.isFinite(capacity) || capacity < 2) {
-        toast({ title: 'Servis şoförü için telefon, ehliyet, plaka ve geçerli kapasite zorunludur.', variant: 'destructive' });
+      const email = form.email.trim();
+      if (!form.phone.trim() || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !form.licenseNumber.trim() || !form.plateNumber.trim() || !Number.isFinite(capacity) || capacity < 2) {
+        toast({ title: 'Servis şoförü için telefon, geçerli e-posta, ehliyet, plaka ve geçerli kapasite zorunludur.', variant: 'destructive' });
         return;
       }
       if (!form.routeName.trim()) {
@@ -148,7 +150,7 @@ export default function AdminStaffRegistration() {
         departmentOrBranch,
         tcNo: form.tcNo.trim(),
         phone: form.phone.trim(),
-        email: '',
+        email: form.email.trim(),
         education: form.education.trim(),
         startDate: form.startDate.trim(),
         campus: form.campus.trim(),
@@ -186,7 +188,7 @@ export default function AdminStaffRegistration() {
           endTime: form.routeEndTime,
           isActive: false,
         });
-        serviceSummary = `Araç: ${form.plateNumber.trim()}${form.vehicleNumber.trim() ? ` / No: ${form.vehicleNumber.trim()}` : ''} • Rota: ${route?.name || form.routeName.trim()}`;
+        serviceSummary = `E-posta: ${form.email.trim()} • Araç: ${form.plateNumber.trim()}${form.vehicleNumber.trim() ? ` / No: ${form.vehicleNumber.trim()}` : ''} • Rota: ${route?.name || form.routeName.trim()}`;
       }
       const roleLabel = form.role === 'ServiceDriver'
         ? 'Servis Şoförü'
@@ -200,6 +202,7 @@ export default function AdminStaffRegistration() {
         password: response?.password,
         roleLabel,
         branch: departmentOrBranch,
+        email: form.email.trim(),
         serviceSummary,
       });
       try {
@@ -230,7 +233,7 @@ export default function AdminStaffRegistration() {
 
   const copyCredentials = async () => {
     if (!credentials) return;
-    const text = `Kullanıcı adı: ${credentials.username}\nGeçici Şifre: ${credentials.password}`;
+    const text = `Kullanıcı adı: ${credentials.username}${credentials.email ? `\nE-posta ile giriş: ${credentials.email}` : ''}\nGeçici Şifre: ${credentials.password}`;
     await navigator.clipboard?.writeText(text);
     toast({ title: 'Giriş bilgileri kopyalandı.' });
   };
@@ -309,6 +312,15 @@ export default function AdminStaffRegistration() {
                 <div>
                   <Label>Telefon</Label>
                   <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="05XX XXX XX XX" />
+                </div>
+                <div>
+                  <Label>{isServiceDriver ? 'Giriş E-postası *' : 'E-posta'}</Label>
+                  <Input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => handleChange('email', e.target.value)}
+                    placeholder="sofor@kurum.com"
+                  />
                 </div>
                 <div>
                   <Label>Eğitim</Label>
@@ -479,6 +491,12 @@ export default function AdminStaffRegistration() {
               <p className="text-sm text-muted-foreground">Kullanıcı Adı</p>
               <p className="mt-1 font-mono text-base font-bold break-all">{credentials?.username || '-'}</p>
             </div>
+            {credentials?.email ? (
+              <div className="rounded-xl border bg-muted/30 p-4">
+                <p className="text-sm text-muted-foreground">E-posta ile giriş</p>
+                <p className="mt-1 font-mono text-base font-bold break-all">{credentials.email}</p>
+              </div>
+            ) : null}
             <div className="rounded-xl border bg-amber-50 dark:bg-amber-950/30 p-4">
               <p className="text-xs text-amber-700 dark:text-amber-400 font-medium">Geçici Şifre</p>
               <p className="mt-1 font-mono text-base font-bold tracking-wider">{credentials?.password || '-'}</p>
