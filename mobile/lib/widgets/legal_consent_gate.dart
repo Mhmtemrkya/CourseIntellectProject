@@ -43,7 +43,10 @@ class _LegalConsentGateState extends State<LegalConsentGate> {
       _loaded = true;
     });
     if (!_accepted && !_declined) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => _showConsentSheet());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _showConsentSheet();
+      });
     }
   }
 
@@ -91,6 +94,7 @@ class _LegalConsentGateState extends State<LegalConsentGate> {
         },
       ),
     );
+    if (!mounted) return;
     _showingConsent = false;
   }
 

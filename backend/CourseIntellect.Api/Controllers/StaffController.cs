@@ -47,6 +47,22 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
         return Ok(result);
     }
 
+    [HttpDelete("users/{userId:guid}")]
+    [Authorize(Roles = "Admin,Administrative")]
+    public async Task<IActionResult> DeleteByUserId(Guid userId, CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await staffManagementService.DeleteStaffByUserIdAsync(userId, cancellationToken)
+                ? NoContent()
+                : NotFound(new { message = "Personel kullanıcısı bulunamadı." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("accounting")]
     [Authorize(Roles = "Admin")]
     [ProducesResponseType(typeof(StaffCredentialsDto), StatusCodes.Status201Created)]

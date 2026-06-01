@@ -8,4 +8,5 @@ public interface IStaffManagementService
     Task<StaffCredentialsDto> CreateStaffAsync(CreateStaffRequest request, CancellationToken cancellationToken = default);
     Task<StaffCredentialsDto> CreateAccountingStaffAsync(CreateAccountingStaffRequest request, CancellationToken cancellationToken = default);
     Task<StaffSummaryDto> UpdateStaffAsync(Guid staffId, UpdateStaffRequest request, CancellationToken cancellationToken = default);
+    Task<bool> DeleteStaffByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
 }

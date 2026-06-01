@@ -836,6 +836,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     }
 
     setState(() => _saving = true);
+    String? createdStaffUserId;
+    String? createdVehicleId;
+    String? createdDriverId;
     try {
       final isServiceDriver = _personnelRole == 'ServiceDriver';
       final backendRole = isServiceDriver ? 'Administrative' : _personnelRole;
@@ -859,6 +862,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
         note: _personnelNoteController.text.trim(),
       );
+      createdStaffUserId = credentials.userId;
       String serviceSummary = '';
       if (isServiceDriver) {
         if (credentials.userId.isEmpty) {
@@ -884,11 +888,13 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           model: _vehicleModelController.text.trim(),
           capacity: capacity,
         );
+        createdVehicleId = vehicle.id;
         final driver = await api.createDriver(
           userId: credentials.userId,
           phoneNumber: _personnelPhoneController.text.trim(),
           licenseNumber: _driverLicenseController.text.trim(),
         );
+        createdDriverId = driver.id;
         final route = await api.createRoute(
           name: _routeNameController.text.trim(),
           routeType: _routeType,
@@ -919,12 +925,52 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         serviceSummary: serviceSummary,
       );
     } on RegistrationApiException catch (error) {
+      await _rollbackServiceDriverRegistration(
+        driverId: createdDriverId,
+        vehicleId: createdVehicleId,
+        staffUserId: createdStaffUserId,
+      );
+      if (!mounted) return;
+      setState(() => _saving = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    } on ServiceTrackingApiException catch (error) {
+      await _rollbackServiceDriverRegistration(
+        driverId: createdDriverId,
+        vehicleId: createdVehicleId,
+        staffUserId: createdStaffUserId,
+      );
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+
+  Future<void> _rollbackServiceDriverRegistration({
+    String? driverId,
+    String? vehicleId,
+    String? staffUserId,
+  }) async {
+    if (_personnelRole != 'ServiceDriver') return;
+    final serviceApi = ServiceTrackingApiService.instance;
+    try {
+      if (driverId != null && driverId.isNotEmpty) {
+        await serviceApi.deleteDriver(driverId);
+      }
+    } catch (_) {}
+    try {
+      if (vehicleId != null && vehicleId.isNotEmpty) {
+        await serviceApi.deleteVehicle(vehicleId);
+      }
+    } catch (_) {}
+    try {
+      if (staffUserId != null && staffUserId.isNotEmpty) {
+        await RegistrationApiService.instance.deleteStaffUser(staffUserId);
+      }
+    } catch (_) {}
   }
 
   Future<void> _showResultCard({

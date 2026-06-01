@@ -694,8 +694,8 @@ class ServiceTrackingApiService {
       'routeType': routeType,
       'vehicleId': vehicleId,
       'driverId': driverId,
-      'startTime': startTime,
-      'endTime': endTime,
+      'startTime': _normalizeServiceTime(startTime),
+      'endTime': _normalizeServiceTime(endTime),
       'isActive': isActive,
     });
     return ServiceRouteDetailRecord.fromMap(_decodeMap(response));
@@ -1003,4 +1003,9 @@ String _formatTime(dynamic value) {
   final raw = _asString(value);
   if (raw.length >= 5) return raw.substring(0, 5);
   return raw;
+}
+
+String _normalizeServiceTime(String value) {
+  final raw = value.trim();
+  return RegExp(r'^\d{2}:\d{2}$').hasMatch(raw) ? '$raw:00' : raw;
 }

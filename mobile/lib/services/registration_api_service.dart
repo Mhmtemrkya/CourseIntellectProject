@@ -133,6 +133,34 @@ class RegistrationApiService {
     );
   }
 
+  Future<void> deleteStaffUser(String userId) async {
+    if (userId.trim().isEmpty) return;
+    final session = await AuthSessionStore.instance.load();
+    if (session == null || session.accessToken.isEmpty) {
+      throw const RegistrationApiException(
+        'Oturum bulunamadı. Lütfen yeniden giriş yap.',
+      );
+    }
+
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/staff/users/$userId'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode == 404) return;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      var message =
+          'Personel geri alma işlemi başarısız oldu (${response.statusCode}).';
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map && decoded['message'] is String) {
+          message = decoded['message'] as String;
+        }
+      } catch (_) {}
+      throw RegistrationApiException(message);
+    }
+  }
+
   Future<GeneratedCredentials> createAccounting({
     required String fullName,
     required String tcNo,

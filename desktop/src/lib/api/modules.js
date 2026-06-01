@@ -218,6 +218,10 @@ export async function createStaff(payload) {
   return response;
 }
 
+export async function deleteStaffUser(userId) {
+  await api.delete(`/api/staff/users/${userId}`);
+}
+
 export async function fetchCourses(params = {}) {
   const response = await api.get('/api/courses', {
     params: Object.keys(params).length > 0 ? params : undefined,
@@ -854,11 +858,21 @@ export async function fetchServiceRouteDetail(id) {
 }
 
 export async function createServiceRoute(payload) {
-  return await api.post('/api/service/routes', payload);
+  return await api.post('/api/service/routes', {
+    ...payload,
+    startTime: normalizeServiceTime(payload.startTime),
+    endTime: normalizeServiceTime(payload.endTime),
+  });
 }
 
 export async function setServiceRouteActive(id, active) {
   return await api.patch(`/api/service/routes/${id}/${active ? 'activate' : 'deactivate'}`);
+}
+
+function normalizeServiceTime(value) {
+  const raw = String(value || '').trim();
+  if (/^\d{2}:\d{2}$/.test(raw)) return `${raw}:00`;
+  return raw;
 }
 
 export async function createServiceRouteStop(routeId, payload) {

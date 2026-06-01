@@ -23,18 +23,32 @@ public sealed class ServiceTrackingService(
     {
         ValidateVehicle(request.PlateNumber, request.Capacity);
         var tenantId = RequireTenantId();
+        var normalizedPlate = request.PlateNumber.Trim().ToUpperInvariant();
         var duplicate = await dbContext.ServiceVehicles
-            .AnyAsync(x => x.TenantId == tenantId && x.PlateNumber == request.PlateNumber.Trim(), cancellationToken);
-        if (duplicate)
+            .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.PlateNumber == normalizedPlate, cancellationToken);
+        if (duplicate is not null)
         {
-            throw new InvalidOperationException("Bu plakaya ait servis aracı zaten var.");
+            var hasRoute = await dbContext.ServiceRoutes.AnyAsync(x => x.VehicleId == duplicate.Id, cancellationToken);
+            if (hasRoute)
+            {
+                throw new InvalidOperationException("Bu plakaya ait servis aracı zaten var.");
+            }
+
+            duplicate.VehicleNumber = request.VehicleNumber.Trim();
+            duplicate.Brand = request.Brand.Trim();
+            duplicate.Model = request.Model.Trim();
+            duplicate.Capacity = request.Capacity;
+            duplicate.IsActive = request.IsActive;
+            duplicate.UpdatedAt = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            return MapVehicle(duplicate);
         }
 
         var item = new ServiceVehicle
         {
             TenantId = tenantId,
             VehicleNumber = request.VehicleNumber.Trim(),
-            PlateNumber = request.PlateNumber.Trim().ToUpperInvariant(),
+            PlateNumber = normalizedPlate,
             Brand = request.Brand.Trim(),
             Model = request.Model.Trim(),
             Capacity = request.Capacity,

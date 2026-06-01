@@ -78,6 +78,7 @@ public sealed class StaffManagementService(
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
+        var isServiceDriverProfile = string.Equals(request.DepartmentOrBranch?.Trim(), "Servis Şoförü", StringComparison.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(email))
         {
             if (!email.Contains('@') || !email.Contains('.'))
@@ -85,11 +86,37 @@ public sealed class StaffManagementService(
                 throw new InvalidOperationException("Geçerli bir e-posta adresi girin.");
             }
 
-            var emailExists = await dbContext.Staff
-                .AnyAsync(x => x.Email.ToLower() == email, cancellationToken);
-            if (emailExists)
+            var existingStaff = await dbContext.Staff
+                .FirstOrDefaultAsync(x => x.TenantId == tenantId && x.Email != null && x.Email.ToLower() == email, cancellationToken);
+            if (existingStaff is not null)
             {
-                throw new InvalidOperationException("Bu e-posta adresi başka bir personel hesabında kullanılıyor.");
+                var existingDrivers = await dbContext.ServiceDrivers
+                    .Where(x => x.TenantId == tenantId && x.UserId == existingStaff.UserId)
+                    .ToListAsync(cancellationToken);
+                var existingDriverIds = existingDrivers.Select(x => x.Id).ToList();
+                var existingDriverHasRoute = existingDriverIds.Count > 0
+                    && await dbContext.ServiceRoutes.AnyAsync(x => existingDriverIds.Contains(x.DriverId), cancellationToken);
+                var existingIsServiceDriverProfile = string.Equals(existingStaff.DepartmentOrBranch, "Servis Şoförü", StringComparison.OrdinalIgnoreCase);
+                if (isServiceDriverProfile && existingIsServiceDriverProfile && !existingDriverHasRoute)
+                {
+                    var staleUser = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == existingStaff.UserId && x.TenantId == tenantId, cancellationToken);
+                    if (existingDrivers.Count > 0)
+                    {
+                        dbContext.ServiceDrivers.RemoveRange(existingDrivers);
+                    }
+
+                    dbContext.Staff.Remove(existingStaff);
+                    if (staleUser is not null)
+                    {
+                        dbContext.Users.Remove(staleUser);
+                    }
+
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                else
+                {
+                    throw new InvalidOperationException("Bu e-posta adresi başka bir personel hesabında kullanılıyor.");
+                }
             }
         }
 
@@ -104,7 +131,7 @@ public sealed class StaffManagementService(
         };
         var departmentOrBranch = parsedRole == UserRole.Cafeteria
             ? "Yemekhane"
-            : request.DepartmentOrBranch;
+            : (request.DepartmentOrBranch ?? string.Empty);
         var username = await usernameGenerator.GenerateAsync(
             tenantId,
             request.FullName,
@@ -278,6 +305,28 @@ public sealed class StaffManagementService(
             staff.ChildCount,
             staff.Note,
             staff.StartDate);
+    }
+
+    public async Task<bool> DeleteStaffByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId && x.TenantId == tenantId, cancellationToken);
+        if (user is null)
+        {
+            return false;
+        }
+
+        var staff = await dbContext.Staff.FirstOrDefaultAsync(x => x.UserId == userId && x.TenantId == tenantId, cancellationToken);
+        if (staff is not null)
+        {
+            dbContext.Staff.Remove(staff);
+        }
+
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
     }
 
     private Guid? ResolveCurrentTenantId()

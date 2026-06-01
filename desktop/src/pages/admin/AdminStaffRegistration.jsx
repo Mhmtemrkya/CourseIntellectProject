@@ -20,6 +20,9 @@ import {
   createServiceRoute,
   createServiceVehicle,
   createStaff,
+  deleteServiceDriver,
+  deleteServiceVehicle,
+  deleteStaffUser,
   fetchStaff,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
@@ -140,6 +143,9 @@ export default function AdminStaffRegistration() {
         return;
       }
     }
+    let createdStaffUserId = null;
+    let createdVehicleId = null;
+    let createdDriverId = null;
     try {
       setSaving(true);
       const backendRole = form.role === 'ServiceDriver' ? 'Administrative' : form.role;
@@ -160,6 +166,7 @@ export default function AdminStaffRegistration() {
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
       });
+      createdStaffUserId = response?.userId || null;
       let serviceSummary = '';
       if (form.role === 'ServiceDriver') {
         if (!response?.userId) {
@@ -173,12 +180,14 @@ export default function AdminStaffRegistration() {
           capacity: Number(form.vehicleCapacity),
           isActive: true,
         });
+        createdVehicleId = vehicle?.id || null;
         const driver = await createServiceDriver({
           userId: response?.userId,
           phoneNumber: form.phone.trim(),
           licenseNumber: form.licenseNumber.trim(),
           isActive: true,
         });
+        createdDriverId = driver?.id || null;
         const route = await createServiceRoute({
           name: form.routeName.trim(),
           routeType: form.routeType,
@@ -224,6 +233,13 @@ export default function AdminStaffRegistration() {
       setForm(emptyForm);
       loadRecent();
     } catch (err) {
+      if (form.role === 'ServiceDriver') {
+        await rollbackServiceDriverRegistration({
+          driverId: createdDriverId,
+          vehicleId: createdVehicleId,
+          staffUserId: createdStaffUserId,
+        });
+      }
       const message = err?.response?.data?.message || err?.message || 'Kayıt başarısız.';
       toast({ title: message, variant: 'destructive' });
     } finally {
@@ -248,6 +264,24 @@ export default function AdminStaffRegistration() {
       temporaryPassword: credentials.password,
       extra: credentials.serviceSummary || (credentials.branch ? `Brans: ${credentials.branch}` : undefined),
     });
+  };
+
+  const rollbackServiceDriverRegistration = async ({ driverId, vehicleId, staffUserId }) => {
+    try {
+      if (driverId) await deleteServiceDriver(driverId);
+    } catch (error) {
+      console.warn('Şoför rollback başarısız', error);
+    }
+    try {
+      if (vehicleId) await deleteServiceVehicle(vehicleId);
+    } catch (error) {
+      console.warn('Araç rollback başarısız', error);
+    }
+    try {
+      if (staffUserId) await deleteStaffUser(staffUserId);
+    } catch (error) {
+      console.warn('Personel rollback başarısız', error);
+    }
   };
 
   const branchList = form.role === 'Cafeteria'
