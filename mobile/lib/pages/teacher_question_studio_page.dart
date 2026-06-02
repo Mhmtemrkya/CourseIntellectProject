@@ -49,6 +49,8 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   String? _solutionAssetPath;
   final List<QuestionBankRecord> _examQuestions = [];
   final List<QuestionBankRecord> _savedQuestions = [];
+  late final String _questionSetKey =
+      '${widget.examMode ? 'exam-set' : 'question-set'}-${DateTime.now().millisecondsSinceEpoch}';
   String _autosave = 'Canlı kayda hazır';
   String? _draftId;
   Timer? _autosaveTimer;
@@ -235,7 +237,6 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
         expectedAnswer: _usesOptions
             ? null
             : _expectedAnswerController.text.trim(),
-        questionSetTitle: _topicController.text.trim(),
         revealCorrectAnswerToStudent: true,
         imagePlacement: _imagePath == null ? 'None' : 'Top',
         richTextHtml: text,
@@ -244,6 +245,15 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
             : _solutionController.text.trim(),
         editorMetadataJson: jsonEncode(_editorMetadata(filledOptionEntries)),
         publicationStatus: 'Published',
+        questionSetKey: _questionSetKey,
+        questionSetTitle: widget.examMode
+            ? (_examTitleController.text.trim().isEmpty
+                  ? _topicController.text.trim()
+                  : _examTitleController.text.trim())
+            : _topicController.text.trim(),
+        questionOrder: widget.examMode
+            ? _examQuestions.length
+            : _savedQuestions.length,
       );
       if (!mounted) return;
       if (widget.examMode) {

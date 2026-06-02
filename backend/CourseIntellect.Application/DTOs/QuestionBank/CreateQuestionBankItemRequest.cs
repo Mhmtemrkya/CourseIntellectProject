@@ -19,4 +19,7 @@ public sealed record CreateQuestionBankItemRequest(
     string? RichTextHtml = null,
     string? SolutionTextHtml = null,
     string? EditorMetadataJson = null,
-    string? PublicationStatus = null);
+    string? PublicationStatus = null,
+    string? QuestionSetKey = null,
+    string? QuestionSetTitle = null,
+    int? QuestionOrder = null);

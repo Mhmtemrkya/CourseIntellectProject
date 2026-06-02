@@ -11,7 +11,9 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
 {
     public async Task<IReadOnlyList<QuestionBankItemDto>> GetQuestionsAsync(string? className, bool includeDrafts = false, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.QuestionBankItems.AsQueryable();
+        var query = dbContext.QuestionBankItems
+            .Where(x => x.PublicationStatus != "Deleted")
+            .AsQueryable();
 
         if (!includeDrafts)
         {
@@ -89,7 +91,7 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
             return false;
         }
 
-        dbContext.QuestionBankItems.Remove(item);
+        item.PublicationStatus = "Deleted";
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }
@@ -165,6 +167,9 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
         item.SolutionTextHtml = NormalizeOptional(request.SolutionTextHtml);
         item.EditorMetadataJson = NormalizeOptional(request.EditorMetadataJson);
         item.PublicationStatus = NormalizePublicationStatus(request.PublicationStatus);
+        item.QuestionSetKey = NormalizeOptional(request.QuestionSetKey);
+        item.QuestionSetTitle = NormalizeOptional(request.QuestionSetTitle);
+        item.QuestionOrder = request.QuestionOrder;
     }
 
     private static QuestionBankItemDto ToDto(QuestionBankItem item)
@@ -194,7 +199,10 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
             item.RichTextHtml,
             item.SolutionTextHtml,
             item.EditorMetadataJson,
-            item.PublicationStatus);
+            item.PublicationStatus,
+            item.QuestionSetKey,
+            item.QuestionSetTitle,
+            item.QuestionOrder);
     }
 
     private static IReadOnlyList<string> DeserializeList(string? value)

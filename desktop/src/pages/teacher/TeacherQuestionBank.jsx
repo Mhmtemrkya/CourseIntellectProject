@@ -527,17 +527,18 @@ export default function TeacherQuestionBank() {
     }
   };
 
-  const handleDeleteQuestion = async (id) => {
+  const handleDeleteQuestionSet = async (set) => {
     try {
-      await deleteQuestionBankItem(id);
-      setQuestions((prev) => prev.filter((item) => item.id !== id));
+      const ids = set.questions.map((item) => item.id);
+      await Promise.all(ids.map((id) => deleteQuestionBankItem(id)));
+      setQuestions((prev) => prev.filter((item) => !ids.includes(item.id)));
       toast({
-        title: 'Soru silindi',
-        description: 'Kayıt backend üzerinden kaldırıldı.',
+        title: 'Soru seti silindi',
+        description: `${ids.length} soru öğrenci görünümünden de kaldırıldı.`,
       });
     } catch (err) {
       toast({
-        title: 'Soru silinemedi',
+        title: 'Soru seti silinemedi',
         description: err.message || 'Tekrar deneyin.',
         variant: 'destructive',
       });
@@ -974,7 +975,7 @@ export default function TeacherQuestionBank() {
                   <Button variant="outline" size="icon" onClick={() => openEditDialog(set.questions[0])}>
                     <Pencil className="h-4 w-4 text-brand-primary" />
                   </Button>
-                  <Button variant="outline" size="icon" onClick={() => handleDeleteQuestion(set.questions[0].id)}>
+                  <Button variant="outline" size="icon" onClick={() => handleDeleteQuestionSet(set)}>
                     <Trash2 className="h-4 w-4 text-red-600" />
                   </Button>
                 </div>

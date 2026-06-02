@@ -69,6 +69,10 @@ function optionLetter(index) {
   return String.fromCharCode(65 + index);
 }
 
+function createQuestionSetKey(prefix = 'set') {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 export default function TeacherQuestionStudio() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -101,6 +105,7 @@ export default function TeacherQuestionStudio() {
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [savedQuestions, setSavedQuestions] = useState([]);
   const [examQuestions, setExamQuestions] = useState([]);
+  const [questionSetKey] = useState(() => createQuestionSetKey(isExamMode ? 'exam-set' : 'question-set'));
   const [examForm, setExamForm] = useState({
     title: '', className: '', dateLabel: '', duration: '40 dk', type: 'MockExam',
   });
@@ -326,6 +331,11 @@ export default function TeacherQuestionStudio() {
         canvasStrokes,
       }),
       publicationStatus: settings.publishStatus,
+      questionSetKey,
+      questionSetTitle: isExamMode
+        ? (examForm.title.trim() || settings.topic.trim() || 'Deneme Soruları')
+        : (settings.topic.trim() || 'Soru Seti'),
+      questionOrder: isExamMode ? examQuestions.length : savedQuestions.length,
     };
   };
 

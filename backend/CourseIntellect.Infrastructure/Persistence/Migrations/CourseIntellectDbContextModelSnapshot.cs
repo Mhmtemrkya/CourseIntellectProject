@@ -1376,6 +1376,20 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<int?>("QuestionOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("question_order");
+
+                    b.Property<string>("QuestionSetKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("question_set_key");
+
+                    b.Property<string>("QuestionSetTitle")
+                        .HasMaxLength(240)
+                        .HasColumnType("character varying(240)")
+                        .HasColumnName("question_set_title");
+
                     b.Property<bool>("RevealCorrectAnswerToStudent")
                         .HasColumnType("boolean");
 
@@ -1425,6 +1439,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("QuestionSetKey", "QuestionOrder");
 
                     b.HasIndex("TenantId");
 

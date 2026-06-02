@@ -25,4 +25,7 @@ public sealed class QuestionBankItem : ITenantScopedEntity
     public string? SolutionTextHtml { get; set; }
     public string? EditorMetadataJson { get; set; }
     public string PublicationStatus { get; set; } = "Published";
+    public string? QuestionSetKey { get; set; }
+    public string? QuestionSetTitle { get; set; }
+    public int? QuestionOrder { get; set; }
 }

@@ -22,4 +22,7 @@ public sealed record QuestionBankItemDto(
     string? RichTextHtml,
     string? SolutionTextHtml,
     string? EditorMetadataJson,
-    string PublicationStatus);
+    string PublicationStatus,
+    string? QuestionSetKey,
+    string? QuestionSetTitle,
+    int? QuestionOrder);

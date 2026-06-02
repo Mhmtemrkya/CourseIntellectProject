@@ -258,6 +258,10 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.SolutionTextHtml).HasColumnName("solution_text_html").HasMaxLength(16000);
             entity.Property(x => x.EditorMetadataJson).HasColumnName("editor_metadata_json").HasMaxLength(30000);
             entity.Property(x => x.PublicationStatus).HasColumnName("publication_status").HasMaxLength(30).HasDefaultValue("Published").IsRequired();
+            entity.Property(x => x.QuestionSetKey).HasColumnName("question_set_key").HasMaxLength(120);
+            entity.Property(x => x.QuestionSetTitle).HasColumnName("question_set_title").HasMaxLength(240);
+            entity.Property(x => x.QuestionOrder).HasColumnName("question_order");
+            entity.HasIndex(x => new { x.QuestionSetKey, x.QuestionOrder });
         });
 
         modelBuilder.Entity<QuestionPracticeAttempt>(entity =>

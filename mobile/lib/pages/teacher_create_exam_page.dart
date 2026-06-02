@@ -270,7 +270,10 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     var sources = List<Map<String, dynamic>>.from(selectedItems);
     if (selectedSource == 'Manuel Ekle' && _manualQuestions.isNotEmpty) {
       final teacherName = _teacherName.isEmpty ? 'Öğretmen' : _teacherName;
-      for (final draft in _manualQuestions) {
+      final questionSetKey =
+          'exam-set-${DateTime.now().millisecondsSinceEpoch}';
+      for (var index = 0; index < _manualQuestions.length; index++) {
+        final draft = _manualQuestions[index];
         final options = draft.optionControllers
             .map((item) => item.text.trim())
             .where((item) => item.isNotEmpty)
@@ -296,6 +299,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
           expectedAnswer: draft.type == 'Çoktan Seçmeli'
               ? options.elementAtOrNull(draft.correctOptionIndex)
               : draft.answerController.text.trim(),
+          questionSetKey: questionSetKey,
+          questionSetTitle: titleController.text.trim().isEmpty
+              ? 'Sınav Soruları'
+              : titleController.text.trim(),
+          questionOrder: index,
         );
         sources.add({
           'questionId': created.id,

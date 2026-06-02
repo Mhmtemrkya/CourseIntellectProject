@@ -9,8 +9,13 @@ import 'teacher_question_create_page.dart';
 
 class TeacherQuestionBankDetailPage extends StatefulWidget {
   final QuestionBankRecord question;
+  final List<QuestionBankRecord> questions;
 
-  const TeacherQuestionBankDetailPage({super.key, required this.question});
+  const TeacherQuestionBankDetailPage({
+    super.key,
+    required this.question,
+    this.questions = const [],
+  });
 
   @override
   State<TeacherQuestionBankDetailPage> createState() =>
@@ -20,11 +25,17 @@ class TeacherQuestionBankDetailPage extends StatefulWidget {
 class _TeacherQuestionBankDetailPageState
     extends State<TeacherQuestionBankDetailPage> {
   final _store = QuestionBankStore.instance;
+  int _currentIndex = 0;
+
+  List<QuestionBankRecord> get _questionSet =>
+      widget.questions.isEmpty ? [widget.question] : widget.questions;
 
   QuestionBankRecord get _question {
+    final safeIndex = _currentIndex.clamp(0, _questionSet.length - 1).toInt();
+    final fallback = _questionSet[safeIndex];
     return _store.questions.firstWhere(
-      (item) => item.id == widget.question.id,
-      orElse: () => widget.question,
+      (item) => item.id == fallback.id,
+      orElse: () => fallback,
     );
   }
 
@@ -91,7 +102,9 @@ class _TeacherQuestionBankDetailPageState
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Soru Detayı'),
+        title: Text(
+          _questionSet.length > 1 ? 'Soru Seti Detayı' : 'Soru Detayı',
+        ),
         actions: [
           IconButton(
             onPressed: () async {
@@ -120,6 +133,27 @@ class _TeacherQuestionBankDetailPageState
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _hero(theme, isDark, item),
+              if (_questionSet.length > 1) ...[
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 44,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _questionSet.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 8),
+                    itemBuilder: (context, index) {
+                      final selected = index == _currentIndex;
+                      return ChoiceChip(
+                        selected: selected,
+                        label: Text('${index + 1}. Soru'),
+                        onSelected: (_) =>
+                            setState(() => _currentIndex = index),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               _panel(
                 theme,

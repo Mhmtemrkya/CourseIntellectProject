@@ -305,7 +305,8 @@ export default function TeacherExams() {
       let sources = plannedForm.sources;
       if (plannedForm.sourceType === 'Manuel Ekle' && plannedForm.manualQuestions.length > 0) {
         const createdManualQuestions = [];
-        for (const item of plannedForm.manualQuestions) {
+        const questionSetKey = `exam-set-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        for (const [index, item] of plannedForm.manualQuestions.entries()) {
           let imagePath = item.imagePath || null;
           if (item.imageFile) {
             const imageForm = new FormData();
@@ -329,6 +330,10 @@ export default function TeacherExams() {
             solutionAssetType: null,
             revealCorrectAnswerToStudent: false,
             expectedAnswer: item.expectedAnswer || null,
+            publicationStatus: 'Published',
+            questionSetKey,
+            questionSetTitle: plannedForm.title.trim() || 'Sınav Soruları',
+            questionOrder: index,
           });
           createdManualQuestions.push({
             questionId: created.id,

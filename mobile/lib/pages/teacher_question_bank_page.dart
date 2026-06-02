@@ -888,7 +888,10 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => TeacherQuestionBankDetailPage(question: lead),
+            builder: (_) => TeacherQuestionBankDetailPage(
+              question: lead,
+              questions: set.questions,
+            ),
           ),
         ).then((_) => _load());
       },
