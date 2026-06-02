@@ -7,15 +7,16 @@ import 'package:student/widgets/solution_drawing_canvas.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class _SolveColors {
-  static const background = Color(0xFF07111F);
-  static const backgroundDeep = Color(0xFF050A14);
-  static const surface = Color(0xFF0B1626);
-  static const surfaceSoft = Color(0xFF101D31);
+  static const background = Color(0xFF0E1A2F);
+  static const backgroundDeep = Color(0xFF172A45);
+  static const surface = Color(0xFF182A45);
+  static const surfaceSoft = Color(0xFF213957);
   static const primary = Color(0xFFFF9D2E);
-  static const primaryDeep = Color(0xFFF97316);
+  static const primaryDeep = Color(0xFFFF8A1C);
   static const blue = Color(0xFF4DA3FF);
   static const green = Color(0xFF30D158);
-  static const border = Color(0xFF22324A);
+  static const border = Color(0xFF3A5278);
+  static const muted = Color(0xFFB9C6DA);
 }
 
 class ExamSolvePage extends StatefulWidget {
@@ -485,10 +486,12 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                             indicatorSize: TabBarIndicatorSize.tab,
                             dividerColor: Colors.transparent,
                             labelColor: Colors.white,
-                            unselectedLabelColor: Colors.white60,
+                            unselectedLabelColor: _SolveColors.muted,
                             indicator: BoxDecoration(
                               color: _SolveColors.primaryDeep,
-                              borderRadius: BorderRadius.all(Radius.circular(16)),
+                              borderRadius: BorderRadius.all(
+                                Radius.circular(16),
+                              ),
                             ),
                             tabs: [
                               Tab(text: 'Soru'),
@@ -537,15 +540,12 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
             children: [
               Row(
                 children: [
-                  _Tag(
-                    label: question.difficulty,
-                    color: _SolveColors.primary,
-                  ),
+                  _Tag(label: question.difficulty, color: _SolveColors.primary),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       '${question.subject} / ${question.topic}',
-                      style: const TextStyle(color: Colors.white54),
+                      style: const TextStyle(color: _SolveColors.muted),
                     ),
                   ),
                 ],
@@ -618,7 +618,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   decoration: InputDecoration(
                     hintText: 'Cevabını buraya yaz...',
                     filled: true,
-                    fillColor: _SolveColors.background,
+                    fillColor: _SolveColors.surfaceSoft,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
                       borderSide: const BorderSide(color: _SolveColors.border),
@@ -662,7 +662,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                 decoration: InputDecoration(
                   hintText: 'Bu soru için notunu yaz...',
                   filled: true,
-                  fillColor: _SolveColors.background,
+                  fillColor: _SolveColors.surfaceSoft,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
                     borderSide: const BorderSide(color: _SolveColors.border),
@@ -939,7 +939,7 @@ class _BottomNav extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
-        color: _SolveColors.background.withValues(alpha: 0.96),
+        color: _SolveColors.surface.withValues(alpha: 0.98),
         border: Border(
           top: BorderSide(color: _SolveColors.border.withValues(alpha: 0.85)),
         ),
@@ -1010,9 +1010,7 @@ class _OptionButton extends StatelessWidget {
               : _SolveColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected
-                ? _SolveColors.primary
-                : _SolveColors.border,
+            color: selected ? _SolveColors.primary : _SolveColors.border,
           ),
         ),
         child: Row(
@@ -1026,7 +1024,7 @@ class _OptionButton extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: selected ? _SolveColors.background : Colors.white,
+                  color: selected ? const Color(0xFF08111F) : Colors.white,
                 ),
               ),
             ),
@@ -1061,8 +1059,8 @@ class _GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            _SolveColors.surfaceSoft.withValues(alpha: 0.96),
-            _SolveColors.surface.withValues(alpha: 0.96),
+            _SolveColors.surfaceSoft.withValues(alpha: 0.98),
+            _SolveColors.surface.withValues(alpha: 0.98),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,

@@ -24,6 +24,14 @@ class SolutionDrawingCanvas extends StatefulWidget {
   State<SolutionDrawingCanvas> createState() => _SolutionDrawingCanvasState();
 }
 
+class _CanvasPalette {
+  static const shell = Color(0xFF182A45);
+  static const paper = Color(0xFF1A2D49);
+  static const paperDeep = Color(0xFF223B5D);
+  static const border = Color(0xFF3A5278);
+  static const orange = Color(0xFFFF9D2E);
+}
+
 class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
   final GlobalKey _canvasKey = GlobalKey();
   final List<_CanvasStroke> _strokes = [];
@@ -130,9 +138,9 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF07111F),
+        color: _CanvasPalette.shell,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: _CanvasPalette.border),
       ),
       child: Column(
         children: [
@@ -209,7 +217,7 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
                     value: _width,
                     min: 1,
                     max: 16,
-                    activeColor: const Color(0xFFFF8A1C),
+                    activeColor: _CanvasPalette.orange,
                     onChanged: (value) => setState(() => _width = value),
                   ),
                 ),
@@ -228,9 +236,9 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
               margin: const EdgeInsets.all(14),
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: const Color(0xFF091426),
+                color: _CanvasPalette.paper,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                border: Border.all(color: _CanvasPalette.border),
               ),
               child: InteractiveViewer(
                 minScale: 0.8,
@@ -328,7 +336,7 @@ class _SolutionCanvasPainter extends CustomPainter {
     if (drawBackground) {
       final background = Paint()
         ..shader = const LinearGradient(
-          colors: [Color(0xFF07111F), Color(0xFF0E1A2D)],
+          colors: [_CanvasPalette.paper, _CanvasPalette.paperDeep],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ).createShader(Offset.zero & size);
@@ -337,7 +345,7 @@ class _SolutionCanvasPainter extends CustomPainter {
 
     if (showGrid) {
       final gridPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.055)
+        ..color = Colors.white.withValues(alpha: 0.08)
         ..strokeWidth = 1;
       for (double x = 0; x < size.width; x += 24) {
         canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
@@ -359,7 +367,7 @@ class _SolutionCanvasPainter extends CustomPainter {
     if (stroke.points.length < 2) return;
     final paint = Paint()
       ..color = stroke.tool == 'eraser'
-          ? const Color(0xFF091426)
+          ? _CanvasPalette.paper
           : stroke.color.withValues(alpha: stroke.opacity)
       ..strokeWidth = stroke.width
       ..strokeCap = StrokeCap.round
