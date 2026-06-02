@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/api_config.dart';
 import '../services/question_bank_store.dart';
 import '../widgets/responsive_layout.dart';
-import 'student_question_bank_solve_page.dart';
+import 'exam_solve_page.dart';
 
 class StudentQuestionBankDetailPage extends StatelessWidget {
   final String subject;
@@ -141,13 +141,18 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                 height: 52,
                 child: ElevatedButton.icon(
                   onPressed: () {
+                    final questionIds = questions
+                        .map((question) => question.id)
+                        .where((id) => id.isNotEmpty)
+                        .toList();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => StudentQuestionBankSolvePage(
+                        builder: (_) => ExamSolvePage(
+                          examTitle: topic,
                           subject: subject,
-                          topic: topic,
-                          questions: questions,
+                          questionIds: questionIds,
+                          questionCount: questionIds.length,
                         ),
                       ),
                     );

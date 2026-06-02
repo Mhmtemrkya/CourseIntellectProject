@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, Video, Plus, Search, Eye, Upload, FolderOpen, CheckCircle2, Play, Pause, Download, Maximize2, Rewind, FastForward, Trash2,
+  CloudUpload, HardDrive, Sparkles, CalendarClock, Settings2, ImageIcon, X, ClipboardCheck, FileUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -16,7 +17,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { createContent, deleteContent, fetchContents, fetchStudents, updateContent, updateContentStatus, uploadFile } from '../../lib/api/modules';
+import { createContent, deleteContent, fetchContents, fetchStudents, saveContentExtras, updateContent, updateContentStatus, uploadFile } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 
 const containerVariants = {
@@ -70,6 +71,15 @@ function formatFileSizeLabel(size) {
   return `${kiloBytes.toFixed(kiloBytes >= 10 ? 0 : 1)} KB`;
 }
 
+function inferContentTypeFromFile(fileName = '') {
+  const extension = String(fileName).split('.').pop()?.toLowerCase() || '';
+  if (['mp4', 'mov', 'm4v', 'webm'].includes(extension)) return 'Video';
+  if (extension === 'pdf') return 'PDF';
+  if (['doc', 'docx'].includes(extension)) return 'Word';
+  if (['ppt', 'pptx'].includes(extension)) return 'PowerPoint';
+  return 'Dosya';
+}
+
 export default function TeacherContent() {
   const { toast } = useToast();
   const { user } = useApp();
@@ -88,8 +98,17 @@ export default function TeacherContent() {
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoSpeed, setVideoSpeed] = useState(1);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [coverFile, setCoverFile] = useState(null);
+  const [exerciseDrafts, setExerciseDrafts] = useState([{ id: 'exercise-1', title: '', description: '', url: '' }]);
+  const [contentSettings, setContentSettings] = useState({
+    allowDownload: true,
+    allowNotes: true,
+    completionCertificate: false,
+  });
   const videoRef = useRef(null);
   const videoContainerRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const coverInputRef = useRef(null);
   const [form, setForm] = useState({
     title: '',
     description: '',
@@ -202,6 +221,13 @@ export default function TeacherContent() {
 
   const handleCreate = async () => {
     try {
+      if (!selectedFile) {
+        toast({
+          title: 'Dosya seçilmedi',
+          description: 'Canlı yayına alınacak içerik için bir dosya seçmelisin.',
+        });
+        return;
+      }
       setSaving(true);
       const trimmedPlaylistTitle = form.playlistTitle.trim();
       const selectedPlaylist = teacherPlaylists.find((item) => item.key === form.playlistKey);
@@ -221,6 +247,12 @@ export default function TeacherContent() {
         formData.append('file', selectedFile);
         return uploadFile(formData, 'teacher-content');
       })() : null;
+      const coverPayload = coverFile ? await (() => {
+        const formData = new FormData();
+        formData.append('file', coverFile);
+        return uploadFile(formData, 'teacher-content-covers');
+      })() : null;
+      const coverImageUrl = coverPayload?.fileUrl || null;
       const created = await createContent({
         subject: form.subject.trim(),
         title: form.title.trim(),
@@ -233,11 +265,27 @@ export default function TeacherContent() {
         size: form.size.trim() || formatFileSizeLabel(uploadPayload?.size) || (selectedFile ? `${Math.max(1, Math.round(selectedFile.size / 1024 / 1024))} MB` : 'Dosya seçilmedi'),
         description: form.description.trim(),
         fileName: uploadPayload?.fileName || form.fileName.trim() || selectedFile?.name || null,
+        fileUrl: uploadPayload?.fileUrl || null,
+        coverImageUrl,
         playlistKey: playlistKey || null,
         playlistTitle: playlistTitle || null,
         playlistOrder,
+        allowDownload: contentSettings.allowDownload,
+        allowNotes: contentSettings.allowNotes,
+        completionCertificate: contentSettings.completionCertificate,
         publishStatus: 'Aktif',
       });
+      await saveContentExtras(created.id, {
+        coverImageUrl,
+        exercises: exerciseDrafts
+          .filter((item) => item.title.trim())
+          .map((item) => ({
+            id: item.id,
+            title: item.title.trim(),
+            description: item.description.trim(),
+            url: item.url.trim(),
+          })),
+      }).catch(() => {});
       setContent((prev) => [created, ...prev]);
       setUploadOpen(false);
       setForm({
@@ -254,6 +302,13 @@ export default function TeacherContent() {
         playlistOrder: '1',
       });
       setSelectedFile(null);
+      setCoverFile(null);
+      setExerciseDrafts([{ id: 'exercise-1', title: '', description: '', url: '' }]);
+      setContentSettings({
+        allowDownload: true,
+        allowNotes: true,
+        completionCertificate: false,
+      });
       toast({
         title: 'İçerik oluşturuldu',
         description: `${created.title} ogrenci ekraninda gorunecek sekilde kaydedildi.`,
@@ -267,6 +322,48 @@ export default function TeacherContent() {
       setSaving(false);
     }
   };
+
+  const handleUploadFileSelected = useCallback((file) => {
+    if (!file) return;
+    const detectedType = inferContentTypeFromFile(file.name);
+    const nameWithoutExtension = file.name.includes('.')
+      ? file.name.slice(0, file.name.lastIndexOf('.'))
+      : file.name;
+
+    setSelectedFile(file);
+    setForm((prev) => ({
+      ...prev,
+      fileType: detectedType,
+      fileName: file.name,
+      size: formatFileSizeLabel(file.size),
+      title: prev.title || nameWithoutExtension.replace(/[_-]/g, ' '),
+      info: prev.info || formatFileSizeLabel(file.size),
+    }));
+  }, []);
+
+  const resetUploadForm = useCallback(() => {
+    setForm({
+      title: '',
+      description: '',
+      subject: '',
+      grade: classOptions[0] || '',
+      fileType: 'PDF',
+      fileName: '',
+      size: '',
+      playlistMode: 'single',
+      playlistKey: '',
+      playlistTitle: '',
+      playlistOrder: '1',
+    });
+    setSelectedFile(null);
+    setCoverFile(null);
+    setExerciseDrafts([{ id: 'exercise-1', title: '', description: '', url: '' }]);
+    setContentSettings({
+      allowDownload: true,
+      allowNotes: true,
+      completionCertificate: false,
+    });
+  }, [classOptions]);
 
   const handlePublish = async (item, publishStatus) => {
     try {
@@ -438,69 +535,216 @@ export default function TeacherContent() {
               Yeni İçerik
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Yeni İçerik Yükle</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Başlık</Label>
-                <Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="İçerik başlığı" />
-              </div>
-              <div className="space-y-2">
-                <Label>Açıklama</Label>
-                <Textarea value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="İçerik açıklaması" />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Ders</Label>
-                  <Input value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))} placeholder="Matematik" />
+          <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-white/10 bg-[#07111f] p-0 text-white shadow-2xl sm:w-[calc(100vw-2rem)]">
+            <div className="border-b border-white/10 bg-gradient-to-r from-[#091424] via-[#0d1628] to-[#160f08] px-6 py-5">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-3 text-2xl text-white">
+                  <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30">
+                    <CloudUpload className="h-6 w-6" />
+                  </span>
+                  İçerik Yükleme
+                </DialogTitle>
+                <DialogDescription className="text-slate-300">
+                  Eğitici içeriklerini canlı backend'e yükle, sınıf ve ders bilgileriyle öğrencilerin panelinde yayınla.
+                </DialogDescription>
+              </DialogHeader>
+            </div>
+
+            <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_390px]">
+              <div className="space-y-5 p-5 lg:p-6">
+                <div className="flex flex-wrap items-center gap-3 text-xs font-semibold text-slate-300">
+                  {[
+                    ['1', 'İçerik Yükleme'],
+                    ['2', 'İçerik Bilgileri'],
+                    ['3', 'İçerik Ayarları'],
+                    ['4', 'Önizleme & Yayınla'],
+                  ].map(([number, label], index) => (
+                    <div key={number} className="flex items-center gap-3">
+                      <span className={`flex h-8 w-8 items-center justify-center rounded-full ${index === 0 ? 'bg-orange-500 text-white shadow-[0_0_24px_rgba(249,115,22,0.45)]' : 'bg-white/8 text-slate-300 ring-1 ring-white/10'}`}>
+                        {number}
+                      </span>
+                      <span>{label}</span>
+                      {index < 3 ? <span className="hidden h-px w-14 bg-white/10 md:block" /> : null}
+                    </div>
+                  ))}
                 </div>
-                <div className="space-y-2">
-                  <Label>Sınıf</Label>
-                  {classOptions.length > 0 ? (
-                    <Select value={form.grade} onValueChange={(value) => setForm((prev) => ({ ...prev, grade: value }))}>
-                      <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
-                      <SelectContent>
-                        {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDragOver={(event) => event.preventDefault()}
+                  onDrop={(event) => {
+                    event.preventDefault();
+                    handleUploadFileSelected(event.dataTransfer.files?.[0]);
+                  }}
+                  className="group relative flex min-h-[230px] w-full flex-col items-center justify-center overflow-hidden rounded-[28px] border border-dashed border-white/18 bg-white/[0.035] p-8 text-center transition hover:border-orange-400/60 hover:bg-orange-500/[0.06]"
+                >
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.18),transparent_42%)] opacity-0 transition group-hover:opacity-100" />
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-[26px] bg-white/[0.07] text-orange-300 ring-1 ring-white/10">
+                    <FileUp className="h-10 w-10" />
+                  </div>
+                  <h3 className="relative mt-5 text-xl font-bold text-white">Dosyanızı buraya sürükleyip bırakın</h3>
+                  <p className="relative mt-2 max-w-xl text-sm leading-6 text-slate-300">
+                    veya dosya seçmek için tıklayın. Desteklenen formatlar: MP4, MOV, PDF, DOCX, PPTX. Maksimum dosya boyutu backend limitine göre kontrol edilir.
+                  </p>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov,.m4v,.webm"
+                    onChange={(event) => handleUploadFileSelected(event.target.files?.[0])}
+                  />
+                </button>
+
+                <div className="grid gap-3 md:grid-cols-4">
+                  {[
+                    [FolderOpen, 'Dosya Seç', 'Bilgisayarından dosya seç'],
+                    [HardDrive, 'Google Drive', 'Harici kaynak hazır alanı'],
+                    [CloudUpload, 'OneDrive', 'Dosya aktarım alanı'],
+                    [Sparkles, 'Akıllı Önizleme', 'Seçilen dosyayı kontrol et'],
+                  ].map(([Icon, title, subtitle]) => (
+                    <button
+                      key={title}
+                      type="button"
+                      onClick={() => title === 'Dosya Seç' && fileInputRef.current?.click()}
+                      className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-left transition hover:border-orange-400/40 hover:bg-white/[0.075]"
+                    >
+                      <Icon className="h-6 w-6 text-orange-300" />
+                      <p className="mt-3 text-sm font-bold text-white">{title}</p>
+                      <p className="mt-1 text-xs text-slate-400">{subtitle}</p>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <h3 className="font-bold text-white">Yüklenen Dosya</h3>
+                    {selectedFile ? (
+                      <Button type="button" variant="ghost" size="sm" className="text-red-300 hover:bg-red-500/10 hover:text-red-200" onClick={() => setSelectedFile(null)}>
+                        <X className="mr-2 h-4 w-4" />
+                        Temizle
+                      </Button>
+                    ) : null}
+                  </div>
+                  {selectedFile ? (
+                    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0b1626] p-4 md:flex-row md:items-center">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300">
+                        {form.fileType === 'Video' ? <Video className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-white">{selectedFile.name}</p>
+                        <p className="mt-1 text-xs text-slate-400">{form.fileType} • {formatFileSizeLabel(selectedFile.size)} • Yayına hazır</p>
+                      </div>
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10 md:w-56">
+                        <div className="h-full w-full rounded-full bg-gradient-to-r from-orange-500 to-amber-300" />
+                      </div>
+                      <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+                    </div>
                   ) : (
-                    <Input
-                      value={form.grade}
-                      onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))}
-                      placeholder="Örn: 10-A"
-                    />
+                    <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-5 text-sm text-slate-400">
+                      Henüz dosya seçilmedi. Canlı içerik oluşturmak için bir dosya ekleyin.
+                    </div>
                   )}
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Dosya Türü</Label>
-                  <Select value={form.fileType} onValueChange={(value) => setForm((prev) => ({ ...prev, fileType: value }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="PDF">PDF</SelectItem>
-                      <SelectItem value="Video">Video</SelectItem>
-                      <SelectItem value="Word">Word</SelectItem>
-                      <SelectItem value="PowerPoint">PowerPoint</SelectItem>
-                    </SelectContent>
-                  </Select>
+
+                <div className="grid gap-4 xl:grid-cols-2">
+                  <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                    <h3 className="mb-4 flex items-center gap-2 font-bold text-white">
+                      <Eye className="h-5 w-5 text-orange-300" />
+                      İçerik Önizleme
+                    </h3>
+                    <div className="relative flex min-h-[210px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#151f32] via-[#0b1424] to-[#261305]">
+                      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(249,115,22,0.28),transparent_42%)]" />
+                      <div className="relative text-center">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-orange-300 ring-1 ring-white/10">
+                          {form.fileType === 'Video' ? <Play className="h-8 w-8" /> : <FileText className="h-8 w-8" />}
+                        </div>
+                        <p className="mt-4 max-w-sm px-4 text-sm font-semibold text-white">{form.title || 'İçerik başlığı burada görünecek'}</p>
+                        <p className="mt-2 text-xs text-slate-400">{form.subject || 'Ders'} • {form.grade || 'Sınıf'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                    <h3 className="mb-4 flex items-center gap-2 font-bold text-white">
+                      <ClipboardCheck className="h-5 w-5 text-purple-300" />
+                      İçerik Kontrolü
+                    </h3>
+                    <div className="space-y-3 text-sm">
+                      {[
+                        ['Dosya', selectedFile ? 'Hazır' : 'Bekleniyor'],
+                        ['Başlık', form.title ? 'Tamam' : 'Zorunlu'],
+                        ['Ders / Sınıf', form.subject && form.grade ? 'Tamam' : 'Zorunlu'],
+                        ['Açıklama', form.description ? 'Tamam' : 'Zorunlu'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="flex items-center justify-between rounded-2xl bg-[#0b1626] px-4 py-3">
+                          <span className="text-slate-300">{label}</span>
+                          <span className={value === 'Tamam' || value === 'Hazır' ? 'text-emerald-300' : 'text-amber-300'}>{value}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Boyut</Label>
-                  <Input value={form.size} onChange={(e) => setForm((prev) => ({ ...prev, size: e.target.value }))} placeholder="Örn: 24 MB" />
+              </div>
+
+              <aside className="space-y-4 border-t border-white/10 bg-white/[0.025] p-5 lg:border-l lg:border-t-0 lg:p-6">
+                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                  <h3 className="mb-4 text-lg font-bold text-white">İçerik Bilgileri</h3>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">İçerik Adı</Label>
+                      <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="7. Sınıf Matematik - Üslü Sayılar" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-slate-300">Açıklama</Label>
+                      <Textarea className="min-h-[96px] border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="İçeriğin öğrenciye ne kazandıracağını yaz..." />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Ders</Label>
+                        <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))} placeholder="Matematik" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Sınıf</Label>
+                        {classOptions.length > 0 ? (
+                          <Select value={form.grade} onValueChange={(value) => setForm((prev) => ({ ...prev, grade: value }))}>
+                            <SelectTrigger className="border-white/10 bg-white/[0.06] text-white"><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
+                            <SelectContent>
+                              {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.grade} onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))} placeholder="7. Sınıf" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Dosya Türü</Label>
+                        <Select value={form.fileType} onValueChange={(value) => setForm((prev) => ({ ...prev, fileType: value }))}>
+                          <SelectTrigger className="border-white/10 bg-white/[0.06] text-white"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="PDF">PDF</SelectItem>
+                            <SelectItem value="Video">Video</SelectItem>
+                            <SelectItem value="Word">Word</SelectItem>
+                            <SelectItem value="PowerPoint">PowerPoint</SelectItem>
+                            <SelectItem value="Dosya">Dosya</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-slate-300">Boyut</Label>
+                        <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.size} onChange={(e) => setForm((prev) => ({ ...prev, size: e.target.value }))} placeholder="24 MB" />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Dosya Adı</Label>
-                <Input value={form.fileName} onChange={(e) => setForm((prev) => ({ ...prev, fileName: e.target.value }))} placeholder="ornek.pdf" />
-              </div>
+
               {form.fileType === 'Video' ? (
-                <div className="space-y-4 rounded-2xl border border-amber-200 bg-amber-50/60 p-4">
+                <div className="space-y-4 rounded-[24px] border border-orange-400/20 bg-orange-500/[0.06] p-5">
                   <div>
-                    <Label>Oynatma Listesi</Label>
-                    <p className="mt-1 text-xs text-muted-foreground">Videoyu tek basina yayinlayabilir ya da mevcut bir seriye ekleyebilirsin.</p>
+                    <Label className="text-slate-200">Oynatma Listesi</Label>
+                    <p className="mt-1 text-xs text-slate-400">Videoyu tek başına yayınlayabilir veya mevcut bir seriye ekleyebilirsin.</p>
                   </div>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     {[
@@ -512,7 +756,7 @@ export default function TeacherContent() {
                         key={value}
                         type="button"
                         variant={form.playlistMode === value ? 'default' : 'outline'}
-                        className={form.playlistMode === value ? 'bg-brand-primary hover:bg-brand-primary/90' : ''}
+                        className={form.playlistMode === value ? 'bg-orange-500 text-white hover:bg-orange-600' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'}
                         onClick={() => {
                           setForm((prev) => ({
                             ...prev,
@@ -532,16 +776,18 @@ export default function TeacherContent() {
                   {form.playlistMode === 'new' ? (
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label>Liste Başlığı</Label>
+                        <Label className="text-slate-300">Liste Başlığı</Label>
                         <Input
+                          className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
                           value={form.playlistTitle}
                           onChange={(e) => setForm((prev) => ({ ...prev, playlistTitle: e.target.value }))}
                           placeholder="Orn: Trigonometri Kampi"
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Video Sırası</Label>
+                        <Label className="text-slate-300">Video Sırası</Label>
                         <Input
+                          className="border-white/10 bg-white/[0.06] text-white"
                           type="number"
                           min="1"
                           value={form.playlistOrder}
@@ -567,7 +813,7 @@ export default function TeacherContent() {
                               }));
                             }}
                           >
-                            <SelectTrigger><SelectValue placeholder="Liste secin" /></SelectTrigger>
+                            <SelectTrigger className="border-white/10 bg-white/[0.06] text-white"><SelectValue placeholder="Liste seçin" /></SelectTrigger>
                             <SelectContent>
                               {teacherPlaylists.map((item) => (
                                 <SelectItem key={item.key} value={item.key}>{item.title}</SelectItem>
@@ -576,8 +822,9 @@ export default function TeacherContent() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Video Sırası</Label>
+                          <Label className="text-slate-300">Video Sırası</Label>
                           <Input
+                            className="border-white/10 bg-white/[0.06] text-white"
                             type="number"
                             min="1"
                             value={form.playlistOrder}
@@ -586,36 +833,109 @@ export default function TeacherContent() {
                         </div>
                       </div>
                     ) : (
-                      <p className="text-xs text-amber-700">Henuz olusturdugun bir video listesi yok. Once yeni liste ile bir seri baslat.</p>
+                      <p className="text-xs text-amber-200">Henüz oluşturduğun bir video listesi yok. Önce yeni liste ile bir seri başlat.</p>
                     )
                   ) : null}
                 </div>
               ) : null}
-              <div className="space-y-2">
-                <Label>Dosya Seç</Label>
-                <Input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.ppt,.pptx,.mp4,.mov"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0] || null;
-                    setSelectedFile(file);
-                    if (file) {
-                      setForm((prev) => ({
-                        ...prev,
-                        fileName: file.name,
-                        size: `${Math.max(1, Math.round(file.size / 1024 / 1024))} MB`,
-                      }));
-                    }
-                  }}
-                />
-              </div>
+
+                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                  <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
+                    <Settings2 className="h-5 w-5 text-orange-300" />
+                    İçerik Ayarları
+                  </h3>
+                  <div className="space-y-3">
+                    {[
+                      ['İndirmeye izin ver', 'allowDownload'],
+                      ['Öğrenci notu alabilir', 'allowNotes'],
+                      ['Tamamlanma sertifikası', 'completionCertificate'],
+                    ].map(([label, key]) => (
+                      <button
+                        key={label}
+                        type="button"
+                        onClick={() => setContentSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
+                        className="flex w-full items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3 text-left text-sm"
+                      >
+                        <span className="text-slate-300">{label}</span>
+                        <span className={`h-6 w-11 rounded-full p-1 ${contentSettings[key] ? 'bg-orange-500' : 'bg-slate-700'}`}>
+                          <span className={`block h-4 w-4 rounded-full bg-white transition ${contentSettings[key] ? 'translate-x-5' : ''}`} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                  <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
+                    <ImageIcon className="h-5 w-5 text-purple-300" />
+                    Kapak Görseli
+                  </h3>
+                  <input
+                    ref={coverInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => setCoverFile(event.target.files?.[0] || null)}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => coverInputRef.current?.click()}
+                    className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/30 via-[#101b2c] to-orange-500/25 p-4 text-left"
+                  >
+                    <div className="flex h-24 items-center justify-center rounded-xl border border-white/10 bg-black/20">
+                      <span className="text-sm font-semibold text-slate-200">{coverFile?.name || form.subject || 'Kapak seç / otomatik kapak'}</span>
+                    </div>
+                  </button>
+                  <p className="mt-3 text-xs text-slate-400">Kapak yüklenirse öğrenci izleme ekranında canlı olarak kullanılır.</p>
+                </div>
+
+                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                  <h3 className="mb-4 text-lg font-bold text-white">Alıştırmalar</h3>
+                  <div className="space-y-3">
+                    {exerciseDrafts.map((exercise, index) => (
+                      <div key={exercise.id} className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                        <Input
+                          className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          value={exercise.title}
+                          onChange={(event) => setExerciseDrafts((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))}
+                          placeholder="Alıştırma başlığı"
+                        />
+                        <Input
+                          className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          value={exercise.url}
+                          onChange={(event) => setExerciseDrafts((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))}
+                          placeholder="Bağlantı veya materyal URL"
+                        />
+                        <Textarea
+                          className="min-h-[70px] border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          value={exercise.description}
+                          onChange={(event) => setExerciseDrafts((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))}
+                          placeholder="Kısa açıklama"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="mt-3 w-full border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"
+                    onClick={() => setExerciseDrafts((prev) => [...prev, { id: `exercise-${Date.now()}`, title: '', description: '', url: '' }])}
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Alıştırma Ekle
+                  </Button>
+                </div>
+              </aside>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setUploadOpen(false)}>İptal</Button>
+
+            <DialogFooter className="sticky bottom-0 border-t border-white/10 bg-[#07111f]/95 px-6 py-4 backdrop-blur">
+              <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]" onClick={() => { resetUploadForm(); setUploadOpen(false); }}>İptal</Button>
               <Button
                 onClick={handleCreate}
+                className="bg-orange-500 text-white hover:bg-orange-600"
                 disabled={
                   saving
+                  || !selectedFile
                   || !form.title
                   || !form.subject
                   || !form.grade
@@ -627,7 +947,7 @@ export default function TeacherContent() {
               </Button>
             </DialogFooter>
             {!form.grade ? (
-              <p className="text-xs text-amber-600">Kaydetmek için bir sınıf seçin veya sınıf adı girin.</p>
+              <p className="px-6 pb-4 text-xs text-amber-200">Kaydetmek için bir sınıf seçin veya sınıf adı girin.</p>
             ) : null}
           </DialogContent>
         </Dialog>

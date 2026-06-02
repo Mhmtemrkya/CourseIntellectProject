@@ -13,5 +13,12 @@ public sealed record CreateContentRequest(
     string Description,
     string? FileName,
     string? FileUrl,
-    string PublishStatus
+    string PublishStatus,
+    string? CoverImageUrl = null,
+    string? PlaylistKey = null,
+    string? PlaylistTitle = null,
+    int? PlaylistOrder = null,
+    bool AllowDownload = true,
+    bool AllowNotes = true,
+    bool CompletionCertificate = false
 );

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../services/api_config.dart';
 import '../services/question_bank_store.dart';
 import '../widgets/responsive_layout.dart';
+import 'exam_solve_page.dart';
 import 'teacher_question_create_page.dart';
 
 class TeacherQuestionBankDetailPage extends StatefulWidget {
@@ -106,6 +107,28 @@ class _TeacherQuestionBankDetailPageState
           _questionSet.length > 1 ? 'Soru Seti Detayı' : 'Soru Detayı',
         ),
         actions: [
+          IconButton(
+            onPressed: () {
+              final questionIds = _questionSet
+                  .map((question) => question.id)
+                  .where((id) => id.isNotEmpty)
+                  .toList();
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ExamSolvePage(
+                    examTitle: item.topic,
+                    subject: item.subject,
+                    questionIds: questionIds,
+                    questionCount: questionIds.length,
+                    isTeacherPreview: true,
+                  ),
+                ),
+              );
+            },
+            icon: const Icon(Icons.edit_note_rounded),
+            tooltip: 'Kalemle çöz / önizle',
+          ),
           IconButton(
             onPressed: () async {
               await Navigator.push(

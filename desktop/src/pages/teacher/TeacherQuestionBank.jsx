@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, Wand2, BarChart3, Users, FileText, Lightbulb,
+  Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, PenLine, Wand2, BarChart3, Users, FileText, Lightbulb,
 } from 'lucide-react';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -545,6 +545,28 @@ export default function TeacherQuestionBank() {
     }
   };
 
+  const handleSolveQuestionSet = (set) => {
+    const questionIds = set.questions.map((question) => question.id).filter(Boolean);
+    if (questionIds.length === 0) {
+      toast({
+        title: 'Soru bulunamadı',
+        description: 'Bu sette çözülebilir soru yok.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const params = new URLSearchParams({
+      title: set.title || 'Soru Bankası Önizleme',
+      subject: set.subject || 'Genel',
+      questionIds: questionIds.join(','),
+      questionCount: String(questionIds.length),
+      durationSeconds: String(Math.max(900, questionIds.length * 180)),
+      teacherPreview: 'true',
+    });
+    navigate(`/t/solve-preview?${params.toString()}`);
+  };
+
   const downloadTextFile = (filename, content, type = 'application/json;charset=utf-8') => {
     const blob = new Blob([content], { type });
     const url = URL.createObjectURL(blob);
@@ -972,6 +994,9 @@ export default function TeacherQuestionBank() {
                 })()}
 
                 <div className="flex justify-end gap-2">
+                  <Button variant="outline" size="icon" onClick={() => handleSolveQuestionSet(set)} title="Öğretmen önizleme çözümü">
+                    <PenLine className="h-4 w-4 text-orange-500" />
+                  </Button>
                   <Button variant="outline" size="icon" onClick={() => openEditDialog(set.questions[0])}>
                     <Pencil className="h-4 w-4 text-brand-primary" />
                   </Button>

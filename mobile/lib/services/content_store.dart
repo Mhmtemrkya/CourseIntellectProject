@@ -17,6 +17,10 @@ class ContentRecord {
   final String? playlistKey;
   final String? playlistTitle;
   final int? playlistOrder;
+  final String? coverImageUrl;
+  final bool allowDownload;
+  final bool allowNotes;
+  final bool completionCertificate;
   final String publishStatus;
 
   const ContentRecord({
@@ -36,6 +40,10 @@ class ContentRecord {
     this.playlistKey,
     this.playlistTitle,
     this.playlistOrder,
+    this.coverImageUrl,
+    this.allowDownload = true,
+    this.allowNotes = true,
+    this.completionCertificate = false,
     this.publishStatus = 'Aktif',
   });
 
@@ -66,6 +74,10 @@ class ContentRecord {
     String? playlistKey,
     String? playlistTitle,
     int? playlistOrder,
+    String? coverImageUrl,
+    bool? allowDownload,
+    bool? allowNotes,
+    bool? completionCertificate,
     String? publishStatus,
   }) {
     return ContentRecord(
@@ -85,6 +97,11 @@ class ContentRecord {
       playlistKey: playlistKey ?? this.playlistKey,
       playlistTitle: playlistTitle ?? this.playlistTitle,
       playlistOrder: playlistOrder ?? this.playlistOrder,
+      coverImageUrl: coverImageUrl ?? this.coverImageUrl,
+      allowDownload: allowDownload ?? this.allowDownload,
+      allowNotes: allowNotes ?? this.allowNotes,
+      completionCertificate:
+          completionCertificate ?? this.completionCertificate,
       publishStatus: publishStatus ?? this.publishStatus,
     );
   }

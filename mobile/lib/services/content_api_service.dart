@@ -238,9 +238,13 @@ class ContentApiService {
       description: map['description'] as String,
       fileName: map['fileName'] as String?,
       fileUrl: map['fileUrl'] as String?,
+      coverImageUrl: map['coverImageUrl'] as String?,
       playlistKey: map['playlistKey'] as String?,
       playlistTitle: map['playlistTitle'] as String?,
       playlistOrder: (map['playlistOrder'] as num?)?.toInt(),
+      allowDownload: map['allowDownload'] as bool? ?? true,
+      allowNotes: map['allowNotes'] as bool? ?? true,
+      completionCertificate: map['completionCertificate'] as bool? ?? false,
       publishStatus: map['publishStatus'] as String,
     );
   }
@@ -258,11 +262,199 @@ class ContentApiService {
     'description': record.description,
     'fileName': record.fileName,
     'fileUrl': record.fileUrl,
+    'coverImageUrl': record.coverImageUrl,
     'playlistKey': record.playlistKey,
     'playlistTitle': record.playlistTitle,
     'playlistOrder': record.playlistOrder,
+    'allowDownload': record.allowDownload,
+    'allowNotes': record.allowNotes,
+    'completionCertificate': record.completionCertificate,
     'publishStatus': record.publishStatus,
   };
+
+  Future<ContentEngagementRecord> fetchEngagement(String contentId) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const ContentApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/contents/$contentId/engagement'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ContentApiException(
+        'İçerik etkileşimleri alınamadı (${response.statusCode}).',
+      );
+    }
+
+    return ContentEngagementRecord.fromMap(
+      Map<String, dynamic>.from(jsonDecode(response.body) as Map),
+    );
+  }
+
+  Future<void> saveUserState({
+    required String contentId,
+    required double progress,
+    required bool liked,
+    required bool favorite,
+    required String note,
+  }) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const ContentApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.put(
+      Uri.parse('${ApiConfig.baseUrl}/api/contents/$contentId/engagement/state'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      body: jsonEncode({
+        'progress': progress.clamp(0, 100),
+        'liked': liked,
+        'favorite': favorite,
+        'note': note,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ContentApiException(
+        'İçerik ilerlemesi kaydedilemedi (${response.statusCode}).',
+      );
+    }
+  }
+
+  Future<List<ContentCommentRecord>> addComment({
+    required String contentId,
+    required String message,
+  }) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const ContentApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.post(
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/contents/$contentId/engagement/comments',
+      ),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      body: jsonEncode({'message': message}),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ContentApiException('Yorum eklenemedi (${response.statusCode}).');
+    }
+
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map(
+          (item) => ContentCommentRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList();
+  }
+}
+
+class ContentEngagementRecord {
+  final String? coverImageUrl;
+  final List<ContentExerciseRecord> exercises;
+  final List<ContentCommentRecord> comments;
+  final double progress;
+  final bool liked;
+  final bool favorite;
+  final String note;
+
+  const ContentEngagementRecord({
+    this.coverImageUrl,
+    required this.exercises,
+    required this.comments,
+    required this.progress,
+    required this.liked,
+    required this.favorite,
+    required this.note,
+  });
+
+  factory ContentEngagementRecord.fromMap(Map<String, dynamic> map) {
+    return ContentEngagementRecord(
+      coverImageUrl: map['coverImageUrl'] as String?,
+      exercises: ((map['exercises'] as List<dynamic>?) ?? const [])
+          .map(
+            (item) => ContentExerciseRecord.fromMap(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+      comments: ((map['comments'] as List<dynamic>?) ?? const [])
+          .map(
+            (item) => ContentCommentRecord.fromMap(
+              Map<String, dynamic>.from(item as Map),
+            ),
+          )
+          .toList(),
+      progress: (map['progress'] as num?)?.toDouble() ?? 0,
+      liked: map['liked'] as bool? ?? false,
+      favorite: map['favorite'] as bool? ?? false,
+      note: map['note'] as String? ?? '',
+    );
+  }
+}
+
+class ContentExerciseRecord {
+  final String id;
+  final String title;
+  final String description;
+  final String url;
+
+  const ContentExerciseRecord({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.url,
+  });
+
+  factory ContentExerciseRecord.fromMap(Map<String, dynamic> map) {
+    return ContentExerciseRecord(
+      id: map['id'] as String? ?? '',
+      title: map['title'] as String? ?? '',
+      description: map['description'] as String? ?? '',
+      url: map['url'] as String? ?? '',
+    );
+  }
+}
+
+class ContentCommentRecord {
+  final String id;
+  final String authorName;
+  final String authorRole;
+  final String message;
+
+  const ContentCommentRecord({
+    required this.id,
+    required this.authorName,
+    required this.authorRole,
+    required this.message,
+  });
+
+  factory ContentCommentRecord.fromMap(Map<String, dynamic> map) {
+    return ContentCommentRecord(
+      id: map['id'] as String? ?? '',
+      authorName: map['authorName'] as String? ?? 'Kullanıcı',
+      authorRole: map['authorRole'] as String? ?? '',
+      message: map['message'] as String? ?? '',
+    );
+  }
 }
 
 class ContentUploadRecord {

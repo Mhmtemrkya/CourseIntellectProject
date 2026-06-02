@@ -276,6 +276,7 @@ class _ContentPageState extends State<ContentPage>
           size: item.size,
           grade: item.grade,
           playlistKey: item.playlistKey,
+          id: item.id,
         );
       },
     );
@@ -296,6 +297,7 @@ class _ContentPageState extends State<ContentPage>
     required String size,
     required String grade,
     String? playlistKey,
+    String? id,
   }) {
     final accent = _accentForType(fileType);
 
@@ -317,6 +319,7 @@ class _ContentPageState extends State<ContentPage>
               fileUrl: fileUrl,
               size: size,
               grade: grade,
+              id: id,
               playlist: isVideo
                   ? (_contents.where((item) {
                       if (!item.isVisibleToStudents || !item.isVideo) {

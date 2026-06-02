@@ -232,6 +232,12 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Size).HasMaxLength(40).IsRequired();
             entity.Property(x => x.FileName).HasMaxLength(200);
             entity.Property(x => x.FileUrl).HasMaxLength(600);
+            entity.Property(x => x.CoverImageUrl).HasMaxLength(600);
+            entity.Property(x => x.PlaylistKey).HasMaxLength(120);
+            entity.Property(x => x.PlaylistTitle).HasMaxLength(180);
+            entity.Property(x => x.AllowDownload).HasDefaultValue(true);
+            entity.Property(x => x.AllowNotes).HasDefaultValue(true);
+            entity.Property(x => x.CompletionCertificate).HasDefaultValue(false);
             entity.Property(x => x.PublishStatus).HasMaxLength(30).IsRequired();
         });
 

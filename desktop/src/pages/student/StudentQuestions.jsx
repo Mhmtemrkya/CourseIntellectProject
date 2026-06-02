@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   Brain, Search, Play, CheckCircle, Zap, Target, BookOpen,
 } from 'lucide-react';
@@ -210,6 +211,7 @@ function AutoCover({ subject }) {
 export default function StudentQuestions() {
   const { toast } = useToast();
   const { user } = useApp();
+  const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [search, setSearch] = useState('');
@@ -270,14 +272,24 @@ export default function StudentQuestions() {
   };
 
   const handleOpenSet = async (set) => {
-    setSelectedSet(set);
-    setCurrentQuestionIndex(0);
-    setShowSetSummary(false);
-    setSelectedOption(null);
-    setOpenEndedAnswer('');
-    setSubmittedAnswers({});
-    setSubmittedAttemptIds({});
-    setResultSummary(null);
+    const questionIds = set.questions.map((question) => question.id).filter(Boolean);
+    if (questionIds.length === 0) {
+      toast({
+        title: 'Soru bulunamadı',
+        description: 'Bu sette çözülebilir soru yok.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const params = new URLSearchParams({
+      title: set.title || 'Soru Bankası Seti',
+      subject: set.subject || 'Genel',
+      questionIds: questionIds.join(','),
+      questionCount: String(questionIds.length),
+      durationSeconds: String(Math.max(900, questionIds.length * 180)),
+    });
+    navigate(`/s/solve?${params.toString()}`);
   };
 
   const handleRandomQuestion = () => {

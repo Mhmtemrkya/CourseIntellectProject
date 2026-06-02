@@ -10,6 +10,7 @@ class ExamSolvePage extends StatefulWidget {
   final String? plannedExamId;
   final String? examTitle;
   final String? subject;
+  final List<String>? questionIds;
   final int questionCount;
   final bool isTeacherPreview;
 
@@ -18,6 +19,7 @@ class ExamSolvePage extends StatefulWidget {
     this.plannedExamId,
     this.examTitle,
     this.subject,
+    this.questionIds,
     this.questionCount = 10,
     this.isTeacherPreview = false,
   });
@@ -69,6 +71,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
         plannedExamId: widget.plannedExamId,
         title: widget.examTitle,
         subject: widget.subject,
+        questionIds: widget.questionIds,
         questionCount: widget.questionCount,
         isTeacherPreview: widget.isTeacherPreview,
       );

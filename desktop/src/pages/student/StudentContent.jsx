@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   BookOpen, Video, FileText, Play, Pause, Clock, CheckCircle, Search, Download, Eye, Maximize2, Rewind, FastForward,
+  Star, Share2, NotebookPen, ThumbsUp, MessageCircle, ListChecks,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -13,7 +14,12 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
-import { fetchContents } from '../../lib/api/modules';
+import {
+  addContentComment,
+  fetchContentEngagement,
+  fetchContents,
+  saveContentUserState,
+} from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { setAppFullscreen } from '../../lib/tauri';
 
@@ -60,6 +66,14 @@ export default function StudentContent() {
   const [videoDuration, setVideoDuration] = useState(0);
   const [videoSpeed, setVideoSpeed] = useState(1);
   const [videoImmersiveMode, setVideoImmersiveMode] = useState(false);
+  const [lessonNotes, setLessonNotes] = useState({});
+  const [noteDraft, setNoteDraft] = useState('');
+  const [favoriteIds, setFavoriteIds] = useState({});
+  const [likedIds, setLikedIds] = useState({});
+  const [contentExercises, setContentExercises] = useState([]);
+  const [contentComments, setContentComments] = useState([]);
+  const [commentDraft, setCommentDraft] = useState('');
+  const lastProgressSaveRef = useRef({ key: '', progress: 0, time: 0 });
 
   const loadContent = useCallback(async () => {
     try {
@@ -220,7 +234,67 @@ export default function StudentContent() {
     setPlaySelectedVideo(true);
     setVideoCurrentTime(0);
     setVideoDuration(0);
-  }, []);
+    setNoteDraft(lessonNotes[item.id || item.fileName] || '');
+  }, [lessonNotes]);
+
+  const shareSelectedContent = useCallback(async () => {
+    if (!selectedItem) return;
+    const fileUrl = buildContentFileUrl(selectedItem.fileName);
+    const sharePayload = {
+      title: selectedItem.title,
+      text: `${selectedItem.title} - ${selectedItem.subject}`,
+      url: fileUrl || window.location.href,
+    };
+
+    if (navigator.share) {
+      await navigator.share(sharePayload).catch(() => {});
+      return;
+    }
+
+    await navigator.clipboard?.writeText(sharePayload.url).catch(() => {});
+  }, [selectedItem]);
+
+  const selectedContentKey = selectedItem ? (selectedItem.id || selectedItem.fileName || selectedItem.title) : '';
+
+  useEffect(() => {
+    if (!selectedItem?.id) {
+      setContentExercises([]);
+      setContentComments([]);
+      setCommentDraft('');
+      return;
+    }
+
+    let mounted = true;
+    fetchContentEngagement(selectedItem.id)
+      .then((engagement) => {
+        if (!mounted || !engagement) return;
+        const key = selectedItem.id || selectedItem.fileName || selectedItem.title;
+        setContentExercises(Array.isArray(engagement.exercises) ? engagement.exercises : []);
+        setContentComments(Array.isArray(engagement.comments) ? engagement.comments : []);
+        setLessonNotes((prev) => ({ ...prev, [key]: engagement.note || '' }));
+        setFavoriteIds((prev) => ({ ...prev, [key]: Boolean(engagement.favorite) }));
+        setLikedIds((prev) => ({ ...prev, [key]: Boolean(engagement.liked) }));
+        setNoteDraft(engagement.note || '');
+      })
+      .catch(() => {});
+
+    return () => {
+      mounted = false;
+    };
+  }, [selectedItem]);
+
+  const persistSelectedUserState = useCallback((overrides = {}) => {
+    if (!selectedItem?.id) return;
+    const key = selectedItem.id || selectedItem.fileName || selectedItem.title;
+    const progress = Math.max(0, Math.min(100, Number(overrides.progress ?? selectedItem.progress ?? 0)));
+    const payload = {
+      progress,
+      liked: Boolean(overrides.liked ?? likedIds[key]),
+      favorite: Boolean(overrides.favorite ?? favoriteIds[key]),
+      note: String(overrides.note ?? lessonNotes[key] ?? noteDraft ?? ''),
+    };
+    saveContentUserState(selectedItem.id, payload).catch(() => {});
+  }, [favoriteIds, lessonNotes, likedIds, noteDraft, selectedItem]);
 
   const filteredContent = useMemo(() => content.filter((item) => {
     const normalizedType = normalizeType(item.fileType);
@@ -332,7 +406,7 @@ export default function StudentContent() {
                   <Card className="overflow-hidden hover:shadow-card-hover transition-all cursor-pointer group">
                     <div className={`relative h-40 bg-gradient-to-br ${previewGradient(normalizedType)}`}>
                       <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors flex items-center justify-center gap-3">
-                        <Button size="lg" className="rounded-full bg-white/20 hover:bg-white/30 text-white" onClick={() => { setSelectedItem(item); setPlaySelectedVideo(normalizeType(item.fileType) === 'video'); setVideoCurrentTime(0); setVideoDuration(0); setVideoSpeed(1); }}>
+                        <Button size="lg" className="rounded-full bg-white/20 hover:bg-white/30 text-white" onClick={() => { setSelectedItem(item); setPlaySelectedVideo(normalizeType(item.fileType) === 'video'); setVideoCurrentTime(0); setVideoDuration(0); setVideoSpeed(1); setNoteDraft(lessonNotes[item.id || item.fileName] || ''); }}>
                           {normalizedType === 'video' ? <Play className="h-6 w-6" /> : <Eye className="h-6 w-6" />}
                         </Button>
                         <Button size="lg" variant="outline" className="rounded-full border-white/40 bg-transparent text-white hover:bg-white/10" onClick={() => openFile(item.fileName, true).catch(() => {})}>
@@ -371,8 +445,8 @@ export default function StudentContent() {
 
       <Dialog open={!!selectedItem} onOpenChange={() => { setSelectedItem(null); setVideoImmersiveMode(false); }}>
         <DialogContent className={normalizeType(selectedItem?.fileType) === 'video'
-          ? `${videoImmersiveMode ? 'h-screen w-screen max-w-none rounded-none border-0 p-0' : 'max-w-5xl p-2'}`
-          : 'max-w-2xl'}
+          ? `${videoImmersiveMode ? 'h-screen w-screen max-w-none rounded-none border-0 p-0' : 'max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-white/10 bg-[#07111f] p-3 text-white sm:w-[calc(100vw-2rem)]'}`
+          : 'max-h-[94vh] max-w-4xl overflow-y-auto border-white/10 bg-[#07111f] text-white'}
         >
           {normalizeType(selectedItem?.fileType) === 'video' ? null : (
             <DialogHeader>
@@ -381,6 +455,47 @@ export default function StudentContent() {
           )}
           {selectedItem ? (
             <div className="space-y-4">
+              {normalizeType(selectedItem.fileType) === 'video' ? (
+                <div className="flex flex-col gap-3 rounded-[28px] border border-white/10 bg-white/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                      <span>Derslerim</span>
+                      <span>/</span>
+                      <span>{selectedItem.subject}</span>
+                      <span>/</span>
+                      <span>{selectedItem.grade || 'Tüm sınıflar'}</span>
+                    </div>
+                    <h2 className="text-2xl font-black text-white">{selectedItem.title}</h2>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Badge className="border-white/10 bg-white/[0.06] text-slate-200">{selectedItem.subject}</Badge>
+                      <Badge className="border-white/10 bg-white/[0.06] text-slate-200">{selectedItem.grade || 'Tüm sınıflar'}</Badge>
+                      <Badge className="border-orange-400/25 bg-orange-500/10 text-orange-200">{selectedItem.info || selectedItem.fileType}</Badge>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]" onClick={() => openFile(selectedItem.fileName, true).catch(() => {})}>
+                      <Download className="mr-2 h-4 w-4" />
+                      İndir
+                    </Button>
+                    <Button variant="outline" className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]" onClick={() => shareSelectedContent()}>
+                      <Share2 className="mr-2 h-4 w-4" />
+                      Paylaş
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]"
+                      onClick={() => {
+                        const nextFavorites = { ...favoriteIds, [selectedContentKey]: !favoriteIds[selectedContentKey] };
+                        setFavoriteIds(nextFavorites);
+                        persistSelectedUserState({ favorite: nextFavorites[selectedContentKey] });
+                      }}
+                    >
+                      <Star className={`mr-2 h-4 w-4 ${favoriteIds[selectedContentKey] ? 'fill-orange-300 text-orange-300' : 'text-orange-300'}`} />
+                      {favoriteIds[selectedContentKey] ? 'Favoride' : 'Favori'}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem.fileName) ? (
                 <div ref={videoContainerRef} className={`relative overflow-hidden bg-black ${videoImmersiveMode ? 'h-screen w-screen rounded-none' : 'rounded-2xl border'}`}>
                     <video
@@ -400,11 +515,28 @@ export default function StudentContent() {
                         video.playbackRate = videoSpeed;
                       }}
                       onTimeUpdate={(event) => {
-                        setVideoCurrentTime(event.currentTarget.currentTime || 0);
+                        const video = event.currentTarget;
+                        const currentTime = video.currentTime || 0;
+                        setVideoCurrentTime(currentTime);
+                        const duration = video.duration || 0;
+                        if (selectedItem?.id && duration > 0) {
+                          const progress = Math.round((currentTime / duration) * 100);
+                          const last = lastProgressSaveRef.current;
+                          const now = Date.now();
+                          if (
+                            progress >= 5
+                            && progress !== last.progress
+                            && (progress - last.progress >= 5 || now - last.time > 15000)
+                          ) {
+                            lastProgressSaveRef.current = { key: selectedItem.id, progress, time: now };
+                            persistSelectedUserState({ progress });
+                          }
+                        }
                       }}
                       onPlay={() => setPlaySelectedVideo(true)}
                       onPause={() => setPlaySelectedVideo(false)}
                       onEnded={() => {
+                        persistSelectedUserState({ progress: 100 });
                         if (nextPlaylistItem) {
                           openPlaylistItem(nextPlaylistItem);
                         }
@@ -517,24 +649,173 @@ export default function StudentContent() {
               </div>
               {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem.fileName) ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="space-y-3 rounded-[28px] border bg-white p-4 shadow-sm">
+                  <div className="space-y-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl">
                     {selectedItem.playlistTitle ? (
-                      <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm">
-                        <p className="font-semibold text-foreground">{selectedItem.playlistTitle}</p>
-                        <p className="mt-1 text-muted-foreground">
+                      <div className="rounded-2xl border border-white/10 bg-[#0b1626] px-4 py-3 text-sm">
+                        <p className="font-semibold text-white">{selectedItem.playlistTitle}</p>
+                        <p className="mt-1 text-slate-400">
                           {selectedPlaylist.length} videoluk seri
                         </p>
                       </div>
                     ) : null}
+                    <Tabs defaultValue="summary" className="w-full">
+                      <TabsList className="grid w-full grid-cols-4 border border-white/10 bg-[#0b1626]">
+                        <TabsTrigger value="summary" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Konu Özeti</TabsTrigger>
+                        <TabsTrigger value="notes" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Ders Notları</TabsTrigger>
+                        <TabsTrigger value="practice" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Alıştırmalar</TabsTrigger>
+                        <TabsTrigger value="comments" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Yorumlar</TabsTrigger>
+                      </TabsList>
+                      <TabsContent value="summary" className="mt-4">
+                        <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
+                          <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-5">
+                            <h3 className="text-lg font-bold text-white">{selectedItem.title}</h3>
+                            <p className="mt-3 leading-7 text-slate-300">
+                              {selectedItem.description || selectedItem.info || 'Bu içerik için öğretmen açıklaması henüz eklenmedi.'}
+                            </p>
+                          </div>
+                          <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-5">
+                            <h3 className="mb-3 flex items-center gap-2 font-bold text-white">
+                              <ListChecks className="h-5 w-5 text-orange-300" />
+                              Bu Derste Öğreneceklerin
+                            </h3>
+                            {['Konu anlatımını takip et', 'Örnekleri ve önemli notları incele', 'Gerekirse materyali indir', 'Notlarını kaydedip derse devam et'].map((item) => (
+                              <div key={item} className="mb-3 flex items-start gap-3 text-sm text-slate-300">
+                                <CheckCircle className="mt-0.5 h-4 w-4 text-orange-300" />
+                                <span>{item}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="notes" className="mt-4">
+                        <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-4">
+                          <Label className="mb-2 block text-slate-300">Bu içerik için notun</Label>
+                          <Textarea
+                            className="min-h-[130px] border-white/10 bg-white/[0.05] text-white placeholder:text-slate-500"
+                            value={noteDraft}
+                            onChange={(event) => setNoteDraft(event.target.value)}
+                            placeholder="Önemli gördüğün yerleri buraya yaz..."
+                          />
+                          <div className="mt-3 flex justify-end">
+                            <Button
+                              className="bg-orange-500 hover:bg-orange-600"
+                              onClick={() => {
+                                const key = selectedItem.id || selectedItem.fileName;
+                                const nextNotes = { ...lessonNotes, [key]: noteDraft };
+                                setLessonNotes(nextNotes);
+                                persistSelectedUserState({ note: noteDraft });
+                              }}
+                            >
+                              <NotebookPen className="mr-2 h-4 w-4" />
+                              Notu Kaydet
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="practice" className="mt-4">
+                        <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0b1626] p-5 text-sm text-slate-300">
+                          {contentExercises.length === 0 ? (
+                            <p>Bu içerikle ilişkili alıştırma henüz eklenmedi.</p>
+                          ) : contentExercises.map((exercise) => (
+                            <a
+                              key={exercise.id || exercise.title}
+                              href={exercise.url || '#'}
+                              target={exercise.url ? '_blank' : undefined}
+                              rel="noreferrer"
+                              className="block rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.08]"
+                            >
+                              <p className="font-semibold text-white">{exercise.title}</p>
+                              {exercise.description ? <p className="mt-1 text-xs text-slate-400">{exercise.description}</p> : null}
+                            </a>
+                          ))}
+                        </div>
+                      </TabsContent>
+                      <TabsContent value="comments" className="mt-4">
+                        <div className="space-y-4 rounded-2xl border border-white/10 bg-[#0b1626] p-5 text-sm text-slate-300">
+                          <div className="flex items-center gap-2 font-semibold text-white">
+                            <MessageCircle className="h-5 w-5 text-orange-300" />
+                            Yorumlar
+                          </div>
+                          <div className="space-y-2">
+                            {contentComments.length === 0 ? (
+                              <p className="text-slate-400">Henüz yorum yok. İlk yorumu sen yazabilirsin.</p>
+                            ) : contentComments.map((comment) => (
+                              <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                                <p className="text-xs text-slate-400">{comment.authorName} • {comment.authorRole}</p>
+                                <p className="mt-1 text-slate-200">{comment.message}</p>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              className="border-white/10 bg-white/[0.05] text-white placeholder:text-slate-500"
+                              value={commentDraft}
+                              onChange={(event) => setCommentDraft(event.target.value)}
+                              placeholder="Yorum yaz..."
+                            />
+                            <Button
+                              className="bg-orange-500 hover:bg-orange-600"
+                              onClick={async () => {
+                                if (!selectedItem?.id || !commentDraft.trim()) return;
+                                const comments = await addContentComment(selectedItem.id, commentDraft.trim()).catch(() => null);
+                                if (Array.isArray(comments)) {
+                                  setContentComments(comments);
+                                  setCommentDraft('');
+                                }
+                              }}
+                            >
+                              Gönder
+                            </Button>
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <Button
+                        variant="outline"
+                        className="rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                        onClick={() => {
+                          const nextLikes = { ...likedIds, [selectedContentKey]: !likedIds[selectedContentKey] };
+                          setLikedIds(nextLikes);
+                          persistSelectedUserState({ liked: nextLikes[selectedContentKey] });
+                        }}
+                      >
+                        <ThumbsUp className={`mr-2 h-4 w-4 ${likedIds[selectedContentKey] ? 'fill-orange-300 text-orange-300' : 'text-orange-300'}`} />
+                        {likedIds[selectedContentKey] ? 'Beğenildi' : 'Beğendim'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                        onClick={() => {
+                          const nextFavorites = { ...favoriteIds, [selectedContentKey]: !favoriteIds[selectedContentKey] };
+                          setFavoriteIds(nextFavorites);
+                          persistSelectedUserState({ favorite: nextFavorites[selectedContentKey] });
+                        }}
+                      >
+                        <Star className={`mr-2 h-4 w-4 ${favoriteIds[selectedContentKey] ? 'fill-orange-300 text-orange-300' : 'text-orange-300'}`} />
+                        {favoriteIds[selectedContentKey] ? 'Favoride' : 'Favorilere Ekle'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                        onClick={() => setNoteDraft(lessonNotes[selectedContentKey] || noteDraft)}
+                      >
+                        <NotebookPen className="mr-2 h-4 w-4 text-orange-300" />
+                        Not Ekle
+                      </Button>
+                    </div>
                   </div>
-                  {selectedPlaylist.length > 1 ? (
-                    <div className="rounded-[28px] border bg-white p-4 shadow-sm">
+                  {selectedPlaylist.length > 0 ? (
+                    <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl">
                       <div className="mb-3 flex items-center justify-between">
                         <div>
-                          <p className="text-sm font-semibold">Oynatma Listesi</p>
-                          <p className="text-xs text-muted-foreground">{selectedItem.playlistTitle || 'Bu ders serisi'}</p>
+                          <p className="text-sm font-semibold text-white">İçerik Listesi</p>
+                          <p className="text-xs text-slate-400">{selectedItem.playlistTitle || 'Bu ders serisi'}</p>
                         </div>
-                        <Badge variant="outline">{selectedPlaylist.length} video</Badge>
+                        <Badge className="border-white/10 bg-white/[0.06] text-slate-200">{selectedPlaylist.length} içerik</Badge>
+                      </div>
+                      <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full w-1/4 rounded-full bg-gradient-to-r from-orange-500 to-amber-300" />
                       </div>
                       <div className="space-y-2">
                         {selectedPlaylist.map((item, index) => {
@@ -544,21 +825,22 @@ export default function StudentContent() {
                               key={item.id || `${item.fileName}-${index}`}
                               type="button"
                               onClick={() => openPlaylistItem(item)}
-                              className={`flex w-full items-start gap-3 rounded-2xl px-2 py-2 text-left transition ${
-                                active ? 'bg-slate-100' : 'hover:bg-slate-50'
+                              className={`flex w-full items-start gap-3 rounded-2xl border px-2 py-2 text-left transition ${
+                                active ? 'border-orange-400/40 bg-orange-500/10' : 'border-white/10 bg-[#0b1626] hover:bg-white/[0.07]'
                               }`}
                             >
                               <div className={`mt-0.5 overflow-hidden rounded-xl ${active ? 'ring-2 ring-brand-primary/30' : ''}`}>
-                                <div className={`flex h-14 w-24 items-center justify-center ${active ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                                <div className={`flex h-14 w-24 items-center justify-center ${active ? 'bg-orange-500 text-white' : 'bg-white/[0.06] text-slate-300'}`}>
                                 {active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                                 </div>
                               </div>
                               <div className="min-w-0 flex-1">
-                                <p className="line-clamp-1 text-sm font-semibold">{item.title}</p>
-                                <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
-                                  Bolum {item.playlistOrder || index + 1} • {item.info || item.subject}
+                                <p className="line-clamp-1 text-sm font-semibold text-white">{item.title}</p>
+                                <p className="mt-1 line-clamp-1 text-xs text-slate-400">
+                                  Bölüm {item.playlistOrder || index + 1} • {item.info || item.subject}
                                 </p>
                               </div>
+                              <CheckCircle className={`mt-3 h-4 w-4 ${active ? 'text-orange-300' : 'text-slate-600'}`} />
                             </button>
                           );
                         })}

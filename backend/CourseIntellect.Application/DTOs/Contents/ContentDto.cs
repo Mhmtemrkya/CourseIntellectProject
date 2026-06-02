@@ -14,5 +14,12 @@ public sealed record ContentDto(
     string Description,
     string? FileName,
     string? FileUrl,
+    string? CoverImageUrl,
+    string? PlaylistKey,
+    string? PlaylistTitle,
+    int? PlaylistOrder,
+    bool AllowDownload,
+    bool AllowNotes,
+    bool CompletionCertificate,
     string PublishStatus
 );

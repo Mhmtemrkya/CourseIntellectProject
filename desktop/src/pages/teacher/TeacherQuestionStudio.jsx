@@ -529,12 +529,33 @@ export default function TeacherQuestionStudio() {
               </div>
             )}
 
+            {!choiceType && (
+              <div className="mt-6 rounded-[24px] border border-emerald-400/20 bg-emerald-500/[0.07] p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div>
+                    <h2 className="font-black text-emerald-100">Cevaplama / Cevap Anahtarı</h2>
+                    <p className="mt-1 text-sm text-emerald-100/70">
+                      Açık uçlu, boşluk doldurma, grafik, kod ve matematik sorularında öğrencinin yazacağı cevabı değerlendirmek için kullanılır.
+                    </p>
+                  </div>
+                  <span className="rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-1 text-xs font-bold text-emerald-100">
+                    Zorunlu
+                  </span>
+                </div>
+                <Input
+                  value={expectedAnswer}
+                  onChange={(event) => { setExpectedAnswer(event.target.value); touch(); }}
+                  placeholder="Örn: x = -2 ve x = 2 / kısa beklenen cevap"
+                  className="border-white/10 bg-white/5 text-white"
+                />
+              </div>
+            )}
+
             {settings.addSolution && (
               <div className="mt-6 rounded-[24px] border border-white/10 bg-slate-950/60 p-4">
                 <div className="mb-3 flex items-center justify-between"><h2 className="font-black">Çözüm ve Çizim</h2><div className="flex gap-2"><Button variant="outline" onClick={() => solutionFileRef.current?.click()} className="border-white/10 text-white"><Paperclip className="mr-2 h-4 w-4" />Dosya</Button><Button variant="outline" onClick={() => setCanvasOpen(true)} className="border-white/10 text-white"><Maximize2 className="mr-2 h-4 w-4" />Çizim Alanı</Button></div></div>
                 <input ref={solutionFileRef} type="file" className="hidden" onChange={(event) => handleSolutionFile(event.target.files?.[0])} />
                 <div ref={solutionRef} contentEditable suppressContentEditableWarning data-placeholder="Çözüm açıklamasını yazın..." onInput={(event) => { setSolutionHtml(event.currentTarget.innerHTML); touch(); }} className="min-h-[130px] rounded-2xl border border-white/10 bg-white/[0.035] p-4 leading-7 outline-none empty:before:text-slate-500 empty:before:content-[attr(data-placeholder)]" />
-                {!choiceType && <Input value={expectedAnswer} onChange={(event) => { setExpectedAnswer(event.target.value); touch(); }} placeholder="Değerlendirmede kullanılacak kısa doğru cevap" className="mt-4 border-white/10 bg-white/5 text-white" />}
                 {solutionAssetPath && <a href={assetUrl(solutionAssetPath)} target="_blank" rel="noreferrer" className="mt-3 block text-sm text-orange-300">Yüklenen çözüm dosyasını görüntüle</a>}
                 {settings.addHint && <Textarea value={settings.hint || ''} onChange={(event) => updateSetting('hint', event.target.value)} placeholder="Öğrenciye gösterilecek ipucunu yazın..." className="mt-4 min-h-[72px] border-white/10 bg-white/5 text-white" />}
               </div>
@@ -568,6 +589,12 @@ export default function TeacherQuestionStudio() {
             <div className="leading-8" dangerouslySetInnerHTML={{ __html: questionHtml || '<p class=\"text-slate-500\">Soru metni henüz yazılmadı.</p>' }} />
             {assetPath && <img src={assetUrl(assetPath)} alt={visual.caption || 'Soru görseli'} className="mx-auto my-5 rounded-2xl object-contain" style={{ width: `${visual.width}%`, transform: `rotate(${visual.rotation}deg)` }} />}
             {choiceType && <div className="mt-5 grid gap-3 sm:grid-cols-2">{options.filter((item) => item.text.trim()).map((option, index) => <div key={option.id} className={`rounded-2xl border p-3 ${option.correct ? 'border-emerald-500/45 bg-emerald-500/10' : 'border-white/10'}`}><div><b className="mr-3 text-orange-300">{optionLetter(index)}</b>{option.text}</div>{option.imagePath && <img src={assetUrl(option.imagePath)} alt="" className="mt-3 h-24 w-full rounded-xl object-contain" />}</div>)}</div>}
+            {!choiceType && expectedAnswer.trim() && (
+              <div className="mt-5 rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-4">
+                <p className="mb-2 font-bold text-emerald-200">Beklenen Cevap</p>
+                <p className="text-emerald-50">{expectedAnswer}</p>
+              </div>
+            )}
             {solutionHtml && <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4"><p className="mb-2 font-bold text-purple-200">Çözüm</p><div dangerouslySetInnerHTML={{ __html: solutionHtml }} /></div>}
           </div>
         </DialogContent>

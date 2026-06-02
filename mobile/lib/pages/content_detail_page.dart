@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
 import '../services/api_config.dart';
+import '../services/content_api_service.dart';
 import '../services/content_store.dart';
 import '../widgets/responsive_layout.dart';
 
@@ -18,6 +19,7 @@ class ContentDetailPage extends StatefulWidget {
   final String? fileUrl;
   final String? size;
   final String? grade;
+  final String? id;
   final List<ContentRecord> playlist;
 
   const ContentDetailPage({
@@ -33,6 +35,7 @@ class ContentDetailPage extends StatefulWidget {
     this.fileUrl,
     this.size,
     this.grade,
+    this.id,
     this.playlist = const [],
   });
 
@@ -51,6 +54,13 @@ class _ContentDetailPageState extends State<ContentDetailPage>
   VoidCallback? _videoListener;
   bool _videoLoading = false;
   String? _videoError;
+  ContentEngagementRecord? _engagement;
+  final TextEditingController _noteController = TextEditingController();
+  final TextEditingController _commentController = TextEditingController();
+  bool _liked = false;
+  bool _favorite = false;
+  double _savedProgress = 0;
+  DateTime _lastProgressSave = DateTime.fromMillisecondsSinceEpoch(0);
 
   @override
   void initState() {
@@ -71,6 +81,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     _currentVideoRecord = _resolveCurrentRecord();
     _controller.forward();
     _initVideo();
+    _loadEngagement();
   }
 
   @override
@@ -79,6 +90,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
       _videoController?.removeListener(_videoListener!);
     }
     _videoController?.dispose();
+    _noteController.dispose();
+    _commentController.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -153,6 +166,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
       _videoListener = () {
         if (mounted) {
           setState(() {});
+          _saveProgressIfNeeded();
         }
       };
       controller.addListener(_videoListener!);
@@ -368,7 +382,18 @@ class _ContentDetailPageState extends State<ContentDetailPage>
               : null);
 
     return Scaffold(
-      appBar: AppBar(title: Text(currentTitle)),
+      backgroundColor: isDark(context) ? const Color(0xFF07111F) : null,
+      appBar: AppBar(
+        backgroundColor: isDark(context) ? const Color(0xFF07111F) : null,
+        title: Text(currentTitle),
+        actions: [
+          IconButton(
+            tooltip: 'İndir',
+            onPressed: _fileUri == null ? null : () => _openFile(download: true),
+            icon: const Icon(Icons.download_rounded),
+          ),
+        ],
+      ),
       body: FadeTransition(
         opacity: fadeAnim,
         child: SlideTransition(
@@ -752,6 +777,48 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                             height: 1.5,
                           ),
                         ),
+                        const SizedBox(height: 18),
+                        _premiumInfoCard(
+                          accent: accent,
+                          title: 'Bu içerikte ilerlemen',
+                          subtitle:
+                              widget.playlist.length > 1
+                                  ? '${widget.playlist.length} içeriklik seri içindesin.'
+                                  : 'Bu içerik tek ders olarak yayınlandı.',
+                          children: [
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                value: widget.playlist.length > 1 &&
+                                        currentPlaylistIndex >= 0
+                                    ? (currentPlaylistIndex + 1) /
+                                          widget.playlist.length
+                                    : 0.25,
+                                minHeight: 7,
+                                color: accent,
+                                backgroundColor: accent.withValues(alpha: 0.16),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            _learningRow(
+                              Icons.check_circle_outline_rounded,
+                              'İçeriği izle veya materyali aç',
+                              accent,
+                            ),
+                            _learningRow(
+                              Icons.note_alt_outlined,
+                              'Önemli noktaları not al',
+                              accent,
+                            ),
+                            _learningRow(
+                              Icons.download_done_rounded,
+                              'Gerektiğinde materyali indir',
+                              accent,
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        _engagementPanel(accent),
                         const SizedBox(height: 20),
                         if (widget.isVideo && widget.playlist.length > 1) ...[
                           Row(
@@ -892,6 +959,288 @@ class _ContentDetailPageState extends State<ContentDetailPage>
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _loadEngagement() async {
+    final contentId = widget.id;
+    if (contentId == null || contentId.isEmpty) return;
+    try {
+      final engagement = await ContentApiService.instance.fetchEngagement(
+        contentId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _engagement = engagement;
+        _liked = engagement.liked;
+        _favorite = engagement.favorite;
+        _savedProgress = engagement.progress;
+        _noteController.text = engagement.note;
+      });
+    } catch (_) {
+      // İçerik oynatma deneyimini bozma; etkileşim servisi sonra tekrar denenir.
+    }
+  }
+
+  Future<void> _saveUserState({double? progress}) async {
+    final contentId = widget.id;
+    if (contentId == null || contentId.isEmpty) return;
+    await ContentApiService.instance
+        .saveUserState(
+          contentId: contentId,
+          progress: progress ?? _savedProgress,
+          liked: _liked,
+          favorite: _favorite,
+          note: _noteController.text,
+        )
+        .catchError((_) {});
+  }
+
+  Future<void> _saveProgressIfNeeded() async {
+    final controller = _videoController;
+    if (controller == null || !controller.value.isInitialized) return;
+    final duration = controller.value.duration.inMilliseconds;
+    if (duration <= 0) return;
+    final progress =
+        (controller.value.position.inMilliseconds / duration * 100).clamp(
+          0,
+          100,
+        );
+    final now = DateTime.now();
+    if (progress - _savedProgress >= 5 ||
+        now.difference(_lastProgressSave).inSeconds > 15) {
+      _savedProgress = progress.toDouble();
+      _lastProgressSave = now;
+      await _saveUserState(progress: _savedProgress);
+    }
+  }
+
+  Widget _engagementPanel(Color accent) {
+    final exercises = _engagement?.exercises ?? const <ContentExerciseRecord>[];
+    final comments = _engagement?.comments ?? const <ContentCommentRecord>[];
+    return _premiumInfoCard(
+      accent: accent,
+      title: 'Etkileşim ve Notlar',
+      subtitle: 'Notların, favorilerin ve yorumların canlı backend ile saklanır.',
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() => _liked = !_liked);
+                  _saveUserState();
+                },
+                icon: Icon(
+                  _liked ? Icons.thumb_up_alt : Icons.thumb_up_alt_outlined,
+                ),
+                label: Text(_liked ? 'Beğenildi' : 'Beğen'),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  setState(() => _favorite = !_favorite);
+                  _saveUserState();
+                },
+                icon: Icon(
+                  _favorite ? Icons.star_rounded : Icons.star_border_rounded,
+                ),
+                label: Text(_favorite ? 'Favoride' : 'Favori'),
+              ),
+            ),
+          ],
+        ),
+        if ((widget.isVideo && true) || widget.fileType.isNotEmpty) ...[
+          const SizedBox(height: 14),
+          TextField(
+            controller: _noteController,
+            minLines: 3,
+            maxLines: 5,
+            decoration: const InputDecoration(
+              labelText: 'Ders notun',
+              border: OutlineInputBorder(),
+            ),
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              onPressed: _saveUserState,
+              icon: const Icon(Icons.save_rounded),
+              label: const Text('Notu Kaydet'),
+            ),
+          ),
+        ],
+        const SizedBox(height: 18),
+        Text(
+          'Alıştırmalar',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (exercises.isEmpty)
+          Text(
+            'Bu içerik için alıştırma eklenmemiş.',
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+            ),
+          )
+        else
+          ...exercises.map(
+            (exercise) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.assignment_rounded, color: accent),
+              title: Text(exercise.title),
+              subtitle: exercise.description.isEmpty
+                  ? null
+                  : Text(exercise.description),
+              onTap: exercise.url.isEmpty
+                  ? null
+                  : () => launchUrl(
+                      Uri.parse(ApiConfig.resolveAssetUrl(exercise.url)),
+                      mode: LaunchMode.externalApplication,
+                    ),
+            ),
+          ),
+        const SizedBox(height: 18),
+        Text(
+          'Yorumlar',
+          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.w900,
+          ),
+        ),
+        const SizedBox(height: 8),
+        if (comments.isEmpty)
+          Text(
+            'Henüz yorum yok.',
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+            ),
+          )
+        else
+          ...comments.take(6).map(
+            (comment) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                backgroundColor: accent.withValues(alpha: 0.14),
+                child: Icon(Icons.person_rounded, color: accent),
+              ),
+              title: Text(comment.authorName),
+              subtitle: Text(comment.message),
+            ),
+          ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _commentController,
+                decoration: const InputDecoration(
+                  hintText: 'Yorum yaz...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              onPressed: () async {
+                final contentId = widget.id;
+                final message = _commentController.text.trim();
+                if (contentId == null || message.isEmpty) return;
+                final nextComments = await ContentApiService.instance
+                    .addComment(contentId: contentId, message: message)
+                    .catchError((_) => <ContentCommentRecord>[]);
+                if (!mounted) return;
+                setState(() {
+                  _engagement = ContentEngagementRecord(
+                    coverImageUrl: _engagement?.coverImageUrl,
+                    exercises: exercises,
+                    comments: nextComments,
+                    progress: _savedProgress,
+                    liked: _liked,
+                    favorite: _favorite,
+                    note: _noteController.text,
+                  );
+                  _commentController.clear();
+                });
+              },
+              icon: const Icon(Icons.send_rounded),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _premiumInfoCard({
+    required Color accent,
+    required String title,
+    required String subtitle,
+    required List<Widget> children,
+  }) {
+    final dark = isDark(context);
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: dark ? const Color(0xFF0B1626) : const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.black.withValues(alpha: 0.05),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: dark ? 0.10 : 0.06),
+            blurRadius: 22,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w900)),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: TextStyle(
+              color: Theme.of(
+                context,
+              ).textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 14),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _learningRow(IconData icon, String label, Color accent) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 19, color: accent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              label,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
           ),

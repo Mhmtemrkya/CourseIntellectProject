@@ -13,7 +13,12 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         var query = dbContext.ContentItems.AsQueryable();
         if (visibleOnly)
         {
-            query = query.Where(x => x.PublishStatus == "Aktif");
+            query = query.Where(x =>
+                x.PublishStatus == "Aktif"
+                || x.PublishStatus == "Yayinda"
+                || x.PublishStatus == "Yayında"
+                || x.PublishStatus == "Published"
+                || x.PublishStatus == "Active");
         }
 
         return await query
@@ -63,6 +68,13 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         item.Description = request.Description.Trim();
         item.FileName = string.IsNullOrWhiteSpace(request.FileName) ? null : request.FileName.Trim();
         item.FileUrl = string.IsNullOrWhiteSpace(request.FileUrl) ? null : request.FileUrl.Trim();
+        item.CoverImageUrl = string.IsNullOrWhiteSpace(request.CoverImageUrl) ? null : request.CoverImageUrl.Trim();
+        item.PlaylistKey = string.IsNullOrWhiteSpace(request.PlaylistKey) ? null : request.PlaylistKey.Trim();
+        item.PlaylistTitle = string.IsNullOrWhiteSpace(request.PlaylistTitle) ? null : request.PlaylistTitle.Trim();
+        item.PlaylistOrder = request.PlaylistOrder;
+        item.AllowDownload = request.AllowDownload;
+        item.AllowNotes = request.AllowNotes;
+        item.CompletionCertificate = request.CompletionCertificate;
         item.PublishStatus = request.PublishStatus.Trim();
     }
 
@@ -80,5 +92,12 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         x.Description,
         x.FileName,
         x.FileUrl,
+        x.CoverImageUrl,
+        x.PlaylistKey,
+        x.PlaylistTitle,
+        x.PlaylistOrder,
+        x.AllowDownload,
+        x.AllowNotes,
+        x.CompletionCertificate,
         x.PublishStatus);
 }

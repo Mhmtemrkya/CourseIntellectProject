@@ -453,6 +453,23 @@ export async function updateContentStatus(id, publishStatus) {
   return response;
 }
 
+export async function fetchContentEngagement(contentId) {
+  if (!contentId) return null;
+  return await api.get(`/api/contents/${contentId}/engagement`);
+}
+
+export async function saveContentUserState(contentId, payload) {
+  return await api.put(`/api/contents/${contentId}/engagement/state`, payload);
+}
+
+export async function saveContentExtras(contentId, payload) {
+  return await api.put(`/api/contents/${contentId}/engagement/extras`, payload);
+}
+
+export async function addContentComment(contentId, message) {
+  return await api.post(`/api/contents/${contentId}/engagement/comments`, { message });
+}
+
 export async function fetchHomework() {
   const response = await api.get('/api/homework');
   return response;

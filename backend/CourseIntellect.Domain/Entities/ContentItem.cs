@@ -16,5 +16,12 @@ public sealed class ContentItem : ITenantScopedEntity
     public string Description { get; set; } = string.Empty;
     public string? FileName { get; set; }
     public string? FileUrl { get; set; }
+    public string? CoverImageUrl { get; set; }
+    public string? PlaylistKey { get; set; }
+    public string? PlaylistTitle { get; set; }
+    public int? PlaylistOrder { get; set; }
+    public bool AllowDownload { get; set; } = true;
+    public bool AllowNotes { get; set; } = true;
+    public bool CompletionCertificate { get; set; }
     public string PublishStatus { get; set; } = "Aktif";
 }

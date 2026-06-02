@@ -35,7 +35,9 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
   final _descriptionController = TextEditingController();
   String _fileType = 'Video';
   PlatformFile? _pickedFile;
+  PlatformFile? _coverFile;
   String? _pickedFileName;
+  String? _coverFileName;
   List<String> _classOptions = const [];
   String _selectedClass = '';
   List<_PlaylistOption> _playlistOptions = const [];
@@ -44,6 +46,9 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
   final _playlistTitleController = TextEditingController();
   final _playlistOrderController = TextEditingController(text: '1');
   bool _saving = false;
+  bool _allowDownload = true;
+  bool _allowNotes = true;
+  bool _completionCertificate = false;
 
   @override
   void initState() {
@@ -168,6 +173,21 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
     }
   }
 
+  Future<void> _pickCoverFile() async {
+    final result = await FilePicker.platform.pickFiles(
+      withData: true,
+      type: FileType.custom,
+      allowedExtensions: const ['png', 'jpg', 'jpeg', 'webp'],
+    );
+    if (!mounted) return;
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        _coverFile = result.files.single;
+        _coverFileName = result.files.single.name;
+      });
+    }
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -183,6 +203,12 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
       final uploaded = _pickedFile != null
           ? await ContentApiService.instance.uploadContentAsset(
               file: _pickedFile!,
+            )
+          : null;
+      final uploadedCover = _coverFile != null
+          ? await ContentApiService.instance.uploadContentAsset(
+              file: _coverFile!,
+              folder: 'teacher-content-covers',
             )
           : null;
       _PlaylistOption? selectedPlaylist;
@@ -225,9 +251,13 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
           description: _descriptionController.text.trim(),
           fileName: uploaded?.fileName ?? _pickedFileName,
           fileUrl: uploaded?.fileUrl,
+          coverImageUrl: uploadedCover?.fileUrl,
           playlistKey: playlistKey,
           playlistTitle: playlistTitle,
           playlistOrder: playlistOrder,
+          allowDownload: _allowDownload,
+          allowNotes: _allowNotes,
+          completionCertificate: _completionCertificate,
           publishStatus: 'Aktif',
         ),
       );
@@ -314,10 +344,13 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Scaffold(
+      backgroundColor: isDark ? const Color(0xFF07111F) : null,
       appBar: AppBar(
+        backgroundColor: isDark ? const Color(0xFF07111F) : null,
         title: const Text(
-          'Yeni İçerik',
+          'İçerik Yükleme',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -330,7 +363,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF0F172A), Color(0xFFF59E0B)],
+                  colors: [Color(0xFF08111F), Color(0xFF13233A), Color(0xFFF97316)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -363,6 +396,18 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
               ),
             ),
             const SizedBox(height: 18),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: const [
+                  _UploadStepChip(number: '1', label: 'Yükle', active: true),
+                  _UploadStepChip(number: '2', label: 'Bilgi'),
+                  _UploadStepChip(number: '3', label: 'Ayar'),
+                  _UploadStepChip(number: '4', label: 'Yayınla'),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
             _sectionCard(
               title: 'Temel Bilgiler',
               child: Column(
@@ -478,9 +523,16 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFFFFBEB),
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? const Color(0xFF1B1308)
+                            : const Color(0xFFFFFBEB),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(color: const Color(0xFFFDE68A)),
+                        border: Border.all(
+                          color:
+                              Theme.of(context).brightness == Brightness.dark
+                              ? const Color(0xFFF97316).withValues(alpha: 0.28)
+                              : const Color(0xFFFDE68A),
+                        ),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -619,9 +671,15 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
+                      color: isDark
+                          ? const Color(0xFF0B1626)
+                          : const Color(0xFFF8FAFC),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : const Color(0xFFE2E8F0),
+                      ),
                     ),
                     child: Row(
                       children: [
@@ -673,6 +731,70 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                 ],
               ),
             ),
+            const SizedBox(height: 14),
+            _sectionCard(
+              title: 'Kapak ve Ayarlar',
+              child: Column(
+                children: [
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF0B1626)
+                          : const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.10)
+                            : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.image_rounded,
+                          color: Color(0xFFF97316),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            _coverFileName ?? 'Kapak görseli seçilmedi',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        OutlinedButton(
+                          onPressed: _saving ? null : _pickCoverFile,
+                          child: const Text('Kapak Seç'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SwitchListTile(
+                    value: _allowDownload,
+                    onChanged: (value) =>
+                        setState(() => _allowDownload = value),
+                    title: const Text('İndirmeye izin ver'),
+                  ),
+                  SwitchListTile(
+                    value: _allowNotes,
+                    onChanged: (value) => setState(() => _allowNotes = value),
+                    title: const Text('Öğrenci notu alabilir'),
+                  ),
+                  SwitchListTile(
+                    value: _completionCertificate,
+                    onChanged: (value) =>
+                        setState(() => _completionCertificate = value),
+                    title: const Text('Tamamlanma sertifikası'),
+                  ),
+                ],
+              ),
+            ),
             const SizedBox(height: 18),
             SizedBox(
               height: 54,
@@ -698,14 +820,20 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
   }
 
   Widget _sectionCard({required String title, required Widget child}) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
+        color: isDark ? const Color(0xFF0B1626) : Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.transparent,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.22 : 0.05),
             blurRadius: 16,
             offset: const Offset(0, 8),
           ),
@@ -754,5 +882,74 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
 
     final kiloBytes = bytes / 1024;
     return '${kiloBytes.toStringAsFixed(kiloBytes >= 10 ? 0 : 1)} KB';
+  }
+}
+
+class _UploadStepChip extends StatelessWidget {
+  const _UploadStepChip({
+    required this.number,
+    required this.label,
+    this.active = false,
+  });
+
+  final String number;
+  final String label;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(right: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      decoration: BoxDecoration(
+        color: active
+            ? const Color(0xFFF97316)
+            : (isDark
+                  ? Colors.white.withValues(alpha: 0.06)
+                  : Colors.black.withValues(alpha: 0.04)),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(
+          color: active
+              ? const Color(0xFFF97316)
+              : (isDark
+                    ? Colors.white.withValues(alpha: 0.10)
+                    : Colors.black.withValues(alpha: 0.06)),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: active
+                  ? Colors.white.withValues(alpha: 0.18)
+                  : const Color(0xFFF97316).withValues(alpha: 0.14),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              number,
+              style: TextStyle(
+                color: active ? Colors.white : const Color(0xFFF97316),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: active
+                  ? Colors.white
+                  : Theme.of(context).textTheme.bodyMedium?.color,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
