@@ -9,7 +9,15 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchContents } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 
-function buildContentFileUrl(fileName) {
+function buildContentFileUrl(contentFile) {
+  const fileUrl = typeof contentFile === 'object' ? contentFile?.fileUrl : null;
+  if (fileUrl) {
+    return fileUrl.startsWith('http')
+      ? fileUrl
+      : new URL(fileUrl, desktopApiBaseUrl).toString();
+  }
+
+  const fileName = typeof contentFile === 'object' ? contentFile?.fileName : contentFile;
   if (!fileName) return null;
   return new URL(`/uploads/teacher-content/${encodeURIComponent(fileName)}`, desktopApiBaseUrl).toString();
 }
@@ -34,8 +42,8 @@ export default function StudentContentDetail() {
 
   useEffect(() => { loadDetails(); }, [loadDetails]);
 
-  const openFile = async (fileName, download = false) => {
-    const fileUrl = buildContentFileUrl(fileName);
+  const openFile = async (contentFile, download = false) => {
+    const fileUrl = buildContentFileUrl(contentFile);
     if (!fileUrl) return;
     if (download) {
       const response = await window.fetch(fileUrl);
@@ -46,7 +54,7 @@ export default function StudentContentDetail() {
       const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = fileName || 'icerik';
+      link.download = (typeof contentFile === 'object' ? contentFile?.fileName || contentFile?.title : contentFile) || 'icerik';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -98,24 +106,24 @@ export default function StudentContentDetail() {
                           {activeVideoId === item.id ? 'Kapat' : 'Oynat'}
                         </Button>
                       ) : (
-                        <Button variant="outline" size="sm" onClick={() => openFile(item.fileName)}>
+                        <Button variant="outline" size="sm" onClick={() => openFile(item)}>
                           <Eye className="h-4 w-4 mr-1" />
                           Aç
                         </Button>
                       )}
-                      <Button variant="outline" size="sm" onClick={() => openFile(item.fileName, true).catch(() => {})}>
+                      <Button variant="outline" size="sm" onClick={() => openFile(item, true).catch(() => {})}>
                         <Download className="h-4 w-4 mr-1" />
                         İndir
                       </Button>
                     </div>
                   </div>
-                  {activeVideoId === item.id && String(item.fileType).toLowerCase().includes('video') && buildContentFileUrl(item.fileName) ? (
+                  {activeVideoId === item.id && String(item.fileType).toLowerCase().includes('video') && buildContentFileUrl(item) ? (
                     <div className="overflow-hidden rounded-xl border bg-black">
                       <video
                         controls
                         preload="metadata"
                         className="h-auto max-h-[420px] w-full"
-                        src={buildContentFileUrl(item.fileName)}
+                        src={buildContentFileUrl(item)}
                       />
                     </div>
                   ) : null}

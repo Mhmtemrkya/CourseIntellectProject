@@ -46,7 +46,15 @@ function previewGradient(type) {
   return 'from-slate-500 to-slate-700';
 }
 
-function buildContentFileUrl(fileName) {
+function buildContentFileUrl(contentFile) {
+  const fileUrl = typeof contentFile === 'object' ? contentFile?.fileUrl : null;
+  if (fileUrl) {
+    return fileUrl.startsWith('http')
+      ? fileUrl
+      : new URL(fileUrl, desktopApiBaseUrl).toString();
+  }
+
+  const fileName = typeof contentFile === 'object' ? contentFile?.fileName : contentFile;
   if (!fileName) return null;
   return new URL(`/uploads/teacher-content/${encodeURIComponent(fileName)}`, desktopApiBaseUrl).toString();
 }
@@ -92,8 +100,8 @@ export default function StudentContent() {
     loadContent();
   }, [loadContent]);
 
-  const openFile = async (fileName, download = false) => {
-    const fileUrl = buildContentFileUrl(fileName);
+  const openFile = async (contentFile, download = false) => {
+    const fileUrl = buildContentFileUrl(contentFile);
     if (!fileUrl) return;
     if (download) {
       const response = await window.fetch(fileUrl);
@@ -104,7 +112,7 @@ export default function StudentContent() {
       const objectUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = objectUrl;
-      link.download = fileName || 'icerik';
+      link.download = (typeof contentFile === 'object' ? contentFile?.fileName || contentFile?.title : contentFile) || 'icerik';
       document.body.appendChild(link);
       link.click();
       link.remove();
@@ -239,7 +247,7 @@ export default function StudentContent() {
 
   const shareSelectedContent = useCallback(async () => {
     if (!selectedItem) return;
-    const fileUrl = buildContentFileUrl(selectedItem.fileName);
+    const fileUrl = buildContentFileUrl(selectedItem);
     const sharePayload = {
       title: selectedItem.title,
       text: `${selectedItem.title} - ${selectedItem.subject}`,
@@ -409,7 +417,7 @@ export default function StudentContent() {
                         <Button size="lg" className="rounded-full bg-white/20 hover:bg-white/30 text-white" onClick={() => { setSelectedItem(item); setPlaySelectedVideo(normalizeType(item.fileType) === 'video'); setVideoCurrentTime(0); setVideoDuration(0); setVideoSpeed(1); setNoteDraft(lessonNotes[item.id || item.fileName] || ''); }}>
                           {normalizedType === 'video' ? <Play className="h-6 w-6" /> : <Eye className="h-6 w-6" />}
                         </Button>
-                        <Button size="lg" variant="outline" className="rounded-full border-white/40 bg-transparent text-white hover:bg-white/10" onClick={() => openFile(item.fileName, true).catch(() => {})}>
+                        <Button size="lg" variant="outline" className="rounded-full border-white/40 bg-transparent text-white hover:bg-white/10" onClick={() => openFile(item, true).catch(() => {})}>
                           <Download className="h-5 w-5" />
                         </Button>
                       </div>
@@ -473,7 +481,7 @@ export default function StudentContent() {
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]" onClick={() => openFile(selectedItem.fileName, true).catch(() => {})}>
+                    <Button variant="outline" className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]" onClick={() => openFile(selectedItem, true).catch(() => {})}>
                       <Download className="mr-2 h-4 w-4" />
                       İndir
                     </Button>
@@ -496,14 +504,14 @@ export default function StudentContent() {
                   </div>
                 </div>
               ) : null}
-              {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem.fileName) ? (
+              {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem) ? (
                 <div ref={videoContainerRef} className={`relative overflow-hidden bg-black ${videoImmersiveMode ? 'h-screen w-screen rounded-none' : 'rounded-2xl border'}`}>
                     <video
                       ref={videoRef}
                       autoPlay
                       preload="metadata"
                       className="h-auto max-h-[78vh] w-full bg-black object-contain"
-                      src={buildContentFileUrl(selectedItem.fileName)}
+                      src={buildContentFileUrl(selectedItem)}
                       onClick={(event) => {
                         event.preventDefault();
                         toggleVideoPlayback();
@@ -564,7 +572,7 @@ export default function StudentContent() {
                         variant="outline"
                         size="icon"
                         className="rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60"
-                        onClick={() => openFile(selectedItem.fileName, true).catch(() => {})}
+                        onClick={() => openFile(selectedItem, true).catch(() => {})}
                       >
                         <Download className="h-4 w-4" />
                       </Button>
@@ -637,17 +645,17 @@ export default function StudentContent() {
               )}
               <div className="flex flex-wrap gap-2">
                 {normalizeType(selectedItem.fileType) !== 'video' ? (
-                  <Button variant="outline" className="rounded-full" onClick={() => openFile(selectedItem.fileName)}>
+                  <Button variant="outline" className="rounded-full" onClick={() => openFile(selectedItem)}>
                     <Eye className="h-4 w-4 mr-2" />
                     Dosyayi Ac
                   </Button>
                 ) : null}
-                <Button variant="outline" className="rounded-full" onClick={() => openFile(selectedItem.fileName, true).catch(() => {})}>
+                <Button variant="outline" className="rounded-full" onClick={() => openFile(selectedItem, true).catch(() => {})}>
                   <Download className="h-4 w-4 mr-2" />
                   Indir
                 </Button>
               </div>
-              {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem.fileName) ? (
+              {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem) ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="space-y-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl">
                     {selectedItem.playlistTitle ? (

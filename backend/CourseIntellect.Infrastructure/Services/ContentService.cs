@@ -12,7 +12,14 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
     {
         await EnsureContentEngagementColumnsAsync(cancellationToken);
 
-        var query = dbContext.ContentItems.AsQueryable();
+        var tenantId = dbContext.CurrentTenantId;
+        var query = dbContext.ContentItems.IgnoreQueryFilters().AsQueryable();
+
+        if (tenantId.HasValue)
+        {
+            query = query.Where(x => x.TenantId == tenantId.Value || x.TenantId == null);
+        }
+
         if (visibleOnly)
         {
             query = query.Where(x =>
