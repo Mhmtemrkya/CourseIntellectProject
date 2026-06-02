@@ -5,6 +5,7 @@ using CourseIntellect.Api.Realtime;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
@@ -22,12 +23,14 @@ JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
+const long MaxUploadSizeBytes = 2L * 1024 * 1024 * 1024;
 
 builder.WebHost.ConfigureKestrel(options =>
 {
     // Desktop WebView and dev proxy requests can stream small JSON bodies slowly.
     // Disable the minimum data rate guard in development to avoid false 408 errors.
     options.Limits.MinRequestBodyDataRate = null;
+    options.Limits.MaxRequestBodySize = MaxUploadSizeBytes;
 });
 
 if (builder.Environment.IsDevelopment()
@@ -36,6 +39,13 @@ if (builder.Environment.IsDevelopment()
 {
     builder.WebHost.UseUrls("http://0.0.0.0:5206");
 }
+
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = MaxUploadSizeBytes;
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
 
 builder.Services.AddControllers();
 builder.Services.AddInfrastructure(builder.Configuration);

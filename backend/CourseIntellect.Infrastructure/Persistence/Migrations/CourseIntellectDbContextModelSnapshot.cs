@@ -628,6 +628,25 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
+                    b.Property<bool>("AllowDownload")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("AllowNotes")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(true);
+
+                    b.Property<bool>("CompletionCertificate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("CoverImageUrl")
+                        .HasMaxLength(600)
+                        .HasColumnType("character varying(600)");
+
                     b.Property<string>("Description")
                         .IsRequired()
                         .HasColumnType("text");
@@ -657,6 +676,17 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<double>("Progress")
                         .HasColumnType("double precision");
+
+                    b.Property<string>("PlaylistKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int?>("PlaylistOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PlaylistTitle")
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)");
 
                     b.Property<string>("PublishStatus")
                         .IsRequired()

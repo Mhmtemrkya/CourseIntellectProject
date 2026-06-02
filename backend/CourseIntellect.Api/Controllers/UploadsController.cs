@@ -9,13 +9,24 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class UploadsController(IFileStorageService fileStorageService) : ControllerBase
 {
+    private const long MaxUploadSizeBytes = 2L * 1024 * 1024 * 1024;
+
     [HttpPost]
-    [RequestSizeLimit(100_000_000)]
+    [RequestSizeLimit(MaxUploadSizeBytes)]
+    [RequestFormLimits(MultipartBodyLengthLimit = MaxUploadSizeBytes)]
     public async Task<IActionResult> Upload([FromForm] IFormFile file, [FromForm] string? folder, CancellationToken cancellationToken)
     {
         if (file.Length <= 0)
         {
             return BadRequest("Boş dosya yüklenemez.");
+        }
+
+        if (file.Length > MaxUploadSizeBytes)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new
+            {
+                message = "Dosya boyutu 2 GB sınırını aşıyor.",
+            });
         }
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
@@ -32,7 +43,7 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
     }
 
     [HttpPost("json")]
-    [RequestSizeLimit(100_000_000)]
+    [RequestSizeLimit(MaxUploadSizeBytes)]
     public async Task<IActionResult> UploadJson([FromBody] JsonFileUploadRequest request, [FromQuery] string? folder, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.FileName) || string.IsNullOrWhiteSpace(request.Base64Content))
@@ -53,6 +64,14 @@ public sealed class UploadsController(IFileStorageService fileStorageService) : 
         if (contentBytes.Length == 0)
         {
             return BadRequest(new { message = "Boş dosya yüklenemez." });
+        }
+
+        if (contentBytes.LongLength > MaxUploadSizeBytes)
+        {
+            return StatusCode(StatusCodes.Status413PayloadTooLarge, new
+            {
+                message = "Dosya boyutu 2 GB sınırını aşıyor.",
+            });
         }
 
         var baseUrl = $"{Request.Scheme}://{Request.Host}";

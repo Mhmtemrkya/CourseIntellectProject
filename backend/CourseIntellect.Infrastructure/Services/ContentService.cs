@@ -10,6 +10,8 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
 {
     public async Task<IReadOnlyList<ContentDto>> GetContentsAsync(bool visibleOnly, CancellationToken cancellationToken = default)
     {
+        await EnsureContentEngagementColumnsAsync(cancellationToken);
+
         var query = dbContext.ContentItems.AsQueryable();
         if (visibleOnly)
         {
@@ -29,6 +31,8 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
 
     public async Task<ContentDto> CreateContentAsync(CreateContentRequest request, CancellationToken cancellationToken = default)
     {
+        await EnsureContentEngagementColumnsAsync(cancellationToken);
+
         var item = new ContentItem();
         Apply(item, request);
         await dbContext.ContentItems.AddAsync(item, cancellationToken);
@@ -38,6 +42,8 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
 
     public async Task<ContentDto?> UpdateContentAsync(Guid id, CreateContentRequest request, CancellationToken cancellationToken = default)
     {
+        await EnsureContentEngagementColumnsAsync(cancellationToken);
+
         var item = await dbContext.ContentItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
         Apply(item, request);
@@ -47,6 +53,8 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
 
     public async Task<ContentDto?> UpdateStatusAsync(Guid id, UpdateContentStatusRequest request, CancellationToken cancellationToken = default)
     {
+        await EnsureContentEngagementColumnsAsync(cancellationToken);
+
         var item = await dbContext.ContentItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return null;
         item.PublishStatus = request.PublishStatus.Trim();
@@ -100,4 +108,19 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         x.AllowNotes,
         x.CompletionCertificate,
         x.PublishStatus);
+
+    private async Task EnsureContentEngagementColumnsAsync(CancellationToken cancellationToken)
+    {
+        await dbContext.Database.ExecuteSqlRawAsync(
+            """
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "AllowDownload" boolean NOT NULL DEFAULT TRUE;
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "AllowNotes" boolean NOT NULL DEFAULT TRUE;
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "CompletionCertificate" boolean NOT NULL DEFAULT FALSE;
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "CoverImageUrl" character varying(600) NULL;
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "PlaylistKey" character varying(120) NULL;
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "PlaylistOrder" integer NULL;
+            ALTER TABLE content_items ADD COLUMN IF NOT EXISTS "PlaylistTitle" character varying(180) NULL;
+            """,
+            cancellationToken);
+    }
 }

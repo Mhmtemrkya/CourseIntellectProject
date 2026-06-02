@@ -6,6 +6,18 @@ import 'package:student/services/solution_session_api_service.dart';
 import 'package:student/widgets/solution_drawing_canvas.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+class _SolveColors {
+  static const background = Color(0xFF07111F);
+  static const backgroundDeep = Color(0xFF050A14);
+  static const surface = Color(0xFF0B1626);
+  static const surfaceSoft = Color(0xFF101D31);
+  static const primary = Color(0xFFFF9D2E);
+  static const primaryDeep = Color(0xFFF97316);
+  static const blue = Color(0xFF4DA3FF);
+  static const green = Color(0xFF30D158);
+  static const border = Color(0xFF22324A);
+}
+
 class ExamSolvePage extends StatefulWidget {
   final String? plannedExamId;
   final String? examTitle;
@@ -388,20 +400,29 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     return Theme(
       data: Theme.of(context).copyWith(
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF050B16),
+        scaffoldBackgroundColor: _SolveColors.background,
         colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF8A1C),
-          secondary: Color(0xFF7C3AED),
-          surface: Color(0xFF081426),
+          primary: _SolveColors.primary,
+          secondary: _SolveColors.blue,
+          surface: _SolveColors.surface,
         ),
       ),
       child: Scaffold(
-        body: SafeArea(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? _ErrorState(message: _error!, onRetry: _startSession)
-              : _buildContent(context),
+        body: DecoratedBox(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [_SolveColors.backgroundDeep, _SolveColors.background],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SafeArea(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? _ErrorState(message: _error!, onRetry: _startSession)
+                : _buildContent(context),
+          ),
         ),
       ),
     );
@@ -456,12 +477,19 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
+                            color: _SolveColors.surface,
                             borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: _SolveColors.border),
                           ),
                           child: const TabBar(
                             indicatorSize: TabBarIndicatorSize.tab,
                             dividerColor: Colors.transparent,
+                            labelColor: Colors.white,
+                            unselectedLabelColor: Colors.white60,
+                            indicator: BoxDecoration(
+                              color: _SolveColors.primaryDeep,
+                              borderRadius: BorderRadius.all(Radius.circular(16)),
+                            ),
                             tabs: [
                               Tab(text: 'Soru'),
                               Tab(text: 'Çözüm Kağıdı'),
@@ -511,7 +539,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                 children: [
                   _Tag(
                     label: question.difficulty,
-                    color: const Color(0xFFFF8A1C),
+                    color: _SolveColors.primary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
@@ -526,7 +554,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
               Text(
                 '${_currentIndex + 1}.',
                 style: const TextStyle(
-                  color: Color(0xFFFF8A1C),
+                  color: _SolveColors.primary,
                   fontWeight: FontWeight.w900,
                   fontSize: 18,
                 ),
@@ -550,7 +578,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 180,
                       alignment: Alignment.center,
-                      color: Colors.white.withValues(alpha: 0.05),
+                      color: _SolveColors.surfaceSoft,
                       child: const Text('Görsel yüklenemedi'),
                     ),
                   ),
@@ -590,9 +618,18 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   decoration: InputDecoration(
                     hintText: 'Cevabını buraya yaz...',
                     filled: true,
-                    fillColor: Colors.black.withValues(alpha: 0.22),
+                    fillColor: _SolveColors.background,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: _SolveColors.border),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: _SolveColors.border),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(18),
+                      borderSide: const BorderSide(color: _SolveColors.primary),
                     ),
                   ),
                 ),
@@ -625,12 +662,18 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                 decoration: InputDecoration(
                   hintText: 'Bu soru için notunu yaz...',
                   filled: true,
-                  fillColor: Colors.black.withValues(alpha: 0.22),
+                  fillColor: _SolveColors.background,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
-                    borderSide: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
+                    borderSide: const BorderSide(color: _SolveColors.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(color: _SolveColors.border),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(18),
+                    borderSide: const BorderSide(color: _SolveColors.primary),
                   ),
                 ),
               ),
@@ -672,7 +715,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         decoration: const BoxDecoration(
-          color: Color(0xFF08111F),
+          color: _SolveColors.background,
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
         child: SafeArea(
@@ -706,15 +749,15 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                       alignment: Alignment.center,
                       decoration: BoxDecoration(
                         color: active
-                            ? const Color(0xFFFF8A1C).withValues(alpha: 0.22)
+                            ? _SolveColors.primary.withValues(alpha: 0.22)
                             : answered
-                            ? const Color(0xFF34D399).withValues(alpha: 0.16)
-                            : Colors.white.withValues(alpha: 0.05),
+                            ? _SolveColors.green.withValues(alpha: 0.16)
+                            : _SolveColors.surface,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
                           color: active
-                              ? const Color(0xFFFF8A1C)
-                              : Colors.white.withValues(alpha: 0.10),
+                              ? _SolveColors.primary
+                              : _SolveColors.border,
                         ),
                       ),
                       child: Text(
@@ -760,6 +803,10 @@ class _TopBar extends StatelessWidget {
         children: [
           IconButton.filledTonal(
             onPressed: onBack,
+            style: IconButton.styleFrom(
+              backgroundColor: _SolveColors.surface,
+              foregroundColor: Colors.white,
+            ),
             icon: const Icon(Icons.arrow_back),
           ),
           const SizedBox(width: 8),
@@ -782,6 +829,12 @@ class _TopBar extends StatelessWidget {
           ),
           IconButton.filledTonal(
             onPressed: onFlag,
+            style: IconButton.styleFrom(
+              backgroundColor: isFlagged
+                  ? _SolveColors.primary.withValues(alpha: 0.18)
+                  : _SolveColors.surface,
+              foregroundColor: isFlagged ? _SolveColors.primary : Colors.white,
+            ),
             icon: Icon(
               isFlagged
                   ? Icons.bookmark_rounded
@@ -821,7 +874,8 @@ class _ProgressHeader extends StatelessWidget {
                 alignment: Alignment.center,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: const Color(0xFFFF8A1C), width: 4),
+                  color: _SolveColors.primary.withValues(alpha: 0.10),
+                  border: Border.all(color: _SolveColors.primary, width: 4),
                 ),
                 child: Text(
                   '%${(progress * 100).round()}',
@@ -843,8 +897,8 @@ class _ProgressHeader extends StatelessWidget {
                       child: LinearProgressIndicator(
                         value: progress,
                         minHeight: 8,
-                        color: const Color(0xFFFF8A1C),
-                        backgroundColor: Colors.white.withValues(alpha: 0.08),
+                        color: _SolveColors.primary,
+                        backgroundColor: _SolveColors.border,
                       ),
                     ),
                   ],
@@ -885,9 +939,9 @@ class _BottomNav extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFF07111F).withValues(alpha: 0.94),
+        color: _SolveColors.background.withValues(alpha: 0.96),
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+          top: BorderSide(color: _SolveColors.border.withValues(alpha: 0.85)),
         ),
       ),
       child: SafeArea(
@@ -906,7 +960,8 @@ class _BottomNav extends StatelessWidget {
               child: FloatingActionButton.small(
                 heroTag: 'question-list',
                 onPressed: onList,
-                backgroundColor: const Color(0xFFFF8A1C),
+                backgroundColor: _SolveColors.primary,
+                foregroundColor: _SolveColors.background,
                 child: Text('$current/$total'),
               ),
             ),
@@ -951,13 +1006,13 @@ class _OptionButton extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: selected
-              ? const Color(0xFFFF8A1C).withValues(alpha: 0.18)
-              : Colors.white.withValues(alpha: 0.045),
+              ? _SolveColors.primary.withValues(alpha: 0.18)
+              : _SolveColors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: selected
-                ? const Color(0xFFFF8A1C)
-                : Colors.white.withValues(alpha: 0.10),
+                ? _SolveColors.primary
+                : _SolveColors.border,
           ),
         ),
         child: Row(
@@ -965,11 +1020,14 @@ class _OptionButton extends StatelessWidget {
             CircleAvatar(
               radius: 18,
               backgroundColor: selected
-                  ? const Color(0xFFFF8A1C)
-                  : Colors.white10,
+                  ? _SolveColors.primary
+                  : _SolveColors.surfaceSoft,
               child: Text(
                 label,
-                style: const TextStyle(fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  color: selected ? _SolveColors.background : Colors.white,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -1003,14 +1061,21 @@ class _GlassCard extends StatelessWidget {
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            Colors.white.withValues(alpha: 0.075),
-            Colors.white.withValues(alpha: 0.035),
+            _SolveColors.surfaceSoft.withValues(alpha: 0.96),
+            _SolveColors.surface.withValues(alpha: 0.96),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: _SolveColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.24),
+            blurRadius: 22,
+            offset: const Offset(0, 14),
+          ),
+        ],
       ),
       child: child,
     );
