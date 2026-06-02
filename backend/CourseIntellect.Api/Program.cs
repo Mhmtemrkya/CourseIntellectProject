@@ -23,7 +23,7 @@ JwtSecurityTokenHandler.DefaultMapInboundClaims = false;
 JsonWebTokenHandler.DefaultInboundClaimTypeMap.Clear();
 
 var builder = WebApplication.CreateBuilder(args);
-const long MaxUploadSizeBytes = 2L * 1024 * 1024 * 1024;
+const long MaxUploadSizeBytes = 10L * 1024 * 1024 * 1024;
 
 builder.WebHost.ConfigureKestrel(options =>
 {

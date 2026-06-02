@@ -613,7 +613,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasKey(x => x.Id);
             ConfigureTenantScope(entity);
             entity.Property(x => x.SectionKey).HasMaxLength(120).IsRequired();
-            entity.Property(x => x.ContentJson).HasMaxLength(12000).IsRequired();
+            entity.Property(x => x.ContentJson).HasColumnType("text").IsRequired();
             entity.Property(x => x.Language).HasMaxLength(10).IsRequired();
             entity.Property(x => x.UpdatedBy).HasMaxLength(150).IsRequired();
             entity.HasIndex(x => new { x.TenantId, x.SectionKey, x.Language, x.Version }).IsUnique();

@@ -2142,8 +2142,7 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("ContentJson")
                         .IsRequired()
-                        .HasMaxLength(12000)
-                        .HasColumnType("character varying(12000)");
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
