@@ -1,10 +1,11 @@
 using CourseIntellect.Application.DTOs.Contents;
 using CourseIntellect.Application.Interfaces;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class LocalFileStorageService(IHostEnvironment environment) : IFileStorageService
+public sealed class LocalFileStorageService(IHostEnvironment environment, IConfiguration configuration) : IFileStorageService
 {
     public async Task<UploadedAssetDto> SaveAsync(
         Stream stream,
@@ -15,8 +16,7 @@ public sealed class LocalFileStorageService(IHostEnvironment environment) : IFil
         CancellationToken cancellationToken = default)
     {
         var safeFolder = string.IsNullOrWhiteSpace(folder) ? "general" : folder.Trim().ToLowerInvariant();
-        var webRoot = Path.Combine(environment.ContentRootPath, "wwwroot");
-        var uploadsRoot = Path.Combine(webRoot, "uploads", safeFolder);
+        var uploadsRoot = Path.Combine(UploadStoragePathResolver.ResolveUploadsRoot(environment, configuration), safeFolder);
         Directory.CreateDirectory(uploadsRoot);
 
         var extension = Path.GetExtension(fileName);
@@ -54,9 +54,13 @@ public sealed class LocalFileStorageService(IHostEnvironment environment) : IFil
         relativePath = relativePath.Replace('\\', '/').TrimStart('/');
         if (!relativePath.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)) return null;
 
-        var webRoot = Path.GetFullPath(Path.Combine(environment.ContentRootPath, "wwwroot"));
-        var physicalPath = Path.GetFullPath(Path.Combine(webRoot, relativePath.Replace('/', Path.DirectorySeparatorChar)));
-        if (!physicalPath.StartsWith(webRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase)
+        var uploadsRoot = UploadStoragePathResolver.ResolveUploadsRoot(environment, configuration);
+        var uploadRelativePath = relativePath["uploads/".Length..];
+        var physicalPath = Path.GetFullPath(Path.Combine(uploadsRoot, uploadRelativePath.Replace('/', Path.DirectorySeparatorChar)));
+        var uploadsRootWithSeparator = Path.EndsInDirectorySeparator(uploadsRoot)
+            ? uploadsRoot
+            : uploadsRoot + Path.DirectorySeparatorChar;
+        if (!physicalPath.StartsWith(uploadsRootWithSeparator, StringComparison.OrdinalIgnoreCase)
             || !File.Exists(physicalPath))
         {
             return null;

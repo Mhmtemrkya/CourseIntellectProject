@@ -1,5 +1,6 @@
 using CourseIntellect.Infrastructure;
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Infrastructure.Services;
 using CourseIntellect.Api.Hubs;
 using CourseIntellect.Api.Realtime;
 using CourseIntellect.Application.Interfaces;
@@ -8,6 +9,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.StaticFiles;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -264,24 +266,29 @@ staticFileContentTypes.Mappings[".m4v"] = "video/mp4";
 staticFileContentTypes.Mappings[".mov"] = "video/quicktime";
 staticFileContentTypes.Mappings[".webm"] = "video/webm";
 staticFileContentTypes.Mappings[".pdf"] = "application/pdf";
+var uploadsRoot = UploadStoragePathResolver.ResolveUploadsRoot(app.Environment, app.Configuration);
+Directory.CreateDirectory(uploadsRoot);
+UploadStoragePathResolver.CopyReleaseUploadsToShared(
+    app.Environment,
+    app.Configuration,
+    app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("UploadStorage"));
 app.UseStaticFiles(new StaticFileOptions
 {
+    FileProvider = new PhysicalFileProvider(uploadsRoot),
+    RequestPath = "/uploads",
     ContentTypeProvider = staticFileContentTypes,
     OnPrepareResponse = context =>
     {
         var request = context.Context.Request;
-        if (request.Path.StartsWithSegments("/uploads"))
-        {
-            context.Context.Response.Headers.TryAdd("Cache-Control", "public, max-age=604800");
-            context.Context.Response.Headers.TryAdd("Access-Control-Allow-Headers", "Range, Authorization, Content-Type");
-            context.Context.Response.Headers.TryAdd("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+        context.Context.Response.Headers.TryAdd("Cache-Control", "public, max-age=604800");
+        context.Context.Response.Headers.TryAdd("Access-Control-Allow-Headers", "Range, Authorization, Content-Type");
+        context.Context.Response.Headers.TryAdd("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
 
-            var origin = request.Headers["Origin"].ToString();
-            if (!string.IsNullOrWhiteSpace(origin) && allowedCorsOriginSet.Contains(origin))
-            {
-                context.Context.Response.Headers["Access-Control-Allow-Origin"] = origin;
-                context.Context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
-            }
+        var origin = request.Headers["Origin"].ToString();
+        if (!string.IsNullOrWhiteSpace(origin) && allowedCorsOriginSet.Contains(origin))
+        {
+            context.Context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+            context.Context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
         }
     }
 });
