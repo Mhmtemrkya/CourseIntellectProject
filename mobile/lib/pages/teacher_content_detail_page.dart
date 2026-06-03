@@ -30,6 +30,11 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
   bool _videoLoading = false;
   String? _videoError;
 
+  static const Map<String, String> _videoHttpHeaders = {
+    'Accept': 'video/mp4, video/webm, video/quicktime, */*',
+    'User-Agent': 'CourseIntellect-Mobile',
+  };
+
   @override
   void initState() {
     super.initState();
@@ -90,7 +95,10 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
       });
     }
     try {
-      final controller = VideoPlayerController.networkUrl(_fileUri!);
+      final controller = VideoPlayerController.networkUrl(
+        _fileUri!,
+        httpHeaders: _videoHttpHeaders,
+      );
       await controller.initialize();
       controller.setLooping(false);
       await controller.setPlaybackSpeed(_playbackSpeed);

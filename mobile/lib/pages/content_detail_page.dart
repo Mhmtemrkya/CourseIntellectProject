@@ -99,6 +99,11 @@ class _ContentDetailPageState extends State<ContentDetailPage>
   bool isDark(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark;
 
+  static const Map<String, String> _videoHttpHeaders = {
+    'Accept': 'video/mp4, video/webm, video/quicktime, */*',
+    'User-Agent': 'CourseIntellect-Mobile',
+  };
+
   ContentRecord? _resolveCurrentRecord() {
     final currentFileName = widget.fileName?.trim();
     for (final item in widget.playlist) {
@@ -158,7 +163,10 @@ class _ContentDetailPageState extends State<ContentDetailPage>
       });
     }
     try {
-      final controller = VideoPlayerController.networkUrl(_fileUri!);
+      final controller = VideoPlayerController.networkUrl(
+        _fileUri!,
+        httpHeaders: _videoHttpHeaders,
+      );
       await controller.initialize();
       controller.setLooping(false);
       await controller.setPlaybackSpeed(_playbackSpeed);
