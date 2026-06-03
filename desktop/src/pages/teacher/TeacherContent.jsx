@@ -51,9 +51,32 @@ function buildCoverStyle(item) {
   return palette[subject || 'Matematik'];
 }
 
-function buildContentFileUrl(fileName) {
+function buildContentFileUrl(contentFile) {
+  const fileUrl = typeof contentFile === 'object' ? String(contentFile?.fileUrl || '').trim() : '';
+  if (fileUrl) {
+    if (/^https?:\/\//i.test(fileUrl)) {
+      return fileUrl;
+    }
+    if (!desktopApiBaseUrl) {
+      return fileUrl;
+    }
+    try {
+      return new URL(fileUrl, desktopApiBaseUrl).toString();
+    } catch {
+      return fileUrl;
+    }
+  }
+
+  const fileName = typeof contentFile === 'object' ? String(contentFile?.fileName || '').trim() : String(contentFile || '').trim();
   if (!fileName) return null;
-  return new URL(`/uploads/teacher-content/${encodeURIComponent(fileName)}`, desktopApiBaseUrl).toString();
+  if (!desktopApiBaseUrl) {
+    return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
+  }
+  try {
+    return new URL(`/uploads/teacher-content/${encodeURIComponent(fileName)}`, desktopApiBaseUrl).toString();
+  } catch {
+    return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
+  }
 }
 
 function formatFileSizeLabel(size) {
@@ -425,8 +448,8 @@ export default function TeacherContent() {
     }
   };
 
-  const handleOpenContentFile = (fileName, download = false) => {
-    const fileUrl = buildContentFileUrl(fileName);
+  const handleOpenContentFile = (contentFile, download = false) => {
+    const fileUrl = buildContentFileUrl(contentFile);
     if (!fileUrl) {
       toast({
         title: 'Dosya bulunamadı',
@@ -438,7 +461,7 @@ export default function TeacherContent() {
     if (download) {
       const link = document.createElement('a');
       link.href = fileUrl;
-      link.download = fileName;
+      link.download = (typeof contentFile === 'object' ? contentFile?.fileName || contentFile?.title : contentFile) || 'icerik';
       link.target = '_blank';
       link.rel = 'noreferrer';
       document.body.appendChild(link);
@@ -1105,14 +1128,14 @@ export default function TeacherContent() {
           </DialogHeader>
           {selectedContent ? (
             <div className="space-y-5 py-2">
-              {normalizeType(selectedContent.fileType) === 'video' && buildContentFileUrl(selectedContent.fileName) ? (
+              {normalizeType(selectedContent.fileType) === 'video' && buildContentFileUrl(selectedContent) ? (
                 <div ref={videoContainerRef} className="relative overflow-hidden rounded-2xl border bg-black shadow-2xl">
                   <video
                     ref={videoRef}
                     autoPlay
                     preload="metadata"
                     className="h-auto max-h-[70vh] min-h-[220px] w-full bg-black object-contain sm:max-h-[76vh]"
-                    src={buildContentFileUrl(selectedContent.fileName)}
+                    src={buildContentFileUrl(selectedContent)}
                     onClick={(event) => {
                       event.preventDefault();
                       toggleVideoPlayback();
@@ -1135,7 +1158,7 @@ export default function TeacherContent() {
                       {selectedContent.fileType}
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2 sm:max-w-[70%]">
-                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60" onClick={() => handleOpenContentFile(selectedContent.fileName, true)}>
+                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60" onClick={() => handleOpenContentFile(selectedContent, true)}>
                         <Download className="h-4 w-4" />
                       </Button>
                       <Button type="button" variant="outline" className="h-9 rounded-full border-white/20 bg-black/45 px-3 text-xs text-white hover:bg-black/60 sm:text-sm" onClick={() => updateVideoSpeed(videoSpeed === 1 ? 1.5 : 1)}>
@@ -1178,11 +1201,11 @@ export default function TeacherContent() {
                     </div>
                   </div>
                 </div>
-              ) : normalizeType(selectedContent.fileType) === 'pdf' && buildContentFileUrl(selectedContent.fileName) ? (
+              ) : normalizeType(selectedContent.fileType) === 'pdf' && buildContentFileUrl(selectedContent) ? (
                 <div className="overflow-hidden rounded-2xl border bg-white">
                   <iframe
                     title={selectedContent.title}
-                    src={buildContentFileUrl(selectedContent.fileName)}
+                    src={buildContentFileUrl(selectedContent)}
                     className="h-[70vh] w-full"
                   />
                 </div>

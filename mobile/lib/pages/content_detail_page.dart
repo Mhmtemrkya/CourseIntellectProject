@@ -1326,6 +1326,13 @@ class _ContentDetailPageState extends State<ContentDetailPage>
               icon: const Icon(Icons.refresh_rounded),
               label: const Text('Tekrar Dene'),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => _openFile(download: false),
+              style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
+              icon: const Icon(Icons.open_in_new_rounded),
+              label: const Text('Tarayıcıda Aç'),
+            ),
           ],
         ),
       );

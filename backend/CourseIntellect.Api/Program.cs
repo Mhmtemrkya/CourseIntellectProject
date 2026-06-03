@@ -7,6 +7,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.AspNetCore.StaticFiles;
 using Microsoft.IdentityModel.JsonWebTokens;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
@@ -80,6 +81,7 @@ var configuredCorsOrigins = builder.Configuration["Cors:AllowedOrigins"]?
     .Split(new[] { ',', ';' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
     ?? Array.Empty<string>();
 var allowedCorsOrigins = defaultCorsOrigins.Concat(configuredCorsOrigins).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+var allowedCorsOriginSet = new HashSet<string>(allowedCorsOrigins, StringComparer.OrdinalIgnoreCase);
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -255,8 +257,34 @@ if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
-app.UseStaticFiles();
 app.UseCors("ConfiguredOrigins");
+var staticFileContentTypes = new FileExtensionContentTypeProvider();
+staticFileContentTypes.Mappings[".mp4"] = "video/mp4";
+staticFileContentTypes.Mappings[".m4v"] = "video/mp4";
+staticFileContentTypes.Mappings[".mov"] = "video/quicktime";
+staticFileContentTypes.Mappings[".webm"] = "video/webm";
+staticFileContentTypes.Mappings[".pdf"] = "application/pdf";
+app.UseStaticFiles(new StaticFileOptions
+{
+    ContentTypeProvider = staticFileContentTypes,
+    OnPrepareResponse = context =>
+    {
+        var request = context.Context.Request;
+        if (request.Path.StartsWithSegments("/uploads"))
+        {
+            context.Context.Response.Headers.TryAdd("Cache-Control", "public, max-age=604800");
+            context.Context.Response.Headers.TryAdd("Access-Control-Allow-Headers", "Range, Authorization, Content-Type");
+            context.Context.Response.Headers.TryAdd("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+
+            var origin = request.Headers["Origin"].ToString();
+            if (!string.IsNullOrWhiteSpace(origin) && allowedCorsOriginSet.Contains(origin))
+            {
+                context.Context.Response.Headers["Access-Control-Allow-Origin"] = origin;
+                context.Context.Response.Headers["Access-Control-Allow-Credentials"] = "true";
+            }
+        }
+    }
+});
 app.UseAuthentication();
 
 // ── Claims debug middleware (sadece Development) ─────────────────────────────
