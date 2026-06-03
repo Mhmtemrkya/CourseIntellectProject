@@ -47,16 +47,31 @@ function previewGradient(type) {
 }
 
 function buildContentFileUrl(contentFile) {
-  const fileUrl = typeof contentFile === 'object' ? contentFile?.fileUrl : null;
+  const fileUrl = typeof contentFile === 'object' ? String(contentFile?.fileUrl || '').trim() : '';
   if (fileUrl) {
-    return fileUrl.startsWith('http')
-      ? fileUrl
-      : new URL(fileUrl, desktopApiBaseUrl).toString();
+    if (/^https?:\/\//i.test(fileUrl)) {
+      return fileUrl;
+    }
+    if (!desktopApiBaseUrl) {
+      return fileUrl;
+    }
+    try {
+      return new URL(fileUrl, desktopApiBaseUrl).toString();
+    } catch {
+      return fileUrl;
+    }
   }
 
-  const fileName = typeof contentFile === 'object' ? contentFile?.fileName : contentFile;
+  const fileName = typeof contentFile === 'object' ? String(contentFile?.fileName || '').trim() : String(contentFile || '').trim();
   if (!fileName) return null;
-  return new URL(`/uploads/teacher-content/${encodeURIComponent(fileName)}`, desktopApiBaseUrl).toString();
+  if (!desktopApiBaseUrl) {
+    return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
+  }
+  try {
+    return new URL(`/uploads/teacher-content/${encodeURIComponent(fileName)}`, desktopApiBaseUrl).toString();
+  } catch {
+    return `/uploads/teacher-content/${encodeURIComponent(fileName)}`;
+  }
 }
 
 export default function StudentContent() {

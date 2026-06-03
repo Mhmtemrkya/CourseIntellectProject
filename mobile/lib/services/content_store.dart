@@ -52,7 +52,7 @@ class ContentRecord {
     final status = publishStatus.trim().toLowerCase();
     return status == 'aktif' ||
         status == 'yayında' ||
-        status == 'yayında' ||
+        status == 'yayinda' ||
         status == 'active' ||
         status == 'published';
   }
