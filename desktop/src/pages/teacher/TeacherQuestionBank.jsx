@@ -16,6 +16,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard, { CardIconAction } from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
@@ -993,84 +994,40 @@ export default function TeacherQuestionBank() {
                 Bu filtrelere uygun soru bulunamadı.
               </CardContent>
             </Card>
-          ) : filteredQuestionSets.map((set) => (
-            <Card key={set.key} className="overflow-hidden border border-slate-200/80 bg-white shadow-[0_16px_40px_-24px_rgba(15,23,42,0.28)] dark:border-white/10 dark:bg-slate-950">
-              <CardContent className="p-5 space-y-4">
-                {(() => {
-                  const safeSubject = decodeSubject(set.subject);
-                  const safeTitle = decodeSubject(set.title);
-                  return (
-                    <>
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <h3 className="truncate text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                      {safeTitle}
-                    </h3>
-                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {set.questions.length} soru
-                    </p>
-                  </div>
-                  <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${getSubjectTheme(safeSubject).accent} text-sm font-bold text-white shadow-lg`}>
-                    {set.questions.length}
-                  </div>
-                </div>
-
-                <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 dark:border-white/10 dark:bg-slate-900">
-                  <div className={`relative flex h-44 overflow-hidden bg-gradient-to-br ${getSubjectTheme(safeSubject).gradient} p-5 text-white`}>
-                    <div className="absolute left-[-18px] top-[-22px] h-28 w-28 rounded-full bg-white/12" />
-                    <div className="absolute bottom-[-34px] right-[-24px] h-40 w-40 rounded-full bg-black/10" />
-                    <div className="absolute left-6 top-5 text-[54px] font-black tracking-[-0.08em] text-white/10">
-                      {getSubjectMark(safeSubject)}
-                    </div>
-                    <div className="absolute right-5 top-5 rounded-full border border-white/20 bg-white/14 px-3 py-1 text-xs font-semibold text-white">
-                      {set.questions.length} soru
-                    </div>
-                    <div className="mt-auto flex items-end gap-3">
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-base font-bold text-white backdrop-blur-sm">
-                        {getSubjectTheme(safeSubject).accent.includes('blue') ? '∑' : getSubjectTheme(safeSubject).accent.includes('rose') ? 'Aa' : getSubjectTheme(safeSubject).accent.includes('orange') ? '⚗' : getSubjectTheme(safeSubject).accent.includes('emerald') ? '🧬' : getSubjectTheme(safeSubject).accent.includes('violet') ? '⚡' : getSubjectTheme(safeSubject).accent.includes('cyan') ? 'EN' : 'QB'}
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-white/80">{safeSubject}</div>
-                        <div className="truncate text-[11px] font-bold tracking-[0.18em] text-white/70">{getSubjectTagline(safeSubject)}</div>
-                        <div className="line-clamp-2 text-[22px] font-black leading-[1.02] tracking-tight">{safeTitle}</div>
-                      </div>
-                      <div className="h-14 w-2 rounded-full bg-white/35" />
-                    </div>
-                  </div>
-                </div>
-                    </>
-                  );
-                })()}
-
-                <div className="flex items-center justify-end gap-2">
-                  {isSetPassive(set) && (
-                    <span className="mr-auto inline-flex items-center gap-1 rounded-full bg-slate-500/15 px-3 py-1 text-xs font-bold text-slate-500">
-                      <EyeOff className="h-3 w-3" /> Pasif — öğrenci görmez
-                    </span>
-                  )}
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => handleToggleSetPassive(set)}
-                    title={isSetPassive(set) ? 'Aktifleştir (öğrenciye aç)' : 'Pasife al (öğrenciden gizle)'}
-                  >
-                    {isSetPassive(set)
-                      ? <Eye className="h-4 w-4 text-emerald-600" />
-                      : <EyeOff className="h-4 w-4 text-slate-500" />}
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => handleSolveQuestionSet(set)} title="Öğretmen önizleme çözümü">
-                    <PenLine className="h-4 w-4 text-orange-500" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => openEditDialog(set.questions[0])}>
-                    <Pencil className="h-4 w-4 text-brand-primary" />
-                  </Button>
-                  <Button variant="outline" size="icon" onClick={() => handleDeleteQuestionSet(set)}>
-                    <Trash2 className="h-4 w-4 text-red-600" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          ) : filteredQuestionSets.map((set) => {
+            const safeSubject = decodeSubject(set.subject);
+            const safeTitle = decodeSubject(set.title);
+            const passive = isSetPassive(set);
+            return (
+              <PremiumResourceCard
+                key={set.key}
+                subject={safeSubject}
+                eyebrow={safeSubject}
+                title={safeTitle}
+                subtitle={`${set.questions.length} soru • ${set.difficulty}`}
+                badge={`${set.questions.length} soru`}
+                chips={[set.totalUsage > 0 ? `${set.totalUsage} kullanım` : null, passive ? null : 'Öğrenciye açık']}
+                statusNote={passive ? (
+                  <span className="inline-flex items-center gap-1 text-slate-500">
+                    <EyeOff className="h-3 w-3" /> Pasif — öğrenci görmez
+                  </span>
+                ) : null}
+                actions={(
+                  <>
+                    <CardIconAction
+                      icon={passive ? Eye : EyeOff}
+                      tone={passive ? 'success' : 'default'}
+                      title={passive ? 'Aktifleştir (öğrenciye aç)' : 'Pasife al (öğrenciden gizle)'}
+                      onClick={() => handleToggleSetPassive(set)}
+                    />
+                    <CardIconAction icon={PenLine} title="Öğretmen önizleme çözümü" onClick={() => handleSolveQuestionSet(set)} />
+                    <CardIconAction icon={Pencil} title="Düzenle" onClick={() => openEditDialog(set.questions[0])} />
+                    <CardIconAction icon={Trash2} tone="danger" title="Soru setini sil" onClick={() => handleDeleteQuestionSet(set)} />
+                  </>
+                )}
+              />
+            );
+          })}
         </div>
       </motion.div>
       </>

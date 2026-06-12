@@ -6,6 +6,7 @@ import '../services/content_api_service.dart';
 import '../services/content_store.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/adaptive_scaffold.dart';
+import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/student_empty_state_panel.dart';
 
@@ -299,7 +300,8 @@ class _ContentPageState extends State<ContentPage>
     String? playlistKey,
     String? id,
   }) {
-    final accent = _accentForType(fileType);
+    final theme = resourceTheme(subject);
+    final accent = theme.hue;
 
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -346,13 +348,17 @@ class _ContentPageState extends State<ContentPage>
       },
       child: Container(
         decoration: BoxDecoration(
-          color: isDark(context) ? const Color(0xFF171B22) : Colors.white,
+          color: isDark(context) ? const Color(0xFF0B1728) : Colors.white,
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: accent.withValues(alpha: 0.12)),
+          border: Border.all(
+            color: isDark(context)
+                ? Colors.white.withValues(alpha: 0.10)
+                : const Color(0xFFE2E8F0),
+          ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(
-                alpha: isDark(context) ? 0.18 : 0.06,
+                alpha: isDark(context) ? 0.30 : 0.06,
               ),
               blurRadius: 16,
               offset: const Offset(0, 8),
@@ -366,31 +372,52 @@ class _ContentPageState extends State<ContentPage>
               children: [
                 Container(
                   height: 84,
+                  width: double.infinity,
                   decoration: BoxDecoration(
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(22),
                     ),
-                    gradient: LinearGradient(
+                    color: isDark(context)
+                        ? const Color(0xFF0B1728)
+                        : Colors.white,
+                    gradient: RadialGradient(
+                      center: const Alignment(0.9, -1.2),
+                      radius: 1.6,
                       colors: [
-                        accent.withValues(alpha: 0.88),
-                        accent.withValues(alpha: 0.54),
+                        accent.withValues(alpha: isDark(context) ? 0.34 : 0.20),
+                        accent.withValues(alpha: 0.04),
                       ],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
                     ),
                   ),
-                  child: Align(
-                    alignment: Alignment.bottomRight,
-                    child: Padding(
-                      padding: const EdgeInsets.all(12),
-                      child: Icon(
-                        isVideo
-                            ? Icons.play_circle_fill_rounded
-                            : Icons.description_rounded,
-                        size: 28,
-                        color: Colors.white.withValues(alpha: 0.92),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: 12,
+                        top: -8,
+                        child: Text(
+                          theme.mark,
+                          style: TextStyle(
+                            fontSize: 56,
+                            fontWeight: FontWeight.w900,
+                            color: accent.withValues(alpha: 0.12),
+                            height: 1,
+                          ),
+                        ),
                       ),
-                    ),
+                      Align(
+                        alignment: Alignment.bottomRight,
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Icon(
+                            isVideo
+                                ? Icons.play_circle_fill_rounded
+                                : Icons.description_rounded,
+                            size: 28,
+                            color: accent,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 Positioned(
@@ -402,18 +429,18 @@ class _ContentPageState extends State<ContentPage>
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
+                      color: accent.withValues(alpha: 0.13),
                       borderRadius: BorderRadius.circular(999),
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.16),
+                        color: accent.withValues(alpha: 0.30),
                       ),
                     ),
                     child: Text(
                       fileType,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: accent,
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w900,
                       ),
                     ),
                   ),
@@ -427,13 +454,17 @@ class _ContentPageState extends State<ContentPage>
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.22),
+                      color: isDark(context)
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : const Color(0xFFF1F5F9),
                       borderRadius: BorderRadius.circular(999),
                     ),
                     child: Text(
                       info,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: isDark(context)
+                            ? const Color(0xFFCBD5E1)
+                            : const Color(0xFF475569),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -522,16 +553,4 @@ class _ContentPageState extends State<ContentPage>
     );
   }
 
-  Color _accentForType(String type) {
-    switch (type) {
-      case 'PDF':
-        return const Color(0xFFF59E0B);
-      case 'Word':
-        return const Color(0xFF4F46E5);
-      case 'PowerPoint':
-        return const Color(0xFFDC2626);
-      default:
-        return const Color(0xFF2563EB);
-    }
-  }
 }

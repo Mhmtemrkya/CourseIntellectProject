@@ -14,6 +14,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import {
@@ -426,41 +427,45 @@ export default function StudentContent() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredContent.map((item) => {
               const normalizedType = normalizeType(item.fileType);
+              const progress = Math.round(Number(item.progress) || 0);
               return (
-                <motion.div key={item.id || `${item.title}-${item.subject}`} variants={itemVariants}>
-                  <Card className="overflow-hidden hover:shadow-card-hover transition-all cursor-pointer group">
-                    <div className={`relative h-40 bg-gradient-to-br ${previewGradient(normalizedType)}`}>
-                      <div className="absolute inset-0 bg-black/20 group-hover:bg-black/35 transition-colors flex items-center justify-center gap-3">
-                        <Button size="lg" className="rounded-full bg-white/20 hover:bg-white/30 text-white" onClick={() => { setSelectedItem(item); setPlaySelectedVideo(normalizeType(item.fileType) === 'video'); setVideoCurrentTime(0); setVideoDuration(0); setVideoSpeed(1); setNoteDraft(lessonNotes[item.id || item.fileName] || ''); }}>
-                          {normalizedType === 'video' ? <Play className="h-6 w-6" /> : <Eye className="h-6 w-6" />}
-                        </Button>
-                        <Button size="lg" variant="outline" className="rounded-full border-white/40 bg-transparent text-white hover:bg-white/10" onClick={() => openFile(item, true).catch(() => {})}>
-                          <Download className="h-5 w-5" />
-                        </Button>
-                      </div>
-                      <Badge className="absolute top-2 left-2 bg-white/15 text-white border border-white/20">
-                        {normalizedType === 'video' ? <Video className="h-3 w-3 mr-1" /> : <FileText className="h-3 w-3 mr-1" />}
-                        {item.fileType}
-                      </Badge>
-                    </div>
-                    <CardContent className="p-4">
-                      <Badge variant="outline" className="mb-2">{item.subject}</Badge>
-                      <h3 className="font-semibold line-clamp-1">{item.title}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{item.teacher}</p>
-                      <div className="flex items-center justify-between mt-3 text-sm text-muted-foreground">
-                        <span>{item.size || 'Boyut yok'}</span>
-                        <span>{item.grade || 'Sınıf yok'}</span>
-                      </div>
-                      <div className="mt-4">
-                        <div className="flex justify-between text-xs mb-2">
+                <PremiumResourceCard
+                  key={item.id || `${item.title}-${item.subject}`}
+                  subject={item.subject}
+                  eyebrow={item.subject}
+                  title={item.title}
+                  subtitle={item.teacher}
+                  badge={item.fileType}
+                  chips={[item.grade || 'Tüm sınıflar', item.size || null]}
+                  footer={(
+                    <div className="mt-4 space-y-3">
+                      <div>
+                        <div className="mb-2 flex justify-between text-xs font-bold text-slate-400">
                           <span>İlerleme</span>
-                          <span>{Math.round(Number(item.progress) || 0)}%</span>
+                          <span className="text-white">%{progress}</span>
                         </div>
-                        <Progress value={Number(item.progress) || 0} className="h-2" />
+                        <Progress value={progress} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
                       </div>
-                    </CardContent>
-                  </Card>
-                </motion.div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="h-10 flex-1 rounded-xl bg-orange-500 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
+                          onClick={() => { setSelectedItem(item); setPlaySelectedVideo(normalizedType === 'video'); setVideoCurrentTime(0); setVideoDuration(0); setVideoSpeed(1); setNoteDraft(lessonNotes[item.id || item.fileName] || ''); }}
+                        >
+                          {normalizedType === 'video' ? <Play className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
+                          {normalizedType === 'video' ? 'İzle' : 'Görüntüle'}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="h-10 rounded-xl border-white/10 bg-white/[0.04] px-3 text-slate-100 hover:bg-white/10 hover:text-white"
+                          onClick={() => openFile(item, true).catch(() => {})}
+                          title="İndir"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                />
               );
             })}
           </div>

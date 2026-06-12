@@ -10,6 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useApp } from '../../context/AppContext';
@@ -213,38 +214,49 @@ export default function StudentExams() {
             onPrimary={loadExams}
           />
         ) : upcomingExams.map((exam) => {
-          const theme = subjectMeta(exam.subject);
+          const theme = getResourceTheme(exam.subject);
           return (
-            <Card key={exam.id} className="overflow-hidden border-0 shadow-sm">
+            <Card key={exam.id} className="overflow-hidden rounded-[24px] border border-white/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-white/20">
               <CardContent className="p-0">
-                <div className={`relative overflow-hidden bg-gradient-to-r ${theme.gradient} p-6 text-white`}>
-                  <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none text-white/10">{theme.mark}</div>
+                <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
+                  <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>{theme.mark}</div>
                   <div className="relative flex items-start justify-between gap-4">
                     <div className="min-w-0">
-                      <div className="mb-3 inline-flex rounded-full bg-white/15 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white/90">
+                      <div className="mb-3 inline-flex rounded-full border px-3 py-1 text-xs font-black uppercase tracking-[0.18em]" style={{ borderColor: `${theme.hue}38`, backgroundColor: `${theme.hue}1a`, color: theme.hue }}>
                         {exam.subject}
                       </div>
                       <h3 className="text-2xl font-black leading-tight">{exam.name}</h3>
-                      <p className="mt-2 text-sm text-white/85">{theme.tagline}</p>
+                      <p className="mt-2 text-sm text-slate-400">{theme.tagline}</p>
                     </div>
-                    <div className="rounded-3xl bg-white/12 px-4 py-3 text-right backdrop-blur">
-                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-white/75">Planlanan</div>
-                      <div className="mt-1 text-base font-semibold">{exam.date.toLocaleDateString('tr-TR')}</div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-right">
+                      <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Planlanan</div>
+                      <div className="mt-1 text-base font-black text-white">{exam.date.toLocaleDateString('tr-TR')}</div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4 p-6">
+                <div className="space-y-4 border-t border-white/[0.07] p-6">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className={`rounded-full px-3 py-1 text-xs font-bold ${theme.tint}`}>{exam.className}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-700">{exam.type}</span>
+                    {[exam.className, exam.type].filter(Boolean).map((chip) => (
+                      <span key={chip} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{chip}</span>
+                    ))}
                   </div>
                   <div className="grid gap-3 md:grid-cols-3">
-                    <Metric icon={Layers3} label="Soru Sayısı" value={exam.questionCount} tone="text-brand-primary" />
-                    <Metric icon={Clock3} label="Süre" value={formatDuration(exam.duration)} tone="text-brand-accent" />
-                    <Metric icon={Target} label="Sınav Tipi" value={exam.type} tone="text-green-600" />
+                    {[
+                      [Layers3, 'Soru Sayısı', exam.questionCount],
+                      [Clock3, 'Süre', formatDuration(exam.duration)],
+                      [Target, 'Sınav Tipi', exam.type],
+                    ].map(([Icon, label, value]) => (
+                      <div key={label} className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4">
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                          <Icon className="h-4 w-4" style={{ color: theme.hue }} />
+                          {label}
+                        </div>
+                        <div className="mt-2 text-2xl font-black text-white">{value}</div>
+                      </div>
+                    ))}
                   </div>
                   <div className="flex justify-end">
-                    <Button onClick={() => startExam(exam)} disabled={submitting}>
+                    <Button onClick={() => startExam(exam)} disabled={submitting} className="h-11 rounded-xl bg-orange-500 px-6 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600">
                       Sınava Gir
                       <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>

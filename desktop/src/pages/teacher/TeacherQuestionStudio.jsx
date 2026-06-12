@@ -121,7 +121,7 @@ export default function TeacherQuestionStudio() {
     requireFullscreen: true,
     blockTabChange: true,
     blockCopyPaste: true,
-    type: searchParams.get('type') === 'MockExam' ? 'MockExam' : 'Exam',
+    type: searchParams.get('type') === 'MockExam' ? 'MockExam' : '1. Yazılı',
   });
 
   const choiceType = activeType === 'Çoktan Seçmeli' || activeType === 'Doğru / Yanlış';
@@ -396,6 +396,7 @@ export default function TeacherQuestionStudio() {
       setSaving(true);
       await createPlannedExam({
         ...examForm,
+        type: examForm.type.trim() || '1. Yazılı',
         lateEntryLimitMinutes: Number(examForm.lateEntryLimitMinutes || 5),
         totalPoint: Number(examForm.totalPoint || 100),
         subject: settings.subject,
@@ -453,6 +454,9 @@ export default function TeacherQuestionStudio() {
                 <Field label="Bitiş Saati"><Input value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} placeholder="11:20" className="border-white/10 bg-white/5 text-white" /></Field>
                 <Field label="Geç Giriş Limiti"><Input value={examForm.lateEntryLimitMinutes} onChange={(event) => { setExamForm((v) => ({ ...v, lateEntryLimitMinutes: event.target.value })); touch(); }} placeholder="5" className="border-white/10 bg-white/5 text-white" /></Field>
                 <Field label="Toplam Puan"><Input value={examForm.totalPoint} onChange={(event) => { setExamForm((v) => ({ ...v, totalPoint: event.target.value })); touch(); }} placeholder="100" className="border-white/10 bg-white/5 text-white" /></Field>
+                {searchParams.get('type') !== 'MockExam' ? (
+                  <Field label="Sınav Türü (not girişi etiketi)"><Input value={examForm.type} onChange={(event) => { setExamForm((v) => ({ ...v, type: event.target.value })); touch(); }} placeholder="1. Yazılı" className="border-white/10 bg-white/5 text-white" /></Field>
+                ) : null}
                 <div className="lg:col-span-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
                   {[
                     ['requireCamera', 'Kamera zorunlu'],

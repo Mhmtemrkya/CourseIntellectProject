@@ -13,8 +13,7 @@ Bu proje Tauri v2 kullanıyor. `.dmg` üretmek için derleme işlemi **macOS üz
 Proje kökünde:
 
 ```bash
-npm ci
-npm exec -- tauri build
+./scripts/build-macos-dmg.sh
 ```
 
 DMG çıktısı:
@@ -34,4 +33,6 @@ Gatekeeper uyarısı gelirse:
 ## Görseller / Ayarlar
 
 - DMG arkaplanı: `src-tauri/installer/dmg-background.png`
+- DMG arkaplan kaynağı: `src-tauri/installer/dmg-background-base.png`
+- Arkaplan üreticisi: `scripts/generate-dmg-background.swift`
 - macOS override config: `src-tauri/tauri.macos.conf.json`

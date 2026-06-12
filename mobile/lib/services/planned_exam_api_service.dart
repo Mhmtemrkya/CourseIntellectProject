@@ -149,6 +149,7 @@ class PlannedExamSubmissionRecord {
   final int blank;
   final int total;
   final String status;
+  final String approvalStatus;
   final List<PlannedExamAnswerRecord> answers;
 
   const PlannedExamSubmissionRecord({
@@ -163,6 +164,7 @@ class PlannedExamSubmissionRecord {
     required this.blank,
     required this.total,
     required this.status,
+    required this.approvalStatus,
     required this.answers,
   });
 
@@ -179,6 +181,7 @@ class PlannedExamSubmissionRecord {
       blank: map['blank'] as int? ?? 0,
       total: map['total'] as int? ?? 0,
       status: map['status'] as String? ?? 'Teslim Edildi',
+      approvalStatus: map['approvalStatus'] as String? ?? 'Approved',
       answers: (map['answers'] as List<dynamic>? ?? const [])
           .map((item) => Map<String, dynamic>.from(item as Map))
           .map(PlannedExamAnswerRecord.fromMap)
@@ -284,6 +287,20 @@ class PlannedExamApiService {
         .map((item) => Map<String, dynamic>.from(item as Map))
         .map(PlannedExamSubmissionRecord.fromMap)
         .toList();
+  }
+
+  Future<void> approveSubmission(String sessionId) async {
+    final session = await _session();
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/examsessions/$sessionId/approve'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PlannedExamApiException(
+        'Sonuç onaylanamadı (${response.statusCode}).',
+      );
+    }
   }
 
   Future<AuthSession> _session() async {

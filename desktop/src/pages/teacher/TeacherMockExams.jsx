@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard, { CardIconAction } from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../../hooks/use-toast';
@@ -101,27 +102,31 @@ export default function TeacherMockExams() {
           <Button onClick={() => navigate('/t/mock-exams/create?mode=exam&type=MockExam')} className="mt-6 bg-orange-500 text-white hover:bg-orange-600"><Plus className="mr-2 h-4 w-4" />Deneme Oluştur</Button>
         </div>
       ) : (
-        <div className="grid gap-4 xl:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {records.map((record) => (
-            <Card key={record.id} className="border-white/10 bg-[#070f1c] text-white">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <Badge className="mb-3 border-orange-400/30 bg-orange-500/15 text-orange-200 hover:bg-orange-500/15">Deneme Sınavı</Badge>
-                    <h2 className="text-lg font-black">{record.title}</h2>
-                    <p className="mt-1 text-sm text-slate-400">{record.subject} · {record.className}</p>
-                  </div>
-                  <Button variant="ghost" size="icon" disabled={deletingId === record.id} onClick={() => remove(record)} className="text-slate-400 hover:bg-red-500/10 hover:text-red-300">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="mt-5 grid grid-cols-3 gap-2 text-center text-sm">
-                  <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-500">Tarih</p><p className="mt-1 font-bold text-slate-200">{record.dateLabel || record.date || '-'}</p></div>
-                  <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-500">Süre</p><p className="mt-1 font-bold text-slate-200">{record.duration || '-'}</p></div>
-                  <div className="rounded-xl bg-white/5 p-3"><p className="text-slate-500">Soru</p><p className="mt-1 font-bold text-slate-200">{record.questionCount || 0}</p></div>
-                </div>
-              </CardContent>
-            </Card>
+            <PremiumResourceCard
+              key={record.id}
+              subject={record.subject}
+              eyebrow={record.subject}
+              title={record.title}
+              subtitle={record.className}
+              badge="Deneme Sınavı"
+              stats={[
+                ['Tarih', record.dateLabel || record.date || '-'],
+                ['Süre', record.duration || '-'],
+                ['Soru', record.questionCount || 0],
+              ]}
+              statusNote={String(record.status || '').toLowerCase() === 'tamamlandi' ? 'Tamamlandı' : 'Yaklaşan'}
+              actions={(
+                <CardIconAction
+                  icon={Trash2}
+                  tone="danger"
+                  title="Denemeyi sil"
+                  disabled={deletingId === record.id}
+                  onClick={() => remove(record)}
+                />
+              )}
+            />
           ))}
         </div>
       )}

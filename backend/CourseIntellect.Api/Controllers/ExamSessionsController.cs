@@ -1,3 +1,5 @@
+using CourseIntellect.Application.DTOs.ExamSolving;
+using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
@@ -10,7 +12,9 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/examsessions")]
-public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class ExamSessionsController(
+    CourseIntellectDbContext dbContext,
+    IExamSolvingService examSolvingService) : ControllerBase
 {
     public const string SectionKey = "exam-sessions";
 
@@ -73,6 +77,8 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
             ClassName = resolvedClass,
             DurationSeconds = ResolveDurationSeconds(plannedExam?.Duration, request.DurationSeconds),
             Status = "Active",
+            TeacherName = plannedExam?.TeacherName ?? string.Empty,
+            AssessmentLabel = plannedExam?.Type ?? string.Empty,
             StartedAtUtc = DateTime.UtcNow,
             Questions = filteredQuestions.Select((item, index) => new ExamSessionQuestionSnapshot
             {
@@ -195,7 +201,14 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
             var correct = autoQuestions.Count(item => item.Answer?.IsCorrect == true);
             var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
 
-            if (!session.RecordedExamResultId.HasValue)
+            if (session.PlannedExamId.HasValue)
+            {
+                // Planlı sınavlar: sonuç doğrudan nota işlenmez; sınavı oluşturan
+                // öğretmen onayladığında not girişine otomatik düşer.
+                session.ApprovalStatus = "Pending";
+                await NotifyTeacherForApprovalAsync(session, score, cancellationToken);
+            }
+            else if (!session.RecordedExamResultId.HasValue)
             {
                 var result = new ExamResult
                 {
@@ -211,6 +224,7 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
                 };
 
                 session.RecordedExamResultId = result.Id;
+                session.ApprovalStatus = "Approved";
                 await dbContext.ExamResults.AddAsync(result, cancellationToken);
             }
 
@@ -234,9 +248,180 @@ public sealed class ExamSessionsController(CourseIntellectDbContext dbContext) :
 
             await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, session.StudentUsername, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+
+            // Sınav kağıdı PDF'i (markalı tasarım) üretilir ve öğretmenin
+            // PDF rapor merkezine düşer; hata olursa sınav tamamlama bozulmaz.
+            try
+            {
+                await examSolvingService.GenerateExamPaperPdfAsync(
+                    BuildSolutionSessionResponse(session),
+                    $"{Request.Scheme}://{Request.Host}",
+                    cancellationToken);
+            }
+            catch
+            {
+                // PDF üretim hatası sınav teslimini engellemez.
+            }
         }
 
         return Ok(BuildCompletionResponse(session));
+    }
+
+    private static SolutionSessionResponse BuildSolutionSessionResponse(ExamSessionSnapshot session)
+    {
+        return new SolutionSessionResponse(
+            session.Id,
+            session.ExamTitle,
+            session.Subject,
+            session.StudentName,
+            session.StudentUsername,
+            session.ClassName,
+            session.DurationSeconds,
+            false,
+            session.Status,
+            session.StartedAtUtc,
+            session.CompletedAtUtc,
+            session.Questions
+                .OrderBy(question => question.SortOrder)
+                .Select(question => new SolutionQuestionResponse(
+                    question.Id,
+                    question.QuestionBankItemId ?? Guid.Empty,
+                    question.SortOrder,
+                    question.Subject,
+                    question.Topic,
+                    string.Empty,
+                    question.Options.Count > 0 ? "Çoktan Seçmeli" : "Açık Uçlu",
+                    question.QuestionText,
+                    question.ImagePath,
+                    question.ImagePlacement ?? "Top",
+                    question.Options,
+                    question.CorrectOptionIndex,
+                    null,
+                    question.Answer is null ? "Unanswered" : "Answered",
+                    false,
+                    string.Empty,
+                    0,
+                    question.Answer is null
+                        ? null
+                        : new AnswerSelectionResponse(
+                            Guid.NewGuid(),
+                            question.Answer.SelectedOptionIndex,
+                            question.Answer.OpenAnswer,
+                            question.Answer.IsCorrect,
+                            question.Answer.AnsweredAtUtc),
+                    null,
+                    null,
+                    []))
+                .ToList(),
+            null);
+    }
+
+    [HttpPost("{id:guid}/approve")]
+    [Authorize(Roles = "Admin,Teacher")]
+    public async Task<IActionResult> Approve(Guid id, CancellationToken cancellationToken)
+    {
+        var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
+        var session = sessions.FirstOrDefault(item => item.Id == id);
+        if (session is null)
+        {
+            return NotFound();
+        }
+
+        if (session.Status != "Completed")
+        {
+            return Conflict(new { message = "Sınav tamamlanmadan onaylanamaz." });
+        }
+
+        if (session.RecordedExamResultId.HasValue)
+        {
+            return Ok(new { message = "Sonuç zaten nota işlenmiş.", examResultId = session.RecordedExamResultId });
+        }
+
+        var autoQuestions = session.Questions.Where(item => item.Answer?.RequiresManualReview != true).ToList();
+        var total = autoQuestions.Count;
+        var correct = autoQuestions.Count(item => item.Answer?.IsCorrect == true);
+        var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
+
+        // Öğretmenin sınav oluştururken yazdığı serbest tür (örn. "1. Yazılı")
+        // sınav başlığına eklenir; not girişi bu etikete göre kolon eşler.
+        var label = session.AssessmentLabel?.Trim() ?? string.Empty;
+        var examTitle = string.IsNullOrWhiteSpace(label) || session.ExamTitle.Contains(label, StringComparison.OrdinalIgnoreCase)
+            ? session.ExamTitle
+            : $"{session.ExamTitle} • {label}";
+
+        var result = new ExamResult
+        {
+            Id = Guid.NewGuid(),
+            ExamTitle = examTitle,
+            Type = ParseAssessmentType(label),
+            Subject = session.Subject,
+            DateLabel = DateTime.UtcNow.ToString("dd.MM.yyyy"),
+            StudentName = session.StudentName,
+            ClassName = session.ClassName,
+            Score = score,
+            Net = correct,
+        };
+
+        session.RecordedExamResultId = result.Id;
+        session.ApprovalStatus = "Approved";
+        await dbContext.ExamResults.AddAsync(result, cancellationToken);
+
+        await dbContext.Notifications.AddAsync(new NotificationItem
+        {
+            Title = "Sınav sonucunuz onaylandı",
+            Message = $"{examTitle} sonucunuz ({score} puan) öğretmeniniz tarafından onaylanıp not girişine işlendi.",
+            TimeLabel = "Şimdi",
+            Audience = session.StudentUsername,
+            TargetRole = "Student",
+            Category = "ExamResult",
+        }, cancellationToken);
+
+        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, sessions, User.Identity?.Name ?? "system", cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(new { message = "Sonuç onaylandı ve not girişine işlendi.", examResultId = result.Id, score, assessmentLabel = label });
+    }
+
+    private async Task NotifyTeacherForApprovalAsync(ExamSessionSnapshot session, int score, CancellationToken cancellationToken)
+    {
+        var audience = session.TeacherName;
+        if (!string.IsNullOrWhiteSpace(session.TeacherName))
+        {
+            // Bildirim hedefi kullanıcı adıdır; öğretmen adı personel kaydından çözülür.
+            var normalizedTeacher = CompatibilitySnapshotStore.NormalizeText(session.TeacherName);
+            var staff = await dbContext.Staff.AsNoTracking().ToListAsync(cancellationToken);
+            var matched = staff.FirstOrDefault(item => CompatibilitySnapshotStore.NormalizeText(item.FullName) == normalizedTeacher);
+            if (matched is not null)
+            {
+                var username = await dbContext.Users.AsNoTracking()
+                    .Where(item => item.Id == matched.UserId)
+                    .Select(item => item.Username)
+                    .FirstOrDefaultAsync(cancellationToken);
+                if (!string.IsNullOrWhiteSpace(username))
+                {
+                    audience = username;
+                }
+            }
+        }
+
+        await dbContext.Notifications.AddAsync(new NotificationItem
+        {
+            Title = "Sınav onayı bekliyor",
+            Message = $"{session.StudentName} ({session.ClassName}) {session.ExamTitle} sınavını tamamladı. Ön puan: {score}. Not girişinden onaylayabilirsiniz.",
+            TimeLabel = "Şimdi",
+            Audience = audience ?? string.Empty,
+            TargetRole = "Teacher",
+            Category = "ExamApproval",
+        }, cancellationToken);
+    }
+
+    private static ExamType ParseAssessmentType(string label)
+    {
+        var folded = (label ?? string.Empty).Trim().ToLowerInvariant()
+            .Replace('ı', 'i').Replace('İ', 'i');
+        if (folded.Contains("deneme") || folded.Contains("mock")) return ExamType.MockExam;
+        if (folded.Contains("sozlu") || folded.Contains("sözlü") || folded.Contains("oral")) return ExamType.Oral;
+        if (folded.Contains("quiz")) return ExamType.Quiz;
+        return ExamType.Written;
     }
 
     private async Task<List<QuestionBankItem>> ResolveSessionQuestions(
@@ -590,6 +775,9 @@ public sealed class ExamSessionSnapshot
     public DateTime StartedAtUtc { get; set; } = DateTime.UtcNow;
     public DateTime? CompletedAtUtc { get; set; }
     public Guid? RecordedExamResultId { get; set; }
+    public string TeacherName { get; set; } = string.Empty;
+    public string AssessmentLabel { get; set; } = string.Empty;
+    public string ApprovalStatus { get; set; } = string.Empty;
     public List<ExamSessionQuestionSnapshot> Questions { get; set; } = [];
 }
 

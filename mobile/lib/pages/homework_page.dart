@@ -4,6 +4,7 @@ import 'package:student/pages/student_homework_upload_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
+import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 
 class HomeworkPage extends StatefulWidget {
@@ -307,167 +308,47 @@ class _HomeworkPageState extends State<HomeworkPage> {
     Map<String, dynamic> item,
   ) {
     final isSubmitted = item["status"] == "Teslim Edildi";
+    final subject = item["subject"]?.toString() ?? '';
 
-    return Container(
+    return PremiumResourceCard(
+      subject: subject,
+      title: item["title"] as String,
+      subtitle: '$subject • ${item["teacher"]}',
+      badge: item["status"] as String,
+      stats: [
+        ('Son Teslim', item["deadline"] as String),
+        ('Sınıf', item["className"] as String),
+      ],
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
+      footer: Row(
         children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: (item["accentColor"] as Color).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.assignment_turned_in_rounded,
-                  color: item["accentColor"] as Color,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item["title"] as String,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "${item["subject"]} • ${item["teacher"]}",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withValues(
-                          alpha: 0.72,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: (item["statusColor"] as Color).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  item["status"] as String,
-                  style: TextStyle(
-                    color: item["statusColor"] as Color,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _metaChip(
-                  theme,
-                  icon: Icons.schedule_rounded,
-                  text: item["deadline"] as String,
-                  color: item["accentColor"] as Color,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _metaChip(
-                  theme,
-                  icon: Icons.groups_rounded,
-                  text: item["className"] as String,
-                  color: item["accentColor"] as Color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            StudentHomeworkDetailPage(homework: item),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.visibility_outlined),
-                  label: const Text("Detay"),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: isSubmitted ? null : () => _openUpload(item),
-                  icon: Icon(
-                    isSubmitted
-                        ? Icons.check_circle_outline_rounded
-                        : Icons.upload_file_rounded,
-                  ),
-                  label: Text(isSubmitted ? "Teslim Edildi" : "Ödev Yükle"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: item["accentColor"] as Color,
-                    foregroundColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metaChip(
-    ThemeData theme, {
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => StudentHomeworkDetailPage(homework: item),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.visibility_outlined),
+              label: const Text("Detay"),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: ElevatedButton.icon(
+              onPressed: isSubmitted ? null : () => _openUpload(item),
+              icon: Icon(
+                isSubmitted
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.upload_file_rounded,
+              ),
+              label: Text(isSubmitted ? "Teslim Edildi" : "Ödev Yükle"),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF7A1A),
+                foregroundColor: Colors.white,
               ),
             ),
           ),
@@ -475,4 +356,5 @@ class _HomeworkPageState extends State<HomeworkPage> {
       ),
     );
   }
+
 }

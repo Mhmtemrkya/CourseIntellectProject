@@ -18,6 +18,7 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
   String _teacherName = '';
   List<ExamScoreRecord> _records = const [];
   List<PlannedExamSubmissionRecord> _submissions = const [];
+  String _approvingSessionId = '';
   bool _loading = true;
   String? _error;
 
@@ -339,18 +340,87 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => _showSubmissionAnswers(item),
-              icon: const Icon(Icons.fact_check_outlined),
-              label: const Text('Cevapları Gör'),
+          if (item.approvalStatus == 'Pending') ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF7A1A).withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: const Color(0xFFFF7A1A).withValues(alpha: 0.30),
+                ),
+              ),
+              child: const Text(
+                'Onay bekliyor — onaylayınca sonuç not girişine işlenir.',
+                style: TextStyle(
+                  color: Color(0xFFB45309),
+                  fontWeight: FontWeight.w700,
+                  fontSize: 12,
+                ),
+              ),
             ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _showSubmissionAnswers(item),
+                  icon: const Icon(Icons.fact_check_outlined),
+                  label: const Text('Cevapları Gör'),
+                ),
+              ),
+              if (item.approvalStatus == 'Pending' &&
+                  (item.sessionId ?? '').isNotEmpty) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: _approvingSessionId == item.sessionId
+                        ? null
+                        : () => _approveSubmission(item),
+                    icon: const Icon(Icons.check_circle_outline_rounded),
+                    label: Text(
+                      _approvingSessionId == item.sessionId
+                          ? 'Onaylanıyor...'
+                          : 'Onayla',
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF7A1A),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _approveSubmission(PlannedExamSubmissionRecord item) async {
+    setState(() => _approvingSessionId = item.sessionId ?? '');
+    try {
+      await PlannedExamApiService.instance.approveSubmission(item.sessionId!);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '${_decodeText(item.studentName)} sonucu onaylandı ve not girişine işlendi.',
+          ),
+        ),
+      );
+      await _loadData();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    } finally {
+      if (mounted) setState(() => _approvingSessionId = '');
+    }
   }
 
   void _showSubmissionAnswers(PlannedExamSubmissionRecord submission) {

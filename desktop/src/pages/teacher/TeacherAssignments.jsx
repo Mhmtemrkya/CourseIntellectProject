@@ -13,6 +13,7 @@ import { Progress } from '../../components/ui/progress';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard, { CardIconAction } from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
@@ -307,49 +308,38 @@ export default function TeacherAssignments() {
               <div className="rounded-xl border p-6 text-sm text-muted-foreground">
                 Bu aramaya uygun ödev bulunamadı.
               </div>
-            ) : filteredAssignments.map((assignment) => {
-              const submissionRate = assignment.total ? Math.round(((assignment.submitted || 0) / assignment.total) * 100) : 0;
-              return (
-                <div key={assignment.id} className="p-4 rounded-xl border hover:border-brand-primary/40 transition-colors">
-                  <div className="flex items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="p-3 rounded-xl bg-brand-primary/10">
-                        <FileText className="h-6 w-6 text-brand-primary" />
-                      </div>
-                      <div>
-                        <h3 className="font-semibold">{assignment.title}</h3>
-                        <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                          <span>{assignment.subject}</span>
-                          <span>•</span>
-                          <span>{assignment.className}</span>
-                          <span>•</span>
-                          <span><Calendar className="inline h-3 w-3 mr-1" />{assignment.deadline}</span>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {filteredAssignments.map((assignment) => {
+                  const submissionRate = assignment.total ? Math.round(((assignment.submitted || 0) / assignment.total) * 100) : 0;
+                  return (
+                    <PremiumResourceCard
+                      key={assignment.id}
+                      subject={assignment.subject}
+                      eyebrow={assignment.subject}
+                      title={assignment.title}
+                      subtitle={assignment.className}
+                      badge={`Son: ${assignment.deadline || '-'}`}
+                      footer={(
+                        <div className="mt-4 space-y-2">
+                          <div className="flex justify-between text-xs font-bold text-slate-400">
+                            <span>Teslim oranı</span>
+                            <span className="text-white">{assignment.submitted || 0}/{assignment.total || 0} • %{submissionRate}</span>
+                          </div>
+                          <Progress value={submissionRate} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
                         </div>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => setSelectedAssignment(assignment)}
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button variant="outline" size="icon" onClick={() => handleDelete(assignment.id)}>
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Teslim oranı</span>
-                      <span>{assignment.submitted || 0}/{assignment.total || 0}</span>
-                    </div>
-                    <Progress value={submissionRate} className="h-2" />
-                  </div>
-                </div>
-              );
-            })}
+                      )}
+                      actions={(
+                        <>
+                          <CardIconAction icon={Eye} title="Detayları gör" onClick={() => setSelectedAssignment(assignment)} />
+                          <CardIconAction icon={Trash2} tone="danger" title="Ödevi sil" onClick={() => handleDelete(assignment.id)} />
+                        </>
+                      )}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>

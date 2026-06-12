@@ -14,6 +14,7 @@ public interface IExamSolvingService
     Task<SolutionSummaryResponse> CompleteAsync(Guid sessionId, string baseUrl, CancellationToken cancellationToken);
     Task<PdfReportResponse> QueuePdfAsync(Guid sessionId, string baseUrl, CancellationToken cancellationToken);
     Task<IReadOnlyList<PdfReportResponse>> GetTeacherReportsAsync(CancellationToken cancellationToken);
+    Task<PdfReportResponse> GenerateExamPaperPdfAsync(SolutionSessionResponse session, string baseUrl, CancellationToken cancellationToken);
     Task<SolutionSessionResponse> AddTeacherReviewAsync(Guid sessionId, AddTeacherReviewRequest request, string teacherName, Guid? teacherUserId, CancellationToken cancellationToken);
 }
 

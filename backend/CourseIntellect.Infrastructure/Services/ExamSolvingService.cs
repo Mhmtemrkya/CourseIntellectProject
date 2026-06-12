@@ -340,6 +340,45 @@ public sealed class ExamSolvingService(
         return MapReport(report);
     }
 
+    public async Task<PdfReportResponse> GenerateExamPaperPdfAsync(SolutionSessionResponse session, string baseUrl, CancellationToken cancellationToken)
+    {
+        // Planlı sınav (snapshot) oturumları için markalı "Sınav Kağıdı" PDF'i üretir
+        // ve öğretmenin PDF rapor merkezine düşürür.
+        var existing = await dbContext.PdfReports
+            .Where(item => item.ExamSessionId == session.Id && item.Status == "Ready")
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        if (existing is not null) return MapReport(existing);
+
+        var report = new PdfReport
+        {
+            ExamSessionId = session.Id,
+            Status = "Queued",
+            CreatedAtUtc = DateTime.UtcNow,
+        };
+        await dbContext.PdfReports.AddAsync(report, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            var bytes = BuildBrandedPdf(session, new Dictionary<Guid, byte[]>());
+            await using var stream = new MemoryStream(bytes);
+            var upload = await fileStorageService.SaveAsync(stream, $"sinav-kagidi-{session.Id}.pdf", "application/pdf", "solution-reports", baseUrl, cancellationToken);
+            report.Status = "Ready";
+            report.StorageKey = upload.FileUrl;
+            report.ReadyAtUtc = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception error)
+        {
+            report.Status = "Failed";
+            report.ErrorMessage = error.Message;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        return MapReport(report);
+    }
+
     public async Task<IReadOnlyList<PdfReportResponse>> GetTeacherReportsAsync(CancellationToken cancellationToken)
     {
         return await dbContext.PdfReports

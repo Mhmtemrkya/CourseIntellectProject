@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/premium_resource_card.dart';
 
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
@@ -213,6 +214,7 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                     child: ContentCard(
                       title: item.title,
                       subtitle: '${item.subject} - ${item.grade}',
+                      subject: item.subject,
                       views: item.views,
                       size: item.size,
                       color: _colorForType(item.fileType),
@@ -384,65 +386,141 @@ class ContentCard extends StatelessWidget {
     required this.size,
     required this.color,
     required this.icon,
+    this.subject = '',
     this.duration,
   });
 
+  final String subject;
+
   @override
   Widget build(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final theme = resourceTheme(subject);
+    final hue = theme.hue;
+    final Color titleColor = dark ? Colors.white : const Color(0xFF0F172A);
+    final Color mutedColor = dark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
+
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [color.withValues(alpha: 0.8), color]),
+        color: dark ? const Color(0xFF0B1728) : Colors.white,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: dark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: dark ? 0.30 : 0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          Row(
-            children: [
-              Icon(icon, color: Colors.white),
-              const Spacer(),
-              if (duration != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black45,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    duration!,
-                    style: const TextStyle(color: Colors.white, fontSize: 12),
-                  ),
-                ),
-            ],
-          ),
-          const Spacer(),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.bold,
+          Positioned(
+            right: -6,
+            top: -16,
+            child: Text(
+              theme.mark,
+              style: TextStyle(
+                fontSize: 52,
+                fontWeight: FontWeight.w900,
+                color: hue.withValues(alpha: 0.11),
+                height: 1,
+              ),
             ),
           ),
-          Text(subtitle, style: const TextStyle(color: Colors.white70)),
-          const SizedBox(height: 6),
-          Text(views, style: const TextStyle(color: Colors.white70)),
-          Text(size, style: const TextStyle(color: Colors.white70)),
-          const Spacer(),
-          Row(
-            children: const [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: hue.withValues(alpha: 0.13),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: hue.withValues(alpha: 0.30)),
+                    ),
+                    child: Icon(icon, color: hue, size: 20),
+                  ),
+                  const Spacer(),
+                  if (duration != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: hue.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: hue.withValues(alpha: 0.30),
+                        ),
+                      ),
+                      child: Text(
+                        duration!,
+                        style: TextStyle(
+                          color: hue,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const Spacer(),
               Text(
-                'Detayi ac',
+                title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w700,
+                  color: titleColor,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-              Spacer(),
-              Icon(Icons.chevron_right_rounded, color: Colors.white),
+              Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: mutedColor, fontSize: 12),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                views,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: mutedColor, fontSize: 12),
+              ),
+              Text(
+                size,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(color: mutedColor, fontSize: 12),
+              ),
+              const Spacer(),
+              Row(
+                children: const [
+                  Text(
+                    'Detayı aç',
+                    style: TextStyle(
+                      color: Color(0xFFFF7A1A),
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Spacer(),
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFFFF7A1A),
+                  ),
+                ],
+              ),
             ],
           ),
         ],

@@ -13,6 +13,7 @@ import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
@@ -1045,67 +1046,47 @@ export default function TeacherContent() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {filteredContent.map((item) => {
-          const Icon = contentTypeIcon(item.fileType);
-          return (
-            <motion.div key={item.id || item.title} variants={itemVariants}>
-              <Card className="group hover:shadow-card-hover transition-all">
-                <CardContent className="p-6 space-y-4">
-                  <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${buildCoverStyle(item)} p-5 text-white`}>
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.28),transparent_38%)]" />
-                    <div className="relative flex items-start justify-between">
-                      <div className="space-y-3">
-                        <Badge className="border-white/20 bg-white/15 text-white backdrop-blur-sm">{item.subject}</Badge>
-                        <div>
-                          <h3 className="text-lg font-semibold leading-tight">{item.title}</h3>
-                          <p className="mt-1 text-sm text-white/80">{item.grade} • {item.teacher}</p>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-white/15 p-3 backdrop-blur-sm">
-                        <Icon className="h-6 w-6 text-white" />
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-start justify-between">
-                      <div>
-                        <Badge className={String(item.publishStatus).toLowerCase().includes('yay') ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}>
-                          {item.publishStatus}
-                        </Badge>
-                        {item.playlistTitle ? (
-                          <Badge variant="outline" className="ml-2">{item.playlistTitle} #{item.playlistOrder || 1}</Badge>
-                        ) : null}
-                      </div>
-                    <Badge variant="outline">{item.fileType}</Badge>
-                  </div>
-                  <div>
-                    <p className="text-sm leading-6 text-muted-foreground">
-                      {item.description || item.info || 'Bu içerik için henüz açıklama girilmedi.'}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3 text-sm text-muted-foreground">
-                    <span>Sınıf: {item.grade}</span>
-                    <span>Boyut: {item.size}</span>
-                    <span>Görüntüleme: {item.views}</span>
-                    <span>Dosya: {item.fileName || item.fileType}</span>
-                  </div>
-                  <div className="flex gap-2">
+            const published = String(item.publishStatus).toLowerCase().includes('yay');
+            return (
+              <PremiumResourceCard
+                key={item.id || item.title}
+                subject={item.subject}
+                eyebrow={item.subject}
+                title={item.title}
+                subtitle={`${item.grade || '-'} • ${item.teacher || '-'}`}
+                badge={item.fileType}
+                description={item.description || item.info || 'Bu içerik için henüz açıklama girilmedi.'}
+                chips={[
+                  published ? 'Yayında' : 'Taslak',
+                  item.playlistTitle ? `${item.playlistTitle} #${item.playlistOrder || 1}` : null,
+                ]}
+                stats={[
+                  ['Boyut', item.size || '-'],
+                  ['Görüntüleme', item.views ?? 0],
+                  ['Sınıf', item.grade || '-'],
+                ]}
+                footer={(
+                  <div className="mt-4 flex gap-2">
                     <Button
                       variant="outline"
-                      className="flex-1"
+                      className="h-10 flex-1 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white"
                       onClick={() => {
                         setSelectedContent(item);
                         setPlayInlineVideo(false);
                       }}
                     >
-                      <Eye className="h-4 w-4 mr-2" />Detay
+                      <Eye className="mr-2 h-4 w-4" />Detay
                     </Button>
-                    <Button className="flex-1 bg-brand-primary hover:bg-brand-primary/90" onClick={() => handlePublish(item, String(item.publishStatus).toLowerCase().includes('yay') ? 'Taslak' : 'Yayinda')}>
-                      {String(item.publishStatus).toLowerCase().includes('yay') ? 'Taslağa Al' : 'Yayınla'}
+                    <Button
+                      className="h-10 flex-1 rounded-xl bg-orange-500 text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
+                      onClick={() => handlePublish(item, published ? 'Taslak' : 'Yayinda')}
+                    >
+                      {published ? 'Taslağa Al' : 'Yayınla'}
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          );
+                )}
+              />
+            );
           })}
         </div>
       )}

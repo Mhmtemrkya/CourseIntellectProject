@@ -211,6 +211,10 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
         var blank = total - answered;
         var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
 
+        var approvalStatus = string.IsNullOrWhiteSpace(session.ApprovalStatus)
+            ? (session.RecordedExamResultId.HasValue ? "Approved" : "Pending")
+            : session.ApprovalStatus;
+
         return new
         {
             id = session.RecordedExamResultId ?? session.Id,
@@ -224,7 +228,8 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             blank,
             total,
             submittedAtUtc = session.CompletedAtUtc ?? session.StartedAtUtc,
-            status = "Teslim Edildi",
+            status = approvalStatus == "Pending" ? "Onay Bekliyor" : "Teslim Edildi",
+            approvalStatus,
             answers = session.Questions
                 .OrderBy(item => item.SortOrder)
                 .Select(item =>

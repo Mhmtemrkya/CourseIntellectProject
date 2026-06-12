@@ -933,6 +933,11 @@ export async function completeExamSession(sessionId) {
   return response;
 }
 
+export async function approveExamSubmission(sessionId) {
+  const response = await api.post(`/api/examsessions/${sessionId}/approve`);
+  return response;
+}
+
 // --- Staff (Accounting) ---
 
 export async function createStaffAccounting(payload) {

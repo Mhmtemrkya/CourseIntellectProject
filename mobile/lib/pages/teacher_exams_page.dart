@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/premium_resource_card.dart';
 import 'package:student/pages/teacher_exam_edit_page.dart';
 import 'package:student/pages/teacher_exam_results_page.dart';
 import 'package:student/pages/teacher_exam_score_entry_page.dart';
@@ -551,16 +552,27 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     List<Map<String, dynamic>> sourceList,
   ) {
     final subjectTheme = _themeForSubject(item["subject"]?.toString() ?? '');
-    final accent = item["accentColor"] as Color;
+    final premium = resourceTheme(item["subject"]?.toString() ?? '');
+    final hue = premium.hue;
+    final accent = hue;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color mutedColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: isDark ? const Color(0xFF0B1728) : Colors.white,
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
+                ? Colors.black.withValues(alpha: 0.30)
                 : Colors.black.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 6),
@@ -573,10 +585,13 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
             width: double.infinity,
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: subjectTheme.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              gradient: RadialGradient(
+                center: const Alignment(0.95, -1.3),
+                radius: 1.7,
+                colors: [
+                  hue.withValues(alpha: isDark ? 0.30 : 0.16),
+                  hue.withValues(alpha: 0.03),
+                ],
               ),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(24),
@@ -588,11 +603,11 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                   right: -10,
                   top: -8,
                   child: Text(
-                    subjectTheme.monogram,
+                    premium.mark,
                     style: TextStyle(
                       fontSize: 72,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white.withValues(alpha: 0.10),
+                      color: hue.withValues(alpha: 0.11),
                     ),
                   ),
                 ),
@@ -605,10 +620,13 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                           width: 52,
                           height: 52,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
+                            color: hue.withValues(alpha: 0.13),
                             borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: hue.withValues(alpha: 0.30),
+                            ),
                           ),
-                          child: Icon(subjectTheme.icon, color: Colors.white),
+                          child: Icon(subjectTheme.icon, color: hue),
                         ),
                         const Spacer(),
                         Container(
@@ -617,14 +635,17 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
+                            color: hue.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: hue.withValues(alpha: 0.30),
+                            ),
                           ),
                           child: Text(
                             '${item["questionCount"]} soru',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                            style: TextStyle(
+                              color: hue,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -632,27 +653,30 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      _decodeText(item["subject"] as String?),
+                      _decodeText(item["subject"] as String?).toUpperCase(),
                       style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.7,
+                        color: hue,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.6,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       _decodeText(item["title"] as String?),
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
+                        color: titleColor,
                         fontWeight: FontWeight.w900,
                         height: 1.05,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      subjectTheme.tagline,
+                      premium.tagline,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.86),
+                        color: mutedColor,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                        fontSize: 11,
                       ),
                     ),
                   ],

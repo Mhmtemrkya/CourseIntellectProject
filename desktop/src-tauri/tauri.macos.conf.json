@@ -10,15 +10,14 @@
           "height": 400
         },
         "appPosition": {
-          "x": 180,
-          "y": 170
+          "x": 170,
+          "y": 220
         },
         "applicationFolderPosition": {
-          "x": 480,
-          "y": 170
+          "x": 490,
+          "y": 220
         }
       }
     }
   }
 }
-

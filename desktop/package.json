@@ -49,6 +49,7 @@
     "framer-motion": "^12.26.2",
     "input-otp": "^1.4.2",
     "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
     "lucide-react": "^0.507.0",
     "next-themes": "^0.4.6",
     "react": "^18.3.1",
@@ -73,9 +74,9 @@
     "smoke:roles": "node ./scripts/role-smoke.mjs",
     "desktop:dev": "PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js dev",
     "desktop:build:app": "PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js build --bundles app",
-    "desktop:build": "PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js build",
+    "desktop:build": "swift scripts/generate-dmg-background.swift && PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js build",
     "desktop:build:app:prod": "REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js build --bundles app",
-    "desktop:build:prod": "REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js build"
+    "desktop:build:prod": "swift scripts/generate-dmg-background.swift && REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 CARGO_HTTP_MULTIPLEXING=false node ./node_modules/@tauri-apps/cli/tauri.js build"
   },
   "browserslist": {
     "production": [

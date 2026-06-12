@@ -9,12 +9,15 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import {
+  approveExamSubmission,
   createExamResult,
   fetchExamResults,
   fetchPlannedExams,
+  fetchPlannedExamSubmissions,
   fetchReportStudents,
 } from '../../lib/api/modules';
 import { useToast } from '../../hooks/use-toast';
+import { useApp } from '../../context/AppContext';
 
 const weights = { first: 0.4, second: 0.4, performance: 0.2 };
 
@@ -201,6 +204,7 @@ function DetailPanel({ row, rows, subject, onClose }) {
 
 export default function TeacherGradeEntry() {
   const { toast } = useToast();
+  const { user } = useApp();
   const fileRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -215,6 +219,33 @@ export default function TeacherGradeEntry() {
   const [assessment, setAssessment] = useState('2. Yazılı');
   const [search, setSearch] = useState('');
   const [selectedRowId, setSelectedRowId] = useState(null);
+  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [approvingId, setApprovingId] = useState('');
+
+  const loadPendingApprovals = useCallback(async (plannedData) => {
+    // Öğretmenin planladığı sınavlarda onay bekleyen öğrenci teslimlerini topla.
+    const ownExams = (plannedData || []).filter((item) => !user?.name || decodeText(item.teacherName) === decodeText(user.name));
+    const results = await Promise.all(ownExams.slice(0, 30).map(async (exam) => {
+      try {
+        const submissions = await fetchPlannedExamSubmissions(exam.id);
+        return (Array.isArray(submissions) ? submissions : [])
+          .filter((item) => item.approvalStatus === 'Pending' && item.sessionId)
+          .map((item) => ({
+            sessionId: item.sessionId,
+            studentName: decodeText(item.studentName),
+            score: item.score,
+            net: item.net,
+            examTitle: decodeText(exam.title),
+            assessmentLabel: decodeText(exam.type),
+            className: decodeText(exam.className),
+            subject: decodeText(exam.subject),
+          }));
+      } catch {
+        return [];
+      }
+    }));
+    setPendingApprovals(results.flat());
+  }, [user?.name]);
 
   const load = useCallback(async () => {
     try {
@@ -228,12 +259,26 @@ export default function TeacherGradeEntry() {
       setStudents(Array.isArray(studentData) ? studentData : []);
       setRecords(Array.isArray(recordData) ? recordData : []);
       setPlanned(Array.isArray(plannedData) ? plannedData : []);
+      await loadPendingApprovals(Array.isArray(plannedData) ? plannedData : []);
     } catch (err) {
       setError(err.message || 'Not verileri alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadPendingApprovals]);
+
+  const approveSubmission = async (item) => {
+    try {
+      setApprovingId(item.sessionId);
+      await approveExamSubmission(item.sessionId);
+      toast({ title: 'Sonuç onaylandı', description: `${item.studentName} • ${item.assessmentLabel || item.examTitle} notu (${item.score}) not girişine işlendi.` });
+      await load();
+    } catch (err) {
+      toast({ title: 'Onaylanamadı', description: err.message || 'Tekrar deneyin.' });
+    } finally {
+      setApprovingId('');
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -358,7 +403,7 @@ export default function TeacherGradeEntry() {
         <SelectBox label="Sınıf" value={selectedClass} options={classOptions} onChange={setSelectedClass} />
         <SelectBox label="Ders" value={selectedSubject} options={subjectOptions} onChange={setSelectedSubject} />
         <SelectBox label="Dönem" value={period} options={['2024 - 2025 / 1. Dönem', '2024 - 2025 / 2. Dönem', '2025 - 2026 / 1. Dönem']} onChange={setPeriod} />
-        <SelectBox label="Değerlendirme Türü" value={assessment} options={['1. Yazılı', '2. Yazılı', 'Performans', 'Proje']} onChange={setAssessment} />
+        <SelectBox label="Değerlendirme Türü" value={assessment} options={[...new Set(['1. Yazılı', '2. Yazılı', 'Performans', 'Proje', ...planned.map((item) => decodeText(item.type)).filter((item) => item && item !== 'MockExam' && item !== 'Exam')])]} onChange={setAssessment} />
         <Button variant="outline" className="mt-6"><Settings2 className="mr-2 h-4 w-4" />Sınav Ayarları</Button>
       </div>
 
@@ -368,6 +413,44 @@ export default function TeacherGradeEntry() {
       </div>
 
       {error ? <div className="mt-4 rounded-2xl border border-red-500/20 bg-red-500/10 p-4 text-sm text-red-600">{error}</div> : null}
+
+      {pendingApprovals.length > 0 ? (
+        <div className="mt-4 rounded-3xl border border-orange-400/30 bg-orange-500/[0.07] p-4">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-orange-500" />
+            <p className="font-black">Onay Bekleyen Sınav Sonuçları</p>
+            <Badge className="bg-orange-500/15 text-orange-500 hover:bg-orange-500/15">{pendingApprovals.length}</Badge>
+          </div>
+          <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Öğrenciler sınavı tamamladı. Onayladığınızda sonuç, sınavı oluştururken yazdığınız tür etiketiyle ({pendingApprovals[0]?.assessmentLabel || '1. Yazılı'} gibi) not girişine otomatik işlenir.</p>
+          <div className="mt-3 space-y-2">
+            {pendingApprovals.map((item) => (
+              <div key={item.sessionId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#0E1A2F]">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/15 text-xs font-black text-orange-500">{initials(item.studentName)}</span>
+                  <div>
+                    <p className="text-sm font-black">{item.studentName} <span className="font-bold text-slate-500">• {item.className}</span></p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">{item.examTitle} • {item.subject}{item.assessmentLabel ? ` • ${item.assessmentLabel}` : ''}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-lg font-black text-emerald-500">{item.score}</p>
+                    <p className="text-[11px] text-slate-500">{item.net} net</p>
+                  </div>
+                  <Button
+                    onClick={() => approveSubmission(item)}
+                    disabled={approvingId === item.sessionId}
+                    className="bg-orange-500 text-white hover:bg-orange-600"
+                  >
+                    <CheckCircle2 className="mr-2 h-4 w-4" />
+                    {approvingId === item.sessionId ? 'Onaylanıyor...' : 'Onayla ve Nota İşle'}
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-[#0E1A2F] dark:shadow-black/20">

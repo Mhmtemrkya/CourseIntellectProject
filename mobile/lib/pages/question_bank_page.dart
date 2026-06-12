@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/question_bank_store.dart';
+import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/student_empty_state_panel.dart';
 import 'student_question_bank_detail_page.dart';
@@ -375,291 +376,39 @@ class _QuestionBankPageState extends State<QuestionBankPage>
   }
 
   Widget topicQuestionCard(_QuestionTopicGroup group) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () async {
-        for (final question in group.questions) {
-          await _store.incrementUsage(question.id);
-        }
-        if (!mounted) return;
-        await Navigator.push<void>(
-          context,
-          MaterialPageRoute(
-            builder: (_) => StudentQuestionBankDetailPage(
-              subject: group.subject,
-              topic: group.topic,
-              questions: group.questions,
-            ),
-          ),
-        );
-      },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: isDark(context)
-                ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFFE5E7EB),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(
-                alpha: isDark(context) ? 0.18 : 0.06,
-              ),
-              blurRadius: 18,
-              offset: const Offset(0, 10),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        group.topic,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: isDark(context)
-                              ? Colors.white
-                              : const Color(0xFF111827),
-                          fontWeight: FontWeight.w800,
-                          fontSize: 17,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        '${group.questions.length} soru',
-                        style: TextStyle(
-                          color: isDark(context)
-                              ? Colors.white70
-                              : const Color(0xFF64748B),
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF14B8A6), Color(0xFF06B6D4)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                  ),
-                  alignment: Alignment.center,
-                  child: Text(
-                    '${group.questions.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            _coverPreview(group.subject, group.topic, group.questions.length),
-          ],
+    final teacher = group.questions.first.teacher;
+    return PremiumResourceCard(
+      subject: _decodeSubject(group.subject),
+      title: _decodeSubject(group.topic),
+      subtitle: teacher.isEmpty ? null : teacher,
+      badge: '${group.questions.length} soru',
+      footer: CardPrimaryButton(
+        label: 'Seti Başlat',
+        icon: Icons.play_arrow_rounded,
+        onTap: () => _openTopicGroup(group),
+      ),
+      onTap: () => _openTopicGroup(group),
+    );
+  }
+
+  Future<void> _openTopicGroup(_QuestionTopicGroup group) async {
+    for (final question in group.questions) {
+      await _store.incrementUsage(question.id);
+    }
+    if (!mounted) return;
+    await Navigator.push<void>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => StudentQuestionBankDetailPage(
+          subject: group.subject,
+          topic: group.topic,
+          questions: group.questions,
         ),
       ),
     );
   }
 
-  Widget _coverPreview(String subject, String title, int questionCount) {
-    final accent = _subjectAccent(subject);
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(18),
-      child: SizedBox(
-        height: 180,
-        width: double.infinity,
-        child: _autoCover(subject, title, questionCount, accent),
-      ),
-    );
-  }
 
-  Widget _autoCover(
-    String subject,
-    String title,
-    int questionCount,
-    Color accent,
-  ) {
-    final activeSubject = _decodeSubject(
-      subject.trim().isEmpty ? 'Genel' : subject,
-    );
-    final activeTitle = _decodeSubject(title);
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: _subjectGradient(activeSubject),
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -10,
-            top: -14,
-            child: Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
-              ),
-            ),
-          ),
-          Positioned(
-            left: 24,
-            top: 22,
-            child: Text(
-              _subjectMark(activeSubject),
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.10),
-                fontSize: 54,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -1.6,
-              ),
-            ),
-          ),
-          Positioned(
-            right: 18,
-            top: 18,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-              ),
-              child: Text(
-                '$questionCount soru',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            left: 18,
-            right: 18,
-            bottom: 18,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.14),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
-                    ),
-                  ),
-                  child: Icon(_subjectIcon(activeSubject), color: Colors.white),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        activeSubject,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _subjectTagline(activeSubject),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.78),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.3,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      Text(
-                        activeTitle,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: -0.4,
-                          height: 1.05,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  width: 10,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: accent.withValues(alpha: 0.55),
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  List<Color> _subjectGradient(String subject) {
-    final normalized = _decodeSubject(subject).toLowerCase();
-    if (normalized.contains('mat')) {
-      return const [Color(0xFF2563EB), Color(0xFF1D4ED8)];
-    }
-    if (normalized.contains('fiz')) {
-      return const [Color(0xFF7C3AED), Color(0xFF5B21B6)];
-    }
-    if (normalized.contains('kim')) {
-      return const [Color(0xFFEA580C), Color(0xFFC2410C)];
-    }
-    if (normalized.contains('biy')) {
-      return const [Color(0xFF16A34A), Color(0xFF15803D)];
-    }
-    if (normalized.contains('türk') || normalized.contains('turk')) {
-      return const [Color(0xFFDC2626), Color(0xFFB91C1C)];
-    }
-    if (normalized.contains('ing')) {
-      return const [Color(0xFF0891B2), Color(0xFF0E7490)];
-    }
-    return const [Color(0xFF0F766E), Color(0xFF155E75)];
-  }
 
   Color _subjectAccent(String subject) {
     final normalized = _decodeSubject(subject).toLowerCase();
@@ -674,42 +423,6 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     return const Color(0xFF0F766E);
   }
 
-  IconData _subjectIcon(String subject) {
-    final normalized = _decodeSubject(subject).toLowerCase();
-    if (normalized.contains('mat')) return Icons.calculate_rounded;
-    if (normalized.contains('fiz')) return Icons.bolt_rounded;
-    if (normalized.contains('kim')) return Icons.science_rounded;
-    if (normalized.contains('biy')) return Icons.eco_rounded;
-    if (normalized.contains('türk') || normalized.contains('turk')) {
-      return Icons.menu_book_rounded;
-    }
-    if (normalized.contains('ing')) return Icons.translate_rounded;
-    return Icons.auto_awesome_rounded;
-  }
-
-  String _subjectMark(String subject) {
-    final normalized = _decodeSubject(subject).toLowerCase();
-    if (normalized.contains('mat')) return 'x²';
-    if (normalized.contains('fiz')) return 'F';
-    if (normalized.contains('kim')) return 'H₂O';
-    if (normalized.contains('biy')) return 'DNA';
-    if (normalized.contains('türk') || normalized.contains('turk')) return 'Aa';
-    if (normalized.contains('ing')) return 'EN';
-    return 'QB';
-  }
-
-  String _subjectTagline(String subject) {
-    final normalized = _decodeSubject(subject).toLowerCase();
-    if (normalized.contains('mat')) return 'FORMÜL • PROBLEM • MANTIK';
-    if (normalized.contains('fiz')) return 'HAREKET • ENERJİ • KUVVET';
-    if (normalized.contains('kim')) return 'TEPKİME • MADDE • BAĞ';
-    if (normalized.contains('biy')) return 'CANLI • HÜCRE • SİSTEM';
-    if (normalized.contains('türk') || normalized.contains('turk')) {
-      return 'DİL • ANLAM • PARAGRAF';
-    }
-    if (normalized.contains('ing')) return 'VOCAB • GRAMMAR • READING';
-    return 'SET • PRATİK • TEKRAR';
-  }
 
   String _decodeSubject(String subject) {
     return subject

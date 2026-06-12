@@ -6,6 +6,7 @@ import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/planned_exam_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/widgets/student_empty_state_panel.dart';
+import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 
 class ExamsPage extends StatefulWidget {
@@ -402,20 +403,30 @@ class _ExamsPageState extends State<ExamsPage> {
 
   Widget _examCard(ThemeData theme, bool isDark, Map<String, dynamic> item) {
     final isCompleted = selectedTab == 1;
-    final accent = item["accentColor"] as Color;
     final subjectTheme = _themeForSubject(item["subject"]?.toString() ?? '');
+    final premium = resourceTheme(item["subject"]?.toString() ?? '');
+    final hue = premium.hue;
     final canStart = isCompleted || _canStartExam(item);
+    final Color cardBg = isDark ? const Color(0xFF0B1728) : Colors.white;
+    final Color titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final Color mutedColor = isDark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF64748B);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: cardBg,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: accent.withValues(alpha: 0.10)),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.10)
+              : const Color(0xFFE2E8F0),
+        ),
         boxShadow: [
           BoxShadow(
             color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
+                ? Colors.black.withValues(alpha: 0.30)
                 : Colors.black.withValues(alpha: 0.05),
             blurRadius: 14,
             offset: const Offset(0, 6),
@@ -428,10 +439,13 @@ class _ExamsPageState extends State<ExamsPage> {
           Container(
             padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: subjectTheme.gradient,
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+              gradient: RadialGradient(
+                center: const Alignment(0.95, -1.3),
+                radius: 1.7,
+                colors: [
+                  hue.withValues(alpha: isDark ? 0.30 : 0.16),
+                  hue.withValues(alpha: 0.03),
+                ],
               ),
               borderRadius: const BorderRadius.vertical(
                 top: Radius.circular(26),
@@ -443,11 +457,11 @@ class _ExamsPageState extends State<ExamsPage> {
                   right: -12,
                   top: -10,
                   child: Text(
-                    subjectTheme.monogram,
+                    premium.mark,
                     style: TextStyle(
                       fontSize: 78,
                       fontWeight: FontWeight.w900,
-                      color: Colors.white.withValues(alpha: 0.10),
+                      color: hue.withValues(alpha: 0.11),
                       height: 1,
                     ),
                   ),
@@ -462,10 +476,13 @@ class _ExamsPageState extends State<ExamsPage> {
                           width: 54,
                           height: 54,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.16),
+                            color: hue.withValues(alpha: 0.13),
                             borderRadius: BorderRadius.circular(18),
+                            border: Border.all(
+                              color: hue.withValues(alpha: 0.30),
+                            ),
                           ),
-                          child: Icon(subjectTheme.icon, color: Colors.white),
+                          child: Icon(subjectTheme.icon, color: hue),
                         ),
                         const Spacer(),
                         Container(
@@ -474,16 +491,19 @@ class _ExamsPageState extends State<ExamsPage> {
                             vertical: 8,
                           ),
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.14),
+                            color: hue.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(999),
+                            border: Border.all(
+                              color: hue.withValues(alpha: 0.30),
+                            ),
                           ),
                           child: Text(
                             isCompleted
                                 ? 'Sonuç'
                                 : '${item["questionCount"]} soru',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w700,
+                            style: TextStyle(
+                              color: hue,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -491,28 +511,30 @@ class _ExamsPageState extends State<ExamsPage> {
                     ),
                     const SizedBox(height: 18),
                     Text(
-                      item["subject"] as String,
+                      (item["subject"] as String).toUpperCase(),
                       style: theme.textTheme.labelLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.7,
+                        color: hue,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.6,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       item["title"] as String,
                       style: theme.textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
+                        color: titleColor,
                         fontWeight: FontWeight.w900,
                         height: 1.05,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      subjectTheme.tagline,
+                      premium.tagline,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.86),
-                        fontWeight: FontWeight.w500,
+                        color: mutedColor,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.1,
+                        fontSize: 11,
                       ),
                     ),
                   ],
@@ -665,7 +687,7 @@ class _ExamsPageState extends State<ExamsPage> {
                               : "Saatini Bekle",
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: accent,
+                          backgroundColor: const Color(0xFFFF7A1A),
                           foregroundColor: Colors.white,
                         ),
                       ),

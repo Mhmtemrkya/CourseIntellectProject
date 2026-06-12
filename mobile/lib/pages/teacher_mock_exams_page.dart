@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/premium_resource_card.dart';
 
 import '../services/auth_session_store.dart';
 import '../services/planned_exam_api_service.dart';
@@ -247,62 +248,25 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
   }
 
   Widget _examCard(ThemeData theme, PlannedExamRecord exam) {
-    return Container(
+    return PremiumResourceCard(
+      subject: exam.subject,
+      title: exam.title,
+      subtitle: exam.className,
+      badge: 'Deneme Sınavı',
       margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Chip(label: Text('Deneme Sınavı')),
-              const Spacer(),
-              IconButton(
-                onPressed: () => _delete(exam),
-                icon: const Icon(Icons.delete_outline_rounded),
-              ),
-            ],
-          ),
-          Text(
-            exam.title,
-            style: theme.textTheme.titleMedium?.copyWith(
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text('${exam.subject} · ${exam.className}'),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              _detail(Icons.calendar_today_outlined, exam.date),
-              _detail(Icons.timer_outlined, exam.duration),
-              _detail(Icons.quiz_outlined, '${exam.questionCount} soru'),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _detail(IconData icon, String value) {
-    return Expanded(
-      child: Row(
-        children: [
-          Icon(icon, size: 15, color: const Color(0xFFFF8A1C)),
-          const SizedBox(width: 5),
-          Flexible(
-            child: Text(
-              value.isEmpty ? '-' : value,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
+      stats: [
+        ('Tarih', exam.date.isEmpty ? '-' : exam.date),
+        ('Süre', exam.duration.isEmpty ? '-' : exam.duration),
+        ('Soru', '${exam.questionCount}'),
+      ],
+      actions: [
+        CardIconAction(
+          icon: Icons.delete_outline_rounded,
+          tooltip: 'Denemeyi sil',
+          danger: true,
+          onTap: () => _delete(exam),
+        ),
+      ],
     );
   }
 

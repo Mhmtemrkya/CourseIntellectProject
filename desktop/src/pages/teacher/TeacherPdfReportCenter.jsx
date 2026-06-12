@@ -1,7 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
+import JSZip from 'jszip';
 import {
-  Archive, BarChart3, Calendar, CheckCircle2, ChevronDown, Download,
+  Archive, BarChart3, Calendar, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, Download,
   Eye, FileArchive, FilePlus2, FileText, Filter, GraduationCap, Maximize2, MessageSquare,
   Minus, MoreVertical, NotebookPen, PieChart, Printer, QrCode, Search, Sparkles, Trophy,
   TrendingUp, UserRound, Users, X, ZoomIn,
@@ -196,6 +199,27 @@ function openDownloadUrl(url) {
   if (!url) return false;
   window.open(url, '_blank', 'noopener,noreferrer');
   return true;
+}
+
+function sanitizeFileName(name) {
+  return String(name || 'rapor').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'rapor';
+}
+
+function saveBlob(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+
+async function fetchReportBlob(url) {
+  const response = await fetch(url, { credentials: 'include' });
+  if (!response.ok) throw new Error(`PDF indirilemedi (${response.status})`);
+  return response.blob();
 }
 
 function liveSubjectRows(analytics) {
@@ -787,6 +811,8 @@ export default function TeacherPdfReportCenter() {
   const [selectedId, setSelectedId] = useState('');
   const [activePage, setActivePage] = useState(1);
   const [zoom, setZoom] = useState(100);
+  const [exporting, setExporting] = useState(false);
+  const exportRef = useRef(null);
 
   const loadStudentReports = useCallback(async () => {
     try {
@@ -874,41 +900,122 @@ export default function TeacherPdfReportCenter() {
     setActionMessage('');
   }, []);
 
-  const handleDownloadReport = useCallback((report = selectedReport) => {
-    if (openDownloadUrl(report?.downloadUrl)) {
-      setActionMessage('PDF yeni sekmede açıldı.');
+  const generatePdfBlob = useCallback(async () => {
+    const nodes = exportRef.current?.querySelectorAll('[data-export-page]');
+    if (!nodes || nodes.length === 0) throw new Error('Önizleme sayfaları bulunamadı.');
+    const pdf = new jsPDF({ unit: 'px', format: [794, 1123], orientation: 'portrait', compress: true });
+    for (let index = 0; index < nodes.length; index += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      const canvas = await html2canvas(nodes[index], { scale: 2, backgroundColor: '#08111F', useCORS: true, logging: false });
+      if (index > 0) pdf.addPage([794, 1123], 'portrait');
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 794, 1123);
+    }
+    return pdf.output('blob');
+  }, []);
+
+  const handleGeneratePdf = useCallback(async () => {
+    if (exporting) return;
+    try {
+      setExporting(true);
+      setActionMessage('PDF oluşturuluyor...');
+      const blob = await generatePdfBlob();
+      saveBlob(blob, `${sanitizeFileName(selectedReport.name)}.pdf`);
+      setActionMessage('PDF oluşturuldu ve indirildi.');
+    } catch (error) {
+      setActionMessage(error.message || 'PDF oluşturulamadı.');
+    } finally {
+      setExporting(false);
+    }
+  }, [exporting, generatePdfBlob, selectedReport.name]);
+
+  const handleDownloadReport = useCallback(async (report = selectedReport) => {
+    if (report?.downloadUrl) {
+      try {
+        setActionMessage('PDF indiriliyor...');
+        const blob = await fetchReportBlob(report.downloadUrl);
+        saveBlob(blob, `${sanitizeFileName(report.name)}.pdf`);
+        setActionMessage('PDF indirildi.');
+      } catch {
+        openDownloadUrl(report.downloadUrl);
+        setActionMessage('PDF yeni sekmede açıldı.');
+      }
       return;
     }
-    setActionMessage('Bu rapor için hazır PDF dosyası yok. Canlı önizlemeyi yazdırarak PDF olarak kaydedebilirsiniz.');
-  }, [selectedReport]);
+    if (report?.id === selectedReport?.id) {
+      await handleGeneratePdf();
+      return;
+    }
+    setActionMessage('Bu rapor için hazır PDF dosyası yok.');
+  }, [handleGeneratePdf, selectedReport]);
 
   const handlePrint = useCallback(() => {
     window.print();
     setActionMessage('Yazdırma penceresi açıldı. Hedef olarak PDF kaydet seçebilirsiniz.');
   }, []);
 
-  const handleBulkDownload = useCallback((reports = filteredReports) => {
+  const collectReportFiles = useCallback(async (reports) => {
+    const files = [];
     const readyReports = reports.filter((item) => item.downloadUrl);
-    if (readyReports.length === 0) {
-      setActionMessage('İndirilecek hazır PDF bulunamadı.');
-      return;
+    for (const item of readyReports) {
+      try {
+        // eslint-disable-next-line no-await-in-loop
+        const blob = await fetchReportBlob(item.downloadUrl);
+        files.push({ name: `${sanitizeFileName(item.name)}.pdf`, blob });
+      } catch {
+        // indirilemeyen raporu atla
+      }
     }
-    readyReports.forEach((item) => openDownloadUrl(item.downloadUrl));
-    setActionMessage(`${readyReports.length} hazır PDF indirme/açma işlemi başlatıldı.`);
-  }, [filteredReports]);
-
-  const handleZipDownload = useCallback(() => {
-    handleBulkDownload(filteredReports);
-    setActionMessage('Backend ZIP endpointi olmadığı için hazır PDF dosyaları tek tek açıldı.');
-  }, [filteredReports, handleBulkDownload]);
-
-  const handleGeneratePdf = useCallback(() => {
-    if (selectedReport?.downloadUrl) {
-      handleDownloadReport(selectedReport);
-      return;
+    if (!selectedReport?.downloadUrl && selectedReport?.id !== 'empty') {
+      try {
+        const blob = await generatePdfBlob();
+        files.push({ name: `${sanitizeFileName(selectedReport.name)}.pdf`, blob });
+      } catch {
+        // canlı önizleme üretilemezse atla
+      }
     }
-    handlePrint();
-  }, [handleDownloadReport, handlePrint, selectedReport]);
+    return files;
+  }, [generatePdfBlob, selectedReport]);
+
+  const handleBulkDownload = useCallback(async () => {
+    if (exporting) return;
+    try {
+      setExporting(true);
+      setActionMessage('Raporlar hazırlanıyor...');
+      const files = await collectReportFiles(filteredReports);
+      if (files.length === 0) {
+        setActionMessage('İndirilecek PDF bulunamadı.');
+        return;
+      }
+      files.forEach((file) => saveBlob(file.blob, file.name));
+      setActionMessage(`${files.length} PDF indirildi.`);
+    } catch (error) {
+      setActionMessage(error.message || 'Toplu indirme başarısız oldu.');
+    } finally {
+      setExporting(false);
+    }
+  }, [collectReportFiles, exporting, filteredReports]);
+
+  const handleZipDownload = useCallback(async () => {
+    if (exporting) return;
+    try {
+      setExporting(true);
+      setActionMessage('ZIP arşivi hazırlanıyor...');
+      const files = await collectReportFiles(filteredReports);
+      if (files.length === 0) {
+        setActionMessage('Arşive eklenecek PDF bulunamadı.');
+        return;
+      }
+      const zip = new JSZip();
+      files.forEach((file) => zip.file(file.name, file.blob));
+      const archive = await zip.generateAsync({ type: 'blob' });
+      saveBlob(archive, `pdf-raporlari-${new Date().toISOString().slice(0, 10)}.zip`);
+      setActionMessage(`${files.length} PDF içeren ZIP indirildi.`);
+    } catch (error) {
+      setActionMessage(error.message || 'ZIP oluşturulamadı.');
+    } finally {
+      setExporting(false);
+    }
+  }, [collectReportFiles, exporting, filteredReports]);
 
   const handleFullscreen = useCallback(() => {
     const target = document.querySelector('[data-testid="teacher-pdf-report-center-page"]');
@@ -941,8 +1048,8 @@ export default function TeacherPdfReportCenter() {
       className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#08111F] text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
       data-testid="teacher-pdf-report-center-page"
     >
-      <div className="grid min-h-[calc(100vh-2rem)] grid-cols-[minmax(440px,0.92fr)_minmax(620px,1.45fr)]">
-        <aside className="flex min-w-0 flex-col border-r border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6">
+      <div className="grid min-h-[calc(100vh-2rem)] grid-cols-1 xl:grid-cols-[minmax(380px,0.92fr)_minmax(0,1.45fr)]">
+        <aside className="flex min-w-0 flex-col border-b border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 xl:border-b-0 xl:border-r">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/10 px-3 py-1 text-xs font-black text-orange-200">
@@ -1007,17 +1114,17 @@ export default function TeacherPdfReportCenter() {
           ) : null}
 
           <div className="mt-6 grid grid-cols-3 gap-3">
-            <Button variant="outline" onClick={() => handleBulkDownload()} className="h-12 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white">
+            <Button variant="outline" disabled={exporting} onClick={handleBulkDownload} className="h-12 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white disabled:opacity-50">
               <Archive className="mr-2 h-4 w-4" />
               Toplu PDF
             </Button>
-            <Button variant="outline" onClick={handleZipDownload} className="h-12 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white">
+            <Button variant="outline" disabled={exporting} onClick={handleZipDownload} className="h-12 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white disabled:opacity-50">
               <FileArchive className="mr-2 h-4 w-4" />
               ZIP İndir
             </Button>
-            <Button onClick={handleGeneratePdf} className="h-12 rounded-xl bg-orange-500 text-white shadow-[0_18px_40px_-20px_rgba(255,157,46,0.9)] hover:bg-orange-600">
+            <Button disabled={exporting} onClick={handleGeneratePdf} className="h-12 rounded-xl bg-orange-500 text-white shadow-[0_18px_40px_-20px_rgba(255,157,46,0.9)] hover:bg-orange-600 disabled:opacity-60">
               <FilePlus2 className="mr-2 h-4 w-4" />
-              PDF Oluştur
+              {exporting ? 'Hazırlanıyor...' : 'PDF Oluştur'}
             </Button>
           </div>
         </aside>
@@ -1029,14 +1136,14 @@ export default function TeacherPdfReportCenter() {
                 <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={() => setZoom((value) => Math.min(160, value + 10))} />
                 <ToolbarButton icon={Minus} label="Zoom Out" onClick={() => setZoom((value) => Math.max(70, value - 10))} />
                 <div className="mx-2 h-6 w-px bg-white/10" />
-                <ToolbarButton icon={ChevronDown} label="Önceki Sayfa" disabled={activePage <= 1} onClick={() => setActivePage((page) => Math.max(1, page - 1))} />
+                <ToolbarButton icon={ChevronLeft} label="Önceki Sayfa" disabled={activePage <= 1} onClick={() => setActivePage((page) => Math.max(1, page - 1))} />
                 <span className="px-3 text-sm font-black text-white">{activePage} / 6</span>
-                <ToolbarButton icon={ChevronDown} label="Sonraki Sayfa" disabled={activePage >= 6} onClick={() => setActivePage((page) => Math.min(6, page + 1))} />
+                <ToolbarButton icon={ChevronRight} label="Sonraki Sayfa" disabled={activePage >= 6} onClick={() => setActivePage((page) => Math.min(6, page + 1))} />
                 <span className="mx-3 text-sm font-semibold text-slate-300">{zoom}%</span>
               </div>
               <div className="flex items-center gap-2">
                 <ToolbarButton icon={Maximize2} label="Tam Ekran" onClick={handleFullscreen} />
-                <ToolbarButton icon={Download} label="İndir" onClick={() => handleDownloadReport(selectedReport)} />
+                <ToolbarButton icon={Download} label="İndir" disabled={exporting} onClick={() => handleDownloadReport(selectedReport)} />
                 <ToolbarButton icon={Printer} label="Yazdır" onClick={handlePrint} />
               </div>
             </div>
@@ -1054,21 +1161,31 @@ export default function TeacherPdfReportCenter() {
                   ))}
                 </div>
               </div>
-              <div className="min-h-0 overflow-y-auto rounded-[18px] border border-white/10 bg-[#111827] p-4">
+              <div className="min-h-0 overflow-auto rounded-[18px] border border-white/10 bg-[#111827] p-4">
                 <motion.div
                   key={`${selectedReport.id}-${activePage}`}
-                  initial={{ opacity: 0, scale: 0.985 }}
-                  animate={{ opacity: 1, scale: 1 }}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
                   transition={{ duration: 0.22 }}
-                  className="mx-auto max-w-[760px]"
-                  style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top center' }}
+                  className="mx-auto"
+                  style={{ width: `${Math.round(760 * (zoom / 100))}px`, maxWidth: zoom <= 100 ? '100%' : 'none' }}
                 >
-                  <PreviewPage page={activePage} selectedReport={selectedReport} analytics={analytics} />
+                  <div style={{ width: '760px', transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+                    <PreviewPage page={activePage} selectedReport={selectedReport} analytics={analytics} />
+                  </div>
                 </motion.div>
               </div>
             </div>
           </div>
         </main>
+      </div>
+
+      <div ref={exportRef} aria-hidden className="pointer-events-none fixed left-[-12000px] top-0">
+        {[1, 2, 3, 4, 5, 6].map((page) => (
+          <div key={page} data-export-page className="overflow-hidden bg-[#08111F]" style={{ width: '794px', height: '1123px' }}>
+            <PreviewPage page={page} selectedReport={selectedReport} analytics={analytics} />
+          </div>
+        ))}
       </div>
     </motion.div>
   );

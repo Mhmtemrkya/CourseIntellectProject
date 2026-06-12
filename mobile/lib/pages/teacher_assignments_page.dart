@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/premium_resource_card.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:student/pages/teacher_assignment_detail_page.dart';
 import 'package:student/pages/teacher_assignment_submissions_page.dart';
@@ -369,112 +370,28 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     final submitted = item["submitted"] as int;
     final total = item["total"] as int;
     final progress = total == 0 ? 0.0 : submitted / total;
+    final subject = item["subject"]?.toString() ?? '';
 
-    return Container(
+    return PremiumResourceCard(
+      subject: subject,
+      title: item["title"] as String,
+      subtitle: '$subject • ${item["className"]}',
+      badge: item["status"] as String,
+      stats: [
+        ('Son Teslim', item["deadline"] as String),
+        ('Teslim', '$submitted/$total'),
+      ],
       margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.20)
-                : Colors.black.withValues(alpha: 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
+      footer: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: (item["accentColor"] as Color).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Icon(
-                  Icons.assignment_turned_in_rounded,
-                  color: item["accentColor"] as Color,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      item["title"] as String,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      "${item["subject"]} • ${item["className"]}",
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.textTheme.bodySmall?.color?.withValues(
-                          alpha: 0.72,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: (item["statusColor"] as Color).withValues(alpha: 0.14),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  item["status"] as String,
-                  style: TextStyle(
-                    color: item["statusColor"] as Color,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _metaChip(
-                  theme,
-                  icon: Icons.schedule_rounded,
-                  text: item["deadline"] as String,
-                  color: item["accentColor"] as Color,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _metaChip(
-                  theme,
-                  icon: Icons.groups_rounded,
-                  text: "$submitted/$total Teslim",
-                  color: item["accentColor"] as Color,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
           ClipRRect(
             borderRadius: BorderRadius.circular(12),
             child: LinearProgressIndicator(
               value: progress,
-              minHeight: 10,
-              color: item["accentColor"] as Color,
-              backgroundColor: theme.scaffoldBackgroundColor,
+              minHeight: 9,
+              color: const Color(0xFFFF7A1A),
+              backgroundColor: const Color(0xFFFF7A1A).withValues(alpha: 0.12),
             ),
           ),
           const SizedBox(height: 8),
@@ -485,7 +402,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
               style: theme.textTheme.bodySmall,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Row(
             children: [
               Expanded(
@@ -523,7 +440,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
                   icon: const Icon(Icons.checklist_rounded),
                   label: const Text("Teslimler"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: item["accentColor"] as Color,
+                    backgroundColor: const Color(0xFFFF7A1A),
                     foregroundColor: Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
@@ -533,43 +450,14 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
               ),
               if ((item["status"] as String?) != "Tamamlandi") ...[
                 const SizedBox(width: 10),
-                IconButton(
+                CardIconAction(
+                  icon: Icons.delete_outline_rounded,
                   tooltip: 'Sil',
-                  onPressed: () => _deleteAssignment(item),
-                  icon: const Icon(Icons.delete_outline_rounded),
+                  danger: true,
+                  onTap: () => _deleteAssignment(item),
                 ),
               ],
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _metaChip(
-    ThemeData theme, {
-    required IconData icon,
-    required String text,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, size: 18, color: color),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              text,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodySmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
           ),
         ],
       ),

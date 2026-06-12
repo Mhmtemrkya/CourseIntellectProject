@@ -20,8 +20,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     text: "20",
   );
 
+  final TextEditingController typeController = TextEditingController(
+    text: "1. Yazılı",
+  );
+
   bool _loadingSources = true;
-  String selectedType = "Yazılı";
   String selectedSource = "Manuel Ekle";
   String selectedClass = '';
   String selectedSubject = 'Matematik';
@@ -133,6 +136,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   @override
   void dispose() {
     titleController.dispose();
+    typeController.dispose();
     dateController.dispose();
     durationController.dispose();
     questionCountController.dispose();
@@ -319,7 +323,9 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     if (!mounted) return;
     Navigator.pop(context, {
       "title": titleController.text.trim(),
-      "type": selectedType,
+      "type": typeController.text.trim().isEmpty
+          ? "1. Yazılı"
+          : typeController.text.trim(),
       "className": selectedClass,
       "subject": selectedSubject,
       "date": dateController.text.trim(),
@@ -380,19 +386,13 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                     ),
                   ),
                   const SizedBox(height: 14),
-                  DropdownButtonFormField<String>(
-                    initialValue: selectedType,
-                    decoration: const InputDecoration(labelText: "Sınav Türü"),
-                    items: const [
-                      DropdownMenuItem(value: "Yazılı", child: Text("Yazılı")),
-                      DropdownMenuItem(value: "Quiz", child: Text("Quiz")),
-                      DropdownMenuItem(value: "Deneme", child: Text("Deneme")),
-                    ],
-                    onChanged: (value) {
-                      setState(() {
-                        selectedType = value!;
-                      });
-                    },
+                  TextField(
+                    controller: typeController,
+                    decoration: const InputDecoration(
+                      labelText: "Sınav Türü (örn. 1. Yazılı)",
+                      helperText:
+                          "Not girişinde sonuç bu etiketle eşleştirilir.",
+                    ),
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(

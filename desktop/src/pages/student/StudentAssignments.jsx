@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import { useApp } from '../../context/AppContext';
@@ -273,51 +274,46 @@ export default function StudentAssignments() {
               secondaryLabel="Yenile"
               onSecondary={loadAssignments}
             />
-          ) : filteredAssignments.map((assignment) => (
-            <motion.div key={assignment.id} variants={itemVariants}>
-              <Card className="hover:shadow-card-hover transition-all">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline">{decodeText(assignment.subject)}</Badge>
-                      {getStatusBadge(assignment.status)}
-                    </div>
-                      <h3 className="font-semibold text-lg">{decodeText(assignment.title)}</h3>
-                      <p className="text-muted-foreground mt-1">{decodeText(assignment.description)}</p>
-                      <p className="text-sm text-muted-foreground mt-2">Öğretmen: {decodeText(assignment.teacher)}</p>
-                      <div className="flex items-center gap-4 mt-3 text-sm">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-4 w-4" />
-                          Son Teslim: {assignment.deadline}
-                        </span>
-                        {assignment.ownSubmission?.grade != null ? (
-                          <span className="font-medium text-green-600">Not: {assignment.ownSubmission.grade}</span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="ml-4">
-                      <div className="flex gap-2">
-                        {['pending', 'overdue'].includes(assignment.status) ? (
-                          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setSelectedAssignment(assignment)}>
-                            <Upload className="h-4 w-4 mr-2" />
-                            Teslim Et
-                          </Button>
-                        ) : null}
+          ) : (
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredAssignments.map((assignment) => (
+                <PremiumResourceCard
+                  key={assignment.id}
+                  subject={decodeText(assignment.subject)}
+                  eyebrow={decodeText(assignment.subject)}
+                  title={decodeText(assignment.title)}
+                  subtitle={`Öğretmen: ${decodeText(assignment.teacher)}`}
+                  badge={`Son: ${assignment.deadline || '-'}`}
+                  description={decodeText(assignment.description)}
+                  chips={[
+                    assignment.ownSubmission?.grade != null ? `Not: ${assignment.ownSubmission.grade}` : null,
+                  ]}
+                  statusNote={getStatusBadge(assignment.status)}
+                  footer={(
+                    <div className="mt-4 flex gap-2">
+                      {['pending', 'overdue'].includes(assignment.status) ? (
                         <Button
-                          variant="outline"
-                          onClick={() => setDetailAssignment(assignment)}
+                          className="h-10 flex-1 rounded-xl bg-orange-500 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
+                          onClick={() => setSelectedAssignment(assignment)}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Görüntüle
+                          <Upload className="mr-2 h-4 w-4" />
+                          Teslim Et
                         </Button>
-                      </div>
+                      ) : null}
+                      <Button
+                        variant="outline"
+                        className="h-10 flex-1 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white"
+                        onClick={() => setDetailAssignment(assignment)}
+                      >
+                        <Eye className="mr-2 h-4 w-4" />
+                        Görüntüle
+                      </Button>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+                  )}
+                />
+              ))}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 

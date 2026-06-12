@@ -12,6 +12,7 @@ import { Progress } from '../../components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DialogFooter } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { AnimatedCounter, CircularProgress } from '../../components/animations/AnimatedCounter';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
@@ -571,35 +572,28 @@ export default function StudentQuestions() {
         ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQuestionSets.map((set) => (
-            <motion.div key={set.key} variants={itemVariants}>
-              <Card className="cursor-pointer overflow-hidden border border-slate-200/80 bg-white shadow-[0_16px_40px_-24px_rgba(15,23,42,0.28)] transition-shadow hover:shadow-xl dark:border-white/10 dark:bg-slate-950">
-                <CardContent className="p-5 space-y-4">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="min-w-0">
-                      <h3 className="truncate text-lg font-semibold tracking-tight text-slate-900 dark:text-slate-50">
-                        {set.title}
-                      </h3>
-                      <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        {set.questions.length} soru
-                      </p>
-                    </div>
-                    <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${getSubjectTheme(set.subject).accent} text-sm font-bold text-white shadow-lg`}>
-                      {set.questions.length}
-                    </div>
-                  </div>
-
-                  <div className="overflow-hidden rounded-2xl border border-slate-200/70 bg-slate-100 dark:border-white/10 dark:bg-slate-900">
-                    <AutoCover subject={set.subject} />
-                  </div>
-
-                  <div className="flex border-t">
-                    <Button variant="ghost" className="flex-1 rounded-none h-12 hover:bg-teal-50 dark:hover:bg-teal-900/20" onClick={() => handleOpenSet(set)}>
-                      <Play className="h-4 w-4 mr-2" /> Seti Başlat
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
+            <PremiumResourceCard
+              key={set.key}
+              subject={decodeSubject(set.subject)}
+              eyebrow={decodeSubject(set.subject)}
+              title={set.title}
+              subtitle={`${set.teacher} • ${set.difficulty}`}
+              badge={`${set.questions.length} soru`}
+              chips={[
+                set.imageCount > 0 ? `${set.imageCount} görselli soru` : null,
+                set.totalUsage > 0 ? `${set.totalUsage} kez çözüldü` : 'Yeni set',
+              ]}
+              footer={(
+                <div className="mt-4">
+                  <Button
+                    className="h-11 w-full rounded-xl bg-orange-500 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
+                    onClick={() => handleOpenSet(set)}
+                  >
+                    <Play className="mr-2 h-4 w-4" /> Seti Başlat
+                  </Button>
+                </div>
+              )}
+            />
           ))}
         </div>
         )}
