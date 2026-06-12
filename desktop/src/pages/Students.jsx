@@ -53,6 +53,7 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
+import { maskTcKimlik, maskTrPhone } from '../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -150,7 +151,7 @@ function AddStudentDialog({
     currentSchool: tenantName,
     schoolNumber: '',
     birthDate: '',
-    programType: 'Sayisal',
+    programType: 'Lise',
     parentName: '',
     parentPhone: '',
     parentEmail: '',
@@ -358,14 +359,15 @@ function AddStudentDialog({
             <Input type="date" value={form.birthDate} onChange={(e) => setForm((p) => ({ ...p, birthDate: e.target.value }))} />
           </div>
           <div className="space-y-2">
-            <Label>Program</Label>
+            <Label>Eğitim Seviyesi</Label>
             <Select value={form.programType} onValueChange={(value) => setForm((p) => ({ ...p, programType: value }))}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="Sayisal">Sayısal</SelectItem>
-                <SelectItem value="Sozel">Sözel</SelectItem>
-                <SelectItem value="EA">Eşit Ağırlık</SelectItem>
-                <SelectItem value="Dil">Dil</SelectItem>
+                <SelectItem value="Ilkokul">İlkokul</SelectItem>
+                <SelectItem value="Ortaokul">Ortaokul</SelectItem>
+                <SelectItem value="Lise">Lise</SelectItem>
+                <SelectItem value="Universite">Üniversite</SelectItem>
+                <SelectItem value="Mezun">Mezun</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -375,7 +377,7 @@ function AddStudentDialog({
           </div>
           <div className="space-y-2">
             <Label>Veli Telefon</Label>
-            <Input value={form.parentPhone} onChange={(e) => setForm((p) => ({ ...p, parentPhone: e.target.value }))} />
+            <Input value={form.parentPhone} onChange={(e) => setForm((p) => ({ ...p, parentPhone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" />
           </div>
           <div className="space-y-2 col-span-2">
             <Label>Veli E-posta</Label>

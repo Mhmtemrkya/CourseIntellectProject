@@ -6,17 +6,56 @@ import 'package:student/services/solution_session_api_service.dart';
 import 'package:student/widgets/solution_drawing_canvas.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+/// Açık ve koyu temayla uyumlu çözüm ekranı paleti.
 class _SolveColors {
-  static const background = Color(0xFF0E1A2F);
-  static const backgroundDeep = Color(0xFF172A45);
-  static const surface = Color(0xFF182A45);
-  static const surfaceSoft = Color(0xFF213957);
-  static const primary = Color(0xFFFF9D2E);
-  static const primaryDeep = Color(0xFFFF8A1C);
-  static const blue = Color(0xFF4DA3FF);
+  final Color background;
+  final Color backgroundDeep;
+  final Color surface;
+  final Color surfaceSoft;
+  final Color border;
+  final Color muted;
+  final Color text;
+  final Color onPrimary;
+
+  static const primary = Color(0xFFFF7A1A);
+  static const primaryDeep = Color(0xFFFF9D2E);
   static const green = Color(0xFF30D158);
-  static const border = Color(0xFF3A5278);
-  static const muted = Color(0xFFB9C6DA);
+
+  const _SolveColors._({
+    required this.background,
+    required this.backgroundDeep,
+    required this.surface,
+    required this.surfaceSoft,
+    required this.border,
+    required this.muted,
+    required this.text,
+    required this.onPrimary,
+  });
+
+  static const _dark = _SolveColors._(
+    background: Color(0xFF08111F),
+    backgroundDeep: Color(0xFF0B1628),
+    surface: Color(0xFF0E1A2F),
+    surfaceSoft: Color(0xFF12223A),
+    border: Color(0xFF263A5B),
+    muted: Color(0xFFB9C6DA),
+    text: Colors.white,
+    onPrimary: Color(0xFF08111F),
+  );
+
+  static const _light = _SolveColors._(
+    background: Color(0xFFF6F8FC),
+    backgroundDeep: Color(0xFFEDF2F9),
+    surface: Colors.white,
+    surfaceSoft: Color(0xFFF1F5F9),
+    border: Color(0xFFE2E8F0),
+    muted: Color(0xFF64748B),
+    text: Color(0xFF0F172A),
+    onPrimary: Colors.white,
+  );
+
+  static _SolveColors of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _dark : _light;
 }
 
 class ExamSolvePage extends StatefulWidget {
@@ -335,11 +374,12 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
       builder: (context) {
+        final colors = _SolveColors.of(context);
         return Container(
           padding: const EdgeInsets.all(24),
-          decoration: const BoxDecoration(
-            color: Color(0xFF08111F),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
           ),
           child: SafeArea(
             top: false,
@@ -350,7 +390,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white24,
+                    color: colors.border,
                     borderRadius: BorderRadius.circular(99),
                   ),
                 ),
@@ -361,15 +401,19 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   color: Color(0xFF34D399),
                 ),
                 const SizedBox(height: 14),
-                const Text(
+                Text(
                   'Sınav tamamlandı',
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w900,
+                    color: colors.text,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   'Doğru: ${summary.correct} • Yanlış: ${summary.wrong} • Boş: ${summary.empty} • Başarı: %${summary.successPercent}',
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.white70),
+                  style: TextStyle(color: colors.muted),
                 ),
                 const SizedBox(height: 20),
                 FilledButton.icon(
@@ -398,38 +442,29 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: _SolveColors.background,
-        colorScheme: const ColorScheme.dark(
-          primary: _SolveColors.primary,
-          secondary: _SolveColors.blue,
-          surface: _SolveColors.surface,
+    final colors = _SolveColors.of(context);
+    return Scaffold(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [colors.backgroundDeep, colors.background],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
-      ),
-      child: Scaffold(
-        body: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [_SolveColors.backgroundDeep, _SolveColors.background],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: SafeArea(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? _ErrorState(message: _error!, onRetry: _startSession)
-                : _buildContent(context),
-          ),
+        child: SafeArea(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : _error != null
+              ? _ErrorState(message: _error!, onRetry: _startSession)
+              : _buildContent(context),
         ),
       ),
     );
   }
 
   Widget _buildContent(BuildContext context) {
+    final colors = _SolveColors.of(context);
     final session = _session!;
     final question = _question!;
     final size = MediaQuery.sizeOf(context);
@@ -478,22 +513,22 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Container(
                           decoration: BoxDecoration(
-                            color: _SolveColors.surface,
+                            color: colors.surface,
                             borderRadius: BorderRadius.circular(18),
-                            border: Border.all(color: _SolveColors.border),
+                            border: Border.all(color: colors.border),
                           ),
-                          child: const TabBar(
+                          child: TabBar(
                             indicatorSize: TabBarIndicatorSize.tab,
                             dividerColor: Colors.transparent,
                             labelColor: Colors.white,
-                            unselectedLabelColor: _SolveColors.muted,
-                            indicator: BoxDecoration(
+                            unselectedLabelColor: colors.muted,
+                            indicator: const BoxDecoration(
                               color: _SolveColors.primaryDeep,
                               borderRadius: BorderRadius.all(
                                 Radius.circular(16),
                               ),
                             ),
-                            tabs: [
+                            tabs: const [
                               Tab(text: 'Soru'),
                               Tab(text: 'Çözüm Kağıdı'),
                             ],
@@ -530,6 +565,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     SolutionQuestionRecord question, {
     bool isTablet = false,
   }) {
+    final colors = _SolveColors.of(context);
     final imageUrl = ApiConfig.resolveAssetUrl(question.imagePath);
     return ListView(
       padding: EdgeInsets.fromLTRB(16, 8, isTablet ? 8 : 16, 24),
@@ -545,7 +581,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   Expanded(
                     child: Text(
                       '${question.subject} / ${question.topic}',
-                      style: const TextStyle(color: _SolveColors.muted),
+                      style: TextStyle(color: colors.muted),
                     ),
                   ),
                 ],
@@ -562,10 +598,11 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
               const SizedBox(height: 6),
               Text(
                 question.questionText,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   height: 1.45,
                   fontWeight: FontWeight.w700,
+                  color: colors.text,
                 ),
               ),
               if (imageUrl.isNotEmpty) ...[
@@ -578,8 +615,11 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       height: 180,
                       alignment: Alignment.center,
-                      color: _SolveColors.surfaceSoft,
-                      child: const Text('Görsel yüklenemedi'),
+                      color: colors.surfaceSoft,
+                      child: Text(
+                        'Görsel yüklenemedi',
+                        style: TextStyle(color: colors.muted),
+                      ),
                     ),
                   ),
                 ),
@@ -606,26 +646,32 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Cevabın',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: colors.text,
+                  ),
                 ),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _answerController,
                   minLines: 3,
                   maxLines: 6,
+                  style: TextStyle(color: colors.text),
                   decoration: InputDecoration(
                     hintText: 'Cevabını buraya yaz...',
+                    hintStyle: TextStyle(color: colors.muted),
                     filled: true,
-                    fillColor: _SolveColors.surfaceSoft,
+                    fillColor: colors.surfaceSoft,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(color: _SolveColors.border),
+                      borderSide: BorderSide(color: colors.border),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
-                      borderSide: const BorderSide(color: _SolveColors.border),
+                      borderSide: BorderSide(color: colors.border),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(18),
@@ -650,26 +696,32 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
+              Text(
                 'Not Defteri',
-                style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16),
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 16,
+                  color: colors.text,
+                ),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: _noteController,
                 minLines: 3,
                 maxLines: 5,
+                style: TextStyle(color: colors.text),
                 decoration: InputDecoration(
                   hintText: 'Bu soru için notunu yaz...',
+                  hintStyle: TextStyle(color: colors.muted),
                   filled: true,
-                  fillColor: _SolveColors.surfaceSoft,
+                  fillColor: colors.surfaceSoft,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: _SolveColors.border),
+                    borderSide: BorderSide(color: colors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
-                    borderSide: const BorderSide(color: _SolveColors.border),
+                    borderSide: BorderSide(color: colors.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(18),
@@ -712,66 +764,76 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: _SolveColors.background,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Soru Listesi',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-              ),
-              const SizedBox(height: 18),
-              GridView.builder(
-                shrinkWrap: true,
-                itemCount: session.questions.length,
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 5,
-                  mainAxisSpacing: 10,
-                  crossAxisSpacing: 10,
+      builder: (context) {
+        final colors = _SolveColors.of(context);
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: colors.surface,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Soru Listesi',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: colors.text,
+                  ),
                 ),
-                itemBuilder: (context, index) {
-                  final item = session.questions[index];
-                  final active = index == _currentIndex;
-                  final answered = item.answer != null;
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.pop(context);
-                      _setQuestionIndex(index);
-                    },
-                    child: Container(
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? _SolveColors.primary.withValues(alpha: 0.22)
-                            : answered
-                            ? _SolveColors.green.withValues(alpha: 0.16)
-                            : _SolveColors.surface,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
+                const SizedBox(height: 18),
+                GridView.builder(
+                  shrinkWrap: true,
+                  itemCount: session.questions.length,
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 5,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = session.questions[index];
+                    final active = index == _currentIndex;
+                    final answered = item.answer != null;
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(context);
+                        _setQuestionIndex(index);
+                      },
+                      child: Container(
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
                           color: active
-                              ? _SolveColors.primary
-                              : _SolveColors.border,
+                              ? _SolveColors.primary.withValues(alpha: 0.22)
+                              : answered
+                              ? _SolveColors.green.withValues(alpha: 0.16)
+                              : colors.surfaceSoft,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: active
+                                ? _SolveColors.primary
+                                : colors.border,
+                          ),
+                        ),
+                        child: Text(
+                          '${index + 1}',
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: colors.text,
+                          ),
                         ),
                       ),
-                      child: Text(
-                        '${index + 1}',
-                        style: const TextStyle(fontWeight: FontWeight.w900),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ],
+                    );
+                  },
+                ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }
@@ -797,6 +859,7 @@ class _TopBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _SolveColors.of(context);
     return Padding(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       child: Row(
@@ -804,8 +867,8 @@ class _TopBar extends StatelessWidget {
           IconButton.filledTonal(
             onPressed: onBack,
             style: IconButton.styleFrom(
-              backgroundColor: _SolveColors.surface,
-              foregroundColor: Colors.white,
+              backgroundColor: colors.surface,
+              foregroundColor: colors.text,
             ),
             icon: const Icon(Icons.arrow_back),
           ),
@@ -818,11 +881,14 @@ class _TopBar extends StatelessWidget {
                   title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: colors.text,
+                  ),
                 ),
                 Text(
                   '$remaining • $current / $total soru',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: TextStyle(color: colors.muted, fontSize: 12),
                 ),
               ],
             ),
@@ -832,8 +898,8 @@ class _TopBar extends StatelessWidget {
             style: IconButton.styleFrom(
               backgroundColor: isFlagged
                   ? _SolveColors.primary.withValues(alpha: 0.18)
-                  : _SolveColors.surface,
-              foregroundColor: isFlagged ? _SolveColors.primary : Colors.white,
+                  : colors.surface,
+              foregroundColor: isFlagged ? _SolveColors.primary : colors.text,
             ),
             icon: Icon(
               isFlagged
@@ -862,6 +928,7 @@ class _ProgressHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _SolveColors.of(context);
     return _GlassCard(
       padding: const EdgeInsets.all(14),
       child: Column(
@@ -879,7 +946,10 @@ class _ProgressHeader extends StatelessWidget {
                 ),
                 child: Text(
                   '%${(progress * 100).round()}',
-                  style: const TextStyle(fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w900,
+                    color: colors.text,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -889,7 +959,10 @@ class _ProgressHeader extends StatelessWidget {
                   children: [
                     Text(
                       '$subject · $topic',
-                      style: const TextStyle(fontWeight: FontWeight.w800),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: colors.text,
+                      ),
                     ),
                     const SizedBox(height: 6),
                     ClipRRect(
@@ -898,7 +971,7 @@ class _ProgressHeader extends StatelessWidget {
                         value: progress,
                         minHeight: 8,
                         color: _SolveColors.primary,
-                        backgroundColor: _SolveColors.border,
+                        backgroundColor: colors.border,
                       ),
                     ),
                   ],
@@ -907,7 +980,7 @@ class _ProgressHeader extends StatelessWidget {
               const SizedBox(width: 10),
               Text(
                 autosave,
-                style: const TextStyle(color: Colors.white54, fontSize: 11),
+                style: TextStyle(color: colors.muted, fontSize: 11),
               ),
             ],
           ),
@@ -936,12 +1009,13 @@ class _BottomNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _SolveColors.of(context);
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
       decoration: BoxDecoration(
-        color: _SolveColors.surface.withValues(alpha: 0.98),
+        color: colors.surface.withValues(alpha: 0.98),
         border: Border(
-          top: BorderSide(color: _SolveColors.border.withValues(alpha: 0.85)),
+          top: BorderSide(color: colors.border.withValues(alpha: 0.85)),
         ),
       ),
       child: SafeArea(
@@ -961,7 +1035,7 @@ class _BottomNav extends StatelessWidget {
                 heroTag: 'question-list',
                 onPressed: onList,
                 backgroundColor: _SolveColors.primary,
-                foregroundColor: _SolveColors.background,
+                foregroundColor: colors.onPrimary,
                 child: Text('$current/$total'),
               ),
             ),
@@ -998,6 +1072,7 @@ class _OptionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _SolveColors.of(context);
     return InkWell(
       borderRadius: BorderRadius.circular(20),
       onTap: onTap,
@@ -1007,10 +1082,10 @@ class _OptionButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected
               ? _SolveColors.primary.withValues(alpha: 0.18)
-              : _SolveColors.surface,
+              : colors.surface,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? _SolveColors.primary : _SolveColors.border,
+            color: selected ? _SolveColors.primary : colors.border,
           ),
         ),
         child: Row(
@@ -1019,12 +1094,12 @@ class _OptionButton extends StatelessWidget {
               radius: 18,
               backgroundColor: selected
                   ? _SolveColors.primary
-                  : _SolveColors.surfaceSoft,
+                  : colors.surfaceSoft,
               child: Text(
                 label,
                 style: TextStyle(
                   fontWeight: FontWeight.w900,
-                  color: selected ? const Color(0xFF08111F) : Colors.white,
+                  color: selected ? colors.onPrimary : colors.text,
                 ),
               ),
             ),
@@ -1032,7 +1107,10 @@ class _OptionButton extends StatelessWidget {
             Expanded(
               child: Text(
                 text,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: colors.text,
+                ),
               ),
             ),
           ],
@@ -1053,23 +1131,18 @@ class _GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _SolveColors.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: padding,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            _SolveColors.surfaceSoft.withValues(alpha: 0.98),
-            _SolveColors.surface.withValues(alpha: 0.98),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: colors.surface,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _SolveColors.border),
+        border: Border.all(color: colors.border),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.24),
+            color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.06),
             blurRadius: 22,
             offset: const Offset(0, 14),
           ),
@@ -1115,6 +1188,7 @@ class _ErrorState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = _SolveColors.of(context);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -1128,15 +1202,19 @@ class _ErrorState extends StatelessWidget {
                 color: Colors.redAccent,
               ),
               const SizedBox(height: 12),
-              const Text(
+              Text(
                 'Çözüm ekranı açılamadı',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                  color: colors.text,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 message,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70),
+                style: TextStyle(color: colors.muted),
               ),
               const SizedBox(height: 18),
               FilledButton(

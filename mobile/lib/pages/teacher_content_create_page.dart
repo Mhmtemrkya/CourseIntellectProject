@@ -363,7 +363,11 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFF08111F), Color(0xFF13233A), Color(0xFFF97316)],
+                  colors: [
+                    Color(0xFF08111F),
+                    Color(0xFF13233A),
+                    Color(0xFFF97316),
+                  ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -528,8 +532,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                             : const Color(0xFFFFFBEB),
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color:
-                              Theme.of(context).brightness == Brightness.dark
+                          color: Theme.of(context).brightness == Brightness.dark
                               ? const Color(0xFFF97316).withValues(alpha: 0.28)
                               : const Color(0xFFFDE68A),
                         ),
@@ -762,9 +765,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                             _coverFileName ?? 'Kapak görseli seçilmedi',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                            ),
+                            style: const TextStyle(fontWeight: FontWeight.w800),
                           ),
                         ),
                         OutlinedButton(

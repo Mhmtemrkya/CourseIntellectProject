@@ -54,8 +54,8 @@ class _StylusDrawingCanvasState extends State<StylusDrawingCanvas> {
 
   static const _colors = [
     Colors.black,
-    Color(0xFF00354F),
-    Color(0xFFD9790B),
+    Color(0xFF08111F),
+    Color(0xFFFF7A1A),
     Colors.red,
     Colors.blue,
     Colors.green,
@@ -197,9 +197,11 @@ class _StylusDrawingCanvasState extends State<StylusDrawingCanvas> {
           child: Container(
             margin: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+              border: Border.all(
+                color: Theme.of(context).dividerColor.withValues(alpha: 0.72),
+              ),
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.05),

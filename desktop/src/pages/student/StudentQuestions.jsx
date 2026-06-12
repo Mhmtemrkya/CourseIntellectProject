@@ -25,6 +25,8 @@ import {
 } from '../../lib/api/modules';
 import { Textarea } from '../../components/ui/textarea';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { collectNewBadges } from '../../lib/badges';
+import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -223,6 +225,7 @@ export default function StudentQuestions() {
   const [submittedAnswers, setSubmittedAnswers] = useState({});
   const [submittedAttemptIds, setSubmittedAttemptIds] = useState({});
   const [resultSummary, setResultSummary] = useState(null);
+  const [newBadges, setNewBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -392,7 +395,9 @@ export default function StudentQuestions() {
     });
 
     try {
-      await addStudyPlanXp(summary.totalXp);
+      const planState = await addStudyPlanXp(summary.totalXp);
+      const unlockedNow = collectNewBadges(planState?.xpPoints, user);
+      if (unlockedNow.length) setNewBadges(unlockedNow);
     } catch {
       // ignore xp sync errors
     }
@@ -444,7 +449,9 @@ export default function StudentQuestions() {
     });
 
     try {
-      await addStudyPlanXp(summary.totalXp);
+      const planState = await addStudyPlanXp(summary.totalXp);
+      const unlockedNow = collectNewBadges(planState?.xpPoints, user);
+      if (unlockedNow.length) setNewBadges(unlockedNow);
     } catch {
       // ignore xp sync errors
     }
@@ -761,6 +768,10 @@ export default function StudentQuestions() {
           ) : null}
         </DialogContent>
       </Dialog>
+
+      {newBadges.length > 0 && (
+        <BadgeUnlockModal badges={newBadges} onClose={() => setNewBadges([])} />
+      )}
     </motion.div>
   );
 }

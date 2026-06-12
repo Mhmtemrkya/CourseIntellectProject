@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../utils/input_formatters.dart';
 import 'package:flutter/services.dart';
 
 import '../services/auth_session_store.dart';
@@ -61,7 +63,7 @@ class _AdminAccountingRegistrationPageState
                 'Muhasebe kullanıcılarını ayrı bir finans kayıt akışıyla oluşturun.',
             description:
                 'Bu ekran sadece yönetiçi tarafında kullanılır. Kayıt tamamlandığında muhasebe paneline girebilecek kullanıcı adı ve şifre otomatik üretilir.',
-            colors: [Color(0xFF0F172A), Color(0xFF14532D)],
+            colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(label: 'Rol', value: 'Muhasebe'),
               AdminHeroMetric(label: 'Erişim', value: 'Yönetici oluşturur'),
@@ -86,6 +88,8 @@ class _AdminAccountingRegistrationPageState
                           label: 'TC Kimlik No',
                           keyboardType: TextInputType.number,
                           maxLength: 11,
+                          inputFormatters: AppInputFormatters.tcKimlik(),
+                          validator: AppInputFormatters.validateTcKimlik,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -94,6 +98,9 @@ class _AdminAccountingRegistrationPageState
                           controller: _phoneController,
                           label: 'Telefon',
                           keyboardType: TextInputType.phone,
+                          inputFormatters: AppInputFormatters.phone(),
+                          prefixText: '+90 ',
+                          validator: AppInputFormatters.validatePhone,
                         ),
                       ),
                     ],
@@ -401,6 +408,9 @@ class _AdminAccountingRegistrationPageState
     int maxLines = 1,
     int? maxLength,
     bool required = true,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
@@ -409,19 +419,24 @@ class _AdminAccountingRegistrationPageState
       maxLength: maxLength,
       decoration: InputDecoration(
         labelText: label,
+        prefixText: prefixText,
         border: const OutlineInputBorder(),
       ),
-      inputFormatters: keyboardType == TextInputType.number
-          ? [FilteringTextInputFormatter.digitsOnly]
-          : null,
-      validator: required
-          ? (value) {
-              if (value == null || value.trim().isEmpty) {
-                return '$label zorunlu';
-              }
-              return null;
-            }
-          : null,
+      inputFormatters:
+          inputFormatters ??
+          (keyboardType == TextInputType.number
+              ? [FilteringTextInputFormatter.digitsOnly]
+              : null),
+      validator:
+          validator ??
+          (required
+              ? (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return '$label zorunlu';
+                  }
+                  return null;
+                }
+              : null),
     );
   }
 }

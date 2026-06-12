@@ -49,7 +49,7 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
             title: widget.student.parentName,
             description:
                 '${widget.student.fullName} öğrencisinin velisi ile kurum içi iletişim ve bilgilendirme akışlarını yönetin.',
-            colors: const [Color(0xFF0F172A), Color(0xFF14532D)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(label: 'Öğrenci', value: widget.student.fullName),
               AdminHeroMetric(label: 'Kanal', value: _selectedChannel),

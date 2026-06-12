@@ -42,7 +42,8 @@ public sealed class AttendanceService(CourseIntellectDbContext dbContext) : IAtt
         SaveAttendanceRequest request,
         CancellationToken cancellationToken = default)
     {
-        var lessonDate = (request.LessonDate ?? DateTime.Now).Date;
+        // Sunucu UTC çalışsa bile yoklama günü TR saatine göre belirlenir.
+        var lessonDate = (request.LessonDate ?? DateTime.UtcNow.AddHours(3)).Date;
 
         var existing = await dbContext.Set<AttendanceEntry>()
             .Where(x =>

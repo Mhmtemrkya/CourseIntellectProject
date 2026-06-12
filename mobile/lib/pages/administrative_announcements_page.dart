@@ -165,7 +165,7 @@ class _AdministrativeAnnouncementsPageState
                 'Kayıt, veli bilgilendirme ve kurum içi akışları hedefli listelerle yönetin.',
             description:
                 'Desktop tarafındaki gibi sınıf ve kişi seçerek yalnızca ilgili hesaplara duyuru yayınlayın.',
-            colors: const [Color(0xFF0F172A), Color(0xFFB45309)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(
                 label: 'Toplam',
@@ -290,7 +290,7 @@ class _AdministrativeAnnouncementsPageState
               title: 'İdari duyuruyu hedefli listeyle oluştur.',
               description:
                   'Sınıf ve alıcı listesini seçerek yalnızca ilgili veli veya öğrencilere yayın yap.',
-              colors: const [Color(0xFF0F172A), Color(0xFFB45309)],
+              colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,

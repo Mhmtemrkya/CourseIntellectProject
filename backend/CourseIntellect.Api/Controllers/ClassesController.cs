@@ -1,4 +1,5 @@
 using CourseIntellect.Infrastructure.Persistence;
+using CourseIntellect.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -69,6 +70,157 @@ public sealed class ClassesController(
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return Ok(new { name = normalized });
+    }
+
+    [HttpPost("create-complete")]
+    [Authorize(Roles = "Admin,Administrative")]
+    public async Task<ActionResult<object>> CreateComplete([FromBody] CreateCompleteClassRequest request, CancellationToken cancellationToken)
+    {
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
+
+        var className = CompatibilitySnapshotStore.NormalizeClassName(request.Name);
+        if (string.IsNullOrWhiteSpace(className))
+        {
+            return BadRequest(new { message = "Sınıf adı zorunludur." });
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var existingClasses = await LoadClassListAsync(tenantId.Value, cancellationToken);
+            if (!existingClasses.Any(item => string.Equals(item, className, StringComparison.OrdinalIgnoreCase)))
+            {
+                await dbContext.PlatformConfigurations.AddAsync(new PlatformConfiguration
+                {
+                    TenantId = tenantId.Value,
+                    ConfigurationType = ClassRegistryConfigurationType,
+                    ScopeKey = Guid.NewGuid().ToString("N"),
+                    DisplayName = className,
+                    PayloadJson = JsonSerializer.Serialize(new { name = className }),
+                    UpdatedAtUtc = DateTime.UtcNow,
+                }, cancellationToken);
+            }
+
+            var scopeKey = string.IsNullOrWhiteSpace(request.Code) ? className : request.Code.Trim();
+            var management = await dbContext.PlatformConfigurations
+                .FirstOrDefaultAsync(item =>
+                    item.TenantId == tenantId.Value &&
+                    item.ConfigurationType == ClassManagementConfigurationType &&
+                    item.ScopeKey == scopeKey,
+                    cancellationToken);
+
+            var selectedTeacherIds = request.Teachers
+                .Select(item => item.TeacherId)
+                .Concat(request.Courses.Select(item => item.TeacherId))
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .ToHashSet();
+
+            if (request.AdvisorTeacherId.HasValue)
+            {
+                selectedTeacherIds.Add(request.AdvisorTeacherId.Value);
+            }
+
+            var selectedStudentIds = request.StudentIds.ToHashSet();
+            List<StaffProfile> teachers = selectedTeacherIds.Count == 0
+                ? []
+                : await dbContext.Staff
+                    .Where(item => item.TenantId == tenantId.Value && selectedTeacherIds.Contains(item.Id))
+                    .ToListAsync(cancellationToken);
+            List<StudentProfile> students = selectedStudentIds.Count == 0
+                ? []
+                : await dbContext.Students
+                    .Where(item => item.TenantId == tenantId.Value && selectedStudentIds.Contains(item.Id))
+                    .ToListAsync(cancellationToken);
+
+            foreach (var teacher in teachers)
+            {
+                if (!teacher.AssignedClasses.Contains(className, StringComparer.OrdinalIgnoreCase))
+                {
+                    teacher.AssignedClasses = teacher.AssignedClasses.Append(className).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                }
+
+                if (request.AdvisorTeacherId == teacher.Id)
+                {
+                    teacher.HomeroomClass = className;
+                }
+            }
+
+            foreach (var student in students)
+            {
+                student.ClassName = className;
+                var user = await dbContext.Users.FirstOrDefaultAsync(item => item.Id == student.UserId && item.TenantId == tenantId.Value, cancellationToken);
+                if (user is not null)
+                {
+                    user.DepartmentOrBranch = className;
+                }
+            }
+
+            var payload = new
+            {
+                id = management?.Id ?? Guid.NewGuid(),
+                name = className,
+                code = scopeKey,
+                school = request.School,
+                institutionUnit = request.InstitutionUnit,
+                grade = request.Grade,
+                section = request.Section,
+                academicYear = request.AcademicYear,
+                advisorTeacherId = request.AdvisorTeacherId,
+                description = request.Description,
+                themeColor = request.ThemeColor,
+                icon = request.Icon,
+                modules = request.Modules,
+                teachers = request.Teachers,
+                courses = request.Courses,
+                studentIds = request.StudentIds,
+                createdBy = User.Identity?.Name ?? "system",
+                updatedAtUtc = DateTime.UtcNow,
+            };
+
+            if (management is null)
+            {
+                management = new PlatformConfiguration
+                {
+                    TenantId = tenantId.Value,
+                    ConfigurationType = ClassManagementConfigurationType,
+                    ScopeKey = scopeKey,
+                    DisplayName = $"CLASS_MANAGEMENT::{className}",
+                    PayloadJson = JsonSerializer.Serialize(payload),
+                    UpdatedAtUtc = DateTime.UtcNow,
+                };
+                await dbContext.PlatformConfigurations.AddAsync(management, cancellationToken);
+            }
+            else
+            {
+                management.DisplayName = $"CLASS_MANAGEMENT::{className}";
+                management.PayloadJson = JsonSerializer.Serialize(payload);
+                management.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Ok(new
+            {
+                name = className,
+                code = scopeKey,
+                teacherCount = teachers.Count,
+                studentCount = students.Count,
+                courseCount = request.Courses.Count,
+                modules = request.Modules,
+            });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Complete class creation failed for {ClassName}", className);
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     private async Task<List<string>> LoadClassListAsync(Guid tenantId, CancellationToken cancellationToken)
@@ -193,4 +345,30 @@ public sealed class ClassesController(
     }
 
     public sealed record CreateClassRequest(string Name);
+    public sealed record CreateCompleteClassRequest(
+        string Name,
+        string? Code,
+        string? School,
+        string? InstitutionUnit,
+        string? Grade,
+        string? Section,
+        string? AcademicYear,
+        Guid? AdvisorTeacherId,
+        string? Description,
+        string? ThemeColor,
+        string? Icon,
+        IReadOnlyList<ClassTeacherAssignmentRequest> Teachers,
+        IReadOnlyList<ClassCourseAssignmentRequest> Courses,
+        IReadOnlyList<Guid> StudentIds,
+        ClassModuleSettingsRequest Modules);
+
+    public sealed record ClassTeacherAssignmentRequest(Guid? TeacherId, string? Role);
+    public sealed record ClassCourseAssignmentRequest(string CourseName, Guid? TeacherId, int WeeklyHours, bool IsRequired);
+    public sealed record ClassModuleSettingsRequest(
+        bool Attendance,
+        bool Grades,
+        bool LiveLessons,
+        bool Homework,
+        bool Study,
+        bool Messaging);
 }

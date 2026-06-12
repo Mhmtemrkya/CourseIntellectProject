@@ -13,8 +13,22 @@ class AnnouncementsPage extends StatefulWidget {
 class _AnnouncementsPageState extends State<AnnouncementsPage> {
   final _service = SchoolFeedApiService.instance;
   bool _loading = true;
+  bool _searching = false;
+  String _query = '';
   String? _error;
   List<AnnouncementFeedItem> _announcements = const [];
+
+  List<AnnouncementFeedItem> get _visibleAnnouncements {
+    final query = _query.trim().toLowerCase();
+    if (query.isEmpty) return _announcements;
+    return _announcements
+        .where(
+          (item) =>
+              item.title.toLowerCase().contains(query) ||
+              item.summaryDetail.toLowerCase().contains(query),
+        )
+        .toList();
+  }
 
   @override
   void initState() {
@@ -53,32 +67,30 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Duyurular'),
-        centerTitle: true,
-        actions: [
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}),
-          Stack(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications),
-                onPressed: () {},
-              ),
-              Positioned(
-                right: 10,
-                top: 10,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Text(
-                    '${_announcements.length}',
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  ),
+        title: _searching
+            ? TextField(
+                autofocus: true,
+                decoration: const InputDecoration(
+                  hintText: 'Duyurularda ara...',
+                  border: InputBorder.none,
                 ),
-              ),
-            ],
+                onChanged: (value) => setState(() => _query = value),
+              )
+            : const Text('Duyurular'),
+        centerTitle: !_searching,
+        actions: [
+          IconButton(
+            tooltip: _searching ? 'Aramayı kapat' : 'Duyurularda ara',
+            icon: Icon(_searching ? Icons.close_rounded : Icons.search),
+            onPressed: () => setState(() {
+              _searching = !_searching;
+              if (!_searching) _query = '';
+            }),
+          ),
+          IconButton(
+            tooltip: 'Yenile',
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _loadAnnouncements,
           ),
         ],
       ),
@@ -110,12 +122,18 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
       );
     }
 
-    if (_announcements.isEmpty) {
-      return const Center(child: Text('Gösterilecek duyuru bulunmuyor.'));
+    if (_visibleAnnouncements.isEmpty) {
+      return Center(
+        child: Text(
+          _query.trim().isEmpty
+              ? 'Gösterilecek duyuru bulunmuyor.'
+              : 'Aramana uyan duyuru bulunamadı.',
+        ),
+      );
     }
 
     return ListView(
-      children: _announcements
+      children: _visibleAnnouncements
           .map(
             (item) => _announcementCard(
               context,

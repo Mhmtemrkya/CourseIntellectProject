@@ -16,7 +16,7 @@ class PremiumModalShell extends StatelessWidget {
     required this.title,
     required this.child,
     this.description,
-    this.colors = const [Color(0xFF0F172A), Color(0xFF2563EB)],
+    this.colors = const [Color(0xFF08111F), Color(0xFFFF7A1A)],
     this.contentPadding,
   });
 
@@ -49,9 +49,16 @@ class PremiumModalShell extends StatelessWidget {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: colors,
+                    colors: [
+                      colors.first,
+                      Color.lerp(colors.first, colors.last, 0.22) ??
+                          colors.first,
+                    ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.10),
                   ),
                   borderRadius: BorderRadius.circular(24),
                 ),

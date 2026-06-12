@@ -80,7 +80,7 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
             title: 'Öğrenci ve personel kayıt süreçlerini tek yerden yönetin.',
             description:
                 'Yeni kayıt açabilir, mevcut kayıtları izleyebilir ve öğrenci listesine geçiş yapabilirsiniz.',
-            colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(
                 label: 'Öğrenci',

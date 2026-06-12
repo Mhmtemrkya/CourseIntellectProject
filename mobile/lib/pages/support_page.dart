@@ -6,7 +6,7 @@ import '../services/support_tickets_api_service.dart';
 
 const _navy = Color(0xFF021622);
 const _navyDeep = Color(0xFF0A2535);
-const _orange = Color(0xFFD9790B);
+const _orange = Color(0xFFFF7A1A);
 const _orangeWarm = Color(0xFFFBB971);
 
 class SupportPage extends StatefulWidget {
@@ -347,14 +347,14 @@ class _SupportPageState extends State<SupportPage> {
                         height: 16,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          color: Color(0xFF00354F),
+                          color: Color(0xFF08111F),
                         ),
                       )
                     : const Icon(Icons.send, size: 18),
                 label: Text(_submitting ? 'Gönderiliyor...' : 'Talebi gönder'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: _orange,
-                  foregroundColor: const Color(0xFF00354F),
+                  foregroundColor: const Color(0xFF08111F),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),

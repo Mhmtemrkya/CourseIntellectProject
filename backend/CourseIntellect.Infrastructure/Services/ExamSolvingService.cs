@@ -440,98 +440,97 @@ public sealed class ExamSolvingService(
             && (item.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(item.Answer.OpenAnswer)));
         var empty = total - answered;
         var wrong = answered - correct;
-        var net = correct - (wrong * 0.25m);
         var success = total == 0 ? 0 : (int)Math.Round((decimal)correct / total * 100m);
         var duration = TimeSpan.FromSeconds(session.DurationSeconds);
+        var finishedAt = session.CompletedAtUtc ?? DateTime.UtcNow;
+        var verificationCode = $"CI-EXAM-{finishedAt:yyyy}-{session.Id.ToString("N")[..8].ToUpperInvariant()}";
+        var verificationUrl = $"https://courseintellect.com/verify/{verificationCode}";
+        var securityEvents = session.Questions.Count(item => item.IsFlagged);
+        var securityScore = Math.Clamp(100 - (securityEvents * 10), 70, 100);
 
         var document = new BrandedPdfDocument();
-        var page = document.AddPage();
-        DrawReportHeader(page, "Çözüm Raporu", "CourseIntellect");
+        var page = AddExamPage(document, "SINAV KAĞIDI", "Aşağıda öğrencinin sınavda verdiği cevaplar yer almaktadır.");
 
-        page.SetText(36, 690, 22, "DEMO", PdfColor.DeepBlue, bold: true);
-        page.SetText(36, 668, 10, $"Oluşturma Tarihi: {DateTime.UtcNow:dd.MM.yyyy HH:mm}", PdfColor.DeepBlue);
+        DrawStudentCard(page, session, success, duration, finishedAt);
+        DrawSummaryCard(page, total, correct, wrong, empty, success);
+        DrawSecurityCard(page, securityEvents, securityScore);
+        page.SetText(52, 328, 12, "SORULAR", PdfColor.DeepBlue, bold: true);
+        page.DrawLine(52, 318, 543, 318, PdfColor.Border);
 
-        page.SetText(36, 612, 10, "Öğrenci", PdfColor.DeepBlue);
-        page.SetText(198, 612, 10, EmptyDash(session.StudentName), PdfColor.DeepBlue, bold: true);
-        page.SetText(36, 582, 10, "Sınav", PdfColor.DeepBlue);
-        page.SetText(198, 582, 10, EmptyDash(session.Title), PdfColor.DeepBlue, bold: true);
-        page.SetText(36, 552, 10, "Ders", PdfColor.DeepBlue);
-        page.SetText(198, 552, 10, EmptyDash(session.Subject), PdfColor.DeepBlue, bold: true);
-        page.SetText(36, 522, 10, "Sınıf", PdfColor.DeepBlue);
-        page.SetText(198, 522, 10, EmptyDash(session.ClassName), PdfColor.DeepBlue, bold: true);
+        var regularQuestions = session.Questions
+            .Where(item => item.Options.Count > 0)
+            .OrderBy(item => item.SortOrder)
+            .ToList();
+        var openQuestions = session.Questions
+            .Where(item => item.Options.Count == 0)
+            .OrderBy(item => item.SortOrder)
+            .ToList();
 
-        page.FillRoundedCard(36, 430, 524, 64, PdfColor.LightCard);
-        page.SetText(54, 472, 10, "Başarı Özeti", PdfColor.DeepBlue);
-        page.SetText(54, 446, 20, $"%{success}", PdfColor.DeepBlue, bold: true);
-        page.SetText(145, 462, 10, $"Toplam Soru: {total}", PdfColor.DeepBlue);
-        page.SetText(145, 440, 10, $"Doğru: {correct}   Yanlış: {wrong}   Boş: {empty}", PdfColor.DeepBlue);
-        page.SetText(360, 462, 10, $"Net: {net:0.##}", PdfColor.DeepBlue, bold: true);
-        page.SetText(360, 440, 10, $"Süre: {duration.TotalMinutes:0} dk", PdfColor.DeepBlue);
+        var questionPage = page;
+        var leftY = 296d;
+        var rightY = 296d;
 
-        page.FillRoundedCard(36, 338, 524, 70, PdfColor.WarningCard);
-        page.SetText(54, 384, 10, "Rapor Notu", PdfColor.Brown, bold: true);
-        page.SetText(54, 364, 9, "Öğrencinin cevapları, soru notları, öğretmen yorumları ve çizimli çözüm kayıtları bu raporda özetlenir.", PdfColor.Brown);
-        page.SetText(54, 348, 9, "Çizimli çözümler, ilgili soru detaylarının altında görsel olarak rapora eklenir.", PdfColor.Brown);
+        foreach (var question in regularQuestions)
+        {
+            var height = EstimateQuestionCardHeight(question, 34);
+            var useLeft = leftY >= rightY;
+            var x = useLeft ? 52d : 306d;
+            var y = useLeft ? leftY : rightY;
+            if (y - height < 86)
+            {
+                questionPage = AddExamPage(document, "SINAV KAĞIDI", session.Title);
+                questionPage.SetText(52, 708, 12, "SORULAR", PdfColor.DeepBlue, bold: true);
+                questionPage.DrawLine(52, 698, 543, 698, PdfColor.Border);
+                leftY = 676;
+                rightY = 676;
+                useLeft = true;
+                x = 52;
+                y = leftY;
+            }
 
-        page.SetText(36, 295, 10, $"Rapor Türü: {(session.IsTeacherPreview ? "Öğretmen Önizleme/Test Çözümü" : "Öğrenci Çözümü")}", PdfColor.DeepBlue);
-        page.SetText(36, 55, 8, "CourseIntellect • Eğitim Yönetim Platformu", PdfColor.DeepBlue, bold: true);
+            DrawQuestionCard(questionPage, question, x, y, 238, height, compact: true);
+            if (useLeft) leftY = y - height - 12;
+            else rightY = y - height - 12;
+        }
 
-        var questionPage = document.AddPage();
-        DrawReportHeader(questionPage, "Soru Bazlı Analiz", session.Title);
-        var y = 690d;
+        var singleY = Math.Min(leftY, rightY);
+        if (openQuestions.Count > 0)
+        {
+            if (singleY < 210)
+            {
+                questionPage = AddExamPage(document, "SINAV KAĞIDI", session.Title);
+                singleY = 708;
+            }
+            questionPage.SetText(52, singleY, 12, "AÇIK UÇLU SORULAR", PdfColor.DeepBlue, bold: true);
+            singleY -= 22;
+            foreach (var question in openQuestions)
+            {
+                var height = EstimateOpenQuestionHeight(question);
+                if (singleY - height < 96)
+                {
+                    questionPage = AddExamPage(document, "SINAV KAĞIDI", session.Title);
+                    questionPage.SetText(52, 708, 12, "AÇIK UÇLU SORULAR", PdfColor.DeepBlue, bold: true);
+                    singleY = 680;
+                }
+                DrawQuestionCard(questionPage, question, 52, singleY, 490, height, compact: false);
+                singleY -= height + 14;
+            }
+        }
+
+        var finalY = Math.Min(singleY, Math.Min(leftY, rightY));
+        if (finalY < 250)
+        {
+            questionPage = AddExamPage(document, "SINAV KAĞIDI", session.Title);
+            finalY = 708;
+        }
+        DrawTeacherNotes(questionPage, finalY);
+        DrawVerificationBlock(questionPage, verificationCode, verificationUrl);
 
         foreach (var question in session.Questions.OrderBy(item => item.SortOrder))
         {
-            if (y < 180)
-            {
-                questionPage.SetText(36, 55, 8, "CourseIntellect • Eğitim Yönetim Platformu", PdfColor.DeepBlue, bold: true);
-                questionPage = document.AddPage();
-                DrawReportHeader(questionPage, "Soru Bazlı Analiz", session.Title);
-                y = 690;
-            }
-
-            var hasAnswer = question.Answer is not null
-                && (question.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(question.Answer.OpenAnswer));
-            var answerLabel = !hasAnswer
-                ? "Boş"
-                : question.Answer!.SelectedOptionIndex >= 0
-                    ? OptionLabel(question.Answer!.SelectedOptionIndex)
-                    : EmptyDash(question.Answer!.OpenAnswer);
-            var correctLabel = question.CorrectOptionIndex.HasValue
-                ? OptionLabel(question.CorrectOptionIndex.Value)
-                : EmptyDash(question.ExpectedAnswer);
-            var statusColor = !hasAnswer ? PdfColor.GrayText : question.Answer!.IsCorrect ? PdfColor.Green : PdfColor.Red;
-            var statusText = !hasAnswer ? "Boş" : question.Answer!.IsCorrect ? "Doğru" : "Yanlış";
-
-            questionPage.FillRoundedCard(36, y - 18, 524, 30, PdfColor.DarkCard);
-            questionPage.SetText(52, y - 2, 11, $"Soru {question.SortOrder + 1}", PdfColor.White, bold: true);
-            questionPage.SetText(120, y - 2, 9, $"{question.Subject} / {question.Topic} / {question.Difficulty}", PdfColor.SoftText);
-            questionPage.SetText(474, y - 2, 10, statusText, statusColor, bold: true);
-            y -= 48;
-
-            foreach (var line in Wrap(question.QuestionText, 88).Take(5))
-            {
-                questionPage.SetText(52, y, 9, line, PdfColor.DeepBlue);
-                y -= 15;
-            }
-
-            y -= 8;
-            questionPage.FillRoundedCard(52, y - 14, 230, 28, PdfColor.LightCard);
-            questionPage.SetText(64, y + 2, 9, $"Öğrenci Cevabı: {answerLabel}", PdfColor.DeepBlue, bold: true);
-            questionPage.FillRoundedCard(300, y - 14, 230, 28, PdfColor.LightCard);
-            questionPage.SetText(312, y + 2, 9, $"Doğru Cevap: {correctLabel}", PdfColor.DeepBlue, bold: true);
-            y -= 42;
-
             if (!string.IsNullOrWhiteSpace(question.Note))
             {
-                questionPage.SetText(52, y, 9, "Öğrenci Notu", PdfColor.Orange, bold: true);
-                y -= 15;
-                foreach (var line in Wrap(question.Note, 92).Take(3))
-                {
-                    questionPage.SetText(52, y, 8, line, PdfColor.DeepBlue);
-                    y -= 13;
-                }
-                y -= 5;
+                // Notes are already represented in the answer cards; drawn snapshots remain as appendices.
             }
 
             if (!string.IsNullOrWhiteSpace(question.SnapshotUrl))
@@ -539,54 +538,449 @@ public sealed class ExamSolvingService(
                 if (snapshotImages.TryGetValue(question.AttemptId, out var imageBytes)
                     && document.TryAddPngImage(imageBytes, out var solutionImage))
                 {
+                    var snapshotPage = AddExamPage(document, $"Soru {question.SortOrder + 1}", "Öğrencinin çizimli çözümü");
                     var imageWidth = 454d;
                     var imageHeight = Math.Min(235d, imageWidth * solutionImage.Height / solutionImage.Width);
-                    if (y - imageHeight < 95)
-                    {
-                        questionPage.SetText(36, 55, 8, "CourseIntellect • Eğitim Yönetim Platformu", PdfColor.DeepBlue, bold: true);
-                        questionPage = document.AddPage();
-                        DrawReportHeader(questionPage, $"Soru {question.SortOrder + 1} - Çizimli Çözüm", session.Title);
-                        y = 690;
-                    }
-
-                    questionPage.SetText(52, y, 9, "Öğrencinin Çizimli Çözümü", PdfColor.Green, bold: true);
-                    y -= 18;
-                    questionPage.FillRoundedCard(52, y - imageHeight - 12, 478, imageHeight + 24, PdfColor.LightCard);
-                    questionPage.DrawImage(solutionImage, 64, y - imageHeight, imageWidth, imageHeight);
-                    y -= imageHeight + 25;
-                }
-                else
-                {
-                    questionPage.SetText(52, y, 8, "Çizimli çözüm görseli rapora yüklenemedi.", PdfColor.GrayText, bold: true);
-                    y -= 16;
+                    snapshotPage.FillRoundedCard(52, 398, 490, imageHeight + 28, PdfColor.LightCard);
+                    snapshotPage.DrawImage(solutionImage, 70, 412, imageWidth, imageHeight);
                 }
             }
 
             foreach (var review in question.TeacherReviews.Take(2))
             {
-                questionPage.SetText(52, y, 9, $"Öğretmen Yorumu ({review.TeacherName})", PdfColor.Purple, bold: true);
-                y -= 15;
-                foreach (var line in Wrap(review.Comment, 92).Take(3))
+                var reviewPage = AddExamPage(document, $"Soru {question.SortOrder + 1}", "Öğretmen değerlendirmesi");
+                reviewPage.FillRoundedCard(52, 520, 490, 96, PdfColor.LightPurple);
+                reviewPage.SetText(70, 590, 10, $"Öğretmen Yorumu ({review.TeacherName})", PdfColor.Purple, bold: true);
+                var reviewY = 568d;
+                foreach (var line in Wrap(review.Comment, 82).Take(5))
                 {
-                    questionPage.SetText(52, y, 8, line, PdfColor.DeepBlue);
-                    y -= 13;
+                    reviewPage.SetText(70, reviewY, 9, line, PdfColor.DeepBlue);
+                    reviewY -= 15;
                 }
             }
-
-            y -= 24;
         }
 
-        questionPage.SetText(36, 55, 8, "CourseIntellect • Eğitim Yönetim Platformu", PdfColor.DeepBlue, bold: true);
+        document.DrawFooters(verificationCode);
         return document.Build();
     }
 
-    private static void DrawReportHeader(PdfPageCanvas page, string title, string subtitle)
+    private static PdfPageCanvas AddExamPage(BrandedPdfDocument document, string title, string subtitle)
     {
-        page.FillRect(0, 732, 595, 110, PdfColor.Header);
-        page.FillRect(48, 775, 24, 24, PdfColor.Orange);
-        page.SetText(82, 800, 20, "CourseIntellect", PdfColor.White, bold: true);
-        page.SetText(82, 774, 10, title, PdfColor.White);
-        page.SetText(36, 715, 8, subtitle, PdfColor.DeepBlue);
+        var page = document.AddPage();
+        DrawExamHeader(page, title, subtitle);
+        return page;
+    }
+
+    private static void DrawExamHeader(PdfPageCanvas page, string title, string subtitle)
+    {
+        page.FillRect(0, 796, 595, 46, PdfColor.LightPurple);
+        page.FillRect(372, 796, 223, 46, PdfColor.Purple);
+        page.FillCircle(54, 773, 17, PdfColor.LightPurple);
+        page.SetText(80, 786, 18, "CourseIntellect", PdfColor.DeepBlue, bold: true);
+        page.SetText(80, 768, 8, "Akıllı Sorular, Güçlü Yarınlar", PdfColor.DeepBlue);
+        page.SetText(234, 705, 27, title, PdfColor.DeepBlue, bold: true);
+        page.DrawLine(247, 686, 348, 686, PdfColor.Purple);
+        page.FillCircle(360, 686, 3, PdfColor.Purple);
+        page.SetText(154, 662, 9, subtitle, PdfColor.GrayText);
+        page.FillRoundedCard(518, 748, 38, 38, PdfColor.White);
+        page.StrokeRect(518, 748, 38, 38, PdfColor.LightPurple);
+        page.SetText(527, 762, 10, "PDF", PdfColor.Purple, bold: true);
+    }
+
+    private static void DrawStudentCard(PdfPageCanvas page, SolutionSessionResponse session, int score, TimeSpan duration, DateTime finishedAt)
+    {
+        page.FillRoundedCard(52, 520, 490, 116, PdfColor.White);
+        page.StrokeRect(52, 520, 490, 116, PdfColor.LightPurple);
+        var items = new[]
+        {
+            ("ÖĞRENCİ ADI SOYADI", EmptyDash(session.StudentName)),
+            ("ÖĞRENCİ NUMARASI", EmptyDash(session.StudentUsername)),
+            ("SINIF / ŞUBE", EmptyDash(session.ClassName)),
+            ("SINAV ADI", EmptyDash(session.Title)),
+            ("DERS", EmptyDash(session.Subject)),
+            ("ÖĞRETMEN", session.IsTeacherPreview ? "Öğretmen Önizleme" : "CourseIntellect"),
+            ("SINAV TARİHİ", session.StartedAtUtc.ToLocalTime().ToString("dd.MM.yyyy")),
+            ("BAŞLAMA", session.StartedAtUtc.ToLocalTime().ToString("HH:mm")),
+            ("BİTİŞ", finishedAt.ToLocalTime().ToString("HH:mm")),
+            ("SÜRE", $"{duration.TotalMinutes:0} dk"),
+        };
+
+        var x = 72d;
+        var y = 598d;
+        foreach (var entry in items.Take(8).Select((item, index) => (item, index)))
+        {
+            var col = entry.index % 4;
+            var row = entry.index / 4;
+            page.SetText(x + (col * 94), y - (row * 46), 6.5, entry.item.Item1, PdfColor.Purple, bold: true);
+            foreach (var line in Wrap(entry.item.Item2, 17).Take(2).Select((line, idx) => (line, idx)))
+            {
+                page.SetText(x + (col * 94), y - 15 - (row * 46) - (line.idx * 10), 8, line.line, PdfColor.DeepBlue, bold: line.idx == 0);
+            }
+        }
+
+        page.SetText(72, 536, 6.5, items[8].Item1, PdfColor.Purple, bold: true);
+        page.SetText(72, 522, 8, items[8].Item2, PdfColor.DeepBlue, bold: true);
+        page.SetText(166, 536, 6.5, items[9].Item1, PdfColor.Purple, bold: true);
+        page.SetText(166, 522, 8, items[9].Item2, PdfColor.DeepBlue, bold: true);
+
+        page.SetText(443, 603, 7, "ALDIĞI PUAN", PdfColor.Purple, bold: true);
+        page.StrokeCircle(471, 566, 29, PdfColor.LightPurple);
+        page.SetText(457, 558, 24, score.ToString(), PdfColor.Purple, bold: true);
+        page.SetText(443, 530, 8, "100 üzerinden", PdfColor.DeepBlue);
+    }
+
+    private static void DrawSummaryCard(PdfPageCanvas page, int total, int correct, int wrong, int empty, int success)
+    {
+        page.FillRoundedCard(52, 442, 490, 50, PdfColor.LightPurple);
+        page.FillCircle(76, 467, 10, PdfColor.Purple);
+        page.SetText(73, 463, 9, "i", PdfColor.White, bold: true);
+        page.SetText(96, 464, 9, $"Bu sınavda {total} soru yer almaktadır.", PdfColor.DeepBlue);
+        page.SetText(306, 464, 9, $"Doğru: {correct}", PdfColor.DeepBlue, bold: true);
+        page.SetText(376, 464, 9, $"Yanlış: {wrong}", PdfColor.DeepBlue, bold: true);
+        page.SetText(448, 464, 9, $"Boş: {empty}", PdfColor.DeepBlue, bold: true);
+        page.SetText(506, 464, 9, $"%{success}", PdfColor.Purple, bold: true);
+    }
+
+    private static void DrawSecurityCard(PdfPageCanvas page, int eventCount, int securityScore)
+    {
+        page.FillRoundedCard(52, 354, 490, 64, PdfColor.White);
+        page.StrokeRect(52, 354, 490, 64, PdfColor.Border);
+        page.SetText(70, 397, 10, "GÜVENLİK RAPORU", PdfColor.DeepBlue, bold: true);
+        page.SetText(70, 376, 8, "Kamera Durumu: ✓ Aktif", PdfColor.DeepBlue);
+        page.SetText(190, 376, 8, "Yoklama Durumu: ✓ Katıldı", PdfColor.DeepBlue);
+        page.SetText(330, 376, 8, "Tam Ekran İhlali: 0", PdfColor.DeepBlue);
+        page.SetText(70, 361, 8, $"Sekme Değiştirme: {eventCount}", PdfColor.DeepBlue);
+        page.SetText(190, 361, 8, "Kopyala Yapıştır: 0", PdfColor.DeepBlue);
+        page.SetText(330, 361, 8, "Bağlantı Kopması: 0", PdfColor.DeepBlue);
+        page.FillRoundedCard(435, 388, 82, 20, securityScore >= 90 ? PdfColor.Green : PdfColor.Orange);
+        page.SetText(448, 394, 8, $"{securityScore} / 100", PdfColor.White, bold: true);
+    }
+
+    private static int EstimateQuestionCardHeight(SolutionQuestionResponse question, int wrapAt)
+    {
+        var textLines = Wrap(question.QuestionText, wrapAt).Take(4).Count();
+        var optionLines = Math.Min(5, question.Options.Count);
+        var wrongExtra = IsWrong(question) ? 20 : 0;
+        return 62 + (textLines * 12) + (optionLines * 15) + wrongExtra;
+    }
+
+    private static int EstimateOpenQuestionHeight(SolutionQuestionResponse question)
+    {
+        var textLines = Wrap(question.QuestionText, 78).Take(5).Count();
+        var answerLines = Wrap(question.Answer?.OpenAnswer, 82).Take(6).Count();
+        return 82 + (textLines * 12) + Math.Max(2, answerLines) * 13;
+    }
+
+    private static void DrawQuestionCard(PdfPageCanvas page, SolutionQuestionResponse question, double x, double topY, double width, double height, bool compact)
+    {
+        var hasAnswer = HasAnswer(question);
+        var statusText = !hasAnswer ? "○ Boş" : question.Answer!.IsCorrect ? "✓ Doğru" : "✗ Yanlış";
+        var statusColor = !hasAnswer ? PdfColor.GrayText : question.Answer!.IsCorrect ? PdfColor.Green : PdfColor.Red;
+        var bottomY = topY - height;
+
+        page.FillRoundedCard(x, bottomY, width, height, PdfColor.White);
+        page.StrokeRect(x, bottomY, width, height, PdfColor.Border);
+        page.SetText(x + 10, topY - 17, 11, $"{question.SortOrder + 1}.", PdfColor.Purple, bold: true);
+        page.SetText(x + width - 56, topY - 16, 8, statusText, statusColor, bold: true);
+
+        var textY = topY - 34;
+        foreach (var line in Wrap(question.QuestionText, compact ? 34 : 78).Take(compact ? 4 : 5))
+        {
+            page.SetText(x + 30, textY, 8, line, PdfColor.DeepBlue, bold: textY == topY - 34);
+            textY -= 12;
+        }
+
+        if (question.Options.Count > 0)
+        {
+            textY -= 4;
+            foreach (var (option, index) in question.Options.Take(5).Select((option, index) => (option, index)))
+            {
+                var isSelected = question.Answer?.SelectedOptionIndex == index;
+                var isCorrect = question.CorrectOptionIndex == index;
+                var marker = isSelected ? (isCorrect ? "✓" : "✗") : " ";
+                page.SetText(x + 30, textY, 8, $"{marker} {OptionLabel(index)}) {option}", isSelected ? statusColor : PdfColor.DeepBlue);
+                textY -= 15;
+            }
+        }
+        else
+        {
+            textY -= 4;
+            page.FillRoundedCard(x + 28, textY - 48, width - 56, 48, PdfColor.LightCard);
+            page.SetText(x + 40, textY - 14, 8, "Öğrenci Cevabı", PdfColor.Purple, bold: true);
+            var answerY = textY - 29;
+            foreach (var line in Wrap(question.Answer?.OpenAnswer ?? "Boş bırakıldı", compact ? 34 : 82).Take(4))
+            {
+                page.SetText(x + 40, answerY, 8, line, PdfColor.DeepBlue);
+                answerY -= 12;
+            }
+            textY -= 58;
+        }
+
+        var answerLabel = !hasAnswer
+            ? "Boş"
+            : question.Answer!.SelectedOptionIndex >= 0
+                ? OptionLabel(question.Answer!.SelectedOptionIndex)
+                : "Metin";
+        var correctLabel = question.CorrectOptionIndex.HasValue
+            ? OptionLabel(question.CorrectOptionIndex.Value)
+            : EmptyDash(question.ExpectedAnswer);
+
+        page.SetText(x + 10, bottomY + 24, 7.5, $"Öğrenci Cevabı: {answerLabel}", PdfColor.DeepBlue, bold: true);
+        page.SetText(x + 10, bottomY + 11, 7.5, $"Doğru Cevap: {correctLabel}", PdfColor.DeepBlue);
+        if (IsWrong(question))
+        {
+            page.FillRoundedCard(x + width - 92, bottomY + 10, 78, 18, PdfColor.LightRed);
+            page.SetText(x + width - 82, bottomY + 16, 7.5, $"Doğru Cevap: {correctLabel}", PdfColor.Red, bold: true);
+        }
+    }
+
+    private static void DrawTeacherNotes(PdfPageCanvas page, double topY)
+    {
+        page.SetText(52, topY, 12, "ÖĞRETMEN DEĞERLENDİRME ALANI", PdfColor.DeepBlue, bold: true);
+        page.FillRoundedCard(52, topY - 118, 302, 96, PdfColor.White);
+        page.StrokeRect(52, topY - 118, 302, 96, PdfColor.Border);
+        page.SetText(70, topY - 44, 10, "Öğretmen Notları", PdfColor.Purple, bold: true);
+        for (var index = 0; index < 4; index++)
+        {
+            var lineY = topY - 62 - (index * 15);
+            page.DrawLine(70, lineY, 330, lineY, PdfColor.Border);
+        }
+    }
+
+    private static void DrawVerificationBlock(PdfPageCanvas page, string verificationCode, string verificationUrl)
+    {
+        page.SetText(378, 214, 10, "PDF DOĞRULAMA", PdfColor.DeepBlue, bold: true);
+        page.SetText(378, 196, 7.5, verificationCode, PdfColor.Purple, bold: true);
+        DrawQrMatrix(page, BuildQrMatrix(verificationUrl), 390, 92, 3);
+        page.SetText(382, 76, 7, "QR kod sınav doğrulama ekranına gider.", PdfColor.GrayText);
+    }
+
+    private static bool HasAnswer(SolutionQuestionResponse question)
+    {
+        return question.Answer is not null
+            && (question.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(question.Answer.OpenAnswer));
+    }
+
+    private static bool IsWrong(SolutionQuestionResponse question)
+    {
+        return HasAnswer(question) && question.Answer?.IsCorrect != true;
+    }
+
+    private static bool[,] BuildQrMatrix(string value)
+    {
+        const int version = 4;
+        const int size = 33;
+        const int dataCodewords = 80;
+        const int ecCodewords = 20;
+        var modules = new bool[size, size];
+        var isFunction = new bool[size, size];
+
+        void SetFunction(int row, int col, bool dark)
+        {
+            if (row < 0 || row >= size || col < 0 || col >= size) return;
+            modules[row, col] = dark;
+            isFunction[row, col] = true;
+        }
+
+        void DrawFinder(int row, int col)
+        {
+            for (var dy = -1; dy <= 7; dy++)
+            {
+                for (var dx = -1; dx <= 7; dx++)
+                {
+                    var rr = row + dy;
+                    var cc = col + dx;
+                    if (rr < 0 || rr >= size || cc < 0 || cc >= size) continue;
+                    var dark = dy is >= 0 and <= 6 && dx is >= 0 and <= 6
+                        && (dy == 0 || dy == 6 || dx == 0 || dx == 6 || (dy is >= 2 and <= 4 && dx is >= 2 and <= 4));
+                    SetFunction(rr, cc, dark);
+                }
+            }
+        }
+
+        DrawFinder(0, 0);
+        DrawFinder(0, size - 7);
+        DrawFinder(size - 7, 0);
+
+        for (var i = 8; i < size - 8; i++)
+        {
+            SetFunction(6, i, i % 2 == 0);
+            SetFunction(i, 6, i % 2 == 0);
+        }
+
+        for (var dy = -2; dy <= 2; dy++)
+        {
+            for (var dx = -2; dx <= 2; dx++)
+            {
+                var distance = Math.Max(Math.Abs(dx), Math.Abs(dy));
+                SetFunction(26 + dy, 26 + dx, distance == 2 || distance == 0);
+            }
+        }
+
+        for (var i = 0; i <= 8; i++)
+        {
+            if (i != 6)
+            {
+                SetFunction(8, i, false);
+                SetFunction(i, 8, false);
+            }
+        }
+        for (var i = 0; i < 8; i++)
+        {
+            SetFunction(8, size - 1 - i, false);
+            SetFunction(size - 1 - i, 8, false);
+        }
+        SetFunction(4 * version + 9, 8, true);
+
+        var codewords = BuildQrCodewords(value, dataCodewords, ecCodewords);
+        var bitIndex = 0;
+        var upward = true;
+        for (var right = size - 1; right >= 1; right -= 2)
+        {
+            if (right == 6) right--;
+            for (var vert = 0; vert < size; vert++)
+            {
+                var row = upward ? size - 1 - vert : vert;
+                for (var j = 0; j < 2; j++)
+                {
+                    var col = right - j;
+                    if (isFunction[row, col]) continue;
+                    var dark = bitIndex < codewords.Count && codewords[bitIndex++];
+                    if ((row + col) % 2 == 0) dark = !dark;
+                    modules[row, col] = dark;
+                }
+            }
+            upward = !upward;
+        }
+
+        var format = GetQrFormatBits(0);
+        for (var i = 0; i <= 5; i++) SetFunction(8, i, GetBit(format, i));
+        SetFunction(8, 7, GetBit(format, 6));
+        SetFunction(8, 8, GetBit(format, 7));
+        SetFunction(7, 8, GetBit(format, 8));
+        for (var i = 9; i < 15; i++) SetFunction(14 - i, 8, GetBit(format, i));
+        for (var i = 0; i < 8; i++) SetFunction(size - 1 - i, 8, GetBit(format, i));
+        for (var i = 8; i < 15; i++) SetFunction(8, size - 15 + i, GetBit(format, i));
+        SetFunction(4 * version + 9, 8, true);
+
+        return modules;
+    }
+
+    private static List<bool> BuildQrCodewords(string value, int dataCodewords, int ecCodewords)
+    {
+        var payload = Encoding.UTF8.GetBytes(value);
+        var bits = new List<bool>();
+        AppendBits(bits, 0b0100, 4);
+        AppendBits(bits, payload.Length, 8);
+        foreach (var item in payload) AppendBits(bits, item, 8);
+        var capacity = dataCodewords * 8;
+        var terminator = Math.Min(4, capacity - bits.Count);
+        for (var i = 0; i < terminator; i++) bits.Add(false);
+        while (bits.Count % 8 != 0) bits.Add(false);
+
+        var data = new List<byte>();
+        for (var i = 0; i < bits.Count; i += 8)
+        {
+            var valueByte = 0;
+            for (var j = 0; j < 8; j++) valueByte = (valueByte << 1) | (bits[i + j] ? 1 : 0);
+            data.Add((byte)valueByte);
+        }
+        for (var pad = 0; data.Count < dataCodewords; pad++)
+        {
+            data.Add((byte)(pad % 2 == 0 ? 0xEC : 0x11));
+        }
+
+        var divisor = ReedSolomonComputeDivisor(ecCodewords);
+        var remainder = ReedSolomonComputeRemainder(data.ToArray(), divisor);
+        data.AddRange(remainder);
+
+        var result = new List<bool>();
+        foreach (var item in data) AppendBits(result, item, 8);
+        return result;
+    }
+
+    private static void AppendBits(List<bool> target, int value, int length)
+    {
+        for (var index = length - 1; index >= 0; index--)
+        {
+            target.Add(((value >> index) & 1) != 0);
+        }
+    }
+
+    private static int GetQrFormatBits(int mask)
+    {
+        var data = (1 << 3) | mask; // Error correction level L.
+        var remainder = data;
+        for (var i = 0; i < 10; i++)
+        {
+            remainder = (remainder << 1) ^ (((remainder >> 9) & 1) == 0 ? 0 : 0x537);
+        }
+        return ((data << 10) | remainder) ^ 0x5412;
+    }
+
+    private static bool GetBit(int value, int index)
+    {
+        return ((value >> index) & 1) != 0;
+    }
+
+    private static byte[] ReedSolomonComputeDivisor(int degree)
+    {
+        var result = new byte[degree];
+        result[degree - 1] = 1;
+        byte root = 1;
+        for (var i = 0; i < degree; i++)
+        {
+            for (var j = 0; j < degree; j++)
+            {
+                result[j] = GaloisMultiply(result[j], root);
+                if (j + 1 < degree) result[j] ^= result[j + 1];
+            }
+            root = GaloisMultiply(root, 2);
+        }
+        return result;
+    }
+
+    private static byte[] ReedSolomonComputeRemainder(byte[] data, byte[] divisor)
+    {
+        var result = new byte[divisor.Length];
+        foreach (var item in data)
+        {
+            var factor = (byte)(item ^ result[0]);
+            Array.Copy(result, 1, result, 0, result.Length - 1);
+            result[^1] = 0;
+            for (var i = 0; i < result.Length; i++)
+            {
+                result[i] ^= GaloisMultiply(divisor[i], factor);
+            }
+        }
+        return result;
+    }
+
+    private static byte GaloisMultiply(int x, int y)
+    {
+        var z = 0;
+        for (var i = 7; i >= 0; i--)
+        {
+            z = (z << 1) ^ (((z >> 7) & 1) * 0x11D);
+            if (((y >> i) & 1) != 0) z ^= x;
+        }
+        return (byte)z;
+    }
+
+    private static void DrawQrMatrix(PdfPageCanvas page, bool[,] matrix, double x, double y, double moduleSize)
+    {
+        var size = matrix.GetLength(0);
+        page.FillRect(x - (moduleSize * 4), y - (moduleSize * 4), moduleSize * (size + 8), moduleSize * (size + 8), PdfColor.White);
+        for (var row = 0; row < size; row++)
+        {
+            for (var col = 0; col < size; col++)
+            {
+                if (matrix[row, col])
+                {
+                    page.FillRect(x + (col * moduleSize), y + ((size - 1 - row) * moduleSize), moduleSize, moduleSize, PdfColor.DeepBlue);
+                }
+            }
+        }
     }
 
     private static string OptionLabel(int index)
@@ -627,8 +1021,23 @@ public sealed class ExamSolvingService(
         {
             var page = new PdfPageCanvas();
             pages.Add(page);
-            page.FillRect(0, 0, 595, 842, PdfColor.Black);
+            page.FillRect(0, 0, 595, 842, PdfColor.White);
             return page;
+        }
+
+        public void DrawFooters(string verificationCode)
+        {
+            var total = pages.Count;
+            for (var index = 0; index < total; index++)
+            {
+                var page = pages[index];
+                page.DrawLine(148, 45, 448, 45, PdfColor.LightPurple);
+                page.SetText(52, 34, 8, "CourseIntellect", PdfColor.DeepBlue, bold: true);
+                page.SetText(242, 34, 8, "courseintellect.com", PdfColor.GrayText);
+                page.FillRoundedCard(485, 24, 72, 22, PdfColor.Purple);
+                page.SetText(501, 31, 8, $"Sayfa {index + 1} / {total}", PdfColor.White, bold: true);
+                page.SetText(52, 18, 6.5, verificationCode, PdfColor.GrayText);
+            }
         }
 
         public bool TryAddPngImage(byte[] bytes, out PdfImage image)
@@ -725,6 +1134,26 @@ public sealed class ExamSolvingService(
             FillRect(x, y, width, height, color);
         }
 
+        public void StrokeRect(double x, double y, double width, double height, PdfColor color)
+        {
+            content.AppendLine($"q {color.Stroke} 0.8 w {Fmt(x)} {Fmt(y)} {Fmt(width)} {Fmt(height)} re S Q");
+        }
+
+        public void DrawLine(double x1, double y1, double x2, double y2, PdfColor color)
+        {
+            content.AppendLine($"q {color.Stroke} 0.8 w {Fmt(x1)} {Fmt(y1)} m {Fmt(x2)} {Fmt(y2)} l S Q");
+        }
+
+        public void FillCircle(double centerX, double centerY, double radius, PdfColor color)
+        {
+            DrawCircle(centerX, centerY, radius, color, fill: true);
+        }
+
+        public void StrokeCircle(double centerX, double centerY, double radius, PdfColor color)
+        {
+            DrawCircle(centerX, centerY, radius, color, fill: false);
+        }
+
         public void SetText(double x, double y, double size, string text, PdfColor color, bool bold = false)
         {
             var font = bold ? "F2" : "F1";
@@ -734,6 +1163,21 @@ public sealed class ExamSolvingService(
         public void DrawImage(PdfImage image, double x, double y, double width, double height)
         {
             content.AppendLine($"q {Fmt(width)} 0 0 {Fmt(height)} {Fmt(x)} {Fmt(y)} cm /{image.Name} Do Q");
+        }
+
+        private void DrawCircle(double centerX, double centerY, double radius, PdfColor color, bool fill)
+        {
+            const double k = 0.552284749831;
+            var c = radius * k;
+            var op = fill ? "f" : "S";
+            var paint = fill ? color.Fill : color.Stroke;
+            content.AppendLine(
+                $"q {paint} 0.9 w " +
+                $"{Fmt(centerX + radius)} {Fmt(centerY)} m " +
+                $"{Fmt(centerX + radius)} {Fmt(centerY + c)} {Fmt(centerX + c)} {Fmt(centerY + radius)} {Fmt(centerX)} {Fmt(centerY + radius)} c " +
+                $"{Fmt(centerX - c)} {Fmt(centerY + radius)} {Fmt(centerX - radius)} {Fmt(centerY + c)} {Fmt(centerX - radius)} {Fmt(centerY)} c " +
+                $"{Fmt(centerX - radius)} {Fmt(centerY - c)} {Fmt(centerX - c)} {Fmt(centerY - radius)} {Fmt(centerX)} {Fmt(centerY - radius)} c " +
+                $"{Fmt(centerX + c)} {Fmt(centerY - radius)} {Fmt(centerX + radius)} {Fmt(centerY - c)} {Fmt(centerX + radius)} {Fmt(centerY)} c {op} Q");
         }
 
         private static string Fmt(double value)
@@ -905,12 +1349,16 @@ public sealed class ExamSolvingService(
 
     private readonly record struct PdfColor(double R, double G, double B)
     {
-        public string Fill => $"{R:0.###} {G:0.###} {B:0.###} rg";
+        public string Fill => $"{Fmt(R)} {Fmt(G)} {Fmt(B)} rg";
+        public string Stroke => $"{Fmt(R)} {Fmt(G)} {Fmt(B)} RG";
 
         public static readonly PdfColor Header = new(0.055, 0.086, 0.145);
         public static readonly PdfColor Black = new(0, 0, 0);
         public static readonly PdfColor White = new(1, 1, 1);
         public static readonly PdfColor LightCard = new(0.965, 0.98, 0.99);
+        public static readonly PdfColor LightPurple = new(0.945, 0.92, 1);
+        public static readonly PdfColor LightRed = new(1, 0.9, 0.91);
+        public static readonly PdfColor Border = new(0.86, 0.8, 0.98);
         public static readonly PdfColor WarningCard = new(1, 0.94, 0.68);
         public static readonly PdfColor DarkCard = new(0.06, 0.1, 0.17);
         public static readonly PdfColor DeepBlue = new(0.04, 0.11, 0.24);
@@ -921,5 +1369,10 @@ public sealed class ExamSolvingService(
         public static readonly PdfColor Red = new(0.88, 0.18, 0.24);
         public static readonly PdfColor Purple = new(0.45, 0.25, 0.9);
         public static readonly PdfColor GrayText = new(0.42, 0.48, 0.58);
+
+        private static string Fmt(double value)
+        {
+            return value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture);
+        }
     }
 }

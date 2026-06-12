@@ -28,8 +28,16 @@ class AccountingScaffold extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: isDark
-                ? const [Color(0xFF12161C), Color(0xFF0F1720)]
-                : const [Color(0xFFF5F7FA), Color(0xFFEFF4F1)],
+                ? const [
+                    Color(0xFF08111F),
+                    Color(0xFF0B1628),
+                    Color(0xFF10223A),
+                  ]
+                : const [
+                    Color(0xFFF8FAFC),
+                    Color(0xFFF1F5F9),
+                    Color(0xFFFFF7ED),
+                  ],
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -53,7 +61,7 @@ class AccountingHeroCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.metrics,
-    this.colors = const [Color(0xFF0F172A), Color(0xFF14532D)],
+    this.colors = const [Color(0xFF08111F), Color(0xFFFF7A1A)],
   });
 
   @override
@@ -65,10 +73,14 @@ class AccountingHeroCard extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: colors,
+          colors: [
+            colors.first,
+            Color.lerp(colors.first, colors.last, 0.22) ?? colors.first,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
@@ -84,8 +96,9 @@ class AccountingHeroCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: colors.last.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: colors.last.withValues(alpha: 0.28)),
             ),
             child: Text(
               eyebrow,
@@ -189,9 +202,11 @@ class AccountingPanel extends StatelessWidget {
       margin: margin,
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: theme.cardColor.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.86 : 0.96,
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.35)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.72)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(
@@ -259,15 +274,17 @@ class AccountingFilterChip extends StatelessWidget {
       label: Text(label),
       selected: selected,
       onSelected: (_) => onTap(),
-      selectedColor: isDark ? const Color(0xFF1E3A2D) : const Color(0xFFDFF3E8),
+      selectedColor: isDark
+          ? const Color(0xFFFF7A1A).withValues(alpha: 0.18)
+          : const Color(0xFFFFEDD5),
       side: BorderSide(
         color: selected
-            ? const Color(0xFF14532D)
+            ? const Color(0xFFFF7A1A)
             : Theme.of(context).dividerColor.withValues(alpha: 0.35),
       ),
       labelStyle: TextStyle(
         color: selected
-            ? const Color(0xFF14532D)
+            ? const Color(0xFFFF7A1A)
             : Theme.of(context).textTheme.bodyMedium?.color,
         fontWeight: FontWeight.w700,
       ),

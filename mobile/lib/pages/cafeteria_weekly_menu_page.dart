@@ -65,6 +65,14 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
     } on CafeteriaApiException catch (error) {
       if (!mounted) return;
       setState(() => _error = error.message);
+    } catch (error) {
+      // Beklenmedik hata (eski backend sürümü, bozuk yanıt vb.) ekranı
+      // kırmasın; kullanıcıya anlaşılır mesaj göster.
+      if (!mounted) return;
+      setState(
+        () => _error =
+            'Yemek programı yüklenemedi. Sunucu sürümünüz güncel olmayabilir. ($error)',
+      );
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -94,6 +102,11 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('İşlem tamamlanamadı: $error')));
     } finally {
       if (mounted) setState(() => _saving = false);
     }

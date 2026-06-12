@@ -53,4 +53,7 @@ public interface IServiceTrackingService
 
     Task<IReadOnlyList<ParentServiceStatusDto>> GetStudentLiveStatusAsync(CancellationToken cancellationToken = default);
     Task<IReadOnlyList<ServiceHistoryItemDto>> GetStudentHistoryAsync(CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<AdminServiceLiveTripDto>> GetAdminLiveStatusAsync(CancellationToken cancellationToken = default);
+    Task<ServiceDriverSelfDto> GetCurrentDriverSelfAsync(CancellationToken cancellationToken = default);
 }

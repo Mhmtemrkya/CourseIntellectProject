@@ -68,13 +68,6 @@ export const scheduleApi = {
   delete: (id) => api.delete(`/api/schedule/${id}`),
 };
 
-// Attendance Endpoints
-export const attendanceApi = {
-  getByLesson: (lessonId) => api.get('/api/attendance', withParams({ lessonId })),
-  submit: (lessonId, data) => api.post('/api/attendance', { ...data, lessonId }),
-  update: (id, status) => api.patch(`/api/attendance/${id}`, { status }),
-  getReport: (params) => api.get('/api/attendance', withParams(params)),
-};
 
 // Content Endpoints
 export const contentApi = {

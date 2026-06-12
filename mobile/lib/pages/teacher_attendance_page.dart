@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
 import 'package:student/services/auth_session_store.dart';
+import 'package:student/services/attendance_api_service.dart';
 import 'package:student/services/attendance_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
@@ -26,11 +28,14 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
   int selectedTab = 0;
   Timer? qrTimer;
   Timer? countdownTimer;
-  int qrRemainingSeconds = 60;
+  int qrRemainingSeconds = 0;
   String qrPayload = '';
   String _teacherName = '';
   bool _loadingLessons = true;
   bool _savingAttendance = false;
+  Map<String, dynamic>? _qrSession;
+  DateTime? _qrExpiresAt;
+  bool _openingQrSession = false;
 
   List<Map<String, dynamic>> lessons = [];
 
@@ -61,7 +66,6 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
   void initState() {
     super.initState();
     _loadSession();
-    _startQrCycle();
   }
 
   Future<void> _loadSession() async {
@@ -150,9 +154,11 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
         0,
         builtLessons.isEmpty ? 0 : builtLessons.length - 1,
       );
-      qrPayload = lessons.isEmpty ? '' : _buildQrPayload();
       _loadingLessons = false;
     });
+    if (lessons.isNotEmpty) {
+      await _openQrSession(silent: true);
+    }
   }
 
   @override
@@ -162,45 +168,122 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
     super.dispose();
   }
 
-  void _startQrCycle() {
-    qrTimer?.cancel();
-    countdownTimer?.cancel();
-    qrRemainingSeconds = 60;
-    qrPayload = _buildQrPayload();
+  /// Seçili ders için backend'de QR yoklama oturumu açar ve QR içeriğini
+  /// desktop ile aynı formatta (token'lı JSON) üretir.
+  Future<void> _openQrSession({bool silent = false}) async {
+    if (lessons.isEmpty || _openingQrSession) return;
+    final lesson = lessons[selectedLesson];
+    final className = lesson["className"] as String;
+    final lessonTitle = lesson["title"] as String;
 
-    qrTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+    setState(() => _openingQrSession = true);
+    try {
+      final created = await AttendanceApiService.instance.openQrSession(
+        className: className,
+        lessonTitle: lessonTitle,
+        durationMinutes: 30,
+      );
       if (!mounted) return;
       setState(() {
-        qrRemainingSeconds = 60;
-        qrPayload = _buildQrPayload();
+        _qrSession = created;
+        _qrExpiresAt = DateTime.tryParse(
+          created['expiresAtUtc']?.toString() ?? '',
+        );
+        qrPayload = jsonEncode({
+          'token': created['token'],
+          'className': className,
+          'lesson': lessonTitle,
+        });
       });
-    });
+      _startCountdown();
+      if (!silent) _showInfo('QR yoklama oturumu açıldı.');
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _qrSession = null;
+        _qrExpiresAt = null;
+        qrPayload = '';
+      });
+      if (!silent) _showInfo(error.toString());
+    } finally {
+      if (mounted) setState(() => _openingQrSession = false);
+    }
+  }
 
+  void _startCountdown() {
+    countdownTimer?.cancel();
+    qrRemainingSeconds = _remainingSessionSeconds();
     countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
-      if (qrRemainingSeconds == 0) return;
-      setState(() {
-        qrRemainingSeconds--;
-      });
+      final remaining = _remainingSessionSeconds();
+      if (remaining == qrRemainingSeconds) return;
+      setState(() => qrRemainingSeconds = remaining);
     });
   }
 
-  String _buildQrPayload() {
-    if (lessons.isEmpty) return '';
-    final lesson = lessons[selectedLesson];
-    final className = lesson["className"] as String;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final normalizedTeacher = _teacherName.toLowerCase().replaceAll(' ', '_');
-    return "attendance|teacher:$normalizedTeacher|class:$className|lesson:${lesson["title"]}|ts:$timestamp";
+  int _remainingSessionSeconds() {
+    final expires = _qrExpiresAt;
+    if (expires == null) return 0;
+    final diff = expires.difference(DateTime.now().toUtc()).inSeconds;
+    return diff < 0 ? 0 : diff;
+  }
+
+  /// QR ile katılan öğrencileri backend oturumundan çekip listede
+  /// "geldi" olarak işaretler (desktop'taki akışla aynı).
+  Future<void> _applyQrScans() async {
+    final sessionId = _qrSession?['id']?.toString();
+    if (sessionId == null || lessons.isEmpty) {
+      _showInfo('Önce QR oturumu açmalısın.');
+      return;
+    }
+    if (_attendanceAlreadyTaken) {
+      _showInfo('Bugünün yoklaması zaten kaydedilmiş.');
+      return;
+    }
+    try {
+      final className = lessons[selectedLesson]["className"] as String;
+      final sessions = await AttendanceApiService.instance.fetchQrSessions(
+        className: className,
+      );
+      final current = sessions.firstWhere(
+        (item) => item['id']?.toString() == sessionId,
+        orElse: () => const {},
+      );
+      final scanned = (current['scannedStudents'] as List<dynamic>? ?? [])
+          .map(
+            (item) =>
+                _normalizeText((item as Map)['studentName']?.toString() ?? ''),
+          )
+          .where((item) => item.isNotEmpty)
+          .toSet();
+      if (scanned.isEmpty) {
+        _showInfo('Henüz QR ile katılan öğrenci yok.');
+        return;
+      }
+      var matched = 0;
+      setState(() {
+        for (final student in students) {
+          if (scanned.contains(_normalizeText(student['name'] as String))) {
+            student['status'] = 'present';
+            matched++;
+          }
+        }
+      });
+      _showInfo('$matched öğrenci QR katılımıyla "geldi" olarak işaretlendi.');
+    } catch (error) {
+      _showInfo(error.toString());
+    }
   }
 
   void _selectLesson(int index) {
     if (lessons.isEmpty) return;
     setState(() {
       selectedLesson = index;
-      qrRemainingSeconds = 60;
-      qrPayload = _buildQrPayload();
+      _qrSession = null;
+      _qrExpiresAt = null;
+      qrPayload = '';
     });
+    _openQrSession(silent: true);
   }
 
   void _setStudentStatus(int index, String status) {
@@ -400,22 +483,31 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text("Seçili Ders"),
-              const SizedBox(height: 4),
-              Text(
-                currentLesson["title"] as String,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("Seçili Ders"),
+                const SizedBox(height: 4),
+                Text(
+                  currentLesson["title"] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 4),
-              Text(currentLesson["time"] as String),
-            ],
+                const SizedBox(height: 4),
+                Text(
+                  currentLesson["time"] as String,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 10),
           Row(
             children: [
               MiniStat("${lessons.length}", "Toplam\nDers"),
@@ -659,11 +751,10 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             onTap: () {
               setState(() {
                 selectedTab = index;
-                if (index == 1) {
-                  qrRemainingSeconds = 60;
-                  qrPayload = _buildQrPayload();
-                }
               });
+              if (index == 1 && qrPayload.isEmpty) {
+                _openQrSession(silent: true);
+              }
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 180),
@@ -743,18 +834,22 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       child: Row(
         children: [
           CircleAvatar(child: Text((student["name"] as String)[0])),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   "${student["no"]}  ${student["name"]}",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodyMedium,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   _statusLabel(status),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: _statusColor(status),
                     fontWeight: FontWeight.w700,
@@ -763,42 +858,74 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () => _setStudentStatus(index, "present"),
-            icon: Icon(
-              Icons.check_circle,
-              color: status == "present" ? Colors.green : Colors.grey,
-            ),
+          const SizedBox(width: 4),
+          _statusIconButton(
+            selected: status == "present",
+            icon: Icons.check_circle,
+            color: Colors.green,
+            tooltip: 'Geldi',
+            onTap: () => _setStudentStatus(index, "present"),
           ),
-          IconButton(
-            onPressed: () => _setStudentStatus(index, "absent"),
-            icon: Icon(
-              Icons.cancel,
-              color: status == "absent" ? Colors.red : Colors.grey,
-            ),
+          _statusIconButton(
+            selected: status == "absent",
+            icon: Icons.cancel,
+            color: Colors.red,
+            tooltip: 'Gelmedi',
+            onTap: () => _setStudentStatus(index, "absent"),
           ),
-          IconButton(
-            onPressed: () => _setStudentStatus(index, "late"),
-            icon: Icon(
-              Icons.access_time,
-              color: status == "late" ? Colors.orange : Colors.grey,
-            ),
+          _statusIconButton(
+            selected: status == "late",
+            icon: Icons.access_time,
+            color: Colors.orange,
+            tooltip: 'Geç',
+            onTap: () => _setStudentStatus(index, "late"),
           ),
-          IconButton(
-            onPressed: () => _setStudentStatus(index, "excuse"),
-            icon: Icon(
-              Icons.info_rounded,
-              color: status == "excuse" ? Colors.blue : Colors.grey,
-            ),
+          _statusIconButton(
+            selected: status == "excuse",
+            icon: Icons.info_rounded,
+            color: Colors.blue,
+            tooltip: 'İzinli',
+            onTap: () => _setStudentStatus(index, "excuse"),
           ),
         ],
       ),
     );
   }
 
+  /// Dar ekranlarda satırın taşmaması için kompakt durum butonu.
+  Widget _statusIconButton({
+    required bool selected,
+    required IconData icon,
+    required Color color,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          width: 34,
+          height: 34,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: selected ? color.withValues(alpha: 0.14) : null,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, size: 21, color: selected ? color : Colors.grey),
+        ),
+      ),
+    );
+  }
+
   Widget _qrAttendanceCard(ThemeData theme, bool isDark) {
     final lesson = lessons[selectedLesson];
-    final progress = qrRemainingSeconds / 60;
+    const sessionSeconds = 30 * 60;
+    final progress = (qrRemainingSeconds / sessionSeconds).clamp(0.0, 1.0);
+    final remainingLabel =
+        '${(qrRemainingSeconds ~/ 60).toString().padLeft(2, '0')}:${(qrRemainingSeconds % 60).toString().padLeft(2, '0')}';
+    final hasSession = qrPayload.isNotEmpty && qrRemainingSeconds > 0;
 
     return Container(
       width: double.infinity,
@@ -843,46 +970,75 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                 ),
               ),
               FilledButton.tonalIcon(
-                onPressed: () {
-                  setState(() {
-                    qrRemainingSeconds = 60;
-                    qrPayload = _buildQrPayload();
-                  });
-                  _showInfo("QR kod yenilendi.");
-                },
-                icon: const Icon(Icons.refresh_rounded),
+                onPressed: _openingQrSession ? null : () => _openQrSession(),
+                icon: _openingQrSession
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.refresh_rounded),
                 label: const Text("Yenile"),
               ),
             ],
           ),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              color: theme.scaffoldBackgroundColor,
-              borderRadius: BorderRadius.circular(24),
-            ),
-            child: QrImageView(
-              data: qrPayload,
-              version: QrVersions.auto,
-              size: 220,
-              backgroundColor: Colors.white,
-              eyeStyle: const QrEyeStyle(
-                eyeShape: QrEyeShape.square,
-                color: Colors.black,
+          if (hasSession)
+            Container(
+              padding: const EdgeInsets.all(18),
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(24),
               ),
-              dataModuleStyle: const QrDataModuleStyle(
-                dataModuleShape: QrDataModuleShape.square,
-                color: Colors.black,
+              child: QrImageView(
+                data: qrPayload,
+                version: QrVersions.auto,
+                size: 220,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: Colors.black,
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Colors.black,
+                ),
+              ),
+            )
+          else
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(24),
+              ),
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.qr_code_2_rounded,
+                    size: 48,
+                    color: theme.textTheme.bodySmall?.color,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    _openingQrSession
+                        ? 'QR oturumu açılıyor...'
+                        : 'QR oturumu kapalı veya süresi doldu. "Yenile" ile yeni oturum aç.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ],
               ),
             ),
-          ),
           const SizedBox(height: 18),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  "QR ${qrRemainingSeconds.snprintf()} sn sonra değişecek",
+                  hasSession
+                      ? "QR oturumu $remainingLabel boyunca geçerli"
+                      : "QR oturumu aktif değil",
                   style: theme.textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -906,10 +1062,12 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             ),
           ),
           const SizedBox(height: 14),
-          SelectableText(
-            qrPayload,
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: hasSession ? _applyQrScans : null,
+              icon: const Icon(Icons.fact_check_outlined),
+              label: const Text('QR Katılımlarını Listeye İşle'),
             ),
           ),
         ],
@@ -1018,8 +1176,4 @@ class MiniStat extends StatelessWidget {
       ],
     );
   }
-}
-
-extension on int {
-  String snprintf() => toString().padLeft(2, '0');
 }

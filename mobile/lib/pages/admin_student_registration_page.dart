@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../utils/input_formatters.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -34,7 +36,7 @@ class _AdminStudentRegistrationPageState
   final _addressController = TextEditingController();
   final _noteController = TextEditingController();
 
-  String _programType = 'Sayisal';
+  String _programType = 'Lise';
   List<String> _classOptions = const [];
   bool _saving = false;
 
@@ -126,6 +128,8 @@ class _AdminStudentRegistrationPageState
                     label: 'TC Kimlik No',
                     keyboardType: TextInputType.number,
                     maxLength: 11,
+                    inputFormatters: AppInputFormatters.tcKimlik(),
+                    validator: AppInputFormatters.validateTcKimlik,
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -185,22 +189,29 @@ class _AdminStudentRegistrationPageState
                         child: DropdownButtonFormField<String>(
                           initialValue: _programType,
                           decoration: const InputDecoration(
-                            labelText: 'Program / Alan',
+                            labelText: 'Eğitim Seviyesi',
                             border: OutlineInputBorder(),
                           ),
                           items: const [
                             DropdownMenuItem(
-                              value: 'Sayisal',
-                              child: Text('Sayisal'),
+                              value: 'Ilkokul',
+                              child: Text('İlkokul'),
                             ),
                             DropdownMenuItem(
-                              value: 'Esit Agirlik',
-                              child: Text('Esit Agirlik'),
+                              value: 'Ortaokul',
+                              child: Text('Ortaokul'),
                             ),
-                            DropdownMenuItem(value: 'Dil', child: Text('Dil')),
                             DropdownMenuItem(
-                              value: 'LGS Takip',
-                              child: Text('LGS Takip'),
+                              value: 'Lise',
+                              child: Text('Lise'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Universite',
+                              child: Text('Üniversite'),
+                            ),
+                            DropdownMenuItem(
+                              value: 'Mezun',
+                              child: Text('Mezun'),
                             ),
                           ],
                           onChanged: (value) => setState(
@@ -232,6 +243,9 @@ class _AdminStudentRegistrationPageState
                           controller: _parentPhoneController,
                           label: 'Veli Telefon',
                           keyboardType: TextInputType.phone,
+                          inputFormatters: AppInputFormatters.phone(),
+                          prefixText: '+90 ',
+                          validator: AppInputFormatters.validatePhone,
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -320,6 +334,9 @@ class _AdminStudentRegistrationPageState
     int? maxLength,
     bool required = true,
     bool readOnly = false,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
@@ -327,16 +344,20 @@ class _AdminStudentRegistrationPageState
       maxLines: maxLines,
       maxLength: maxLength,
       readOnly: readOnly,
-      validator: required && !readOnly
-          ? (value) {
-              if (value == null || value.trim().isEmpty) {
-                return '$label alanı zorunludur';
-              }
-              return null;
-            }
-          : null,
+      inputFormatters: inputFormatters,
+      validator:
+          validator ??
+          (required && !readOnly
+              ? (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return '$label alanı zorunludur';
+                  }
+                  return null;
+                }
+              : null),
       decoration: InputDecoration(
         labelText: label,
+        prefixText: prefixText,
         border: const OutlineInputBorder(),
         filled: readOnly,
       ),
@@ -635,9 +656,7 @@ class _AdminStudentRegistrationPageState
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: theme.dividerColor.withValues(alpha: 0.28),
-        ),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.28)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,7 +664,10 @@ class _AdminStudentRegistrationPageState
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: badgeColor.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(999),

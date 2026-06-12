@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using System.Text.Json;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -27,19 +28,19 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             .ThenByDescending(item => item.CreatedAtUtc)
             .ToList();
 
-        if (!string.IsNullOrWhiteSpace(className))
-        {
-            var normalizedClass = CompatibilitySnapshotStore.NormalizeText(className);
-            items = items.Where(item => CompatibilitySnapshotStore.NormalizeText(item.ClassName) == normalizedClass).ToList();
-        }
-
         if (!string.IsNullOrWhiteSpace(teacherName))
         {
             var normalizedTeacher = CompatibilitySnapshotStore.NormalizeText(teacherName);
             items = items.Where(item => CompatibilitySnapshotStore.NormalizeText(item.TeacherName) == normalizedTeacher).ToList();
         }
 
-        if ((!string.IsNullOrWhiteSpace(studentName) || !string.IsNullOrWhiteSpace(studentUsername)) && string.IsNullOrWhiteSpace(className))
+        var classCandidates = new List<string>();
+        if (!string.IsNullOrWhiteSpace(className))
+        {
+            classCandidates.Add(className);
+        }
+
+        if (!string.IsNullOrWhiteSpace(studentName) || !string.IsNullOrWhiteSpace(studentUsername))
         {
             var users = await dbContext.Users.AsNoTracking().ToDictionaryAsync(item => item.Id, cancellationToken);
             var studentProfiles = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
@@ -60,9 +61,15 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
 
             if (!string.IsNullOrWhiteSpace(matchedClass))
             {
-                var normalizedResolvedClass = CompatibilitySnapshotStore.NormalizeText(matchedClass);
-                items = items.Where(item => CompatibilitySnapshotStore.NormalizeText(item.ClassName) == normalizedResolvedClass).ToList();
+                classCandidates.Add(matchedClass);
             }
+        }
+
+        if (classCandidates.Count > 0)
+        {
+            items = items
+                .Where(item => ClassMatchesAny(item.ClassName, classCandidates))
+                .ToList();
         }
 
         return Ok(items.Select(MapResponse).ToList());
@@ -90,7 +97,15 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             ClassName = request.ClassName.Trim(),
             Subject = request.Subject.Trim(),
             DateLabel = request.DateLabel.Trim(),
+            StartTime = request.StartTime?.Trim() ?? string.Empty,
+            EndTime = request.EndTime?.Trim() ?? string.Empty,
             Duration = request.Duration.Trim(),
+            LateEntryLimitMinutes = request.LateEntryLimitMinutes <= 0 ? 5 : request.LateEntryLimitMinutes,
+            RequireCamera = request.RequireCamera,
+            RequireFullscreen = request.RequireFullscreen,
+            BlockTabChange = request.BlockTabChange,
+            BlockCopyPaste = request.BlockCopyPaste,
+            TotalPoint = request.TotalPoint <= 0 ? 100 : request.TotalPoint,
             QuestionCount = request.QuestionCount,
             Status = "Planlandı",
             TeacherName = request.TeacherName?.Trim() ?? "Öğretmen",
@@ -252,7 +267,15 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             subject = item.Subject,
             date = item.DateLabel,
             dateLabel = item.DateLabel,
+            startTime = item.StartTime,
+            endTime = item.EndTime,
             duration = item.Duration,
+            lateEntryLimitMinutes = item.LateEntryLimitMinutes,
+            requireCamera = item.RequireCamera,
+            requireFullscreen = item.RequireFullscreen,
+            blockTabChange = item.BlockTabChange,
+            blockCopyPaste = item.BlockCopyPaste,
+            totalPoint = item.TotalPoint,
             questionCount = item.QuestionCount,
             status = item.Status,
             teacherName = item.TeacherName,
@@ -268,6 +291,67 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             }).ToList(),
         };
     }
+
+    private static bool ClassMatchesAny(string examClassName, IReadOnlyCollection<string> classCandidates)
+    {
+        if (IsAllClasses(examClassName))
+        {
+            return true;
+        }
+
+        return SplitClassTargets(examClassName).Any(target =>
+        {
+            var targetKey = NormalizeClassKey(target);
+            if (string.IsNullOrWhiteSpace(targetKey))
+            {
+                return false;
+            }
+
+            return classCandidates.Any(candidate =>
+                targetKey == NormalizeClassKey(candidate) ||
+                CompatibilitySnapshotStore.NormalizeText(target) == CompatibilitySnapshotStore.NormalizeText(candidate));
+        });
+    }
+
+    private static IEnumerable<string> SplitClassTargets(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            yield break;
+        }
+
+        foreach (var target in value.Split(new[] { ',', ';', '|', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            yield return target;
+        }
+    }
+
+    private static bool IsAllClasses(string value)
+    {
+        var key = NormalizeClassKey(value);
+        return key is "tum" or "hepsi" or "all" or "allsiniflar" or "tumsiniflar" or "tumsinif";
+    }
+
+    private static string NormalizeClassKey(string? value)
+    {
+        var normalized = CompatibilitySnapshotStore.NormalizeText(value);
+        if (string.IsNullOrWhiteSpace(normalized))
+        {
+            return string.Empty;
+        }
+
+        normalized = normalized
+            .Replace(".", string.Empty)
+            .Replace("/", string.Empty)
+            .Replace("_", string.Empty)
+            .Replace("siniflar", string.Empty)
+            .Replace("sinifi", string.Empty)
+            .Replace("sinif", string.Empty)
+            .Replace("subesi", string.Empty)
+            .Replace("sube", string.Empty);
+
+        return Regex.Replace(normalized, "[^a-z0-9]", string.Empty);
+    }
 }
 
 public sealed class PlannedExamCreateRequest
@@ -277,7 +361,15 @@ public sealed class PlannedExamCreateRequest
     public string ClassName { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string DateLabel { get; set; } = string.Empty;
+    public string? StartTime { get; set; }
+    public string? EndTime { get; set; }
     public string Duration { get; set; } = string.Empty;
+    public int LateEntryLimitMinutes { get; set; } = 5;
+    public bool RequireCamera { get; set; } = true;
+    public bool RequireFullscreen { get; set; } = true;
+    public bool BlockTabChange { get; set; } = true;
+    public bool BlockCopyPaste { get; set; } = true;
+    public int TotalPoint { get; set; } = 100;
     public int QuestionCount { get; set; }
     public string? TeacherName { get; set; }
     public string? SourceType { get; set; }
@@ -302,7 +394,15 @@ public sealed class PlannedExamSnapshot
     public string ClassName { get; set; } = string.Empty;
     public string Subject { get; set; } = string.Empty;
     public string DateLabel { get; set; } = string.Empty;
+    public string StartTime { get; set; } = string.Empty;
+    public string EndTime { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
+    public int LateEntryLimitMinutes { get; set; } = 5;
+    public bool RequireCamera { get; set; } = true;
+    public bool RequireFullscreen { get; set; } = true;
+    public bool BlockTabChange { get; set; } = true;
+    public bool BlockCopyPaste { get; set; } = true;
+    public int TotalPoint { get; set; } = 100;
     public int QuestionCount { get; set; }
     public string Status { get; set; } = "Planlandı";
     public string TeacherName { get; set; } = string.Empty;

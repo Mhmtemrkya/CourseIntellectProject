@@ -13,6 +13,7 @@ import 'package:student/pages/student_wrong_answers_page.dart';
 import 'package:student/pages/student_attendance_scan_page.dart';
 import 'package:student/pages/student_study_plan_page.dart';
 import 'package:student/pages/student_question_page.dart';
+import 'package:student/services/tenant_feature_service.dart';
 import 'responsive_layout.dart';
 
 class QuickActions extends StatelessWidget {
@@ -20,37 +21,52 @@ class QuickActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final actions = [
-      (Icons.message_rounded, "Mesajlar", Colors.blue, const MessagesPage()),
+    return FutureBuilder<Set<String>>(
+      future: TenantFeatureService.instance.disabledFeatures(),
+      builder: (context, snapshot) {
+        final disabled = snapshot.data ?? const <String>{};
+        return _buildContent(context, disabled);
+      },
+    );
+  }
+
+  Widget _buildContent(BuildContext context, Set<String> disabled) {
+    final allActions = [
+      (Icons.message_rounded, "Mesajlar", Colors.blue, const MessagesPage(), 'messaging'),
       (
         Icons.help_center_rounded,
         "Soru Sor",
         const Color(0xFF2563EB),
         const StudentQuestionPage(),
+        'questionBox',
       ),
       (
         Icons.qr_code_scanner_rounded,
         "QR Yoklama",
         const Color(0xFF0EA5A4),
         const StudentAttendanceScanPage(),
+        'attendance',
       ),
       (
         Icons.event_note_rounded,
         "Çalışma Planım",
         const Color(0xFF10B981),
         const StudentStudyPlanPage(),
+        'studyPlan',
       ),
       (
         Icons.assignment_rounded,
         "Ödevler",
         const Color(0xFFF97316),
         const HomeworkPage(),
+        'homework',
       ),
       (
         Icons.fact_check_rounded,
         "Deneme Sınavları",
         const Color(0xFF7C3AED),
         const ExamsPage(),
+        'exams',
       ),
       (
         Icons.insights_rounded,
@@ -60,50 +76,62 @@ class QuickActions extends StatelessWidget {
           studentName: '',
           title: 'Sınav Sonuçlarım',
         ),
+        'exams',
       ),
       (
         Icons.error_outline_rounded,
         "Yanlışlarım",
         const Color(0xFFDC2626),
         const StudentWrongAnswersPage(),
+        'questionBank',
       ),
       (
         Icons.event_busy_rounded,
         "Devamsızlık",
         const Color(0xFFB45309),
         const StudentAttendanceHistoryPage(),
+        'attendance',
       ),
       (
         Icons.analytics_rounded,
         "Detaylı Analiz",
         const Color(0xFF0891B2),
         const ExamAnalysisPage(),
+        'reports',
       ),
       (
         Icons.quiz_rounded,
         "Soru Bankası",
         Colors.green,
         const QuestionBankPage(),
+        'questionBank',
       ),
       (
         Icons.campaign_rounded,
         "Duyurular",
         Colors.orange,
         const AnnouncementsPage(),
+        'announcements',
       ),
       (
         Icons.calendar_today_rounded,
         "Ders Programı",
         Colors.purple,
         const SchedulePage(),
+        '',
       ),
       (
         Icons.videocam_rounded,
         "Canlı Derslerim",
         Colors.redAccent,
         const LiveLessonsPage(),
+        'liveLessons',
       ),
     ];
+    // Platform yöneticisinin kuruma kapattığı modüller kısayollardan gizlenir.
+    final actions = allActions
+        .where((item) => item.$5.isEmpty || !disabled.contains(item.$5))
+        .toList();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

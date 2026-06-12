@@ -397,7 +397,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         actions: [
           IconButton(
             tooltip: 'İndir',
-            onPressed: _fileUri == null ? null : () => _openFile(download: true),
+            onPressed: _fileUri == null
+                ? null
+                : () => _openFile(download: true),
             icon: const Icon(Icons.download_rounded),
           ),
         ],
@@ -789,15 +791,15 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                         _premiumInfoCard(
                           accent: accent,
                           title: 'Bu içerikte ilerlemen',
-                          subtitle:
-                              widget.playlist.length > 1
-                                  ? '${widget.playlist.length} içeriklik seri içindesin.'
-                                  : 'Bu içerik tek ders olarak yayınlandı.',
+                          subtitle: widget.playlist.length > 1
+                              ? '${widget.playlist.length} içeriklik seri içindesin.'
+                              : 'Bu içerik tek ders olarak yayınlandı.',
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(999),
                               child: LinearProgressIndicator(
-                                value: widget.playlist.length > 1 &&
+                                value:
+                                    widget.playlist.length > 1 &&
                                         currentPlaylistIndex >= 0
                                     ? (currentPlaylistIndex + 1) /
                                           widget.playlist.length
@@ -1014,11 +1016,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     if (controller == null || !controller.value.isInitialized) return;
     final duration = controller.value.duration.inMilliseconds;
     if (duration <= 0) return;
-    final progress =
-        (controller.value.position.inMilliseconds / duration * 100).clamp(
-          0,
-          100,
-        );
+    final progress = (controller.value.position.inMilliseconds / duration * 100)
+        .clamp(0, 100);
     final now = DateTime.now();
     if (progress - _savedProgress >= 5 ||
         now.difference(_lastProgressSave).inSeconds > 15) {
@@ -1034,7 +1033,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     return _premiumInfoCard(
       accent: accent,
       title: 'Etkileşim ve Notlar',
-      subtitle: 'Notların, favorilerin ve yorumların canlı backend ile saklanır.',
+      subtitle:
+          'Notların, favorilerin ve yorumların canlı backend ile saklanır.',
       children: [
         Row(
           children: [
@@ -1089,9 +1089,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         const SizedBox(height: 18),
         Text(
           'Alıştırmalar',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 8),
         if (exercises.isEmpty)
@@ -1123,9 +1123,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         const SizedBox(height: 18),
         Text(
           'Yorumlar',
-          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w900,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
         ),
         const SizedBox(height: 8),
         if (comments.isEmpty)
@@ -1138,17 +1138,19 @@ class _ContentDetailPageState extends State<ContentDetailPage>
             ),
           )
         else
-          ...comments.take(6).map(
-            (comment) => ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
-                backgroundColor: accent.withValues(alpha: 0.14),
-                child: Icon(Icons.person_rounded, color: accent),
+          ...comments
+              .take(6)
+              .map(
+                (comment) => ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(
+                    backgroundColor: accent.withValues(alpha: 0.14),
+                    child: Icon(Icons.person_rounded, color: accent),
+                  ),
+                  title: Text(comment.authorName),
+                  subtitle: Text(comment.message),
+                ),
               ),
-              title: Text(comment.authorName),
-              subtitle: Text(comment.message),
-            ),
-          ),
         const SizedBox(height: 10),
         Row(
           children: [

@@ -50,20 +50,28 @@ List<String> deriveScheduleDays(List<ScheduleEntryApiRecord> entries) {
     ...scheduleDayOrder.take(5),
     ...entries.map((item) => item.day.trim()).where((item) => item.isNotEmpty),
   };
-  final list = set.toList()..sort((a, b) => scheduleDayIndex(a).compareTo(scheduleDayIndex(b)));
+  final list = set.toList()
+    ..sort((a, b) => scheduleDayIndex(a).compareTo(scheduleDayIndex(b)));
   return list;
 }
 
 List<String> deriveScheduleTimeSlots(List<ScheduleEntryApiRecord> entries) {
-  final set = entries.map((item) => item.time.trim()).where((item) => item.isNotEmpty).toSet();
+  final set = entries
+      .map((item) => item.time.trim())
+      .where((item) => item.isNotEmpty)
+      .toSet();
   final list = set.toList()..sort();
   return list;
 }
 
-List<ScheduleEntryApiRecord> sortScheduleEntries(List<ScheduleEntryApiRecord> entries) {
+List<ScheduleEntryApiRecord> sortScheduleEntries(
+  List<ScheduleEntryApiRecord> entries,
+) {
   final sorted = [...entries]
     ..sort((a, b) {
-      final dayCompare = scheduleDayIndex(a.day).compareTo(scheduleDayIndex(b.day));
+      final dayCompare = scheduleDayIndex(
+        a.day,
+      ).compareTo(scheduleDayIndex(b.day));
       if (dayCompare != 0) return dayCompare;
       return a.time.compareTo(b.time);
     });
@@ -110,7 +118,13 @@ class ScheduleGridView extends StatelessWidget {
             Row(
               children: [
                 _headerCell(theme, 'Saat', width: 96),
-                ...activeDays.map((day) => _headerCell(theme, scheduleDayShort[day] ?? day, width: 154)),
+                ...activeDays.map(
+                  (day) => _headerCell(
+                    theme,
+                    scheduleDayShort[day] ?? day,
+                    width: 154,
+                  ),
+                ),
               ],
             ),
             ...activeTimes.map(
@@ -141,7 +155,12 @@ class ScheduleGridView extends StatelessWidget {
         color: theme.colorScheme.primary.withValues(alpha: 0.10),
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
-      child: Text(text, style: theme.textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800)),
+      child: Text(
+        text,
+        style: theme.textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 
@@ -154,11 +173,19 @@ class ScheduleGridView extends StatelessWidget {
         color: theme.cardColor,
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
-      child: Text(time, style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800)),
+      child: Text(
+        time,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 
-  Widget _lessonCell(ThemeData theme, List<ScheduleEntryApiRecord> cellEntries) {
+  Widget _lessonCell(
+    ThemeData theme,
+    List<ScheduleEntryApiRecord> cellEntries,
+  ) {
     return Container(
       width: 154,
       constraints: const BoxConstraints(minHeight: 92),
@@ -168,10 +195,17 @@ class ScheduleGridView extends StatelessWidget {
         border: Border.all(color: theme.dividerColor.withValues(alpha: 0.5)),
       ),
       child: cellEntries.isEmpty
-          ? Text(emptyText, style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor))
+          ? Text(
+              emptyText,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
+            )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: cellEntries.map((entry) => _entryCard(theme, entry)).toList(),
+              children: cellEntries
+                  .map((entry) => _entryCard(theme, entry))
+                  .toList(),
             ),
     );
   }
@@ -188,22 +222,58 @@ class ScheduleGridView extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(entry.subject, maxLines: 2, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800)),
-          if (showClassName && entry.className.isNotEmpty) Text(entry.className, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall),
-          if (showTeacher && entry.teacher.isNotEmpty) Text(entry.teacher, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
-          if (entry.room.isNotEmpty) Text(entry.room, maxLines: 1, overflow: TextOverflow.ellipsis, style: theme.textTheme.bodySmall?.copyWith(color: theme.hintColor)),
+          Text(
+            entry.subject,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (showClassName && entry.className.isNotEmpty)
+            Text(
+              entry.className,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall,
+            ),
+          if (showTeacher && entry.teacher.isNotEmpty)
+            Text(
+              entry.teacher,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
+            ),
+          if (entry.room.isNotEmpty)
+            Text(
+              entry.room,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.hintColor,
+              ),
+            ),
         ],
       ),
     );
     if (onEntryTap == null) return card;
-    return InkWell(borderRadius: BorderRadius.circular(10), onTap: () => onEntryTap!(entry), child: card);
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: () => onEntryTap!(entry),
+      child: card,
+    );
   }
 
   Widget _emptyCard(ThemeData theme, String text) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(16)),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Text(text, textAlign: TextAlign.center),
     );
   }

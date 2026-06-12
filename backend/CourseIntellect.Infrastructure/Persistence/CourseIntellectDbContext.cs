@@ -65,6 +65,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<LoginAttemptItem> LoginAttempts => Set<LoginAttemptItem>();
     public DbSet<AuthorizationCode> AuthorizationCodes => Set<AuthorizationCode>();
     public DbSet<PlatformSubscriptionInvoice> PlatformSubscriptionInvoices => Set<PlatformSubscriptionInvoice>();
+    public DbSet<PushDeviceRegistration> PushDeviceRegistrations => Set<PushDeviceRegistration>();
     public DbSet<ServiceVehicle> ServiceVehicles => Set<ServiceVehicle>();
     public DbSet<ServiceDriver> ServiceDrivers => Set<ServiceDriver>();
     public DbSet<ServiceRoute> ServiceRoutes => Set<ServiceRoute>();
@@ -690,6 +691,31 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ClientId).HasMaxLength(80).IsRequired();
             entity.Property(x => x.RedirectUri).HasMaxLength(500).IsRequired();
             entity.Property(x => x.CodeChallengeHash).HasMaxLength(200).IsRequired();
+        });
+
+        modelBuilder.Entity<PushDeviceRegistration>(entity =>
+        {
+            entity.ToTable("push_device_registrations");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id");
+            entity.Property(x => x.Token).HasColumnName("token").HasMaxLength(500).IsRequired();
+            entity.Property(x => x.Platform).HasColumnName("platform").HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Username).HasColumnName("username").HasMaxLength(120).IsRequired();
+            entity.Property(x => x.FullName).HasColumnName("full_name").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Role).HasColumnName("role").HasMaxLength(60).IsRequired();
+            entity.Property(x => x.DeviceId).HasColumnName("device_id").HasMaxLength(200).IsRequired();
+            entity.Property(x => x.IsActive).HasColumnName("is_active");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.Property(x => x.UpdatedAtUtc).HasColumnName("updated_at_utc");
+            entity.Property(x => x.LastSeenAtUtc).HasColumnName("last_seen_at_utc");
+            entity.HasIndex(x => x.Token).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.UserId, x.IsActive });
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         ConfigureServiceTracking(modelBuilder);

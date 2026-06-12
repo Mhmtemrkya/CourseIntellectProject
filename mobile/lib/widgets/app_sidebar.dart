@@ -23,11 +23,11 @@ class AppSidebar extends StatelessWidget {
 
   static const double width = 280;
 
-  // Desktop app ile aynı gradient: #00354F → #002a40 → #001f30
+  // Course Intellect mobil ve desktop ile uyumlu dark navy gradient.
   static const _gradientColors = [
-    Color(0xFF00354F),
-    Color(0xFF002A40),
-    Color(0xFF001F30),
+    Color(0xFF08111F),
+    Color(0xFF0B1628),
+    Color(0xFF10223A),
   ];
 
   @override
@@ -124,7 +124,7 @@ class _LogoSection extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(10),
               gradient: const LinearGradient(
-                colors: [Color(0xFFD9790B), Color(0xFFF59E0B)],
+                colors: [Color(0xFFFF7A1A), Color(0xFFFF9D2E)],
               ),
             ),
             child: tenantLogo != null
@@ -207,10 +207,15 @@ class _NavItemState extends State<_NavItem> {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
               color: widget.isSelected
-                  ? Colors.white.withValues(alpha: 0.14)
+                  ? const Color(0xFFFF7A1A).withValues(alpha: 0.16)
                   : _hovering
                   ? Colors.white.withValues(alpha: 0.07)
                   : Colors.transparent,
+              border: Border.all(
+                color: widget.isSelected
+                    ? const Color(0xFFFF7A1A).withValues(alpha: 0.34)
+                    : Colors.transparent,
+              ),
             ),
             child: Row(
               children: [
@@ -218,7 +223,7 @@ class _NavItemState extends State<_NavItem> {
                   widget.icon,
                   size: 20,
                   color: widget.isSelected
-                      ? widget.color
+                      ? const Color(0xFFFF9D2E)
                       : Colors.white.withValues(alpha: 0.7),
                 ),
                 const SizedBox(width: 14),
@@ -231,7 +236,7 @@ class _NavItemState extends State<_NavItem> {
                           ? FontWeight.w600
                           : FontWeight.w400,
                       color: widget.isSelected
-                          ? Colors.white
+                          ? const Color(0xFFFFF7ED)
                           : Colors.white.withValues(alpha: 0.7),
                     ),
                   ),
@@ -241,7 +246,7 @@ class _NavItemState extends State<_NavItem> {
                     width: 6,
                     height: 6,
                     decoration: BoxDecoration(
-                      color: widget.color,
+                      color: const Color(0xFFFF7A1A),
                       shape: BoxShape.circle,
                     ),
                   ),

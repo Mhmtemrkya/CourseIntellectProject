@@ -5,11 +5,15 @@ import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 
 import '../services/service_tracking_api_service.dart';
+import '../utils/session_navigation.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/service_tracking_ui.dart';
 
 class DriverRouteStudentsPage extends StatefulWidget {
-  const DriverRouteStudentsPage({super.key});
+  /// true ise sayfa şoförün ana ekranıdır: geri dönüş yerine çıkış sunulur.
+  final bool standalone;
+
+  const DriverRouteStudentsPage({super.key, this.standalone = false});
 
   @override
   State<DriverRouteStudentsPage> createState() =>
@@ -98,12 +102,19 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Şoför Servis Yoklaması'),
+        title: const Text('Servis Şoförü'),
+        automaticallyImplyLeading: !widget.standalone,
         actions: [
           IconButton(
             onPressed: _loadRoutes,
             icon: const Icon(Icons.refresh_rounded),
           ),
+          if (widget.standalone)
+            IconButton(
+              tooltip: 'Çıkış Yap',
+              onPressed: () => logoutToRoleSelect(context),
+              icon: const Icon(Icons.logout_rounded),
+            ),
         ],
       ),
       child: _loading
@@ -111,31 +122,9 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                ServiceHeroPanel(
-                  eyebrow: 'Şoför Operasyon Ekranı',
-                  title: 'Rotanı başlat, yoklamayı al, konumu paylaş.',
-                  description:
-                      'Bindi / Binmedi seçimleri anında veliye gider. GPS takibi servis açıkken arka planda devam eder.',
-                  icon: Icons.directions_bus_filled_outlined,
-                  colors: const [Color(0xFF06101F), Color(0xFF1D4ED8)],
-                  stats: [
-                    ServiceHeroStat(
-                      label: 'Rota',
-                      value: '${_routes.length}',
-                      icon: Icons.alt_route_rounded,
-                    ),
-                    ServiceHeroStat(
-                      label: 'Öğrenci',
-                      value: '${_students.length}',
-                      icon: Icons.school_outlined,
-                    ),
-                    ServiceHeroStat(
-                      label: 'GPS',
-                      value: _locationTracking ? 'Açık' : 'Kapalı',
-                      icon: Icons.my_location_rounded,
-                    ),
-                  ],
-                ),
+                _driverWelcomeHeader(),
+                const SizedBox(height: 14),
+                _operationCards(),
                 if (_locationStatus != null) ...[
                   const SizedBox(height: 12),
                   ServiceGlassCard(
@@ -210,78 +199,528 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                     },
                   ),
                   const SizedBox(height: 12),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
+                  _routeControls(),
+                  const SizedBox(height: 16),
+                  _routeTimelineCard(),
+                  const SizedBox(height: 12),
+                  _liveTrackingCard(),
+                  const SizedBox(height: 16),
+                  ServiceSectionHeader(
+                    title: 'Öğrenci Alım Listesi',
+                    subtitle:
+                        'Durak sırasına göre yoklama alın ve veliye bildirim gönderin.',
+                    trailing: ServiceStatusPill(
+                      label: '$_boardedCount / ${_students.length}',
+                      color: serviceGreen,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  if (_students.isEmpty)
+                    const ServiceEmptyPanel(
+                      title: 'Bu rotada öğrenci yok',
+                      description:
+                          'Yönetim panelinden öğrenci ataması yapıldığında liste burada görünecek.',
+                      icon: Icons.groups_2_outlined,
+                    )
+                  else
+                    ..._students.map(_studentCard),
+                ],
+              ],
+            ),
+    );
+  }
+
+  int get _boardedCount => _students
+      .where((student) => _isAttendanceCompleted(student.attendanceStatus))
+      .length;
+
+  int get _notBoardedCount => _students
+      .where((student) => student.attendanceStatus == 'NotBoarded')
+      .length;
+
+  int get _remainingCount {
+    final remaining = _students.length - _boardedCount - _notBoardedCount;
+    return remaining < 0 ? 0 : remaining;
+  }
+
+  Widget _driverWelcomeHeader() {
+    final route = _selectedRoute;
+    return ServiceHeroPanel(
+      eyebrow: route == null
+          ? 'Bugünkü görev'
+          : _routeTypeLabel(route.routeType),
+      title: route == null
+          ? 'Bugün atanmış servis rotası bulunmuyor.'
+          : route.routeName,
+      description: route == null
+          ? 'Rota atandığında yolculuk, yoklama ve konum paylaşımı bu ekrandan yönetilecek.'
+          : '${route.startTime}-${route.endTime} arasında yoklama ve konum paylaşımı gerçek zamanlı çalışır.',
+      icon: Icons.directions_bus_filled_outlined,
+      colors: const [Color(0xFF06101F), Color(0xFF132A4C)],
+      stats: [
+        ServiceHeroStat(
+          label: 'Durum',
+          value: route == null ? 'Yok' : _tripStatusLabel(route.tripStatus),
+          icon: Icons.sensors_rounded,
+        ),
+        ServiceHeroStat(
+          label: 'Öğrenci',
+          value: '${_students.length}',
+          icon: Icons.groups_2_outlined,
+        ),
+        ServiceHeroStat(
+          label: 'GPS',
+          value: _locationTracking ? 'Canlı' : 'Kapalı',
+          icon: _locationTracking
+              ? Icons.my_location_rounded
+              : Icons.location_off_outlined,
+        ),
+      ],
+    );
+  }
+
+  Widget _operationCards() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 640 ? 4 : 2;
+        final gap = 10.0;
+        final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+        return Wrap(
+          spacing: gap,
+          runSpacing: gap,
+          children: [
+            SizedBox(
+              width: width,
+              child: _miniMetricCard(
+                icon: Icons.alt_route_rounded,
+                color: serviceBlue,
+                label: 'Bugünkü Rota',
+                value: '${_routes.length}',
+                detail: 'Toplam rota',
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _miniMetricCard(
+                icon: Icons.groups_2_outlined,
+                color: serviceGreen,
+                label: 'Öğrenci',
+                value: '${_students.length}',
+                detail: 'Toplam',
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _miniMetricCard(
+                icon: Icons.check_circle_outline,
+                color: serviceOrange,
+                label: 'Tamamlanan',
+                value: '$_boardedCount',
+                detail: 'Öğrenci',
+              ),
+            ),
+            SizedBox(
+              width: width,
+              child: _miniMetricCard(
+                icon: Icons.place_outlined,
+                color: servicePurple,
+                label: 'Kalan',
+                value: '$_remainingCount',
+                detail: 'Bekliyor',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _miniMetricCard({
+    required IconData icon,
+    required Color color,
+    required String label,
+    required String value,
+    required String detail,
+  }) {
+    return ServiceGlassCard(
+      padding: const EdgeInsets.all(14),
+      glowColors: [color, serviceBlue],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ServiceIconBadge(icon: icon, color: color, size: 42),
+          const SizedBox(height: 12),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w800),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            value,
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w900),
+          ),
+          Text(
+            detail,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(
+                context,
+              ).textTheme.bodySmall?.color?.withValues(alpha: 0.62),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _routeControls() {
+    return ServiceGlassCard(
+      padding: const EdgeInsets.all(14),
+      glowColors: const [serviceOrange, serviceBlue],
+      child: Wrap(
+        spacing: 10,
+        runSpacing: 10,
+        children: [
+          FilledButton.icon(
+            onPressed:
+                _actionBusy ||
+                    _selectedRoute == null ||
+                    _tripId != null ||
+                    _isTripFinished(_selectedRoute?.tripStatus)
+                ? null
+                : _startTrip,
+            icon: const Icon(Icons.play_arrow_rounded),
+            label: Text(
+              _isTripFinished(_selectedRoute?.tripStatus)
+                  ? 'Servis Kapandı'
+                  : _tripId == null
+                  ? 'Servisi Başlat'
+                  : 'Servis Açık',
+            ),
+          ),
+          OutlinedButton.icon(
+            onPressed:
+                _actionBusy ||
+                    _tripId == null ||
+                    _selectedRoute?.routeType != 'Morning' ||
+                    _isTripFinished(_selectedRoute?.tripStatus)
+                ? null
+                : _arrivedSchool,
+            icon: const Icon(Icons.school_outlined),
+            label: const Text('Okula Ulaştı'),
+          ),
+          OutlinedButton.icon(
+            onPressed:
+                _actionBusy ||
+                    _tripId == null ||
+                    _isTripFinished(_selectedRoute?.tripStatus)
+                ? null
+                : _completeTrip,
+            icon: const Icon(Icons.flag_circle_outlined),
+            label: const Text('Servisi Tamamla'),
+          ),
+          OutlinedButton.icon(
+            onPressed: _actionBusy || _tripId == null
+                ? null
+                : (_locationTracking
+                      ? _stopLocationTracking
+                      : _startLocationTracking),
+            icon: Icon(
+              _locationTracking
+                  ? Icons.location_off_outlined
+                  : Icons.my_location_outlined,
+            ),
+            label: Text(_locationTracking ? 'GPS Durdur' : 'GPS Başlat'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _routeTimelineCard() {
+    final route = _selectedRoute;
+    final stops = _routeStopNames();
+    return ServiceGlassCard(
+      glowColors: const [serviceBlue, serviceOrange],
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ServiceSectionHeader(
+            title: 'Bugünkü Rota',
+            trailing: route == null
+                ? null
+                : ServiceStatusPill(
+                    label: _tripStatusLabel(route.tripStatus),
+                    color: _tripId == null ? serviceAmber : serviceGreen,
+                    icon: Icons.sensors_rounded,
+                  ),
+          ),
+          const SizedBox(height: 14),
+          if (route == null)
+            const ServiceEmptyPanel(
+              title: 'Rota bilgisi yok',
+              description: 'Şoföre rota atandığında güzergah burada oluşur.',
+              icon: Icons.route_outlined,
+            )
+          else ...[
+            _routeStep(
+              title: route.routeType == 'Morning'
+                  ? 'Kalkış Noktası'
+                  : 'Okul Çıkışı',
+              subtitle: route.routeName,
+              time: route.startTime,
+              color: serviceGreen,
+              icon: Icons.flag_rounded,
+            ),
+            for (var i = 0; i < stops.length; i++)
+              _routeStep(
+                title: '${i + 1}. Durak',
+                subtitle: stops[i],
+                time: null,
+                color: i < _boardedCount ? serviceGreen : serviceBlue,
+                icon: Icons.location_on_outlined,
+              ),
+            _routeStep(
+              title: route.routeType == 'Morning'
+                  ? 'Varış Noktası'
+                  : 'Son Durak',
+              subtitle: route.routeType == 'Morning' ? 'Okul' : route.routeName,
+              time: route.endTime,
+              color: serviceRed,
+              icon: Icons.school_outlined,
+              isLast: true,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _routeStep({
+    required String title,
+    required String subtitle,
+    required String? time,
+    required Color color,
+    required IconData icon,
+    bool isLast = false,
+  }) {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Column(
+            children: [
+              Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.16),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: color.withValues(alpha: 0.42)),
+                ),
+                child: Icon(icon, size: 18, color: color),
+              ),
+              if (!isLast)
+                Expanded(
+                  child: Container(
+                    width: 2,
+                    margin: const EdgeInsets.symmetric(vertical: 4),
+                    color: color.withValues(alpha: 0.26),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(
+                        context,
+                      ).textTheme.bodySmall?.color?.withValues(alpha: 0.68),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          if (time != null)
+            Text(
+              time,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _liveTrackingCard() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final wide = constraints.maxWidth > 620;
+        final mapPanel = ServiceGlassCard(
+          padding: EdgeInsets.zero,
+          glowColors: const [serviceBlue, servicePurple],
+          child: Container(
+            height: wide ? 260 : 210,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: const LinearGradient(
+                colors: [Color(0xFF07111F), Color(0xFF10223C)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: CustomPaint(painter: _RoutePreviewPainter()),
+                ),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      FilledButton.icon(
-                        onPressed:
-                            _actionBusy ||
-                                _selectedRoute == null ||
-                                _tripId != null ||
-                                _isTripFinished(_selectedRoute?.tripStatus)
-                            ? null
-                            : _startTrip,
-                        icon: const Icon(Icons.play_arrow_rounded),
-                        label: Text(
-                          _isTripFinished(_selectedRoute?.tripStatus)
-                              ? 'Servis Kapandı'
-                              : _tripId == null
-                              ? 'Servisi Başlat'
-                              : 'Servis Açık',
+                      ServiceIconBadge(
+                        icon: _locationTracking
+                            ? Icons.near_me_rounded
+                            : Icons.map_outlined,
+                        color: _locationTracking ? serviceGreen : serviceBlue,
+                        size: 58,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        _locationTracking
+                            ? 'Canlı konum gönderiliyor'
+                            : 'Konum bekleniyor',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                      OutlinedButton.icon(
-                        onPressed:
-                            _actionBusy ||
-                                _tripId == null ||
-                                _selectedRoute?.routeType != 'Morning' ||
-                                _isTripFinished(_selectedRoute?.tripStatus)
-                            ? null
-                            : _arrivedSchool,
-                        icon: const Icon(Icons.school_outlined),
-                        label: const Text('Okula Ulaştı'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed:
-                            _actionBusy ||
-                                _tripId == null ||
-                                _isTripFinished(_selectedRoute?.tripStatus)
-                            ? null
-                            : _completeTrip,
-                        icon: const Icon(Icons.home_outlined),
-                        label: const Text('Servis Tamamlandı'),
-                      ),
-                      OutlinedButton.icon(
-                        onPressed: _actionBusy || _tripId == null
-                            ? null
-                            : (_locationTracking
-                                  ? _stopLocationTracking
-                                  : _startLocationTracking),
-                        icon: Icon(
+                      const SizedBox(height: 5),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 28),
+                        child: Text(
                           _locationTracking
-                              ? Icons.location_off_outlined
-                              : Icons.my_location_outlined,
-                        ),
-                        label: Text(
-                          _locationTracking
-                              ? 'Arka Plan Konumu Durdur'
-                              : 'Arka Plan Konum Başlat',
+                              ? 'Şoför GPS bilgisi mevcut yolculuk API’sine aktarılıyor.'
+                              : 'Servis başlatıldığında GPS paylaşımı aktif hale gelir.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.68),
+                            fontSize: 12,
+                            height: 1.35,
+                          ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  const ServiceSectionHeader(
-                    title: 'Öğrenciler',
-                    subtitle:
-                        'Durak sırasına göre yoklama alın ve veliye bildirim gönderin.',
-                  ),
-                  const SizedBox(height: 10),
-                  ..._students.map(_studentCard),
-                ],
+                ),
               ],
             ),
+          ),
+        );
+
+        final notifications = ServiceGlassCard(
+          glowColors: const [serviceAmber, serviceOrange],
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const ServiceSectionHeader(title: 'Bildirimler'),
+              const SizedBox(height: 12),
+              _notificationRow(
+                icon: Icons.event_busy_outlined,
+                color: serviceAmber,
+                title: 'Servise binmeyecek',
+                detail:
+                    '${_students.where((item) => item.hasAbsenceRequest).length} öğrenci talebi',
+              ),
+              const Divider(height: 22),
+              _notificationRow(
+                icon: _locationTracking
+                    ? Icons.location_on_outlined
+                    : Icons.location_off_outlined,
+                color: _locationTracking ? serviceGreen : serviceBlue,
+                title: 'Konum paylaşımı',
+                detail: _locationTracking
+                    ? 'Aktif'
+                    : 'Servis başlayınca açılır',
+              ),
+            ],
+          ),
+        );
+
+        if (wide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: mapPanel),
+              const SizedBox(width: 12),
+              Expanded(child: notifications),
+            ],
+          );
+        }
+        return Column(
+          children: [mapPanel, const SizedBox(height: 12), notifications],
+        );
+      },
+    );
+  }
+
+  Widget _notificationRow({
+    required IconData icon,
+    required Color color,
+    required String title,
+    required String detail,
+  }) {
+    return Row(
+      children: [
+        ServiceIconBadge(icon: icon, color: color, size: 38),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                detail,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(
+                    context,
+                  ).textTheme.bodySmall?.color?.withValues(alpha: 0.66),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -706,10 +1145,43 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
     return status == 'Completed' || status == 'Cancelled';
   }
 
+  bool _isAttendanceCompleted(String status) {
+    return status == 'Boarded' ||
+        status == 'ArrivedSchool' ||
+        status == 'BoardedFromSchool' ||
+        status == 'ArrivedHome';
+  }
+
+  List<String> _routeStopNames() {
+    final names = <String>[];
+    for (final student in _students) {
+      final name = student.stopName.trim();
+      if (name.isNotEmpty && !names.contains(name)) {
+        names.add(name);
+      }
+    }
+    return names;
+  }
+
   void _showMessage(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+String _tripStatusLabel(String value) {
+  switch (value) {
+    case 'InProgress':
+      return 'Görevde';
+    case 'Completed':
+      return 'Tamamlandı';
+    case 'Cancelled':
+      return 'İptal';
+    case 'Scheduled':
+      return 'Planlandı';
+    default:
+      return value.isEmpty ? 'Bekliyor' : value;
   }
 }
 
@@ -752,4 +1224,46 @@ Color _attendanceColor(String value) {
     default:
       return serviceBlue;
   }
+}
+
+class _RoutePreviewPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final gridPaint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.035)
+      ..strokeWidth = 1;
+    for (var x = 0.0; x < size.width; x += 38) {
+      canvas.drawLine(Offset(x, 0), Offset(x + 42, size.height), gridPaint);
+    }
+    for (var y = 0.0; y < size.height; y += 34) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y + 20), gridPaint);
+    }
+
+    final routePaint = Paint()
+      ..color = serviceBlue
+      ..strokeWidth = 5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final path = Path()
+      ..moveTo(size.width * 0.10, size.height * 0.70)
+      ..lineTo(size.width * 0.24, size.height * 0.48)
+      ..lineTo(size.width * 0.40, size.height * 0.55)
+      ..lineTo(size.width * 0.58, size.height * 0.36)
+      ..lineTo(size.width * 0.78, size.height * 0.42)
+      ..lineTo(size.width * 0.90, size.height * 0.24);
+    canvas.drawPath(path, routePaint);
+
+    final glowPaint = Paint()
+      ..color = serviceOrange.withValues(alpha: 0.16)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 18);
+    canvas.drawCircle(
+      Offset(size.width * 0.58, size.height * 0.36),
+      28,
+      glowPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

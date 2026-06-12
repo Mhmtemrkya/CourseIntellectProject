@@ -121,7 +121,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
             title: student.fullName,
             description:
                 '${student.className} sınıfı, ${student.currentSchool} öğrencisi. Veli ve sistem bilgileri aşağıda tek ekranda yönetilir.',
-            colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(label: 'Durum', value: student.status),
               AdminHeroMetric(label: 'Program', value: student.programType),

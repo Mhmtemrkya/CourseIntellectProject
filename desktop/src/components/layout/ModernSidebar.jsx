@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
+import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
 import {
   LayoutDashboard,
   Users,
@@ -539,10 +540,22 @@ const menuConfigs = {
       color: "#a855f7",
     },
     {
+      path: "/t/grade-entry",
+      icon: FileText,
+      label: "Not Girişi",
+      color: "#ff8a00",
+    },
+    {
       path: "/t/mock-exams",
       icon: ClipboardCheck,
       label: "Deneme Sınavları",
       color: "#f97316",
+    },
+    {
+      path: "/t/student-exams",
+      icon: ClipboardCheck,
+      label: "Öğrenci Sınavları",
+      color: "#0ea5e9",
     },
     {
       path: "/t/assignments",
@@ -807,9 +820,9 @@ const MODULE_MENU_REGISTRY = {
   students: { default: { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" } },
   parents: { default: { path: "/parents", icon: UserCheck, label: "Veliler", color: "#ec4899" }, parent: { path: "/p/children", icon: Users, label: "Çocuklarım", color: "#8b5cf6" } },
   teachers: { default: { path: "/teachers", icon: GraduationCap, label: "Öğretmenler", color: "#10b981" } },
+  // Sınıf oluşturma yalnızca yönetici akışıdır; öğrenci menüsüne verilmez.
   classes: {
     default: { path: "/classes", icon: School, label: "Sınıflar & Gruplar", color: "#f59e0b" },
-    student: { path: "/s/classes", icon: School, label: "Sınıflar & Gruplar", color: "#f59e0b" },
   },
   schedule: {
     default: { path: "/schedule", icon: Calendar, label: "Ders Programı", color: "#06b6d4" },
@@ -843,6 +856,9 @@ const MODULE_MENU_REGISTRY = {
     teacher: { path: "/t/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
     student: { path: "/s/exams", icon: FileQuestion, label: "Deneme Sınavları", color: "#a855f7" },
     parent: { path: "/p/exams", icon: FileQuestion, label: "Sınav Sonuçları", color: "#a855f7" },
+  },
+  "grade-entry": {
+    teacher: { path: "/t/grade-entry", icon: FileText, label: "Not Girişi", color: "#ff8a00" },
   },
   "mock-exams": {
     teacher: { path: "/t/mock-exams", icon: ClipboardCheck, label: "Deneme Sınavları", color: "#f97316" },
@@ -942,7 +958,6 @@ function inferModuleKey(item) {
     "/parents": "parents",
     "/teachers": "teachers",
     "/classes": "classes",
-    "/s/classes": "classes",
     "/schedule": "schedule",
     "/admin/schedule": "schedule",
     "/t/schedule": "schedule",
@@ -959,8 +974,10 @@ function inferModuleKey(item) {
     "/t/questions": "questions",
     "/s/questions": "questions",
     "/t/question-bank": "question-bank",
+    "/t/question-bank/import": "question-bank",
     "/exams": "exams",
     "/t/exams": "exams",
+    "/t/grade-entry": "grade-entry",
     "/t/mock-exams": "mock-exams",
     "/t/mock-exams/create": "mock-exams",
     "/s/exams": "exams",
@@ -1176,7 +1193,28 @@ export function ModernSidebar() {
       .filter(Boolean),
   );
   const hasRoleManagementPolicy = Boolean(user?.hasRoleManagementPolicy);
-  const menuItems = getModuleAwareMenuItems(baseMenuItems, enabledModules, primaryRole, hasRoleManagementPolicy);
+  const moduleAwareItems = getModuleAwareMenuItems(baseMenuItems, enabledModules, primaryRole, hasRoleManagementPolicy);
+
+  // Kurum bazlı özellik anahtarları: platform yöneticisinin kapattığı
+  // modüller menüden gizlenir (platform admin tüm menüyü görür).
+  const [disabledFeatures, setDisabledFeatures] = useState(null);
+  useEffect(() => {
+    let active = true;
+    if (user?.isPlatformAdmin) {
+      setDisabledFeatures(new Set());
+    } else {
+      getDisabledFeatureKeys().then((keys) => {
+        if (active) setDisabledFeatures(keys);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const menuItems = disabledFeatures && disabledFeatures.size > 0
+    ? moduleAwareItems.filter((item) => !isPathDisabled(item.path, disabledFeatures))
+    : moduleAwareItems;
   const isStudent = userRoles.includes("student");
 
   const ROLE_TITLES = {

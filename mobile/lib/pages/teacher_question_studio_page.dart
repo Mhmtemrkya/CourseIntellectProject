@@ -552,103 +552,76 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
     final width = MediaQuery.sizeOf(context).width;
     final isTablet = width >= 820;
 
-    return Theme(
-      data: Theme.of(context).copyWith(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: const Color(0xFF050B16),
-        textTheme: Theme.of(
-          context,
-        ).textTheme.apply(bodyColor: Colors.white, displayColor: Colors.white),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Color(0xFF050B16),
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: false,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          widget.examMode ? 'Deneme Sınavları' : 'Soru Bankası',
+          style: const TextStyle(fontWeight: FontWeight.w900),
         ),
-        tabBarTheme: const TabBarThemeData(
-          indicatorColor: Color(0xFF9B5CFF),
-          labelColor: Colors.white,
-          unselectedLabelColor: Color(0xFF9AA7BC),
-        ),
-        colorScheme: const ColorScheme.dark(
-          primary: Color(0xFFFF8A1C),
-          secondary: Color(0xFF7C3AED),
-          surface: Color(0xFF081426),
-        ),
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            widget.examMode ? 'Deneme Sınavları' : 'Soru Bankası',
-            style: const TextStyle(fontWeight: FontWeight.w900),
+        actions: [
+          IconButton(
+            tooltip: 'Önizleme',
+            onPressed: _showPreview,
+            icon: const Icon(Icons.visibility_outlined),
           ),
-          actions: [
-            IconButton(
-              tooltip: 'Önizleme',
-              onPressed: _showPreview,
-              icon: const Icon(Icons.visibility_outlined),
-            ),
-            TextButton.icon(
-              onPressed: _saving ? null : _saveQuestion,
-              icon: _saving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : const Icon(Icons.check_rounded),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFFFA24A),
-              ),
-              label: Text(widget.examMode ? 'Ekle' : 'Kaydet'),
-            ),
-            const SizedBox(width: 8),
-          ],
-        ),
-        body: SafeArea(
-          child: isTablet
-              ? Row(
+          TextButton.icon(
+            onPressed: _saving ? null : _saveQuestion,
+            icon: _saving
+                ? const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.check_rounded),
+            label: Text(widget.examMode ? 'Ekle' : 'Kaydet'),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: SafeArea(
+        child: isTablet
+            ? Row(
+                children: [
+                  Expanded(flex: 3, child: _editorPane()),
+                  SizedBox(width: 350, child: _settingsPane()),
+                ],
+              )
+            : DefaultTabController(
+                length: 3,
+                child: Column(
                   children: [
-                    Expanded(flex: 3, child: _editorPane()),
-                    SizedBox(width: 350, child: _settingsPane()),
-                  ],
-                )
-              : DefaultTabController(
-                  length: 3,
-                  child: Column(
-                    children: [
-                      const TabBar(
-                        tabs: [
-                          Tab(text: 'Editör'),
-                          Tab(text: 'Ayarlar'),
-                          Tab(text: 'Çizim'),
+                    const TabBar(
+                      tabs: [
+                        Tab(text: 'Editör'),
+                        Tab(text: 'Ayarlar'),
+                        Tab(text: 'Çizim'),
+                      ],
+                    ),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _editorPane(),
+                          _settingsPane(),
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: SolutionDrawingCanvas(
+                              onStrokeSaved: (_) =>
+                                  setState(() => _autosave = 'Stroke hazır'),
+                              onSnapshotSaved: _saveCanvasSnapshot,
+                            ),
+                          ),
                         ],
                       ),
-                      Expanded(
-                        child: TabBarView(
-                          children: [
-                            _editorPane(),
-                            _settingsPane(),
-                            Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: SolutionDrawingCanvas(
-                                onStrokeSaved: (_) =>
-                                    setState(() => _autosave = 'Stroke hazır'),
-                                onSnapshotSaved: _saveCanvasSnapshot,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-        ),
+              ),
       ),
     );
   }
 
   Widget _editorPane() {
+    final theme = Theme.of(context);
     final isCompact = MediaQuery.sizeOf(context).width < 600;
 
     return ListView(
@@ -708,7 +681,10 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                 const SizedBox(height: 12),
                 Text(
                   '${_examQuestions.length} soru canlı olarak sınava eklendi',
-                  style: const TextStyle(color: Color(0xFFFFC08A)),
+                  style: TextStyle(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ],
             ),
@@ -722,20 +698,20 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFFF8A1C).withValues(alpha: 0.14),
+                    color: theme.colorScheme.primary.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.playlist_add_check_rounded,
-                    color: Color(0xFFFF8A1C),
+                    color: theme.colorScheme.primary,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
                     '${_savedQuestions.length} soru bu oturumda soru bankasına eklendi',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: theme.textTheme.bodyLarge?.color,
                       fontWeight: FontWeight.w800,
                       height: 1.25,
                     ),
@@ -765,13 +741,13 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                   fontSize: isCompact ? 21 : 24,
                   height: 1.08,
                   fontWeight: FontWeight.w900,
-                  color: Colors.white,
+                  color: theme.textTheme.titleLarge?.color,
                 ),
               ),
               const SizedBox(height: 6),
-              const Text(
+              Text(
                 'Rich editor, seçenek yönetimi, çözüm ve çizim tek akışta.',
-                style: TextStyle(color: Color(0xFFA8B3C7), height: 1.35),
+                style: theme.textTheme.bodySmall?.copyWith(height: 1.35),
               ),
               const SizedBox(height: 16),
               _questionTypeSelector(isCompact),
@@ -854,12 +830,12 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                     decoration: BoxDecoration(
                       color: _correctIndex == index
                           ? const Color(0xFF10B981).withValues(alpha: 0.12)
-                          : Colors.white.withValues(alpha: 0.04),
+                          : theme.scaffoldBackgroundColor,
                       borderRadius: BorderRadius.circular(18),
                       border: Border.all(
                         color: _correctIndex == index
                             ? const Color(0xFF10B981)
-                            : Colors.white.withValues(alpha: 0.08),
+                            : theme.dividerColor,
                       ),
                     ),
                     child: Row(
@@ -873,7 +849,10 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                             radius: 16,
                             backgroundColor: _correctIndex == index
                                 ? const Color(0xFF10B981)
-                                : Colors.white10,
+                                : theme.dividerColor,
+                            foregroundColor: _correctIndex == index
+                                ? Colors.white
+                                : theme.textTheme.bodyLarge?.color,
                             child: Text(String.fromCharCode(65 + index)),
                           ),
                         ),
@@ -881,7 +860,6 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                           child: TextField(
                             controller: _optionControllers[index],
                             decoration: _input('Seçenek metni'),
-                            style: const TextStyle(color: Colors.white),
                           ),
                         ),
                         if (_optionImagePaths.length > index &&
@@ -960,7 +938,11 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               const SizedBox(height: 10),
               Text(
                 _autosave,
-                style: const TextStyle(color: Color(0xFFFFC08A), fontSize: 12),
+                style: TextStyle(
+                  color: theme.colorScheme.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -1085,6 +1067,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   }
 
   Widget _questionTypeChip(String item) {
+    final theme = Theme.of(context);
     final selected = _type == item;
 
     return ChoiceChip(
@@ -1094,17 +1077,13 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
           ? const Icon(Icons.check_rounded, size: 16, color: Colors.white)
           : null,
       labelStyle: TextStyle(
-        color: selected ? Colors.white : const Color(0xFFD7DFEF),
+        color: selected ? Colors.white : theme.textTheme.bodyLarge?.color,
         fontWeight: FontWeight.w800,
         fontSize: 12.5,
       ),
-      selectedColor: const Color(0xFFFF8A1C),
-      backgroundColor: const Color(0xFF121C2B),
-      disabledColor: const Color(0xFF121C2B),
+      selectedColor: theme.colorScheme.primary,
       side: BorderSide(
-        color: selected
-            ? const Color(0xFFFFB166)
-            : Colors.white.withValues(alpha: 0.10),
+        color: selected ? theme.colorScheme.primary : theme.dividerColor,
       ),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
@@ -1113,34 +1092,15 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   }
 
   InputDecoration _input(String label) {
-    return InputDecoration(
-      hintText: label,
-      hintStyle: const TextStyle(color: Color(0xFF7F8CA3)),
-      labelStyle: const TextStyle(color: Color(0xFFA8B3C7)),
-      floatingLabelStyle: const TextStyle(color: Color(0xFFFFA24A)),
-      filled: true,
-      fillColor: const Color(0xFF101927),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.10)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(18),
-        borderSide: const BorderSide(color: Color(0xFFFF8A1C), width: 1.4),
-      ),
-    );
+    return InputDecoration(hintText: label);
   }
 
   ButtonStyle _secondaryButtonStyle() {
+    final primary = Theme.of(context).colorScheme.primary;
     return OutlinedButton.styleFrom(
-      foregroundColor: const Color(0xFFFFB166),
-      side: BorderSide(color: const Color(0xFFFF8A1C).withValues(alpha: 0.45)),
-      backgroundColor: const Color(0xFFFF8A1C).withValues(alpha: 0.08),
+      foregroundColor: primary,
+      side: BorderSide(color: primary.withValues(alpha: 0.45)),
+      backgroundColor: primary.withValues(alpha: 0.08),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
     );
@@ -1172,23 +1132,20 @@ class _GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            Colors.white.withValues(alpha: 0.075),
-            Colors.white.withValues(alpha: 0.035),
-          ],
-        ),
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: theme.dividerColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.25),
-            blurRadius: 28,
-            offset: const Offset(0, 16),
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 10),
           ),
         ],
       ),

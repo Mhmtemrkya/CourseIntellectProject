@@ -2,22 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../services/auth_session_store.dart';
 import '../services/api_config.dart';
+import '../services/badge_progress_store.dart';
 import '../services/question_bank_api_service.dart';
 import '../services/question_bank_store.dart';
 import '../services/student_xp_service.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/responsive_overlays.dart';
-
-class _QuestionSolvePalette {
-  static const background = Color(0xFF0E1A2F);
-  static const backgroundDeep = Color(0xFF172A45);
-  static const surface = Color(0xFF182A45);
-  static const surfaceSoft = Color(0xFF213957);
-  static const border = Color(0xFF3A5278);
-  static const orange = Color(0xFFFF9D2E);
-  static const blue = Color(0xFF4DA3FF);
-  static const muted = Color(0xFFB9C6DA);
-}
 
 class StudentQuestionBankSolvePage extends StatefulWidget {
   final String subject;
@@ -151,15 +141,18 @@ class _StudentQuestionBankSolvePageState
     bonuses.sort();
     final uniqueBonuses = bonuses.toSet().toList();
 
-    await StudentXpService.addXp(totalXp);
+    final newTotalXp = await StudentXpService.addXp(totalXp);
     if (!mounted) return;
 
-    _showResultDialog(
+    await _showResultDialog(
       correctCount: correctCount,
       wrongQuestions: wrongQuestions,
       totalXp: totalXp,
       bonuses: uniqueBonuses,
     );
+
+    if (!mounted) return;
+    await BadgeUnlockService.checkAndCelebrate(context, xp: newTotalXp);
   }
 
   Future<void> _submitCurrentAttemptIfNeeded() async {
@@ -205,7 +198,7 @@ class _StudentQuestionBankSolvePageState
     return given.isNotEmpty && given == expected;
   }
 
-  void _showResultDialog({
+  Future<void> _showResultDialog({
     required int correctCount,
     required List<QuestionBankRecord> wrongQuestions,
     required int totalXp,
@@ -214,7 +207,7 @@ class _StudentQuestionBankSolvePageState
     final total = widget.questions.length;
     final isSuccessful = correctCount >= (total / 2).ceil();
 
-    showDialog<void>(
+    return showDialog<void>(
       context: context,
       builder: (dialogContext) {
         final theme = Theme.of(dialogContext);
@@ -328,7 +321,7 @@ class _StudentQuestionBankSolvePageState
                             theme,
                             label: 'Kazanılan XP',
                             value: '+$totalXp',
-                            valueColor: const Color(0xFF7C3AED),
+                            valueColor: theme.colorScheme.primary,
                           ),
                         ),
                       ],
@@ -453,316 +446,244 @@ class _StudentQuestionBankSolvePageState
         _currentQuestion.imagePath!.isNotEmpty;
     final progress = (_currentIndex + 1) / widget.questions.length;
 
-    return Theme(
-      data: theme.copyWith(
-        brightness: Brightness.dark,
-        scaffoldBackgroundColor: _QuestionSolvePalette.background,
-        cardColor: _QuestionSolvePalette.surface,
-        colorScheme: const ColorScheme.dark(
-          primary: _QuestionSolvePalette.orange,
-          secondary: _QuestionSolvePalette.blue,
-          surface: _QuestionSolvePalette.surface,
-        ),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: _QuestionSolvePalette.surface,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          centerTitle: false,
-          titleTextStyle: TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        inputDecorationTheme: InputDecorationTheme(
-          filled: true,
-          fillColor: _QuestionSolvePalette.surfaceSoft,
-          hintStyle: const TextStyle(color: _QuestionSolvePalette.muted),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: _QuestionSolvePalette.border),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: _QuestionSolvePalette.border),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(18),
-            borderSide: const BorderSide(color: _QuestionSolvePalette.orange),
-          ),
-        ),
-      ),
-      child: Scaffold(
-        appBar: AppBar(title: const Text('Soru Seti')),
-        body: DecoratedBox(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              colors: [
-                _QuestionSolvePalette.background,
-                _QuestionSolvePalette.backgroundDeep,
-              ],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-            ),
-          ),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-            child: ResponsiveContent(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(22),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(28),
-                      gradient: const LinearGradient(
-                        colors: [
-                          _QuestionSolvePalette.surfaceSoft,
-                          Color(0xFF1D4E89),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+    return Scaffold(
+      appBar: AppBar(title: const Text('Soru Seti')),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: ResponsiveContent(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(28),
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _tag(widget.subject),
+                        _tag(widget.topic),
+                        _tag('${_currentIndex + 1}/${widget.questions.length}'),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Text(
+                      'Soru ${_currentIndex + 1}',
+                      style: theme.textTheme.headlineSmall?.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w900,
                       ),
-                      border: Border.all(
-                        color: _QuestionSolvePalette.border.withValues(
-                          alpha: 0.8,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Bu setteki soruları sırayla çöz. Sonunda genel başarı durumunu göreceksin.',
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: Colors.white.withValues(alpha: 0.9),
+                        height: 1.45,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(999),
+                      child: LinearProgressIndicator(
+                        value: progress,
+                        minHeight: 10,
+                        backgroundColor: Colors.white.withValues(alpha: 0.24),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Colors.white,
                         ),
                       ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: [
-                            _tag(widget.subject),
-                            _tag(widget.topic),
-                            _tag(
-                              '${_currentIndex + 1}/${widget.questions.length}',
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 14),
-                        Text(
-                          'Soru ${_currentIndex + 1}',
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Bu setteki soruları sırayla çöz. Sonunda genel başarı durumunu göreceksin.',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            height: 1.45,
-                          ),
-                        ),
-                        const SizedBox(height: 14),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(999),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            minHeight: 10,
-                            backgroundColor: Colors.white.withValues(
-                              alpha: 0.18,
-                            ),
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              _QuestionSolvePalette.orange,
-                            ),
-                          ),
-                        ),
-                      ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _panel(
+                theme,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _currentQuestion.questionText,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.45,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 16),
-                  _panel(
-                    theme,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _currentQuestion.questionText,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w800,
-                            height: 1.45,
-                            color: Colors.white,
+                    if (hasImage) ...[
+                      const SizedBox(height: 16),
+                      _questionImage(theme),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              _panel(
+                theme,
+                child: _usesOptions(_currentQuestion)
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Seçenekler',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                        ),
-                        if (hasImage) ...[
-                          const SizedBox(height: 16),
-                          _questionImage(theme),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  _panel(
-                    theme,
-                    child: _usesOptions(_currentQuestion)
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Seçenekler',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
-                                ),
+                          const SizedBox(height: 12),
+                          ..._currentQuestion.options.asMap().entries.map((
+                            entry,
+                          ) {
+                            final selected =
+                                _selectedOptions[_currentQuestion.id] ==
+                                entry.key;
+                            final optionImage =
+                                _currentQuestion.optionImagePaths.length >
+                                    entry.key
+                                ? _currentQuestion.optionImagePaths[entry.key]
+                                : null;
+                            return GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => setState(
+                                () => _selectedOptions[_currentQuestion.id] =
+                                    entry.key,
                               ),
-                              const SizedBox(height: 12),
-                              ..._currentQuestion.options.asMap().entries.map((
-                                entry,
-                              ) {
-                                final selected =
-                                    _selectedOptions[_currentQuestion.id] ==
-                                    entry.key;
-                                final optionImage =
-                                    _currentQuestion.optionImagePaths.length >
-                                        entry.key
-                                    ? _currentQuestion.optionImagePaths[entry
-                                          .key]
-                                    : null;
-                                return GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onTap: () => setState(
-                                    () =>
-                                        _selectedOptions[_currentQuestion.id] =
-                                            entry.key,
+                              child: Container(
+                                width: double.infinity,
+                                margin: const EdgeInsets.only(bottom: 10),
+                                padding: const EdgeInsets.all(14),
+                                decoration: BoxDecoration(
+                                  color: selected
+                                      ? theme.colorScheme.primary.withValues(
+                                          alpha: 0.14,
+                                        )
+                                      : theme.scaffoldBackgroundColor,
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: selected
+                                        ? theme.colorScheme.primary
+                                        : theme.dividerColor,
                                   ),
-                                  child: Container(
-                                    width: double.infinity,
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.all(14),
-                                    decoration: BoxDecoration(
-                                      color: selected
-                                          ? _QuestionSolvePalette.orange
-                                                .withValues(alpha: 0.18)
-                                          : _QuestionSolvePalette.surfaceSoft,
-                                      borderRadius: BorderRadius.circular(16),
-                                      border: Border.all(
-                                        color: selected
-                                            ? _QuestionSolvePalette.orange
-                                            : _QuestionSolvePalette.border,
+                                ),
+                                child: Row(
+                                  children: [
+                                    CircleAvatar(
+                                      radius: 14,
+                                      backgroundColor: selected
+                                          ? theme.colorScheme.primary
+                                          : theme.colorScheme.primary
+                                                .withValues(alpha: 0.12),
+                                      foregroundColor: selected
+                                          ? Colors.white
+                                          : theme.colorScheme.primary,
+                                      child: Text(
+                                        String.fromCharCode(65 + entry.key),
                                       ),
                                     ),
-                                    child: Row(
-                                      children: [
-                                        CircleAvatar(
-                                          radius: 14,
-                                          backgroundColor: selected
-                                              ? _QuestionSolvePalette.orange
-                                              : _QuestionSolvePalette.surface,
-                                          foregroundColor: selected
-                                              ? const Color(0xFF08111F)
-                                              : _QuestionSolvePalette.orange,
-                                          child: Text(
-                                            String.fromCharCode(65 + entry.key),
-                                          ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        entry.value,
+                                        style: TextStyle(
+                                          color:
+                                              theme.textTheme.bodyLarge?.color,
+                                          fontWeight: FontWeight.w700,
                                         ),
-                                        const SizedBox(width: 10),
-                                        Expanded(
-                                          child: Text(
-                                            entry.value,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                            ),
+                                      ),
+                                    ),
+                                    if ((optionImage ?? '').isNotEmpty) ...[
+                                      const SizedBox(width: 10),
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(12),
+                                        child: Image.network(
+                                          ApiConfig.resolveAssetUrl(
+                                            optionImage,
                                           ),
-                                        ),
-                                        if ((optionImage ?? '').isNotEmpty) ...[
-                                          const SizedBox(width: 10),
-                                          ClipRRect(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
-                                            ),
-                                            child: Image.network(
-                                              ApiConfig.resolveAssetUrl(
-                                                optionImage,
-                                              ),
-                                              width: 54,
-                                              height: 54,
-                                              fit: BoxFit.cover,
-                                              errorBuilder:
-                                                  (
-                                                    context,
-                                                    error,
-                                                    stackTrace,
-                                                  ) => const Icon(
+                                          width: 54,
+                                          height: 54,
+                                          fit: BoxFit.cover,
+                                          errorBuilder:
+                                              (context, error, stackTrace) =>
+                                                  const Icon(
                                                     Icons.broken_image_outlined,
                                                   ),
-                                            ),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              }),
-                            ],
-                          )
-                        : Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Cevabın',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                  color: Colors.white,
+                                        ),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              TextField(
-                                controller: _answerController,
-                                maxLines: 5,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: const InputDecoration(
-                                  hintText: 'Cevabını yaz...',
-                                ),
-                              ),
-                            ],
+                            );
+                          }),
+                        ],
+                      )
+                    : Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Cevabın',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
-                  ),
-                  const SizedBox(height: 14),
-                  Align(
-                    alignment: Alignment.centerRight,
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _answerController,
+                            maxLines: 5,
+                            decoration: const InputDecoration(
+                              hintText: 'Cevabını yaz...',
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 14),
+              Align(
+                alignment: Alignment.centerRight,
+                child: OutlinedButton(
+                  onPressed: _skipQuestion,
+                  child: const Text('Soruyu Atla'),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Expanded(
                     child: OutlinedButton(
-                      onPressed: _skipQuestion,
-                      child: const Text('Soruyu Atla'),
+                      onPressed: _currentIndex == 0 ? null : _goPrevious,
+                      child: const Text('Önceki'),
                     ),
                   ),
-                  const SizedBox(height: 18),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _currentIndex == 0 ? null : _goPrevious,
-                          child: const Text('Önceki'),
-                        ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton.icon(
+                      onPressed: _goNext,
+                      icon: Icon(
+                        _currentIndex == widget.questions.length - 1
+                            ? Icons.flag_rounded
+                            : Icons.arrow_forward_rounded,
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: _goNext,
-                          icon: Icon(
-                            _currentIndex == widget.questions.length - 1
-                                ? Icons.flag_rounded
-                                : Icons.arrow_forward_rounded,
-                          ),
-                          label: Text(
-                            _currentIndex == widget.questions.length - 1
-                                ? 'Seti Bitir'
-                                : 'Sonraki Soru',
-                          ),
-                        ),
+                      label: Text(
+                        _currentIndex == widget.questions.length - 1
+                            ? 'Seti Bitir'
+                            : 'Sonraki Soru',
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -770,16 +691,17 @@ class _StudentQuestionBankSolvePageState
   }
 
   Widget _panel(ThemeData theme, {required Widget child}) {
+    final isDark = theme.brightness == Brightness.dark;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: _QuestionSolvePalette.surface,
+        color: theme.cardColor,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _QuestionSolvePalette.border),
+        border: Border.all(color: theme.dividerColor),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.16),
+            color: Colors.black.withValues(alpha: isDark ? 0.16 : 0.05),
             blurRadius: 14,
             offset: const Offset(0, 6),
           ),
@@ -815,9 +737,9 @@ class _StudentQuestionBankSolvePageState
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 14),
       decoration: BoxDecoration(
-        color: _QuestionSolvePalette.surfaceSoft,
+        color: theme.scaffoldBackgroundColor,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: _QuestionSolvePalette.border),
+        border: Border.all(color: theme.dividerColor),
       ),
       child: Column(
         children: [
@@ -851,7 +773,7 @@ class _StudentQuestionBankSolvePageState
       child: Container(
         height: 220,
         width: double.infinity,
-        color: _QuestionSolvePalette.surfaceSoft,
+        color: theme.scaffoldBackgroundColor,
         child: isNetwork
             ? Image.network(
                 resolved,

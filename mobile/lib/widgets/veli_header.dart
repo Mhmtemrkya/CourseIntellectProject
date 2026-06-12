@@ -50,10 +50,15 @@ class _VeliHeaderState extends State<VeliHeader> {
       width: double.infinity,
 
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark ? const Color(0xFF0E1A2F) : Colors.white,
         borderRadius: const BorderRadius.only(
           bottomLeft: Radius.circular(24),
           bottomRight: Radius.circular(24),
+        ),
+        border: Border(
+          bottom: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.72),
+          ),
         ),
       ),
 

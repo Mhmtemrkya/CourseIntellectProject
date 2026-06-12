@@ -32,7 +32,7 @@ class StudentWrongQuestionDetailPage extends StatelessWidget {
               padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [const Color(0xFF0F172A), color],
+                  colors: [const Color(0xFF08111F), const Color(0xFFFF7A1A)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

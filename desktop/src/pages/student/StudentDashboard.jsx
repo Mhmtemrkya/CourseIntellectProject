@@ -8,7 +8,6 @@ import {
   Video,
   ClipboardCheck,
   TrendingUp,
-  Star,
   Flame,
   Trophy,
   Target,
@@ -25,6 +24,9 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchStudentDashboardData } from '../../lib/api/dashboardData';
+import { BADGE_TOTAL, collectNewBadges, getAllBadges, nextBadge, unlockedBadgeCount } from '../../lib/badges';
+import BadgeShield from '../../components/badges/BadgeShield';
+import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,6 +44,7 @@ export default function StudentDashboard() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [newBadges, setNewBadges] = useState([]);
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -49,6 +52,8 @@ export default function StudentDashboard() {
       setError('');
       const payload = await fetchStudentDashboardData(user);
       setData(payload);
+      const unlockedNow = collectNewBadges(payload?.stats?.xp, user);
+      if (unlockedNow.length) setNewBadges(unlockedNow);
     } catch (err) {
       setError(err.message || 'Öğrenci paneli alınamadı.');
     } finally {
@@ -85,34 +90,9 @@ export default function StudentDashboard() {
     ['Bekleyen Ödev', stats.pendingAssignments || 0, Clock, 'from-yellow-500 to-orange-500', () => navigate('/s/assignments')],
   ];
   const xp = Number(stats.xp || 0);
-  const streak = Number(stats.streak || 0);
-  const achievementCards = [
-    {
-      id: 'first_xp',
-      title: 'İlk XP',
-      subtitle: "25 XP'ye ulaştın ve ilk ilerlemeni kaydettin.",
-      unlocked: xp >= 25,
-    },
-    {
-      id: 'quiz_starter',
-      title: 'Quiz Başlangıcı',
-      subtitle: 'Yaklaşık 3 quizlik ilerleme yakaladın.',
-      unlocked: xp >= 100,
-    },
-    {
-      id: 'quiz_master',
-      title: 'Quiz Ustası',
-      subtitle: '5+ quiz seviyesinde XP topladın.',
-      unlocked: xp >= 200,
-    },
-    {
-      id: 'streak_3',
-      title: 'Alev Serisi',
-      subtitle: '3 gün üst üste plan tamamladın.',
-      unlocked: streak >= 3,
-    },
-  ];
-  const nextAchievement = achievementCards.find((item) => !item.unlocked);
+  const unlockedBadges = unlockedBadgeCount(xp);
+  const recentBadges = getAllBadges().slice(Math.max(0, unlockedBadges - 4), unlockedBadges).reverse();
+  const upcomingBadge = nextBadge(xp);
 
   return (
     <motion.div
@@ -289,42 +269,64 @@ export default function StudentDashboard() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Trophy className="h-6 w-6 text-white" />
-                <CardTitle className="text-white">Başarılar</CardTitle>
+                <CardTitle className="text-white">Başarı Rozetleri</CardTitle>
               </div>
+              <div className="flex items-center gap-2">
                 <Badge className="bg-white/20 text-white border-0">
-                  {achievementCards.filter((item) => item.unlocked).length}/{achievementCards.length} Açıldı
+                  {unlockedBadges}/{BADGE_TOTAL} Açıldı
                 </Badge>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="bg-white/20 text-white border-0 hover:bg-white/30"
+                  onClick={() => navigate('/s/badges')}
+                  data-testid="all-badges-button"
+                >
+                  Tüm Rozetler
+                </Button>
               </div>
-            </CardHeader>
+            </div>
+          </CardHeader>
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {achievementCards.map((achievement) => (
+              {recentBadges.map((badge) => (
                 <div
-                  key={achievement.id}
-                  className={`relative p-4 rounded-xl text-center border-2 ${
-                    achievement.unlocked
-                      ? 'bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-300 dark:border-yellow-700'
-                      : 'bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-60'
-                  }`}
+                  key={badge.id}
+                  className="relative p-4 rounded-xl text-center border-2 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-300 dark:border-yellow-700"
                 >
-                  <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2 ${achievement.unlocked ? 'bg-gradient-to-br from-yellow-400 to-orange-500' : 'bg-gray-300 dark:bg-gray-600'}`}>
-                    <Star className={`h-6 w-6 ${achievement.unlocked ? 'text-white fill-white' : 'text-gray-500'}`} />
+                  <div className="mx-auto mb-2 flex justify-center">
+                    <BadgeShield badge={badge} size={48} glow />
                   </div>
-                  <p className="font-semibold text-sm">{achievement.title}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{achievement.subtitle}</p>
+                  <p className="font-semibold text-sm">{badge.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {badge.category.name} • {badge.xpThreshold} XP
+                  </p>
                 </div>
               ))}
-              <div className="relative p-4 rounded-xl text-center border-2 bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700">
-                <div className="mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-2 bg-brand-primary/15">
-                  <Star className="h-6 w-6 text-brand-primary" />
+              {recentBadges.length === 0 && (
+                <div className="md:col-span-3 p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center text-sm text-muted-foreground flex items-center justify-center">
+                  Henüz rozet kazanmadın — soru çözerek XP topla, ilk rozetin seni bekliyor!
                 </div>
-                <p className="font-semibold text-sm">Sıradaki Rozet</p>
-                <p className="text-xs text-muted-foreground mt-1">{nextAchievement?.title || 'Tüm rozetler açıldı'}</p>
-              </div>
+              )}
+              {upcomingBadge && (
+                <div className="relative p-4 rounded-xl text-center border-2 bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700">
+                  <div className="mx-auto mb-2 flex justify-center">
+                    <BadgeShield badge={upcomingBadge} size={48} locked />
+                  </div>
+                  <p className="font-semibold text-sm">Sıradaki: {upcomingBadge.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {Math.max(0, upcomingBadge.xpThreshold - xp)} XP kaldı
+                  </p>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </motion.div>
+
+      {newBadges.length > 0 && (
+        <BadgeUnlockModal badges={newBadges} onClose={() => setNewBadges([])} />
+      )}
 
       <motion.div variants={itemVariants}>
         <Card className="border-0 shadow-lg">

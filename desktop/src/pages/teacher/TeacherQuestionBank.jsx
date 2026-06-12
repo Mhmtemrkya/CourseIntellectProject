@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, PenLine, Wand2, BarChart3, Users, FileText, Lightbulb,
+  Brain, Search, Plus, Upload, Download, Trash2, BookOpen, Zap, Pencil, PenLine, Wand2, BarChart3, Users, FileText, Lightbulb, Eye, EyeOff,
 } from 'lucide-react';
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
@@ -527,6 +527,55 @@ export default function TeacherQuestionBank() {
     }
   };
 
+  const isSetPassive = (set) => set.questions.length > 0
+    && set.questions.every((question) => question.publicationStatus === 'Passive');
+
+  const questionToPayload = (question, publicationStatus) => ({
+    subject: question.subject,
+    topic: question.topic,
+    difficulty: question.difficulty,
+    type: question.type,
+    questionText: question.questionText,
+    teacher: question.teacher,
+    imagePath: question.imagePath ?? null,
+    imagePlacement: question.imagePlacement || 'Top',
+    options: question.options || [],
+    correctOptionIndex: question.correctOptionIndex ?? null,
+    classTargets: question.classTargets?.length ? question.classTargets : ['Tüm Sınıflar'],
+    solutionAssetPath: question.solutionAssetPath ?? null,
+    solutionAssetType: question.solutionAssetType ?? null,
+    revealCorrectAnswerToStudent: !!question.revealCorrectAnswerToStudent,
+    expectedAnswer: question.expectedAnswer ?? null,
+    richTextHtml: question.richTextHtml ?? null,
+    solutionTextHtml: question.solutionTextHtml ?? null,
+    editorMetadataJson: question.editorMetadataJson ?? null,
+    publicationStatus,
+    questionSetKey: question.questionSetKey ?? null,
+    questionSetTitle: question.questionSetTitle ?? null,
+    questionOrder: question.questionOrder ?? 0,
+  });
+
+  // Pasif sorular öğrenci soru bankasında görünmez; öğretmen sınav
+  // oluştururken kaynak olarak kullanmaya devam eder.
+  const handleToggleSetPassive = async (set) => {
+    const nextStatus = isSetPassive(set) ? 'Published' : 'Passive';
+    try {
+      const updatedItems = await Promise.all(
+        set.questions.map((question) => updateQuestionBankItem(question.id, questionToPayload(question, nextStatus))),
+      );
+      const updatedById = new Map(updatedItems.map((item) => [item.id, item]));
+      setQuestions((prev) => prev.map((item) => updatedById.get(item.id) || item));
+      toast({
+        title: nextStatus === 'Passive' ? 'Soru seti pasife alındı' : 'Soru seti aktifleştirildi',
+        description: nextStatus === 'Passive'
+          ? 'Öğrenciler bu soruları görmez; sınav oluştururken kullanmaya devam edebilirsin.'
+          : 'Sorular yeniden öğrenci soru bankasında görünür.',
+      });
+    } catch (err) {
+      toast({ title: 'Durum değiştirilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    }
+  };
+
   const handleDeleteQuestionSet = async (set) => {
     try {
       const ids = set.questions.map((item) => item.id);
@@ -599,7 +648,7 @@ export default function TeacherQuestionBank() {
   };
 
   const handleImportClick = () => {
-    importInputRef.current?.click();
+    navigate('/t/question-bank/import');
   };
 
   const handleImportFile = async (event) => {
@@ -993,7 +1042,22 @@ export default function TeacherQuestionBank() {
                   );
                 })()}
 
-                <div className="flex justify-end gap-2">
+                <div className="flex items-center justify-end gap-2">
+                  {isSetPassive(set) && (
+                    <span className="mr-auto inline-flex items-center gap-1 rounded-full bg-slate-500/15 px-3 py-1 text-xs font-bold text-slate-500">
+                      <EyeOff className="h-3 w-3" /> Pasif — öğrenci görmez
+                    </span>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => handleToggleSetPassive(set)}
+                    title={isSetPassive(set) ? 'Aktifleştir (öğrenciye aç)' : 'Pasife al (öğrenciden gizle)'}
+                  >
+                    {isSetPassive(set)
+                      ? <Eye className="h-4 w-4 text-emerald-600" />
+                      : <EyeOff className="h-4 w-4 text-slate-500" />}
+                  </Button>
                   <Button variant="outline" size="icon" onClick={() => handleSolveQuestionSet(set)} title="Öğretmen önizleme çözümü">
                     <PenLine className="h-4 w-4 text-orange-500" />
                   </Button>

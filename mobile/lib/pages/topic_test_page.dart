@@ -207,7 +207,7 @@ class _TopicTestPageState extends State<TopicTestPage>
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark(context) ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -229,7 +229,7 @@ class _TopicTestPageState extends State<TopicTestPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark(context) ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -273,7 +273,7 @@ class _TopicTestPageState extends State<TopicTestPage>
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: selectedOption == -1
-                  ? (isDark(context) ? const Color(0xFF1E1E1E) : Colors.white)
+                  ? (isDark(context) ? const Color(0xFF0E1A2F) : Colors.white)
                   : color,
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: Colors.grey.shade300),

@@ -1,4 +1,5 @@
 import "@/App.css";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -28,26 +29,26 @@ import Settings from "./pages/Settings";
 import Chat from "./pages/chat/Chat";
 
 // Finance Pages
-import FinanceDashboard from "./pages/finance/FinanceDashboard";
-import StudentAccounts from "./pages/finance/StudentAccounts";
-import Collections from "./pages/finance/Collections";
-import Installments from "./pages/finance/Installments";
-import LatePayments from "./pages/finance/LatePayments";
-import InvoicesReceipts from "./pages/finance/InvoicesReceipts";
-import DiscountsScholarships from "./pages/finance/DiscountsScholarships";
-import FinanceExport from "./pages/finance/Export";
-import Approvals from "./pages/finance/Approvals";
+const FinanceDashboard = lazy(() => import("./pages/finance/FinanceDashboard"));
+const StudentAccounts = lazy(() => import("./pages/finance/StudentAccounts"));
+const Collections = lazy(() => import("./pages/finance/Collections"));
+const Installments = lazy(() => import("./pages/finance/Installments"));
+const LatePayments = lazy(() => import("./pages/finance/LatePayments"));
+const InvoicesReceipts = lazy(() => import("./pages/finance/InvoicesReceipts"));
+const DiscountsScholarships = lazy(() => import("./pages/finance/DiscountsScholarships"));
+const FinanceExport = lazy(() => import("./pages/finance/Export"));
+const Approvals = lazy(() => import("./pages/finance/Approvals"));
 
 // Super Admin Pages
-import SADashboard from "./pages/superadmin/SADashboard";
-import Tenants from "./pages/superadmin/Tenants";
-import Plans from "./pages/superadmin/Plans";
-import Billing from "./pages/superadmin/Billing";
-import SystemSettings from "./pages/superadmin/SystemSettings";
-import Limits from "./pages/superadmin/Limits";
-import Support from "./pages/superadmin/Support";
-import AIManagement from "./pages/superadmin/AIManagement";
-import TenantCustomization from "./pages/superadmin/TenantCustomization";
+const SADashboard = lazy(() => import("./pages/superadmin/SADashboard"));
+const Tenants = lazy(() => import("./pages/superadmin/Tenants"));
+const Plans = lazy(() => import("./pages/superadmin/Plans"));
+const Billing = lazy(() => import("./pages/superadmin/Billing"));
+const SystemSettings = lazy(() => import("./pages/superadmin/SystemSettings"));
+const Limits = lazy(() => import("./pages/superadmin/Limits"));
+const Support = lazy(() => import("./pages/superadmin/Support"));
+const AIManagement = lazy(() => import("./pages/superadmin/AIManagement"));
+const TenantCustomization = lazy(() => import("./pages/superadmin/TenantCustomization"));
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -60,9 +61,11 @@ import TeacherAssignments from "./pages/teacher/TeacherAssignments";
 import TeacherLive from "./pages/teacher/TeacherLive";
 import TeacherReports from "./pages/teacher/TeacherReports";
 import TeacherQuestionBank from "./pages/teacher/TeacherQuestionBank";
+import TeacherBulkQuestionUpload from "./pages/teacher/TeacherBulkQuestionUpload";
 import ExamSolvingPage from "./pages/solving/ExamSolvingPage";
 import TeacherQuestionStudio from "./pages/teacher/TeacherQuestionStudio";
 import TeacherMockExams from "./pages/teacher/TeacherMockExams";
+import TeacherGradeEntry from "./pages/teacher/TeacherGradeEntry";
 
 // Student Pages
 import StudentDashboard from "./pages/student/StudentDashboard";
@@ -82,6 +85,9 @@ import StudentQuestionPractice from "./pages/student/StudentQuestionPractice";
 import StudentAttendance from "./pages/student/StudentAttendance";
 import StudentExamResults from "./pages/student/StudentExamResults";
 import StudentQuestionBox from "./pages/student/StudentQuestionBox";
+import StudentBadges from "./pages/student/StudentBadges";
+import TeacherStudentExams from "./pages/teacher/TeacherStudentExams";
+import DriverPanel from "./pages/DriverPanel";
 
 // Parent Pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -100,11 +106,11 @@ import TeacherLiveRoom from "./pages/teacher/TeacherLiveRoom";
 import TeacherContentStudio from "./pages/teacher/TeacherContentStudio";
 import TeacherQuestionWorkflow from "./pages/teacher/TeacherQuestionWorkflow";
 import TeacherExamWorkbench from "./pages/teacher/TeacherExamWorkbench";
-import AuditLog from "./pages/finance/AuditLog";
-import CollectionCalendar from "./pages/finance/CollectionCalendar";
-import Reconciliation from "./pages/finance/Reconciliation";
-import BulkActions from "./pages/finance/BulkActions";
-import FinanceDetailHub from "./pages/finance/FinanceDetailHub";
+const AuditLog = lazy(() => import("./pages/finance/AuditLog"));
+const CollectionCalendar = lazy(() => import("./pages/finance/CollectionCalendar"));
+const Reconciliation = lazy(() => import("./pages/finance/Reconciliation"));
+const BulkActions = lazy(() => import("./pages/finance/BulkActions"));
+const FinanceDetailHub = lazy(() => import("./pages/finance/FinanceDetailHub"));
 import AdminAcademics from "./pages/admin/AdminAcademics";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminFinance from "./pages/admin/AdminFinance";
@@ -145,10 +151,10 @@ import TeacherAnnouncements from "./pages/teacher/TeacherAnnouncements";
 import ParentExcuseRequest from "./pages/parent/ParentExcuseRequest";
 
 // New Finance Pages
-import Salary from "./pages/finance/Salary";
-import CashReport from "./pages/finance/CashReport";
-import OverdueRules from "./pages/finance/OverdueRules";
-import Ledger from "./pages/finance/Ledger";
+const Salary = lazy(() => import("./pages/finance/Salary"));
+const CashReport = lazy(() => import("./pages/finance/CashReport"));
+const OverdueRules = lazy(() => import("./pages/finance/OverdueRules"));
+const Ledger = lazy(() => import("./pages/finance/Ledger"));
 
 import { useApp } from "./context/AppContext";
 import { getUserHomePath } from "./lib/auth";
@@ -185,9 +191,17 @@ function App() {
         <MaintenanceGate>
         <LegalConsentGate>
         <RouterComponent>
+          <Suspense
+            fallback={
+              <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+                Yükleniyor...
+              </div>
+            }
+          >
           <Routes>
             {/* Auth */}
             <Route path="/login" element={<Login />} />
+            <Route path="/driver" element={<DriverPanel />} />
             <Route path="/change-password-required" element={<ForcePasswordChange />} />
             
             {/* Main Dashboard Layout */}
@@ -198,7 +212,6 @@ function App() {
               <Route path="/parents" element={<Parents />} />
               <Route path="/teachers" element={<Teachers />} />
               <Route path="/classes" element={<Classes />} />
-              <Route path="/s/classes" element={<Classes />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/admin/schedule" element={<Schedule />} />
               <Route path="/attendance" element={<Attendance />} />
@@ -274,19 +287,23 @@ function App() {
               <Route path="/t/content" element={<TeacherContent />} />
               <Route path="/t/questions" element={<TeacherQuestions />} />
               <Route path="/t/exams" element={<TeacherExams />} />
+              <Route path="/t/grade-entry" element={<TeacherGradeEntry />} />
               <Route path="/t/assignments" element={<TeacherAssignments />} />
               <Route path="/t/submissions" element={<TeacherSubmissionCenter />} />
               <Route path="/t/live-lessons" element={<TeacherLive />} />
               <Route path="/t/live-room" element={<TeacherLiveRoom />} />
               <Route path="/t/reports" element={<TeacherReports />} />
               <Route path="/t/question-bank" element={<TeacherQuestionBank />} />
+              <Route path="/t/question-bank/import" element={<TeacherBulkQuestionUpload />} />
               <Route path="/t/question-studio" element={<TeacherQuestionStudio />} />
+              <Route path="/t/exams/create" element={<TeacherQuestionStudio />} />
               <Route path="/t/mock-exams" element={<TeacherMockExams />} />
               <Route path="/t/mock-exams/create" element={<TeacherQuestionStudio />} />
               <Route path="/t/solve-preview" element={<ExamSolvingPage />} />
               <Route path="/t/content-studio" element={<TeacherContentStudio />} />
               <Route path="/t/question-workflow" element={<TeacherQuestionWorkflow />} />
               <Route path="/t/exam-workbench" element={<TeacherExamWorkbench />} />
+              <Route path="/t/student-exams" element={<TeacherStudentExams />} />
               <Route path="/t/meeting-approvals" element={<TeacherMeetingApprovals />} />
               <Route path="/t/announcements" element={<TeacherAnnouncements />} />
               <Route path="/t/profile" element={<TeacherProfile />} />
@@ -309,6 +326,7 @@ function App() {
               <Route path="/s/content-detail" element={<StudentContentDetail />} />
               <Route path="/s/question-practice" element={<StudentQuestionPractice />} />
               <Route path="/s/question-box" element={<StudentQuestionBox />} />
+              <Route path="/s/badges" element={<StudentBadges />} />
               <Route path="/s/profile" element={<StudentProfile />} />
               <Route path="/s/ai" element={<StudentAI />} />
               <Route path="/s/notifications" element={<StudentNotifications />} />
@@ -338,6 +356,7 @@ function App() {
             <Route path="/" element={<RootRedirect />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
+          </Suspense>
         </RouterComponent>
         </LegalConsentGate>
         <Toaster />

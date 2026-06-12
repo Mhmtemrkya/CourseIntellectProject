@@ -35,7 +35,7 @@ class AccountingApprovalDetailPage extends StatelessWidget {
             title: current.title,
             description:
                 'Onay gerekçesi, kaynak kaydı ve güncel karar akışı burada yer alır.',
-            colors: [const Color(0xFF0F172A), color],
+            colors: [const Color(0xFF08111F), const Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(label: 'Durum', value: current.status),
               AccountingHeroMetric(label: 'Kaynak', value: current.sourceType),

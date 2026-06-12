@@ -108,6 +108,7 @@ const menuConfigs = {
     { path: '/t/content', icon: BookOpen, label: 'İçerikler' },
     { path: '/t/questions', icon: HelpCircle, label: 'Soru Kutusu' },
     { path: '/t/exams', icon: FileQuestion, label: 'Sınavlar' },
+    { path: '/t/grade-entry', icon: FileText, label: 'Not Girişi' },
     { path: '/t/assignments', icon: FileText, label: 'Ödevler' },
     { path: '/t/reports', icon: BarChart3, label: 'Raporlar' },
     { path: '/t/meeting-approvals', icon: Calendar, label: 'Görüşme Onayları' },

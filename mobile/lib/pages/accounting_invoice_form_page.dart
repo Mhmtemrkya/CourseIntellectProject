@@ -41,7 +41,7 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
             title: 'Yeni fatura veya gider kaydını tek akışta oluşturun.',
             description:
                 'Kayıt oluşturulduğunda listeye düşer ve gerekiyorsa onay sürecine girer.',
-            colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(label: 'Durum', value: 'Taslak'),
               AccountingHeroMetric(label: 'Çıkış', value: 'Onaya düşer'),

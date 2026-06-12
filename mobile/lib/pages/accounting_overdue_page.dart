@@ -92,7 +92,7 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                 'Gecikmiş ödemeleri sınıf ve öğrenci bazında filtreleyin, hızlı aksiyon alın.',
             description:
                 'Mesaj, arama ve hatırlatma akışları aynı kart içinde kullanılabilir.',
-            colors: const [Color(0xFF0F172A), Color(0xFFB42318)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(
                 label: 'Geciken Tutar',

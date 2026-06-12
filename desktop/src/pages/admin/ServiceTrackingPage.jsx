@@ -6,13 +6,16 @@ import {
   BusFront,
   CheckCircle2,
   MapPinned,
+  Navigation,
   Plus,
+  RadioTower,
   RefreshCw,
   Route,
   Search,
   ShieldCheck,
   Trash2,
   UserRoundCheck,
+  UsersRound,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -41,7 +44,9 @@ import {
   setServiceRouteActive,
   deleteServiceRouteStop,
   reorderServiceRouteStops,
+  getLiveVehicleLocations,
 } from '../../lib/api/modules';
+import { serviceTrackingRealtime } from '../../lib/realtime/serviceTrackingRealtime';
 
 const emptyVehicleForm = {
   vehicleNumber: '',
@@ -113,6 +118,16 @@ export default function ServiceTrackingPage() {
   const [selectedStudentId, setSelectedStudentId] = useState('');
   const [selectedStopId, setSelectedStopId] = useState('');
 
+  const [liveTrips, setLiveTrips] = useState([]);
+
+  const loadLiveTrips = useCallback(async () => {
+    try {
+      setLiveTrips(await getLiveVehicleLocations());
+    } catch {
+      // Canlı izleme alınamazsa mevcut liste korunur; ana hata akışını bozmaz.
+    }
+  }, []);
+
   const load = useCallback(async () => {
     try {
       setLoading(true);
@@ -123,6 +138,7 @@ export default function ServiceTrackingPage() {
         fetchServiceRoutes(),
         fetchUsers(1, 500),
       ]);
+      await loadLiveTrips();
       const userItems = normalizePagedItems(userPayload);
       setVehicles(vehicleItems);
       setDrivers(driverItems);
@@ -143,7 +159,12 @@ export default function ServiceTrackingPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadLiveTrips]);
+
+  // SignalR: araç konumu / sefer / biniş güncellemelerinde canlı listeyi tazele.
+  useEffect(() => serviceTrackingRealtime.subscribe(() => {
+    loadLiveTrips();
+  }), [loadLiveTrips]);
 
   useEffect(() => {
     load();
@@ -151,6 +172,18 @@ export default function ServiceTrackingPage() {
 
   const activeDrivers = useMemo(() => drivers.filter((item) => item.isActive), [drivers]);
   const activeVehicles = useMemo(() => vehicles.filter((item) => item.isActive), [vehicles]);
+  const serviceSummary = useMemo(() => {
+    const activeRoutes = routes.filter((item) => item.isActive);
+    const assignedStudents = routes.reduce((sum, route) => sum + Number(route.totalStudents || 0), 0);
+    const totalSeats = routes.reduce((sum, route) => sum + Number(route.capacity || 0), 0);
+    const occupancy = totalSeats > 0 ? Math.round((assignedStudents / totalSeats) * 100) : 0;
+    return {
+      activeRoutes: activeRoutes.length,
+      assignedStudents,
+      totalSeats,
+      occupancy,
+    };
+  }, [routes]);
 
   const selectedDriverUser = useMemo(
     () => users.find((item) => item.id === driverForm.userId),
@@ -404,21 +437,42 @@ export default function ServiceTrackingPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.24em] text-brand-primary">Servis takip</p>
-          <h1 className="mt-2 text-3xl font-bold font-heading">Servis Yönetimi</h1>
-          <p className="mt-1 text-muted-foreground">Araç, şoför ve rotaları canlı backend üzerinden yönetin. Yeni şoför kayıtları personel kaydı içinden tek formda yapılır.</p>
-        </div>
-        <div className="flex flex-wrap gap-2">
-          <Button variant="outline" onClick={load}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Yenile
-          </Button>
-          <Button onClick={() => navigate('/admin/staff-registration')} className="bg-brand-primary hover:bg-brand-primary/90">
-            <UserRoundCheck className="mr-2 h-4 w-4" />
-            Personelden Şoför Kaydet
-          </Button>
+      <div className="overflow-hidden rounded-[28px] border border-slate-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-[#08111F] dark:shadow-2xl">
+        <div className="relative p-5 sm:p-7">
+          <div className="absolute inset-0 opacity-80 dark:opacity-100">
+            <div className="absolute right-[-10%] top-[-35%] h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
+            <div className="absolute bottom-[-30%] left-[20%] h-64 w-64 rounded-full bg-blue-500/10 blur-3xl" />
+          </div>
+          <div className="relative flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-orange-500/25 bg-orange-500/10 px-3 py-1 text-xs font-bold text-orange-500">
+                <RadioTower className="h-3.5 w-3.5" />
+                Servis takip merkezi
+              </div>
+              <h1 className="mt-4 text-3xl font-black tracking-tight text-slate-950 dark:text-white sm:text-4xl">
+                Servis Yönetimi
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Araç, şoför, rota, durak ve öğrenci atamalarını canlı backend verileriyle yönetin. Veri gelmediğinde sahte kayıt gösterilmez; ilgili alan boş durumla kapanır.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={load} className="border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5">
+                <RefreshCw className="mr-2 h-4 w-4" />
+                Yenile
+              </Button>
+              <Button onClick={() => navigate('/admin/staff-registration')} className="bg-orange-500 text-white hover:bg-orange-600">
+                <UserRoundCheck className="mr-2 h-4 w-4" />
+                Personelden Şoför Kaydet
+              </Button>
+            </div>
+          </div>
+          <div className="relative mt-6 grid grid-cols-1 gap-3 md:grid-cols-4">
+            <MetricCard icon={Route} label="Aktif Rota" value={serviceSummary.activeRoutes} accent="orange" />
+            <MetricCard icon={BusFront} label="Araç" value={vehicles.length} accent="blue" />
+            <MetricCard icon={UsersRound} label="Atanmış Öğrenci" value={serviceSummary.assignedStudents} accent="green" />
+            <MetricCard icon={ShieldCheck} label="Doluluk" value={`%${serviceSummary.occupancy}`} accent="purple" />
+          </div>
         </div>
       </div>
 
@@ -430,18 +484,87 @@ export default function ServiceTrackingPage() {
         </div>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <MetricCard icon={Route} label="Rota" value={routes.length} />
-        <MetricCard icon={BusFront} label="Araç" value={vehicles.length} />
-        <MetricCard icon={UserRoundCheck} label="Aktif Şoför" value={activeDrivers.length} />
-        <MetricCard icon={ShieldCheck} label="Aktif Rota" value={routes.filter((item) => item.isActive).length} />
-      </div>
+      <Card className="overflow-hidden border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Navigation className="h-5 w-5 text-orange-500" />
+            Canlı İzleme — Bugünün Seferleri
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge className="border-0 bg-emerald-500/15 font-bold text-emerald-500">
+              <RadioTower className="mr-1 h-3 w-3" /> SignalR canlı
+            </Badge>
+            <Button size="sm" variant="outline" onClick={loadLiveTrips}>
+              <RefreshCw className="mr-2 h-3.5 w-3.5" /> Yenile
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {liveTrips.length === 0 ? (
+            <p className="py-6 text-center text-sm text-muted-foreground">
+              Bugün için sefer kaydı yok. Şoför mobil uygulamadan seferi başlattığında konum ve biniş bilgileri burada canlı görünür.
+            </p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rota</TableHead>
+                  <TableHead>Yön</TableHead>
+                  <TableHead>Şoför</TableHead>
+                  <TableHead>Plaka</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead>Binen</TableHead>
+                  <TableHead>Hız</TableHead>
+                  <TableHead className="text-right">Son Konum</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {liveTrips.map((trip) => {
+                  const statusMeta = {
+                    NotStarted: ['Başlamadı', 'bg-slate-500/15 text-slate-500'],
+                    InProgress: ['Yolda', 'bg-emerald-500/15 text-emerald-500'],
+                    ArrivedSchool: ['Okulda', 'bg-blue-500/15 text-blue-500'],
+                    Completed: ['Tamamlandı', 'bg-slate-500/15 text-slate-500'],
+                    Cancelled: ['İptal', 'bg-red-500/15 text-red-500'],
+                  }[trip.status] || [trip.status, 'bg-slate-500/15 text-slate-500'];
+                  return (
+                    <TableRow key={trip.tripId}>
+                      <TableCell className="font-medium">{trip.routeName}</TableCell>
+                      <TableCell>{trip.tripType === 'Morning' ? 'Sabah' : 'Akşam'}</TableCell>
+                      <TableCell>{trip.driverName}{trip.driverPhone ? ` • ${trip.driverPhone}` : ''}</TableCell>
+                      <TableCell>{trip.plateNumber || '-'}</TableCell>
+                      <TableCell><Badge className={`border-0 font-bold ${statusMeta[1]}`}>{statusMeta[0]}</Badge></TableCell>
+                      <TableCell className="font-bold tabular-nums">{trip.boardedCount} / {trip.studentCount}</TableCell>
+                      <TableCell>{trip.speed != null ? `${Math.round(trip.speed)} km/s` : '-'}</TableCell>
+                      <TableCell className="text-right">
+                        {trip.latitude != null && trip.longitude != null ? (
+                          <a
+                            href={`https://www.openstreetmap.org/?mlat=${trip.latitude}&mlon=${trip.longitude}#map=16/${trip.latitude}/${trip.longitude}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-flex items-center gap-1 font-semibold text-orange-500 hover:underline"
+                          >
+                            <MapPinned className="h-3.5 w-3.5" />
+                            {trip.lastLocationAt ? new Date(trip.lastLocationAt).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : 'Haritada Aç'}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">Konum yok</span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="overflow-hidden border-white/10 bg-card/80">
+        <Card className="overflow-hidden border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <UserRoundCheck className="h-5 w-5 text-brand-primary" />
+              <UserRoundCheck className="h-5 w-5 text-orange-500" />
               Servis Şoförleri
             </CardTitle>
             <Button size="sm" onClick={() => navigate('/admin/staff-registration')}>
@@ -493,14 +616,32 @@ export default function ServiceTrackingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-gradient-to-br from-slate-950 via-slate-950 to-orange-950/30">
+        <Card className="border-slate-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-[#08111F] dark:via-[#0B1628] dark:to-orange-950/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <MapPinned className="h-5 w-5 text-brand-primary" />
-              Hızlı Kurulum
+              <MapPinned className="h-5 w-5 text-orange-500" />
+              Operasyon Paneli
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold">Canlı araç konumları</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Admin canlı konum endpointi yoksa harita boş durum gösterir.
+                  </p>
+                </div>
+                <Badge className="bg-orange-500/10 text-orange-500 hover:bg-orange-500/10">API bekliyor</Badge>
+              </div>
+              <div className="mt-4 flex h-44 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.18),transparent_35%),linear-gradient(135deg,rgba(8,17,31,0.04),rgba(77,163,255,0.08))] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.20),transparent_35%),linear-gradient(135deg,#07111F,#10223C)]">
+                <div className="text-center">
+                  <Navigation className="mx-auto h-9 w-9 text-orange-500" />
+                  <p className="mt-3 text-sm font-bold">Konum verisi gelmedi</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Şoför GPS gönderimi veli/öğrenci canlı takipte çalışır.</p>
+                </div>
+              </div>
+            </div>
             <Button className="w-full justify-start" variant="outline" onClick={() => navigate('/admin/staff-registration')}>
               <BusFront className="mr-2 h-4 w-4" />
               Şoför + Araç + Rota Kaydet
@@ -526,10 +667,10 @@ export default function ServiceTrackingPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card className="border-white/10 bg-card/80">
+        <Card className="border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <BusFront className="h-5 w-5 text-brand-primary" />
+              <BusFront className="h-5 w-5 text-orange-500" />
               Araçlar
             </CardTitle>
             <Button size="sm" variant="outline" onClick={() => navigate('/admin/staff-registration')}>
@@ -541,7 +682,7 @@ export default function ServiceTrackingPage() {
             {vehicles.length === 0 ? (
               <EmptyCard title="Araç yok" detail="Rota oluşturmak için önce servis aracı ekleyin." />
             ) : vehicles.map((vehicle) => (
-              <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border bg-muted/20 p-4">
+              <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
                 <div>
                   <p className="font-semibold">{vehicle.plateNumber}</p>
                   <p className="text-sm text-muted-foreground">{vehicle.vehicleNumber ? `${vehicle.vehicleNumber} • ` : ''}{vehicle.brand || '-'} {vehicle.model || ''} • {vehicle.capacity} koltuk</p>
@@ -552,10 +693,10 @@ export default function ServiceTrackingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-white/10 bg-card/80">
+        <Card className="border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
-              <Route className="h-5 w-5 text-brand-primary" />
+              <Route className="h-5 w-5 text-orange-500" />
               Rotalar
             </CardTitle>
             <Button size="sm" variant="outline" onClick={() => openDialog('route')} disabled={vehicles.length === 0 || drivers.length === 0}>
@@ -567,7 +708,7 @@ export default function ServiceTrackingPage() {
             {routes.length === 0 ? (
               <EmptyCard title="Rota yok" detail="Sabah veya akşam rotası oluşturup şoför ve araç bağlayın." />
             ) : routes.map((route) => (
-              <div key={route.id} className="rounded-2xl border bg-muted/20 p-4">
+              <div key={route.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10 dark:border-white/10 dark:bg-white/5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{route.name}</p>
@@ -859,16 +1000,22 @@ export default function ServiceTrackingPage() {
   );
 }
 
-function MetricCard({ icon: Icon, label, value }) {
+function MetricCard({ icon: Icon, label, value, accent = 'orange' }) {
+  const accents = {
+    orange: 'bg-orange-500/10 text-orange-500 shadow-orange-500/10',
+    blue: 'bg-blue-500/10 text-blue-500 shadow-blue-500/10',
+    green: 'bg-emerald-500/10 text-emerald-500 shadow-emerald-500/10',
+    purple: 'bg-violet-500/10 text-violet-500 shadow-violet-500/10',
+  };
   return (
-    <Card className="border-white/10 bg-card/80">
+    <Card className="border-slate-200/70 bg-white/85 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
       <CardContent className="flex items-center gap-4 p-5">
-        <div className="rounded-2xl bg-brand-primary/10 p-3 text-brand-primary">
+        <div className={`rounded-2xl p-3 shadow-lg ${accents[accent] || accents.orange}`}>
           <Icon className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          <p className="text-2xl font-bold">{value}</p>
+          <p className="text-sm font-semibold text-slate-600 dark:text-slate-300">{label}</p>
+          <p className="text-2xl font-black text-slate-950 dark:text-white">{value}</p>
         </div>
       </CardContent>
     </Card>

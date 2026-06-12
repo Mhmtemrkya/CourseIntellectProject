@@ -22,19 +22,6 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createExamResult, createPlannedExam, createQuestionBankItem, deletePlannedExam, fetchExamResults, fetchPlannedExams, fetchQuestionBank, fetchStudents, uploadFile } from '../../lib/api/modules';
 
-const createManualQuestionDraft = () => ({
-  id: `manual-${Math.random().toString(36).slice(2, 9)}`,
-  topic: '',
-  questionText: '',
-  type: 'Açık Uçlu',
-  difficulty: 'Orta',
-  expectedAnswer: '',
-  options: '',
-  correctOptionIndex: '0',
-  imagePath: '',
-  imagePlacement: 'Top',
-  imageFile: null,
-});
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -112,7 +99,6 @@ export default function TeacherExams() {
   const [students, setStudents] = useState([]);
   const [questionSources, setQuestionSources] = useState([]);
   const [createOpen, setCreateOpen] = useState(false);
-  const [plannedOpen, setPlannedOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -127,19 +113,6 @@ export default function TeacherExams() {
     className: '',
     score: '',
     net: '',
-  });
-  const [plannedForm, setPlannedForm] = useState({
-    title: '',
-    type: 'Quiz',
-    className: '',
-    subject: '',
-    dateLabel: '',
-    dateValue: null,
-    duration: '40 dk',
-    questionCount: '10',
-    sourceType: 'Soru Bankasi',
-    sources: [],
-    manualQuestions: [],
   });
 
   const loadExams = useCallback(async () => {
@@ -299,138 +272,6 @@ export default function TeacherExams() {
     }
   };
 
-  const handleCreatePlannedExam = async () => {
-    try {
-      setSaving(true);
-      let sources = plannedForm.sources;
-      if (plannedForm.sourceType === 'Manuel Ekle' && plannedForm.manualQuestions.length > 0) {
-        const createdManualQuestions = [];
-        const questionSetKey = `exam-set-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-        for (const [index, item] of plannedForm.manualQuestions.entries()) {
-          let imagePath = item.imagePath || null;
-          if (item.imageFile) {
-            const imageForm = new FormData();
-            imageForm.append('file', item.imageFile);
-            const uploaded = await uploadFile(imageForm, 'question-images');
-            imagePath = uploaded.fileUrl || uploaded.fileName || item.imageFile.name;
-          }
-          const created = await createQuestionBankItem({
-            subject: plannedForm.subject.trim(),
-            topic: item.topic.trim(),
-            difficulty: item.difficulty,
-            type: item.type,
-            questionText: item.questionText.trim(),
-            teacher: user?.name || 'Öğretmen',
-            imagePath,
-            imagePlacement: item.imagePlacement || 'Top',
-            options: item.options.split('\n').map((entry) => entry.trim()).filter(Boolean),
-            correctOptionIndex: /secmeli|çoktan/i.test(item.type) ? Number(item.correctOptionIndex || 0) : null,
-            classTargets: [plannedForm.className.trim()],
-            solutionAssetPath: null,
-            solutionAssetType: null,
-            revealCorrectAnswerToStudent: false,
-            expectedAnswer: item.expectedAnswer || null,
-            publicationStatus: 'Published',
-            questionSetKey,
-            questionSetTitle: plannedForm.title.trim() || 'Sınav Soruları',
-            questionOrder: index,
-          });
-          createdManualQuestions.push({
-            questionId: created.id,
-            title: created.questionText,
-            type: created.type,
-            subject: created.subject,
-            imagePath: created.imagePath,
-            imagePlacement: item.imagePlacement || 'Top',
-          });
-        }
-        sources = createdManualQuestions;
-      }
-      const created = await createPlannedExam({
-        title: plannedForm.title.trim(),
-        type: plannedForm.type,
-        className: plannedForm.className.trim(),
-        subject: plannedForm.subject.trim(),
-        dateLabel: plannedForm.dateLabel.trim(),
-        duration: plannedForm.duration,
-        questionCount: plannedForm.sourceType === 'Manuel Ekle' ? plannedForm.manualQuestions.length : Number(plannedForm.questionCount),
-        teacherName: user?.name || 'Öğretmen',
-        sourceType: plannedForm.sourceType,
-        sources,
-      });
-      setPlannedExams((prev) => [created, ...prev]);
-      setPlannedOpen(false);
-      setPlannedForm({
-        title: '',
-        type: 'Quiz',
-        className: students[0]?.className || '',
-        subject: '',
-        dateLabel: '',
-        dateValue: null,
-        duration: '40 dk',
-        questionCount: '10',
-        sourceType: 'Soru Bankasi',
-        sources: [],
-        manualQuestions: [],
-      });
-      toast({ title: 'Sınav oluşturuldu', description: 'Planlı sınav backend’e kaydedildi.' });
-    } catch (err) {
-      toast({ title: 'Sınav oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleSource = (source) => {
-    setPlannedForm((prev) => {
-      const exists = prev.sources.some((item) => item.title === source.title);
-      const nextSources = exists
-        ? prev.sources.filter((item) => item.title !== source.title)
-        : [...prev.sources, {
-          questionId: source.id,
-          title: source.questionText,
-          type: source.type,
-          subject: source.subject,
-          imagePath: source.imagePath || null,
-          imagePlacement: source.imagePlacement || 'Top',
-        }];
-      return {
-        ...prev,
-        sources: nextSources,
-        questionCount: String(nextSources.length || prev.questionCount),
-      };
-    });
-  };
-
-  const updateManualQuestion = (id, key, value) => {
-    setPlannedForm((prev) => ({
-      ...prev,
-      manualQuestions: prev.manualQuestions.map((item) => (item.id === id ? { ...item, [key]: value } : item)),
-      questionCount: String(prev.manualQuestions.length),
-    }));
-  };
-
-  const addManualQuestion = () => {
-    setPlannedForm((prev) => {
-      const nextManualQuestions = [...prev.manualQuestions, createManualQuestionDraft()];
-      return {
-        ...prev,
-        manualQuestions: nextManualQuestions,
-        questionCount: String(nextManualQuestions.length),
-      };
-    });
-  };
-
-  const removeManualQuestion = (id) => {
-    setPlannedForm((prev) => {
-      const nextManualQuestions = prev.manualQuestions.filter((item) => item.id !== id);
-      return {
-        ...prev,
-        manualQuestions: nextManualQuestions,
-        questionCount: String(nextManualQuestions.length),
-      };
-    });
-  };
 
   if (loading) {
     return (
@@ -449,185 +290,15 @@ export default function TeacherExams() {
           <p className="text-muted-foreground mt-1">Sınav sonucu gir ve mevcut kayıtları incele</p>
         </div>
         <div className="flex items-center gap-2">
+          <Button className="bg-orange-500 text-white hover:bg-orange-600" onClick={() => navigate('/t/exams/create?mode=exam&type=Exam')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Sınav
+          </Button>
           <Button variant="outline" onClick={() => navigate('/t/exam-workbench')}>Çalışma Alanı</Button>
           <Button variant="outline" onClick={() => navigate('/t/mock-exams')}>
             <Calendar className="h-4 w-4 mr-2" />
             Deneme Sınavları
           </Button>
-          <Dialog open={plannedOpen} onOpenChange={setPlannedOpen}>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="hidden">
-                <Calendar className="h-4 w-4 mr-2" />
-                Yeni Sınav Oluştur
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[88vh] overflow-y-auto">
-              <DialogHeader><DialogTitle>Yeni Sınav Oluştur</DialogTitle></DialogHeader>
-              <div className="grid gap-4 py-2">
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="min-w-0 space-y-2"><Label>Başlık</Label><Input value={plannedForm.title} onChange={(e) => setPlannedForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="Matematik Deneme 4" /></div>
-                  <div className="min-w-0 space-y-2"><Label>Tür</Label><Select value={plannedForm.type} onValueChange={(value) => setPlannedForm((prev) => ({ ...prev, type: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Quiz">Quiz</SelectItem><SelectItem value="Written">Yazılı</SelectItem><SelectItem value="MockExam">Deneme</SelectItem></SelectContent></Select></div>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div className="min-w-0 space-y-2"><Label>Sınıf</Label><Select value={plannedForm.className} onValueChange={(value) => setPlannedForm((prev) => ({ ...prev, className: value }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[...new Set(students.map((item) => item.className).filter(Boolean))].map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}</SelectContent></Select></div>
-                  <div className="min-w-0 space-y-2">
-                    <Label>Ders</Label>
-                    <Select value={plannedForm.subject} onValueChange={(value) => setPlannedForm((prev) => ({ ...prev, subject: value }))}>
-                      <SelectTrigger><SelectValue placeholder="Ders seçin" /></SelectTrigger>
-                      <SelectContent>
-                        {subjectOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="min-w-0 space-y-2">
-                    <Label>Tarih</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" className="w-full justify-between font-normal">
-                          <span className={plannedForm.dateLabel ? '' : 'text-muted-foreground'}>
-                            {plannedForm.dateLabel || 'Tarih seçin'}
-                          </span>
-                          <ChevronDown className="h-4 w-4 opacity-60" />
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <DateCalendar
-                          mode="single"
-                          selected={plannedForm.dateValue ?? undefined}
-                          onSelect={(value) => {
-                            if (!value) return;
-                            setPlannedForm((prev) => ({ ...prev, dateLabel: formatDateLabel(value), dateValue: value }));
-                          }}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="min-w-0 space-y-2"><Label>Soru Sayısı</Label><Input value={plannedForm.questionCount} onChange={(e) => setPlannedForm((prev) => ({ ...prev, questionCount: e.target.value }))} type="number" /></div>
-                </div>
-                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                  <div className="min-w-0 space-y-2">
-                    <Label>Süre</Label>
-                    <Select value={plannedForm.duration} onValueChange={(value) => setPlannedForm((prev) => ({ ...prev, duration: value }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {DURATION_OPTIONS.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="min-w-0 space-y-2">
-                    <Label>Kaynak Türü</Label>
-                    <Select value={plannedForm.sourceType} onValueChange={(value) => setPlannedForm((prev) => ({ ...prev, sourceType: value, sources: value === 'Manuel Ekle' ? [] : prev.sources, manualQuestions: value === 'Manuel Ekle' ? prev.manualQuestions : [] }))}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Soru Bankasi">Soru Bankasından</SelectItem>
-                        <SelectItem value="Manuel Ekle">Manuel Ekle</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <Label>{plannedForm.sourceType === 'Manuel Ekle' ? 'Manuel Soru Kartları' : 'Soru Havuzu'}</Label>
-                  {plannedForm.sourceType === 'Manuel Ekle' ? (
-                    <div className="space-y-3 rounded-xl border p-3">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                        <div>
-                          <p className="text-sm font-semibold">Manuel Soru Kartları</p>
-                          <p className="text-xs text-muted-foreground">Her soru ayrı akışta oluşturulur ve dar ekranda taşmadan görünür.</p>
-                        </div>
-                        <Button variant="outline" onClick={addManualQuestion}>
-                          <Plus className="h-4 w-4 mr-2" />
-                          Soru Kartı Ekle
-                        </Button>
-                      </div>
-                      {plannedForm.manualQuestions.map((item, index) => (
-                        <div key={item.id} className="space-y-3 rounded-2xl border bg-muted/20 p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <p className="font-medium">Soru {index + 1}</p>
-                            <Button variant="ghost" size="icon" onClick={() => removeManualQuestion(item.id)}>
-                              <FileQuestion className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                            <div className="min-w-0">
-                              <Input value={item.topic} onChange={(e) => updateManualQuestion(item.id, 'topic', e.target.value)} placeholder="Konu" />
-                            </div>
-                            <div className="min-w-0">
-                            <Select value={item.type} onValueChange={(value) => updateManualQuestion(item.id, 'type', value)}>
-                              <SelectTrigger><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="Açık Uçlu">Açık Uçlu</SelectItem>
-                                <SelectItem value="Çoktan Seçmeli">Çoktan Seçmeli</SelectItem>
-                                <SelectItem value="Doğru / Yanlış">Doğru / Yanlış</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            </div>
-                          </div>
-                          <Textarea value={item.questionText} onChange={(e) => updateManualQuestion(item.id, 'questionText', e.target.value)} placeholder="Soru metni" />
-                          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                            <div className="min-w-0 space-y-2">
-                              <Label>Görsel</Label>
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => updateManualQuestion(item.id, 'imageFile', e.target.files?.[0] || null)}
-                              />
-                            </div>
-                            <div className="min-w-0 space-y-2">
-                              <Label>Görsel Yerleşimi</Label>
-                              <Select value={item.imagePlacement || 'Top'} onValueChange={(value) => updateManualQuestion(item.id, 'imagePlacement', value)}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Top">Üstte</SelectItem>
-                                  <SelectItem value="Bottom">Altta</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-                          {/secmeli|çoktan/i.test(item.type) ? (
-                            <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-                              <div className="min-w-0">
-                                <Textarea value={item.options} onChange={(e) => updateManualQuestion(item.id, 'options', e.target.value)} placeholder="Her satıra bir şık" />
-                              </div>
-                              <div className="min-w-0">
-                                <Input value={item.correctOptionIndex} onChange={(e) => updateManualQuestion(item.id, 'correctOptionIndex', e.target.value)} type="number" min="0" placeholder="Doğru şık sırası" />
-                              </div>
-                            </div>
-                          ) : (
-                            <Textarea value={item.expectedAnswer} onChange={(e) => updateManualQuestion(item.id, 'expectedAnswer', e.target.value)} placeholder="Beklenen cevap" />
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="grid max-h-72 gap-2 overflow-y-auto rounded-xl border p-3">
-                      {questionSources
-                        .filter((item) => !plannedForm.subject || item.subject === plannedForm.subject)
-                        .filter((item) => !plannedForm.className || item.classTargets?.includes('Tüm Sınıflar') || item.classTargets?.includes(plannedForm.className))
-                        .map((item) => {
-                          const selected = plannedForm.sources.some((source) => source.title === item.questionText);
-                          return (
-                            <button type="button" key={item.id} className={`rounded-lg border p-3 text-left transition ${selected ? 'border-brand-primary bg-brand-primary/5' : 'hover:bg-muted/40'}`} onClick={() => toggleSource(item)}>
-                              <div className="flex items-center justify-between gap-3">
-                                <div>
-                                  <p className="font-medium">{item.questionText}</p>
-                                  <p className="text-sm text-muted-foreground">{item.subject} • {item.type} • {item.topic}</p>
-                                </div>
-                                <Badge variant="outline">{selected ? 'Seçildi' : 'Ekle'}</Badge>
-                              </div>
-                            </button>
-                          );
-                        })}
-                    </div>
-                  )}
-                </div>
-              </div>
-              <DialogFooter className="flex-col gap-2 sm:flex-row">
-                <Button variant="outline" onClick={() => setPlannedOpen(false)}>İptal</Button>
-                <Button onClick={handleCreatePlannedExam} disabled={saving || !plannedForm.title || !plannedForm.subject || !plannedForm.className}>{saving ? 'Kaydediliyor...' : 'Sınavı Oluştur'}</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
           <Dialog open={createOpen} onOpenChange={setCreateOpen}>
             <DialogTrigger asChild>
               <Button className="bg-brand-primary hover:bg-brand-primary/90">
@@ -825,7 +496,7 @@ export default function TeacherExams() {
               title="Henüz sınav oluşturulmamış"
               description="Öğrencilerin başarısını ölçmek için ilk sınavını oluştur ve değerlendirme sürecini başlat."
               primaryLabel="Sınav Oluştur"
-              onPrimary={() => setPlannedOpen(true)}
+              onPrimary={() => navigate('/t/exams/create?mode=exam&type=Exam')}
               secondaryLabel="Sınav Şablonları"
               onSecondary={() => navigate('/t/question-bank')}
               tipDescription="Hazır soru kaynaklarını kullanarak hızlıca sınav oluşturabilir veya tamamen kendi sınavını tasarlayabilirsin."
@@ -928,7 +599,7 @@ export default function TeacherExams() {
               primaryLabel="Sonuç Gir"
               onPrimary={() => setCreateOpen(true)}
               secondaryLabel="Planlı Sınav"
-              onSecondary={() => setPlannedOpen(true)}
+              onSecondary={() => navigate('/t/exams/create?mode=exam&type=Exam')}
               tipDescription="Sonuç girdikçe sınıf başarılarını ve öğrenci gelişimini bu ekrandan takip edebilirsin."
             />
           ) : null}

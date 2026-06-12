@@ -211,7 +211,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       margin: const EdgeInsets.symmetric(horizontal: 4),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark(context) ? const Color(0xFF1E1E1E) : Colors.white,
+        color: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
         borderRadius: BorderRadius.circular(16),
         boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 6)],
       ),
@@ -238,7 +238,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
         hintText: "Konu veya soru ara...",
         prefixIcon: const Icon(Icons.search),
         filled: true,
-        fillColor: isDark(context) ? const Color(0xFF1E1E1E) : Colors.white,
+        fillColor: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
@@ -272,7 +272,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                 color: isSelected
                     ? accent
                     : isDark(context)
-                    ? const Color(0xFF1E1E1E)
+                    ? const Color(0xFF0E1A2F)
                     : Colors.grey.shade200,
                 borderRadius: BorderRadius.circular(20),
               ),
@@ -397,7 +397,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDark(context) ? const Color(0xFF17181D) : Colors.white,
+          color: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isDark(context)

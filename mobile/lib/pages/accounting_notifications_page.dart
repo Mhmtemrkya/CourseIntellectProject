@@ -50,7 +50,7 @@ class _AccountingNotificationsPageState
             title: 'Tahsilat, onay ve riskli bakiye bildirimleri tek listede.',
             description:
                 'Muhasebe ekibi için kritik olaylar okunma durumu ile birlikte izlenir.',
-            colors: const [Color(0xFF0F172A), Color(0xFF14532D)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(
                 label: 'Toplam',

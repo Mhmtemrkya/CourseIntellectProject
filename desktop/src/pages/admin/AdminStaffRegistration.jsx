@@ -26,6 +26,7 @@ import {
   fetchStaff,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
+import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -341,11 +342,11 @@ export default function AdminStaffRegistration() {
                 </div>
                 <div>
                   <Label>TC Kimlik No</Label>
-                  <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', e.target.value.replace(/\D/g, ''))} />
+                  <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" placeholder="11 haneli kimlik no" />
                 </div>
                 <div>
                   <Label>Telefon</Label>
-                  <Input value={form.phone} onChange={(e) => handleChange('phone', e.target.value)} placeholder="05XX XXX XX XX" />
+                  <Input value={form.phone} onChange={(e) => handleChange('phone', maskTrPhone(e.target.value))} inputMode="tel" placeholder="+90 5XX XXX XX XX" />
                 </div>
                 <div>
                   <Label>{isServiceDriver ? 'Giriş E-postası *' : 'E-posta'}</Label>

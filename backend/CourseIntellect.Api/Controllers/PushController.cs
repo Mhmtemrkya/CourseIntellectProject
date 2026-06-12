@@ -1,6 +1,8 @@
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -9,8 +11,6 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/push")]
 public sealed class PushController(CourseIntellectDbContext dbContext) : ControllerBase
 {
-    private const string SectionKey = "push-device-registrations";
-
     [HttpPost("register")]
     public async Task<IActionResult> Register([FromBody] PushDeviceRegistrationRequest request, CancellationToken cancellationToken)
     {
@@ -19,20 +19,34 @@ public sealed class PushController(CourseIntellectDbContext dbContext) : Control
             return BadRequest(new { message = "Push token zorunludur." });
         }
 
-        var devices = await CompatibilitySnapshotStore.LoadListAsync<PushDeviceRegistrationSnapshot>(dbContext, SectionKey, cancellationToken);
-        devices.RemoveAll(item => item.Token == request.Token);
-        devices.Add(new PushDeviceRegistrationSnapshot
-        {
-            Token = request.Token.Trim(),
-            Platform = request.Platform?.Trim() ?? "other",
-            Username = request.Username?.Trim() ?? string.Empty,
-            FullName = request.FullName?.Trim() ?? string.Empty,
-            Role = request.Role?.Trim() ?? string.Empty,
-            DeviceId = request.DeviceId?.Trim() ?? string.Empty,
-            UpdatedAtUtc = DateTime.UtcNow,
-        });
+        var userId = RequireCurrentUserId();
+        var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == userId, cancellationToken);
+        var normalizedToken = request.Token.Trim();
+        var device = await dbContext.PushDeviceRegistrations
+            .FirstOrDefaultAsync(x => x.Token == normalizedToken, cancellationToken);
 
-        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, devices, request.Username?.Trim() ?? "push", cancellationToken);
+        if (device is null)
+        {
+            device = new()
+            {
+                Token = normalizedToken,
+                CreatedAtUtc = DateTime.UtcNow,
+            };
+            await dbContext.PushDeviceRegistrations.AddAsync(device, cancellationToken);
+        }
+
+        device.TenantId = dbContext.CurrentTenantId ?? user?.TenantId;
+        device.UserId = userId;
+        device.Platform = request.Platform?.Trim() ?? "other";
+        device.Username = request.Username?.Trim() ?? user?.Username ?? string.Empty;
+        device.FullName = request.FullName?.Trim() ?? user?.FullName ?? string.Empty;
+        device.Role = request.Role?.Trim() ?? user?.PrimaryRole.ToString() ?? string.Empty;
+        device.DeviceId = request.DeviceId?.Trim() ?? string.Empty;
+        device.IsActive = true;
+        device.UpdatedAtUtc = DateTime.UtcNow;
+        device.LastSeenAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
         return Ok(new { success = true });
     }
 
@@ -44,10 +58,29 @@ public sealed class PushController(CourseIntellectDbContext dbContext) : Control
             return BadRequest(new { message = "Push token zorunludur." });
         }
 
-        var devices = await CompatibilitySnapshotStore.LoadListAsync<PushDeviceRegistrationSnapshot>(dbContext, SectionKey, cancellationToken);
-        devices.RemoveAll(item => item.Token == request.Token.Trim());
-        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, devices, request.Username?.Trim() ?? "push", cancellationToken);
+        var userId = RequireCurrentUserId();
+        var token = request.Token.Trim();
+        var device = await dbContext.PushDeviceRegistrations
+            .FirstOrDefaultAsync(x => x.Token == token && x.UserId == userId, cancellationToken);
+        if (device is not null)
+        {
+            device.IsActive = false;
+            device.UpdatedAtUtc = DateTime.UtcNow;
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+
         return Ok(new { success = true });
+    }
+
+    private Guid RequireCurrentUserId()
+    {
+        var raw = User.FindFirstValue("user_id")
+            ?? User.FindFirstValue("nameid")
+            ?? User.FindFirstValue("sub")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var userId)
+            ? userId
+            : throw new UnauthorizedAccessException("Kullanıcı bilgisi bulunamadı.");
     }
 }
 
@@ -59,15 +92,4 @@ public sealed class PushDeviceRegistrationRequest
     public string? FullName { get; set; }
     public string? Role { get; set; }
     public string? DeviceId { get; set; }
-}
-
-public sealed class PushDeviceRegistrationSnapshot
-{
-    public string Token { get; set; } = string.Empty;
-    public string Platform { get; set; } = "other";
-    public string Username { get; set; } = string.Empty;
-    public string FullName { get; set; } = string.Empty;
-    public string Role { get; set; } = string.Empty;
-    public string DeviceId { get; set; } = string.Empty;
-    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }

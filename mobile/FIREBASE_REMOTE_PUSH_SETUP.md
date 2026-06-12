@@ -25,15 +25,27 @@ Kod tarafi hazir. Uygulama tamamen kapaliyken uzaktan push icin su dosya ve ayar
 
 ## Backend
 
-`backend/CourseIntellect.Api/appsettings.Development.json` icindeki:
+Backend artik FCM HTTP v1 kullanir. Firebase Console > Project settings > Service accounts ekranindan service account JSON indirilir ve sunucuya gizli olarak verilir.
 
-`Firebase:ServerKey`
+Onerilen prod ayari:
 
-alanina gecerli Firebase Cloud Messaging anahtarini gir.
+`COURSE_INTELLECT_FCM_SERVICE_ACCOUNT_BASE64`
+
+Bu deger service account JSON dosyasinin base64 halidir. Alternatifler:
+
+- `COURSE_INTELLECT_FCM_SERVICE_ACCOUNT_JSON`: JSON icerigi direkt verilir.
+- `COURSE_INTELLECT_FCM_SERVICE_ACCOUNT_PATH`: Sunucudaki JSON dosya yolu verilir.
+- `COURSE_INTELLECT_FCM_PROJECT_ID`: Gerekirse JSON icindeki `project_id` uzerine yazar.
+
+Backend bu ayarlar yoksa hata vermez; uygulama ici bildirim ve SignalR devam eder, sadece gercek remote push atlanir.
+
+Veritabani icin migration uygulanmali:
+
+`20260605162000_AddPushDeviceRegistrations`
 
 ## Not
 
 Bu dosyalar eklenmeden:
 
-- uygulama acikken veya yeniden one geldiginde yerel/native banner calisabilir
+- uygulama ici bildirim ve SignalR calisir
 - fakat uygulama tamamen kapaliyken gercek remote push garanti calismaz

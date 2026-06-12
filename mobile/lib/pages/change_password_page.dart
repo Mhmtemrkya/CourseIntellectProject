@@ -6,11 +6,7 @@ class ChangePasswordPage extends StatefulWidget {
   final bool forceMode;
   final VoidCallback? onSuccess;
 
-  const ChangePasswordPage({
-    super.key,
-    this.forceMode = false,
-    this.onSuccess,
-  });
+  const ChangePasswordPage({super.key, this.forceMode = false, this.onSuccess});
 
   @override
   State<ChangePasswordPage> createState() => _ChangePasswordPageState();
@@ -144,9 +140,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     final body = Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: force
-          ? null
-          : AppBar(title: const Text('Şifre Değiştir')),
+      appBar: force ? null : AppBar(title: const Text('Şifre Değiştir')),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -165,7 +159,9 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.12),
+                        color: theme.colorScheme.primary.withValues(
+                          alpha: 0.12,
+                        ),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
@@ -237,14 +233,20 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   width: double.infinity,
                   height: 52,
                   child: ElevatedButton(
-                    onPressed: (_saving || !_allRulesValid) ? null : _handleSubmit,
+                    onPressed: (_saving || !_allRulesValid)
+                        ? null
+                        : _handleSubmit,
                     child: _saving
                         ? const SizedBox(
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(force ? 'Şifreyi Güncelle ve Devam Et' : 'Şifreyi Güncelle'),
+                        : Text(
+                            force
+                                ? 'Şifreyi Güncelle ve Devam Et'
+                                : 'Şifreyi Güncelle',
+                          ),
                   ),
                 ),
               ],

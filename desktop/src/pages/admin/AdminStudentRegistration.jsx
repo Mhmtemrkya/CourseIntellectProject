@@ -18,6 +18,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createStudent, fetchClasses, fetchStudents } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
+import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -35,7 +36,7 @@ const emptyForm = {
   className: '',
   schoolNumber: '',
   birthDate: '',
-  programType: 'Sayisal',
+  programType: 'Lise',
   parentName: '',
   parentPhone: '',
   parentEmail: '',
@@ -250,14 +251,15 @@ export default function AdminStudentRegistration() {
                       <Input type="date" value={form.birthDate} onChange={(e) => handleChange('birthDate', e.target.value)} />
                     </div>
                     <div>
-                      <Label>Program</Label>
+                      <Label>Eğitim Seviyesi</Label>
                       <Select value={form.programType} onValueChange={(v) => handleChange('programType', v)}>
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Sayisal">Sayısal</SelectItem>
-                          <SelectItem value="Sozel">Sözel</SelectItem>
-                          <SelectItem value="EA">Eşit Ağırlık</SelectItem>
-                          <SelectItem value="Dil">Dil</SelectItem>
+                          <SelectItem value="Ilkokul">İlkokul</SelectItem>
+                          <SelectItem value="Ortaokul">Ortaokul</SelectItem>
+                          <SelectItem value="Lise">Lise</SelectItem>
+                          <SelectItem value="Universite">Üniversite</SelectItem>
+                          <SelectItem value="Mezun">Mezun</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -276,7 +278,7 @@ export default function AdminStudentRegistration() {
                     </div>
                     <div>
                       <Label>Veli Telefon</Label>
-                      <Input value={form.parentPhone} onChange={(e) => handleChange('parentPhone', e.target.value)} placeholder="05XX XXX XX XX" />
+                      <Input value={form.parentPhone} onChange={(e) => handleChange('parentPhone', maskTrPhone(e.target.value))} placeholder="+90 5XX XXX XX XX" inputMode="tel" />
                     </div>
                     <div className="col-span-2">
                       <Label>Veli E-posta</Label>

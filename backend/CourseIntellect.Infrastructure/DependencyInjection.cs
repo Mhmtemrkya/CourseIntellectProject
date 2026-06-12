@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
         services.AddDbContext<CourseIntellectDbContext>(options =>
             options.UseNpgsql(connectionString));
+        services.AddSingleton<IOptions<FcmPushOptions>>(Options.Create(FcmPushOptions.FromConfiguration(configuration)));
+        services.AddHttpClient<IPushNotificationService, FcmPushNotificationService>();
 
         services.AddScoped<DatabaseSeeder>();
         services.AddHostedService<RejectedTenantCleanupService>();

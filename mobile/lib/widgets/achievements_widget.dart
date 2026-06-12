@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../pages/student_badges_page.dart';
+import '../services/badge_catalog.dart';
+import '../services/badge_progress_store.dart';
 import '../services/student_xp_service.dart';
 
 class AchievementsWidget extends StatefulWidget {
@@ -112,6 +115,11 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
         _showAchievementToast(achievement);
       }
     }
+
+    if (mounted) {
+      // 300'lük rozet kataloğunda yeni açılan varsa kutlama modalını göster.
+      await BadgeUnlockService.checkAndCelebrate(context, xp: currentXp);
+    }
   }
 
   void _showAchievementToast(Map<String, dynamic> achievement) {
@@ -180,7 +188,31 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${BadgeCatalog.unlockedCount(xp)} / ${BadgeCatalog.total} rozet açıldı',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+              ),
+            ),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const StudentBadgesPage(),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.military_tech_rounded, size: 18),
+              label: const Text('Tüm Rozetler'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
         SizedBox(
           height: 168,
           child: ListView(

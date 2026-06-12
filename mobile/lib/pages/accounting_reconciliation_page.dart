@@ -68,7 +68,7 @@ class AccountingReconciliationPage extends StatelessWidget {
                 'Fatura, tahsilat ve onay kayıtlarıyla anlık mutabakat özeti.',
             description:
                 'Bu ekran artık sabit senaryo yerine muhasebe dashboard verisini kullanır.',
-            colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(
                 label: 'Fatura',

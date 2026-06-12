@@ -23,7 +23,7 @@ args = [
 command = "npx"
 
 [mcp_servers.github.env]
-GITHUB_PERSONAL_ACCESS_TOKEN = "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"
+GITHUB_PERSONAL_ACCESS_TOKEN = "YOUR-GITHUB-PERSONAL-ACCESS-TOKEN"
 
 [mcp_servers.memory]
 args = [

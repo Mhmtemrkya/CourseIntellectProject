@@ -340,7 +340,7 @@ class StatBox extends StatelessWidget {
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          color: isDark ? const Color(0xFF0E1A2F) : Colors.white,
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(

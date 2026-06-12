@@ -12,6 +12,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createParent } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
+import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
 
 const emptyForm = {
   fullName: '',
@@ -132,8 +133,9 @@ export default function AdminParentRegistration() {
                 <Label>Telefon</Label>
                 <Input
                   value={form.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
-                  placeholder="05XX XXX XX XX"
+                  onChange={(e) => handleChange('phone', maskTrPhone(e.target.value))}
+                  inputMode="tel"
+                  placeholder="+90 5XX XXX XX XX"
                 />
               </div>
               <div className="space-y-2">

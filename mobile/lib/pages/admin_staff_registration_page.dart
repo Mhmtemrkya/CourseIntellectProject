@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../utils/input_formatters.dart';
+
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
@@ -215,6 +217,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     label: 'TC Kimlik No',
                     keyboardType: TextInputType.number,
                     maxLength: 11,
+                    inputFormatters: AppInputFormatters.tcKimlik(),
+                    validator: AppInputFormatters.validateTcKimlik,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -255,6 +259,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     controller: _teacherPhoneController,
                     label: 'Telefon',
                     keyboardType: TextInputType.phone,
+                    inputFormatters: AppInputFormatters.phone(),
+                    prefixText: '+90 ',
+                    validator: AppInputFormatters.validatePhone,
                   ),
                 ),
               ],
@@ -448,6 +455,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     label: 'TC Kimlik No',
                     keyboardType: TextInputType.number,
                     maxLength: 11,
+                    inputFormatters: AppInputFormatters.tcKimlik(),
+                    validator: AppInputFormatters.validateTcKimlik,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -507,6 +516,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                     controller: _personnelPhoneController,
                     label: 'Telefon',
                     keyboardType: TextInputType.phone,
+                    inputFormatters: AppInputFormatters.phone(),
+                    prefixText: '+90 ',
+                    validator: AppInputFormatters.validatePhone,
                   ),
                 ),
               ],
@@ -721,12 +733,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     int? maxLength,
     bool required = true,
     String? Function(String?)? validator,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
       maxLength: maxLength,
+      inputFormatters: inputFormatters,
       validator:
           validator ??
           (required
@@ -736,6 +751,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               : null),
       decoration: InputDecoration(
         labelText: label,
+        prefixText: prefixText,
         border: const OutlineInputBorder(),
       ),
     );

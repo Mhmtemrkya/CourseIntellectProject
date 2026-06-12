@@ -53,6 +53,7 @@ const pathLabels = {
   "question-bank": "Soru Bankası",
   "question-studio": "Soru Oluştur",
   exams: "Sınavlar",
+  "grade-entry": "Not Girişi",
   "mock-exams": "Deneme Sınavları",
   create: "Oluştur",
   reports: "Raporlar",

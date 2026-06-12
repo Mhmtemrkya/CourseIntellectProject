@@ -71,7 +71,7 @@ class _AdministrativeDocumentsPageState
                 'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.',
             description:
                 'Öğrenci bazlı evrak durumu, eksik belge ve sözleşme takibi bu ekranda toplanır.',
-            colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(
                 label: 'Toplam Dosya',

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:student/pages/teacher_assignments_page.dart';
 import 'package:student/pages/teacher_attendance_page.dart';
 import 'package:student/pages/teacher_exams_page.dart';
+import 'package:student/pages/teacher_student_exams_page.dart';
 import 'package:student/pages/teacher_mock_exams_page.dart';
 import 'package:student/pages/teacher_live_lessons_page.dart';
 import 'package:student/pages/teacher_meeting_approvals_page.dart';
@@ -1659,6 +1660,12 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         "title": "Deneme\nSınavları",
         "color": const Color(0xFFFF7A00),
         "page": const TeacherMockExamsPage(),
+      },
+      {
+        "icon": Icons.visibility_rounded,
+        "title": "Öğrenci\nSınavları",
+        "color": const Color(0xFF0EA5E9),
+        "page": const TeacherStudentExamsPage(),
       },
       {
         "icon": Icons.message_rounded,

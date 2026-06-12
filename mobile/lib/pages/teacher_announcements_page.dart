@@ -164,7 +164,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
             title: 'Öğrenci ve öğretmen hedefli duyuruları tek yerden yönetin.',
             description:
                 'Sınıf duyuruları, hatırlatmalar ve öğretmen içi bilgilendirmeler bu ekrandan yayınlanır.',
-            colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(
                 label: 'Toplam',
@@ -294,7 +294,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
               title: 'Duyurunu oluştur ve hedef kitleye yayınla.',
               description:
                   'Desktop akışındaki gibi sınıf seç, liste kaynağını belirle ve duyuruyu sadece seçtiğin kişilere gönder.',
-              colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+              colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,

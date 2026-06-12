@@ -211,6 +211,17 @@ class AdminDirectoryApiService {
     return (map['name'] ?? '').toString().trim();
   }
 
+  Future<Map<String, dynamic>> createCompleteClass(
+    Map<String, dynamic> payload,
+  ) async {
+    final response = await _authorizedSend(
+      'POST',
+      '/api/classes/create-complete',
+      body: payload,
+    );
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
   Future<List<AdminStaffRecord>> fetchStaff({String? role}) async {
     final path = role == null || role.isEmpty
         ? '/api/staff'

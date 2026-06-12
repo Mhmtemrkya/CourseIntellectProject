@@ -30,7 +30,7 @@ class AccountingBulkActionsPage extends StatelessWidget {
                 'Aynı akışta tahsilat planı ve hatırlatma adımlarını yönetin.',
             description:
                 'Geciken planlar için toplu hatırlatma ve özet kontrol bu ekranda yapılır.',
-            colors: const [Color(0xFF0F172A), Color(0xFF14532D)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(
                 label: 'Geciken',

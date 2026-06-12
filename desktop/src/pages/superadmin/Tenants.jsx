@@ -15,7 +15,8 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchPlatformTenants, approveTenant, rejectTenant } from '../../lib/api/modules';
+import { fetchPlatformTenants, approveTenant, rejectTenant, fetchTenantFeatures, saveTenantFeatures } from '../../lib/api/modules';
+import { Switch } from '../../components/ui/switch';
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.05 } } };
 
@@ -30,6 +31,46 @@ export default function Tenants() {
   const { toast } = useToast();
   const [tenants, setTenants] = useState([]);
   const [selectedTenant, setSelectedTenant] = useState(null);
+  const [featureTenant, setFeatureTenant] = useState(null);
+  const [featureList, setFeatureList] = useState([]);
+  const [featureLoading, setFeatureLoading] = useState(false);
+  const [featureSaving, setFeatureSaving] = useState(false);
+
+  // Kuruma özel özellik anahtarlarını yönet: platform yöneticisi
+  // her modülü kurum bazında açıp kapatabilir.
+  const openFeatures = async (tenant) => {
+    setFeatureTenant(tenant);
+    setFeatureLoading(true);
+    try {
+      const payload = await fetchTenantFeatures(tenant.id);
+      setFeatureList(Array.isArray(payload?.features) ? payload.features : []);
+    } catch (err) {
+      toast({ title: 'Özellikler alınamadı', description: err.message, variant: 'destructive' });
+      setFeatureTenant(null);
+    } finally {
+      setFeatureLoading(false);
+    }
+  };
+
+  const toggleFeature = (key) => {
+    setFeatureList((prev) => prev.map((item) => (item.key === key ? { ...item, enabled: !item.enabled } : item)));
+  };
+
+  const handleSaveFeatures = async () => {
+    if (!featureTenant) return;
+    try {
+      setFeatureSaving(true);
+      const flags = Object.fromEntries(featureList.map((item) => [item.key, item.enabled]));
+      await saveTenantFeatures(featureTenant.id, flags);
+      toast({ title: 'Özellikler kaydedildi', description: `${featureTenant.name} için modül ayarları güncellendi.` });
+      setFeatureTenant(null);
+    } catch (err) {
+      toast({ title: 'Kaydedilemedi', description: err.message, variant: 'destructive' });
+    } finally {
+      setFeatureSaving(false);
+    }
+  };
+
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -241,7 +282,10 @@ export default function Tenants() {
                         </Button>
                       </div>
                     ) : (
-                      <Button variant="outline" size="sm" onClick={() => setSelectedTenant(tenant)}>Detay</Button>
+                      <div className="flex gap-1">
+                        <Button variant="outline" size="sm" onClick={() => setSelectedTenant(tenant)}>Detay</Button>
+                        <Button variant="outline" size="sm" onClick={() => openFeatures(tenant)}>Özellikler</Button>
+                      </div>
                     )}
                   </TableCell>
                 </TableRow>
@@ -250,6 +294,36 @@ export default function Tenants() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!featureTenant} onOpenChange={(open) => !open && setFeatureTenant(null)}>
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Özellik Yönetimi — {featureTenant?.name}</DialogTitle>
+          </DialogHeader>
+          {featureLoading ? (
+            <p className="py-8 text-center text-sm text-muted-foreground">Özellikler yükleniyor...</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Kapatılan modüller bu kurumun menülerinden gizlenir; veriler silinmez, modül yeniden açıldığında geri gelir.
+              </p>
+              {featureList.map((feature) => (
+                <div key={feature.key} className="flex items-center justify-between gap-3 rounded-xl border border-slate-200 dark:border-slate-700 px-4 py-3">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-sm">{feature.label}</p>
+                    <p className="text-xs text-muted-foreground truncate">{feature.description}</p>
+                  </div>
+                  <Switch checked={feature.enabled} onCheckedChange={() => toggleFeature(feature.key)} />
+                </div>
+              ))}
+              <div className="flex justify-end gap-2 pt-2">
+                <Button variant="outline" onClick={() => setFeatureTenant(null)}>Vazgeç</Button>
+                <Button onClick={handleSaveFeatures} disabled={featureSaving}>{featureSaving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!selectedTenant} onOpenChange={(open) => !open && setSelectedTenant(null)}>
         <DialogContent>

@@ -214,6 +214,10 @@ public sealed class ServiceController(IServiceTrackingService serviceTrackingSer
     public async Task<IActionResult> SearchStudents([FromQuery] string? keyword, CancellationToken cancellationToken) =>
         Ok(await serviceTrackingService.SearchStudentsAsync(keyword, cancellationToken));
 
+    [HttpGet("driver/me")]
+    public async Task<IActionResult> GetDriverSelf(CancellationToken cancellationToken) =>
+        Ok(await serviceTrackingService.GetCurrentDriverSelfAsync(cancellationToken));
+
     [HttpGet("driver/today-routes")]
     public async Task<IActionResult> GetDriverTodayRoutes(CancellationToken cancellationToken) =>
         Ok(await serviceTrackingService.GetDriverTodayRoutesAsync(cancellationToken));
@@ -280,4 +284,9 @@ public sealed class ServiceController(IServiceTrackingService serviceTrackingSer
     [Authorize(Roles = "Student")]
     public async Task<IActionResult> GetStudentHistory(CancellationToken cancellationToken) =>
         Ok(await serviceTrackingService.GetStudentHistoryAsync(cancellationToken));
+
+    [HttpGet("admin/live-status")]
+    [Authorize(Roles = ServiceManagers)]
+    public async Task<IActionResult> GetAdminLiveStatus(CancellationToken cancellationToken) =>
+        Ok(await serviceTrackingService.GetAdminLiveStatusAsync(cancellationToken));
 }

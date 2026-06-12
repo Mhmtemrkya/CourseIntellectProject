@@ -1,154 +1,215 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Info,
-  Users,
-  GraduationCap,
-  Calendar,
-  BookOpen,
-  School,
+  ArrowLeft, BookOpen, Check, ChevronRight, GraduationCap, ImagePlus,
+  Lock, Palette, Plus, Save, Search, Settings, ShieldCheck, Sparkles,
+  Trash2, UserCheck, Users,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { ScrollArea } from '../components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '../components/ui/select';
+import { Textarea } from '../components/ui/textarea';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createClass, fetchAttendance, fetchContents, fetchPlatformConfigurations, fetchScheduleEntries, fetchStaff, fetchStudents, upsertPlatformConfiguration } from '../lib/api/modules';
-import { useApp } from '../context/AppContext';
+import {
+  createCompleteClass,
+  fetchCourses,
+  fetchPlatformConfigurations,
+  fetchStaff,
+  fetchStudents,
+} from '../lib/api/modules';
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 },
-  },
-};
+const steps = [
+  ['basic', 'Temel Bilgiler', 'Sınıf detaylarını girin'],
+  ['teachers', 'Öğretmen & Dersler', 'Öğretmen ve dersleri belirleyin'],
+  ['students', 'Öğrenciler', 'Öğrenci ekleyin veya davet gönderin'],
+  ['settings', 'Ayarlar', 'Sınıf ayarlarını yapılandırın'],
+];
 
-const weekDays = ['Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma'];
+const colorOptions = ['#2563EB', '#7B61FF', '#22C55E', '#FF8A00', '#EF4444', '#06B6D4'];
+const iconOptions = ['users', 'graduation', 'book', 'science', 'globe', 'palette', 'music', 'sport', 'code', 'star', 'target', 'spark'];
+const unitOptions = ['İlkokul', 'Ortaokul', 'Lise', 'Dershane'];
+const gradeOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}. Sınıf`);
+const sectionOptions = ['A Şubesi', 'B Şubesi', 'C Şubesi', 'D Şubesi'];
 
-function buildClassModels(students, teachers, attendance, contents, scheduleEntries = []) {
-  const classNames = [...new Set(students.map((item) => item.className).filter(Boolean))];
-  const dayOrder = weekDays.reduce((acc, day, idx) => ({ ...acc, [day]: idx }), {});
+function normalize(value = '') {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replaceAll('ç', 'c')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ı', 'i')
+    .replaceAll('ö', 'o')
+    .replaceAll('ş', 's')
+    .replaceAll('ü', 'u');
+}
 
-  return classNames.map((className, index) => {
-    const classStudents = students.filter((student) => student.className === className);
-    const classTeachers = teachers.filter((teacher) => (teacher.assignedClasses || []).includes(className));
-    const classAttendance = attendance.filter((item) => item.className === className);
-    const classSchedule = (scheduleEntries || [])
-      .filter((entry) => entry.className === className)
-      .sort((a, b) => {
-        const dayDiff = (dayOrder[a.day] ?? 99) - (dayOrder[b.day] ?? 99);
-        if (dayDiff !== 0) return dayDiff;
-        return String(a.time || '').localeCompare(String(b.time || ''));
-      });
-    const lessons = [...new Set(classSchedule.map((entry) => entry.subject).filter(Boolean))];
-    const classContents = contents.filter((item) => {
-      const targetClasses = item.targetClasses || [];
-      return targetClasses.length === 0 || targetClasses.includes(className);
-    });
+function initials(value = '') {
+  return value.split(' ').filter(Boolean).slice(0, 2).map((item) => item[0]).join('').toUpperCase() || 'CI';
+}
 
-    return {
-      id: className,
-      name: className,
-      schedule: `${weekDays.join(', ')} • ${lessons.length > 0 ? lessons[0] : 'Genel Program'}`,
-      studentCount: classStudents.length,
-      teacherCount: classTeachers.length,
-      students: classStudents,
-      teachers: classTeachers,
-      contents: classContents,
-      // Sınıf programı doğrudan /api/schedule kayıtlarından geliyor — daha önce
-      // attendance derslerinden uyduruluyordu ve gerçek programla ilgisi yoktu.
-      scheduleItems: classSchedule.map((entry) => ({
-        id: entry.id || `${className}-${entry.day}-${entry.time}`,
-        day: entry.day || 'Pazartesi',
-        time: entry.time || '—',
-        subject: entry.subject || 'Ders',
-        teacher: entry.teacher || classTeachers[0]?.fullName || 'Öğretmen',
-        room: classTeachers.find((t) => t.fullName === entry.teacher)?.campus || classTeachers[0]?.campus || 'Merkez Kampus',
-      })),
-      attendanceRate: classStudents.length > 0
-        ? Math.round(
-          (new Set(
-            classAttendance
-              .filter((item) => String(item.status || '').toLowerCase().includes('katildi'))
-              .map((item) => item.studentName),
-          ).size / classStudents.length) * 100,
-        )
-        : 0,
-      homeroomTeacher: classTeachers.find((teacher) => teacher.homeroomClass === className)?.fullName || 'Atanmadı',
-      branchSummary: [...new Set(classTeachers.map((teacher) => teacher.departmentOrBranch).filter(Boolean))],
-      contentCount: classContents.length,
-    };
-  });
+function decodeClassConfig(item) {
+  try {
+    return JSON.parse(item.payloadJson || '{}');
+  } catch {
+    return null;
+  }
+}
+
+function generateCode(name, academicYear) {
+  const clean = normalize(name).replaceAll(' ', '').replaceAll('-', '').toUpperCase();
+  const year = String(academicYear || new Date().getFullYear()).match(/\d{4}/)?.[0] || new Date().getFullYear();
+  return clean ? `${clean}-${year}-001` : `${year}-001`;
+}
+
+function StepRail({ step }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-4 shadow-sm dark:bg-[#0D1B2A]/80">
+      <div className="grid gap-3 lg:grid-cols-4">
+        {steps.map(([key, title, desc], index) => {
+          const active = step === index;
+          const done = step > index;
+          return (
+            <div key={key} className="flex items-center gap-3">
+              <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-black ${
+                done ? 'border-teal-400 bg-teal-500 text-white'
+                  : active ? 'border-blue-400 bg-blue-600 text-white shadow-[0_0_22px_rgba(37,99,235,0.45)]'
+                    : 'border-white/10 bg-white/5 text-slate-400'
+              }`}
+              >
+                {done ? <Check className="h-5 w-5" /> : index + 1}
+              </div>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-white">{title}</p>
+                <p className="truncate text-xs text-slate-400">{desc}</p>
+              </div>
+              {index < steps.length - 1 ? <div className="hidden h-px flex-1 bg-blue-400/30 xl:block" /> : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function ClassIcon({ name, color = '#2563EB' }) {
+  const icons = {
+    users: Users,
+    graduation: GraduationCap,
+    book: BookOpen,
+    science: Sparkles,
+    globe: ShieldCheck,
+    palette: Palette,
+    music: Sparkles,
+    sport: UserCheck,
+    code: Settings,
+    star: Sparkles,
+    target: ShieldCheck,
+    spark: Sparkles,
+  };
+  const Icon = icons[name] || Users;
+  return (
+    <div className="flex h-20 w-20 items-center justify-center rounded-full border" style={{ borderColor: `${color}55`, background: `${color}18` }}>
+      <Icon className="h-9 w-9" style={{ color }} />
+    </div>
+  );
+}
+
+function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
+  const advisor = selectedTeachers.find((item) => item.id === form.advisorTeacherId);
+  return (
+    <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 text-white shadow-sm">
+      <div className="mb-4 flex items-center justify-between">
+        <h3 className="font-black">Sınıf Önizlemesi</h3>
+        <span className="rounded-lg bg-blue-500/15 px-2 py-1 text-xs font-bold text-blue-300">Taslak</span>
+      </div>
+      <div className="flex flex-col items-center py-5">
+        <ClassIcon name={form.icon} color={form.themeColor} />
+        <h2 className="mt-4 text-3xl font-black">{form.name || 'Yeni Sınıf'}</h2>
+      </div>
+      <div className="space-y-3 text-sm">
+        {[
+          ['Okul', form.school],
+          ['Seviye', form.grade],
+          ['Şube', form.section],
+          ['Dönem', form.academicYear],
+          ['Danışman', advisor?.fullName || 'Atanmadı'],
+          ['Öğrenci Sayısı', selectedStudents.length],
+          ['Ders Sayısı', assignments.length],
+        ].map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4 border-b border-white/5 pb-2 last:border-b-0">
+            <span className="text-slate-400">{label}</span>
+            <b className="text-right">{value || '-'}</b>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function Classes() {
   const { toast } = useToast();
-  const { user } = useApp();
-  const canCreateClass = ['admin', 'administrative'].includes(user?.role) || (user?.role !== 'student' && (user?.permissions || []).includes('canCreate'));
-  const EMPTY_HOME_ROOM_TEACHER = '__none__';
-  const [classes, setClasses] = useState([]);
-  const [selectedClass, setSelectedClass] = useState(null);
-  const [teachers, setTeachers] = useState([]);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ name: '', capacity: '24', homeroomTeacher: '', assignedTeachers: [] });
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [step, setStep] = useState(0);
+  const [students, setStudents] = useState([]);
+  const [teachers, setTeachers] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [classConfigs, setClassConfigs] = useState([]);
+  const [teacherQuery, setTeacherQuery] = useState('');
+  const [studentQuery, setStudentQuery] = useState('');
+  const [teacherBranchFilter, setTeacherBranchFilter] = useState('all');
+  const [studentFilter, setStudentFilter] = useState('all');
+  const [form, setForm] = useState({
+    name: '',
+    code: '',
+    school: '',
+    institutionUnit: 'Ortaokul',
+    grade: '7. Sınıf',
+    section: 'A Şubesi',
+    academicYear: '2025-2026 / 1. Dönem',
+    advisorTeacherId: '',
+    description: '',
+    themeColor: '#2563EB',
+    icon: 'users',
+  });
+  const [selectedTeacherIds, setSelectedTeacherIds] = useState([]);
+  const [selectedStudentIds, setSelectedStudentIds] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [modules, setModules] = useState({
+    attendance: true,
+    grades: true,
+    liveLessons: true,
+    homework: true,
+    study: true,
+    messaging: true,
+  });
 
-  const loadClasses = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [students, teacherList, attendance, contents, savedConfigs, scheduleEntries] = await Promise.all([
+      const [studentRows, teacherRows, courseRows, configs] = await Promise.all([
         fetchStudents(),
         fetchStaff('Teacher').catch(() => []),
-        fetchAttendance().catch(() => []),
-        fetchContents(false).catch(() => []),
+        fetchCourses().catch(() => []),
         fetchPlatformConfigurations('class-management').catch(() => []),
-        fetchScheduleEntries().catch(() => []),
       ]);
-      const derivedModels = buildClassModels(students, teacherList, attendance, contents, scheduleEntries);
-      const savedModels = (savedConfigs || []).flatMap((item) => {
-        try {
-          const parsed = JSON.parse(item.payloadJson || '{}');
-          return [{
-            id: parsed.name,
-            name: parsed.name,
-            schedule: 'Özel sınıf planı',
-            studentCount: parsed.capacity || 0,
-            teacherCount: (parsed.assignedTeachers || []).length,
-            students: [],
-            teachers: teacherList.filter((teacher) => (parsed.assignedTeachers || []).includes(teacher.fullName)),
-            contents: [],
-            scheduleItems: [],
-            attendanceRate: 0,
-            homeroomTeacher: parsed.homeroomTeacher || 'Atanmadı',
-            branchSummary: [],
-            contentCount: 0,
-            capacity: parsed.capacity || 0,
-          }];
-        } catch {
-          return [];
-        }
-      });
-      const models = [...derivedModels, ...savedModels.filter((saved) => !derivedModels.some((item) => item.name === saved.name))];
-      setClasses(models);
-      setTeachers(teacherList);
-      setSelectedClass((prev) => prev || models[0] || null);
+      setStudents(Array.isArray(studentRows) ? studentRows : []);
+      setTeachers(Array.isArray(teacherRows) ? teacherRows : []);
+      setCourses(Array.isArray(courseRows) ? courseRows : []);
+      setClassConfigs((configs || []).map(decodeClassConfig).filter(Boolean));
+
+      const firstSchool = [...new Set((studentRows || []).map((item) => item.currentSchool).filter(Boolean))][0] || '';
+      const firstCourses = (courseRows || []).slice(0, 4).map((course) => ({
+        courseName: course.name || course.title || course.subject || 'Ders',
+        teacherId: null,
+        weeklyHours: 4,
+        isRequired: true,
+      }));
+      setForm((prev) => ({ ...prev, school: prev.school || firstSchool }));
+      setAssignments((prev) => (prev.length > 0 ? prev : firstCourses));
     } catch (err) {
       setError(err.message || 'Sınıf verileri alınamadı.');
     } finally {
@@ -157,287 +218,350 @@ export default function Classes() {
   }, []);
 
   useEffect(() => {
-    loadClasses();
-  }, [loadClasses]);
+    load();
+  }, [load]);
 
-  const classStats = useMemo(() => ({
-    totalClasses: classes.length,
-    totalStudents: classes.reduce((sum, item) => sum + item.studentCount, 0),
-    totalTeachers: classes.reduce((sum, item) => sum + item.teacherCount, 0),
-  }), [classes]);
+  useEffect(() => {
+    if (!form.code) {
+      setForm((prev) => ({ ...prev, code: generateCode(prev.name, prev.academicYear) }));
+    }
+  }, [form.code, form.name, form.academicYear]);
 
-  const teacherOptions = useMemo(() => {
-    const unique = [...new Set(teachers.map((teacher) => teacher.fullName).filter(Boolean))];
-    return unique.sort((a, b) => a.localeCompare(b, 'tr'));
-  }, [teachers]);
+  const schools = useMemo(() => [...new Set(students.map((item) => item.currentSchool).filter(Boolean))], [students]);
+  const branches = useMemo(() => [...new Set(teachers.map((item) => item.departmentOrBranch).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [teachers]);
+  const selectedTeachers = useMemo(() => teachers.filter((item) => selectedTeacherIds.includes(item.id)), [selectedTeacherIds, teachers]);
+  const selectedStudents = useMemo(() => students.filter((item) => selectedStudentIds.includes(item.id)), [selectedStudentIds, students]);
+
+  const filteredTeachers = useMemo(() => teachers.filter((teacher) => {
+    const matchesSearch = !teacherQuery || `${teacher.fullName} ${teacher.departmentOrBranch}`.toLowerCase().includes(teacherQuery.toLowerCase());
+    const matchesBranch = teacherBranchFilter === 'all' || teacher.departmentOrBranch === teacherBranchFilter;
+    return matchesSearch && matchesBranch;
+  }), [teacherBranchFilter, teacherQuery, teachers]);
+
+  const filteredStudents = useMemo(() => students.filter((student) => {
+    const matchesSearch = !studentQuery || `${student.fullName} ${student.schoolNumber}`.toLowerCase().includes(studentQuery.toLowerCase());
+    const isWaiting = !student.className || normalize(student.className).includes('bekleyen');
+    const matchesFilter = studentFilter === 'all'
+      || (studentFilter === 'waiting' && isWaiting)
+      || (studentFilter === 'active' && !isWaiting);
+    return matchesSearch && matchesFilter;
+  }), [studentFilter, studentQuery, students]);
+
+  const existingSummary = useMemo(() => classConfigs.map((item) => ({
+    name: item.name,
+    code: item.code,
+    studentCount: item.studentIds?.length || students.filter((student) => student.className === item.name).length,
+    teacherCount: item.teachers?.length || 0,
+    courseCount: item.courses?.length || 0,
+    color: item.themeColor || '#2563EB',
+  })), [classConfigs, students]);
+
+  const updateForm = (key, value) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+      ...(key === 'name' ? { code: generateCode(value, prev.academicYear) } : {}),
+    }));
+  };
+
+  const toggleTeacher = (teacher) => {
+    setSelectedTeacherIds((prev) => (
+      prev.includes(teacher.id) ? prev.filter((id) => id !== teacher.id) : [...prev, teacher.id]
+    ));
+  };
+
+  const toggleStudent = (student) => {
+    setSelectedStudentIds((prev) => (
+      prev.includes(student.id) ? prev.filter((id) => id !== student.id) : [...prev, student.id]
+    ));
+  };
+
+  const addCourse = () => {
+    const unused = courses.find((course) => !assignments.some((item) => item.courseName === (course.name || course.title || course.subject)));
+    setAssignments((prev) => [...prev, {
+      courseName: unused?.name || unused?.title || unused?.subject || '',
+      teacherId: selectedTeacherIds[0] || null,
+      weeklyHours: 2,
+      isRequired: true,
+    }]);
+  };
+
+  const updateAssignment = (index, key, value) => {
+    setAssignments((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, [key]: value } : item)));
+  };
+
+  const validateStep = () => {
+    if (step === 0 && (!form.name.trim() || !form.code.trim() || !form.school.trim())) {
+      toast({ title: 'Temel bilgiler eksik', description: 'Sınıf adı, kodu ve okul alanları zorunlu.', variant: 'destructive' });
+      return false;
+    }
+    if (step === 1 && assignments.some((item) => !item.courseName || !item.teacherId)) {
+      toast({ title: 'Ders ataması eksik', description: 'Her ders için öğretmen seçin.', variant: 'destructive' });
+      return false;
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (!validateStep()) return;
+    setStep((prev) => Math.min(steps.length - 1, prev + 1));
+  };
+
+  const submit = async () => {
+    if (!validateStep()) return;
+    try {
+      setSaving(true);
+      const result = await createCompleteClass({
+        name: form.name,
+        code: form.code,
+        school: form.school,
+        institutionUnit: form.institutionUnit,
+        grade: form.grade,
+        section: form.section,
+        academicYear: form.academicYear,
+        advisorTeacherId: form.advisorTeacherId || null,
+        description: form.description,
+        themeColor: form.themeColor,
+        icon: form.icon,
+        teachers: selectedTeacherIds.map((id) => ({ teacherId: id, role: id === form.advisorTeacherId ? 'Danışman' : 'Ders Öğretmeni' })),
+        courses: assignments.map((item) => ({ ...item, teacherId: item.teacherId || null, weeklyHours: Number(item.weeklyHours || 0) })),
+        studentIds: selectedStudentIds,
+        modules,
+      });
+      toast({ title: 'Sınıf oluşturuldu', description: `${result.name} sınıfı canlı veritabanına kaydedildi.` });
+      setStep(0);
+      setForm((prev) => ({ ...prev, name: '', code: generateCode('', prev.academicYear), description: '' }));
+      setSelectedTeacherIds([]);
+      setSelectedStudentIds([]);
+      await load();
+    } catch (err) {
+      toast({ title: 'Sınıf oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (loading) {
-    return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
+    return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="classes-page">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-h-screen space-y-5 text-white" data-testid="classes-page">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
-          <h1 className="text-3xl font-bold font-heading">Sınıflar & Gruplar</h1>
-          <p className="text-muted-foreground mt-1">{classStats.totalClasses} aktif sınıf</p>
+          <h1 className="text-2xl font-black tracking-tight md:text-3xl">Sınıf Oluşturma</h1>
+          <p className="text-sm text-slate-300">Yeni bir sınıf oluşturarak öğrencilerinizi organize edin ve eğitiminizi planlayın.</p>
         </div>
-        {canCreateClass ? (
-          <Button variant="outline" onClick={() => setCreateOpen(true)}>
-            <Info className="h-4 w-4 mr-2" />
-            Yeni Sınıf Oluştur
+        <div className="flex gap-2">
+          <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setStep(0)}>İptal</Button>
+          <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={submit} disabled={saving}>
+            <Check className="mr-2 h-4 w-4" /> {saving ? 'Oluşturuluyor...' : 'Sınıfı Oluştur'}
           </Button>
-        ) : null}
+        </div>
       </div>
 
-      {error ? <ErrorBanner title="Sınıflar alınamadı" message={error} onRetry={loadClasses} /> : null}
+      {error ? <ErrorBanner title="Sınıf verisi alınamadı" message={error} onRetry={load} /> : null}
+      <StepRail step={step} />
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Sınıf</p><p className="text-2xl font-bold">{classStats.totalClasses}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Öğrenci</p><p className="text-2xl font-bold">{classStats.totalStudents}</p></CardContent></Card>
-        <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Öğretmen</p><p className="text-2xl font-bold">{classStats.totalTeachers}</p></CardContent></Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <motion.div className="lg:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Sınıflar</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ScrollArea className="h-[560px]">
-                <div className="p-4 space-y-2">
-                  {classes.map((cls) => (
-                    <motion.div
-                      key={cls.id}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      onClick={() => setSelectedClass(cls)}
-                      className={`p-4 rounded-lg cursor-pointer transition-all ${
-                        selectedClass?.id === cls.id ? 'bg-brand-primary text-white' : 'bg-muted hover:bg-muted/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className={`p-2 rounded-lg ${selectedClass?.id === cls.id ? 'bg-white/20' : 'bg-background'}`}>
-                          <School className={`h-5 w-5 ${selectedClass?.id === cls.id ? 'text-white' : 'text-brand-primary'}`} />
-                        </div>
-                        <div>
-                          <p className="font-semibold">{cls.name}</p>
-                          <p className={`text-xs ${selectedClass?.id === cls.id ? 'text-white/70' : 'text-muted-foreground'}`}>
-                            {cls.studentCount} öğrenci
-                          </p>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+        <main className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 shadow-sm">
+          {step === 0 ? (
+            <section className="space-y-6">
+              <div><h2 className="text-xl font-black">Temel Bilgiler</h2><p className="text-sm text-slate-400">Sınıfınızın temel bilgilerini girerek başlayın.</p></div>
+              <div className="grid gap-5 md:grid-cols-2">
+                <Field label="Sınıf Adı" required><Input value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="border-white/10 bg-[#071120] text-white" placeholder="7-A" /></Field>
+                <Field label="Sınıf Kodu" required><Input value={form.code} onChange={(event) => updateForm('code', event.target.value)} className="border-white/10 bg-[#071120] text-white" /></Field>
+                <Field label="Okul" required>
+                  <select value={form.school} onChange={(event) => updateForm('school', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                    <option value="">Okul seçin</option>
+                    {schools.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="Kurum Birimi" required>
+                  <select value={form.institutionUnit} onChange={(event) => updateForm('institutionUnit', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                    {unitOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="Sınıf Seviyesi" required>
+                  <select value={form.grade} onChange={(event) => updateForm('grade', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                    {gradeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="Şube / Sınıf" required>
+                  <select value={form.section} onChange={(event) => updateForm('section', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                    {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
+                  </select>
+                </Field>
+                <Field label="Eğitim Dönemi" required><Input value={form.academicYear} onChange={(event) => updateForm('academicYear', event.target.value)} className="border-white/10 bg-[#071120] text-white" /></Field>
+                <Field label="Sınıf Danışmanı">
+                  <select value={form.advisorTeacherId} onChange={(event) => { updateForm('advisorTeacherId', event.target.value); if (event.target.value && !selectedTeacherIds.includes(event.target.value)) setSelectedTeacherIds((prev) => [...prev, event.target.value]); }} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                    <option value="">Danışman seçin</option>
+                    {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName} • {teacher.departmentOrBranch}</option>)}
+                  </select>
+                </Field>
+                <Field label="Açıklama" className="md:col-span-2">
+                  <Textarea value={form.description} maxLength={250} onChange={(event) => updateForm('description', event.target.value)} className="min-h-[110px] border-white/10 bg-[#071120] text-white" placeholder="Sınıf açıklaması..." />
+                  <p className="mt-1 text-right text-xs text-slate-500">{form.description.length} / 250</p>
+                </Field>
+                <div className="rounded-2xl border border-dashed border-blue-400/40 p-8 text-center md:col-span-1">
+                  <ImagePlus className="mx-auto h-8 w-8 text-blue-300" />
+                  <p className="mt-3 text-sm text-slate-300">Sınıf görseli yükleme alanı</p>
+                  <p className="text-xs text-slate-500">Storage entegrasyonu olan upload modülü ile genişletilebilir.</p>
                 </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div className="lg:col-span-3">
-          {selectedClass ? (
-            <Card>
-              <CardHeader className="border-b">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-2xl">{selectedClass.name} Sınıfı</CardTitle>
-                    <p className="text-muted-foreground mt-1">{selectedClass.schedule}</p>
-                    <p className="text-sm text-muted-foreground mt-1">Sınıf Öğretmeni: {selectedClass.homeroomTeacher}</p>
+                <Field label="Renk Teması">
+                  <div className="flex flex-wrap gap-4 pt-3">
+                    {colorOptions.map((color) => (
+                      <button key={color} type="button" onClick={() => updateForm('themeColor', color)} className={`h-9 w-9 rounded-full border-2 ${form.themeColor === color ? 'border-white ring-2 ring-blue-500' : 'border-transparent'}`} style={{ background: color }} />
+                    ))}
                   </div>
-                  <div className="flex gap-4">
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-brand-primary">{selectedClass.studentCount}</p>
-                      <p className="text-xs text-muted-foreground">Öğrenci</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-2xl font-bold text-brand-accent">{selectedClass.teacherCount}</p>
-                      <p className="text-xs text-muted-foreground">Öğretmen</p>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-
-              <CardContent className="pt-6">
-                <Tabs defaultValue="students">
-                  <TabsList className="grid w-full grid-cols-4 mb-6">
-                    <TabsTrigger value="students" className="flex items-center gap-2"><Users className="h-4 w-4" />Öğrenciler</TabsTrigger>
-                    <TabsTrigger value="teachers" className="flex items-center gap-2"><GraduationCap className="h-4 w-4" />Öğretmenler</TabsTrigger>
-                    <TabsTrigger value="schedule" className="flex items-center gap-2"><Calendar className="h-4 w-4" />Program</TabsTrigger>
-                    <TabsTrigger value="content" className="flex items-center gap-2"><BookOpen className="h-4 w-4" />İçerikler</TabsTrigger>
-                  </TabsList>
-
-                  <TabsContent value="students">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedClass.students.map((student) => (
-                        <div key={student.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                          <Avatar className="h-10 w-10">
-                            <AvatarFallback className="bg-brand-primary text-white">
-                              {student.fullName.split(' ').map((part) => part[0]).join('')}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1">
-                            <p className="font-medium">{student.fullName}</p>
-                            <p className="text-xs text-muted-foreground">{student.parentName}</p>
-                          </div>
-                          <Badge variant="outline">{student.programType}</Badge>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="teachers">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedClass.teachers.map((teacher) => (
-                        <div key={teacher.id} className="p-4 rounded-lg bg-muted/50">
-                          <p className="font-medium">{teacher.fullName}</p>
-                          <p className="text-sm text-muted-foreground">{teacher.departmentOrBranch}</p>
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {selectedClass.branchSummary.map((branch) => (
-                              <Badge key={`${teacher.id}-${branch}`} variant="outline">{branch}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="schedule">
-                    <div className="space-y-3">
-                      {selectedClass.scheduleItems.map((lesson) => (
-                        <div key={lesson.id} className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
-                          <div className="text-center min-w-[70px]">
-                            <p className="text-sm font-bold text-brand-primary">{lesson.time.split('-')[0]}</p>
-                            <p className="text-xs text-muted-foreground">{lesson.day}</p>
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium">{lesson.subject}</p>
-                            <p className="text-sm text-muted-foreground">{lesson.teacher} • {lesson.room}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </TabsContent>
-
-                  <TabsContent value="content">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {selectedClass.contents.map((content) => (
-                        <Card key={content.id} className="hover:shadow-md transition-shadow">
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-brand-accent/10">
-                                <BookOpen className="h-5 w-5 text-brand-accent" />
-                              </div>
-                              <div className="flex-1">
-                                <p className="font-medium">{content.title}</p>
-                                <p className="text-xs text-muted-foreground mt-1">{content.teacher} • {content.subject}</p>
-                                <div className="flex items-center gap-2 mt-2">
-                                  <Badge variant="outline" className="text-xs">{content.fileType?.toUpperCase() || 'İÇERİK'}</Badge>
-                                  <span className="text-xs text-muted-foreground">{content.publishStatus}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </TabsContent>
-                </Tabs>
-              </CardContent>
-            </Card>
+                </Field>
+              </div>
+            </section>
           ) : null}
-        </motion.div>
-      </div>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Yeni Sınıf Oluştur</DialogTitle>
-            <DialogDescription>Sınıf adı, kontenjan ve öğretmen atamasını backend üzerinde kaydedin.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Sınıf adı</Label>
-              <Input value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Kontenjan</Label>
-              <Input type="number" value={form.capacity} onChange={(e) => setForm((prev) => ({ ...prev, capacity: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Sınıf öğretmeni</Label>
-              <Select
-                value={form.homeroomTeacher || EMPTY_HOME_ROOM_TEACHER}
-                onValueChange={(value) => setForm((prev) => ({ ...prev, homeroomTeacher: value === EMPTY_HOME_ROOM_TEACHER ? '' : value }))}
-              >
-                <SelectTrigger><SelectValue placeholder="Sınıf öğretmeni seçin" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={EMPTY_HOME_ROOM_TEACHER}>Henüz atama yapma</SelectItem>
-                  {teacherOptions.map((teacherName) => (
-                    <SelectItem key={teacherName} value={teacherName}>{teacherName}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Atanacak öğretmenler</Label>
-              <div className="rounded-xl border p-3">
-                <div className="flex flex-wrap gap-2">
-                  {teacherOptions.map((teacherName) => {
-                    const active = form.assignedTeachers.includes(teacherName);
-                    return (
-                      <Button
-                        key={teacherName}
-                        type="button"
-                        size="sm"
-                        variant={active ? 'default' : 'outline'}
-                        onClick={() => setForm((prev) => ({
-                          ...prev,
-                          assignedTeachers: active
-                            ? prev.assignedTeachers.filter((item) => item !== teacherName)
-                            : [...prev.assignedTeachers, teacherName],
-                        }))}
-                      >
-                        {teacherName}
-                      </Button>
-                    );
-                  })}
+          {step === 1 ? (
+            <section className="space-y-6">
+              <div><h2 className="text-xl font-black">Sınıf Öğretmenleri</h2><p className="text-sm text-slate-400">Bu sınıfın sorumlusu olacak öğretmenleri seçin.</p></div>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div>
+                  <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_180px]">
+                    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={teacherQuery} onChange={(event) => setTeacherQuery(event.target.value)} placeholder="Öğretmen ara..." className="border-white/10 bg-[#071120] pl-9 text-white" /></div>
+                    <select value={teacherBranchFilter} onChange={(event) => setTeacherBranchFilter(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="all">Tümü</option>{branches.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+                  </div>
+                  <div className="max-h-[360px] overflow-y-auto rounded-xl border border-white/10">
+                    {filteredTeachers.map((teacher) => {
+                      const selected = selectedTeacherIds.includes(teacher.id);
+                      return (
+                        <button key={teacher.id} type="button" onClick={() => toggleTeacher(teacher)} className={`flex w-full items-center gap-3 border-b border-white/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}>
+                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-white/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
+                          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-xs font-black">{initials(teacher.fullName)}</span>
+                          <span><b>{teacher.fullName}</b><small className="block text-slate-400">{teacher.departmentOrBranch}</small></span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 p-4">
+                  <div className="mb-3 flex justify-between"><b>Seçilen Öğretmenler ({selectedTeachers.length})</b><button className="text-xs text-slate-400" onClick={() => setSelectedTeacherIds([])}>Temizle</button></div>
+                  <div className="space-y-2">{selectedTeachers.map((teacher) => <SelectedPill key={teacher.id} label={teacher.fullName} sub={teacher.departmentOrBranch} onRemove={() => toggleTeacher(teacher)} />)}</div>
                 </div>
               </div>
-            </div>
+              <div className="rounded-2xl border border-white/10 p-4">
+                <div className="mb-3 flex items-center justify-between"><h3 className="font-black">Derse Atanacak Öğretmenler</h3><Button variant="outline" size="sm" className="border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={addCourse}><Plus className="mr-2 h-4 w-4" /> Ders Ekle</Button></div>
+                <div className="space-y-3">
+                  {assignments.map((assignment, index) => (
+                    <div key={`${assignment.courseName}-${index}`} className="grid gap-2 rounded-xl border border-white/10 p-3 lg:grid-cols-[1fr_1fr_110px_110px_44px]">
+                      <Input value={assignment.courseName} onChange={(event) => updateAssignment(index, 'courseName', event.target.value)} placeholder="Ders" className="border-white/10 bg-[#071120] text-white" />
+                      <select value={assignment.teacherId || ''} onChange={(event) => updateAssignment(index, 'teacherId', event.target.value || null)} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="">Öğretmen seç</option>{selectedTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}</select>
+                      <Input type="number" value={assignment.weeklyHours} onChange={(event) => updateAssignment(index, 'weeklyHours', event.target.value)} className="border-white/10 bg-[#071120] text-white" />
+                      <select value={assignment.isRequired ? 'required' : 'optional'} onChange={(event) => updateAssignment(index, 'isRequired', event.target.value === 'required')} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="required">Zorunlu</option><option value="optional">Seçmeli</option></select>
+                      <Button variant="outline" size="icon" className="border-white/10 bg-white/5 text-red-300 hover:bg-red-500/10" onClick={() => setAssignments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-4 w-4" /></Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {step === 2 ? (
+            <section className="space-y-6">
+              <div><h2 className="text-xl font-black">Öğrenciler</h2><p className="text-sm text-slate-400">Sınıfa eklenecek öğrencileri seçin.</p></div>
+              <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
+                <div>
+                  <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_160px]">
+                    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Öğrenci ara..." className="border-white/10 bg-[#071120] pl-9 text-white" /></div>
+                    <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="all">Filtrele</option><option value="active">Aktif</option><option value="waiting">Sınıf Bekleyen</option></select>
+                  </div>
+                  <div className="max-h-[430px] overflow-y-auto rounded-xl border border-white/10">
+                    {filteredStudents.map((student) => {
+                      const selected = selectedStudentIds.includes(student.id);
+                      return (
+                        <button key={student.id} type="button" onClick={() => toggleStudent(student)} className={`grid w-full grid-cols-[28px_60px_1fr] items-center gap-3 border-b border-white/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}>
+                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-white/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
+                          <span className="text-sm text-slate-400">{student.schoolNumber || '-'}</span>
+                          <span><b>{student.fullName}</b><small className="block text-slate-400">{student.className || 'Sınıf bekliyor'}</small></span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="rounded-xl border border-white/10 p-4">
+                  <div className="mb-3 flex justify-between"><b>Seçilen Öğrenciler ({selectedStudents.length})</b><button className="text-xs text-slate-400" onClick={() => setSelectedStudentIds([])}>Tümünü Temizle</button></div>
+                  <div className="max-h-[410px] space-y-2 overflow-y-auto">{selectedStudents.map((student) => <SelectedPill key={student.id} label={student.fullName} sub={student.schoolNumber || student.className} onRemove={() => toggleStudent(student)} />)}</div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+
+          {step === 3 ? (
+            <section className="space-y-6">
+              <div><h2 className="text-xl font-black">Sınıf Ayarları</h2><p className="text-sm text-slate-400">Sınıf için ek ayarları yapılandırın.</p></div>
+              <Field label="Sınıf Rengi">
+                <div className="flex flex-wrap gap-4 pt-2">{colorOptions.map((color) => <button key={color} type="button" onClick={() => updateForm('themeColor', color)} className={`h-10 w-10 rounded-full border-2 ${form.themeColor === color ? 'border-white ring-2 ring-blue-500' : 'border-transparent'}`} style={{ background: color }} />)}</div>
+              </Field>
+              <Field label="Sınıf Simgesi">
+                <div className="grid grid-cols-6 gap-2 sm:grid-cols-10">{iconOptions.map((icon) => <button key={icon} type="button" onClick={() => updateForm('icon', icon)} className={`flex h-12 items-center justify-center rounded-xl border ${form.icon === icon ? 'border-blue-400 bg-blue-500/20' : 'border-white/10 bg-white/5'}`}><ClassIcon name={icon} color={form.themeColor} /></button>)}</div>
+              </Field>
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {Object.entries({
+                  attendance: 'Devamsızlık Takibi',
+                  grades: 'Not Sistemi',
+                  liveLessons: 'Canlı Dersler',
+                  homework: 'Ödev Sistemi',
+                  study: 'Etüt Sistemi',
+                  messaging: 'Mesajlaşma',
+                }).map(([key, label]) => (
+                  <button key={key} type="button" onClick={() => setModules((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center justify-between rounded-xl border p-4 ${modules[key] ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
+                    <span>{label}</span><span className={`h-5 w-9 rounded-full ${modules[key] ? 'bg-emerald-500' : 'bg-slate-700'}`} />
+                  </button>
+                ))}
+              </div>
+            </section>
+          ) : null}
+
+          <div className="mt-8 flex items-center justify-between">
+            <Button variant="outline" className="rounded-xl border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={step === 0} onClick={() => setStep((prev) => Math.max(0, prev - 1))}><ArrowLeft className="mr-2 h-4 w-4" /> Geri</Button>
+            {step < steps.length - 1 ? (
+              <Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={nextStep}>İleri: {steps[step + 1][1]} <ChevronRight className="ml-2 h-4 w-4" /></Button>
+            ) : (
+              <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={submit} disabled={saving}><Save className="mr-2 h-4 w-4" /> {saving ? 'Kaydediliyor...' : 'Sınıfı Oluştur'}</Button>
+            )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={async () => {
-              try {
-                await createClass({ name: form.name }).catch((err) => {
-                  if (!String(err?.message || '').toLocaleLowerCase('tr-TR').includes('zaten')) {
-                    throw err;
-                  }
-                });
-                await upsertPlatformConfiguration({
-                  configurationType: 'class-management',
-                  scopeKey: form.name,
-                  displayName: `CLASS_MANAGEMENT::${form.name}`,
-                  payloadJson: JSON.stringify({
-                    name: form.name,
-                    capacity: Number(form.capacity || 0),
-                    homeroomTeacher: form.homeroomTeacher,
-                    assignedTeachers: form.assignedTeachers,
-                  }),
-                });
-                setCreateOpen(false);
-                setForm({ name: '', capacity: '24', homeroomTeacher: '', assignedTeachers: [] });
-                loadClasses();
-                toast({ title: 'Sınıf oluşturuldu', description: 'Yeni sınıf backend üzerinde kaydedildi.' });
-              } catch (err) {
-                toast({ title: 'Sınıf oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
-              }
-            }}>Kaydet</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        </main>
+
+        <aside className="space-y-5">
+          <Preview form={form} selectedTeachers={selectedTeachers} selectedStudents={selectedStudents} assignments={assignments} />
+          <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 text-white">
+            <h3 className="font-black">Sınıf Oluşturma Süreci</h3>
+            <div className="mt-4 space-y-2">{steps.map(([key, title, desc], index) => <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${step >= index ? 'border-blue-400/40 bg-blue-500/10' : 'border-white/10 bg-white/5'}`}><div className={`flex h-8 w-8 items-center justify-center rounded-full ${step > index ? 'bg-teal-500' : step === index ? 'bg-blue-600' : 'bg-slate-700'}`}>{step > index ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</div><div><b className="text-sm">{title}</b><p className="text-xs text-slate-400">{desc}</p></div></div>)}</div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 text-white">
+            <h3 className="font-black">Kayıtlı Sınıflar</h3>
+            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-white/10 p-3"><div className="flex items-center justify-between"><b>{item.name}</b><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
+          </div>
+        </aside>
+      </div>
     </motion.div>
+  );
+}
+
+function Field({ label, required, className = '', children }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="mb-2 block text-sm text-slate-300">{label} {required ? <b className="text-red-400">*</b> : null}</span>
+      {children}
+    </label>
+  );
+}
+
+function SelectedPill({ label, sub, onRemove }) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+      <div className="flex min-w-0 items-center gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-black text-white">{initials(label)}</span>
+        <span className="min-w-0"><b className="block truncate text-sm">{label}</b><small className="truncate text-slate-400">{sub}</small></span>
+      </div>
+      <button type="button" onClick={onRemove} className="text-slate-400 hover:text-white">×</button>
+    </div>
   );
 }

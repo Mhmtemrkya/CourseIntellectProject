@@ -798,6 +798,14 @@ class ServiceTrackingApiService {
     await _send('DELETE', '/api/service/assignments/$assignmentId', null);
   }
 
+  /// Giriş yapan kullanıcının aktif şoför kaydı olup olmadığını döndürür.
+  /// Rol yönlendirmesinde şoförü kendi ekranına kilitlemek için kullanılır.
+  Future<bool> fetchIsCurrentUserDriver() async {
+    final response = await _get('/api/service/driver/me');
+    final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    return map['isDriver'] == true;
+  }
+
   Future<List<DriverTodayRouteRecord>> fetchDriverTodayRoutes() async {
     final response = await _get('/api/service/driver/today-routes');
     return _decodeList(
@@ -913,6 +921,60 @@ class ServiceTrackingApiService {
     return _decodeList(
       response,
     ).map((item) => ServiceHistoryRecord.fromMap(item)).toList();
+  }
+
+  Future<List<ServiceLiveStatusRecord>> getStudentTransportStatus() {
+    return fetchStudentLiveStatus();
+  }
+
+  Future<List<ServiceLiveStatusRecord>> getParentChildrenTransportStatus() {
+    return fetchParentLiveStatus();
+  }
+
+  Future<List<DriverTodayRouteRecord>> getDriverTodayRoute() {
+    return fetchDriverTodayRoutes();
+  }
+
+  Future<List<DriverRouteStudentRecord>> getDriverStudentPickupList(
+    String routeId,
+  ) {
+    return fetchDriverRouteStudents(routeId);
+  }
+
+  Future<Map<String, dynamic>> startRoute(String routeId) {
+    return startTrip(routeId);
+  }
+
+  Future<void> completeRoute(String tripId) {
+    return completeTrip(tripId);
+  }
+
+  Future<void> updateStudentBoardingStatus({
+    required String tripId,
+    required String studentId,
+    required String status,
+  }) {
+    return markAttendance(tripId: tripId, studentId: studentId, status: status);
+  }
+
+  Future<ServiceAbsenceRequestRecord> notifyStudentAbsentToday({
+    required String studentId,
+    required String routeId,
+    required String date,
+    required String tripType,
+    String? reason,
+  }) {
+    return createParentAbsenceRequest(
+      studentId: studentId,
+      routeId: routeId,
+      date: date,
+      tripType: tripType,
+      reason: reason,
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> getLiveVehicleLocations() async {
+    return const [];
   }
 
   Future<http.Response> _get(String path) async {

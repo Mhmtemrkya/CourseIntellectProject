@@ -15,6 +15,7 @@ public sealed class ServiceTrackingService(
     IHttpContextAccessor httpContextAccessor,
     IETAService etaService,
     INotificationService notificationService,
+    IPushNotificationService pushNotificationService,
     IServiceTrackingRealtimeNotifier realtimeNotifier) : IServiceTrackingService
 {
     private static DateOnly Today => DateOnly.FromDateTime(DateTime.UtcNow.AddHours(3));
@@ -666,7 +667,11 @@ public sealed class ServiceTrackingService(
         attendance.Note = request.Note?.Trim() ?? string.Empty;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await NotifyParentAsync(assignment.ParentId, BuildAttendanceNotificationMessage(status, trip.TripType), cancellationToken);
+        await NotifyParentAsync(
+            assignment.ParentId,
+            BuildAttendanceNotificationMessage(status, trip.TripType),
+            BuildServicePushData(trip.Id, trip.RouteId, assignment.StudentId, status.ToString()),
+            cancellationToken);
         var student = (await BuildDriverStudentsAsync(trip.RouteId, trip.Id, cancellationToken)).First(x => x.StudentId == request.StudentId);
         await realtimeNotifier.StudentAttendanceUpdatedAsync(dbContext.CurrentTenantId, trip.Id, assignment.ParentId, student, cancellationToken);
         return student;
@@ -683,7 +688,11 @@ public sealed class ServiceTrackingService(
         {
             attendance.Status = ServiceAttendanceStatus.ArrivedSchool;
             attendance.MarkedAt = DateTime.UtcNow;
-            await NotifyParentAsync(attendance.ParentId, "Öğrenciniz okula ulaştı.", cancellationToken);
+            await NotifyParentAsync(
+                attendance.ParentId,
+                "Öğrenciniz okula ulaştı.",
+                BuildServicePushData(trip.Id, trip.RouteId, attendance.StudentId, ServiceAttendanceStatus.ArrivedSchool.ToString()),
+                cancellationToken);
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -708,7 +717,11 @@ public sealed class ServiceTrackingService(
             {
                 attendance.Status = ServiceAttendanceStatus.ArrivedHome;
                 attendance.MarkedAt = DateTime.UtcNow;
-                await NotifyParentAsync(attendance.ParentId, "Öğrenciniz eve ulaştı.", cancellationToken);
+                await NotifyParentAsync(
+                    attendance.ParentId,
+                    "Öğrenciniz eve ulaştı.",
+                    BuildServicePushData(trip.Id, trip.RouteId, attendance.StudentId, ServiceAttendanceStatus.ArrivedHome.ToString()),
+                    cancellationToken);
             }
         }
 
@@ -840,6 +853,77 @@ public sealed class ServiceTrackingService(
         return student.ParentUserId.HasValue
             ? await BuildHistoryForParentAsync(student.ParentUserId.Value, student.Id, cancellationToken)
             : [];
+    }
+
+    public async Task<IReadOnlyList<AdminServiceLiveTripDto>> GetAdminLiveStatusAsync(CancellationToken cancellationToken = default)
+    {
+        // Sunucu saat diliminden bağımsız TR günü (sınıftaki diğer akışlarla aynı).
+        var today = Today;
+        var trips = await dbContext.ServiceTrips
+            .Where(x => x.TripDate == today)
+            .OrderByDescending(x => x.StartedAt ?? x.CreatedAt)
+            .ToListAsync(cancellationToken);
+        if (trips.Count == 0)
+        {
+            return [];
+        }
+
+        var tripIds = trips.Select(x => x.Id).ToList();
+        var routeIds = trips.Select(x => x.RouteId).Distinct().ToList();
+        var routes = await dbContext.ServiceRoutes
+            .Where(x => routeIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var drivers = await dbContext.ServiceDrivers
+            .Where(x => trips.Select(t => t.DriverId).Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+        var driverUsers = await LoadUsersAsync(drivers.Values.Select(x => x.UserId), cancellationToken);
+        var vehicles = await LoadVehiclesAsync(trips.Select(x => x.VehicleId), cancellationToken);
+        var assignmentCounts = await dbContext.StudentServiceAssignments
+            .Where(x => routeIds.Contains(x.RouteId) && x.IsActive)
+            .GroupBy(x => x.RouteId)
+            .Select(group => new { RouteId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(x => x.RouteId, x => x.Count, cancellationToken);
+        var boardedCounts = await dbContext.ServiceAttendances
+            .Where(x => tripIds.Contains(x.TripId) &&
+                (x.Status == ServiceAttendanceStatus.Boarded ||
+                 x.Status == ServiceAttendanceStatus.BoardedFromSchool ||
+                 x.Status == ServiceAttendanceStatus.ArrivedSchool ||
+                 x.Status == ServiceAttendanceStatus.ArrivedHome))
+            .GroupBy(x => x.TripId)
+            .Select(group => new { TripId = group.Key, Count = group.Count() })
+            .ToDictionaryAsync(x => x.TripId, x => x.Count, cancellationToken);
+        var latestLocations = (await dbContext.ServiceVehicleLocations
+            .Where(x => tripIds.Contains(x.TripId))
+            .GroupBy(x => x.TripId)
+            .Select(group => group.OrderByDescending(item => item.RecordedAt).First())
+            .ToListAsync(cancellationToken))
+            .ToDictionary(x => x.TripId);
+
+        return trips.Select(trip =>
+        {
+            var route = routes.GetValueOrDefault(trip.RouteId);
+            var driver = drivers.GetValueOrDefault(trip.DriverId);
+            var driverUser = driver is null ? null : driverUsers.GetValueOrDefault(driver.UserId);
+            var vehicle = vehicles.GetValueOrDefault(trip.VehicleId);
+            var location = latestLocations.GetValueOrDefault(trip.Id);
+            return new AdminServiceLiveTripDto(
+                trip.Id,
+                trip.RouteId,
+                route?.Name ?? "Rota",
+                trip.TripType.ToString(),
+                trip.Status.ToString(),
+                driverUser?.FullName ?? "Şoför",
+                driver?.PhoneNumber ?? string.Empty,
+                vehicle?.PlateNumber ?? string.Empty,
+                vehicle?.VehicleNumber ?? string.Empty,
+                trip.StartedAt,
+                assignmentCounts.GetValueOrDefault(trip.RouteId),
+                boardedCounts.GetValueOrDefault(trip.Id),
+                location?.Latitude,
+                location?.Longitude,
+                location?.Speed,
+                location?.RecordedAt);
+        }).ToList();
     }
 
     private async Task<ServiceRouteDetailResponse> BuildRouteDetailAsync(ServiceRoute route, CancellationToken cancellationToken)
@@ -1167,6 +1251,16 @@ public sealed class ServiceTrackingService(
             ?? throw new UnauthorizedAccessException("Şoför sadece kendi servisinde işlem yapabilir.");
     }
 
+    public async Task<ServiceDriverSelfDto> GetCurrentDriverSelfAsync(CancellationToken cancellationToken = default)
+    {
+        var userId = RequireCurrentUserId();
+        var driver = await dbContext.ServiceDrivers
+            .FirstOrDefaultAsync(x => x.UserId == userId && x.IsActive, cancellationToken);
+        return driver is null
+            ? new ServiceDriverSelfDto(false, null, null)
+            : new ServiceDriverSelfDto(true, driver.Id, driver.PhoneNumber);
+    }
+
     private async Task<ServiceDriver> RequireCurrentDriverAsync(CancellationToken cancellationToken)
     {
         var userId = RequireCurrentUserId();
@@ -1181,15 +1275,37 @@ public sealed class ServiceTrackingService(
             ?? throw new UnauthorizedAccessException("Öğrenci profili bulunamadı.");
     }
 
-    private async Task NotifyParentAsync(Guid parentId, string message, CancellationToken cancellationToken)
+    private async Task NotifyParentAsync(
+        Guid parentId,
+        string message,
+        IReadOnlyDictionary<string, string> data,
+        CancellationToken cancellationToken)
     {
+        const string title = "Servis Bilgilendirmesi";
         await notificationService.CreateNotificationAsync(new CreateNotificationRequest(
-            "Servis Bilgilendirmesi",
+            title,
             message,
             DateTime.UtcNow.AddHours(3).ToString("dd.MM.yyyy HH:mm"),
             $"parent-{parentId}",
             "Parent",
             "ServiceTracking"), cancellationToken);
+        await pushNotificationService.SendToUserAsync(parentId, title, message, data, cancellationToken);
+    }
+
+    private static IReadOnlyDictionary<string, string> BuildServicePushData(
+        Guid tripId,
+        Guid routeId,
+        Guid studentId,
+        string status)
+    {
+        return new Dictionary<string, string>
+        {
+            ["type"] = "service_tracking",
+            ["tripId"] = tripId.ToString(),
+            ["routeId"] = routeId.ToString(),
+            ["studentId"] = studentId.ToString(),
+            ["status"] = status,
+        };
     }
 
     private async Task<ServiceVehicle?> FindVehicleAsync(Guid id, CancellationToken cancellationToken)

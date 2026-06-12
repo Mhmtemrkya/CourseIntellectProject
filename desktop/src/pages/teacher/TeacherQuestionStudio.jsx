@@ -79,6 +79,8 @@ export default function TeacherQuestionStudio() {
   const { toast } = useToast();
   const { user } = useApp();
   const isExamMode = searchParams.get('mode') === 'exam';
+  const examKind = searchParams.get('type') === 'MockExam' ? 'deneme' : 'sınav';
+  const examKindTitle = examKind === 'deneme' ? 'Deneme Sınavı' : 'Sınav';
   const editorRef = useRef(null);
   const solutionRef = useRef(null);
   const imageInputRef = useRef(null);
@@ -107,7 +109,19 @@ export default function TeacherQuestionStudio() {
   const [examQuestions, setExamQuestions] = useState([]);
   const [questionSetKey] = useState(() => createQuestionSetKey(isExamMode ? 'exam-set' : 'question-set'));
   const [examForm, setExamForm] = useState({
-    title: '', className: '', dateLabel: '', duration: '40 dk', type: 'MockExam',
+    title: '',
+    className: '',
+    dateLabel: '',
+    startTime: '',
+    endTime: '',
+    duration: '40 dk',
+    lateEntryLimitMinutes: '5',
+    totalPoint: '100',
+    requireCamera: true,
+    requireFullscreen: true,
+    blockTabChange: true,
+    blockCopyPaste: true,
+    type: searchParams.get('type') === 'MockExam' ? 'MockExam' : 'Exam',
   });
 
   const choiceType = activeType === 'Çoktan Seçmeli' || activeType === 'Doğru / Yanlış';
@@ -136,7 +150,7 @@ export default function TeacherQuestionStudio() {
   const persistDraft = useCallback(async (showToast = false) => {
     const response = await saveQuestionStudioDraft({
       id: draftId,
-      title: plainText(questionHtml).slice(0, 80) || (isExamMode ? examForm.title || 'Deneme Sınavı Taslağı' : 'Soru Taslağı'),
+      title: plainText(questionHtml).slice(0, 80) || (isExamMode ? examForm.title || `${examKindTitle} Taslağı` : 'Soru Taslağı'),
       mode: isExamMode ? 'MockExam' : 'QuestionBank',
       payloadJson: JSON.stringify(draftPayload()),
     });
@@ -144,7 +158,7 @@ export default function TeacherQuestionStudio() {
     setDirty(false);
     setAutosave('Canlı taslak kaydedildi');
     if (showToast) toast({ title: 'Taslak kaydedildi', description: 'Değişiklikler canlı backend üzerinde saklandı.' });
-  }, [draftId, draftPayload, examForm.title, isExamMode, questionHtml, toast]);
+  }, [draftId, draftPayload, examForm.title, examKindTitle, isExamMode, questionHtml, toast]);
 
   useEffect(() => {
     if (!dirty || saving) return undefined;
@@ -333,7 +347,7 @@ export default function TeacherQuestionStudio() {
       publicationStatus: settings.publishStatus,
       questionSetKey,
       questionSetTitle: isExamMode
-        ? (examForm.title.trim() || settings.topic.trim() || 'Deneme Soruları')
+        ? (examForm.title.trim() || settings.topic.trim() || `${examKindTitle} Soruları`)
         : (settings.topic.trim() || 'Soru Seti'),
       questionOrder: isExamMode ? examQuestions.length : savedQuestions.length,
     };
@@ -375,13 +389,15 @@ export default function TeacherQuestionStudio() {
 
   const publishExam = async () => {
     if (!examForm.title.trim() || !examForm.className.trim() || !examForm.dateLabel || examQuestions.length === 0) {
-      toast({ title: 'Deneme tamamlanmadı', description: 'Başlık, sınıf, tarih ve en az bir kayıtlı soru zorunludur.', variant: 'destructive' });
+      toast({ title: `${examKindTitle} tamamlanmadı`, description: 'Başlık, sınıf, tarih ve en az bir kayıtlı soru zorunludur.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
       await createPlannedExam({
         ...examForm,
+        lateEntryLimitMinutes: Number(examForm.lateEntryLimitMinutes || 5),
+        totalPoint: Number(examForm.totalPoint || 100),
         subject: settings.subject,
         questionCount: examQuestions.length,
         teacherName: user?.name || 'Öğretmen',
@@ -395,8 +411,8 @@ export default function TeacherQuestionStudio() {
           imagePlacement: question.imagePlacement,
         })),
       });
-      toast({ title: 'Deneme sınavı oluşturuldu', description: 'Sınav canlı olarak planlandı ve soruları bağlandı.' });
-      navigate('/t/mock-exams');
+      toast({ title: `${examKindTitle} oluşturuldu`, description: 'Sınav canlı olarak planlandı ve soruları bağlandı.' });
+      navigate(examForm.type === 'MockExam' ? '/t/mock-exams' : '/t/exams');
     } catch (error) {
       toast({ title: 'Sınav oluşturulamadı', description: error.message, variant: 'destructive' });
     } finally {
@@ -410,8 +426,8 @@ export default function TeacherQuestionStudio() {
         <main className="min-w-0 overflow-y-auto p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black">{isExamMode ? 'Deneme Sınavları' : 'Soru Bankası'}</h1>
-              <p className="mt-1 text-sm text-slate-400">{isExamMode ? 'Yeni deneme oluştur' : 'Yeni soru oluştur'}</p>
+              <h1 className="text-2xl font-black">{isExamMode ? `${examKindTitle} Oluşturma` : 'Soru Bankası'}</h1>
+              <p className="mt-1 text-sm text-slate-400">{isExamMode ? 'Yeni sınavı soru oluşturma stüdyosu ile hazırla' : 'Yeni soru oluştur'}</p>
             </div>
             <div className="flex items-center gap-3">
               <Button variant="outline" onClick={() => setPreviewOpen(true)} className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white"><Eye className="mr-2 h-4 w-4" />Önizleme</Button>
@@ -428,11 +444,28 @@ export default function TeacherQuestionStudio() {
           {isExamMode && (
             <section className="mb-5 rounded-[28px] border border-orange-400/20 bg-orange-500/[0.07] p-5">
               <div className="grid gap-3 lg:grid-cols-5">
-                <Field label="Deneme Adı"><Input value={examForm.title} onChange={(event) => { setExamForm((v) => ({ ...v, title: event.target.value })); touch(); }} placeholder="TYT Matematik Deneme 1" className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Sınav Adı"><Input value={examForm.title} onChange={(event) => { setExamForm((v) => ({ ...v, title: event.target.value })); touch(); }} placeholder="9. Sınıf Matematik 1. Dönem 1. Yazılı" className="border-white/10 bg-white/5 text-white" /></Field>
                 <Field label="Sınıf"><Input value={examForm.className} onChange={(event) => { setExamForm((v) => ({ ...v, className: event.target.value })); touch(); }} placeholder="12/A" className="border-white/10 bg-white/5 text-white" /></Field>
                 <Field label="Tarih"><Input value={examForm.dateLabel} onChange={(event) => { setExamForm((v) => ({ ...v, dateLabel: event.target.value })); touch(); }} placeholder="25 Mayıs 2026" className="border-white/10 bg-white/5 text-white" /></Field>
                 <Field label="Süre"><Input value={examForm.duration} onChange={(event) => { setExamForm((v) => ({ ...v, duration: event.target.value })); touch(); }} className="border-white/10 bg-white/5 text-white" /></Field>
-                <div className="flex items-end"><Button onClick={publishExam} disabled={saving} className="w-full bg-emerald-600 text-white hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" />Denemeyi Yayınla</Button></div>
+                <div className="flex items-end"><Button onClick={publishExam} disabled={saving} className="w-full bg-emerald-600 text-white hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" />Sınavı Yayınla</Button></div>
+                <Field label="Başlama Saati"><Input value={examForm.startTime} onChange={(event) => { setExamForm((v) => ({ ...v, startTime: event.target.value })); touch(); }} placeholder="10:00" className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Bitiş Saati"><Input value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} placeholder="11:20" className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Geç Giriş Limiti"><Input value={examForm.lateEntryLimitMinutes} onChange={(event) => { setExamForm((v) => ({ ...v, lateEntryLimitMinutes: event.target.value })); touch(); }} placeholder="5" className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Toplam Puan"><Input value={examForm.totalPoint} onChange={(event) => { setExamForm((v) => ({ ...v, totalPoint: event.target.value })); touch(); }} placeholder="100" className="border-white/10 bg-white/5 text-white" /></Field>
+                <div className="lg:col-span-5 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+                  {[
+                    ['requireCamera', 'Kamera zorunlu'],
+                    ['requireFullscreen', 'Tam ekran zorunlu'],
+                    ['blockTabChange', 'Sekme değiştirme yasak'],
+                    ['blockCopyPaste', 'Kopyala/yapıştır yasak'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3">
+                      <span className="text-sm text-slate-300">{label}</span>
+                      <Switch checked={!!examForm[key]} onCheckedChange={(value) => { setExamForm((v) => ({ ...v, [key]: value })); touch(); }} />
+                    </div>
+                  ))}
+                </div>
               </div>
               {examQuestions.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -470,7 +503,7 @@ export default function TeacherQuestionStudio() {
           )}
 
           <section className="rounded-[28px] border border-white/10 bg-white/[0.035] p-5">
-            <h1 className="text-2xl font-black">{isExamMode ? 'Deneme İçin Soru Oluştur' : 'Yeni Soru Oluştur'}</h1>
+            <h1 className="text-2xl font-black">{isExamMode ? 'Sınav İçin Soru Oluştur' : 'Yeni Soru Oluştur'}</h1>
             <p className="mt-1 text-sm text-slate-400">Biçimli metin, medya, çözüm ve çizim verileri canlı backend üzerinde saklanır.</p>
             <div className="my-5 flex flex-wrap gap-2">
               {QUESTION_TYPES.map((type) => (

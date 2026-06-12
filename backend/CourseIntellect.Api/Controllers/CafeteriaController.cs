@@ -11,7 +11,7 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class CafeteriaController(CourseIntellectDbContext dbContext) : ControllerBase
 {
     private const string SectionKey = "cafeteria-weekly-menus";
-    private const string ViewRoles = "Cafeteria,Admin,Administrative,Student,Parent";
+    private const string ViewRoles = "Cafeteria,Admin,Administrative,Student,Parent,Teacher";
     private const string EditRoles = "Cafeteria,Admin,Administrative";
     private static readonly string[] MealTypes = ["Breakfast", "Lunch"];
 

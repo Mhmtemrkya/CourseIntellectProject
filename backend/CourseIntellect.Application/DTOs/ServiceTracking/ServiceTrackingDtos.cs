@@ -57,3 +57,25 @@ public sealed record ParentServiceStatusDto(
 public sealed record ServiceHistoryItemDto(Guid TripId, DateOnly TripDate, string TripType, string RouteName, string AttendanceStatus, DateTime? MarkedAt);
 public sealed record CreateServiceAbsenceRequestRequest(Guid StudentId, Guid RouteId, DateOnly Date, string TripType, string? Reason);
 public sealed record ServiceAbsenceRequestDto(Guid Id, Guid StudentId, string StudentFullName, Guid ParentId, string ParentFullName, Guid RouteId, string RouteName, DateOnly Date, string TripType, string Reason, string Status, DateTime CreatedAt);
+
+/// <summary>Yönetici canlı izleme: günün seferleri, son araç konumu ve biniş özetiyle.</summary>
+public sealed record AdminServiceLiveTripDto(
+    Guid TripId,
+    Guid RouteId,
+    string RouteName,
+    string TripType,
+    string Status,
+    string DriverName,
+    string DriverPhone,
+    string PlateNumber,
+    string VehicleNumber,
+    DateTime? StartedAt,
+    int StudentCount,
+    int BoardedCount,
+    double? Latitude,
+    double? Longitude,
+    double? Speed,
+    DateTime? LastLocationAt);
+
+/// <summary>Giriş yapan kullanıcının aktif şoför kaydı olup olmadığı.</summary>
+public sealed record ServiceDriverSelfDto(bool IsDriver, Guid? DriverId, string? PhoneNumber);

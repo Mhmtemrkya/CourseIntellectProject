@@ -9,7 +9,6 @@ import {
   teachersApi,
   classesApi,
   scheduleApi,
-  attendanceApi,
   contentApi,
   questionsApi,
   examsApi,
@@ -179,25 +178,6 @@ export const useCreateSchedule = () => {
     mutationFn: (data) => scheduleApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.schedule });
-    },
-  });
-};
-
-// ============ ATTENDANCE ============
-export const useAttendanceByLesson = (lessonId) => {
-  return useQuery({
-    queryKey: [...queryKeys.attendance, lessonId],
-    queryFn: () => attendanceApi.getByLesson(lessonId).then(unwrapApiBody),
-    enabled: !!lessonId,
-  });
-};
-
-export const useSubmitAttendance = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: ({ lessonId, data }) => attendanceApi.submit(lessonId, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeys.attendance });
     },
   });
 };

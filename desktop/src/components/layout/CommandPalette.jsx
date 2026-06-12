@@ -23,6 +23,7 @@ import {
   Shield,
   FileText,
   CheckSquare,
+  Upload,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -76,8 +77,10 @@ const navigationByRole = {
     { path: '/t/live-room', icon: Shield, label: 'Canlı Ders Odası', keywords: ['oda', 'room'] },
     { path: '/t/content', icon: BookOpen, label: 'İçerik Yönetimi', keywords: ['content', 'içerik'] },
     { path: '/t/question-bank', icon: Brain, label: 'Soru Bankası', keywords: ['soru bankası', 'practice'] },
+    { path: '/t/question-bank/import', icon: Upload, label: 'Toplu Soru Yükleme', keywords: ['soru import', 'toplu yükleme', 'ocr'] },
     { path: '/t/questions', icon: HelpCircle, label: 'Soru Kutusu', keywords: ['question box', 'soru'] },
     { path: '/t/exams', icon: FileQuestion, label: 'Sınavlar', keywords: ['exam', 'sınav'] },
+    { path: '/t/grade-entry', icon: FileText, label: 'Not Girişi', keywords: ['not', 'grade', 'puan'] },
     { path: '/t/mock-exams', icon: ClipboardCheck, label: 'Deneme Sınavları', keywords: ['deneme', 'mock exam'] },
     { path: '/t/assignments', icon: FileText, label: 'Ödevler', keywords: ['assignment', 'ödev'] },
     { path: '/t/submissions', icon: ClipboardCheck, label: 'Teslim Merkezi', keywords: ['teslim', 'submission'] },
@@ -164,6 +167,7 @@ export function CommandPalette() {
           { path: '/t/assignments', icon: FileText, label: 'Ödev Oluştur' },
           { path: '/t/live-lessons', icon: Video, label: 'Canlı Ders Planla' },
           { path: '/t/question-bank', icon: Brain, label: 'Soru Ekle' },
+          { path: '/t/question-bank/import', icon: Upload, label: 'Toplu Soru Yükle' },
           { path: '/t/mock-exams', icon: ClipboardCheck, label: 'Deneme Sınavı Oluştur' },
         ];
       case 'student':

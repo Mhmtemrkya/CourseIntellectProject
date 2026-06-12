@@ -288,7 +288,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
               title: 'Kurumsal duyuruyu profesyonel biçimde oluşturun.',
               description:
                   'Desktop akışındaki gibi hedef kitleyi, sınıfı ve gerekirse seçili kişi listesini belirleyin.',
-              colors: const [Color(0xFF0F172A), Color(0xFFB45309)],
+              colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,

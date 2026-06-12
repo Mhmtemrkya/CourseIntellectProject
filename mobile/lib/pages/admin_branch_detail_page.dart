@@ -43,7 +43,7 @@ class AdminBranchDetailPage extends StatelessWidget {
             eyebrow: 'Şube detayı',
             title: branchName,
             description: summary,
-            colors: [const Color(0xFF0F172A), color],
+            colors: [const Color(0xFF08111F), const Color(0xFFFF7A1A)],
             metrics: stats
                 .map((item) => AdminHeroMetric(label: item.$1, value: item.$2))
                 .toList(),

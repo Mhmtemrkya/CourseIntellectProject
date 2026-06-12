@@ -48,7 +48,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
             title: '$studentName için idari evrak özetini görüntüleyin.',
             description:
                 '$className öğrencisi için veli, sözleşme ve temel kayıt evrak durumu tek ekranda.',
-            colors: const [Color(0xFF0F172A), Color(0xFF2563EB)],
+            colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(label: 'Durum', value: status),
               AdminHeroMetric(label: 'Veli', value: parentName),

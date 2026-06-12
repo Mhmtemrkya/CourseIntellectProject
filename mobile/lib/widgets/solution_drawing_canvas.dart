@@ -24,12 +24,54 @@ class SolutionDrawingCanvas extends StatefulWidget {
   State<SolutionDrawingCanvas> createState() => _SolutionDrawingCanvasState();
 }
 
+/// Açık ve koyu temayla uyumlu çizim tuvali paleti.
 class _CanvasPalette {
-  static const shell = Color(0xFF182A45);
-  static const paper = Color(0xFF1A2D49);
-  static const paperDeep = Color(0xFF223B5D);
-  static const border = Color(0xFF3A5278);
+  final Color shell;
+  final Color paper;
+  final Color paperDeep;
+  final Color border;
+  final Color grid;
+  final Color ink;
+  final Color ringSelected;
+  final Color ringUnselected;
+
   static const orange = Color(0xFFFF9D2E);
+
+  const _CanvasPalette._({
+    required this.shell,
+    required this.paper,
+    required this.paperDeep,
+    required this.border,
+    required this.grid,
+    required this.ink,
+    required this.ringSelected,
+    required this.ringUnselected,
+  });
+
+  static const _dark = _CanvasPalette._(
+    shell: Color(0xFF182A45),
+    paper: Color(0xFF1A2D49),
+    paperDeep: Color(0xFF223B5D),
+    border: Color(0xFF3A5278),
+    grid: Color(0x14FFFFFF),
+    ink: Color(0xFFF8FAFC),
+    ringSelected: Colors.white,
+    ringUnselected: Colors.white24,
+  );
+
+  static const _light = _CanvasPalette._(
+    shell: Colors.white,
+    paper: Color(0xFFF8FAFC),
+    paperDeep: Color(0xFFEDF2F9),
+    border: Color(0xFFE2E8F0),
+    grid: Color(0x140F172A),
+    ink: Color(0xFF0F172A),
+    ringSelected: Color(0xFF0F172A),
+    ringUnselected: Color(0x3D0F172A),
+  );
+
+  static _CanvasPalette of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _dark : _light;
 }
 
 class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
@@ -127,20 +169,21 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
 
   @override
   Widget build(BuildContext context) {
-    const colors = [
-      Color(0xFFFF8A1C),
-      Color(0xFF60A5FA),
-      Color(0xFF34D399),
-      Color(0xFFA78BFA),
-      Color(0xFFF8FAFC),
-      Color(0xFFEF4444),
+    final palette = _CanvasPalette.of(context);
+    final colors = [
+      const Color(0xFFFF8A1C),
+      const Color(0xFF60A5FA),
+      const Color(0xFF34D399),
+      const Color(0xFFA78BFA),
+      palette.ink,
+      const Color(0xFFEF4444),
     ];
 
     return Container(
       decoration: BoxDecoration(
-        color: _CanvasPalette.shell,
+        color: palette.shell,
         borderRadius: BorderRadius.circular(28),
-        border: Border.all(color: _CanvasPalette.border),
+        border: Border.all(color: palette.border),
       ),
       child: Column(
         children: [
@@ -204,7 +247,9 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
                         color: item,
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: _color == item ? Colors.white : Colors.white24,
+                          color: _color == item
+                              ? palette.ringSelected
+                              : palette.ringUnselected,
                           width: _color == item ? 3 : 1,
                         ),
                       ),
@@ -236,9 +281,9 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
               margin: const EdgeInsets.all(14),
               clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
-                color: _CanvasPalette.paper,
+                color: palette.paper,
                 borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _CanvasPalette.border),
+                border: Border.all(color: palette.border),
               ),
               child: InteractiveViewer(
                 minScale: 0.8,
@@ -250,6 +295,7 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
                     children: [
                       CustomPaint(
                         painter: _SolutionCanvasPainter(
+                          palette: palette,
                           strokes: const [],
                           activeStroke: null,
                           showGrid: _grid,
@@ -270,6 +316,7 @@ class _SolutionDrawingCanvasState extends State<SolutionDrawingCanvas> {
                             setState(() => _activeStroke = null),
                         child: CustomPaint(
                           painter: _SolutionCanvasPainter(
+                            palette: palette,
                             strokes: _strokes,
                             activeStroke: _activeStroke,
                             showGrid: false,
@@ -319,12 +366,14 @@ class _ToolChip extends StatelessWidget {
 }
 
 class _SolutionCanvasPainter extends CustomPainter {
+  final _CanvasPalette palette;
   final List<_CanvasStroke> strokes;
   final _CanvasStroke? activeStroke;
   final bool showGrid;
   final bool drawBackground;
 
   const _SolutionCanvasPainter({
+    required this.palette,
     required this.strokes,
     required this.activeStroke,
     required this.showGrid,
@@ -335,8 +384,8 @@ class _SolutionCanvasPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     if (drawBackground) {
       final background = Paint()
-        ..shader = const LinearGradient(
-          colors: [_CanvasPalette.paper, _CanvasPalette.paperDeep],
+        ..shader = LinearGradient(
+          colors: [palette.paper, palette.paperDeep],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ).createShader(Offset.zero & size);
@@ -345,7 +394,7 @@ class _SolutionCanvasPainter extends CustomPainter {
 
     if (showGrid) {
       final gridPaint = Paint()
-        ..color = Colors.white.withValues(alpha: 0.08)
+        ..color = palette.grid
         ..strokeWidth = 1;
       for (double x = 0; x < size.width; x += 24) {
         canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
@@ -367,7 +416,7 @@ class _SolutionCanvasPainter extends CustomPainter {
     if (stroke.points.length < 2) return;
     final paint = Paint()
       ..color = stroke.tool == 'eraser'
-          ? _CanvasPalette.paper
+          ? palette.paper
           : stroke.color.withValues(alpha: stroke.opacity)
       ..strokeWidth = stroke.width
       ..strokeCap = StrokeCap.round
@@ -393,7 +442,8 @@ class _SolutionCanvasPainter extends CustomPainter {
   bool shouldRepaint(covariant _SolutionCanvasPainter oldDelegate) {
     return oldDelegate.strokes != strokes ||
         oldDelegate.activeStroke != activeStroke ||
-        oldDelegate.showGrid != showGrid;
+        oldDelegate.showGrid != showGrid ||
+        oldDelegate.palette != palette;
   }
 }
 

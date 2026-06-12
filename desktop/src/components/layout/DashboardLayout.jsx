@@ -1,6 +1,8 @@
+import { useEffect, useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
+import { checkIsServiceDriver } from '../../lib/driverGuard';
 import { ModernSidebar } from './ModernSidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
@@ -18,11 +20,30 @@ const pageTransition = {
 };
 
 export function DashboardLayout() {
-  const { isAuthenticated, drawerOpen, drawerContent, closeDrawer, sidebarCollapsed } = useApp();
+  const { isAuthenticated, user, drawerOpen, drawerContent, closeDrawer, sidebarCollapsed } = useApp();
   const location = useLocation();
+  const [isServiceDriver, setIsServiceDriver] = useState(false);
+
+  // Aktif şoför kaydı olan kullanıcı panellere giremez; yalnızca
+  // kendi şoför ekranını (/driver) görür.
+  useEffect(() => {
+    let active = true;
+    if (isAuthenticated) {
+      checkIsServiceDriver(user).then((value) => {
+        if (active) setIsServiceDriver(value);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [isAuthenticated, user]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (isServiceDriver) {
+    return <Navigate to="/driver" replace />;
   }
 
   return (

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../utils/input_formatters.dart';
 import 'package:flutter/services.dart';
 
 import '../services/auth_session_store.dart';
@@ -46,15 +48,15 @@ class _AdminParentRegistrationPageState
     } on RegistrationApiException catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     } catch (error) {
       if (!mounted) return;
       setState(() => _saving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.toString())),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
   }
 
@@ -62,9 +64,7 @@ class _AdminParentRegistrationPageState
     return showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Veli kaydı oluşturuldu'),
         content: SingleChildScrollView(
           child: Column(
@@ -194,10 +194,7 @@ class _AdminParentRegistrationPageState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 11, color: Colors.grey),
-          ),
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
           const SizedBox(height: 2),
           SelectableText(
             value,
@@ -217,20 +214,27 @@ class _AdminParentRegistrationPageState
     required String label,
     TextInputType? keyboardType,
     bool required = true,
+    List<TextInputFormatter>? inputFormatters,
+    String? prefixText,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
-      validator: required
-          ? (value) {
-              if (value == null || value.trim().isEmpty) {
-                return '$label alanı zorunludur';
-              }
-              return null;
-            }
-          : null,
+      inputFormatters: inputFormatters,
+      validator:
+          validator ??
+          (required
+              ? (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return '$label alanı zorunludur';
+                  }
+                  return null;
+                }
+              : null),
       decoration: InputDecoration(
         labelText: label,
+        prefixText: prefixText,
         border: const OutlineInputBorder(),
       ),
     );
@@ -252,7 +256,8 @@ class _AdminParentRegistrationPageState
           children: [
             const AdminHeroCard(
               eyebrow: 'Bağımsız veli kaydı',
-              title: 'Öğrencisi henüz sistemde olmayan veliler için ayrı kayıt.',
+              title:
+                  'Öğrencisi henüz sistemde olmayan veliler için ayrı kayıt.',
               description:
                   'Yeni öğrenci kaydı yapacaksanız Öğrenciler sayfasını kullanın — orada veli bilgisi de doldurulduğunda veli hesabı otomatik oluşur.',
               colors: [Color(0xFF7C3AED), Color(0xFFC026D3)],
@@ -277,7 +282,12 @@ class _AdminParentRegistrationPageState
                     controller: _parentPhoneController,
                     label: 'Telefon',
                     keyboardType: TextInputType.phone,
-                    required: false,
+                    inputFormatters: AppInputFormatters.phone(),
+                    prefixText: '+90 ',
+                    validator: (value) => AppInputFormatters.validatePhone(
+                      value,
+                      required: false,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   _buildField(

@@ -126,6 +126,20 @@ export async function fetchReportStudents(params) {
   }
 }
 
+export async function fetchTeacherReportAnalytics(params) {
+  try {
+    const response = await api.get('/api/reports/teacher-analytics', {
+      params,
+    });
+    return response || { classReports: [], topics: [] };
+  } catch (error) {
+    if (isNotFoundError(error)) {
+      return { classReports: [], topics: [] };
+    }
+    throw error;
+  }
+}
+
 export async function fetchClasses() {
   const response = await api.get('/api/classes');
   if (Array.isArray(response)) {
@@ -143,6 +157,11 @@ export async function fetchClasses() {
 export async function createClass(payload) {
   const name = typeof payload === 'string' ? payload : payload?.name;
   const response = await api.post('/api/classes', { name });
+  return response;
+}
+
+export async function createCompleteClass(payload) {
+  const response = await api.post('/api/classes/create-complete', payload);
   return response;
 }
 
@@ -427,6 +446,21 @@ export async function fetchPlatformTenants() {
   return response;
 }
 
+export async function fetchTenantFeatures(tenantId) {
+  const response = await api.get(`/api/tenant-features/tenants/${tenantId}`);
+  return response;
+}
+
+export async function saveTenantFeatures(tenantId, features) {
+  const response = await api.put(`/api/tenant-features/tenants/${tenantId}`, { features });
+  return response;
+}
+
+export async function fetchMyTenantFeatures() {
+  const response = await api.get('/api/tenant-features/my');
+  return response;
+}
+
 export async function fetchPlatformOverview() {
   const response = await api.get('/api/platformops/overview');
   return response;
@@ -628,6 +662,49 @@ export async function fetchQuestionBank(className) {
     params: className ? { className } : undefined,
   });
   return response;
+}
+
+export async function uploadQuestionImportFile(formData) {
+  const response = await api.post('/api/question-import/upload', formData);
+  return response;
+}
+
+export async function fetchQuestionImportJob(importId) {
+  const response = await api.get(`/api/question-import/${importId}`);
+  return response;
+}
+
+export async function fetchQuestionImportHistory() {
+  const response = await api.get('/api/question-import/history');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function updateQuestionImportQuestion(importId, questionId, payload) {
+  const response = await api.put(`/api/question-import/${importId}/questions/${questionId}`, payload);
+  return response;
+}
+
+export async function deleteQuestionImportQuestion(importId, questionId) {
+  await api.delete(`/api/question-import/${importId}/questions/${questionId}`);
+}
+
+export async function duplicateQuestionImportQuestion(importId, questionId) {
+  const response = await api.post(`/api/question-import/${importId}/questions/${questionId}/duplicate`);
+  return response;
+}
+
+export async function bulkUpdateQuestionImport(importId, payload) {
+  const response = await api.post(`/api/question-import/${importId}/bulk-update`, payload);
+  return response;
+}
+
+export async function commitQuestionImport(importId, payload) {
+  const response = await api.post(`/api/question-import/${importId}/commit`, payload);
+  return response;
+}
+
+export async function deleteQuestionImportJob(importId) {
+  await api.delete(`/api/question-import/${importId}`);
 }
 
 export async function fetchTeacherWeeklyReportBootstrap(params) {
@@ -941,6 +1018,11 @@ export async function fetchServiceRouteDetail(id) {
   return await api.get(`/api/service/routes/${id}`);
 }
 
+export async function fetchServiceAssignments() {
+  const response = await api.get('/api/service/assignments');
+  return Array.isArray(response) ? response : [];
+}
+
 export async function createServiceRoute(payload) {
   return await api.post('/api/service/routes', {
     ...payload,
@@ -988,6 +1070,84 @@ export async function assignServiceStudent(payload) {
 
 export async function deleteServiceAssignment(id) {
   await api.delete(`/api/service/assignments/${id}`);
+}
+
+export const getVehicles = fetchServiceVehicles;
+export const getDrivers = fetchServiceDrivers;
+export const getRoutes = fetchServiceRoutes;
+export const assignStudentToRoute = assignServiceStudent;
+
+export async function getAdminTransportDashboard() {
+  const [vehicles, drivers, routes, assignments] = await Promise.all([
+    fetchServiceVehicles(),
+    fetchServiceDrivers(),
+    fetchServiceRoutes(),
+    fetchServiceAssignments(),
+  ]);
+  return {
+    vehicles,
+    drivers,
+    routes,
+    assignments,
+    totals: {
+      vehicles: vehicles.length,
+      drivers: drivers.length,
+      routes: routes.length,
+      assignments: assignments.length,
+      activeRoutes: routes.filter((route) => route.isActive).length,
+      activeDrivers: drivers.filter((driver) => driver.isActive).length,
+      activeVehicles: vehicles.filter((vehicle) => vehicle.isActive).length,
+    },
+  };
+}
+
+export async function fetchServiceDriverSelf() {
+  return await api.get('/api/service/driver/me');
+}
+
+export async function arrivedSchoolRoute(tripId) {
+  return await api.post(`/api/service/trips/${tripId}/arrived-school`);
+}
+
+export async function getDriverTodayRoute() {
+  const response = await api.get('/api/service/driver/today-routes');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function getDriverStudentPickupList(routeId) {
+  const response = await api.get(`/api/service/driver/routes/${routeId}/students`);
+  return Array.isArray(response) ? response : [];
+}
+
+export async function startRoute(routeId) {
+  return await api.post('/api/service/trips/start', { routeId });
+}
+
+export async function updateStudentBoardingStatus({ tripId, studentId, status }) {
+  return await api.post('/api/service/attendance/mark', { tripId, studentId, status });
+}
+
+export async function completeRoute(tripId) {
+  return await api.post(`/api/service/trips/${tripId}/completed`);
+}
+
+export async function getStudentTransportStatus() {
+  const response = await api.get('/api/service/student/live-status');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function getParentChildrenTransportStatus() {
+  const response = await api.get('/api/service/parent/live-status');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function notifyStudentAbsentToday(payload) {
+  return await api.post('/api/service/parent/absence-request', payload);
+}
+
+export async function getLiveVehicleLocations() {
+  const response = await api.get('/api/service/admin/live-status');
+  return Array.isArray(response) ? response : [];
 }
 
 export async function fetchUserRoles() {

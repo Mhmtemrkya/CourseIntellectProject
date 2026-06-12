@@ -85,9 +85,9 @@ class _MaintenanceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final navy = const Color(0xFF021622);
-    final orange = const Color(0xFFD9790B);
-    final warm = const Color(0xFFFBB971);
+    final navy = const Color(0xFF08111F);
+    final orange = const Color(0xFFFF7A1A);
+    final warm = const Color(0xFFFF9D2E);
 
     return Scaffold(
       backgroundColor: navy,
@@ -192,7 +192,7 @@ class _MaintenanceScreen extends StatelessWidget {
                           label: const Text('Yeniden dene'),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: orange,
-                            foregroundColor: const Color(0xFF00354F),
+                            foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 14),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),

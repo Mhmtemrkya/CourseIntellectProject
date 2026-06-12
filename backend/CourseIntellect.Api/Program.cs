@@ -342,5 +342,7 @@ app.MapControllers();
 app.MapHub<MessagesHub>("/hubs/messages");
 app.MapHub<ServiceTrackingHub>("/hubs/service-tracking");
 app.MapHub<ExamSolvingHub>("/hubs/exam-solving");
+app.MapHub<QuestionImportHub>("/hubs/question-import");
+app.MapHub<StudyPlanHub>("/hubs/study-plan");
 
 app.Run();

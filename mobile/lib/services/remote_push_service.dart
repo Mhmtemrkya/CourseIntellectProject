@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
@@ -13,12 +14,26 @@ class RemotePushService {
 
   static final RemotePushService instance = RemotePushService._();
 
+  static const _androidChannelId = 'course_intellect_general';
+  static const _androidChannelName = 'Course Intellect';
+  static const _androidChannelDescription =
+      'Course Intellect servis ve sistem bildirimleri';
+
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
+
   bool _initialized = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
     try {
       await Firebase.initializeApp();
+      await _initializeLocalNotifications();
+      await FirebaseMessaging.instance.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
       await FirebaseMessaging.instance
           .setForegroundNotificationPresentationOptions(
             alert: true,
@@ -26,7 +41,7 @@ class RemotePushService {
             sound: true,
           );
 
-      FirebaseMessaging.onMessage.listen((_) {});
+      FirebaseMessaging.onMessage.listen(_showForegroundNotification);
       FirebaseMessaging.instance.onTokenRefresh.listen((token) async {
         await _registerToken(token);
       });
@@ -40,6 +55,58 @@ class RemotePushService {
     } catch (_) {
       // Firebase config dosyalari yoksa uygulamayi bozma.
     }
+  }
+
+  Future<void> _initializeLocalNotifications() async {
+    const androidSettings = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    );
+    const iosSettings = DarwinInitializationSettings();
+    const settings = InitializationSettings(
+      android: androidSettings,
+      iOS: iosSettings,
+      macOS: iosSettings,
+    );
+
+    await _localNotifications.initialize(settings);
+    final androidPlugin = _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await androidPlugin?.createNotificationChannel(
+      const AndroidNotificationChannel(
+        _androidChannelId,
+        _androidChannelName,
+        description: _androidChannelDescription,
+        importance: Importance.max,
+      ),
+    );
+  }
+
+  Future<void> _showForegroundNotification(RemoteMessage message) async {
+    final notification = message.notification;
+    final title = notification?.title ?? message.data['title']?.toString();
+    final body = notification?.body ?? message.data['body']?.toString();
+    if ((title == null || title.isEmpty) && (body == null || body.isEmpty)) {
+      return;
+    }
+
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch.remainder(0x7fffffff),
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(
+          _androidChannelId,
+          _androidChannelName,
+          channelDescription: _androidChannelDescription,
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(),
+        macOS: DarwinNotificationDetails(),
+      ),
+    );
   }
 
   Future<void> refreshRegistration() async {

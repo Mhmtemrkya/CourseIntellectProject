@@ -25,6 +25,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createStaffAccounting } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
+import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
 
 const emptyForm = {
   fullName: '',
@@ -146,11 +147,11 @@ export default function AdminAccountingRegistration() {
               </div>
               <div className="space-y-2">
                 <Label>TC Kimlik No *</Label>
-                <Input maxLength={11} value={form.tcNo} onChange={(event) => handleChange('tcNo', event.target.value.replace(/\D/g, ''))} />
+                <Input maxLength={11} value={form.tcNo} onChange={(event) => handleChange('tcNo', maskTcKimlik(event.target.value))} inputMode="numeric" placeholder="11 haneli kimlik no" />
               </div>
               <div className="space-y-2">
                 <Label>Telefon *</Label>
-                <Input value={form.phone} onChange={(event) => handleChange('phone', event.target.value)} />
+                <Input value={form.phone} onChange={(event) => handleChange('phone', maskTrPhone(event.target.value))} inputMode="tel" placeholder="+90 5XX XXX XX XX" />
               </div>
               <div className="space-y-2">
                 <Label>Mezuniyet / Üniversite</Label>

@@ -1,7 +1,9 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 
-import '../services/attendance_service.dart';
+import '../services/attendance_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/responsive_layout.dart';
@@ -56,7 +58,19 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
     if (scanned) return;
     final code = capture.barcodes.firstOrNull?.rawValue;
     if (code == null || code.isEmpty) return;
-    if (!code.startsWith('attendance|')) return;
+
+    // Hem desktop hem mobil öğretmen QR'ı token'lı JSON üretir;
+    // eski `attendance|...` formatı yedek olarak desteklenir.
+    final token = _extractToken(code);
+    if (token == null) {
+      if (code.startsWith('attendance|') || code.trimLeft().startsWith('{')) {
+        setState(() {
+          scanStatus =
+              'Bu QR eski formatta üretilmiş. Öğretmenden QR kodu yenilemesini iste.';
+        });
+      }
+      return;
+    }
 
     setState(() {
       scanned = true;
@@ -65,23 +79,14 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
     });
 
     try {
-      final payload = _parsePayload(code);
-      final lessonClass = payload['class'] ?? className;
-      final lesson = payload['lesson'] ?? 'Ders';
-      if (lessonClass.isEmpty) {
-        throw Exception('QR kaydında sınıf bilgisi bulunamadı.');
-      }
-      await AttendanceService.instance.saveLessonAttendance(
-        className: lessonClass,
-        lesson: lesson,
-        students: [
-          {'name': studentName, 'status': 'present'},
-        ],
+      await AttendanceApiService.instance.checkInQrSession(
+        token: token,
+        studentName: studentName,
       );
       if (!mounted) return;
       setState(() {
         scanStatus =
-            "$studentName derse katıldı. Yoklama başarıyla gönderildi.";
+            "$studentName derse katıldı. Katılımın öğretmenin yoklama listesine iletildi.";
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -98,6 +103,29 @@ class _StudentAttendanceScanPageState extends State<StudentAttendanceScanPage> {
         context,
       ).showSnackBar(SnackBar(content: Text(error.toString())));
     }
+  }
+
+  /// QR içeriğinden oturum token'ını çözer. JSON `{token: ...}` formatını
+  /// ve `attendance|...|token:...` eski formatını destekler.
+  String? _extractToken(String code) {
+    final trimmed = code.trim();
+    if (trimmed.startsWith('{')) {
+      try {
+        final map = jsonDecode(trimmed);
+        if (map is Map && map['token'] is String) {
+          final token = (map['token'] as String).trim();
+          if (token.isNotEmpty) return token;
+        }
+      } catch (_) {
+        return null;
+      }
+      return null;
+    }
+    if (trimmed.startsWith('attendance|')) {
+      final token = _parsePayload(trimmed)['token']?.trim();
+      return (token == null || token.isEmpty) ? null : token;
+    }
+    return null;
   }
 
   Map<String, String> _parsePayload(String payload) {

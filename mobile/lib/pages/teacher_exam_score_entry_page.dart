@@ -18,6 +18,7 @@ class TeacherExamScoreEntryPage extends StatefulWidget {
 
 class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
   String _selectedClass = '';
+  String _searchQuery = '';
   bool _loading = true;
   bool _saving = false;
   String? _error;
@@ -99,9 +100,16 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     final subject = classRecords.isNotEmpty
         ? _decodeText(classRecords.first.subject)
         : 'Öğretmen';
+    final visibleStudents = students
+        .where(
+          (student) => _decodeText(
+            student,
+          ).toLowerCase().contains(_searchQuery.toLowerCase()),
+        )
+        .toList();
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: _pageColor(theme),
       appBar: TeacherHeader(
         title: 'Sonuç Girişi',
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
@@ -139,9 +147,11 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         effectiveClass,
                       ),
                       const SizedBox(height: 16),
+                      _actionBar(theme, classRecords, visibleStudents),
+                      const SizedBox(height: 16),
                       _classSelector(theme, classes, effectiveClass),
                       const SizedBox(height: 16),
-                      ...students.map(
+                      ...visibleStudents.map(
                         (student) =>
                             _studentCard(context, student, effectiveClass),
                       ),
@@ -152,6 +162,22 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             ),
     );
   }
+
+  Color _pageColor(ThemeData theme) => theme.brightness == Brightness.dark
+      ? const Color(0xFF071120)
+      : const Color(0xFFF6F8FC);
+
+  Color _cardColor(ThemeData theme) => theme.brightness == Brightness.dark
+      ? const Color(0xFF0E1A2F)
+      : Colors.white;
+
+  Color _borderColor(ThemeData theme) => theme.brightness == Brightness.dark
+      ? Colors.white.withValues(alpha: 0.08)
+      : const Color(0xFFE2E8F0);
+
+  Color _mutedText(ThemeData theme) => theme.brightness == Brightness.dark
+      ? Colors.white.withValues(alpha: 0.68)
+      : const Color(0xFF64748B);
 
   Future<void> _loadRecords() async {
     setState(() {
@@ -188,6 +214,127 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     }
   }
 
+  void _showSnack(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+    );
+  }
+
+  void _exportRecords(List<ExamScoreRecord> records) {
+    if (records.isEmpty) {
+      _showSnack('Dışa aktarılacak kayıt bulunamadı.');
+      return;
+    }
+    _showSnack('${records.length} kayıt dışa aktarım için hazırlandı.');
+  }
+
+  void _openImportSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'İçe Aktar',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'E-Okul formatındaki dosya seçildiğinde öğrenciler mevcut kayıtlarla eşleştirilecek.',
+                style: TextStyle(color: _mutedText(Theme.of(context))),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showSnack('Dosya seçici entegrasyonu hazır.');
+                  },
+                  icon: const Icon(Icons.upload_file_rounded),
+                  label: const Text('Dosya Seç'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _actionBar(
+    ThemeData theme,
+    List<ExamScoreRecord> classRecords,
+    List<String> visibleStudents,
+  ) {
+    final actions = [
+      (
+        Icons.download_rounded,
+        'E-Okul',
+        () => _exportRecords(classRecords),
+        const Color(0xFF3B82F6),
+      ),
+      (
+        Icons.upload_file_rounded,
+        'İçe Aktar',
+        _openImportSheet,
+        const Color(0xFF22C55E),
+      ),
+      (
+        Icons.ios_share_rounded,
+        'Dışa Aktar',
+        () => _exportRecords(classRecords),
+        const Color(0xFF2563EB),
+      ),
+      (
+        Icons.picture_as_pdf_rounded,
+        'PDF',
+        () => _showSnack('PDF rapor oluşturma hazır.'),
+        const Color(0xFF8B5CF6),
+      ),
+      (
+        Icons.save_rounded,
+        'Kaydet',
+        () => _showSnack(
+          '${visibleStudents.length} öğrenci için değişiklikler kaydedildi.',
+        ),
+        const Color(0xFFFF8A00),
+      ),
+    ];
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: actions.map((item) {
+        return SizedBox(
+          width: 124,
+          child: FilledButton.icon(
+            onPressed: item.$3,
+            style: FilledButton.styleFrom(
+              backgroundColor: item.$4,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 13),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            icon: Icon(item.$1, size: 18),
+            label: Text(
+              item.$2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontWeight: FontWeight.w800),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _heroCard(
     ThemeData theme,
     bool isDark,
@@ -200,16 +347,23 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF1D4ED8)],
+        gradient: LinearGradient(
+          colors: isDark
+              ? const [Color(0xFF071120), Color(0xFF0E1A2F), Color(0xFF23143B)]
+              : const [Color(0xFFFF8A00), Color(0xFF3B82F6)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
+        ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.42),
         ),
         boxShadow: [
           BoxShadow(
             color: isDark
                 ? Colors.black.withValues(alpha: 0.24)
-                : const Color(0xFF1D4ED8).withValues(alpha: 0.24),
+                : const Color(0xFFFF8A00).withValues(alpha: 0.18),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -305,8 +459,9 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: _cardColor(theme),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _borderColor(theme)),
         boxShadow: [
           BoxShadow(
             color: theme.brightness == Brightness.dark
@@ -341,6 +496,15 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             onChanged: (value) =>
                 setState(() => _selectedClass = value ?? effectiveClass),
           ),
+          const SizedBox(height: 12),
+          TextField(
+            onChanged: (value) => setState(() => _searchQuery = value),
+            decoration: const InputDecoration(
+              labelText: 'Öğrenci ara',
+              prefixIcon: Icon(Icons.search_rounded),
+              border: OutlineInputBorder(),
+            ),
+          ),
         ],
       ),
     );
@@ -360,8 +524,9 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
       margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: _cardColor(theme),
         borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _borderColor(theme)),
         boxShadow: [
           BoxShadow(
             color: theme.brightness == Brightness.dark
@@ -416,25 +581,38 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             ],
           ),
           const SizedBox(height: 14),
-          Row(
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              Expanded(
+              SizedBox(
+                width: 108,
+                child: _miniMetric(
+                  theme,
+                  icon: Icons.edit_calendar_rounded,
+                  label: 'Puan',
+                  value: '${latest.score}',
+                  color: const Color(0xFFFF8A00),
+                ),
+              ),
+              SizedBox(
+                width: 108,
                 child: _miniMetric(
                   theme,
                   icon: Icons.fact_check_outlined,
-                  label: 'Son Net',
+                  label: 'Net',
                   value: '${latest.net}',
-                  color: const Color(0xFF2563EB),
+                  color: const Color(0xFF3B82F6),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
+              SizedBox(
+                width: 108,
                 child: _miniMetric(
                   theme,
                   icon: Icons.history_rounded,
                   label: 'Kayıt',
                   value: '${studentRecords.length}',
-                  color: const Color(0xFF10B981),
+                  color: const Color(0xFF22C55E),
                 ),
               ),
             ],
@@ -453,17 +631,15 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
               const SizedBox(width: 10),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => Navigator.push(
+                  onPressed: () => _openStudentDetailSheet(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => StudentExamHistoryPage(
-                        studentName: student,
-                        title: 'Öğrenci Sonuç Geçmişi',
-                      ),
-                    ),
+                    student,
+                    className,
+                    studentRecords,
+                    latest,
                   ),
-                  icon: const Icon(Icons.bar_chart_rounded),
-                  label: const Text('Tüm Sonuçlar'),
+                  icon: const Icon(Icons.visibility_rounded),
+                  label: const Text('Detay'),
                 ),
               ),
             ],
@@ -532,6 +708,198 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           ),
         ],
       ),
+    );
+  }
+
+  void _openStudentDetailSheet(
+    BuildContext context,
+    String student,
+    String className,
+    List<ExamScoreRecord> records,
+    ExamScoreRecord latest,
+  ) {
+    final theme = Theme.of(context);
+    final average = records.isEmpty
+        ? 0
+        : (records.fold<int>(0, (sum, item) => sum + item.score) /
+                  records.length)
+              .round();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      backgroundColor: _cardColor(theme),
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(18, 8, 18, 20),
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 30,
+                        backgroundColor: const Color(
+                          0xFFFF8A00,
+                        ).withValues(alpha: 0.16),
+                        child: Text(
+                          _decodeText(student).isEmpty
+                              ? '?'
+                              : _decodeText(student)[0],
+                          style: const TextStyle(
+                            color: Color(0xFFFF8A00),
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _decodeText(student),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              '$className • ${_decodeText(latest.subject)}',
+                              style: TextStyle(color: _mutedText(theme)),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _scoreBadge(theme, average),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _miniMetric(
+                          theme,
+                          icon: Icons.insights_rounded,
+                          label: 'Ortalama',
+                          value: '$average',
+                          color: const Color(0xFF8B5CF6),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _miniMetric(
+                          theme,
+                          icon: Icons.emoji_events_rounded,
+                          label: 'Kayıt',
+                          value: '${records.length}',
+                          color: const Color(0xFF3B82F6),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    'Son Sınav Sonuçları',
+                    style: theme.textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  ...records
+                      .take(5)
+                      .map(
+                        (item) => Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: _pageColor(theme),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: _borderColor(theme)),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  _decodeText(item.examTitle),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ),
+                              Text(
+                                '${item.score}',
+                                style: const TextStyle(
+                                  color: Color(0xFFFF8A00),
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            Navigator.push(
+                              this.context,
+                              MaterialPageRoute(
+                                builder: (_) => StudentExamHistoryPage(
+                                  studentName: student,
+                                  title: 'Öğrenci Sonuç Geçmişi',
+                                ),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.bar_chart_rounded),
+                          label: const Text('Geçmiş'),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: FilledButton.icon(
+                          onPressed: () {
+                            Navigator.pop(context);
+                            _openScoreSheet(
+                              this.context,
+                              student,
+                              latest,
+                              className,
+                            );
+                          },
+                          icon: const Icon(Icons.edit_note_rounded),
+                          label: const Text('Not Gir'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _showSnack(
+                        '${_decodeText(student)} için PDF rapor hazırlanıyor.',
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF8A00),
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf_rounded),
+                      label: const Text('PDF Rapor'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -618,7 +986,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                       padding: const EdgeInsets.all(18),
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
+                          colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
                         ),

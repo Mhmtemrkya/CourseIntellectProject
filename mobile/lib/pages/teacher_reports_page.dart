@@ -1,5 +1,10 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:share_plus/share_plus.dart';
 import 'package:student/pages/teacher_exam_results_page.dart';
 import 'package:student/services/admin_directory_api_service.dart';
 import 'package:student/services/auth_session_store.dart';
@@ -100,10 +105,10 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
             "questionCount": item.questionCount,
             "riskLevel": item.riskLevel,
             "color": item.success >= 80
-                ? const Color(0xFF27B3A2)
+                ? const Color(0xFF30D158)
                 : item.success >= 65
-                ? const Color(0xFFFFB020)
-                : const Color(0xFFFF6B6B),
+                ? const Color(0xFFFF9D2E)
+                : const Color(0xFFFF5C7A),
           },
         )
         .toList();
@@ -481,12 +486,37 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       ),
                     ],
                   ),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _openPdfMode(report);
+                      },
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFFF9D2E),
+                        foregroundColor: const Color(0xFF08111F),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf_rounded),
+                      label: const Text("PDF Modunu Aç"),
+                    ),
+                  ),
                 ],
               ),
             ),
           ),
         );
       },
+    );
+  }
+
+  void _openPdfMode(Map<String, dynamic> report) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => _MobilePdfReportPreviewPage(report: report),
+      ),
     );
   }
 
@@ -870,9 +900,11 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF8FAFC),
+                            color: const Color(0xFF0E1B31),
                             borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: const Color(0xFFE5E7EB)),
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.10),
+                            ),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -883,6 +915,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                     child: Text(
                                       "Ek Dosyalar",
                                       style: TextStyle(
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w800,
                                       ),
                                     ),
@@ -904,6 +937,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                               if (attachments.isEmpty)
                                 const Text(
                                   "Görsel, PDF veya dosya ekleyebilirsin.",
+                                  style: TextStyle(color: Colors.white70),
                                 )
                               else
                                 ...attachments.asMap().entries.map(
@@ -914,17 +948,24 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                       vertical: 12,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.white,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.06,
+                                      ),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(
+                                          alpha: 0.08,
+                                        ),
+                                      ),
                                       borderRadius: BorderRadius.circular(18),
                                     ),
                                     child: Row(
                                       children: [
                                         CircleAvatar(
                                           backgroundColor: const Color(
-                                            0xFFDBEAFE,
-                                          ),
+                                            0xFFFF9D2E,
+                                          ).withValues(alpha: 0.14),
                                           foregroundColor: const Color(
-                                            0xFF2563EB,
+                                            0xFFFF9D2E,
                                           ),
                                           child: Text(
                                             _attachmentComposerTag(
@@ -943,12 +984,16 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                                   entry.value.fileType,
                                                 ),
                                                 style: const TextStyle(
+                                                  color: Colors.white,
                                                   fontWeight: FontWeight.w700,
                                                 ),
                                               ),
                                               Text(
                                                 entry.value.fileType
                                                     .toUpperCase(),
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -1024,7 +1069,11 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   padding: const EdgeInsets.fromLTRB(24, 24, 24, 22),
                   decoration: const BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
+                      colors: [
+                        Color(0xFF08111F),
+                        Color(0xFF0E1B31),
+                        Color(0xFF2A1832),
+                      ],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
@@ -1105,10 +1154,10 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                           contentPadding: EdgeInsets.zero,
                                           leading: CircleAvatar(
                                             backgroundColor: const Color(
-                                              0xFFDBEAFE,
-                                            ),
+                                              0xFFFF9D2E,
+                                            ).withValues(alpha: 0.14),
                                             foregroundColor: const Color(
-                                              0xFF2563EB,
+                                              0xFFFF9D2E,
                                             ),
                                             child: Text(
                                               item.fileType.characters.first,
@@ -1150,9 +1199,10 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     final reportTheme = _ReportTheme(theme, isDark);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
+      backgroundColor: reportTheme.pageBackground,
       appBar: AppBar(
-        backgroundColor: theme.scaffoldBackgroundColor,
+        backgroundColor: reportTheme.pageBackground,
+        foregroundColor: reportTheme.textColor,
         elevation: 0,
         title: const Text(
           "Raporlar",
@@ -1202,7 +1252,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         value: "$totalStudents",
                         subtitle: "Rapor kapsamindaki aktif öğrenci",
                         icon: Icons.groups_2_rounded,
-                        color: const Color(0xFF4E8DF5),
+                        color: const Color(0xFF4DA3FF),
                         onTap: () => _openKpiDetail(
                           "Toplam Öğrenci",
                           "$totalStudents",
@@ -1215,7 +1265,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         value: "$averageScore",
                         subtitle: "Sınav ve ödeve dayalı net başarı",
                         icon: Icons.auto_graph_rounded,
-                        color: const Color(0xFF27B3A2),
+                        color: const Color(0xFF30D158),
                         onTap: () => _openKpiDetail(
                           "Genel Ortalama",
                           "$averageScore",
@@ -1228,7 +1278,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         value: "%$averageAttendance",
                         subtitle: "Canlı ders ve yoklama uyumu",
                         icon: Icons.fact_check_rounded,
-                        color: const Color(0xFFFFB020),
+                        color: const Color(0xFFFF9D2E),
                         onTap: () => _openKpiDetail(
                           "Devam Orani",
                           "%$averageAttendance",
@@ -1241,7 +1291,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         value: "%$averageCompletion",
                         subtitle: "Ödev ve quiz teslim disiplini",
                         icon: Icons.assignment_turned_in_rounded,
-                        color: const Color(0xFFFF6B6B),
+                        color: const Color(0xFF7B61FF),
                         onTap: () => _openKpiDetail(
                           "Görev Tamamlama",
                           "%$averageCompletion",
@@ -1290,15 +1340,18 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [Color(0xFFFF7A00), Color(0xFFFFB020)],
+          colors: [Color(0xFF08111F), Color(0xFF0E1B31), Color(0xFF2A1832)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        border: Border.all(
+          color: const Color(0xFFFF9D2E).withValues(alpha: 0.24),
+        ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFFF7A00).withValues(alpha: 0.24),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
+            color: const Color(0xFFFF9D2E).withValues(alpha: 0.22),
+            blurRadius: 28,
+            offset: const Offset(0, 16),
           ),
         ],
       ),
@@ -1316,7 +1369,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 ),
                 child: const Icon(
                   Icons.insights_rounded,
-                  color: Colors.white,
+                  color: Color(0xFFFF9D2E),
                   size: 28,
                 ),
               ),
@@ -1326,6 +1379,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 style: FilledButton.styleFrom(
                   backgroundColor: Colors.white.withValues(alpha: 0.18),
                   foregroundColor: Colors.white,
+                  side: BorderSide(
+                    color: Color(0xFFFF9D2E).withValues(alpha: 0.38),
+                  ),
                 ),
                 icon: const Icon(Icons.file_download_outlined),
                 label: const Text("Dışa Aktar"),
@@ -1372,7 +1428,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
             color: selected ? Colors.white : reportTheme.textColor,
             fontWeight: FontWeight.w700,
           ),
-          selectedColor: const Color(0xFFFF7A00),
+          selectedColor: const Color(0xFFFF9D2E),
           backgroundColor: reportTheme.surfaceColor,
           side: BorderSide(
             color: selected ? Colors.transparent : reportTheme.borderColor,
@@ -1426,7 +1482,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
         const SizedBox(width: 8),
         IconButton.filled(
           onPressed: _openExportDialog,
-          style: IconButton.styleFrom(backgroundColor: const Color(0xFFFF7A00)),
+          style: IconButton.styleFrom(backgroundColor: const Color(0xFFFF9D2E)),
           icon: const Icon(Icons.ios_share_rounded),
         ),
       ],
@@ -1527,12 +1583,12 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                  color: const Color(0xFFFF9D2E).withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Icon(
                   Icons.auto_stories_rounded,
-                  color: Color(0xFF2563EB),
+                  color: Color(0xFFFF9D2E),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1609,8 +1665,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           borderRadius: BorderRadius.circular(22),
-                          color: Colors.white,
-                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                          color: reportTheme.surfaceColor,
+                          border: Border.all(color: reportTheme.borderColor),
                           boxShadow: [
                             BoxShadow(
                               color: _reportAccent(
@@ -1657,8 +1713,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                         _reportCardTitle(report),
                                         maxLines: 2,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF0F172A),
+                                        style: TextStyle(
+                                          color: reportTheme.textColor,
                                           fontSize: 18,
                                           fontWeight: FontWeight.w800,
                                           height: 1.2,
@@ -1669,8 +1725,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                         _reportCardMeta(report),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          color: Color(0xFF64748B),
+                                        style: TextStyle(
+                                          color: reportTheme.subtleTextColor,
                                         ),
                                       ),
                                     ],
@@ -1701,8 +1757,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                               _reportCardSummary(report),
                               maxLines: 3,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Color(0xFF475569),
+                              style: TextStyle(
+                                color: reportTheme.subtleTextColor,
                                 height: 1.5,
                               ),
                             ),
@@ -1713,22 +1769,22 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                 vertical: 12,
                               ),
                               decoration: BoxDecoration(
-                                color: const Color(0xFFF8FAFC),
+                                color: Colors.white.withValues(alpha: 0.06),
                                 borderRadius: BorderRadius.circular(16),
                               ),
-                              child: const Row(
+                              child: Row(
                                 children: [
                                   Icon(
                                     Icons.visibility_outlined,
                                     size: 18,
-                                    color: Color(0xFF334155),
+                                    color: Color(0xFFFF9D2E),
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
                                       'Raporu aç ve detayları incele',
                                       style: TextStyle(
-                                        color: Color(0xFF334155),
+                                        color: reportTheme.textColor,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -1807,12 +1863,12 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 width: 52,
                 height: 52,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFF7A00).withValues(alpha: 0.14),
+                  color: const Color(0xFFFF9D2E).withValues(alpha: 0.14),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Icon(
                   Icons.school_rounded,
-                  color: Color(0xFFFF7A00),
+                  color: Color(0xFFFF9D2E),
                 ),
               ),
               const SizedBox(width: 14),
@@ -1844,8 +1900,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 decoration: BoxDecoration(
                   color:
                       (positiveTrend
-                              ? const Color(0xFF27B3A2)
-                              : const Color(0xFFFF6B6B))
+                              ? const Color(0xFF30D158)
+                              : const Color(0xFFFF5C7A))
                           .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -1853,8 +1909,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   trend,
                   style: TextStyle(
                     color: positiveTrend
-                        ? const Color(0xFF27B3A2)
-                        : const Color(0xFFFF6B6B),
+                        ? const Color(0xFF30D158)
+                        : const Color(0xFFFF5C7A),
                     fontWeight: FontWeight.w800,
                   ),
                 ),
@@ -1866,21 +1922,21 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
             reportTheme,
             label: "Sınıf Ortalamasi",
             value: average,
-            color: const Color(0xFF4E8DF5),
+            color: const Color(0xFF4DA3FF),
           ),
           const SizedBox(height: 12),
           _progressLine(
             reportTheme,
             label: "Devam Orani",
             value: attendance,
-            color: const Color(0xFF27B3A2),
+            color: const Color(0xFF30D158),
           ),
           const SizedBox(height: 12),
           _progressLine(
             reportTheme,
             label: "Görev Tamamlama",
             value: completion,
-            color: const Color(0xFFFFB020),
+            color: const Color(0xFFFF9D2E),
           ),
           const SizedBox(height: 16),
           Container(
@@ -2201,14 +2257,20 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8FAFC),
+        color: const Color(0xFF0E1B31),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 10),
           child,
         ],
@@ -2218,18 +2280,18 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
 
   Color _reportAccent(String subject) {
     final normalized = subject.toLowerCase();
-    if (normalized.contains('matem')) return const Color(0xFF2563EB);
+    if (normalized.contains('matem')) return const Color(0xFF4DA3FF);
     if (normalized.contains('türk') || normalized.contains('turk')) {
-      return const Color(0xFFDC2626);
+      return const Color(0xFFFF9D2E);
     }
-    if (normalized.contains('fen')) return const Color(0xFF059669);
-    if (normalized.contains('ing')) return const Color(0xFF7C3AED);
+    if (normalized.contains('fen')) return const Color(0xFF30D158);
+    if (normalized.contains('ing')) return const Color(0xFF7B61FF);
     if (normalized.contains('sosyal') ||
         normalized.contains('coğraf') ||
         normalized.contains('cograf')) {
-      return const Color(0xFFF97316);
+      return const Color(0xFFFF9D2E);
     }
-    return const Color(0xFF0F766E);
+    return const Color(0xFF4DA3FF);
   }
 
   String _reportGlyph(String subject) {
@@ -2280,13 +2342,368 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     return ListTile(
       contentPadding: EdgeInsets.zero,
       leading: CircleAvatar(
-        backgroundColor: const Color(0xFFFF7A00).withValues(alpha: 0.12),
-        foregroundColor: const Color(0xFFFF7A00),
+        backgroundColor: const Color(0xFFFF9D2E).withValues(alpha: 0.12),
+        foregroundColor: const Color(0xFFFF9D2E),
         child: Icon(icon),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
       subtitle: Text(subtitle),
       onTap: onTap,
+    );
+  }
+}
+
+class _MobilePdfReportPreviewPage extends StatelessWidget {
+  final Map<String, dynamic> report;
+
+  const _MobilePdfReportPreviewPage({required this.report});
+
+  String _text(String key) {
+    final value = report[key];
+    if (value == null) return '-';
+    final text = value.toString().trim();
+    return text.isEmpty ? '-' : text;
+  }
+
+  int _number(String key) {
+    final value = report[key];
+    if (value is int) return value;
+    if (value is num) return value.round();
+    return int.tryParse(value?.toString() ?? '') ?? 0;
+  }
+
+  /// Rapor özetini gerçek bir PDF olarak üretip paylaşım sayfası açar
+  /// (indirme ve yazdırma aynı paylaşım akışından yapılır).
+  Future<void> _exportPdf(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final document = pw.Document();
+      document.addPage(
+        pw.MultiPage(
+          build: (_) => [
+            pw.Text(
+              'Sınıf Performans Raporu',
+              style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Text('Sınıf: ${_text('className')}'),
+            pw.SizedBox(height: 16),
+            pw.TableHelper.fromTextArray(
+              headers: const ['Metrik', 'Değer'],
+              data: [
+                ['Genel Ortalama', '%${_number('average')}'],
+                ['Katılım', '%${_number('attendance')}'],
+                ['Tamamlama', '%${_number('completion')}'],
+              ],
+            ),
+            pw.SizedBox(height: 16),
+            pw.Text(
+              'Bu rapor Course Intellect öğretmen panelinden oluşturulmuştur.',
+              style: const pw.TextStyle(fontSize: 10),
+            ),
+          ],
+        ),
+      );
+      final directory = await getTemporaryDirectory();
+      final file = File(
+        '${directory.path}/sinif-raporu-${DateTime.now().millisecondsSinceEpoch}.pdf',
+      );
+      await file.writeAsBytes(await document.save());
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Sınıf Performans Raporu',
+        ),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('PDF oluşturulamadı: $error')),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pages = [
+      ('Kapak', Icons.school_rounded),
+      ('Genel Sonuçlar', Icons.insights_rounded),
+      ('Ders Analizi', Icons.menu_book_rounded),
+      ('Konu Analizi', Icons.bar_chart_rounded),
+      ('Soru Detayları', Icons.fact_check_rounded),
+      ('Gelişim', Icons.trending_up_rounded),
+    ];
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF08111F),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF08111F),
+        foregroundColor: Colors.white,
+        elevation: 0,
+        title: const Text(
+          'PDF Modu',
+          style: TextStyle(fontWeight: FontWeight.w800),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'PDF indir / paylaş',
+            onPressed: () => _exportPdf(context),
+            icon: const Icon(Icons.file_download_outlined),
+          ),
+          IconButton(
+            tooltip: 'Yazdır (paylaşım üzerinden)',
+            onPressed: () => _exportPdf(context),
+            icon: const Icon(Icons.print_outlined),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF08111F),
+                    Color(0xFF0E1B31),
+                    Color(0xFF2A1832),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                border: Border.all(
+                  color: const Color(0xFFFF9D2E).withValues(alpha: 0.26),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.30),
+                    blurRadius: 28,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color: const Color(
+                            0xFFFF9D2E,
+                          ).withValues(alpha: 0.18),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Icon(
+                          Icons.picture_as_pdf_rounded,
+                          color: Color(0xFFFF9D2E),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Expanded(
+                        child: Text(
+                          'Öğrenci Başarı Raporu',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    _text('className'),
+                    style: const TextStyle(
+                      color: Color(0xFFFF9D2E),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Akademik performans raporu mobil önizleme modu.',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _MobilePdfStat(
+                          label: 'Ortalama',
+                          value: '${_number('average')}',
+                          color: const Color(0xFFFF9D2E),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _MobilePdfStat(
+                          label: 'Devam',
+                          value: '%${_number('attendance')}',
+                          color: const Color(0xFF30D158),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _MobilePdfStat(
+                          label: 'Tamamlama',
+                          value: '%${_number('completion')}',
+                          color: const Color(0xFF7B61FF),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 18),
+            ...pages.asMap().entries.map(
+              (entry) => _MobilePdfPageCard(
+                page: entry.key + 1,
+                title: entry.value.$1,
+                icon: entry.value.$2,
+                report: report,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobilePdfStat extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _MobilePdfStat({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.62),
+              fontSize: 11,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w900,
+              fontSize: 18,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobilePdfPageCard extends StatelessWidget {
+  final int page;
+  final String title;
+  final IconData icon;
+  final Map<String, dynamic> report;
+
+  const _MobilePdfPageCard({
+    required this.page,
+    required this.title,
+    required this.icon,
+    required this.report,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final topTopic = (report['topTopic']?.toString().trim().isNotEmpty ?? false)
+        ? report['topTopic'].toString()
+        : '-';
+    final supportTopic =
+        (report['supportTopic']?.toString().trim().isNotEmpty ?? false)
+        ? report['supportTopic'].toString()
+        : '-';
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E1B31),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: const Color(0xFFFF9D2E).withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(icon, color: const Color(0xFFFF9D2E)),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Sayfa $page / 6',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.52),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  page == 4
+                      ? 'Güçlü alan: $topTopic • Destek alanı: $supportTopic'
+                      : 'Bu bölüm PDF çıktısında seçili rapor verileriyle oluşturulur.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.68),
+                    height: 1.45,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -2297,23 +2714,18 @@ class _ReportTheme {
 
   _ReportTheme(this.theme, this.isDark);
 
-  Color get cardColor => theme.cardColor;
-  Color get surfaceColor =>
-      isDark ? const Color(0xFF161920) : const Color(0xFFF5F7FB);
-  Color get borderColor =>
-      isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFE6EAF2);
-  Color get textColor => theme.textTheme.bodyLarge?.color ?? Colors.black;
-  Color get subtleTextColor =>
-      theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.72) ??
-      Colors.black54;
+  Color get pageBackground => const Color(0xFF08111F);
+  Color get cardColor => const Color(0xFF0E1B31);
+  Color get surfaceColor => const Color(0xFF132238);
+  Color get borderColor => Colors.white.withValues(alpha: 0.10);
+  Color get textColor => Colors.white;
+  Color get subtleTextColor => Colors.white.withValues(alpha: 0.68);
 
   List<BoxShadow> get shadow => [
     BoxShadow(
-      color: isDark
-          ? Colors.black.withValues(alpha: 0.22)
-          : Colors.black.withValues(alpha: 0.05),
-      blurRadius: 16,
-      offset: const Offset(0, 8),
+      color: Colors.black.withValues(alpha: 0.28),
+      blurRadius: 22,
+      offset: const Offset(0, 12),
     ),
   ];
 }

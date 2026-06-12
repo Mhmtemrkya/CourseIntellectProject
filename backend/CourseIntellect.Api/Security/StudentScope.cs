@@ -1,0 +1,71 @@
+using System.Security.Claims;
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore;
+
+namespace CourseIntellect.Api.Security;
+
+/// <summary>
+/// Öğrenciye ait verilerin (sınav sonucu, devamsızlık vb.) GET uçlarında
+/// rol bazlı kapsam denetimi. UI ne gösterirse göstersin, API doğrudan
+/// çağrıldığında da öğrenci yalnızca kendisini, veli yalnızca kendi
+/// çocuklarını görebilir; personel rolleri kısıtsızdır.
+/// </summary>
+public static class StudentScope
+{
+    /// <summary>
+    /// İzin verilen öğrenci adlarını döndürür.
+    /// null → kısıt yok (öğretmen/yönetici/idari/muhasebe vb. personel rolleri).
+    /// Boş liste → erişilebilir öğrenci yok (sonuç boş dönmelidir).
+    /// </summary>
+    public static async Task<IReadOnlyList<string>?> ResolveAllowedStudentNamesAsync(
+        ClaimsPrincipal user,
+        CourseIntellectDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        if (user.IsInRole("Student"))
+        {
+            var fullName = (user.FindFirstValue("name") ?? user.FindFirstValue(ClaimTypes.Name) ?? string.Empty).Trim();
+            return string.IsNullOrWhiteSpace(fullName) ? [] : [fullName];
+        }
+
+        if (user.IsInRole("Parent"))
+        {
+            var userRaw = user.FindFirstValue("user_id") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userRaw, out var parentUserId))
+            {
+                return [];
+            }
+
+            return await dbContext.Students
+                .AsNoTracking()
+                .Where(x => x.ParentUserId == parentUserId)
+                .Select(x => x.FullName)
+                .ToListAsync(cancellationToken);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Kapsamlı isim listesine göre kayıtları süzer (büyük/küçük harf duyarsız).
+    /// </summary>
+    public static IReadOnlyList<T> FilterByStudentNames<T>(
+        IReadOnlyList<T> items,
+        IReadOnlyList<string> allowedNames,
+        Func<T, string> studentNameSelector)
+    {
+        if (allowedNames.Count == 0)
+        {
+            return [];
+        }
+
+        var allowed = allowedNames
+            .Select(name => name.Trim())
+            .Where(name => name.Length > 0)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        return items
+            .Where(item => allowed.Contains(studentNameSelector(item).Trim()))
+            .ToList();
+    }
+}

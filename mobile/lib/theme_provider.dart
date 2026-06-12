@@ -6,8 +6,8 @@ class ThemeProvider extends ChangeNotifier {
     : _isDarkMode =
           WidgetsBinding.instance.platformDispatcher.platformBrightness ==
           Brightness.dark,
-      _brandPrimary = const Color(0xFF00354F),
-      _brandAccent = const Color(0xFFD9790B),
+      _brandPrimary = const Color(0xFF08111F),
+      _brandAccent = const Color(0xFFFF7A1A),
       _tenantLogo = null,
       _tenantName = '';
 
@@ -31,8 +31,9 @@ class ThemeProvider extends ChangeNotifier {
 
   /// Dinamik tema — brand rengine göre üretilir
   ThemeData get lightTheme =>
-      buildDynamicTheme(_brandPrimary, Brightness.light);
-  ThemeData get darkTheme => buildDynamicTheme(_brandPrimary, Brightness.dark);
+      buildDynamicTheme(_brandPrimary, Brightness.light, accent: _brandAccent);
+  ThemeData get darkTheme =>
+      buildDynamicTheme(_brandPrimary, Brightness.dark, accent: _brandAccent);
 
   /// Theme değiştir
   void toggleTheme(bool value) {

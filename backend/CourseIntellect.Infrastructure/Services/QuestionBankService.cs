@@ -238,9 +238,20 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
 
     private static string NormalizePublicationStatus(string? value)
     {
-        return string.Equals(value?.Trim(), "Draft", StringComparison.OrdinalIgnoreCase)
-            ? "Draft"
-            : "Published";
+        var normalized = value?.Trim();
+        if (string.Equals(normalized, "Draft", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Draft";
+        }
+
+        // Pasif sorular öğrenci listesinde görünmez; öğretmen sınav
+        // oluştururken kaynak olarak kullanmaya devam edebilir.
+        if (string.Equals(normalized, "Passive", StringComparison.OrdinalIgnoreCase))
+        {
+            return "Passive";
+        }
+
+        return "Published";
     }
 
     private static string BuildCreatedAtLabel()

@@ -194,7 +194,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               ResponsiveLayout.isTablet(context)
           ? FloatingActionButton(
               onPressed: () => StylusDrawingCanvas.open(context),
-              backgroundColor: const Color(0xFFD9790B),
+              backgroundColor: const Color(0xFFFF7A1A),
               child: const Icon(Icons.draw_rounded, color: Colors.white),
             )
           : null,

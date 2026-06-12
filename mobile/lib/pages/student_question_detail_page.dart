@@ -175,7 +175,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
         gradient: const LinearGradient(
-          colors: [Color(0xFF0F172A), Color(0xFF2563EB)],
+          colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),

@@ -32,8 +32,16 @@ class AdminScaffold extends StatelessWidget {
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: isDark
-                    ? const [Color(0xFF0E141B), Color(0xFF101A23)]
-                    : const [Color(0xFFF4F7FB), Color(0xFFEAF1F6)],
+                    ? const [
+                        Color(0xFF08111F),
+                        Color(0xFF0B1628),
+                        Color(0xFF10223A),
+                      ]
+                    : const [
+                        Color(0xFFF8FAFC),
+                        Color(0xFFF1F5F9),
+                        Color(0xFFFFF7ED),
+                      ],
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
               ),
@@ -74,7 +82,7 @@ class AdminHeroCard extends StatelessWidget {
     required this.title,
     required this.description,
     required this.metrics,
-    this.colors = const [Color(0xFF0F172A), Color(0xFF1D4ED8)],
+    this.colors = const [Color(0xFF08111F), Color(0xFFFF7A1A)],
   });
 
   @override
@@ -86,10 +94,14 @@ class AdminHeroCard extends StatelessWidget {
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: colors,
+          colors: [
+            colors.first,
+            Color.lerp(colors.first, colors.last, 0.22) ?? colors.first,
+          ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
@@ -105,8 +117,9 @@ class AdminHeroCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: colors.last.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: colors.last.withValues(alpha: 0.28)),
             ),
             child: Text(
               eyebrow,
@@ -201,9 +214,11 @@ class AdminPanel extends StatelessWidget {
       margin: margin,
       padding: padding ?? const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: theme.cardColor,
+        color: theme.cardColor.withValues(
+          alpha: theme.brightness == Brightness.dark ? 0.86 : 0.96,
+        ),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.28)),
+        border: Border.all(color: theme.dividerColor.withValues(alpha: 0.72)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(

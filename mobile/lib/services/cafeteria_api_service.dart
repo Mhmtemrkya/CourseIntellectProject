@@ -45,7 +45,7 @@ class CafeteriaMealEntry {
 
   factory CafeteriaMealEntry.fromJson(Map<String, dynamic> json) {
     return CafeteriaMealEntry(
-      date: DateTime.parse(json['date'] as String),
+      date: DateTime.tryParse(json['date']?.toString() ?? '') ?? DateTime.now(),
       mealType: (json['mealType'] as String?) ?? 'Breakfast',
       startTime: (json['startTime'] as String?) ?? '',
       endTime: (json['endTime'] as String?) ?? '',
@@ -124,8 +124,12 @@ class CafeteriaWeek {
   factory CafeteriaWeek.fromJson(Map<String, dynamic> json) {
     return CafeteriaWeek(
       id: json['id'] as String?,
-      weekStart: DateTime.parse(json['weekStart'] as String),
-      weekEnd: DateTime.parse(json['weekEnd'] as String),
+      weekStart:
+          DateTime.tryParse(json['weekStart']?.toString() ?? '') ??
+          DateTime.now(),
+      weekEnd:
+          DateTime.tryParse(json['weekEnd']?.toString() ?? '') ??
+          DateTime.now(),
       note: (json['note'] as String?) ?? '',
       meals: (json['meals'] as List<dynamic>? ?? const [])
           .map(

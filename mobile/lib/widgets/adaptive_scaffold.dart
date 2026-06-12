@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../theme_provider.dart';
 import '../utils/session_navigation.dart';
 import 'app_sidebar.dart';
 import 'responsive_layout.dart';
@@ -138,23 +136,48 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   // ─── Mobile / Phone Layout ──────────────────────────────────────────────
 
   Widget _buildMobileLayout() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final navTheme = theme.bottomNavigationBarTheme;
 
     return Scaffold(
       body: _buildPageStack(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _currentIndex,
-        onTap: _changePage,
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: isDark ? const Color(0xFF1C1C1E) : Colors.white,
-        selectedItemColor: context.watch<ThemeProvider>().brandAccent,
-        unselectedItemColor: isDark ? Colors.grey[400] : Colors.grey[600],
-        items: widget.destinations
-            .map(
-              (d) =>
-                  BottomNavigationBarItem(icon: Icon(d.icon), label: d.label),
-            )
-            .toList(),
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          color: navTheme.backgroundColor,
+          border: Border(
+            top: BorderSide(color: theme.dividerColor.withValues(alpha: 0.72)),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.08),
+              blurRadius: 24,
+              offset: const Offset(0, -10),
+            ),
+          ],
+        ),
+        child: SafeArea(
+          top: false,
+          child: BottomNavigationBar(
+            currentIndex: _currentIndex,
+            onTap: _changePage,
+            type: BottomNavigationBarType.fixed,
+            backgroundColor: navTheme.backgroundColor,
+            selectedItemColor: navTheme.selectedItemColor,
+            unselectedItemColor: navTheme.unselectedItemColor,
+            selectedLabelStyle: navTheme.selectedLabelStyle,
+            unselectedLabelStyle: navTheme.unselectedLabelStyle,
+            elevation: 0,
+            items: widget.destinations
+                .map(
+                  (d) => BottomNavigationBarItem(
+                    icon: Icon(d.icon),
+                    label: d.label,
+                  ),
+                )
+                .toList(),
+          ),
+        ),
       ),
     );
   }

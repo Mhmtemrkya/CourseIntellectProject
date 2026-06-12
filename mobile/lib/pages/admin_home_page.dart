@@ -446,7 +446,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 context,
                 title: 'Destek',
                 subtitle: 'CourseIntellect ekibine talep aç',
-                color: const Color(0xFFD9790B),
+                color: const Color(0xFFFF7A1A),
                 icon: Icons.support_agent_outlined,
                 onTap: () => Navigator.push(
                   context,

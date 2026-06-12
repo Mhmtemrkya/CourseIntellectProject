@@ -878,10 +878,46 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
     );
   }
 
+  bool _isSetPassive(_QuestionSetView set) =>
+      set.questions.isNotEmpty &&
+      set.questions.every(
+        (question) => question.publicationStatus == 'Passive',
+      );
+
+  /// Pasif sorular öğrenci soru bankasında görünmez; öğretmen sınav
+  /// oluştururken kaynak olarak kullanmaya devam edebilir.
+  Future<void> _toggleSetPassive(_QuestionSetView set) async {
+    final next = _isSetPassive(set) ? 'Published' : 'Passive';
+    try {
+      for (final question in set.questions) {
+        await QuestionBankStore.instance.updateQuestion(
+          question.copyWith(publicationStatus: next),
+        );
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            next == 'Passive'
+                ? 'Soru seti pasife alındı: öğrenciler görmez, sınavda kullanılabilir.'
+                : 'Soru seti aktifleştirildi: öğrenci soru bankasında görünür.',
+          ),
+        ),
+      );
+      await _load();
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.toString())));
+    }
+  }
+
   /// QUESTION TILE
   Widget questionTile(_QuestionSetView set) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final lead = set.questions.first;
+    final isPassive = _isSetPassive(set);
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: () {
@@ -899,7 +935,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
         margin: const EdgeInsets.symmetric(vertical: 8),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF17181D) : Colors.white,
+          color: isDark ? const Color(0xFF0E1A2F) : Colors.white,
           borderRadius: BorderRadius.circular(22),
           border: Border.all(
             color: isDark
@@ -947,9 +983,13 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        '${set.questions.length} soru',
+                        isPassive
+                            ? '${set.questions.length} soru • Pasif (öğrenci görmez)'
+                            : '${set.questions.length} soru',
                         style: TextStyle(
-                          color: isDark
+                          color: isPassive
+                              ? const Color(0xFFB45309)
+                              : isDark
                               ? Colors.white70
                               : const Color(0xFF64748B),
                           fontWeight: FontWeight.w700,
@@ -959,7 +999,21 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: isPassive
+                      ? 'Aktifleştir (öğrenciye aç)'
+                      : 'Pasife al (öğrenciden gizle)',
+                  onPressed: () => _toggleSetPassive(set),
+                  icon: Icon(
+                    isPassive
+                        ? Icons.visibility_rounded
+                        : Icons.visibility_off_rounded,
+                    color: isPassive
+                        ? const Color(0xFF059669)
+                        : const Color(0xFF64748B),
+                  ),
+                ),
                 Container(
                   width: 42,
                   height: 42,
