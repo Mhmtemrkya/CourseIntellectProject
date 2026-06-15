@@ -27,6 +27,8 @@ import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
 import { fetchAttendance, fetchExamResults, fetchStaff, fetchStudents } from '../lib/api/modules';
+import { useApp } from '../context/AppContext';
+import TeacherPdfReportCenter from './teacher/TeacherPdfReportCenter';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -63,7 +65,7 @@ function downloadCsv(name, rows) {
   URL.revokeObjectURL(url);
 }
 
-export default function Reports() {
+function AdministrativeReportOverview() {
   const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
   const [classFilter, setClassFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('month');
@@ -474,4 +476,15 @@ export default function Reports() {
       </div>
     </motion.div>
   );
+}
+
+export default function Reports() {
+  const { user } = useApp();
+  const role = String(user?.role || user?.backendRole || '').trim().toLowerCase();
+
+  if (role === 'administrative' || role === 'idari' || role === 'idaripersonel') {
+    return <TeacherPdfReportCenter />;
+  }
+
+  return <AdministrativeReportOverview />;
 }

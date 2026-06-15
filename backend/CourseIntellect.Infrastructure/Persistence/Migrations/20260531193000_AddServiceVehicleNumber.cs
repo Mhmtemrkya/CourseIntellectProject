@@ -1,9 +1,13 @@
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
+    [DbContext(typeof(CourseIntellectDbContext))]
+    [Migration("20260531193000_AddServiceVehicleNumber")]
     public partial class AddServiceVehicleNumber : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)

@@ -54,6 +54,9 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStaff, updateStaff, fetchQuestionBank, fetchStaff, fetchClasses } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
+import {
+  isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
+} from '../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -197,12 +200,12 @@ function TeacherFormFields({ form, setForm, branches, classes }) {
       {form.tcNo !== undefined && (
         <div className="space-y-2">
           <Label>TC No</Label>
-          <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: e.target.value }))} />
+          <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: maskTcKimlik(e.target.value) }))} inputMode="numeric" pattern="[0-9]{11}" maxLength={11} placeholder="11 haneli kimlik no" />
         </div>
       )}
       <div className="space-y-2">
         <Label>Telefon</Label>
-        <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: e.target.value }))} />
+        <Input value={form.phone} onChange={(e) => setForm((p) => ({ ...p, phone: maskTrPhone(e.target.value) }))} inputMode="tel" autoComplete="tel" maxLength={17} placeholder="+90 5XX XXX XX XX" />
       </div>
       <div className="space-y-2">
         <Label>Eğitim</Label>
@@ -253,7 +256,10 @@ function TeacherFormFields({ form, setForm, branches, classes }) {
       </div>
       <div className="space-y-2">
         <Label>Çocuk Sayısı</Label>
-        <Input type="number" value={form.childCount} onChange={(e) => setForm((p) => ({ ...p, childCount: Number(e.target.value) }))} />
+        <Input value={form.childCount} onChange={(e) => {
+          const value = maskPositiveInteger(e.target.value, 2);
+          setForm((p) => ({ ...p, childCount: value === '' ? 0 : Number(value) }));
+        }} inputMode="numeric" maxLength={2} placeholder="0" />
       </div>
       <div className="space-y-2 col-span-2">
         <Label>Not</Label>
@@ -290,6 +296,14 @@ function AddTeacherDialog({
   const handleSave = async () => {
     if (!form.fullName?.trim() || !form.departmentOrBranch) {
       toast({ title: 'Eksik bilgi', description: 'Ad-soyad ve branş zorunlu.', variant: 'destructive' });
+      return;
+    }
+    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçersiz TC kimlik no', description: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.phone && !isValidTrPhone(form.phone)) {
+      toast({ title: 'Geçersiz telefon', description: 'Telefon +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
       return;
     }
     try {
@@ -417,7 +431,7 @@ function EditTeacherDialog({
       setForm({
         fullName: teacher.fullName || '',
         departmentOrBranch: teacher.departmentOrBranch || '',
-        phone: teacher.phone || '',
+        phone: maskTrPhone(teacher.phone || ''),
         education: teacher.education || 'Lisans',
         campus: teacher.campus || 'Merkez Kampus',
         homeroomClass: teacher.homeroomClass || '',
@@ -432,6 +446,10 @@ function EditTeacherDialog({
   const handleSave = async () => {
     if (!form.fullName?.trim() || !form.departmentOrBranch) {
       toast({ title: 'Eksik bilgi', description: 'Ad-soyad ve branş zorunlu.', variant: 'destructive' });
+      return;
+    }
+    if (form.phone && !isValidTrPhone(form.phone)) {
+      toast({ title: 'Geçersiz telefon', description: 'Telefon +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
       return;
     }
     try {

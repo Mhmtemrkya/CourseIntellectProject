@@ -66,6 +66,7 @@ const navigationByRole = {
     { path: '/admin/finance-approvals', icon: Shield, label: 'Finans Onayları', keywords: ['finans', 'onay'] },
     { path: '/admin/role-management', icon: Shield, label: 'Rol Yönetimi', keywords: ['rol', 'yetki'] },
     { path: '/admin/parent-registration', icon: UserCheck, label: 'Veli Kaydı', keywords: ['veli kaydı', 'parent registration'] },
+    { path: '/reports', icon: BarChart3, label: 'Raporlar', keywords: ['rapor', 'öğrenci raporu', 'pdf'] },
     { path: '/chat', icon: MessageSquare, label: 'Mesajlar', keywords: ['mesaj', 'chat'] },
     { path: '/settings', icon: Settings, label: 'Ayarlar', keywords: ['ayar', 'settings'] },
   ],

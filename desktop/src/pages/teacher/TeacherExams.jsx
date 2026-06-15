@@ -2,25 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileQuestion, Plus, BarChart3, CheckCircle, Calendar, ChevronDown, Trophy, Users, Target,
+  FileQuestion, Plus, BarChart3, CheckCircle, Calendar, Trophy, Users, Target,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
-import { Label } from '../../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Textarea } from '../../components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { Popover, PopoverContent, PopoverTrigger } from '../../components/ui/popover';
-import { Calendar as DateCalendar } from '../../components/ui/calendar';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
-import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { createExamResult, createPlannedExam, createQuestionBankItem, deletePlannedExam, fetchExamResults, fetchPlannedExams, fetchQuestionBank, fetchStudents, uploadFile } from '../../lib/api/modules';
+import { deletePlannedExam, fetchExamResults, fetchPlannedExams } from '../../lib/api/modules';
 import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
 
 
@@ -34,8 +27,6 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
-const DEFAULT_SUBJECTS = ['Matematik', 'Türkçe', 'Fizik', 'Kimya', 'Biyoloji', 'İngilizce'];
-const DURATION_OPTIONS = ['20 dk', '30 dk', '40 dk', '45 dk', '60 dk', '75 dk', '90 dk', '120 dk'];
 const SUBJECT_META = {
   Matematik: { gradient: 'from-sky-500 to-blue-600', tint: 'bg-sky-500/10 text-sky-700', mark: 'M', tagline: 'Soru akışı ve süre yönetimi' },
   'Türkçe': { gradient: 'from-teal-600 to-cyan-500', tint: 'bg-teal-500/10 text-teal-700', mark: 'TR', tagline: 'Dil, yorum ve paragraf dengesi' },
@@ -70,17 +61,6 @@ function decodeText(value = '') {
     .replaceAll('&nbsp;', ' ');
 }
 
-function formatDateLabel(value) {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return new Intl.DateTimeFormat('tr-TR', {
-    day: '2-digit',
-    month: 'long',
-    year: 'numeric',
-  }).format(date);
-}
-
 function subjectMeta(subject) {
   const safeSubject = decodeText(subject);
   return SUBJECT_META[safeSubject] || {
@@ -92,44 +72,24 @@ function subjectMeta(subject) {
 }
 
 export default function TeacherExams() {
-  const { toast } = useToast();
   const { user } = useApp();
   const navigate = useNavigate();
   const [examResults, setExamResults] = useState([]);
   const [plannedExams, setPlannedExams] = useState([]);
-  const [students, setStudents] = useState([]);
-  const [questionSources, setQuestionSources] = useState([]);
-  const [createOpen, setCreateOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [form, setForm] = useState({
-    examTitle: '',
-    type: 'Quiz',
-    subject: '',
-    dateLabel: '',
-    dateValue: null,
-    studentName: '',
-    className: '',
-    score: '',
-    net: '',
-  });
 
   const loadExams = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [results, studentList, planned, questionItems] = await Promise.all([
+      const [results, planned] = await Promise.all([
         fetchExamResults(),
-        fetchStudents(),
         fetchPlannedExams({ teacherName: user?.name }).catch(() => []),
-        fetchQuestionBank().catch(() => []),
       ]);
       setExamResults(results);
-      setStudents(studentList);
       setPlannedExams(planned);
-      setQuestionSources(questionItems);
     } catch (err) {
       setError(err.message || 'Sınav verileri alınamadı.');
     } finally {
@@ -188,88 +148,6 @@ export default function TeacherExams() {
     avgScore: examResults.length ? Math.round(examResults.reduce((sum, item) => sum + Number(item.score || 0), 0) / examResults.length) : 0,
   };
 
-  const subjectOptions = useMemo(
-    () => [...new Set([
-      ...DEFAULT_SUBJECTS,
-      ...students.map((item) => item.branchOrDepartment || item.subject).filter(Boolean),
-      ...questionSources.map((item) => item.subject).filter(Boolean),
-      ...plannedExams.map((item) => item.subject).filter(Boolean),
-    ])],
-    [students, questionSources, plannedExams],
-  );
-
-  const resultExamOptions = useMemo(
-    () => [...new Set([
-      ...plannedExams.map((item) => decodeText(item.title)).filter(Boolean),
-      ...examResults.map((item) => decodeText(item.examTitle)).filter(Boolean),
-    ])],
-    [plannedExams, examResults],
-  );
-
-  const handleStudentChange = (value) => {
-    const selected = students.find((item) => item.fullName === value);
-    setForm((prev) => ({
-      ...prev,
-      studentName: value,
-      className: prev.className || selected?.className || '',
-    }));
-  };
-
-  const handleResultExamChange = (value) => {
-    const plannedMatch = plannedExams.find((item) => decodeText(item.title) === value);
-    const historicalMatch = examResults.find((item) => decodeText(item.examTitle) === value);
-
-    setForm((prev) => ({
-      ...prev,
-      examTitle: value,
-      type: plannedMatch?.type || historicalMatch?.type || prev.type,
-      subject: decodeText(plannedMatch?.subject || historicalMatch?.subject || prev.subject),
-      dateLabel: plannedMatch?.dateLabel || historicalMatch?.dateLabel || historicalMatch?.date || prev.dateLabel,
-      className: plannedMatch?.className || historicalMatch?.className || prev.className,
-    }));
-  };
-
-  const handleCreateExam = async () => {
-    try {
-      setSaving(true);
-      const created = await createExamResult({
-        examTitle: form.examTitle.trim(),
-        type: form.type,
-        subject: form.subject.trim(),
-        dateLabel: form.dateLabel.trim(),
-        studentName: form.studentName.trim(),
-        className: form.className.trim(),
-        score: Number(form.score),
-        net: Number(form.net),
-      });
-      setExamResults((prev) => [created, ...prev]);
-      setCreateOpen(false);
-      setForm({
-        examTitle: '',
-        type: 'Quiz',
-        subject: '',
-        dateLabel: '',
-        dateValue: null,
-        studentName: '',
-        className: '',
-        score: '',
-        net: '',
-      });
-      toast({
-        title: 'Sınav sonucu kaydedildi',
-        description: `${created.studentName} için sonuç backend’e işlendi.`,
-      });
-    } catch (err) {
-      toast({
-        title: 'Kayıt başarısız',
-        description: err.message || 'Lütfen tekrar deneyin.',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -292,110 +170,10 @@ export default function TeacherExams() {
             Yeni Sınav
           </Button>
           <Button variant="outline" onClick={() => navigate('/t/exam-workbench')}>Çalışma Alanı</Button>
-          <Button variant="outline" onClick={() => navigate('/t/mock-exams')}>
-            <Calendar className="h-4 w-4 mr-2" />
-            Deneme Sınavları
+          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/t/grade-entry')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Sonuç
           </Button>
-          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-brand-primary hover:bg-brand-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Sonuç
-              </Button>
-            </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Sınav Sonucu Oluştur</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label>Sınav Adı</Label>
-                <Select value={form.examTitle} onValueChange={handleResultExamChange}>
-                  <SelectTrigger><SelectValue placeholder="Sınav seçin" /></SelectTrigger>
-                  <SelectContent>
-                    {resultExamOptions.map((value) => <SelectItem key={value} value={value}>{value}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Ders</Label>
-                  <Select value={form.subject} onValueChange={(value) => setForm((prev) => ({ ...prev, subject: value }))}>
-                    <SelectTrigger><SelectValue placeholder="Ders seçin" /></SelectTrigger>
-                    <SelectContent>
-                      {subjectOptions.map((value) => <SelectItem key={value} value={decodeText(value)}>{decodeText(value)}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Tür</Label>
-                  <Select value={form.type} onValueChange={(value) => setForm((prev) => ({ ...prev, type: value }))}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="Quiz">Quiz</SelectItem>
-                      <SelectItem value="MockExam">Deneme</SelectItem>
-                      <SelectItem value="Written">Yazılı</SelectItem>
-                      <SelectItem value="Oral">Sözlü</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Öğrenci</Label>
-                <Select value={form.studentName} onValueChange={handleStudentChange}>
-                  <SelectTrigger><SelectValue placeholder="Öğrenci seçin" /></SelectTrigger>
-                  <SelectContent>
-                    {students.map((item) => <SelectItem key={item.username || item.fullName} value={item.fullName}>{item.fullName}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Sınıf</Label>
-                  <Input value={form.className} readOnly />
-                </div>
-                <div className="space-y-2">
-                  <Label>Puan</Label>
-                  <Input value={form.score} onChange={(e) => setForm((prev) => ({ ...prev, score: e.target.value }))} type="number" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Net</Label>
-                  <Input value={form.net} onChange={(e) => setForm((prev) => ({ ...prev, net: e.target.value }))} type="number" />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Tarih</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-between font-normal">
-                      <span className={form.dateLabel ? '' : 'text-muted-foreground'}>
-                        {form.dateLabel || 'Tarih seçin'}
-                      </span>
-                      <ChevronDown className="h-4 w-4 opacity-60" />
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <DateCalendar
-                      mode="single"
-                      selected={form.dateValue ?? undefined}
-                      onSelect={(value) => {
-                        if (!value) return;
-                        setForm((prev) => ({ ...prev, dateLabel: formatDateLabel(value), dateValue: value }));
-                      }}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
-              <Button onClick={handleCreateExam} disabled={saving || !form.examTitle || !form.studentName || !form.score}>
-                {saving ? 'Kaydediliyor...' : 'Kaydet'}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-          </Dialog>
         </div>
       </div>
 
@@ -590,7 +368,7 @@ export default function TeacherExams() {
               title="Henüz gösterilecek sonuç yok"
               description="Sınav sonuçları kaydedildiğinde başarı özetleri ve değerlendirme kayıtları burada görünecek."
               primaryLabel="Sonuç Gir"
-              onPrimary={() => setCreateOpen(true)}
+              onPrimary={() => navigate('/t/grade-entry')}
               secondaryLabel="Planlı Sınav"
               onSecondary={() => navigate('/t/exams/create?mode=exam&type=Exam')}
               tipDescription="Sonuç girdikçe sınıf başarılarını ve öğrenci gelişimini bu ekrandan takip edebilirsin."

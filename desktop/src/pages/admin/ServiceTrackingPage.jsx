@@ -47,6 +47,9 @@ import {
   getLiveVehicleLocations,
 } from '../../lib/api/modules';
 import { serviceTrackingRealtime } from '../../lib/realtime/serviceTrackingRealtime';
+import {
+  isValidTrPhone, isValidTrPlate, maskPositiveInteger, maskTrPhone, maskTrPlate, maskVehicleNumber,
+} from '../../lib/inputMasks';
 
 const emptyVehicleForm = {
   vehicleNumber: '',
@@ -147,7 +150,7 @@ export default function ServiceTrackingPage() {
       setDriverForm((previous) => ({
         ...previous,
         userId: previous.userId || userItems[0]?.id || '',
-        phoneNumber: previous.phoneNumber || userItems[0]?.phone || '',
+        phoneNumber: maskTrPhone(previous.phoneNumber || userItems[0]?.phone || ''),
       }));
       setRouteForm((previous) => ({
         ...previous,
@@ -199,7 +202,7 @@ export default function ServiceTrackingPage() {
       setDriverForm({
         ...emptyDriverForm,
         userId: firstUser?.id || '',
-        phoneNumber: firstUser?.phone || '',
+        phoneNumber: maskTrPhone(firstUser?.phone || ''),
       });
     }
     if (type === 'route') {
@@ -238,8 +241,8 @@ export default function ServiceTrackingPage() {
   async function handleCreateVehicle(event) {
     event.preventDefault();
     const capacity = Number(vehicleForm.capacity);
-    if (!vehicleForm.plateNumber.trim() || !Number.isFinite(capacity) || capacity < 2) {
-      setError('Plaka zorunlu, kapasite en az 2 olmalı.');
+    if (!isValidTrPlate(vehicleForm.plateNumber) || !Number.isInteger(capacity) || capacity < 2) {
+      setError('Plaka 34 ABC 123 biçiminde, kapasite en az 2 olmalı.');
       return;
     }
     await submit(async () => {
@@ -259,6 +262,10 @@ export default function ServiceTrackingPage() {
     event.preventDefault();
     if (!driverForm.userId) {
       setError('Şoför yapılacak kullanıcıyı seçmelisin.');
+      return;
+    }
+    if (driverForm.phoneNumber && !isValidTrPhone(driverForm.phoneNumber)) {
+      setError('Telefon +90 5XX XXX XX XX biçiminde olmalı.');
       return;
     }
     await submit(async () => {
@@ -743,14 +750,14 @@ export default function ServiceTrackingPage() {
             </DialogHeader>
             <div className="mt-5 grid gap-4">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Araç No"><Input value={vehicleForm.vehicleNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, vehicleNumber: event.target.value }))} placeholder="S-01" /></Field>
-                <Field label="Plaka"><Input value={vehicleForm.plateNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, plateNumber: event.target.value.toUpperCase() }))} placeholder="34 ABC 123" /></Field>
+                <Field label="Araç No"><Input value={vehicleForm.vehicleNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, vehicleNumber: maskVehicleNumber(event.target.value) }))} placeholder="S-01" maxLength={12} /></Field>
+                <Field label="Plaka"><Input value={vehicleForm.plateNumber} onChange={(event) => setVehicleForm((form) => ({ ...form, plateNumber: maskTrPlate(event.target.value) }))} placeholder="34 ABC 123" maxLength={11} /></Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Marka"><Input value={vehicleForm.brand} onChange={(event) => setVehicleForm((form) => ({ ...form, brand: event.target.value }))} placeholder="Mercedes" /></Field>
                 <Field label="Model"><Input value={vehicleForm.model} onChange={(event) => setVehicleForm((form) => ({ ...form, model: event.target.value }))} placeholder="Sprinter" /></Field>
               </div>
-              <Field label="Kapasite"><Input type="number" min="2" value={vehicleForm.capacity} onChange={(event) => setVehicleForm((form) => ({ ...form, capacity: event.target.value }))} /></Field>
+              <Field label="Kapasite"><Input value={vehicleForm.capacity} onChange={(event) => setVehicleForm((form) => ({ ...form, capacity: maskPositiveInteger(event.target.value, 2) }))} inputMode="numeric" maxLength={2} placeholder="15" /></Field>
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Vazgeç</Button>
@@ -839,7 +846,7 @@ export default function ServiceTrackingPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <Field label="Lat"><Input value={stopForm.latitude} onChange={(event) => setStopForm((form) => ({ ...form, latitude: event.target.value }))} /></Field>
                         <Field label="Lng"><Input value={stopForm.longitude} onChange={(event) => setStopForm((form) => ({ ...form, longitude: event.target.value }))} /></Field>
-                        <Field label="Sıra"><Input type="number" min="1" value={stopForm.sortOrder} onChange={(event) => setStopForm((form) => ({ ...form, sortOrder: event.target.value }))} /></Field>
+                        <Field label="Sıra"><Input value={stopForm.sortOrder} onChange={(event) => setStopForm((form) => ({ ...form, sortOrder: maskPositiveInteger(event.target.value, 3) }))} inputMode="numeric" maxLength={3} /></Field>
                       </div>
                       <Button type="submit" className="w-full" disabled={saving}>
                         <Plus className="mr-2 h-4 w-4" />
@@ -916,7 +923,7 @@ export default function ServiceTrackingPage() {
                   value={driverForm.userId}
                   onValueChange={(value) => {
                     const user = users.find((item) => item.id === value);
-                    setDriverForm((form) => ({ ...form, userId: value, phoneNumber: user?.phone || form.phoneNumber }));
+                    setDriverForm((form) => ({ ...form, userId: value, phoneNumber: maskTrPhone(user?.phone || form.phoneNumber) }));
                   }}
                 >
                   <SelectTrigger><SelectValue placeholder="Kullanıcı seç" /></SelectTrigger>
@@ -930,7 +937,7 @@ export default function ServiceTrackingPage() {
                 </Select>
               </Field>
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Telefon"><Input value={driverForm.phoneNumber} onChange={(event) => setDriverForm((form) => ({ ...form, phoneNumber: event.target.value }))} placeholder="05xx xxx xx xx" /></Field>
+                <Field label="Telefon"><Input value={driverForm.phoneNumber} onChange={(event) => setDriverForm((form) => ({ ...form, phoneNumber: maskTrPhone(event.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" autoComplete="tel" maxLength={17} /></Field>
                 <Field label="Ehliyet No"><Input value={driverForm.licenseNumber} onChange={(event) => setDriverForm((form) => ({ ...form, licenseNumber: event.target.value }))} placeholder="B / D sınıfı belge no" /></Field>
               </div>
             </div>
@@ -963,8 +970,8 @@ export default function ServiceTrackingPage() {
                 </Field>
                 <Field label="Saat">
                   <div className="grid grid-cols-2 gap-2">
-                    <Input value={routeForm.startTime} onChange={(event) => setRouteForm((form) => ({ ...form, startTime: event.target.value }))} />
-                    <Input value={routeForm.endTime} onChange={(event) => setRouteForm((form) => ({ ...form, endTime: event.target.value }))} />
+                    <Input type="time" value={routeForm.startTime} onChange={(event) => setRouteForm((form) => ({ ...form, startTime: event.target.value }))} />
+                    <Input type="time" value={routeForm.endTime} onChange={(event) => setRouteForm((form) => ({ ...form, endTime: event.target.value }))} />
                   </div>
                 </Field>
               </div>

@@ -335,6 +335,7 @@ const menuConfigs = {
       label: "Veli Kaydı",
       color: "#7c3aed",
     },
+    { path: "/reports", icon: BarChart3, label: "Raporlar", color: "#22c55e" },
     {
       path: "/admin/staff-registration",
       icon: UserCheck,

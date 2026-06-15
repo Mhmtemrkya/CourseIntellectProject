@@ -1,3 +1,5 @@
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -5,6 +7,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(CourseIntellectDbContext))]
+    [Migration("20260602193000_AddContentEngagementFields")]
     public partial class AddContentEngagementFields : Migration
     {
         /// <inheritdoc />

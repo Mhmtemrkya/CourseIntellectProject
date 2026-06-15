@@ -26,7 +26,18 @@ import {
   fetchStaff,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
-import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
+import {
+  isValidEmail,
+  isValidTcKimlik,
+  isValidTrPhone,
+  isValidTrPlate,
+  maskEmail,
+  maskPositiveInteger,
+  maskTcKimlik,
+  maskTrPhone,
+  maskTrPlate,
+  maskVehicleNumber,
+} from '../../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -132,10 +143,22 @@ export default function AdminStaffRegistration() {
       toast({ title: 'Branş / bölüm seçimi zorunludur.', variant: 'destructive' });
       return;
     }
+    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.phone && !isValidTrPhone(form.phone)) {
+      toast({ title: 'Telefon +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.email && !isValidEmail(form.email)) {
+      toast({ title: 'Geçerli bir e-posta adresi girin.', variant: 'destructive' });
+      return;
+    }
     if (form.role === 'ServiceDriver') {
       const capacity = Number(form.vehicleCapacity);
       const email = form.email.trim();
-      if (!form.phone.trim() || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !form.licenseNumber.trim() || !form.plateNumber.trim() || !Number.isFinite(capacity) || capacity < 2) {
+      if (!form.phone.trim() || !email || !isValidEmail(email) || !form.licenseNumber.trim() || !isValidTrPlate(form.plateNumber) || !Number.isInteger(capacity) || capacity < 2) {
         toast({ title: 'Servis şoförü için telefon, geçerli e-posta, ehliyet, plaka ve geçerli kapasite zorunludur.', variant: 'destructive' });
         return;
       }
@@ -314,7 +337,7 @@ export default function AdminStaffRegistration() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Ad Soyad *</Label>
-                  <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ayşe Demir" />
+                  <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ayşe Demir" autoComplete="name" maxLength={100} />
                 </div>
                 <div>
                   <Label>Rol *</Label>
@@ -342,19 +365,22 @@ export default function AdminStaffRegistration() {
                 </div>
                 <div>
                   <Label>TC Kimlik No</Label>
-                  <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" placeholder="11 haneli kimlik no" />
+                  <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" pattern="[0-9]{11}" placeholder="11 haneli kimlik no" />
                 </div>
                 <div>
                   <Label>Telefon</Label>
-                  <Input value={form.phone} onChange={(e) => handleChange('phone', maskTrPhone(e.target.value))} inputMode="tel" placeholder="+90 5XX XXX XX XX" />
+                  <Input value={form.phone} onChange={(e) => handleChange('phone', maskTrPhone(e.target.value))} inputMode="tel" autoComplete="tel" maxLength={17} placeholder="+90 5XX XXX XX XX" />
                 </div>
                 <div>
                   <Label>{isServiceDriver ? 'Giriş E-postası *' : 'E-posta'}</Label>
                   <Input
                     type="email"
                     value={form.email}
-                    onChange={(e) => handleChange('email', e.target.value)}
+                    onChange={(e) => handleChange('email', maskEmail(e.target.value))}
                     placeholder="sofor@kurum.com"
+                    inputMode="email"
+                    autoComplete="email"
+                    maxLength={254}
                   />
                 </div>
                 <div>
@@ -363,7 +389,7 @@ export default function AdminStaffRegistration() {
                 </div>
                 <div>
                   <Label>İşe Başlama Tarihi</Label>
-                  <Input value={form.startDate} onChange={(e) => handleChange('startDate', e.target.value)} placeholder="gg.aa.yyyy" />
+                  <Input type="date" value={form.startDate} onChange={(e) => handleChange('startDate', e.target.value)} />
                 </div>
                 <div>
                   <Label>Kampüs</Label>
@@ -393,7 +419,7 @@ export default function AdminStaffRegistration() {
                 </div>
                 <div>
                   <Label>Çocuk Sayısı</Label>
-                  <Input type="number" min="0" value={form.childCount} onChange={(e) => handleChange('childCount', e.target.value)} />
+                  <Input value={form.childCount} onChange={(e) => handleChange('childCount', maskPositiveInteger(e.target.value, 2))} inputMode="numeric" maxLength={2} placeholder="0" />
                 </div>
               </div>
               <div>
@@ -417,11 +443,11 @@ export default function AdminStaffRegistration() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Araç No</Label>
-                      <Input value={form.vehicleNumber} onChange={(e) => handleChange('vehicleNumber', e.target.value)} placeholder="Örn: S-01" />
+                      <Input value={form.vehicleNumber} onChange={(e) => handleChange('vehicleNumber', maskVehicleNumber(e.target.value))} placeholder="Örn: S-01" maxLength={12} />
                     </div>
                     <div>
                       <Label>Plaka *</Label>
-                      <Input value={form.plateNumber} onChange={(e) => handleChange('plateNumber', e.target.value.toUpperCase())} placeholder="34 ABC 123" />
+                      <Input value={form.plateNumber} onChange={(e) => handleChange('plateNumber', maskTrPlate(e.target.value))} placeholder="34 ABC 123" maxLength={11} />
                     </div>
                     <div>
                       <Label>Marka</Label>
@@ -433,7 +459,7 @@ export default function AdminStaffRegistration() {
                     </div>
                     <div>
                       <Label>Kapasite *</Label>
-                      <Input type="number" min="2" value={form.vehicleCapacity} onChange={(e) => handleChange('vehicleCapacity', e.target.value)} />
+                      <Input value={form.vehicleCapacity} onChange={(e) => handleChange('vehicleCapacity', maskPositiveInteger(e.target.value, 2))} inputMode="numeric" maxLength={2} placeholder="15" />
                     </div>
                     <div>
                       <Label>Rota Adı *</Label>
@@ -452,8 +478,8 @@ export default function AdminStaffRegistration() {
                     <div>
                       <Label>Rota Saati</Label>
                       <div className="grid grid-cols-2 gap-2">
-                        <Input value={form.routeStartTime} onChange={(e) => handleChange('routeStartTime', e.target.value)} />
-                        <Input value={form.routeEndTime} onChange={(e) => handleChange('routeEndTime', e.target.value)} />
+                        <Input type="time" value={form.routeStartTime} onChange={(e) => handleChange('routeStartTime', e.target.value)} />
+                        <Input type="time" value={form.routeEndTime} onChange={(e) => handleChange('routeEndTime', e.target.value)} />
                       </div>
                     </div>
                   </div>

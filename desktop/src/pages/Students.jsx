@@ -53,7 +53,9 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
-import { maskTcKimlik, maskTrPhone } from '../lib/inputMasks';
+import {
+  isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
+} from '../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -170,6 +172,18 @@ function AddStudentDialog({
         description: 'Ad, sınıf ve veli adı zorunlu.',
         variant: 'destructive',
       });
+      return;
+    }
+    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçersiz TC kimlik no', description: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.parentPhone && !isValidTrPhone(form.parentPhone)) {
+      toast({ title: 'Geçersiz telefon', description: 'Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.parentEmail && !isValidEmail(form.parentEmail)) {
+      toast({ title: 'Geçersiz e-posta', description: 'Geçerli bir veli e-posta adresi girin.', variant: 'destructive' });
       return;
     }
     try {
@@ -331,11 +345,11 @@ function AddStudentDialog({
         <div className="grid grid-cols-2 gap-4 py-4">
           <div className="space-y-2 col-span-2">
             <Label>Ad Soyad</Label>
-            <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} />
+            <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} autoComplete="name" maxLength={100} />
           </div>
           <div className="space-y-2">
             <Label>TC No</Label>
-            <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: e.target.value }))} />
+            <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: maskTcKimlik(e.target.value) }))} inputMode="numeric" pattern="[0-9]{11}" maxLength={11} placeholder="11 haneli kimlik no" />
           </div>
           <div className="space-y-2">
             <Label>Sınıf</Label>
@@ -352,7 +366,7 @@ function AddStudentDialog({
           </div>
           <div className="space-y-2">
             <Label>Okul No</Label>
-            <Input value={form.schoolNumber} onChange={(e) => setForm((p) => ({ ...p, schoolNumber: e.target.value }))} />
+            <Input value={form.schoolNumber} onChange={(e) => setForm((p) => ({ ...p, schoolNumber: maskDigits(e.target.value, 12) }))} inputMode="numeric" maxLength={12} placeholder="Yalnızca rakam" />
           </div>
           <div className="space-y-2">
             <Label>Doğum Tarihi</Label>
@@ -373,15 +387,15 @@ function AddStudentDialog({
           </div>
           <div className="space-y-2">
             <Label>Veli Adı</Label>
-            <Input value={form.parentName} onChange={(e) => setForm((p) => ({ ...p, parentName: e.target.value }))} />
+            <Input value={form.parentName} onChange={(e) => setForm((p) => ({ ...p, parentName: e.target.value }))} autoComplete="name" maxLength={100} />
           </div>
           <div className="space-y-2">
             <Label>Veli Telefon</Label>
-            <Input value={form.parentPhone} onChange={(e) => setForm((p) => ({ ...p, parentPhone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" />
+            <Input value={form.parentPhone} onChange={(e) => setForm((p) => ({ ...p, parentPhone: maskTrPhone(e.target.value) }))} placeholder="+90 5XX XXX XX XX" inputMode="tel" autoComplete="tel" maxLength={17} />
           </div>
           <div className="space-y-2 col-span-2">
             <Label>Veli E-posta</Label>
-            <Input type="email" value={form.parentEmail} onChange={(e) => setForm((p) => ({ ...p, parentEmail: e.target.value }))} />
+            <Input type="email" value={form.parentEmail} onChange={(e) => setForm((p) => ({ ...p, parentEmail: maskEmail(e.target.value) }))} inputMode="email" autoComplete="email" maxLength={254} placeholder="veli@email.com" />
           </div>
           <div className="space-y-2 col-span-2">
             <Label>Adres</Label>

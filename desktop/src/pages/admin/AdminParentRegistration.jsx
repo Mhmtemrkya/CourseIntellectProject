@@ -12,7 +12,7 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createParent } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
-import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
+import { isValidEmail, isValidTrPhone, maskEmail, maskTrPhone } from '../../lib/inputMasks';
 
 const emptyForm = {
   fullName: '',
@@ -33,6 +33,14 @@ export default function AdminParentRegistration() {
   const handleSubmit = async () => {
     if (!form.fullName.trim()) {
       toast({ title: 'Veli ad-soyad zorunlu.', variant: 'destructive' });
+      return;
+    }
+    if (form.phone && !isValidTrPhone(form.phone)) {
+      toast({ title: 'Telefon +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.email && !isValidEmail(form.email)) {
+      toast({ title: 'Geçerli bir e-posta adresi girin.', variant: 'destructive' });
       return;
     }
     try {
@@ -127,6 +135,8 @@ export default function AdminParentRegistration() {
                   value={form.fullName}
                   onChange={(e) => handleChange('fullName', e.target.value)}
                   placeholder="Örn: Ayşe Yılmaz"
+                  autoComplete="name"
+                  maxLength={100}
                 />
               </div>
               <div className="space-y-2">
@@ -136,6 +146,8 @@ export default function AdminParentRegistration() {
                   onChange={(e) => handleChange('phone', maskTrPhone(e.target.value))}
                   inputMode="tel"
                   placeholder="+90 5XX XXX XX XX"
+                  autoComplete="tel"
+                  maxLength={17}
                 />
               </div>
               <div className="space-y-2">
@@ -143,8 +155,11 @@ export default function AdminParentRegistration() {
                 <Input
                   type="email"
                   value={form.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
+                  onChange={(e) => handleChange('email', maskEmail(e.target.value))}
                   placeholder="veli@email.com"
+                  inputMode="email"
+                  autoComplete="email"
+                  maxLength={254}
                 />
               </div>
             </div>

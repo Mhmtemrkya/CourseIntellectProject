@@ -14,20 +14,19 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "PendingAdminPasswordHash",
-                table: "tenant_workspaces",
-                type: "character varying(500)",
-                maxLength: 500,
-                nullable: true);
+            migrationBuilder.Sql(@"
+                ALTER TABLE tenant_workspaces
+                ADD COLUMN IF NOT EXISTS ""PendingAdminPasswordHash"" character varying(500);
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "PendingAdminPasswordHash",
-                table: "tenant_workspaces");
+            migrationBuilder.Sql(@"
+                ALTER TABLE tenant_workspaces
+                DROP COLUMN IF EXISTS ""PendingAdminPasswordHash"";
+            ");
         }
     }
 }

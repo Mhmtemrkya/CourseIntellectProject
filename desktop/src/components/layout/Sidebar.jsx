@@ -71,6 +71,7 @@ const menuConfigs = {
     { path: '/admin/role-management', icon: CheckSquare, label: 'Rol Yönetimi' },
     { path: '/admin/meetings', icon: Calendar, label: 'Görüşme Akışı' },
     { path: '/admin/parent-registration', icon: UserCheck, label: 'Veli Kaydı' },
+    { path: '/reports', icon: BarChart3, label: 'Raporlar' },
     { path: '/chat', icon: MessageSquare, label: 'Mesajlar' },
     { path: '/settings', icon: Settings, label: 'Ayarlar' },
   ],

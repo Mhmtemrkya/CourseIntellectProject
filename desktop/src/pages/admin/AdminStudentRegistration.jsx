@@ -18,7 +18,9 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createStudent, fetchClasses, fetchStudents } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
-import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
+import {
+  isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
+} from '../../lib/inputMasks';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -82,6 +84,18 @@ export default function AdminStudentRegistration() {
     }
     if (!form.className) {
       toast({ title: 'Sınıf seçimi zorunludur.', variant: 'destructive' });
+      return;
+    }
+    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.parentPhone && !isValidTrPhone(form.parentPhone)) {
+      toast({ title: 'Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
+      return;
+    }
+    if (form.parentEmail && !isValidEmail(form.parentEmail)) {
+      toast({ title: 'Geçerli bir veli e-posta adresi girin.', variant: 'destructive' });
       return;
     }
     try {
@@ -223,11 +237,11 @@ export default function AdminStudentRegistration() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="col-span-2">
                       <Label>Ad Soyad *</Label>
-                      <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ahmet Yılmaz" />
+                      <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ahmet Yılmaz" autoComplete="name" maxLength={100} />
                     </div>
                     <div>
                       <Label>TC No</Label>
-                      <Input value={form.tcNo} maxLength={11} onChange={(e) => handleChange('tcNo', e.target.value.replace(/\D/g, ''))} />
+                      <Input value={form.tcNo} maxLength={11} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" pattern="[0-9]{11}" placeholder="11 haneli kimlik no" />
                     </div>
                     <div>
                       <Label>Sınıf *</Label>
@@ -244,7 +258,7 @@ export default function AdminStudentRegistration() {
                     </div>
                     <div>
                       <Label>Okul No</Label>
-                      <Input value={form.schoolNumber} onChange={(e) => handleChange('schoolNumber', e.target.value)} />
+                      <Input value={form.schoolNumber} maxLength={12} onChange={(e) => handleChange('schoolNumber', maskDigits(e.target.value, 12))} inputMode="numeric" placeholder="Yalnızca rakam" />
                     </div>
                     <div>
                       <Label>Doğum Tarihi</Label>
@@ -274,15 +288,15 @@ export default function AdminStudentRegistration() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label>Veli Adı</Label>
-                      <Input value={form.parentName} onChange={(e) => handleChange('parentName', e.target.value)} placeholder="Veli adı soyadı" />
+                      <Input value={form.parentName} onChange={(e) => handleChange('parentName', e.target.value)} placeholder="Veli adı soyadı" autoComplete="name" maxLength={100} />
                     </div>
                     <div>
                       <Label>Veli Telefon</Label>
-                      <Input value={form.parentPhone} onChange={(e) => handleChange('parentPhone', maskTrPhone(e.target.value))} placeholder="+90 5XX XXX XX XX" inputMode="tel" />
+                      <Input value={form.parentPhone} onChange={(e) => handleChange('parentPhone', maskTrPhone(e.target.value))} placeholder="+90 5XX XXX XX XX" inputMode="tel" autoComplete="tel" maxLength={17} />
                     </div>
                     <div className="col-span-2">
                       <Label>Veli E-posta</Label>
-                      <Input type="email" value={form.parentEmail} onChange={(e) => handleChange('parentEmail', e.target.value)} placeholder="veli@email.com" />
+                      <Input type="email" value={form.parentEmail} onChange={(e) => handleChange('parentEmail', maskEmail(e.target.value))} placeholder="veli@email.com" inputMode="email" autoComplete="email" maxLength={254} />
                     </div>
                   </div>
                 </TabsContent>

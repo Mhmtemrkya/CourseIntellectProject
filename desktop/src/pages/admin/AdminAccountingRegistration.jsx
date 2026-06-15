@@ -25,7 +25,9 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { createStaffAccounting } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
-import { maskTcKimlik, maskTrPhone } from '../../lib/inputMasks';
+import {
+  isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
+} from '../../lib/inputMasks';
 
 const emptyForm = {
   fullName: '',
@@ -59,8 +61,12 @@ export default function AdminAccountingRegistration() {
       });
       return false;
     }
-    if (form.tcNo.trim().length !== 11) {
-      toast({ title: 'TC kimlik no 11 haneli olmalıdır.', variant: 'destructive' });
+    if (!isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+      return false;
+    }
+    if (!isValidTrPhone(form.phone)) {
+      toast({ title: 'Telefon +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' });
       return false;
     }
     return true;
@@ -143,15 +149,15 @@ export default function AdminAccountingRegistration() {
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Ad Soyad *</Label>
-                <Input value={form.fullName} onChange={(event) => handleChange('fullName', event.target.value)} />
+                <Input value={form.fullName} onChange={(event) => handleChange('fullName', event.target.value)} autoComplete="name" maxLength={100} />
               </div>
               <div className="space-y-2">
                 <Label>TC Kimlik No *</Label>
-                <Input maxLength={11} value={form.tcNo} onChange={(event) => handleChange('tcNo', maskTcKimlik(event.target.value))} inputMode="numeric" placeholder="11 haneli kimlik no" />
+                <Input maxLength={11} value={form.tcNo} onChange={(event) => handleChange('tcNo', maskTcKimlik(event.target.value))} inputMode="numeric" pattern="[0-9]{11}" placeholder="11 haneli kimlik no" />
               </div>
               <div className="space-y-2">
                 <Label>Telefon *</Label>
-                <Input value={form.phone} onChange={(event) => handleChange('phone', maskTrPhone(event.target.value))} inputMode="tel" placeholder="+90 5XX XXX XX XX" />
+                <Input value={form.phone} onChange={(event) => handleChange('phone', maskTrPhone(event.target.value))} inputMode="tel" autoComplete="tel" maxLength={17} placeholder="+90 5XX XXX XX XX" />
               </div>
               <div className="space-y-2">
                 <Label>Mezuniyet / Üniversite</Label>
@@ -159,7 +165,7 @@ export default function AdminAccountingRegistration() {
               </div>
               <div className="space-y-2">
                 <Label>İşe Başlama Tarihi</Label>
-                <Input value={form.startDate} onChange={(event) => handleChange('startDate', event.target.value)} placeholder="gg.aa.yyyy" />
+                <Input type="date" value={form.startDate} onChange={(event) => handleChange('startDate', event.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label>Kampüs</Label>
@@ -177,7 +183,7 @@ export default function AdminAccountingRegistration() {
               </div>
               <div className="space-y-2">
                 <Label>Çocuk Sayısı</Label>
-                <Input type="number" min="0" value={form.childCount} onChange={(event) => handleChange('childCount', event.target.value)} />
+                <Input value={form.childCount} onChange={(event) => handleChange('childCount', maskPositiveInteger(event.target.value, 2))} inputMode="numeric" maxLength={2} placeholder="0" />
               </div>
             </div>
             <div className="space-y-2">

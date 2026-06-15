@@ -10,7 +10,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
-  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
 import { Label } from '../../components/ui/label';
@@ -751,12 +751,6 @@ export default function TeacherQuestionBank() {
                 }
               }}
             >
-              <DialogTrigger asChild>
-                <Button className="bg-gradient-to-r from-brand-primary to-brand-accent hover:opacity-90 text-white">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Yeni Soru Ekle
-                </Button>
-              </DialogTrigger>
               <DialogContent className="w-[min(94vw,1080px)] max-w-5xl max-h-[88vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingQuestion ? 'Soruyu Düzenle' : 'Yeni Soru Ekle'}</DialogTitle>

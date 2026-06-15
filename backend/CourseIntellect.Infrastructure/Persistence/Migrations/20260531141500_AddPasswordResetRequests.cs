@@ -41,7 +41,7 @@ public partial class AddPasswordResetRequests : Migration
                     name: "FK_password_reset_requests_tenant_workspaces_tenant_id",
                     column: x => x.tenant_id,
                     principalTable: "tenant_workspaces",
-                    principalColumn: "Id",
+                    principalColumn: "id",
                     onDelete: ReferentialAction.SetNull);
                 table.ForeignKey(
                     name: "FK_password_reset_requests_users_reviewed_by_user_id",

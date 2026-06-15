@@ -129,7 +129,6 @@ function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
       </div>
       <div className="space-y-3 text-sm">
         {[
-          ['Okul', form.school],
           ['Seviye', form.grade],
           ['Şube', form.section],
           ['Dönem', form.academicYear],
@@ -164,7 +163,6 @@ export default function Classes() {
   const [form, setForm] = useState({
     name: '',
     code: '',
-    school: '',
     institutionUnit: 'Ortaokul',
     grade: '7. Sınıf',
     section: 'A Şubesi',
@@ -201,14 +199,12 @@ export default function Classes() {
       setCourses(Array.isArray(courseRows) ? courseRows : []);
       setClassConfigs((configs || []).map(decodeClassConfig).filter(Boolean));
 
-      const firstSchool = [...new Set((studentRows || []).map((item) => item.currentSchool).filter(Boolean))][0] || '';
       const firstCourses = (courseRows || []).slice(0, 4).map((course) => ({
         courseName: course.name || course.title || course.subject || 'Ders',
         teacherId: null,
         weeklyHours: 4,
         isRequired: true,
       }));
-      setForm((prev) => ({ ...prev, school: prev.school || firstSchool }));
       setAssignments((prev) => (prev.length > 0 ? prev : firstCourses));
     } catch (err) {
       setError(err.message || 'Sınıf verileri alınamadı.');
@@ -227,7 +223,6 @@ export default function Classes() {
     }
   }, [form.code, form.name, form.academicYear]);
 
-  const schools = useMemo(() => [...new Set(students.map((item) => item.currentSchool).filter(Boolean))], [students]);
   const branches = useMemo(() => [...new Set(teachers.map((item) => item.departmentOrBranch).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [teachers]);
   const selectedTeachers = useMemo(() => teachers.filter((item) => selectedTeacherIds.includes(item.id)), [selectedTeacherIds, teachers]);
   const selectedStudents = useMemo(() => students.filter((item) => selectedStudentIds.includes(item.id)), [selectedStudentIds, students]);
@@ -291,8 +286,8 @@ export default function Classes() {
   };
 
   const validateStep = () => {
-    if (step === 0 && (!form.name.trim() || !form.code.trim() || !form.school.trim())) {
-      toast({ title: 'Temel bilgiler eksik', description: 'Sınıf adı, kodu ve okul alanları zorunlu.', variant: 'destructive' });
+    if (step === 0 && (!form.name.trim() || !form.code.trim())) {
+      toast({ title: 'Temel bilgiler eksik', description: 'Sınıf adı ve kodu alanları zorunlu.', variant: 'destructive' });
       return false;
     }
     if (step === 1 && assignments.some((item) => !item.courseName || !item.teacherId)) {
@@ -314,7 +309,6 @@ export default function Classes() {
       const result = await createCompleteClass({
         name: form.name,
         code: form.code,
-        school: form.school,
         institutionUnit: form.institutionUnit,
         grade: form.grade,
         section: form.section,
@@ -371,12 +365,6 @@ export default function Classes() {
               <div className="grid gap-5 md:grid-cols-2">
                 <Field label="Sınıf Adı" required><Input value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="border-white/10 bg-[#071120] text-white" placeholder="7-A" /></Field>
                 <Field label="Sınıf Kodu" required><Input value={form.code} onChange={(event) => updateForm('code', event.target.value)} className="border-white/10 bg-[#071120] text-white" /></Field>
-                <Field label="Okul" required>
-                  <select value={form.school} onChange={(event) => updateForm('school', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
-                    <option value="">Okul seçin</option>
-                    {schools.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
-                </Field>
                 <Field label="Kurum Birimi" required>
                   <select value={form.institutionUnit} onChange={(event) => updateForm('institutionUnit', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
                     {unitOptions.map((item) => <option key={item} value={item}>{item}</option>)}

@@ -821,7 +821,7 @@ export default function TeacherPdfReportCenter() {
       const [studentResult, analyticsResult, pdfResult] = await Promise.all([
         fetchReportStudents(),
         fetchTeacherReportAnalytics(),
-        fetchTeacherPdfReports(),
+        fetchTeacherPdfReports().catch(() => []),
       ]);
       setStudentsData(Array.isArray(studentResult) ? studentResult : []);
       setPdfReports(Array.isArray(pdfResult) ? pdfResult.map(buildPdfReportFromApi).filter((item) => item.id) : []);

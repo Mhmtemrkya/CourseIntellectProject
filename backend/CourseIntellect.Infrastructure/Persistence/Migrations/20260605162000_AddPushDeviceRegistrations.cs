@@ -1,10 +1,14 @@
 using System;
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
+    [DbContext(typeof(CourseIntellectDbContext))]
+    [Migration("20260605162000_AddPushDeviceRegistrations")]
     public partial class AddPushDeviceRegistrations : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
