@@ -24,7 +24,7 @@ class RoleRouter {
   }
 
   static String displayLabel(String role) {
-    switch (role) {
+    switch (_normalizeRole(role)) {
       case 'Student':
         return 'Öğrenci';
       case 'Parent':
@@ -45,7 +45,7 @@ class RoleRouter {
   }
 
   static Widget? _pageFor(String role) {
-    switch (role) {
+    switch (_normalizeRole(role)) {
       case 'Student':
         return const BottomNav();
       case 'Parent':
@@ -64,6 +64,35 @@ class RoleRouter {
         return const CafeteriaBottomNav();
       default:
         return null;
+    }
+  }
+
+  static String _normalizeRole(String role) {
+    final value = role.trim().toLowerCase().replaceAll(RegExp(r'[\s_-]+'), '');
+    switch (value) {
+      case 'admin':
+      case 'institutionadmin':
+      case 'institutionadministrator':
+        return 'Admin';
+      case 'administrative':
+      case 'idare':
+      case 'idari':
+      case 'idaripersonel':
+      case 'idarîpersonel':
+        return 'Administrative';
+      case 'teacher':
+        return 'Teacher';
+      case 'student':
+        return 'Student';
+      case 'parent':
+        return 'Parent';
+      case 'accounting':
+      case 'accountant':
+        return 'Accounting';
+      case 'cafeteria':
+        return 'Cafeteria';
+      default:
+        return role;
     }
   }
 }

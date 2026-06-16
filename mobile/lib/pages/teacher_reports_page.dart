@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:share_plus/share_plus.dart';
@@ -30,6 +31,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
   List<Map<String, dynamic>> topics = const [];
   TeacherWeeklyReportBootstrapRecord? _weeklyBootstrap;
   List<TeacherWeeklyReportRecord> _sentWeeklyReports = const [];
+  List<TeacherWeeklyReportStudentRecord> _reportStudents = const [];
+  bool _loadingReportStudents = true;
   bool _sendingWeeklyReport = false;
   bool _uploadingWeeklyAttachment = false;
 
@@ -131,8 +134,20 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
 
   Future<void> _loadWeeklyReportData() async {
     try {
+      if (mounted) {
+        setState(() {
+          _loadingReportStudents = true;
+        });
+      }
       final session = await AuthSessionStore.instance.load();
-      if (session == null) return;
+      if (session == null) {
+        if (mounted) {
+          setState(() {
+            _loadingReportStudents = false;
+          });
+        }
+        return;
+      }
 
       TeacherWeeklyReportBootstrapRecord? bootstrap;
       try {
@@ -202,10 +217,15 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
           subjects: mergedSubjects,
           students: mergedStudents,
         );
+        _reportStudents = mergedStudents;
         _sentWeeklyReports = sentReports;
+        _loadingReportStudents = false;
       });
     } catch (error) {
       if (!mounted) return;
+      setState(() {
+        _loadingReportStudents = false;
+      });
       _showInfo(error.toString());
     }
   }
@@ -257,10 +277,238 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     return sorted.take(3).toList();
   }
 
+  List<TeacherWeeklyReportStudentRecord> get filteredReportStudents {
+    final students = _reportStudents.where((student) {
+      return selectedClass == 'Tüm Sınıflar' ||
+          student.className == selectedClass;
+    }).toList();
+    students.sort((a, b) {
+      final classCompare = a.className.compareTo(b.className);
+      if (classCompare != 0) return classCompare;
+      return a.fullName.compareTo(b.fullName);
+    });
+    return students;
+  }
+
+  Map<String, dynamic>? _classReportForStudent(
+    TeacherWeeklyReportStudentRecord student,
+  ) {
+    final normalizedClass = _normalizeClassName(student.className);
+    return classReports
+        .where(
+          (item) =>
+              _normalizeClassName(item["className"] as String? ?? '') ==
+              normalizedClass,
+        )
+        .firstOrNull;
+  }
+
+  int _studentAverage(TeacherWeeklyReportStudentRecord student) {
+    return (_classReportForStudent(student)?["average"] as int?) ?? 0;
+  }
+
+  int _studentAttendance(TeacherWeeklyReportStudentRecord student) {
+    return (_classReportForStudent(student)?["attendance"] as int?) ?? 0;
+  }
+
+  Map<String, dynamic> _studentReportMap(
+    TeacherWeeklyReportStudentRecord student,
+    ExamAnalyticsRecord? analytics,
+  ) {
+    final classReport = _classReportForStudent(student);
+    final average =
+        analytics?.averageScore ?? classReport?["average"] as int? ?? 0;
+    return {
+      "className": student.className.isEmpty
+          ? "Sınıf bilgisi yok"
+          : student.className,
+      "studentName": student.fullName,
+      "studentNo": student.username,
+      "studentCount": 1,
+      "average": average,
+      "attendance": classReport?["attendance"] as int? ?? 0,
+      "completion": classReport?["completion"] as int? ?? 0,
+      "trend": classReport?["trend"] as String? ?? "+0",
+      "topTopic":
+          analytics?.strongestSubject ??
+          classReport?["topTopic"] as String? ??
+          "Veri Yok",
+      "supportTopic":
+          analytics?.weakestSubject ??
+          classReport?["supportTopic"] as String? ??
+          "Veri Yok",
+      "exam": {
+        "title": "${student.fullName} Detaylı Öğrenci Raporu",
+        "className": student.className,
+        "date": "Güncel Rapor",
+      },
+    };
+  }
+
   void _showInfo(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Map<String, dynamic>? get _activeExportReport {
+    if (filteredClassReports.isNotEmpty) return filteredClassReports.first;
+    if (classReports.isNotEmpty) return classReports.first;
+    if (filteredReportStudents.isNotEmpty) {
+      return _studentReportMap(filteredReportStudents.first, null);
+    }
+    return null;
+  }
+
+  Future<File> _writeExportFile(String fileName, List<int> bytes) async {
+    final directory = await getTemporaryDirectory();
+    final file = File('${directory.path}/$fileName');
+    return file.writeAsBytes(bytes, flush: true);
+  }
+
+  Future<File> _createReportPdfFile(Map<String, dynamic> report) async {
+    final document = pw.Document();
+    final isStudentReport =
+        (report['studentName']?.toString() ?? '').isNotEmpty;
+    final title = isStudentReport
+        ? '${report['studentName']} Detaylı Öğrenci Raporu'
+        : '${report['className']} Performans Raporu';
+    document.addPage(
+      pw.MultiPage(
+        build: (_) => [
+          pw.Text(
+            title,
+            style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 8),
+          pw.Text('Sınıf: ${report['className'] ?? '-'}'),
+          if (isStudentReport)
+            pw.Text('Öğrenci No: ${report['studentNo'] ?? '-'}'),
+          pw.SizedBox(height: 18),
+          pw.TableHelper.fromTextArray(
+            headers: const ['Metrik', 'Değer'],
+            data: [
+              ['Genel Ortalama', '%${report['average'] ?? 0}'],
+              ['Katılım', '%${report['attendance'] ?? 0}'],
+              ['Tamamlama', '%${report['completion'] ?? 0}'],
+              ['Güçlü Alan', '${report['topTopic'] ?? 'Veri Yok'}'],
+              ['Destek Alanı', '${report['supportTopic'] ?? 'Veri Yok'}'],
+            ],
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+        ],
+      ),
+    );
+    final slug = (isStudentReport ? report['studentName'] : report['className'])
+        .toString()
+        .replaceAll(RegExp(r'[^a-zA-Z0-9ğüşöçıİĞÜŞÖÇ]+'), '-')
+        .replaceAll(RegExp(r'-+'), '-')
+        .replaceAll(RegExp(r'^-|-$'), '')
+        .toLowerCase();
+    return _writeExportFile(
+      'rapor-${slug.isEmpty ? DateTime.now().millisecondsSinceEpoch : slug}.pdf',
+      await document.save(),
+    );
+  }
+
+  Future<void> _shareActiveReportPdf() async {
+    final report = _activeExportReport;
+    if (report == null) {
+      _showInfo('Dışa aktarılacak rapor verisi bulunamadı.');
+      return;
+    }
+    try {
+      final file = await _createReportPdfFile(report);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path)],
+          subject: 'Course Intellect Raporu',
+        ),
+      );
+    } catch (error) {
+      _showInfo('PDF oluşturulamadı: $error');
+    }
+  }
+
+  Future<void> _shareActiveReportCsv() async {
+    final rows = <List<String>>[
+      [
+        'Rapor',
+        'Sınıf',
+        'Öğrenci',
+        'Ortalama',
+        'Katılım',
+        'Tamamlama',
+        'Güçlü Alan',
+        'Destek Alanı',
+      ],
+      ...filteredClassReports.map(
+        (report) => [
+          'Sınıf Performansı',
+          '${report['className'] ?? '-'}',
+          '',
+          '${report['average'] ?? 0}',
+          '${report['attendance'] ?? 0}',
+          '${report['completion'] ?? 0}',
+          '${report['topTopic'] ?? '-'}',
+          '${report['supportTopic'] ?? '-'}',
+        ],
+      ),
+      ...filteredReportStudents.map((student) {
+        final report = _studentReportMap(student, null);
+        return [
+          'Öğrenci Detayı',
+          student.className,
+          student.fullName,
+          '${report['average'] ?? 0}',
+          '${report['attendance'] ?? 0}',
+          '${report['completion'] ?? 0}',
+          '${report['topTopic'] ?? '-'}',
+          '${report['supportTopic'] ?? '-'}',
+        ];
+      }),
+    ];
+    final csv = rows
+        .map(
+          (row) =>
+              row.map((cell) => '"${cell.replaceAll('"', '""')}"').join(','),
+        )
+        .join('\n');
+    try {
+      final file = await _writeExportFile(
+        'rapor-verileri-${DateTime.now().millisecondsSinceEpoch}.csv',
+        csv.codeUnits,
+      );
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(file.path)], subject: 'Rapor Verileri'),
+      );
+    } catch (error) {
+      _showInfo('Excel/CSV raporu oluşturulamadı: $error');
+    }
+  }
+
+  Future<void> _shareManagementSummary() async {
+    final report = _activeExportReport;
+    if (report == null) {
+      _showInfo('Paylaşılacak rapor verisi bulunamadı.');
+      return;
+    }
+    final text = [
+      'Course Intellect Rapor Özeti',
+      'Sınıf: ${report['className'] ?? '-'}',
+      if ((report['studentName']?.toString() ?? '').isNotEmpty)
+        'Öğrenci: ${report['studentName']}',
+      'Ortalama: %${report['average'] ?? 0}',
+      'Katılım: %${report['attendance'] ?? 0}',
+      'Tamamlama: %${report['completion'] ?? 0}',
+      'Güçlü Alan: ${report['topTopic'] ?? 'Veri Yok'}',
+      'Destek Alanı: ${report['supportTopic'] ?? 'Veri Yok'}',
+    ].join('\n');
+    await SharePlus.instance.share(ShareParams(text: text));
   }
 
   void _openExportDialog() {
@@ -282,7 +530,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         "$selectedPeriod filtreli yönetiçi özeti oluşturur.",
                     onTap: () {
                       Navigator.pop(context);
-                      _showInfo("PDF raporu hazırlanıyor...");
+                      _shareActiveReportPdf();
                     },
                   ),
                   _actionTile(
@@ -291,7 +539,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                     subtitle: "Sınıf bazlı puan ve devam verilerini indirir.",
                     onTap: () {
                       Navigator.pop(context);
-                      _showInfo("Excel raporu hazırlanıyor...");
+                      _shareActiveReportCsv();
                     },
                   ),
                   _actionTile(
@@ -301,7 +549,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         "Seçili raporu müdür yardımcısı paneline gönderir.",
                     onTap: () {
                       Navigator.pop(context);
-                      _showInfo("Rapor yönetime paylaşıldı.");
+                      _shareManagementSummary();
                     },
                   ),
                 ],
@@ -504,6 +752,257 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   ),
                 ],
               ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openStudentReportDetail(TeacherWeeklyReportStudentRecord student) {
+    final analyticsFuture = ReportsAnalyticsApiService.instance
+        .fetchExamAnalytics(student.fullName)
+        .catchError((_) {
+          return ExamAnalyticsRecord(
+            studentName: student.fullName,
+            averageScore: _studentAverage(student),
+            netAverage: 0,
+            riskScore: 0,
+            examCount: 0,
+            strongestSubject:
+                _classReportForStudent(student)?["topTopic"] as String?,
+            weakestSubject:
+                _classReportForStudent(student)?["supportTopic"] as String?,
+            subjects: const [],
+          );
+        });
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: ResponsiveSheetContainer(
+            child: FutureBuilder<ExamAnalyticsRecord>(
+              future: analyticsFuture,
+              builder: (context, snapshot) {
+                final analytics = snapshot.data;
+                final classReport = _classReportForStudent(student);
+                final average =
+                    analytics?.averageScore ?? _studentAverage(student);
+                final attendance = classReport?["attendance"] as int? ?? 0;
+                final completion = classReport?["completion"] as int? ?? 0;
+                final riskScore =
+                    analytics?.riskScore ?? (100 - average).clamp(0, 100);
+                final reportMap = _studentReportMap(student, analytics);
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          CircleAvatar(
+                            radius: 30,
+                            backgroundColor: const Color(
+                              0xFFFF9D2E,
+                            ).withValues(alpha: 0.16),
+                            foregroundColor: const Color(0xFFFF9D2E),
+                            child: Text(
+                              _studentInitials(student.fullName),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  student.fullName,
+                                  style: theme.textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "${student.className.isEmpty ? 'Sınıf bilgisi yok' : student.className} • Öğrenci No: ${student.username.isEmpty ? '-' : student.username}",
+                                  style: theme.textTheme.bodyMedium,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "Veli: ${student.parentName.isEmpty ? '-' : student.parentName} • ${student.parentEmail.isEmpty ? '-' : student.parentEmail}",
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 18),
+                      if (snapshot.connectionState == ConnectionState.waiting)
+                        const LinearProgressIndicator(minHeight: 3),
+                      const SizedBox(height: 12),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final compact = constraints.maxWidth < 560;
+                          final cards = [
+                            _studentMetricCard(
+                              title: "Genel Başarı",
+                              value: average <= 0 ? '-' : "$average / 100",
+                              icon: Icons.trending_up_rounded,
+                              color: const Color(0xFF7B61FF),
+                            ),
+                            _studentMetricCard(
+                              title: "Devamsızlık",
+                              value: attendance <= 0
+                                  ? '-'
+                                  : "%${(100 - attendance).clamp(0, 100)}",
+                              icon: Icons.calendar_month_rounded,
+                              color: const Color(0xFFFF9D2E),
+                            ),
+                            _studentMetricCard(
+                              title: "Sınav Sayısı",
+                              value: "${analytics?.examCount ?? 0}",
+                              icon: Icons.fact_check_rounded,
+                              color: const Color(0xFF30D158),
+                            ),
+                            _studentMetricCard(
+                              title: "Risk Puanı",
+                              value: "$riskScore",
+                              icon: Icons.warning_amber_rounded,
+                              color: const Color(0xFFFF5C7A),
+                            ),
+                          ];
+                          if (compact) {
+                            return Column(
+                              children: cards
+                                  .map(
+                                    (card) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 10,
+                                      ),
+                                      child: card,
+                                    ),
+                                  )
+                                  .toList(),
+                            );
+                          }
+                          return Wrap(
+                            spacing: 10,
+                            runSpacing: 10,
+                            children: cards
+                                .map(
+                                  (card) => SizedBox(
+                                    width: (constraints.maxWidth - 10) / 2,
+                                    child: card,
+                                  ),
+                                )
+                                .toList(),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      _reportPanel(
+                        title: "Akademik Özet",
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _detailStatRow(
+                              "En güçlü ders",
+                              analytics?.strongestSubject ??
+                                  classReport?["topTopic"] as String? ??
+                                  "Veri Yok",
+                            ),
+                            const SizedBox(height: 10),
+                            _detailStatRow(
+                              "Destek gereken ders",
+                              analytics?.weakestSubject ??
+                                  classReport?["supportTopic"] as String? ??
+                                  "Veri Yok",
+                            ),
+                            const SizedBox(height: 10),
+                            _detailStatRow("Görev Tamamlama", "%$completion"),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      _reportPanel(
+                        title: "Ders Bazlı Sınavlar",
+                        child: analytics == null || analytics.subjects.isEmpty
+                            ? const Text(
+                                "Bu öğrenci için ders bazlı sınav verisi bulunamadı.",
+                              )
+                            : Column(
+                                children: analytics.subjects
+                                    .map(
+                                      (subject) => Padding(
+                                        padding: const EdgeInsets.only(
+                                          bottom: 12,
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            _detailStatRow(
+                                              subject.subject,
+                                              "${subject.averageScore} / 100 • ${subject.examCount} sınav",
+                                            ),
+                                            const SizedBox(height: 8),
+                                            _fillBar(
+                                              _ReportTheme(
+                                                Theme.of(context),
+                                                Theme.of(context).brightness ==
+                                                    Brightness.dark,
+                                              ),
+                                              value: subject.averageScore,
+                                              color: const Color(0xFF4DA3FF),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                              ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => Navigator.pop(context),
+                              icon: const Icon(Icons.close_rounded),
+                              label: const Text("Kapat"),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: FilledButton.icon(
+                              onPressed: () {
+                                Navigator.pop(context);
+                                _openPdfMode(reportMap);
+                              },
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFFF9D2E),
+                                foregroundColor: const Color(0xFF08111F),
+                              ),
+                              icon: const Icon(Icons.picture_as_pdf_rounded),
+                              label: const Text("PDF Modu"),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
           ),
         );
@@ -1232,6 +1731,10 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 const SizedBox(height: 18),
                 _toolbar(reportTheme),
                 const SizedBox(height: 18),
+                _sectionHeader(theme, "Öğrenci Detay Merkezi"),
+                const SizedBox(height: 12),
+                _studentDetailCenterPanel(reportTheme),
+                const SizedBox(height: 22),
                 _sectionHeader(theme, "Haftalık Veli Raporları"),
                 const SizedBox(height: 12),
                 _weeklyReportComposerPanel(reportTheme),
@@ -1560,6 +2063,186 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _studentDetailCenterPanel(_ReportTheme reportTheme) {
+    final students = filteredReportStudents;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: reportTheme.cardColor,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: reportTheme.shadow,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7B61FF).withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.person_search_rounded,
+                  color: Color(0xFF7B61FF),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Öğrenciye dokun, detaylı raporu aç",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        color: reportTheme.textColor,
+                        fontSize: 17,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "Başarı, devamsızlık, ders kırılımı ve PDF modu aynı modal içinde görünür.",
+                      style: TextStyle(color: reportTheme.subtleTextColor),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: _miniMetric(
+                  reportTheme,
+                  label: "Listelenen",
+                  value: _loadingReportStudents ? "..." : "${students.length}",
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: _miniMetric(
+                  reportTheme,
+                  label: "Sınıf",
+                  value: selectedClass == 'Tüm Sınıflar'
+                      ? "Tümü"
+                      : selectedClass,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (_loadingReportStudents)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 18),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (students.isEmpty)
+            Text(
+              "Seçili filtrede öğrenci bulunamadı.",
+              style: TextStyle(color: reportTheme.subtleTextColor),
+            )
+          else
+            ...students
+                .take(12)
+                .map((student) => _studentReportCard(reportTheme, student)),
+        ],
+      ),
+    );
+  }
+
+  Widget _studentReportCard(
+    _ReportTheme reportTheme,
+    TeacherWeeklyReportStudentRecord student,
+  ) {
+    final average = _studentAverage(student);
+    final attendance = _studentAttendance(student);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: () => _openStudentReportDetail(student),
+        child: Ink(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: reportTheme.surfaceColor,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: reportTheme.borderColor),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: const Color(
+                  0xFFFF9D2E,
+                ).withValues(alpha: 0.14),
+                foregroundColor: const Color(0xFFFF9D2E),
+                child: Text(
+                  _studentInitials(student.fullName),
+                  style: const TextStyle(fontWeight: FontWeight.w900),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      student.fullName,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: reportTheme.textColor,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      "${student.className.isEmpty ? '-' : student.className} • ${student.parentName.isEmpty ? 'Veli bilgisi yok' : student.parentName}",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(color: reportTheme.subtleTextColor),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    average <= 0 ? '-' : "$average",
+                    style: TextStyle(
+                      color: reportTheme.textColor,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  Text(
+                    attendance <= 0 ? "Detay" : "%$attendance",
+                    style: TextStyle(
+                      color: reportTheme.subtleTextColor,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 4),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: reportTheme.subtleTextColor,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -2234,6 +2917,68 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
     );
   }
 
+  Widget _studentMetricCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E1B31),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(color: Colors.white70, fontSize: 12),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 18,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _studentInitials(String name) {
+    final parts = name
+        .trim()
+        .split(RegExp(r'\s+'))
+        .where((item) => item.isNotEmpty)
+        .toList();
+    if (parts.isEmpty) return 'Ö';
+    final first = parts.first.characters.first;
+    final last = parts.length > 1 ? parts.last.characters.first : '';
+    return '$first$last'.toUpperCase();
+  }
+
   Widget _reportBadge(String text) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -2372,52 +3117,78 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
     return int.tryParse(value?.toString() ?? '') ?? 0;
   }
 
-  /// Rapor özetini gerçek bir PDF olarak üretip paylaşım sayfası açar
-  /// (indirme ve yazdırma aynı paylaşım akışından yapılır).
-  Future<void> _exportPdf(BuildContext context) async {
+  Future<File> _createPdfFile() async {
+    final document = pw.Document();
+    final isStudentReport = _text('studentName') != '-';
+    document.addPage(
+      pw.MultiPage(
+        build: (_) => [
+          pw.Text(
+            isStudentReport
+                ? 'Öğrenci Detay Raporu'
+                : 'Sınıf Performans Raporu',
+            style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+          ),
+          pw.SizedBox(height: 6),
+          pw.Text('Sınıf: ${_text('className')}'),
+          if (isStudentReport) pw.Text('Öğrenci: ${_text('studentName')}'),
+          if (isStudentReport) pw.Text('Öğrenci No: ${_text('studentNo')}'),
+          pw.SizedBox(height: 16),
+          pw.TableHelper.fromTextArray(
+            headers: const ['Metrik', 'Değer'],
+            data: [
+              ['Genel Ortalama', '%${_number('average')}'],
+              ['Katılım', '%${_number('attendance')}'],
+              ['Tamamlama', '%${_number('completion')}'],
+              ['Güçlü Alan', _text('topTopic')],
+              ['Destek Alanı', _text('supportTopic')],
+            ],
+          ),
+          pw.SizedBox(height: 16),
+          pw.Text(
+            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.',
+            style: const pw.TextStyle(fontSize: 10),
+          ),
+        ],
+      ),
+    );
+    final directory = await getTemporaryDirectory();
+    final file = File(
+      '${directory.path}/rapor-${DateTime.now().millisecondsSinceEpoch}.pdf',
+    );
+    return file.writeAsBytes(await document.save(), flush: true);
+  }
+
+  Future<void> _sharePdf(BuildContext context) async {
     final messenger = ScaffoldMessenger.of(context);
     try {
-      final document = pw.Document();
-      document.addPage(
-        pw.MultiPage(
-          build: (_) => [
-            pw.Text(
-              'Sınıf Performans Raporu',
-              style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 6),
-            pw.Text('Sınıf: ${_text('className')}'),
-            pw.SizedBox(height: 16),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Metrik', 'Değer'],
-              data: [
-                ['Genel Ortalama', '%${_number('average')}'],
-                ['Katılım', '%${_number('attendance')}'],
-                ['Tamamlama', '%${_number('completion')}'],
-              ],
-            ),
-            pw.SizedBox(height: 16),
-            pw.Text(
-              'Bu rapor Course Intellect öğretmen panelinden oluşturulmuştur.',
-              style: const pw.TextStyle(fontSize: 10),
-            ),
-          ],
-        ),
-      );
-      final directory = await getTemporaryDirectory();
-      final file = File(
-        '${directory.path}/sinif-raporu-${DateTime.now().millisecondsSinceEpoch}.pdf',
-      );
-      await file.writeAsBytes(await document.save());
+      final file = await _createPdfFile();
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          subject: 'Sınıf Performans Raporu',
+          subject: 'Course Intellect Raporu',
         ),
       );
     } catch (error) {
       messenger.showSnackBar(
         SnackBar(content: Text('PDF oluşturulamadı: $error')),
+      );
+    }
+  }
+
+  Future<void> _openPdfForPrint(BuildContext context) async {
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final file = await _createPdfFile();
+      final result = await OpenFilex.open(file.path);
+      if (result.type != ResultType.done) {
+        messenger.showSnackBar(
+          SnackBar(content: Text('PDF açılamadı: ${result.message}')),
+        );
+      }
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Yazdırma için PDF açılamadı: $error')),
       );
     }
   }
@@ -2446,12 +3217,12 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
         actions: [
           IconButton(
             tooltip: 'PDF indir / paylaş',
-            onPressed: () => _exportPdf(context),
+            onPressed: () => _sharePdf(context),
             icon: const Icon(Icons.file_download_outlined),
           ),
           IconButton(
-            tooltip: 'Yazdır (paylaşım üzerinden)',
-            onPressed: () => _exportPdf(context),
+            tooltip: 'PDF aç / yazdır',
+            onPressed: () => _openPdfForPrint(context),
             icon: const Icon(Icons.print_outlined),
           ),
         ],

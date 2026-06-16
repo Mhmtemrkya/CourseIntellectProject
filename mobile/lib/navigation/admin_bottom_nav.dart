@@ -4,6 +4,7 @@ import '../pages/admin_finance_page.dart';
 import '../pages/admin_home_page.dart';
 import '../pages/admin_operations_page.dart';
 import '../pages/admin_profile_page.dart';
+import '../pages/teacher_reports_page.dart';
 import '../widgets/adaptive_scaffold.dart';
 
 class AdminBottomNav extends StatelessWidget {
@@ -37,6 +38,12 @@ class AdminBottomNav extends StatelessWidget {
           label: 'Operasyon',
           pageBuilder: (_) => const AdminOperationsPage(),
           sidebarColor: const Color(0xFF14B8A6),
+        ),
+        AdaptiveDestination(
+          icon: Icons.bar_chart_rounded,
+          label: 'Raporlar',
+          pageBuilder: (_) => const TeacherReportsPage(),
+          sidebarColor: const Color(0xFFFF9D2E),
         ),
         AdaptiveDestination(
           icon: Icons.person_outline_rounded,

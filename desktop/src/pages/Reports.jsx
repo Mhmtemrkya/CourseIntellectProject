@@ -42,6 +42,31 @@ const reportTypes = [
   { id: 'teachers', name: 'Öğretmen Raporu', icon: GraduationCap, description: 'Öğretmen aktivite özeti' },
 ];
 
+const studentDetailReportRoles = new Set([
+  'admin',
+  'administrative',
+  'idare',
+  'idari',
+  'idaripersonel',
+  'institutionadmin',
+  'institutionadministrator',
+  'kurumyoneticisi',
+]);
+
+function normalizeRole(value) {
+  return String(value || '')
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .replace(/[\s_-]+/g, '');
+}
+
+function canUseStudentDetailReports(user) {
+  const roles = [user?.role, user?.backendRole, ...(Array.isArray(user?.extraRoles) ? user.extraRoles : [])]
+    .map(normalizeRole)
+    .filter(Boolean);
+  return roles.some((role) => studentDetailReportRoles.has(role));
+}
+
 function downloadText(name, content) {
   const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -480,9 +505,8 @@ function AdministrativeReportOverview() {
 
 export default function Reports() {
   const { user } = useApp();
-  const role = String(user?.role || user?.backendRole || '').trim().toLowerCase();
 
-  if (role === 'administrative' || role === 'idari' || role === 'idaripersonel') {
+  if (canUseStudentDetailReports(user)) {
     return <TeacherPdfReportCenter />;
   }
 

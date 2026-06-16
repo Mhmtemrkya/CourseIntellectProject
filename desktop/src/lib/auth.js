@@ -23,8 +23,15 @@ function unwrapBackendPayload(payload) {
 }
 
 export function mapBackendRoleToDesktopRole(role) {
-  switch ((role || "").toLowerCase()) {
+  const normalizedRole = String(role || "")
+    .trim()
+    .toLocaleLowerCase("tr-TR")
+    .replace(/[\s_-]+/g, "");
+
+  switch (normalizedRole) {
     case "admin":
+    case "institutionadmin":
+    case "institutionadministrator":
     case "developer":
       return "admin";
     case "accounting":
@@ -36,6 +43,10 @@ export function mapBackendRoleToDesktopRole(role) {
     case "parent":
       return "parent";
     case "administrative":
+    case "idare":
+    case "idari":
+    case "idaripersonel":
+    case "idarîpersonel":
       return "administrative";
     case "cafeteria":
       return "cafeteria";

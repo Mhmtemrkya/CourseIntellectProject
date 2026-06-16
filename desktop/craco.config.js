@@ -1,10 +1,49 @@
 // craco.config.js
+const Module = require("module");
 const path = require("path");
 require("dotenv").config();
 
 // Check if we're in development/preview mode (not production build)
 // Craco sets NODE_ENV=development for start, NODE_ENV=production for build
 const isDevServer = process.env.NODE_ENV !== "production";
+
+if (!isDevServer) {
+  const originalLoad = Module._load;
+  const NoopWebpackPlugin = class {
+    apply() {}
+  };
+  const ESLintWebpackPlugin = class ESLintWebpackPlugin {
+    apply() {}
+  };
+  const ReactRefreshWebpackPlugin = class ReactRefreshWebpackPlugin {
+    apply() {}
+  };
+
+  Module._load = function patchedLoad(request, parent, isMain) {
+    if (
+      request === "workbox-webpack-plugin" ||
+      request === "eslint-webpack-plugin" ||
+      request === "@pmmmwh/react-refresh-webpack-plugin" ||
+      request === "react-dev-utils/ForkTsCheckerWebpackPlugin" ||
+      request === "react-dev-utils/ForkTsCheckerWarningWebpackPlugin"
+    ) {
+      if (request === "eslint-webpack-plugin") {
+        return ESLintWebpackPlugin;
+      }
+      if (request === "@pmmmwh/react-refresh-webpack-plugin") {
+        return ReactRefreshWebpackPlugin;
+      }
+      if (request.startsWith("react-dev-utils/ForkTsChecker")) {
+        return NoopWebpackPlugin;
+      }
+      return {
+        GenerateSW: NoopWebpackPlugin,
+        InjectManifest: NoopWebpackPlugin,
+      };
+    }
+    return originalLoad.apply(this, arguments);
+  };
+}
 
 // Environment variable overrides
 const config = {
@@ -47,6 +86,24 @@ const webpackConfig = {
       '@': path.resolve(__dirname, 'src'),
     },
     configure: (webpackConfig) => {
+
+      if (!isDevServer) {
+        webpackConfig.cache = false;
+        webpackConfig.optimization = {
+          ...webpackConfig.optimization,
+          minimize: false,
+        };
+        if (process.env.COURSE_BUILD_PROGRESS === "true") {
+          const webpack = require("webpack");
+          webpackConfig.plugins.push(
+            new webpack.ProgressPlugin((percentage, message, ...details) => {
+              const pct = Math.round(percentage * 100);
+              const detail = details.filter(Boolean).join(" ");
+              console.log(`[webpack] ${pct}% ${message}${detail ? ` ${detail}` : ""}`);
+            })
+          );
+        }
+      }
 
       // Add ignored patterns to reduce watched directories
         webpackConfig.watchOptions = {

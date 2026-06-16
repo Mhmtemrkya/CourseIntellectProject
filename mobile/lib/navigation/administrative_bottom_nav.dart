@@ -4,6 +4,7 @@ import '../pages/administrative_home_page.dart';
 import '../pages/administrative_messages_page.dart';
 import '../pages/administrative_profile_page.dart';
 import '../pages/administrative_records_page.dart';
+import '../pages/teacher_reports_page.dart';
 import '../widgets/adaptive_scaffold.dart';
 
 class AdministrativeBottomNav extends StatelessWidget {
@@ -37,6 +38,12 @@ class AdministrativeBottomNav extends StatelessWidget {
           label: 'Mesajlar',
           pageBuilder: (_) => const AdministrativeMessagesPage(),
           sidebarColor: const Color(0xFF2563EB),
+        ),
+        AdaptiveDestination(
+          icon: Icons.bar_chart_rounded,
+          label: 'Raporlar',
+          pageBuilder: (_) => const TeacherReportsPage(),
+          sidebarColor: const Color(0xFFFF9D2E),
         ),
         AdaptiveDestination(
           icon: Icons.person_outline_rounded,

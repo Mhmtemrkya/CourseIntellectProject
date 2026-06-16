@@ -376,13 +376,22 @@ class AuthApiService {
   }
 
   String _normalizeRole(Object? role) {
-    final value = (role ?? '').toString().trim().toLowerCase();
+    final value = (role ?? '').toString().trim().toLowerCase().replaceAll(
+      RegExp(r'[\s_-]+'),
+      '',
+    );
     switch (value) {
       case 'admin':
+      case 'institutionadmin':
+      case 'institutionadministrator':
         return 'Admin';
       case 'developer':
         return 'Developer';
       case 'administrative':
+      case 'idare':
+      case 'idari':
+      case 'idaripersonel':
+      case 'idarîpersonel':
         return 'Administrative';
       case 'teacher':
         return 'Teacher';

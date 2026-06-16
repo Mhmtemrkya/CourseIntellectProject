@@ -67,7 +67,7 @@
     "zod": "^3.24.4"
   },
   "scripts": {
-    "build": "node ./node_modules/@craco/craco/dist/bin/craco.js build",
+    "build": "GENERATE_SOURCEMAP=false node ./node_modules/@craco/craco/dist/bin/craco.js build",
     "test": "node ./node_modules/@craco/craco/dist/bin/craco.js test",
     "start": "node ./node_modules/@craco/craco/dist/bin/craco.js start",
     "start:prod": "REACT_APP_COURSE_INTELLECT_ENV=production node ./node_modules/@craco/craco/dist/bin/craco.js start",
