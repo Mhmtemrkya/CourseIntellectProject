@@ -358,9 +358,12 @@ export default function ServiceTrackingPage() {
         routeId: routeDetail.id,
         stopId: selectedStopId,
       });
+      if (!routeDetail.isActive) {
+        await setServiceRouteActive(routeDetail.id, true);
+      }
       const detail = await fetchServiceRouteDetail(routeDetail.id);
       setRouteDetail(detail);
-      setSuccess('Öğrenci servise atandı.');
+      setSuccess(routeDetail.isActive ? 'Öğrenci servise atandı.' : 'Öğrenci servise atandı ve rota şoför ekranında görünecek şekilde aktifleştirildi.');
     }, { closeDialog: false });
   }
 

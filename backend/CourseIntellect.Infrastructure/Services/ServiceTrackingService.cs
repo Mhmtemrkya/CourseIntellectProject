@@ -485,6 +485,14 @@ public sealed class ServiceTrackingService(
         await ValidateParentOwnsStudentAsync(parentId.Value, student, cancellationToken);
         await ValidateAssignmentRulesAsync(route, student.Id, parentId.Value, stop.Id, null, cancellationToken);
 
+        if (!route.IsActive)
+        {
+            await ValidateRouteCanActivateAsync(route, cancellationToken);
+            await ValidateRouteScheduleAsync(route.TenantId!.Value, route.VehicleId, route.DriverId, route.StartTime, route.EndTime, route.Id, cancellationToken);
+            route.IsActive = true;
+            route.UpdatedAt = DateTime.UtcNow;
+        }
+
         var assignment = new StudentServiceAssignment
         {
             StudentId = student.Id,

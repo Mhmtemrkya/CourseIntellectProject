@@ -26,3 +26,13 @@ tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-http = "2"
+
+# Release derlemesini hızlandıran ayarlar.
+# Bu masaüstü uygulamasında ağır iş webview tarafında olduğu için Rust
+# katmanının çalışma-zamanı optimizasyonunu biraz düşürmek güvenlidir ve
+# her build'de yeniden derlenen `app` kraterını belirgin şekilde hızlandırır.
+[profile.release]
+incremental = true   # değişmeyen kodun codegen'ini yeniden kullan -> daha hızlı yeniden derleme
+
+[profile.release.package.app]
+codegen-units = 256  # tek yerel krateri maksimum paralellikle derle

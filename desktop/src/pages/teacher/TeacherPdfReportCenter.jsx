@@ -16,6 +16,9 @@ import { fetchReportStudents, fetchTeacherPdfReports, fetchTeacherReportAnalytic
 
 const reportTypes = ['Tümü', 'Sınav Raporları', 'Ödev Raporları', 'Gelişim Raporları', 'Devamsızlık Raporları', 'Karne Raporları'];
 const subjects = ['Tüm Dersler', 'Matematik', 'Türkçe', 'Fen Bilimleri', 'İngilizce', 'Sosyal Bilgiler'];
+const PDF_PAGE_WIDTH = 794;
+const PDF_PAGE_HEIGHT = 1123;
+const PDF_PREVIEW_BASE_WIDTH = 760;
 
 const emptyReport = {
   id: 'empty',
@@ -259,61 +262,75 @@ function EmptyPdfSection({ title, detail }) {
   );
 }
 
+function PdfPageShell({ children, className = '' }) {
+  return (
+    <div
+      className={`relative overflow-hidden rounded-[4px] border border-white/10 bg-[#08111F] text-white shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)] ${className}`}
+      style={{ width: PDF_PAGE_WIDTH, height: PDF_PAGE_HEIGHT }}
+    >
+      {children}
+    </div>
+  );
+}
+
 function CoverPage({ selectedReport }) {
   const studentInitial = initials(selectedReport.student || selectedReport.name);
   return (
-    <div className="relative mx-auto aspect-[0.707] w-full max-w-[640px] overflow-hidden rounded-[4px] border border-white/10 bg-[#08111F] p-10 shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)]">
+    <PdfPageShell>
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_78%_28%,rgba(123,97,255,0.17),transparent_30%),radial-gradient(circle_at_85%_85%,rgba(255,157,46,0.17),transparent_32%)]" />
       <div className="absolute -right-20 top-24 h-72 w-[560px] rounded-full border border-orange-400/12" />
       <div className="absolute -right-16 top-36 h-72 w-[560px] rounded-full border border-orange-400/10" />
-      <div className="relative flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 text-white">
-          <Sparkles className="h-6 w-6" />
-        </div>
-        <div>
-          <p className="text-xs font-black uppercase leading-none tracking-[0.24em] text-white">Course</p>
-          <p className="text-lg font-black uppercase leading-none text-orange-300">Intellect</p>
-        </div>
-      </div>
 
-      <div className="relative mt-24 grid grid-cols-[220px_1fr] items-center gap-12">
-        <div className="relative">
-          <div className="absolute inset-[-10px] rounded-full border-2 border-orange-400" />
-          <div className="h-52 w-52 overflow-hidden rounded-full border border-white/12 bg-gradient-to-b from-slate-200 to-slate-400">
-            <div className="mt-12 text-center text-[92px] font-black text-slate-700">{studentInitial[0]}</div>
+      <div className="relative z-10 flex h-full flex-col p-10">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-orange-500 text-white">
+            <Sparkles className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-xs font-black uppercase leading-none tracking-[0.24em] text-white">Course</p>
+            <p className="text-lg font-black uppercase leading-none text-orange-300">Intellect</p>
           </div>
         </div>
-        <div>
-          <p className="text-right text-4xl font-black tracking-tight text-white">ÖĞRENCİ</p>
-          <p className="text-right text-5xl font-black tracking-tight text-orange-400">BAŞARI RAPORU</p>
-          <p className="mt-5 text-right text-base text-slate-300">Akademik Performans Analizi</p>
-          <div className="ml-auto mt-6 h-0.5 w-14 bg-orange-400" />
-          <h2 className="mt-16 text-4xl font-black text-white">{selectedReport.student || 'Öğrenci'}</h2>
-          <div className="mt-5 space-y-4 text-base text-slate-300">
-            <p>{selectedReport.className || 'Sınıf bilgisi yok'}</p>
-            <p>Öğrenci No: {selectedReport.studentNo || '-'}</p>
-            <p>{selectedReport.name}</p>
-            <p>{selectedReport.date} • Rapor Tarihi</p>
+
+        <div className="mt-20 grid grid-cols-[240px_1fr] items-center gap-14">
+          <div className="relative">
+            <div className="absolute inset-[-10px] rounded-full border-2 border-orange-400" />
+            <div className="flex h-56 w-56 items-center justify-center overflow-hidden rounded-full border border-white/12 bg-gradient-to-b from-slate-200 to-slate-400">
+              <span className="text-[104px] font-black leading-none text-slate-700">{studentInitial[0]}</span>
+            </div>
+          </div>
+          <div className="min-w-0">
+            <p className="text-right text-4xl font-black tracking-tight text-white">ÖĞRENCİ</p>
+            <p className="text-right text-5xl font-black tracking-tight text-orange-400">BAŞARI RAPORU</p>
+            <p className="mt-5 text-right text-base text-slate-300">Akademik Performans Analizi</p>
+            <div className="ml-auto mt-6 h-0.5 w-14 bg-orange-400" />
+            <h2 className="mt-16 break-words text-4xl font-black text-white">{selectedReport.student || 'Öğrenci'}</h2>
+            <div className="mt-5 space-y-4 text-base text-slate-300">
+              <p>{selectedReport.className || 'Sınıf bilgisi yok'}</p>
+              <p className="break-words">Öğrenci No: {selectedReport.studentNo || '-'}</p>
+              <p className="break-words">{selectedReport.name}</p>
+              <p>{selectedReport.date} • Rapor Tarihi</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-auto grid grid-cols-3 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.055] backdrop-blur">
+          <div className="flex min-w-0 flex-col items-center justify-center p-6 text-center">
+            <GraduationCap className="h-9 w-9 text-orange-300" />
+            <p className="mt-3 break-words text-xs font-bold text-white">{selectedReport.institution || 'Kurum'}</p>
+          </div>
+          <div className="flex min-w-0 flex-col items-center justify-center border-x border-white/10 p-6 text-center">
+            <QrCode className="h-12 w-12 text-white" />
+            <p className="mt-2 text-xs text-slate-300">Rapor Doğrulama QR Kod</p>
+          </div>
+          <div className="min-w-0 p-6">
+            <p className="text-sm text-slate-300">Rapor No</p>
+            <p className="mt-2 break-words text-sm font-bold leading-5 text-white">CI-REPORT-{selectedReport.id || 'PENDING'}</p>
+            <p className="mt-4 text-xs leading-5 text-slate-400">Bu rapor Course Intellect tarafından hazırlanmıştır.</p>
           </div>
         </div>
       </div>
-
-      <div className="relative mt-20 grid grid-cols-3 gap-5 rounded-[28px] border border-white/10 bg-white/[0.055] p-6 backdrop-blur">
-        <div className="text-center">
-          <GraduationCap className="mx-auto h-9 w-9 text-orange-300" />
-          <p className="mt-3 text-xs font-bold text-white">{selectedReport.institution || 'Kurum'}</p>
-        </div>
-        <div className="border-x border-white/10 text-center">
-          <QrCode className="mx-auto h-12 w-12 text-white" />
-          <p className="mt-2 text-xs text-slate-300">Rapor Doğrulama QR Kod</p>
-        </div>
-        <div>
-          <p className="text-sm text-slate-300">Rapor No</p>
-          <p className="mt-2 text-sm font-bold text-white">CI-REPORT-{selectedReport.id || 'PENDING'}</p>
-          <p className="mt-4 text-xs leading-5 text-slate-400">Bu rapor Course Intellect tarafından hazırlanmıştır.</p>
-        </div>
-      </div>
-    </div>
+    </PdfPageShell>
   );
 }
 
@@ -348,7 +365,7 @@ function ResultsPage({ selectedReport, analytics }) {
     ['Sıralama', selectedReport.rank || '-', TrendingUp, '#FF9D2E'],
   ];
   return (
-    <div className="h-full rounded-[3px] bg-[#08111F] p-8 text-white">
+    <PdfPageShell className="p-8">
       <h2 className="text-2xl font-black">Genel Sonuçlar</h2>
       <div className="mt-6 grid grid-cols-4 gap-3">
         {kpis.map(([label, value, Icon, accent]) => <KpiCard key={label} label={label} value={value} icon={Icon} accent={accent} />)}
@@ -374,14 +391,14 @@ function ResultsPage({ selectedReport, analytics }) {
           ))}
         </div>
       </div>
-    </div>
+    </PdfPageShell>
   );
 }
 
 function SubjectPage({ analytics }) {
   const subjectRows = liveSubjectRows(analytics);
   return (
-    <div className="h-full rounded-[3px] bg-[#08111F] p-8 text-white">
+    <PdfPageShell className="p-8">
       <h2 className="text-2xl font-black">Ders Bazlı Analiz</h2>
       <div className="mt-6 grid grid-cols-2 gap-4">
         {subjectRows.length === 0 ? (
@@ -410,14 +427,14 @@ function SubjectPage({ analytics }) {
           <p className="mt-3 text-sm leading-6 text-orange-50/80">Problemler, İngilizce okuma ve fen enerji kazanımları.</p>
         </div>
       </div>
-    </div>
+    </PdfPageShell>
   );
 }
 
 function TopicPage({ analytics }) {
   const rows = liveTopicRows(analytics);
   return (
-    <div className="h-full rounded-[3px] bg-[#08111F] p-8 text-white">
+    <PdfPageShell className="p-8">
       <h2 className="text-2xl font-black">Konu Bazlı Analiz</h2>
       <div className="mt-6 space-y-3">
         {rows.length === 0 ? (
@@ -435,14 +452,14 @@ function TopicPage({ analytics }) {
           </div>
         ))}
       </div>
-    </div>
+    </PdfPageShell>
   );
 }
 
 function QuestionDetailsPage({ selectedReport }) {
   const hasRealPdf = Boolean(selectedReport.downloadUrl);
   return (
-    <div className="h-full rounded-[3px] bg-[#08111F] p-8 text-white">
+    <PdfPageShell className="p-8">
       <h2 className="text-2xl font-black">Soru Bazlı Detaylar</h2>
       <div className="mt-6">
         <EmptyPdfSection
@@ -450,14 +467,14 @@ function QuestionDetailsPage({ selectedReport }) {
           detail={hasRealPdf ? 'Hazır PDF raporunu indirerek gerçek soru-cevap detaylarını görüntüleyebilirsiniz.' : 'Bu öğrenci için çözüm oturumu PDF’i oluştuğunda soru detayları canlı rapordan açılır.'}
         />
       </div>
-    </div>
+    </PdfPageShell>
   );
 }
 
 function GrowthPage({ selectedReport }) {
   const studentName = selectedReport.student && selectedReport.student !== '-' ? selectedReport.student : 'Öğrenci';
   return (
-    <div className="h-full rounded-[3px] bg-[#08111F] p-8 text-white">
+    <PdfPageShell className="p-8">
       <h2 className="text-2xl font-black">Gelişim Raporu</h2>
       <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.055] p-6">
         <EmptyPdfSection title="Gelişim grafiği bekleniyor" detail={`${studentName} için zaman serisi rapor endpointi geldiğinde son sınavlar burada canlı grafik olarak gösterilecek.`} />
@@ -487,7 +504,7 @@ function GrowthPage({ selectedReport }) {
           <div className="mx-auto mt-5 h-16 w-16 rounded-full border border-dashed border-orange-400/60" />
         </div>
       </div>
-    </div>
+    </PdfPageShell>
   );
 }
 
@@ -903,12 +920,21 @@ export default function TeacherPdfReportCenter() {
   const generatePdfBlob = useCallback(async () => {
     const nodes = exportRef.current?.querySelectorAll('[data-export-page]');
     if (!nodes || nodes.length === 0) throw new Error('Önizleme sayfaları bulunamadı.');
-    const pdf = new jsPDF({ unit: 'px', format: [794, 1123], orientation: 'portrait', compress: true });
+    const pdf = new jsPDF({ unit: 'px', format: [PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT], orientation: 'portrait', compress: true });
     for (let index = 0; index < nodes.length; index += 1) {
       // eslint-disable-next-line no-await-in-loop
-      const canvas = await html2canvas(nodes[index], { scale: 2, backgroundColor: '#08111F', useCORS: true, logging: false });
-      if (index > 0) pdf.addPage([794, 1123], 'portrait');
-      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 794, 1123);
+      const canvas = await html2canvas(nodes[index], {
+        scale: 2,
+        width: PDF_PAGE_WIDTH,
+        height: PDF_PAGE_HEIGHT,
+        windowWidth: PDF_PAGE_WIDTH,
+        windowHeight: PDF_PAGE_HEIGHT,
+        backgroundColor: '#08111F',
+        useCORS: true,
+        logging: false,
+      });
+      if (index > 0) pdf.addPage([PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT], 'portrait');
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT);
     }
     return pdf.output('blob');
   }, []);
@@ -1026,6 +1052,10 @@ export default function TeacherPdfReportCenter() {
     target?.requestFullscreen?.();
   }, []);
 
+  const previewScale = (PDF_PREVIEW_BASE_WIDTH / PDF_PAGE_WIDTH) * (zoom / 100);
+  const previewWidth = Math.round(PDF_PAGE_WIDTH * previewScale);
+  const previewHeight = Math.round(PDF_PAGE_HEIGHT * previewScale);
+
   if (viewMode === 'students') {
     return (
       <StudentReportMode
@@ -1077,7 +1107,7 @@ export default function TeacherPdfReportCenter() {
             ))}
           </div>
 
-          <div className="mt-6 grid grid-cols-2 gap-3 xl:grid-cols-3">
+          <div className="mt-6 grid grid-cols-1 gap-3 2xl:grid-cols-2">
             <FilterSelect value={subject} options={subjects} onChange={setSubject} />
             <FilterSelect value={dateFilter} options={['Tüm Tarihler', 'Bu Ay', 'Son 90 Gün']} onChange={setDateFilter} wide />
             <FilterSelect value={className} options={reportClassOptions} onChange={setClassName} />
@@ -1168,9 +1198,9 @@ export default function TeacherPdfReportCenter() {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.22 }}
                   className="mx-auto"
-                  style={{ width: `${Math.round(760 * (zoom / 100))}px`, maxWidth: zoom <= 100 ? '100%' : 'none' }}
+                  style={{ width: `${previewWidth}px`, height: `${previewHeight}px` }}
                 >
-                  <div style={{ width: '760px', transform: `scale(${zoom / 100})`, transformOrigin: 'top left' }}>
+                  <div style={{ width: `${PDF_PAGE_WIDTH}px`, height: `${PDF_PAGE_HEIGHT}px`, transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
                     <PreviewPage page={activePage} selectedReport={selectedReport} analytics={analytics} />
                   </div>
                 </motion.div>
@@ -1182,7 +1212,7 @@ export default function TeacherPdfReportCenter() {
 
       <div ref={exportRef} aria-hidden className="pointer-events-none fixed left-[-12000px] top-0">
         {[1, 2, 3, 4, 5, 6].map((page) => (
-          <div key={page} data-export-page className="overflow-hidden bg-[#08111F]" style={{ width: '794px', height: '1123px' }}>
+          <div key={page} data-export-page className="overflow-hidden bg-[#08111F]" style={{ width: `${PDF_PAGE_WIDTH}px`, height: `${PDF_PAGE_HEIGHT}px` }}>
             <PreviewPage page={page} selectedReport={selectedReport} analytics={analytics} />
           </div>
         ))}

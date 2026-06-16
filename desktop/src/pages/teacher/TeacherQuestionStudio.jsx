@@ -21,6 +21,7 @@ import { desktopApiBaseUrl } from '../../lib/auth';
 import {
   createPlannedExam,
   createQuestionBankItem,
+  fetchTeacherWeeklyReportBootstrap,
   saveQuestionStudioDraft,
   uploadFile,
 } from '../../lib/api/modules';
@@ -28,6 +29,16 @@ import {
 const QUESTION_TYPES = [
   'Çoktan Seçmeli', 'Açık Uçlu', 'Doğru / Yanlış', 'Boşluk Doldurma',
   'Grafik Yorumlama', 'Kod Sorusu', 'Matematik Sorusu',
+];
+
+const EXAM_DURATION_OPTIONS = ['20 dk', '30 dk', '40 dk', '45 dk', '60 dk', '80 dk', '90 dk', '120 dk'];
+const LATE_ENTRY_LIMIT_OPTIONS = [
+  { value: '0', label: 'Geç giriş yok' },
+  { value: '5', label: '5 dk' },
+  { value: '10', label: '10 dk' },
+  { value: '15', label: '15 dk' },
+  { value: '20', label: '20 dk' },
+  { value: '30', label: '30 dk' },
 ];
 
 const freshOptions = () => Array.from({ length: 4 }, (_, index) => ({
@@ -107,6 +118,8 @@ export default function TeacherQuestionStudio() {
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [savedQuestions, setSavedQuestions] = useState([]);
   const [examQuestions, setExamQuestions] = useState([]);
+  const [teacherClassOptions, setTeacherClassOptions] = useState([]);
+  const [classOptionsLoading, setClassOptionsLoading] = useState(false);
   const [questionSetKey] = useState(() => createQuestionSetKey(isExamMode ? 'exam-set' : 'question-set'));
   const [examForm, setExamForm] = useState({
     title: '',
@@ -126,6 +139,41 @@ export default function TeacherQuestionStudio() {
 
   const choiceType = activeType === 'Çoktan Seçmeli' || activeType === 'Doğru / Yanlış';
   const correctIndex = useMemo(() => options.findIndex((option) => option.correct), [options]);
+
+  useEffect(() => {
+    if (!isExamMode) return undefined;
+    let alive = true;
+    setClassOptionsLoading(true);
+    fetchTeacherWeeklyReportBootstrap({ teacherUsername: user?.username || '' })
+      .then((payload) => {
+        if (!alive) return;
+        const classes = Array.isArray(payload?.classes)
+          ? payload.classes.map((item) => String(item || '').trim()).filter(Boolean)
+          : [];
+        const uniqueClasses = [...new Set(classes)];
+        setTeacherClassOptions(uniqueClasses);
+        if (uniqueClasses.length > 0) {
+          setExamForm((current) => {
+            if (current.className && uniqueClasses.includes(current.className)) return current;
+            const nextClassName = current.className || uniqueClasses[0];
+            return { ...current, className: nextClassName };
+          });
+          setSettings((current) => {
+            if (current.classLevel && current.classLevel !== 'Tüm Sınıflar') return current;
+            return { ...current, classLevel: uniqueClasses[0] };
+          });
+        }
+      })
+      .catch((error) => {
+        if (alive) toast({ title: 'Sınıflar alınamadı', description: error.message, variant: 'destructive' });
+      })
+      .finally(() => {
+        if (alive) setClassOptionsLoading(false);
+      });
+    return () => {
+      alive = false;
+    };
+  }, [isExamMode, toast, user?.username]);
 
   const touch = useCallback(() => {
     setDirty(true);
@@ -189,6 +237,22 @@ export default function TeacherQuestionStudio() {
 
   const updateSetting = (key, value) => {
     setSettings((current) => ({ ...current, [key]: value }));
+    touch();
+  };
+
+  const updateExamClassName = (value) => {
+    setExamForm((current) => ({ ...current, className: value }));
+    setSettings((current) => ({ ...current, classLevel: value }));
+    touch();
+  };
+
+  const updateExamDuration = (value) => {
+    setExamForm((current) => ({ ...current, duration: value }));
+    touch();
+  };
+
+  const updateLateEntryLimit = (value) => {
+    setExamForm((current) => ({ ...current, lateEntryLimitMinutes: value }));
     touch();
   };
 
@@ -446,13 +510,36 @@ export default function TeacherQuestionStudio() {
             <section className="mb-5 rounded-[28px] border border-orange-400/20 bg-orange-500/[0.07] p-5">
               <div className="grid gap-3 lg:grid-cols-5">
                 <Field label="Sınav Adı"><Input value={examForm.title} onChange={(event) => { setExamForm((v) => ({ ...v, title: event.target.value })); touch(); }} placeholder="9. Sınıf Matematik 1. Dönem 1. Yazılı" className="border-white/10 bg-white/5 text-white" /></Field>
-                <Field label="Sınıf"><Input value={examForm.className} onChange={(event) => { setExamForm((v) => ({ ...v, className: event.target.value })); touch(); }} placeholder="12/A" className="border-white/10 bg-white/5 text-white" /></Field>
-                <Field label="Tarih"><Input value={examForm.dateLabel} onChange={(event) => { setExamForm((v) => ({ ...v, dateLabel: event.target.value })); touch(); }} placeholder="25 Mayıs 2026" className="border-white/10 bg-white/5 text-white" /></Field>
-                <Field label="Süre"><Input value={examForm.duration} onChange={(event) => { setExamForm((v) => ({ ...v, duration: event.target.value })); touch(); }} className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Sınıf">
+                  <Select value={examForm.className} onValueChange={updateExamClassName} disabled={classOptionsLoading || teacherClassOptions.length === 0}>
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                      <SelectValue placeholder={classOptionsLoading ? 'Sınıflar yükleniyor...' : 'Sınıf seç'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teacherClassOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
+                <Field label="Tarih"><Input type="date" value={examForm.dateLabel} onChange={(event) => { setExamForm((v) => ({ ...v, dateLabel: event.target.value })); touch(); }} className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Süre">
+                  <Select value={examForm.duration} onValueChange={updateExamDuration}>
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {EXAM_DURATION_OPTIONS.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
                 <div className="flex items-end"><Button onClick={publishExam} disabled={saving} className="w-full bg-emerald-600 text-white hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" />Sınavı Yayınla</Button></div>
-                <Field label="Başlama Saati"><Input value={examForm.startTime} onChange={(event) => { setExamForm((v) => ({ ...v, startTime: event.target.value })); touch(); }} placeholder="10:00" className="border-white/10 bg-white/5 text-white" /></Field>
-                <Field label="Bitiş Saati"><Input value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} placeholder="11:20" className="border-white/10 bg-white/5 text-white" /></Field>
-                <Field label="Geç Giriş Limiti"><Input value={examForm.lateEntryLimitMinutes} onChange={(event) => { setExamForm((v) => ({ ...v, lateEntryLimitMinutes: event.target.value })); touch(); }} placeholder="5" className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Başlama Saati"><Input type="time" value={examForm.startTime} onChange={(event) => { setExamForm((v) => ({ ...v, startTime: event.target.value })); touch(); }} className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Bitiş Saati"><Input type="time" value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} className="border-white/10 bg-white/5 text-white" /></Field>
+                <Field label="Geç Giriş Limiti">
+                  <Select value={examForm.lateEntryLimitMinutes} onValueChange={updateLateEntryLimit}>
+                    <SelectTrigger className="border-white/10 bg-white/5 text-white"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {LATE_ENTRY_LIMIT_OPTIONS.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </Field>
                 <Field label="Toplam Puan"><Input value={examForm.totalPoint} onChange={(event) => { setExamForm((v) => ({ ...v, totalPoint: event.target.value })); touch(); }} placeholder="100" className="border-white/10 bg-white/5 text-white" /></Field>
                 {searchParams.get('type') !== 'MockExam' ? (
                   <Field label="Sınav Türü (not girişi etiketi)"><Input value={examForm.type} onChange={(event) => { setExamForm((v) => ({ ...v, type: event.target.value })); touch(); }} placeholder="1. Yazılı" className="border-white/10 bg-white/5 text-white" /></Field>
@@ -608,7 +695,20 @@ export default function TeacherQuestionStudio() {
             <Field label="Kazanım"><Input value={settings.outcome} onChange={(event) => updateSetting('outcome', event.target.value)} className="border-white/10 bg-white/5 text-white" /></Field>
             <Field label="Zorluk Seviyesi"><div className="grid grid-cols-3 gap-2">{['Kolay', 'Orta', 'Zor'].map((item) => <button key={item} type="button" onClick={() => updateSetting('difficulty', item)} className={`rounded-2xl border px-3 py-2 text-sm font-bold ${settings.difficulty === item ? 'border-orange-400 bg-orange-500/20 text-orange-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>{item}</button>)}</div></Field>
             <div className="grid grid-cols-2 gap-3"><Field label="Puan"><Input value={settings.point} onChange={(event) => updateSetting('point', event.target.value)} className="border-white/10 bg-white/5 text-white" /></Field><Field label="Süre (sn)"><Input value={settings.estimatedSeconds} onChange={(event) => updateSetting('estimatedSeconds', event.target.value)} className="border-white/10 bg-white/5 text-white" /></Field></div>
-            <Field label="Sınıf"><Input value={settings.classLevel} onChange={(event) => updateSetting('classLevel', event.target.value)} className="border-white/10 bg-white/5 text-white" /></Field>
+            <Field label="Sınıf">
+              {isExamMode ? (
+                <Select value={settings.classLevel} onValueChange={updateExamClassName} disabled={classOptionsLoading || teacherClassOptions.length === 0}>
+                  <SelectTrigger className="border-white/10 bg-white/5 text-white">
+                    <SelectValue placeholder={classOptionsLoading ? 'Sınıflar yükleniyor...' : 'Sınıf seç'} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {teacherClassOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={settings.classLevel} onChange={(event) => updateSetting('classLevel', event.target.value)} className="border-white/10 bg-white/5 text-white" />
+              )}
+            </Field>
             <Field label="Etiketler"><Input value={settings.tags} onChange={(event) => updateSetting('tags', event.target.value)} className="border-white/10 bg-white/5 text-white" /></Field>
             <Field label="Açıklama"><Textarea value={settings.description} onChange={(event) => updateSetting('description', event.target.value)} className="min-h-[80px] border-white/10 bg-white/5 text-white" /></Field>
             <Field label="Yayın Durumu"><Select value={settings.publishStatus} onValueChange={(value) => updateSetting('publishStatus', value)}><SelectTrigger className="border-white/10 bg-white/5 text-white"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Published">Yayında</SelectItem><SelectItem value="Draft">Taslak</SelectItem></SelectContent></Select></Field>
