@@ -1,102 +1,89 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
-import { CheckSquare2, Plus, Trash2 } from 'lucide-react';
+import { CheckSquare2, Plus, Play, Check, Clock3, AlertTriangle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchPlatformConfigurations, upsertPlatformConfiguration } from '../../lib/api/modules';
-import { fetchAdminDashboardData } from '../../lib/api/dashboardData';
+import { fetchAdminTasks, createAdminTask, updateAdminTaskStatus } from '../../lib/api/modules';
+
+const STATUS = [
+  ['Open', 'Açık'],
+  ['InProgress', 'Devam Ediyor'],
+  ['Done', 'Tamamlandı'],
+];
+const PRIORITIES = ['Düşük', 'Normal', 'Yüksek', 'Acil'];
+
+function dueInfo(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
+  if (days < 0) return { tone: 'text-red-600', label: 'Gecikti', icon: AlertTriangle };
+  if (days <= 3) return { tone: 'text-amber-600', label: `${days} gün`, icon: Clock3 };
+  return { tone: 'text-muted-foreground', label: date.toLocaleDateString('tr-TR'), icon: Clock3 };
+}
 
 export default function AdminTaskCenter() {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [data, setData] = useState(null);
-  const [savedTasks, setSavedTasks] = useState([]);
-  const [detailTask, setDetailTask] = useState(null);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [form, setForm] = useState({ title: '', detail: '', route: '/admin/task-center', priority: 'Orta' });
+  const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ title: '', description: '', category: 'Genel', assignedToName: '', priority: 'Normal', dueDate: '' });
 
-  const loadTasks = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [dashboard, configs] = await Promise.all([
-        fetchAdminDashboardData(),
-        fetchPlatformConfigurations('admin-task-center').catch(() => []),
-      ]);
-      const manual = (configs || []).flatMap((item) => {
-        try {
-          const parsed = JSON.parse(item.payloadJson || '{}');
-          return parsed?.tasks ? parsed.tasks : [];
-        } catch {
-          return [];
-        }
-      });
-      setData(dashboard);
-      setSavedTasks(manual);
+      setTasks(await fetchAdminTasks());
     } catch (err) {
-      setError(err.message || 'Görev merkezi alınamadı.');
+      setError(err.message || 'Görevler alınamadı.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { loadTasks(); }, [loadTasks]);
+  useEffect(() => { load(); }, [load]);
 
-  const tasks = useMemo(() => [
-    ...(data?.pendingItems || []).map((item) => ({ id: item.id, title: item.studentName, detail: item.question, type: 'Mesaj', route: '/chat' })),
-    ...(data?.activities || []).map((item) => ({ id: item.id, title: item.message, detail: item.time, type: 'Duyuru', route: '/admin/announcements' })),
-    ...savedTasks,
-  ].slice(0, 20), [data, savedTasks]);
+  const byStatus = useMemo(() => {
+    const map = { Open: [], InProgress: [], Done: [], Cancelled: [] };
+    tasks.forEach((t) => { (map[t.status] || (map[t.status] = [])).push(t); });
+    return map;
+  }, [tasks]);
 
-  const persistTasks = async (nextTasks) => {
-    await upsertPlatformConfiguration({
-      configurationType: 'admin-task-center',
-      scopeKey: 'global',
-      displayName: 'ADMIN_TASK_CENTER',
-      payloadJson: JSON.stringify({ tasks: nextTasks }),
-    });
-    setSavedTasks(nextTasks);
+  const create = async () => {
+    if (!form.title.trim()) { toast({ title: 'Başlık zorunlu.', variant: 'destructive' }); return; }
+    try {
+      setBusy(true);
+      await createAdminTask({
+        title: form.title.trim(),
+        description: form.description.trim() || null,
+        category: form.category.trim() || 'Genel',
+        assignedToName: form.assignedToName.trim() || null,
+        priority: form.priority,
+        dueDate: form.dueDate || null,
+      });
+      toast({ title: 'Görev oluşturuldu' });
+      setForm({ title: '', description: '', category: 'Genel', assignedToName: '', priority: 'Normal', dueDate: '' });
+      await load();
+    } catch (err) {
+      toast({ title: 'Görev oluşturulamadı', description: err.message, variant: 'destructive' });
+    } finally { setBusy(false); }
   };
 
-  const handleCreateTask = async () => {
-    const nextTask = {
-      id: `manual-${Date.now()}`,
-      title: form.title,
-      detail: form.detail,
-      type: form.priority,
-      route: form.route,
-    };
-    const nextTasks = [nextTask, ...savedTasks];
+  const setStatus = async (item, status) => {
     try {
-      await persistTasks(nextTasks);
-      setCreateOpen(false);
-      setForm({ title: '', detail: '', route: '/admin/task-center', priority: 'Orta' });
-      toast({ title: 'Görev oluşturuldu', description: 'Yeni görev backend üzerinde kaydedildi.' });
+      setBusy(true);
+      const updated = await updateAdminTaskStatus(item.id, status);
+      setTasks((prev) => prev.map((t) => (t.id === item.id ? { ...t, ...updated } : t)));
     } catch (err) {
-      toast({ title: 'Görev oluşturulamadı', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
-    }
-  };
-
-  const handleDeleteTask = async (taskId) => {
-    try {
-      const nextTasks = savedTasks.filter((item) => item.id !== taskId);
-      await persistTasks(nextTasks);
-      setDetailTask(null);
-      toast({ title: 'Görev silindi', description: 'Görev listesi güncellendi.' });
-    } catch (err) {
-      toast({ title: 'Görev silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
-    }
+      toast({ title: 'Güncellenemedi', description: err.message, variant: 'destructive' });
+    } finally { setBusy(false); }
   };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
@@ -104,80 +91,58 @@ export default function AdminTaskCenter() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-task-center-page">
       <div>
-        <h1 className="text-3xl font-bold font-heading">Görev Merkezi</h1>
-        <p className="text-muted-foreground mt-1">Anlık yönetici görev kuyruğu</p>
+        <h1 className="text-3xl font-bold font-heading flex items-center gap-2"><CheckSquare2 className="h-7 w-7 text-brand-primary" />Görev / İş Takip Merkezi</h1>
+        <p className="text-muted-foreground mt-1">İdari görevleri ata, son tarih (SLA) ver, durumlarını takip et.</p>
       </div>
-      <div className="flex justify-end">
-        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Görev
-        </Button>
-      </div>
-      {error ? <ErrorBanner title="Görev merkezi alınamadı" message={error} onRetry={loadTasks} /> : null}
+      {error ? <ErrorBanner title="Görevler alınamadı" message={error} onRetry={load} /> : null}
+
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><CheckSquare2 className="h-5 w-5 text-brand-primary" />Görevler</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {tasks.map((task) => (
-            <button type="button" key={task.id} className="w-full rounded-xl border p-4 flex items-center justify-between gap-4 text-left hover:bg-muted/40 transition-colors" onClick={() => setDetailTask(task)}>
-              <div>
-                <p className="font-medium">{task.title}</p>
-                <p className="text-sm text-muted-foreground">{task.detail}</p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{task.type}</Badge>
-                <Button variant="outline" size="sm" onClick={() => navigate(task.route)}>Git</Button>
-              </div>
-            </button>
-          ))}
+        <CardHeader><CardTitle className="flex items-center gap-2"><Plus className="h-4 w-4" />Yeni Görev</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <Input placeholder="Başlık" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <Input placeholder="Atanan kişi" value={form.assignedToName} onChange={(e) => setForm((f) => ({ ...f, assignedToName: e.target.value }))} />
+          <Input placeholder="Kategori" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} />
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.priority} onChange={(e) => setForm((f) => ({ ...f, priority: e.target.value }))}>
+            {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+          </select>
+          <div>
+            <label className="text-xs text-muted-foreground">Son tarih</label>
+            <Input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} />
+          </div>
+          <Textarea className="md:col-span-2" placeholder="Açıklama" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+          <div className="md:col-span-2 flex justify-end"><Button onClick={create} disabled={busy}>Görev Ekle</Button></div>
         </CardContent>
       </Card>
 
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Yeni Görev Oluştur</DialogTitle>
-            <DialogDescription>Yönetici ve idari ekip için kalıcı görev kaydı oluşturun.</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Görev başlığı</Label>
-              <Input value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Detay</Label>
-              <Textarea value={form.detail} onChange={(e) => setForm((prev) => ({ ...prev, detail: e.target.value }))} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleCreateTask}>Kaydet</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!detailTask} onOpenChange={(open) => !open && setDetailTask(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{detailTask?.title || 'Görev detayı'}</DialogTitle>
-            <DialogDescription>Görev içeriği ve ilgili işlem akışı.</DialogDescription>
-          </DialogHeader>
-          {detailTask ? <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">{detailTask.detail}</div> : null}
-          <DialogFooter className="sm:justify-between">
-            <Button variant="outline" onClick={() => detailTask && navigate(detailTask.route)}>İlgili Modülü Aç</Button>
-            <div className="flex gap-2">
-              {String(detailTask?.id || '').startsWith('manual-') ? (
-                <Button variant="destructive" onClick={() => handleDeleteTask(detailTask.id)}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Sil
-                </Button>
-              ) : null}
-              <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDetailTask(null)}>Kapat</Button>
-            </div>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="grid gap-4 lg:grid-cols-3">
+        {STATUS.map(([key, label]) => (
+          <Card key={key}>
+            <CardHeader><CardTitle className="text-base flex items-center justify-between">{label}<Badge variant="outline">{(byStatus[key] || []).length}</Badge></CardTitle></CardHeader>
+            <CardContent className="space-y-3">
+              {(byStatus[key] || []).length === 0 ? <p className="text-sm text-muted-foreground">—</p>
+                : byStatus[key].map((item) => {
+                  const due = dueInfo(item.dueDateUtc);
+                  return (
+                    <div key={item.id} className="rounded-xl border p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="font-semibold text-sm">{item.title}</p>
+                        {item.priority && item.priority !== 'Normal' ? <Badge className="bg-amber-100 text-amber-700 text-[10px]">{item.priority}</Badge> : null}
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {item.assignedToName || 'Atanmadı'} • {item.category}
+                        {due ? <span className={`ml-2 inline-flex items-center gap-1 ${due.tone}`}><due.icon className="h-3 w-3" />{due.label}</span> : null}
+                      </p>
+                      <div className="mt-2 flex gap-2">
+                        {key !== 'InProgress' && key !== 'Done' ? <Button size="sm" variant="outline" disabled={busy} onClick={() => setStatus(item, 'InProgress')}><Play className="mr-1 h-3 w-3" />Başlat</Button> : null}
+                        {key !== 'Done' ? <Button size="sm" disabled={busy} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => setStatus(item, 'Done')}><Check className="mr-1 h-3 w-3" />Tamamla</Button> : null}
+                      </div>
+                    </div>
+                  );
+                })}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </motion.div>
   );
 }

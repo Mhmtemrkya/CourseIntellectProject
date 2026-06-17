@@ -457,6 +457,21 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
+export async function fetchAdminTasks(params) {
+  const response = await api.get('/api/admin-tasks', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createAdminTask(payload) {
+  const response = await api.post('/api/admin-tasks', payload);
+  return response;
+}
+
+export async function updateAdminTaskStatus(id, status) {
+  const response = await api.post(`/api/admin-tasks/${id}/status`, { status });
+  return response;
+}
+
 export async function fetchAdminDocuments(params) {
   const response = await api.get('/api/admin-documents', { params });
   return Array.isArray(response) ? response : [];

@@ -49,6 +49,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<StaffLeaveRequest> StaffLeaveRequests => Set<StaffLeaveRequest>();
     public DbSet<StaffAssetAssignment> StaffAssetAssignments => Set<StaffAssetAssignment>();
     public DbSet<AdminDocument> AdminDocuments => Set<AdminDocument>();
+    public DbSet<AdminTask> AdminTasks => Set<AdminTask>();
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
     public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
     public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
@@ -392,6 +393,21 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.EntityId).HasMaxLength(120);
             entity.Property(x => x.Detail).HasMaxLength(2000);
             entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+        });
+
+        modelBuilder.Entity<AdminTask>(entity =>
+        {
+            entity.ToTable("admin_tasks");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(220).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(2000);
+            entity.Property(x => x.Category).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.AssignedToName).HasMaxLength(150);
+            entity.Property(x => x.Priority).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.CreatedByName).HasMaxLength(150);
+            entity.HasIndex(x => new { x.TenantId, x.Status });
         });
 
         modelBuilder.Entity<AdminDocument>(entity =>
