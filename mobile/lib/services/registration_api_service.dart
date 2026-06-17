@@ -48,6 +48,12 @@ class RegistrationApiService {
     required String parentEmail,
     required String address,
     required String note,
+    double? enrollmentGrossAmount,
+    double? enrollmentDiscountAmount,
+    String? enrollmentDiscountReason,
+    double? enrollmentDownPayment,
+    int? enrollmentInstallmentCount,
+    String? academicYear,
   }) async {
     final response = await _authorizedPost(
       '/api/students',
@@ -64,6 +70,12 @@ class RegistrationApiService {
         'parentEmail': parentEmail,
         'address': address,
         'note': note,
+        'enrollmentGrossAmount': ?enrollmentGrossAmount,
+        'enrollmentDiscountAmount': ?enrollmentDiscountAmount,
+        'enrollmentDiscountReason': ?enrollmentDiscountReason,
+        'enrollmentDownPayment': ?enrollmentDownPayment,
+        'enrollmentInstallmentCount': ?enrollmentInstallmentCount,
+        'academicYear': ?academicYear,
       },
     );
 

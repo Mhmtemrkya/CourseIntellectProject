@@ -6,7 +6,9 @@ import 'accounting_exports_page.dart';
 import 'accounting_home_page.dart';
 import 'accounting_overdue_page.dart';
 import 'accounting_receipts_page.dart';
+import 'student_finance_account_page.dart';
 import '../services/accounting_finance_store.dart';
+import '../services/student_finance_api_service.dart';
 import '../widgets/admin_ui.dart';
 
 class AdminFinancePage extends StatefulWidget {
@@ -18,19 +20,169 @@ class AdminFinancePage extends StatefulWidget {
 
 class _AdminFinancePageState extends State<AdminFinancePage> {
   final _store = AccountingFinanceStore.instance;
+  final _studentSearchController = TextEditingController();
+  Map<String, dynamic>? _financeDash;
+  bool _sendingReminders = false;
 
   @override
   void initState() {
     super.initState();
     _store.addListener(_refresh);
     _store.loadDashboard();
+    _loadFinanceDashboard();
+  }
+
+  Future<void> _loadFinanceDashboard() async {
+    try {
+      final data = await StudentFinanceApiService.instance.getDashboard();
+      if (mounted) setState(() => _financeDash = data);
+    } catch (_) {
+      // Sessizce geç; yeni finans modeli verisi yoksa kart gizlenir.
+    }
   }
 
   @override
   void dispose() {
     _store.removeListener(_refresh);
+    _studentSearchController.dispose();
     super.dispose();
   }
+
+  String _tl(dynamic value) {
+    final number = (value is num) ? value : double.tryParse('$value') ?? 0;
+    return '${number.toStringAsFixed(0)} ₺';
+  }
+
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _sendReminders() async {
+    setState(() => _sendingReminders = true);
+    try {
+      final r = await StudentFinanceApiService.instance.sendReminders();
+      _snack('${r['notified'] ?? 0} bilgilendirme gönderildi (${r['overdueCount'] ?? 0} geciken).');
+    } catch (e) {
+      _snack('Hatırlatma gönderilemedi: $e');
+    } finally {
+      if (mounted) setState(() => _sendingReminders = false);
+    }
+  }
+
+  void _openAccount() {
+    final name = _studentSearchController.text.trim();
+    if (name.isEmpty) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => StudentFinanceAccountPage(studentName: name)),
+    );
+  }
+
+  Future<void> _payrollDialog() async {
+    final controller = TextEditingController();
+    Map<String, dynamic>? result;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('Bordro Hesapla'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: controller,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(hintText: 'Brüt maaş (₺)'),
+              ),
+              if (result != null) ...[
+                const SizedBox(height: 12),
+                _kv('Net', _tl(result!['net'])),
+                _kv('SGK İşçi', _tl(result!['sgkEmployee'])),
+                _kv('Gelir Vergisi', _tl(result!['incomeTax'])),
+                _kv('İşveren Maliyeti', _tl(result!['totalEmployerCost'])),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Kapat')),
+            ElevatedButton(
+              onPressed: () async {
+                final gross = double.tryParse(controller.text.trim());
+                if (gross == null || gross <= 0) return;
+                final r = await StudentFinanceApiService.instance.calculatePayroll(gross);
+                setLocal(() => result = r);
+              },
+              child: const Text('Hesapla'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _eInvoiceDialog() async {
+    final nameC = TextEditingController();
+    final amountC = TextEditingController();
+    final vatC = TextEditingController(text: '20');
+    Map<String, dynamic>? result;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setLocal) => AlertDialog(
+          title: const Text('e-Fatura Kes'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: nameC, decoration: const InputDecoration(hintText: 'Müşteri / öğrenci')),
+              TextField(controller: amountC, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Tutar (KDV dahil)')),
+              TextField(controller: vatC, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'KDV %')),
+              if (result != null) ...[
+                const SizedBox(height: 12),
+                _kv('Net', _tl(result!['netAmount'])),
+                _kv('KDV', _tl(result!['vatAmount'])),
+                _kv('Toplam', _tl(result!['grossAmount'])),
+                _kv('ETTN', '${result!['ettn']}'),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Kapat')),
+            ElevatedButton(
+              onPressed: () async {
+                final amount = double.tryParse(amountC.text.trim());
+                if (amount == null || amount <= 0) return;
+                final r = await StudentFinanceApiService.instance.issueEInvoice(
+                  studentName: nameC.text.trim(),
+                  amount: amount,
+                  vatRate: double.tryParse(vatC.text.trim()) ?? 0,
+                );
+                setLocal(() => result = r);
+              },
+              child: const Text('Kes'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _dashMetric(String label, String value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        ],
+      );
+
+  Widget _kv(String k, String v) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [Text(k, style: const TextStyle(color: Colors.grey)), Text(v, style: const TextStyle(fontWeight: FontWeight.w700))],
+        ),
+      );
 
   void _refresh() {
     if (mounted) {
@@ -167,6 +319,73 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
               ),
             ),
           ),
+          if (_financeDash != null) ...[
+            const SizedBox(height: 18),
+            const AdminSectionTitle(title: 'Kayıt Finansmanı (Öğrenci Cari)'),
+            const SizedBox(height: 12),
+            AdminPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: _dashMetric('Tahsilat Oranı', '%${_financeDash!['collectionRatePercent'] ?? 0}')),
+                      Expanded(child: _dashMetric('Kalan Alacak', _tl(_financeDash!['outstandingTotal']))),
+                      Expanded(child: _dashMetric('Geciken', _tl(_financeDash!['overdueTotal']))),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Text('Yaşlandırma (Aging)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  const SizedBox(height: 6),
+                  ...((_financeDash!['aging'] as List<dynamic>? ?? []).map((raw) {
+                    final b = Map<String, dynamic>.from(raw as Map);
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 2),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('${b['label']} (${b['count']})'),
+                          Text(_tl(b['amount']), style: const TextStyle(fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    );
+                  })),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _sendingReminders ? null : _sendReminders,
+                      icon: const Icon(Icons.notifications_active_outlined),
+                      label: Text(_sendingReminders ? 'Gönderiliyor...' : 'Ödeme Hatırlatması Gönder'),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _studentSearchController,
+                          decoration: const InputDecoration(hintText: 'Öğrenci adıyla cari aç', isDense: true),
+                          onSubmitted: (_) => _openAccount(),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      FilledButton(onPressed: _openAccount, child: const Text('Aç')),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      OutlinedButton.icon(onPressed: _payrollDialog, icon: const Icon(Icons.calculate_outlined), label: const Text('Bordro Hesapla')),
+                      OutlinedButton.icon(onPressed: _eInvoiceDialog, icon: const Icon(Icons.receipt_long_outlined), label: const Text('e-Fatura Kes')),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           const AdminSectionTitle(title: 'Finans Aksiyonlari'),
           const SizedBox(height: 12),

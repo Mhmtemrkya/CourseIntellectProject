@@ -35,6 +35,12 @@ class _AdminStudentRegistrationPageState
   final _parentEmailController = TextEditingController();
   final _addressController = TextEditingController();
   final _noteController = TextEditingController();
+  final _academicYearController = TextEditingController();
+  final _grossAmountController = TextEditingController();
+  final _discountAmountController = TextEditingController();
+  final _discountReasonController = TextEditingController();
+  final _downPaymentController = TextEditingController();
+  final _installmentCountController = TextEditingController();
 
   String _programType = 'Lise';
   List<String> _classOptions = const [];
@@ -71,6 +77,12 @@ class _AdminStudentRegistrationPageState
     _parentEmailController.dispose();
     _addressController.dispose();
     _noteController.dispose();
+    _academicYearController.dispose();
+    _grossAmountController.dispose();
+    _discountAmountController.dispose();
+    _discountReasonController.dispose();
+    _downPaymentController.dispose();
+    _installmentCountController.dispose();
     super.dispose();
   }
 
@@ -281,6 +293,72 @@ class _AdminStudentRegistrationPageState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const AdminSectionTitle(title: 'Kayıt Ücreti & Taksit Planı'),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Tutar girilirse kayıtta otomatik sözleşme ve taksit planı oluşturulur. Boş bırakılırsa finans kaydı oluşturulmaz.',
+                    style: TextStyle(fontSize: 12, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 12),
+                  _buildField(
+                    controller: _grossAmountController,
+                    label: 'Toplam Ücret (₺)',
+                    required: false,
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildField(
+                          controller: _discountAmountController,
+                          label: 'İndirim (₺)',
+                          required: false,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildField(
+                          controller: _discountReasonController,
+                          label: 'İndirim Sebebi',
+                          required: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildField(
+                          controller: _downPaymentController,
+                          label: 'Peşinat (₺)',
+                          required: false,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildField(
+                          controller: _installmentCountController,
+                          label: 'Taksit Sayısı',
+                          required: false,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  _buildField(
+                    controller: _academicYearController,
+                    label: 'Akademik Yıl (örn: 2025-2026)',
+                    required: false,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            AdminPanel(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   const AdminSectionTitle(title: 'Önizleme ve Ek Kontroller'),
                   const SizedBox(height: 12),
                   _previewTile('Kayıt Tipi', 'Kurumsal tam kayıt'),
@@ -404,6 +482,18 @@ class _AdminStudentRegistrationPageState
         parentEmail: _parentEmailController.text.trim(),
         address: _addressController.text.trim(),
         note: _noteController.text.trim(),
+        academicYear: _academicYearController.text.trim().isEmpty
+            ? null
+            : _academicYearController.text.trim(),
+        enrollmentGrossAmount: double.tryParse(_grossAmountController.text.trim()),
+        enrollmentDiscountAmount:
+            double.tryParse(_discountAmountController.text.trim()),
+        enrollmentDiscountReason: _discountReasonController.text.trim().isEmpty
+            ? null
+            : _discountReasonController.text.trim(),
+        enrollmentDownPayment: double.tryParse(_downPaymentController.text.trim()),
+        enrollmentInstallmentCount:
+            int.tryParse(_installmentCountController.text.trim()),
       );
       await AnnouncementStore.instance.addAnnouncement(
         title: '${_fullNameController.text.trim()} kaydı tamamlandı',
