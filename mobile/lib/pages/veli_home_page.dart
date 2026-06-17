@@ -17,6 +17,7 @@ import 'veli_mesajlar_page.dart';
 import 'veli_meeting_request_page.dart';
 import 'veli_odeme_page.dart';
 import 'veli_finance_page.dart';
+import 'veli_requests_page.dart';
 import 'veli_online_odeme_page.dart';
 import 'veli_receipt_archive_page.dart';
 import 'veli_support_plan_page.dart';
@@ -340,6 +341,13 @@ class _VeliHomePageState extends State<VeliHomePage> {
         ),
         const SizedBox(height: 12),
         _attendanceCard(context),
+        const SizedBox(height: 18),
+        _sectionTitle(
+          context,
+          title: 'Talepler ve onaylar',
+          actionLabel: 'Taleplerim',
+          onAction: () => _openPage(context, const VeliRequestsPage()),
+        ),
         const SizedBox(height: 18),
         _sectionTitle(
           context,

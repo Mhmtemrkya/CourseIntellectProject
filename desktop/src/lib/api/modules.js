@@ -447,6 +447,11 @@ export async function createApproval(payload) {
   return response;
 }
 
+export async function fetchMyApprovals() {
+  const response = await api.get('/api/approvals/mine');
+  return Array.isArray(response) ? response : [];
+}
+
 export async function decideApproval(id, payload) {
   const response = await api.post(`/api/approvals/${id}/decide`, payload);
   return response;

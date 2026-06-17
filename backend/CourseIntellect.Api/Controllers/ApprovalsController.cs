@@ -20,6 +20,18 @@ public sealed class ApprovalsController(IApprovalService approvalService) : Cont
         return Ok(await approvalService.GetAsync(status, category, cancellationToken));
     }
 
+    [HttpGet("mine")]
+    public async Task<IActionResult> GetMine(CancellationToken cancellationToken)
+    {
+        var userId = CurrentUserId();
+        if (userId is null)
+        {
+            return Ok(Array.Empty<object>());
+        }
+
+        return Ok(await approvalService.GetByRequesterAsync(userId.Value, cancellationToken));
+    }
+
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateApprovalRequest request, CancellationToken cancellationToken)
     {

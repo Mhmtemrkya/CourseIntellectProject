@@ -801,6 +801,12 @@ const menuConfigs = {
       color: "#f97316",
     },
     {
+      path: "/p/requests",
+      icon: FileText,
+      label: "Taleplerim",
+      color: "#6366f1",
+    },
+    {
       path: "/p/announcements",
       icon: Bell,
       label: "Duyurular",

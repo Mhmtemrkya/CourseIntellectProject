@@ -126,6 +126,17 @@ public sealed class ApprovalService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<ApprovalRequestDto>> GetByRequesterAsync(
+        Guid requesterUserId,
+        CancellationToken cancellationToken = default)
+    {
+        return await dbContext.ApprovalRequests.AsNoTracking()
+            .Where(item => item.RequesterUserId == requesterUserId)
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Select(item => Map(item))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<ApprovalRequestDto?> DecideAsync(
         Guid id,
         ApprovalDecisionRequest decision,

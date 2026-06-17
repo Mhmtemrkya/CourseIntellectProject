@@ -15,6 +15,10 @@ public interface IApprovalService
         string? category,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<ApprovalRequestDto>> GetByRequesterAsync(
+        Guid requesterUserId,
+        CancellationToken cancellationToken = default);
+
     Task<ApprovalRequestDto?> DecideAsync(
         Guid id,
         ApprovalDecisionRequest decision,
