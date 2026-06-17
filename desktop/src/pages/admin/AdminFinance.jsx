@@ -12,10 +12,13 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
 import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
+import { PayrollCalculatorDialog, ReconciliationDialog, EInvoiceDialog } from '../../components/finance/FinanceToolsDialogs';
 import { fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 
 function tl(value) {
@@ -42,6 +45,9 @@ export default function AdminFinance() {
   const [dashboard, setDashboard] = useState(null);
   const [enrollmentFinance, setEnrollmentFinance] = useState(null);
   const [sendingReminders, setSendingReminders] = useState(false);
+  const [activeTool, setActiveTool] = useState(null);
+  const [accountStudent, setAccountStudent] = useState(null);
+  const [studentSearch, setStudentSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -259,17 +265,48 @@ export default function AdminFinance() {
                 <p className="mb-2 text-sm text-muted-foreground">En Yüksek Borçlular</p>
                 <div className="space-y-2">
                   {enrollmentFinance.topDebtors.slice(0, 5).map((debtor) => (
-                    <div key={debtor.studentName} className="flex items-center justify-between text-sm">
+                    <button
+                      type="button"
+                      key={debtor.studentName}
+                      onClick={() => setAccountStudent(debtor.studentName)}
+                      className="flex w-full items-center justify-between rounded-lg px-2 py-1 text-left text-sm transition hover:bg-brand-primary/10"
+                    >
                       <span>{debtor.studentName} <span className="text-muted-foreground">{debtor.className}</span></span>
                       <span className="font-semibold text-red-600">{tl(debtor.balance)}</span>
-                    </div>
+                    </button>
                   ))}
+                </div>
+                <div className="mt-3 flex gap-2 border-t pt-3">
+                  <Input
+                    placeholder="Öğrenci adıyla cari aç..."
+                    value={studentSearch}
+                    onChange={(e) => setStudentSearch(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && studentSearch.trim()) setAccountStudent(studentSearch.trim()); }}
+                  />
+                  <Button variant="outline" onClick={() => studentSearch.trim() && setAccountStudent(studentSearch.trim())}>Aç</Button>
                 </div>
               </div>
             ) : null}
           </CardContent>
         </Card>
       ) : null}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Finans Araçları</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 sm:grid-cols-3">
+          <Button variant="outline" className="justify-start" onClick={() => setActiveTool('payroll')}>
+            <CreditCard className="mr-2 h-4 w-4" /> Bordro Hesapla
+          </Button>
+          <Button variant="outline" className="justify-start" onClick={() => setActiveTool('reconcile')}>
+            <Receipt className="mr-2 h-4 w-4" /> Banka/POS Mutabakatı
+          </Button>
+          <Button variant="outline" className="justify-start" onClick={() => setActiveTool('einvoice')}>
+            <Wallet className="mr-2 h-4 w-4" /> e-Fatura Kes
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
@@ -288,6 +325,13 @@ export default function AdminFinance() {
           {stats.collections.length === 0 ? <p className="text-sm text-muted-foreground">Tahsilat kaydı bulunamadı.</p> : null}
         </CardContent>
       </Card>
+
+      {accountStudent ? (
+        <StudentFinanceAccountDialog studentName={accountStudent} onClose={() => { setAccountStudent(null); loadDashboard(); }} />
+      ) : null}
+      {activeTool === 'payroll' ? <PayrollCalculatorDialog onClose={() => setActiveTool(null)} /> : null}
+      {activeTool === 'reconcile' ? <ReconciliationDialog onClose={() => setActiveTool(null)} /> : null}
+      {activeTool === 'einvoice' ? <EInvoiceDialog onClose={() => setActiveTool(null)} /> : null}
     </motion.div>
   );
 }
