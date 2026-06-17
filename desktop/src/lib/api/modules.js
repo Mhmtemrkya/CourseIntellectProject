@@ -457,6 +457,16 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
+export async function fetchParentChildrenFinance() {
+  const response = await api.get('/api/parent/finance/children');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function parentPay(payload) {
+  const response = await api.post('/api/parent/finance/pay', payload);
+  return response;
+}
+
 export async function fetchAdminOverview() {
   const response = await api.get('/api/admin/overview');
   return response || {};

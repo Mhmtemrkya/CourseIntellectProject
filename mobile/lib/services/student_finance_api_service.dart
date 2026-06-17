@@ -71,6 +71,27 @@ class StudentFinanceApiService {
     return Map<String, dynamic>.from(result as Map);
   }
 
+  // Veli: kendi çocuklarının finans hesapları + ödeme.
+  Future<List<Map<String, dynamic>>> getParentChildrenFinance() async {
+    final result = await _get('/api/parent/finance/children');
+    return (result as List<dynamic>? ?? const [])
+        .map((item) => Map<String, dynamic>.from(item as Map))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> parentPay({
+    required String studentName,
+    required double amount,
+    String method = 'Online',
+  }) async {
+    final result = await _post('/api/parent/finance/pay', {
+      'studentName': studentName,
+      'amount': amount,
+      'method': method,
+    });
+    return Map<String, dynamic>.from(result as Map);
+  }
+
   Future<Map<String, dynamic>> getDashboard({String? className}) async {
     final result = await _get('/api/student-finance/dashboard', {
       if (className != null && className.isNotEmpty) 'className': className,

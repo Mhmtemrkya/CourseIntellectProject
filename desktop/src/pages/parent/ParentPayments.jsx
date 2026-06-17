@@ -1,289 +1,164 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import {
-  Wallet, CreditCard, Calendar, CheckCircle, Clock, Download,
+  Wallet, CreditCard, CheckCircle2, Clock3, XCircle, Receipt, Loader2,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Progress } from '../../components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
-import { fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
 import { useToast } from '../../hooks/use-toast';
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
-import { Input } from '../../components/ui/input';
-import { Label } from '../../components/ui/label';
+import { fetchParentChildrenFinance, parentPay } from '../../lib/api/modules';
 
-function normalize(value = '') {
-  return String(value)
-    .toLowerCase()
-    .replaceAll('ç', 'c')
-    .replaceAll('ğ', 'g')
-    .replaceAll('ı', 'i')
-    .replaceAll('ö', 'o')
-    .replaceAll('ş', 's')
-    .replaceAll('ü', 'u')
-    .trim();
+const STATUS_META = {
+  Paid: ['Ödendi', 'text-emerald-600', CheckCircle2],
+  Partial: ['Kısmi', 'text-amber-600', Clock3],
+  Overdue: ['Gecikmiş', 'text-red-600', XCircle],
+  Pending: ['Bekliyor', 'text-muted-foreground', Clock3],
+};
+
+function tl(value, currency = 'TRY') {
+  return `${Number(value || 0).toLocaleString('tr-TR')} ${currency === 'TRY' ? '₺' : currency}`;
 }
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.1 } },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 },
-};
-
 export default function ParentPayments() {
-  const { user } = useApp();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [children, setChildren] = useState([]);
-  const [selectedChildKey, setSelectedChildKey] = useState('');
-  const [dashboard, setDashboard] = useState(null);
+  const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [paymentOpen, setPaymentOpen] = useState(false);
-  const [paymentForm, setPaymentForm] = useState({ cardName: '', cardNumber: '', expiry: '', cvv: '' });
+  const [payFor, setPayFor] = useState(null);
+  const [amount, setAmount] = useState('');
+  const [paying, setPaying] = useState(false);
 
-  const loadPayments = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [students, accounting] = await Promise.all([
-        fetchStudents(),
-        fetchAccountingDashboard(),
-      ]);
-      const linkedChildren = students.filter((item) => normalize(item.parentName) === normalize(user?.name) || normalize(item.parentEmail).includes(normalize(user?.username)));
-      setChildren(linkedChildren);
-      setSelectedChildKey(linkedChildren[0]?.username || linkedChildren[0]?.fullName || '');
-      setDashboard(accounting);
+      setAccounts(await fetchParentChildrenFinance());
     } catch (err) {
       setError(err.message || 'Ödeme verileri alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, []);
 
-  useEffect(() => {
-    loadPayments();
-  }, [loadPayments]);
+  useEffect(() => { load(); }, [load]);
 
-  const selectedChild = useMemo(() => children.find((child) => (child.username || child.fullName) === selectedChildKey) || children[0], [children, selectedChildKey]);
-  const installments = useMemo(() => (dashboard?.installments || []).filter((item) => normalize(item.student) === normalize(selectedChild?.fullName)), [dashboard, selectedChild]);
-  const collections = useMemo(() => (dashboard?.collections || []).filter((item) => normalize(item.name) === normalize(selectedChild?.fullName)), [dashboard, selectedChild]);
-
-  const summary = useMemo(() => {
-    const totalAmount = installments.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const paidAmount = collections.reduce((sum, item) => sum + Number(item.amount || 0), 0);
-    const remainingAmount = Math.max(0, totalAmount - paidAmount);
-    const nextPending = installments.find((item) => !String(item.status).toLowerCase().includes('odendi'));
-    return {
-      totalAmount,
-      paidAmount,
-      remainingAmount,
-      nextPaymentDate: nextPending?.due || null,
-      nextPaymentAmount: Number(nextPending?.amount || 0),
-    };
-  }, [collections, installments]);
-
-  const paidPercentage = summary.totalAmount > 0 ? Math.round((summary.paidAmount / summary.totalAmount) * 100) : 0;
-
-  const getStatusBadge = (status) => {
-    const text = String(status || '').toLowerCase();
-    if (text.includes('odendi')) return <Badge className="bg-green-100 text-green-700">Ödendi</Badge>;
-    if (text.includes('gec')) return <Badge className="bg-red-100 text-red-700">Gecikmiş</Badge>;
-    return <Badge className="bg-yellow-100 text-yellow-700">Bekliyor</Badge>;
+  const openPay = (account) => {
+    setPayFor(account);
+    setAmount(account.balance > 0 ? String(account.balance) : '');
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
-        <LoadingDots />
-        <p className="text-muted-foreground">Ödeme verileri yükleniyor...</p>
-      </div>
-    );
-  }
+  const submitPay = async () => {
+    const value = Number(amount);
+    if (!value || value <= 0) { toast({ title: 'Geçerli bir tutar girin.', variant: 'destructive' }); return; }
+    try {
+      setPaying(true);
+      const result = await parentPay({ studentName: payFor.studentName, amount: value, method: 'Online' });
+      toast({ title: 'Ödeme alındı', description: `${tl(value)} • Makbuz: ${result?.receiptNo || '-'}` });
+      setPayFor(null);
+      setAmount('');
+      await load();
+    } catch (err) {
+      toast({ title: 'Ödeme yapılamadı', description: err.message, variant: 'destructive' });
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="parent-payments-page">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold font-heading">Ödemeler</h1>
-          <p className="text-muted-foreground mt-1">Taksit planı ve ödeme geçmişi</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {children.length > 0 ? (
-            <Select value={selectedChildKey} onValueChange={setSelectedChildKey}>
-              <SelectTrigger className="w-56">
-                <SelectValue placeholder="Çocuk seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                {children.map((child) => (
-                  <SelectItem key={child.username || child.fullName} value={child.username || child.fullName}>
-                    {child.fullName} ({child.className})
-                  </SelectItem>
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="parent-payments-page">
+      <div>
+        <h1 className="text-3xl font-bold font-heading flex items-center gap-2"><Wallet className="h-7 w-7 text-brand-primary" />Ödemeler</h1>
+        <p className="text-muted-foreground mt-1">Çocuklarınızın kayıt ücreti, taksit planı ve kalan borcu; online ödeme ve makbuzlar.</p>
+      </div>
+      {error ? <ErrorBanner title="Ödeme verileri alınamadı" message={error} onRetry={load} /> : null}
+
+      {accounts.length === 0 || accounts.every((a) => (a.netTotal || 0) <= 0) ? (
+        <Card><CardContent className="p-10 text-center text-muted-foreground">Tanımlı bir kayıt ücreti / taksit planı bulunamadı.</CardContent></Card>
+      ) : accounts.map((account) => {
+        if ((account.netTotal || 0) <= 0) return null;
+        const currency = account.currency || 'TRY';
+        return (
+          <Card key={account.studentName}>
+            <CardHeader>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <CardTitle>{account.studentName}</CardTitle>
+                <Button onClick={() => openPay(account)} disabled={account.balance <= 0}>
+                  <CreditCard className="mr-2 h-4 w-4" />{account.balance > 0 ? 'Online Öde' : 'Borç Yok'}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {[
+                  ['Net', tl(account.netTotal, currency)],
+                  ['Ödenen', tl(account.paidTotal, currency)],
+                  ['Kalan', tl(account.balance, currency)],
+                  ['Geciken Taksit', account.overdueCount],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-xl border bg-muted/20 p-3">
+                    <p className="text-xs text-muted-foreground">{label}</p>
+                    <p className="mt-1 text-lg font-bold">{value}</p>
+                  </div>
                 ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-          <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-            <DialogTrigger asChild>
-              <Button className="bg-brand-primary hover:bg-brand-primary/90">Online Ödeme Yap</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Online Ödeme</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 py-2">
-                <div className="rounded-xl bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Ödenecek Tutar</p>
-                  <p className="mt-1 text-2xl font-bold">₺{summary.remainingAmount.toLocaleString('tr-TR')}</p>
-                </div>
+              </div>
+
+              <div>
+                <p className="mb-2 font-semibold">Taksitler</p>
                 <div className="space-y-2">
-                  <Label>Kart Sahibi</Label>
-                  <Input value={paymentForm.cardName} onChange={(e) => setPaymentForm((prev) => ({ ...prev, cardName: e.target.value }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Kart Numarası</Label>
-                  <Input value={paymentForm.cardNumber} onChange={(e) => setPaymentForm((prev) => ({ ...prev, cardNumber: e.target.value }))} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>SKT</Label>
-                    <Input value={paymentForm.expiry} onChange={(e) => setPaymentForm((prev) => ({ ...prev, expiry: e.target.value }))} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>CVV</Label>
-                    <Input value={paymentForm.cvv} onChange={(e) => setPaymentForm((prev) => ({ ...prev, cvv: e.target.value }))} />
-                  </div>
+                  {(account.installments || []).length === 0 ? <p className="text-sm text-muted-foreground">Taksit yok.</p>
+                    : account.installments.map((item) => {
+                      const [label, tone, Icon] = STATUS_META[item.status] || STATUS_META.Pending;
+                      return (
+                        <div key={item.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
+                          <span>{item.label || `${item.seqNo}. Taksit`} <span className="text-muted-foreground">{new Date(item.dueDateUtc).toLocaleDateString('tr-TR')}</span></span>
+                          <span className="flex items-center gap-3">
+                            <span>{tl(item.amount, currency)}</span>
+                            <span className={`inline-flex items-center gap-1 font-semibold ${tone}`}><Icon className="h-3.5 w-3.5" />{label}</span>
+                          </span>
+                        </div>
+                      );
+                    })}
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setPaymentOpen(false)}>Vazgeç</Button>
-                <Button
-                  onClick={() => {
-                    setPaymentOpen(false);
-                    toast({ title: 'Ödeme akışı başlatıldı', description: 'Makbuz ve ödeme özeti ekranı hazırlanıyor.' });
-                    navigate('/p/receipts');
-                  }}
-                >
-                  Ödemeyi Tamamla
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
 
-      {error ? <ErrorBanner title="Ödeme verileri alınamadı" message={error} onRetry={loadPayments} /> : null}
-
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        {[
-          [summary.totalAmount, 'Toplam Tutar', Wallet, 'text-brand-primary'],
-          [summary.paidAmount, 'Ödenen', CheckCircle, 'text-green-600'],
-          [summary.remainingAmount, 'Kalan', Clock, 'text-yellow-600'],
-          [summary.nextPaymentAmount, summary.nextPaymentDate ? new Date(summary.nextPaymentDate).toLocaleDateString('tr-TR') : 'Plan yok', Calendar, 'text-brand-accent'],
-        ].map(([value, label, Icon, color], index) => (
-          <motion.div variants={itemVariants} key={`${label}-${index}`}>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-muted">
-                  <Icon className={`h-6 w-6 ${color}`} />
-                </div>
+              {(account.payments || []).length > 0 ? (
                 <div>
-                  <p className="text-2xl font-bold">{typeof value === 'number' ? `₺${value.toLocaleString('tr-TR')}` : value}</p>
-                  <p className="text-sm text-muted-foreground">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-lg font-semibold">Ödeme İlerlemesi</span>
-              <span className="text-2xl font-bold text-brand-primary">%{paidPercentage}</span>
-            </div>
-            <Progress value={paidPercentage} className="h-4" />
-            <div className="flex justify-between mt-2 text-sm text-muted-foreground">
-              <span>Ödenen: ₺{summary.paidAmount.toLocaleString('tr-TR')}</span>
-              <span>Kalan: ₺{summary.remainingAmount.toLocaleString('tr-TR')}</span>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Taksit Planı</CardTitle>
-              <CardDescription>Seçili öğrenci için backend taksit kayıtları</CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Dönem</TableHead>
-                    <TableHead>Tutar</TableHead>
-                    <TableHead>Durum</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {installments.map((inst) => (
-                    <TableRow key={inst.id}>
-                      <TableCell className="font-medium">{inst.due}</TableCell>
-                      <TableCell>₺{Number(inst.amount || 0).toLocaleString('tr-TR')}</TableCell>
-                      <TableCell>{getStatusBadge(inst.status)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle>Ödeme Geçmişi</CardTitle>
-              <CardDescription>Gerçek tahsilat kayıtları</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {collections.map((payment) => (
-                <div key={payment.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                      <CreditCard className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium">₺{Number(payment.amount || 0).toLocaleString('tr-TR')}</p>
-                      <p className="text-sm text-muted-foreground">{payment.method} • {payment.note}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm">{payment.date || 'Tarih yok'}</p>
-                    <Button variant="ghost" size="sm" className="text-brand-accent" onClick={() => navigate('/p/receipts')}>
-                      <Download className="h-4 w-4 mr-1" /> Makbuz
-                    </Button>
+                  <p className="mb-2 font-semibold">Makbuzlar</p>
+                  <div className="space-y-2">
+                    {account.payments.map((item) => (
+                      <div key={item.id} className="flex items-center justify-between rounded-lg border bg-muted/20 p-3 text-sm">
+                        <span className="inline-flex items-center gap-2"><Receipt className="h-4 w-4 text-muted-foreground" />{item.receiptNo || 'Makbuz'} · {item.method} · {new Date(item.paidAtUtc).toLocaleDateString('tr-TR')}</span>
+                        <span className={`font-bold ${item.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{tl(item.amount, currency)}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
-              ))}
+              ) : null}
             </CardContent>
           </Card>
-        </motion.div>
-      </div>
+        );
+      })}
+
+      <Dialog open={!!payFor} onOpenChange={(open) => { if (!open) setPayFor(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Online Ödeme — {payFor?.studentName}</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">Kalan borç: <b>{tl(payFor?.balance, payFor?.currency)}</b></p>
+            <Input type="number" min="0" placeholder="Tutar" value={amount} onChange={(e) => setAmount(e.target.value)} />
+            <p className="text-xs text-muted-foreground">Ödeme en eski taksitten başlayarak mahsup edilir; makbuzunuz otomatik oluşur.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayFor(null)}>Vazgeç</Button>
+            <Button onClick={submitPay} disabled={paying}>{paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}Öde</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

@@ -16,6 +16,7 @@ import 'exam_analysis_page.dart';
 import 'veli_mesajlar_page.dart';
 import 'veli_meeting_request_page.dart';
 import 'veli_odeme_page.dart';
+import 'veli_finance_page.dart';
 import 'veli_online_odeme_page.dart';
 import 'veli_receipt_archive_page.dart';
 import 'veli_support_plan_page.dart';
@@ -317,7 +318,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
           context,
           title: 'Finans ve ödeme takibi',
           actionLabel: 'Ödemeler',
-          onAction: () => _openPage(context, const VeliOdemePage()),
+          onAction: () => _openPage(context, const VeliFinancePage()),
         ),
         const SizedBox(height: 12),
         _financeCard(context),
