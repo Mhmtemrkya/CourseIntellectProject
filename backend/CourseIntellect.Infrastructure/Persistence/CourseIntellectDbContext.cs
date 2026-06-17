@@ -46,6 +46,8 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AccountingAuditLog> AccountingAuditLogs => Set<AccountingAuditLog>();
     public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
+    public DbSet<StaffLeaveRequest> StaffLeaveRequests => Set<StaffLeaveRequest>();
+    public DbSet<StaffAssetAssignment> StaffAssetAssignments => Set<StaffAssetAssignment>();
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
     public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
     public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
@@ -389,6 +391,33 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.EntityId).HasMaxLength(120);
             entity.Property(x => x.Detail).HasMaxLength(2000);
             entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+        });
+
+        modelBuilder.Entity<StaffLeaveRequest>(entity =>
+        {
+            entity.ToTable("staff_leave_requests");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StaffName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.LeaveType).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Reason).HasMaxLength(1000);
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.DecidedByName).HasMaxLength(150);
+            entity.HasIndex(x => new { x.TenantId, x.Status });
+            entity.HasIndex(x => x.StaffUserId);
+        });
+
+        modelBuilder.Entity<StaffAssetAssignment>(entity =>
+        {
+            entity.ToTable("staff_asset_assignments");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StaffName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.AssetName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.AssetCode).HasMaxLength(80);
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.HasIndex(x => x.StaffUserId);
         });
 
         modelBuilder.Entity<EnrollmentContract>(entity =>

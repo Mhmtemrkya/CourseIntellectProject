@@ -74,6 +74,7 @@ public static class DependencyInjection
         services.AddScoped<IStudentFinanceService, StudentFinanceService>();
         services.AddScoped<IAuditLogService, AuditLogService>();
         services.AddScoped<IApprovalService, ApprovalService>();
+        services.AddScoped<IStaffHrService, StaffHrService>();
         services.AddScoped<IPaymentGatewayService, StubPaymentGatewayService>();
         services.AddScoped<IEInvoiceService, StubEInvoiceService>();
         services.AddSingleton<IPayrollService, PayrollService>();

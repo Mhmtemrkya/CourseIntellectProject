@@ -457,6 +457,41 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
+export async function fetchLeaves(params) {
+  const response = await api.get('/api/staff-hr/leaves', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createLeave(payload) {
+  const response = await api.post('/api/staff-hr/leaves', payload);
+  return response;
+}
+
+export async function decideLeave(id, payload) {
+  const response = await api.post(`/api/staff-hr/leaves/${id}/decide`, payload);
+  return response;
+}
+
+export async function fetchLeaveBalance(staffName) {
+  const response = await api.get('/api/staff-hr/leave-balance', { params: { staffName } });
+  return response;
+}
+
+export async function fetchStaffAssets(params) {
+  const response = await api.get('/api/staff-hr/assets', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function assignStaffAsset(payload) {
+  const response = await api.post('/api/staff-hr/assets', payload);
+  return response;
+}
+
+export async function returnStaffAsset(id) {
+  const response = await api.post(`/api/staff-hr/assets/${id}/return`);
+  return response;
+}
+
 export async function fetchAppSettings(category) {
   const response = await api.get('/api/appsettings', {
     params: category ? { category } : undefined,

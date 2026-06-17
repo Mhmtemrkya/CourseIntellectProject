@@ -153,6 +153,12 @@ const menuConfigs = {
       color: "#a855f7",
     },
     {
+      path: "/admin/staff-hr",
+      icon: CheckSquare,
+      label: "Personel / İK",
+      color: "#0ea5e9",
+    },
+    {
       path: "/admin/password-reset-requests",
       icon: KeyRound,
       label: "Şifre Talepleri",
@@ -305,6 +311,12 @@ const menuConfigs = {
       icon: CheckSquare,
       label: "Personel Onayları",
       color: "#a855f7",
+    },
+    {
+      path: "/admin/staff-hr",
+      icon: CheckSquare,
+      label: "Personel / İK",
+      color: "#0ea5e9",
     },
     {
       path: "/admin/password-reset-requests",
