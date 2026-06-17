@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'admin_branch_comparison_page.dart';
+import 'admin_workflow_hub_page.dart';
 import 'admin_global_search_page.dart';
 import 'admin_kpi_dashboard_page.dart';
 import 'admin_announcements_page.dart';
@@ -184,6 +185,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
               const SizedBox(height: 18),
               const AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _quickCard(
+                      context,
+                      title: 'İdari Yönetim',
+                      subtitle: 'Onay, izin, görev, evrak ve denetim',
+                      color: const Color(0xFF7C3AED),
+                      icon: Icons.verified_user_outlined,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminWorkflowHubPage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
