@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Settings, ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle,
+  Settings, ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle, ScanText,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Switch } from '../../components/ui/switch';
 import { Badge } from '../../components/ui/badge';
 import { Label } from '../../components/ui/label';
+import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
 import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -18,7 +19,15 @@ import {
   upsertPlatformConfiguration,
   fetchSystemStatus,
   setSystemMaintenance,
+  fetchAppSettings,
+  saveAppSettings,
 } from '../../lib/api/modules';
+
+const AZURE_KEYS = {
+  enabled: 'AzureDocumentIntelligence:Enabled',
+  endpoint: 'AzureDocumentIntelligence:Endpoint',
+  apiKey: 'AzureDocumentIntelligence:ApiKey',
+};
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const SETTINGS_MARKER = 'SA_SYSTEM_SETTINGS';
@@ -29,6 +38,10 @@ export default function SystemSettings() {
   const [features, setFeatures] = useState([]);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [aiOcrEnabled, setAiOcrEnabled] = useState(true);
+  const [aiOcrEndpoint, setAiOcrEndpoint] = useState('');
+  const [aiOcrKeyConfigured, setAiOcrKeyConfigured] = useState(false);
+  const [aiOcrKeyInput, setAiOcrKeyInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -36,11 +49,18 @@ export default function SystemSettings() {
     try {
       setLoading(true);
       setError('');
-      const [data, savedRecords, systemStatus] = await Promise.all([
+      const [data, savedRecords, systemStatus, integrationSettings] = await Promise.all([
         fetchPlatformOverview(),
         fetchPlatformConfigurations('system-settings').catch(() => []),
         fetchSystemStatus().catch(() => null),
+        fetchAppSettings('integrations').catch(() => []),
       ]);
+      const findSetting = (key) => integrationSettings.find((item) => item.key === key);
+      const enabledValue = findSetting(AZURE_KEYS.enabled)?.value;
+      setAiOcrEnabled(enabledValue == null ? true : (enabledValue === 'true' || enabledValue === '1'));
+      setAiOcrEndpoint(findSetting(AZURE_KEYS.endpoint)?.value || '');
+      setAiOcrKeyConfigured(Boolean(findSetting(AZURE_KEYS.apiKey)?.value));
+      setAiOcrKeyInput('');
       const savedSettings = savedRecords
         .filter((item) => item.scopeKey === 'global')
         .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
@@ -123,6 +143,20 @@ export default function SystemSettings() {
           features: features.map((feature) => ({ id: feature.id, enabled: feature.enabled })),
         }),
       });
+
+      // Azure OCR ayarlarını app-settings'e yaz (backend runtime'da okur)
+      const azureItems = [
+        { key: AZURE_KEYS.enabled, value: aiOcrEnabled ? 'true' : 'false', type: 'boolean', category: 'integrations', description: 'PDF/Word/görsel soru çıkarma için Azure Document Intelligence açık/kapalı' },
+        { key: AZURE_KEYS.endpoint, value: aiOcrEndpoint.trim(), type: 'string', category: 'integrations', description: 'Azure Document Intelligence endpoint' },
+      ];
+      if (aiOcrKeyInput.trim()) {
+        azureItems.push({ key: AZURE_KEYS.apiKey, value: aiOcrKeyInput.trim(), type: 'string', category: 'integrations', description: 'Azure Document Intelligence API anahtarı' });
+      }
+      await saveAppSettings(azureItems);
+      if (aiOcrKeyInput.trim()) {
+        setAiOcrKeyConfigured(true);
+        setAiOcrKeyInput('');
+      }
       toast({
         title: maintenanceMode ? 'Bakım modu AKTİF' : 'Ayarlar kaydedildi',
         description: maintenanceMode
@@ -187,6 +221,52 @@ export default function SystemSettings() {
               </div>
             ))}
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><ScanText className="h-5 w-5" />Yapay Zekâ / Doküman OCR</CardTitle>
+          <CardDescription>PDF, Word ve görsellerden soru çıkarmak için Azure Document Intelligence entegrasyonu</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div>
+              <p className="font-medium">PDF/Word/Görsel Soru Çıkarma (Azure OCR)</p>
+              <p className="text-sm text-muted-foreground">
+                Kapalıyken sistem mevcut yerel çıkarıma düşer. Açıkken yüklenen dosyalar Azure ile analiz edilip öğretmen onayına sunulur.
+              </p>
+            </div>
+            <Switch checked={aiOcrEnabled} onCheckedChange={setAiOcrEnabled} />
+          </div>
+          {aiOcrEnabled ? (
+            <div className="space-y-3">
+              <div className="space-y-2">
+                <Label>Azure Endpoint</Label>
+                <Input
+                  placeholder="https://<kaynak-adi>.cognitiveservices.azure.com"
+                  value={aiOcrEndpoint}
+                  onChange={(e) => setAiOcrEndpoint(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  API Anahtarı
+                  {aiOcrKeyConfigured ? <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Tanımlı</Badge> : <Badge variant="outline">Tanımlı değil</Badge>}
+                </Label>
+                <Input
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder={aiOcrKeyConfigured ? '•••••••• (değiştirmek için yeni anahtar gir)' : 'Azure API anahtarı'}
+                  value={aiOcrKeyInput}
+                  onChange={(e) => setAiOcrKeyInput(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Güvenlik için mevcut anahtar gösterilmez. Boş bırakırsan değişmez.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
 

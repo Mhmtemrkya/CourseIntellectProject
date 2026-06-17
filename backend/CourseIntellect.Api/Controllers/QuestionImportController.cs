@@ -23,7 +23,8 @@ public sealed partial class QuestionImportController(
     IFileStorageService fileStorageService,
     IQuestionBankService questionBankService,
     CourseIntellectDbContext dbContext,
-    IHubContext<QuestionImportHub> hubContext) : ControllerBase
+    IHubContext<QuestionImportHub> hubContext,
+    IDocumentIntelligenceService documentIntelligence) : ControllerBase
 {
     private const string SectionKey = "question-import-jobs";
     private const int MaxPreviewQuestions = 10000;
@@ -88,8 +89,15 @@ public sealed partial class QuestionImportController(
         await SaveJobAsync(job, cancellationToken);
         await PublishProgressAsync(job, cancellationToken);
 
-        var analysis = AnalyzeFile(file.FileName, bytes);
+        var analysis = await AnalyzeFileAsync(file.FileName, bytes, cancellationToken);
         ApplyAnalysis(job, analysis);
+        if (analysis.UsedOcr)
+        {
+            job.Logs.Add(new QuestionImportLogSnapshot(
+                DateTime.UtcNow,
+                "OCR",
+                "Azure Document Intelligence ile metin ve düzen çıkarıldı."));
+        }
         job.Status = job.Questions.Count > 0 ? "Ready" : "NeedsReview";
         job.Progress = 100;
         job.CompletedAtUtc = DateTime.UtcNow;
@@ -397,7 +405,7 @@ public sealed partial class QuestionImportController(
         ReorderQuestions(job);
     }
 
-    private static QuestionImportAnalysisResult AnalyzeFile(string fileName, byte[] bytes)
+    private async Task<QuestionImportAnalysisResult> AnalyzeFileAsync(string fileName, byte[] bytes, CancellationToken cancellationToken)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         return extension switch
@@ -405,16 +413,46 @@ public sealed partial class QuestionImportController(
             ".csv" => AnalyzeDelimitedText(ReadText(bytes), fileName, ','),
             ".tsv" => AnalyzeDelimitedText(ReadText(bytes), fileName, '\t'),
             ".txt" => AnalyzePlainText(ReadText(bytes), fileName),
-            ".docx" => AnalyzePlainText(ExtractDocxText(bytes), fileName),
             ".xlsx" => AnalyzeDelimitedText(ExtractXlsxText(bytes), fileName, '\t'),
-            ".pdf" => AnalyzePlainText(ExtractPdfText(bytes), fileName),
-            ".zip" => AnalyzeZip(bytes),
-            ".png" or ".jpg" or ".jpeg" or ".webp" => new QuestionImportAnalysisResult(string.Empty, [], 1, 0, 0),
+            ".docx" or ".pdf" or ".png" or ".jpg" or ".jpeg" or ".webp"
+                => await AnalyzeWithOcrAsync(fileName, bytes, extension, cancellationToken),
+            ".zip" => await AnalyzeZipAsync(bytes, cancellationToken),
             _ => new QuestionImportAnalysisResult(string.Empty, [], 0, 0, 0),
         };
     }
 
-    private static QuestionImportAnalysisResult AnalyzeZip(byte[] bytes)
+    // Azure DI yapılandırıldıysa temiz metin + düzen çıkarır; aksi halde
+    // mevcut yerel çıkarıma (Word/PDF regex) güvenli şekilde düşer. Görsellerde
+    // yerel OCR olmadığından Azure yoksa metin bulunamaz (NeedsReview).
+    private async Task<QuestionImportAnalysisResult> AnalyzeWithOcrAsync(
+        string fileName, byte[] bytes, string extension, CancellationToken cancellationToken)
+    {
+        var isImage = extension is ".png" or ".jpg" or ".jpeg" or ".webp";
+
+        if (await documentIntelligence.IsEnabledAsync(cancellationToken))
+        {
+            var layout = await documentIntelligence.AnalyzeLayoutAsync(bytes, fileName, cancellationToken);
+            if (layout.Succeeded && !string.IsNullOrWhiteSpace(layout.Text))
+            {
+                var parsed = AnalyzePlainText(layout.Text, fileName);
+                return parsed with
+                {
+                    UsedOcr = true,
+                    ImageCount = isImage ? Math.Max(1, parsed.ImageCount) : parsed.ImageCount,
+                    TableCount = Math.Max(parsed.TableCount, layout.TableCount),
+                };
+            }
+        }
+
+        return extension switch
+        {
+            ".docx" => AnalyzePlainText(ExtractDocxText(bytes), fileName),
+            ".pdf" => AnalyzePlainText(ExtractPdfText(bytes), fileName),
+            _ => new QuestionImportAnalysisResult(string.Empty, [], 1, 0, 0),
+        };
+    }
+
+    private async Task<QuestionImportAnalysisResult> AnalyzeZipAsync(byte[] bytes, CancellationToken cancellationToken)
     {
         using var stream = new MemoryStream(bytes);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Read);
@@ -423,18 +461,13 @@ public sealed partial class QuestionImportController(
         var imageCount = 0;
         var tableCount = 0;
         var formulaCount = 0;
+        var usedOcr = false;
 
         foreach (var entry in archive.Entries)
         {
             var extension = Path.GetExtension(entry.FullName).ToLowerInvariant();
             if (entry.Length <= 0)
             {
-                continue;
-            }
-
-            if (extension is ".png" or ".jpg" or ".jpeg" or ".webp")
-            {
-                imageCount += 1;
                 continue;
             }
 
@@ -445,16 +478,20 @@ public sealed partial class QuestionImportController(
 
             using var entryStream = entry.Open();
             using var buffer = new MemoryStream();
-            entryStream.CopyTo(buffer);
-            var result = AnalyzeFile(entry.FullName, buffer.ToArray());
+            await entryStream.CopyToAsync(buffer, cancellationToken);
+            var result = await AnalyzeFileAsync(entry.FullName, buffer.ToArray(), cancellationToken);
             raw.AppendLine(result.RawText);
             questions.AddRange(result.Questions);
             imageCount += result.ImageCount;
             tableCount += result.TableCount;
             formulaCount += result.FormulaCount;
+            usedOcr = usedOcr || result.UsedOcr;
         }
 
-        return new QuestionImportAnalysisResult(raw.ToString(), questions, imageCount, tableCount, formulaCount);
+        return new QuestionImportAnalysisResult(raw.ToString(), questions, imageCount, tableCount, formulaCount)
+        {
+            UsedOcr = usedOcr,
+        };
     }
 
     private static QuestionImportAnalysisResult AnalyzeDelimitedText(string text, string fileName, char delimiter)
@@ -1049,7 +1086,10 @@ internal sealed record QuestionImportAnalysisResult(
     List<QuestionImportQuestionSnapshot> Questions,
     int ImageCount,
     int TableCount,
-    int FormulaCount);
+    int FormulaCount)
+{
+    public bool UsedOcr { get; init; }
+}
 
 public sealed class QuestionImportJobSnapshot
 {

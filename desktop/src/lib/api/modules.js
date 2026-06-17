@@ -281,6 +281,11 @@ export async function createStudent(payload) {
   return response;
 }
 
+export async function updateStudent(id, payload) {
+  const response = await api.put(`/api/students/${id}`, payload);
+  return response;
+}
+
 export async function fetchStaff(role) {
   const response = await api.get('/api/staff', {
     params: role ? { role } : undefined,
@@ -364,6 +369,18 @@ export async function fetchPlatformConfigurations(configurationType) {
 export async function upsertPlatformConfiguration(payload) {
   const response = await api.put('/api/platformconfigurations', payload);
   return response;
+}
+
+export async function fetchAppSettings(category) {
+  const response = await api.get('/api/appsettings', {
+    params: category ? { category } : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function saveAppSettings(items) {
+  const response = await api.put('/api/appsettings', items);
+  return Array.isArray(response) ? response : [];
 }
 
 export async function fetchMySupportTickets() {

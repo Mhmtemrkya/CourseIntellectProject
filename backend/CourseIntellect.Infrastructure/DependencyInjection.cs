@@ -34,6 +34,7 @@ public static class DependencyInjection
             options.UseNpgsql(connectionString));
         services.AddSingleton<IOptions<FcmPushOptions>>(Options.Create(FcmPushOptions.FromConfiguration(configuration)));
         services.AddHttpClient<IPushNotificationService, FcmPushNotificationService>();
+        services.AddHttpClient<IDocumentIntelligenceService, AzureDocumentIntelligenceService>();
 
         services.AddScoped<DatabaseSeeder>();
         services.AddHostedService<RejectedTenantCleanupService>();

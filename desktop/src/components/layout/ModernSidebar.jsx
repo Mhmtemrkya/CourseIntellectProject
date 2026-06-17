@@ -44,6 +44,7 @@ import {
   BusFront,
   UtensilsCrossed,
   KeyRound,
+  ChevronDown,
 } from "lucide-react";
 import { Activity, Layers, Shield } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -812,6 +813,70 @@ const ROLE_LABELS = {
   cafeteria: "Yemekhaneci",
 };
 
+const ROLE_MENU_GROUPS = {
+  admin: [
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks"] },
+    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses"] },
+    { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "approvals", "password-reset"] },
+    { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons"] },
+    { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
+    { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "installments", "billing", "salary", "cash-report"] },
+    { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat", "support"] },
+    { id: "services", title: "Servis & Yemekhane", modules: ["service", "cafeteria"] },
+    { id: "system", title: "Sistem", modules: ["role-management", "profile", "system"] },
+  ],
+  administrative: [
+    { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule"] },
+    { id: "records", title: "İdari İşler", modules: ["records", "documents", "approvals", "password-reset", "registrations", "role-management"] },
+    { id: "reports", title: "Raporlar", modules: ["reports"] },
+    { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat"] },
+    { id: "services", title: "Servis & Yemekhane", modules: ["service", "cafeteria"] },
+    { id: "system", title: "Sistem", modules: ["system"] },
+  ],
+  finance: [
+    { id: "main", title: "Ana Panel", modules: ["finance"] },
+    { id: "accounts", title: "Öğrenci Finans", modules: ["student-accounts", "collections", "installments", "late-payments", "discounts-scholarships"] },
+    { id: "billing", title: "Fatura & Tahsilat", modules: ["billing", "collection-calendar", "reconciliation", "bulk-actions", "overdue-rules"] },
+    { id: "reports", title: "Rapor & Kayıt", modules: ["cash-report", "ledger", "finance-export", "finance-audit-log", "finance-detail-hub"] },
+    { id: "staff", title: "Personel", modules: ["salary"] },
+    { id: "communication", title: "İletişim", modules: ["chat"] },
+    { id: "system", title: "Sistem", modules: ["system"] },
+  ],
+  superadmin: [
+    { id: "main", title: "Ana Panel", modules: ["platform"] },
+    { id: "institutions", title: "Kurum Yönetimi", modules: ["tenants", "plans", "billing", "limits", "customization"] },
+    { id: "intelligence", title: "AI & Sistem", modules: ["ai-management", "system"] },
+    { id: "support", title: "Destek", modules: ["support"] },
+  ],
+  teacher: [
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons"] },
+    { id: "learning", title: "Ders & İçerik", modules: ["content", "question-bank", "questions"] },
+    { id: "assessment", title: "Sınav & Not", modules: ["exams", "mock-exams", "grade-entry", "reports"] },
+    { id: "students", title: "Öğrenci Takibi", modules: ["assignments", "meetings"] },
+    { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
+    { id: "system", title: "Sistem", modules: ["profile", "system"] },
+  ],
+  student: [
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "study-plan", "live-lessons"] },
+    { id: "learning", title: "Öğrenme", modules: ["content", "question-bank", "questions", "assignments", "ai"] },
+    { id: "assessment", title: "Sınavlar", modules: ["exams", "mock-exams", "reports"] },
+    { id: "life", title: "Okul Hayatı", modules: ["attendance", "cafeteria"] },
+    { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
+    { id: "system", title: "Sistem", modules: ["profile", "system"] },
+  ],
+  parent: [
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "parents"] },
+    { id: "student", title: "Öğrenci Takibi", modules: ["attendance", "exams", "reports", "feedback", "excuse"] },
+    { id: "finance", title: "Finans", modules: ["payments", "receipts"] },
+    { id: "school", title: "Okul Hayatı", modules: ["cafeteria", "meetings"] },
+    { id: "communication", title: "İletişim", modules: ["notifications", "chat"] },
+    { id: "system", title: "Sistem", modules: ["profile", "system"] },
+  ],
+  cafeteria: [
+    { id: "main", title: "Yemekhane", modules: ["cafeteria"] },
+  ],
+};
+
 const MODULE_MENU_REGISTRY = {
   dashboard: {
     default: { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
@@ -962,6 +1027,7 @@ function inferModuleKey(item) {
     "/finance/dashboard": "finance",
     "/admin/kpi": "kpi",
     "/admin/academics": "academics",
+    "/admin/courses": "courses",
     "/students": "students",
     "/parents": "parents",
     "/teachers": "teachers",
@@ -994,6 +1060,7 @@ function inferModuleKey(item) {
     "/t/assignments": "assignments",
     "/s/assignments": "assignments",
     "/t/submissions": "assignments",
+    "/s/study-plan": "study-plan",
     "/t/live-lessons": "live-lessons",
     "/t/live-room": "live-lessons",
     "/s/live": "live-lessons",
@@ -1006,7 +1073,10 @@ function inferModuleKey(item) {
     "/admin/task-center": "tasks",
     "/admin/finance-approvals": "approvals",
     "/admin/personnel-approvals": "approvals",
+    "/admin/password-reset-requests": "password-reset",
+    "/admin/role-management": "role-management",
     "/admin/records": "records",
+    "/admin/administrative-units": "administrative-units",
     "/admin/documents": "documents",
     "/admin/announcements": "notifications",
     "/admin/notifications": "notifications",
@@ -1022,6 +1092,15 @@ function inferModuleKey(item) {
     "/admin/accounting-registration": "registrations",
     "/admin/branch-comparison": "branch-comparison",
     "/admin/global-search": "global-search",
+    "/admin/service-tracking": "service",
+    "/cafeteria/menu": "cafeteria",
+    "/s/cafeteria": "cafeteria",
+    "/p/cafeteria": "cafeteria",
+    "/s/ai": "ai",
+    "/p/payments": "payments",
+    "/p/receipts": "receipts",
+    "/p/feedback": "feedback",
+    "/p/excuse-request": "excuse",
     "/chat": "chat",
     "/t/chat": "chat",
     "/s/chat": "chat",
@@ -1100,6 +1179,26 @@ function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", ha
   });
 
   return merged;
+}
+
+function buildGroupedMenuItems(items, primaryRole) {
+  const definitions = ROLE_MENU_GROUPS[primaryRole] || ROLE_MENU_GROUPS.admin;
+  const groups = definitions.map((group) => ({ ...group, items: [] }));
+  const fallback = { id: "other", title: "Diğer", modules: [], items: [] };
+
+  for (const item of items) {
+    const moduleKey = inferModuleKey(item);
+    const targetGroup = groups.find((group) => group.modules.includes(moduleKey)) || fallback;
+    targetGroup.items.push({ ...item, moduleKey });
+  }
+
+  return [...groups, fallback].filter((group) => group.items.length > 0);
+}
+
+function getActiveGroupIds(groups, pathname) {
+  return groups
+    .filter((group) => group.items.some((item) => pathname === item.path || pathname.startsWith(`${item.path}/`)))
+    .map((group) => group.id);
 }
 
 // Student stats component for sidebar — fetches real XP data from API
@@ -1224,7 +1323,33 @@ export function ModernSidebar() {
   const menuItems = disabledFeatures && disabledFeatures.size > 0
     ? moduleAwareItems.filter((item) => !isPathDisabled(item.path, disabledFeatures))
     : moduleAwareItems;
+  const groupedMenuItems = buildGroupedMenuItems(menuItems, primaryRole);
+  const [openGroups, setOpenGroups] = useState(() => new Set());
   const isStudent = userRoles.includes("student");
+
+  useEffect(() => {
+    const activeIds = getActiveGroupIds(groupedMenuItems, location.pathname);
+    setOpenGroups((current) => {
+      const next = new Set(current);
+      if (next.size === 0 && groupedMenuItems[0]) {
+        next.add(groupedMenuItems[0].id);
+      }
+      activeIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }, [location.pathname, primaryRole, groupedMenuItems.length]);
+
+  const toggleGroup = (groupId) => {
+    setOpenGroups((current) => {
+      const next = new Set(current);
+      if (next.has(groupId)) {
+        next.delete(groupId);
+      } else {
+        next.add(groupId);
+      }
+      return next;
+    });
+  };
 
   const ROLE_TITLES = {
     admin: "Yönetim Paneli",
@@ -1417,140 +1542,177 @@ export function ModernSidebar() {
         {/* Navigation */}
         <nav className="relative flex-1 overflow-y-auto py-4 px-3 scrollbar-thin scrollbar-thumb-white/10">
           <TooltipProvider delayDuration={0}>
-            <ul className="space-y-1">
-              {menuItems.map((item, index) => {
-                const isActive =
-                  location.pathname === item.path ||
-                  location.pathname.startsWith(item.path + "/");
-                const Icon = item.icon;
-
+            <div className="space-y-2">
+              {groupedMenuItems.map((group, groupIndex) => {
+                const isOpen = openGroups.has(group.id);
+                const hasActive = group.items.some((item) => location.pathname === item.path || location.pathname.startsWith(`${item.path}/`));
                 return (
-                  <motion.li
-                    key={item.path}
-                    initial={{ opacity: 0, x: -20 }}
+                  <motion.section
+                    key={group.id}
+                    initial={{ opacity: 0, x: -18 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
+                    transition={{ delay: groupIndex * 0.03 }}
+                    className={cn(
+                      "rounded-2xl border border-white/10 bg-white/[0.025] p-1",
+                      hasActive && "border-white/20 bg-white/[0.045]",
+                    )}
                   >
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <NavLink
-                          to={item.path}
-                          onClick={() => {
-                            // Close sidebar on mobile after navigation
-                            if (window.innerWidth < 1024) {
-                              setSidebarCollapsed(true);
-                            }
-                          }}
-                          data-testid={`nav-${item.path.replace(/\//g, "-").slice(1)}`}
-                          className={cn(
-                            "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative overflow-hidden",
-                            isActive
-                              ? "text-white shadow-lg"
-                              : "hover:bg-white/10 text-white/70 hover:text-white",
-                          )}
-                          style={
-                            isActive
-                              ? {
-                                  background: `linear-gradient(to right, var(--accent-from, #D9790B), var(--accent-to, #f59e0b))`,
-                                }
-                              : undefined
-                          }
+                    <button
+                      type="button"
+                      onClick={() => toggleGroup(group.id)}
+                      className={cn(
+                        "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-black uppercase tracking-[0.18em] text-white/50 transition hover:bg-white/10 hover:text-white/80",
+                        hasActive && "text-white/90",
+                      )}
+                    >
+                      <span className="truncate">{group.title}</span>
+                      <span className="ml-2 flex items-center gap-2">
+                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] tracking-normal text-white/60">{group.items.length}</span>
+                        <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
+                      </span>
+                    </button>
+                    <AnimatePresence initial={false}>
+                      {isOpen && (
+                        <motion.ul
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: "auto", opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                          transition={{ duration: 0.18, ease: "easeInOut" }}
+                          className="mt-1 space-y-1 overflow-hidden"
                         >
-                          {/* Animated background on hover */}
-                          {!isActive && (
-                            <motion.div
-                              className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0"
-                              initial={{ x: "-100%" }}
-                              whileHover={{ x: "100%" }}
-                              transition={{ duration: 0.5 }}
-                            />
-                          )}
+                          {group.items.map((item, itemIndex) => {
+                            const isActive =
+                              location.pathname === item.path ||
+                              location.pathname.startsWith(item.path + "/");
+                            const Icon = item.icon;
 
-                          {/* Icon with animations */}
-                          <motion.div
-                            className="relative z-10"
-                            whileHover={{
-                              scale: 1.2,
-                              rotate: isActive ? 0 : 10,
-                            }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <div
-                              className={cn(
-                                "p-2 rounded-lg transition-all duration-300",
-                                isActive
-                                  ? "bg-white/20"
-                                  : "bg-transparent group-hover:bg-white/10",
-                              )}
-                              style={{
-                                boxShadow: isActive
-                                  ? `0 0 15px ${item.color}40`
-                                  : "none",
-                              }}
-                            >
-                              <Icon
-                                className="h-5 w-5 flex-shrink-0"
-                                style={{
-                                  color: isActive ? "#fff" : item.color,
-                                }}
-                              />
-                            </div>
-
-                            {/* Pulse effect for live items */}
-                            {item.pulse && (
-                              <motion.div
-                                className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
-                                animate={{
-                                  scale: [1, 1.2, 1],
-                                  opacity: [1, 0.7, 1],
-                                }}
-                                transition={{ duration: 1, repeat: Infinity }}
-                              />
-                            )}
-
-                            {/* New badge */}
-                            {item.new && (
-                              <motion.div
-                                className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-[10px] font-bold"
-                                animate={{ scale: [1, 1.1, 1] }}
-                                transition={{ duration: 2, repeat: Infinity }}
+                            return (
+                              <motion.li
+                                key={item.path}
+                                initial={{ opacity: 0, x: -10 }}
+                                animate={{ opacity: 1, x: 0 }}
+                                transition={{ delay: itemIndex * 0.015 }}
                               >
-                                YENİ
-                              </motion.div>
-                            )}
-                          </motion.div>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <NavLink
+                                      to={item.path}
+                                      onClick={() => {
+                                        // Close sidebar on mobile after navigation
+                                        if (window.innerWidth < 1024) {
+                                          setSidebarCollapsed(true);
+                                        }
+                                      }}
+                                      data-testid={`nav-${item.path.replace(/\//g, "-").slice(1)}`}
+                                      className={cn(
+                                        "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative overflow-hidden",
+                                        isActive
+                                          ? "text-white shadow-lg"
+                                          : "hover:bg-white/10 text-white/70 hover:text-white",
+                                      )}
+                                      style={
+                                        isActive
+                                          ? {
+                                              background: `linear-gradient(to right, var(--accent-from, #D9790B), var(--accent-to, #f59e0b))`,
+                                            }
+                                          : undefined
+                                      }
+                                    >
+                                      {!isActive && (
+                                        <motion.div
+                                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0"
+                                          initial={{ x: "-100%" }}
+                                          whileHover={{ x: "100%" }}
+                                          transition={{ duration: 0.5 }}
+                                        />
+                                      )}
 
-                          {/* Label */}
-                          <motion.span
-                            className={cn(
-                              "relative z-10 text-sm font-medium whitespace-nowrap",
-                              item.special &&
-                                !isActive &&
-                                "bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent",
-                            )}
-                          >
-                            {item.label}
-                          </motion.span>
+                                      <motion.div
+                                        className="relative z-10"
+                                        whileHover={{
+                                          scale: 1.2,
+                                          rotate: isActive ? 0 : 10,
+                                        }}
+                                        whileTap={{ scale: 0.9 }}
+                                      >
+                                        <div
+                                          className={cn(
+                                            "p-2 rounded-lg transition-all duration-300",
+                                            isActive
+                                              ? "bg-white/20"
+                                              : "bg-transparent group-hover:bg-white/10",
+                                          )}
+                                          style={{
+                                            boxShadow: isActive
+                                              ? `0 0 15px ${item.color}40`
+                                              : "none",
+                                          }}
+                                        >
+                                          <Icon
+                                            className="h-5 w-5 flex-shrink-0"
+                                            style={{
+                                              color: isActive ? "#fff" : item.color,
+                                            }}
+                                          />
+                                        </div>
 
-                          {/* Active indicator */}
-                          {isActive && (
-                            <motion.div
-                              layoutId="activeIndicator"
-                              className="absolute right-2 w-1.5 h-1.5 bg-white rounded-full"
-                              transition={{
-                                type: "spring",
-                                stiffness: 300,
-                                damping: 30,
-                              }}
-                            />
-                          )}
-                        </NavLink>
-                      </TooltipTrigger>
-                    </Tooltip>
-                  </motion.li>
+                                        {item.pulse && (
+                                          <motion.div
+                                            className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"
+                                            animate={{
+                                              scale: [1, 1.2, 1],
+                                              opacity: [1, 0.7, 1],
+                                            }}
+                                            transition={{ duration: 1, repeat: Infinity }}
+                                          />
+                                        )}
+
+                                        {item.new && (
+                                          <motion.div
+                                            className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-[10px] font-bold"
+                                            animate={{ scale: [1, 1.1, 1] }}
+                                            transition={{ duration: 2, repeat: Infinity }}
+                                          >
+                                            YENİ
+                                          </motion.div>
+                                        )}
+                                      </motion.div>
+
+                                      <motion.span
+                                        className={cn(
+                                          "relative z-10 text-sm font-medium whitespace-nowrap",
+                                          item.special &&
+                                            !isActive &&
+                                            "bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent",
+                                        )}
+                                      >
+                                        {item.label}
+                                      </motion.span>
+
+                                      {isActive && (
+                                        <motion.div
+                                          layoutId="activeIndicator"
+                                          className="absolute right-2 w-1.5 h-1.5 bg-white rounded-full"
+                                          transition={{
+                                            type: "spring",
+                                            stiffness: 300,
+                                            damping: 30,
+                                          }}
+                                        />
+                                      )}
+                                    </NavLink>
+                                  </TooltipTrigger>
+                                </Tooltip>
+                              </motion.li>
+                            );
+                          })}
+                        </motion.ul>
+                      )}
+                    </AnimatePresence>
+                  </motion.section>
                 );
               })}
-            </ul>
+            </div>
           </TooltipProvider>
         </nav>
 

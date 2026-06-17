@@ -10,6 +10,16 @@ import {
   BarChart3,
   TrendingUp,
   TrendingDown,
+  Wallet,
+  ReceiptText,
+  NotebookPen,
+  Phone,
+  Mail,
+  UserRound,
+  CalendarDays,
+  CheckCircle2,
+  AlertCircle,
+  ClipboardList,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -23,12 +33,27 @@ import {
   SelectValue,
 } from '../components/ui/select';
 import { ScrollArea } from '../components/ui/scroll-area';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '../components/ui/dialog';
+import { Textarea } from '../components/ui/textarea';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
-import { fetchAttendance, fetchExamResults, fetchStaff, fetchStudents } from '../lib/api/modules';
-import { useApp } from '../context/AppContext';
-import TeacherPdfReportCenter from './teacher/TeacherPdfReportCenter';
+import {
+  fetchAccountingDashboard,
+  fetchAttendance,
+  fetchExamResults,
+  fetchStaff,
+  fetchStudents,
+  updateStudent,
+} from '../lib/api/modules';
+import { formatCurrency, parseFinanceMoney } from '../lib/financeDocuments';
+import { useToast } from '../hooks/use-toast';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -42,29 +67,108 @@ const reportTypes = [
   { id: 'teachers', name: 'Öğretmen Raporu', icon: GraduationCap, description: 'Öğretmen aktivite özeti' },
 ];
 
-const studentDetailReportRoles = new Set([
-  'admin',
-  'administrative',
-  'idare',
-  'idari',
-  'idaripersonel',
-  'institutionadmin',
-  'institutionadministrator',
-  'kurumyoneticisi',
-]);
+const STUDENT_REPORT_NOTES_KEY = 'courseintellect:student-report-notes';
 
-function normalizeRole(value) {
+function normalizeLookup(value) {
   return String(value || '')
     .trim()
     .toLocaleLowerCase('tr-TR')
-    .replace(/[\s_-]+/g, '');
+    .replaceAll('ı', 'i')
+    .replaceAll('İ', 'i')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ');
 }
 
-function canUseStudentDetailReports(user) {
-  const roles = [user?.role, user?.backendRole, ...(Array.isArray(user?.extraRoles) ? user.extraRoles : [])]
-    .map(normalizeRole)
-    .filter(Boolean);
-  return roles.some((role) => studentDetailReportRoles.has(role));
+function getStudentName(student) {
+  return student?.fullName || student?.name || [student?.firstName, student?.lastName].filter(Boolean).join(' ') || 'Öğrenci';
+}
+
+function getStudentKey(student) {
+  return String(student?.id || student?.studentId || student?.username || getStudentName(student));
+}
+
+function getInitials(name) {
+  return String(name || 'Ö')
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join('')
+    .toLocaleUpperCase('tr-TR');
+}
+
+function formatDate(value) {
+  if (!value) return 'Tarih yok';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString('tr-TR');
+}
+
+function isPaidStatus(status) {
+  const normalized = normalizeLookup(status).replace(/\s+/g, '');
+  return normalized.includes('odendi') || normalized.includes('paid') || normalized.includes('tahsil');
+}
+
+function recordMatchesStudent(record, student) {
+  if (!record || !student) return false;
+  const studentIds = [
+    student.id,
+    student.studentId,
+    student.username,
+    student.identityNumber,
+    student.tcNo,
+    student.nationalId,
+  ].filter(Boolean).map((value) => normalizeLookup(value));
+
+  const recordIds = [
+    record.studentId,
+    record.studentUserId,
+    record.userId,
+    record.username,
+    record.identityNumber,
+    record.tcNo,
+    record.nationalId,
+  ].filter(Boolean).map((value) => normalizeLookup(value));
+
+  if (recordIds.some((id) => studentIds.includes(id))) return true;
+
+  const studentNames = [
+    getStudentName(student),
+    student.fullName,
+    student.name,
+    student.username,
+  ].filter(Boolean).map((value) => normalizeLookup(value));
+
+  const recordTexts = [
+    record.studentName,
+    record.student,
+    record.name,
+    record.fullName,
+    record.title,
+    record.subtitle,
+    record.description,
+    record.note,
+  ].filter(Boolean).map((value) => normalizeLookup(value));
+
+  return recordTexts.some((text) => studentNames.some((name) => name.length > 2 && (text === name || text.includes(name))));
+}
+
+function buildStudentUpdatePayload(student, note) {
+  return {
+    fullName: getStudentName(student),
+    tcNo: student.tcNo || student.identityNumber || student.nationalId || '',
+    className: student.className || '',
+    currentSchool: student.currentSchool || student.school || '',
+    schoolNumber: student.schoolNumber || student.studentNumber || student.number || '',
+    birthDate: student.birthDate || '',
+    programType: student.programType || '',
+    parentName: student.parentName || student.guardianName || student.parentFullName || '',
+    parentPhone: student.parentPhone || student.guardianPhone || '',
+    parentEmail: student.parentEmail || student.guardianEmail || '',
+    address: student.address || '',
+    note,
+  };
 }
 
 function downloadText(name, content) {
@@ -91,6 +195,7 @@ function downloadCsv(name, rows) {
 }
 
 function AdministrativeReportOverview() {
+  const { toast } = useToast();
   const [selectedReport, setSelectedReport] = useState(reportTypes[0]);
   const [classFilter, setClassFilter] = useState('all');
   const [periodFilter, setPeriodFilter] = useState('month');
@@ -99,6 +204,17 @@ function AdministrativeReportOverview() {
   const [teachers, setTeachers] = useState([]);
   const [exams, setExams] = useState([]);
   const [attendance, setAttendance] = useState([]);
+  const [accountingDashboard, setAccountingDashboard] = useState(null);
+  const [selectedStudent, setSelectedStudent] = useState(null);
+  const [noteSaving, setNoteSaving] = useState(false);
+  const [studentNotes, setStudentNotes] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      return JSON.parse(window.localStorage.getItem(STUDENT_REPORT_NOTES_KEY) || '{}') || {};
+    } catch {
+      return {};
+    }
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -106,18 +222,20 @@ function AdministrativeReportOverview() {
     try {
       setLoading(true);
       setError('');
-      const [adminDashboard, studentList, teacherList, examList, attendanceList] = await Promise.all([
+      const [adminDashboard, studentList, teacherList, examList, attendanceList, financeDashboard] = await Promise.all([
         fetchAdminDashboardData(),
         fetchStudents(),
         fetchStaff('Teacher').catch(() => []),
         fetchExamResults().catch(() => []),
         fetchAttendance().catch(() => []),
+        fetchAccountingDashboard().catch(() => null),
       ]);
       setDashboardData(adminDashboard);
       setStudents(studentList);
       setTeachers(teacherList);
       setExams(examList);
       setAttendance(attendanceList);
+      setAccountingDashboard(financeDashboard);
     } catch (err) {
       setError(err.message || 'Rapor verileri alınamadı.');
     } finally {
@@ -224,6 +342,7 @@ function AdministrativeReportOverview() {
           programType: student.programType || 'Sayisal',
           averageScore,
           attendanceRate: Math.max(65, 100 - missedLessons * 5),
+          raw: student,
         };
       });
     }
@@ -241,6 +360,112 @@ function AdministrativeReportOverview() {
     averageScore: filteredExams.length ? Math.round(filteredExams.reduce((sum, item) => sum + Number(item.score || 0), 0) / filteredExams.length) : 0,
     activeExams: filteredExams.length,
   }), [filteredStudents, dashboardData, filteredExams]);
+
+  const selectedStudentDetail = useMemo(() => {
+    if (!selectedStudent) return null;
+
+    const student = selectedStudent.raw || selectedStudent;
+    const studentExams = exams.filter((exam) => recordMatchesStudent(exam, student));
+    const studentAttendance = attendance.filter((item) => recordMatchesStudent(item, student));
+    const installments = (accountingDashboard?.installments || []).filter((item) => recordMatchesStudent(item, student));
+    const collectionSource = accountingDashboard?.collections?.length
+      ? accountingDashboard.collections
+      : accountingDashboard?.recentCollections || [];
+    const collections = collectionSource.filter((item) => recordMatchesStudent(item, student));
+    const invoices = (accountingDashboard?.invoices || []).filter((item) => recordMatchesStudent(item, student));
+    const averageScore = studentExams.length
+      ? Math.round(studentExams.reduce((sum, item) => sum + Number(item.score || item.point || 0), 0) / studentExams.length)
+      : selectedStudent.averageScore || 0;
+    const missedLessons = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katilmadi') || normalizeLookup(item.status).includes('yok')).length;
+    const paidInstallments = installments.filter((item) => isPaidStatus(item.status));
+    const unpaidInstallments = installments.filter((item) => !isPaidStatus(item.status));
+    const installmentTotal = installments.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+    const invoiceTotal = invoices.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+    const collectionTotal = collections.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+    const remainingBalance = Math.max(0, installmentTotal + invoiceTotal - collectionTotal);
+
+    return {
+      student,
+      name: getStudentName(student),
+      key: getStudentKey(student),
+      studentExams,
+      studentAttendance,
+      installments,
+      collections,
+      invoices,
+      averageScore,
+      attendanceRate: Math.max(0, Math.min(100, 100 - missedLessons * 5)),
+      paidInstallments,
+      unpaidInstallments,
+      installmentTotal,
+      invoiceTotal,
+      collectionTotal,
+      remainingBalance,
+    };
+  }, [accountingDashboard, attendance, exams, selectedStudent]);
+
+  useEffect(() => {
+    if (!selectedStudentDetail) return;
+    const profileNote = selectedStudentDetail.student.note || '';
+    setStudentNotes((prev) => {
+      if (Object.prototype.hasOwnProperty.call(prev, selectedStudentDetail.key)) return prev;
+      return { ...prev, [selectedStudentDetail.key]: profileNote };
+    });
+  }, [selectedStudentDetail]);
+
+  const saveStudentNoteDraft = useCallback((student, note) => {
+    const key = getStudentKey(student);
+    setStudentNotes((prev) => {
+      const next = { ...prev, [key]: note };
+      try {
+        window.localStorage.setItem(STUDENT_REPORT_NOTES_KEY, JSON.stringify(next));
+      } catch {
+        // Local storage can be unavailable in some embedded shells; the note still stays in memory.
+      }
+      return next;
+    });
+  }, []);
+
+  const persistStudentNote = useCallback(async () => {
+    if (!selectedStudentDetail?.student?.id) {
+      toast({
+        title: 'Not kaydedilemedi',
+        description: 'Bu öğrenci için backend kimliği bulunamadı.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const note = studentNotes[selectedStudentDetail.key] || '';
+    try {
+      setNoteSaving(true);
+      const updated = await updateStudent(
+        selectedStudentDetail.student.id,
+        buildStudentUpdatePayload(selectedStudentDetail.student, note),
+      );
+      const updatedStudent = { ...selectedStudentDetail.student, ...updated, note: updated?.note ?? note };
+      setStudents((prev) => prev.map((student) => (student.id === updatedStudent.id ? updatedStudent : student)));
+      setSelectedStudent((prev) => (prev ? {
+        ...prev,
+        raw: updatedStudent,
+        name: getStudentName(updatedStudent),
+        className: updatedStudent.className || prev.className,
+        programType: updatedStudent.programType || prev.programType,
+      } : prev));
+      toast({
+        title: 'Not kaydedildi',
+        description: 'Öğrenci profilindeki özel not güncellendi.',
+      });
+    } catch (err) {
+      toast({
+        title: 'Not kaydedilemedi',
+        description: err.message || 'Tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setNoteSaving(false);
+    }
+  }, [selectedStudentDetail, studentNotes, toast]);
 
   const handleDownload = () => {
     if (selectedReport?.id === 'attendance') {
@@ -467,7 +692,12 @@ function AdministrativeReportOverview() {
               {selectedReport?.id === 'students' ? (
                 <div className="space-y-4">
                   {displayStudentRows.map((student) => (
-                    <div key={student.id} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+                    <button
+                      type="button"
+                      key={student.id}
+                      onClick={() => setSelectedStudent(student)}
+                      className="w-full flex items-center justify-between p-4 rounded-lg bg-muted/50 text-left transition-colors hover:bg-brand-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-primary"
+                    >
                       <div className="space-y-1">
                         <p className="font-medium">{student.name}</p>
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -485,7 +715,7 @@ function AdministrativeReportOverview() {
                           <p className="font-semibold">%{student.attendanceRate}</p>
                         </div>
                       </div>
-                    </div>
+                    </button>
                   ))}
                   <div className="flex justify-end">
                     <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleDownload}>
@@ -499,16 +729,230 @@ function AdministrativeReportOverview() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={!!selectedStudentDetail} onOpenChange={(open) => !open && setSelectedStudent(null)}>
+        <DialogContent className="max-h-[92vh] max-w-5xl overflow-y-auto">
+          {selectedStudentDetail ? (
+            <div className="space-y-6">
+              <DialogHeader>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-brand-primary/10 text-xl font-bold text-brand-primary">
+                      {getInitials(selectedStudentDetail.name)}
+                    </div>
+                    <div>
+                      <DialogTitle className="text-2xl">{selectedStudentDetail.name}</DialogTitle>
+                      <DialogDescription>
+                        Öğrenciye ait akademik, finansal ve iletişim kayıtları
+                      </DialogDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="w-fit">
+                    {selectedStudentDetail.student.className || selectedStudent.className || 'Sınıf yok'}
+                  </Badge>
+                </div>
+              </DialogHeader>
+
+              <div className="grid gap-4 md:grid-cols-4">
+                {[
+                  [formatCurrency(selectedStudentDetail.remainingBalance), 'Kalan ödeme', Wallet, 'text-amber-600'],
+                  [selectedStudentDetail.installments.length, 'Taksit kaydı', ReceiptText, 'text-brand-primary'],
+                  [formatCurrency(selectedStudentDetail.collectionTotal), 'Tahsil edilen', CheckCircle2, 'text-green-600'],
+                  [`%${selectedStudentDetail.attendanceRate}`, 'Devam oranı', ClipboardCheck, 'text-blue-600'],
+                ].map(([value, label, Icon, color]) => (
+                  <div key={label} className="rounded-2xl border bg-muted/30 p-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm text-muted-foreground">{label}</p>
+                        <p className="mt-1 text-xl font-bold">{value}</p>
+                      </div>
+                      <Icon className={`h-5 w-5 ${color}`} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                <Card className="lg:col-span-1">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <UserRound className="h-5 w-5 text-brand-primary" />
+                      Kimlik ve İletişim
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3 text-sm">
+                    {[
+                      ['Öğrenci No', selectedStudentDetail.student.studentNumber || selectedStudentDetail.student.number || selectedStudentDetail.student.username],
+                      ['TC Kimlik', selectedStudentDetail.student.identityNumber || selectedStudentDetail.student.tcNo || selectedStudentDetail.student.nationalId],
+                      ['Program', selectedStudentDetail.student.programType || selectedStudent.programType],
+                      ['Veli', selectedStudentDetail.student.parentName || selectedStudentDetail.student.guardianName || selectedStudentDetail.student.parentFullName],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-start justify-between gap-4 rounded-xl bg-muted/40 p-3">
+                        <span className="text-muted-foreground">{label}</span>
+                        <span className="text-right font-medium">{value || 'Bilgi yok'}</span>
+                      </div>
+                    ))}
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                      <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <span>{selectedStudentDetail.student.phone || selectedStudentDetail.student.parentPhone || 'Telefon yok'}</span>
+                      </div>
+                      <div className="flex items-center gap-2 rounded-xl bg-muted/40 p-3">
+                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <span className="break-all">{selectedStudentDetail.student.email || selectedStudentDetail.student.parentEmail || 'E-posta yok'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-lg">
+                      <BarChart3 className="h-5 w-5 text-brand-primary" />
+                      Akademik Durum
+                    </CardTitle>
+                    <CardDescription>Sınav, not ve devam özeti</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      <div className="rounded-2xl bg-muted/40 p-4">
+                        <p className="text-sm text-muted-foreground">Ortalama</p>
+                        <p className="mt-1 text-2xl font-bold">{selectedStudentDetail.averageScore}</p>
+                      </div>
+                      <div className="rounded-2xl bg-muted/40 p-4">
+                        <p className="text-sm text-muted-foreground">Sınav Kaydı</p>
+                        <p className="mt-1 text-2xl font-bold">{selectedStudentDetail.studentExams.length}</p>
+                      </div>
+                      <div className="rounded-2xl bg-muted/40 p-4">
+                        <p className="text-sm text-muted-foreground">Devamsızlık Kaydı</p>
+                        <p className="mt-1 text-2xl font-bold">{selectedStudentDetail.studentAttendance.length}</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      {selectedStudentDetail.studentExams.slice(0, 5).map((exam, index) => (
+                        <div key={exam.id || `${exam.title}-${index}`} className="flex items-center justify-between rounded-xl border p-3">
+                          <div>
+                            <p className="font-medium">{exam.title || exam.examName || exam.subject || 'Sınav'}</p>
+                            <p className="text-sm text-muted-foreground">{exam.subject || exam.className || 'Ders bilgisi yok'}</p>
+                          </div>
+                          <Badge variant="outline">{exam.score || exam.point || 0} puan</Badge>
+                        </div>
+                      ))}
+                      {selectedStudentDetail.studentExams.length === 0 ? (
+                        <div className="rounded-xl border border-dashed p-4 text-sm text-muted-foreground">Sınav kaydı bulunamadı.</div>
+                      ) : null}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Wallet className="h-5 w-5 text-brand-primary" />
+                    Finans Özeti
+                  </CardTitle>
+                  <CardDescription>Taksit, fatura, tahsilat ve kalan ödeme durumu</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 md:grid-cols-5">
+                    {[
+                      [formatCurrency(selectedStudentDetail.installmentTotal), 'Taksit toplamı'],
+                      [selectedStudentDetail.paidInstallments.length, 'Ödenen taksit'],
+                      [selectedStudentDetail.unpaidInstallments.length, 'Bekleyen taksit'],
+                      [formatCurrency(selectedStudentDetail.invoiceTotal), 'Fatura toplamı'],
+                      [formatCurrency(selectedStudentDetail.remainingBalance), 'Kalan ödeme'],
+                    ].map(([value, label]) => (
+                      <div key={label} className="rounded-2xl bg-muted/40 p-4">
+                        <p className="text-sm text-muted-foreground">{label}</p>
+                        <p className="mt-1 text-lg font-bold">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-3">
+                    {[
+                      ['Taksitler', selectedStudentDetail.installments, ReceiptText, (item) => item.due || item.dueDate, (item) => item.status || 'Planlandı'],
+                      ['Tahsilatlar', selectedStudentDetail.collections, CheckCircle2, (item) => item.time || item.date || item.createdAt, (item) => item.method || item.note || 'İşlendi'],
+                      ['Faturalar', selectedStudentDetail.invoices, FileText, (item) => item.due || item.dueDate || item.createdAt, (item) => item.status || item.category || 'Fatura'],
+                    ].map(([title, records, Icon, dateGetter, statusGetter]) => (
+                      <div key={title} className="rounded-2xl border p-4">
+                        <div className="mb-3 flex items-center gap-2 font-semibold">
+                          <Icon className="h-4 w-4 text-brand-primary" />
+                          {title}
+                        </div>
+                        <div className="space-y-2">
+                          {records.slice(0, 5).map((item, index) => (
+                            <div key={item.id || `${title}-${index}`} className="rounded-xl bg-muted/40 p-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="font-medium">{item.title || item.name || item.student || selectedStudentDetail.name}</p>
+                                  <p className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <CalendarDays className="h-3 w-3" />
+                                    {formatDate(dateGetter(item))}
+                                  </p>
+                                </div>
+                                <Badge variant={isPaidStatus(statusGetter(item)) ? 'default' : 'outline'}>
+                                  {statusGetter(item)}
+                                </Badge>
+                              </div>
+                              <p className="mt-2 font-semibold">{formatCurrency(item.amount)}</p>
+                            </div>
+                          ))}
+                          {records.length === 0 ? (
+                            <div className="rounded-xl border border-dashed p-3 text-sm text-muted-foreground">Kayıt yok.</div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <NotebookPen className="h-5 w-5 text-brand-primary" />
+                    Özel Not
+                  </CardTitle>
+                  <CardDescription>Kurum yöneticisi ve idari personel için öğrenciye özel not alanı</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <Textarea
+                    value={studentNotes[selectedStudentDetail.key] || ''}
+                    onChange={(event) => saveStudentNoteDraft(selectedStudentDetail.student, event.target.value)}
+                    placeholder="Öğrenciyle ilgili finans, veli görüşmesi veya takip notu girin..."
+                    className="min-h-28"
+                  />
+                  <div className="flex flex-col gap-3 rounded-xl bg-muted/40 p-3 text-sm text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                      <ClipboardList className="h-4 w-4" />
+                      Not öğrenci profilindeki özel not alanına kaydedilir.
+                    </div>
+                    <Button type="button" onClick={persistStudentNote} disabled={noteSaving} className="bg-brand-primary hover:bg-brand-primary/90">
+                      {noteSaving ? 'Kaydediliyor...' : 'Notu Kaydet'}
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {selectedStudentDetail.remainingBalance > 0 ? (
+                <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+                  <AlertCircle className="mt-0.5 h-5 w-5" />
+                  <div>
+                    <p className="font-semibold">Bekleyen ödeme var</p>
+                    <p className="text-sm">Bu öğrencinin görünen kalan ödeme tutarı {formatCurrency(selectedStudentDetail.remainingBalance)}.</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }
 
 export default function Reports() {
-  const { user } = useApp();
-
-  if (canUseStudentDetailReports(user)) {
-    return <TeacherPdfReportCenter />;
-  }
-
   return <AdministrativeReportOverview />;
 }
