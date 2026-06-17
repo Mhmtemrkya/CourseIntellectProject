@@ -94,6 +94,17 @@ public sealed record PdfReportResponse(
     DateTime CreatedAtUtc,
     DateTime? ReadyAtUtc);
 
+public sealed record StudentExamPaperResponse(
+    Guid SessionId,
+    Guid ReportId,
+    string Title,
+    string Subject,
+    string ClassName,
+    string Status,
+    string? DownloadUrl,
+    DateTime? CompletedAtUtc,
+    DateTime? ReadyAtUtc);
+
 public sealed record TeacherReviewResponse(
     Guid Id,
     string TeacherName,

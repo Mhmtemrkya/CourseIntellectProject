@@ -5,12 +5,16 @@ import 'package:student/pages/student_exam_history_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/planned_exam_api_service.dart';
 import 'package:student/services/school_feed_api_service.dart';
+import 'package:student/widgets/exam_camera_preview.dart';
 import 'package:student/widgets/student_empty_state_panel.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 
 class ExamsPage extends StatefulWidget {
-  const ExamsPage({super.key});
+  final bool mockOnly;
+
+  const ExamsPage({super.key, this.mockOnly = false});
 
   @override
   State<ExamsPage> createState() => _ExamsPageState();
@@ -21,10 +25,23 @@ class _ExamsPageState extends State<ExamsPage> {
   bool _loading = true;
   String? _error;
   String _studentName = 'Öğrenci';
+  String _studentUsername = '';
   List<Map<String, dynamic>> _completedExams = const [];
   List<Map<String, dynamic>> _upcomingExams = const [];
 
-  final List<String> tabs = ["Deneme Sınavları", "Sonuçlarım"];
+  List<String> get tabs => [
+    widget.mockOnly ? "Deneme Sınavları" : "Sınavlarım",
+    "Sonuçlarım",
+  ];
+
+  bool _isMockExamType(String? type) {
+    final normalized = (type ?? '').trim().toLowerCase();
+    return normalized == 'mockexam' || normalized.contains('deneme');
+  }
+
+  bool _isMockPlannedExam(PlannedExamRecord exam) {
+    return _isMockExamType(exam.type);
+  }
 
   @override
   void initState() {
@@ -52,6 +69,13 @@ class _ExamsPageState extends State<ExamsPage> {
         studentUsername: session?.username,
         className: studentClassName,
       );
+      final scopedPlanned = planned
+          .where(
+            (item) => widget.mockOnly
+                ? _isMockPlannedExam(item)
+                : !_isMockPlannedExam(item),
+          )
+          .toList();
 
       List<dynamic> records = const [];
       try {
@@ -66,7 +90,8 @@ class _ExamsPageState extends State<ExamsPage> {
       if (!mounted) return;
       setState(() {
         _studentName = session?.fullName ?? _studentName;
-        _upcomingExams = planned
+        _studentUsername = session?.username ?? _studentUsername;
+        _upcomingExams = scopedPlanned
             .map(
               (item) => {
                 "id": item.id,
@@ -77,6 +102,8 @@ class _ExamsPageState extends State<ExamsPage> {
                 "date": item.date,
                 "questionCount": item.questionCount,
                 "duration": item.duration,
+                "liveLinkUrl": item.liveLinkUrl,
+                "requireCamera": item.requireCamera,
                 "status": item.status,
                 "statusColor": const Color(0xFF4E8DF5),
                 "accentColor": _accentColorForSubject(item.subject),
@@ -97,6 +124,11 @@ class _ExamsPageState extends State<ExamsPage> {
             )
             .toList();
         _completedExams = records
+            .where(
+              (item) => widget.mockOnly
+                  ? _isMockExamType(item.type)
+                  : !_isMockExamType(item.type),
+            )
             .map(
               (item) => {
                 "title": item.examTitle,
@@ -182,6 +214,177 @@ class _ExamsPageState extends State<ExamsPage> {
     );
   }
 
+  void _openExamSolve(Map<String, dynamic> item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ExamSolvePage(
+          plannedExamId: item["id"] as String?,
+          examTitle: item["title"] as String?,
+          subject: item["subject"] as String?,
+          questionCount: item["questionCount"] as int? ?? 10,
+        ),
+      ),
+    );
+  }
+
+  Future<void> _checkIn(
+    Map<String, dynamic> item, {
+    required bool joinedLive,
+    required bool cameraReady,
+  }) async {
+    final id = item["id"] as String?;
+    if (id == null) return;
+    try {
+      await PlannedExamApiService.instance.checkIn(
+        id,
+        studentName: _studentName,
+        studentUsername: _studentUsername,
+        className: item["className"] as String?,
+        joinedLive: joinedLive,
+        cameraReady: cameraReady,
+      );
+    } catch (_) {
+      // Yoklama başarısız olsa bile sınava girişi engelleme.
+    }
+  }
+
+  // Kamera/canlı yayın zorunluysa önce giriş kapısını göster.
+  Future<void> _startExamWithGate(Map<String, dynamic> item) async {
+    final liveLink = (item["liveLinkUrl"] as String? ?? '').trim();
+    final requireCamera = item["requireCamera"] as bool? ?? false;
+
+    if (liveLink.isEmpty && !requireCamera) {
+      await _checkIn(item, joinedLive: false, cameraReady: false);
+      if (mounted) _openExamSolve(item);
+      return;
+    }
+
+    var joinedLive = false;
+    var cameraReady = false;
+
+    final entered = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final canEnter =
+                (liveLink.isEmpty || joinedLive) &&
+                (!requireCamera || cameraReady);
+            return Padding(
+              padding: EdgeInsets.fromLTRB(
+                20,
+                20,
+                20,
+                20 + MediaQuery.of(context).viewInsets.bottom,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: const [
+                      Icon(Icons.verified_user_rounded,
+                          color: Color(0xFFFF7A00)),
+                      SizedBox(width: 8),
+                      Text(
+                        "Sınav Giriş Kontrolü",
+                        style: TextStyle(
+                            fontSize: 20, fontWeight: FontWeight.w800),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    item["title"] as String? ?? '',
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                  const SizedBox(height: 16),
+                  if (liveLink.isNotEmpty) ...[
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        joinedLive
+                            ? Icons.check_circle_rounded
+                            : Icons.videocam_rounded,
+                        color: joinedLive ? Colors.green : Colors.blue,
+                      ),
+                      title: const Text("Canlı yayına katıl"),
+                      subtitle: const Text(
+                          "Öğretmenin canlı bağlantısına gir, kameranı aç."),
+                    ),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.open_in_new_rounded),
+                        label: Text(
+                            joinedLive ? "Tekrar Aç" : "Canlı Yayına Katıl"),
+                        onPressed: () async {
+                          final uri = Uri.tryParse(liveLink);
+                          if (uri != null) {
+                            await launchUrl(uri,
+                                mode: LaunchMode.externalApplication);
+                          }
+                          setSheetState(() => joinedLive = true);
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                  if (requireCamera) ...[
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        cameraReady
+                            ? Icons.check_circle_rounded
+                            : Icons.photo_camera_rounded,
+                        color: cameraReady ? Colors.green : Colors.deepPurple,
+                      ),
+                      title: Text(liveLink.isNotEmpty
+                          ? "2. Kameranı aç"
+                          : "Kameranı aç"),
+                      subtitle:
+                          const Text("Sınav boyunca kameran açık kalmalı."),
+                    ),
+                    const SizedBox(height: 8),
+                    ExamCameraPreview(
+                      onReady: () => setSheetState(() => cameraReady = true),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF22A06B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      icon: const Icon(Icons.login_rounded),
+                      label: const Text("Sınava Gir"),
+                      onPressed: canEnter
+                          ? () => Navigator.pop(sheetContext, true)
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (entered == true) {
+      await _checkIn(item, joinedLive: joinedLive, cameraReady: cameraReady);
+      if (mounted) _openExamSolve(item);
+    }
+  }
+
   bool _canStartExam(Map<String, dynamic> item) {
     final startsAt = _plannedStartAt(item["date"] as String?);
     return startsAt == null || !DateTime.now().isBefore(startsAt);
@@ -195,7 +398,9 @@ class _ExamsPageState extends State<ExamsPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Deneme Sınavları")),
+      appBar: AppBar(
+        title: Text(widget.mockOnly ? "Deneme Sınavları" : "Sınavlarım"),
+      ),
       body: RefreshIndicator(
         onRefresh: _loadExams,
         child: SingleChildScrollView(
@@ -225,18 +430,26 @@ class _ExamsPageState extends State<ExamsPage> {
                 else if (currentList.isEmpty)
                   StudentEmptyStatePanel(
                     title: selectedTab == 0
-                        ? 'Henüz deneme sınavı yok'
+                        ? (widget.mockOnly
+                              ? 'Henüz deneme sınavı yok'
+                              : 'Henüz sınav yok')
                         : 'Henüz sınav sonucunuz bulunmuyor',
                     description: selectedTab == 0
-                        ? 'Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol.'
+                        ? (widget.mockOnly
+                              ? 'Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol.'
+                              : 'Öğretmenin sınav oluşturduğunda burada görünecek. Listeyi yenileyerek yeni sınavları kontrol edebilirsin.')
                         : 'Girdiğiniz sınavların sonuçları ve analizleri burada görüntülenecek.',
                     accentColor: const Color(0xFF8B5CF6),
                     icon: selectedTab == 0
                         ? Icons.fact_check_rounded
                         : Icons.bar_chart_rounded,
                     primaryLabel: selectedTab == 0
-                        ? 'Tüm Deneme Sınavlarını Keşfet'
-                        : 'Deneme Sınavlarına Git',
+                        ? (widget.mockOnly
+                              ? 'Denemeleri Yenile'
+                              : 'Sınavları Yenile')
+                        : (widget.mockOnly
+                              ? 'Deneme Sınavlarına Git'
+                              : 'Sınavlarıma Git'),
                     onPrimary: _loadExams,
                   )
                 else
@@ -271,13 +484,17 @@ class _ExamsPageState extends State<ExamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.fact_check_rounded, color: Colors.white, size: 28),
-              SizedBox(width: 10),
+              const Icon(
+                Icons.fact_check_rounded,
+                color: Colors.white,
+                size: 28,
+              ),
+              const SizedBox(width: 10),
               Text(
-                "Sınavlarım",
-                style: TextStyle(
+                widget.mockOnly ? "Deneme Sınavları" : "Sınavlarım",
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
@@ -287,7 +504,9 @@ class _ExamsPageState extends State<ExamsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Planlanan sınavlarını takip et, sonuçlarını incele ve yaklaşan oturumlara hazır ol.",
+            widget.mockOnly
+                ? "Planlanan deneme sınavlarını takip et, sonuçlarını incele ve yaklaşan oturumlara hazır ol."
+                : "Öğretmenin tarafından oluşturulan sınavları takip et, sonuçlarını incele ve yaklaşan oturumlara hazır ol.",
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -296,7 +515,10 @@ class _ExamsPageState extends State<ExamsPage> {
           const SizedBox(height: 18),
           Row(
             children: [
-              _heroStat("${_upcomingExams.length}", "Sınavlarım"),
+              _heroStat(
+                "${_upcomingExams.length}",
+                widget.mockOnly ? "Deneme" : "Sınavlarım",
+              ),
               const SizedBox(width: 12),
               _heroStat("${_completedExams.length}", "Sonuçlarım"),
             ],
@@ -659,18 +881,7 @@ class _ExamsPageState extends State<ExamsPage> {
                                     ),
                                   );
                                 } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => ExamSolvePage(
-                                        plannedExamId: item["id"] as String?,
-                                        examTitle: item["title"] as String?,
-                                        subject: item["subject"] as String?,
-                                        questionCount:
-                                            item["questionCount"] as int? ?? 10,
-                                      ),
-                                    ),
-                                  );
+                                  _startExamWithGate(item);
                                 }
                               }
                             : null,

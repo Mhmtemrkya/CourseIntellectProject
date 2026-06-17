@@ -389,6 +389,55 @@ public sealed class ExamSolvingService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<StudentExamPaperResponse>> GetStudentPapersAsync(string studentUsername, string studentName, CancellationToken cancellationToken)
+    {
+        var normalizedUsername = (studentUsername ?? string.Empty).Trim();
+        var normalizedName = (studentName ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(normalizedUsername) && string.IsNullOrWhiteSpace(normalizedName))
+        {
+            return [];
+        }
+
+        var sessions = await dbContext.ExamSessions
+            .AsNoTracking()
+            .Where(item =>
+                !item.IsTeacherPreview &&
+                ((normalizedUsername != string.Empty && item.StudentUsername == normalizedUsername) ||
+                    (normalizedName != string.Empty && item.StudentName == normalizedName)))
+            .ToListAsync(cancellationToken);
+
+        if (sessions.Count == 0)
+        {
+            return [];
+        }
+
+        var sessionIds = sessions.Select(item => item.Id).ToHashSet();
+        var reports = (await dbContext.PdfReports
+                .AsNoTracking()
+                .Where(item => sessionIds.Contains(item.ExamSessionId))
+                .ToListAsync(cancellationToken))
+            .GroupBy(item => item.ExamSessionId)
+            .ToDictionary(group => group.Key, group => group.OrderByDescending(item => item.CreatedAtUtc).First());
+
+        return sessions
+            .Select(session =>
+            {
+                reports.TryGetValue(session.Id, out var report);
+                return new StudentExamPaperResponse(
+                    session.Id,
+                    report?.Id ?? Guid.Empty,
+                    session.Title,
+                    session.Subject,
+                    session.ClassName,
+                    report?.Status ?? (session.Status == "Completed" ? "Queued" : session.Status),
+                    report?.StorageKey,
+                    session.CompletedAtUtc,
+                    report?.ReadyAtUtc);
+            })
+            .OrderByDescending(item => item.CompletedAtUtc ?? DateTime.MinValue)
+            .ToList();
+    }
+
     public async Task<SolutionSessionResponse> AddTeacherReviewAsync(Guid sessionId, AddTeacherReviewRequest request, string teacherName, Guid? teacherUserId, CancellationToken cancellationToken)
     {
         var (session, attempt, _) = await ResolveAttempt(sessionId, request.QuestionAttemptId, cancellationToken);

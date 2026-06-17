@@ -1,5 +1,9 @@
+using System.Security.Claims;
 using System.Text.RegularExpressions;
 using System.Text.Json;
+using CourseIntellect.Application.DTOs.Attendance;
+using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -10,7 +14,9 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/plannedexams")]
-public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class PlannedExamsController(
+    CourseIntellectDbContext dbContext,
+    IAttendanceService attendanceService) : ControllerBase
 {
     public const string SectionKey = "planned-exams";
 
@@ -101,6 +107,7 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             EndTime = request.EndTime?.Trim() ?? string.Empty,
             Duration = request.Duration.Trim(),
             LateEntryLimitMinutes = request.LateEntryLimitMinutes <= 0 ? 5 : request.LateEntryLimitMinutes,
+            LiveLinkUrl = request.LiveLinkUrl?.Trim() ?? string.Empty,
             RequireCamera = request.RequireCamera,
             RequireFullscreen = request.RequireFullscreen,
             BlockTabChange = request.BlockTabChange,
@@ -141,6 +148,208 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
         return NoContent();
     }
 
+    // Öğrenci canlı yayına/kameraya girdiğinde otomatik yoklama check-in'i yapar.
+    [HttpPost("{id:guid}/checkin")]
+    public async Task<IActionResult> CheckIn(Guid id, [FromBody] PlannedExamCheckInRequest request, CancellationToken cancellationToken)
+    {
+        var items = await CompatibilitySnapshotStore.LoadListAsync<PlannedExamSnapshot>(dbContext, SectionKey, cancellationToken);
+        var plannedExam = items.FirstOrDefault(item => item.Id == id);
+        if (plannedExam is null)
+        {
+            return NotFound();
+        }
+
+        var username = FirstNonEmpty(request.StudentUsername, CurrentUsername());
+        var studentName = request.StudentName?.Trim() ?? string.Empty;
+
+        Guid? userId = null;
+        string className = request.ClassName?.Trim() ?? string.Empty;
+        if (!string.IsNullOrWhiteSpace(username))
+        {
+            var user = await dbContext.Users.AsNoTracking()
+                .FirstOrDefaultAsync(item => item.Username == username, cancellationToken);
+            if (user is not null)
+            {
+                userId = user.Id;
+                var profile = await dbContext.Students.AsNoTracking()
+                    .FirstOrDefaultAsync(item => item.UserId == user.Id, cancellationToken);
+                if (profile is not null)
+                {
+                    if (string.IsNullOrWhiteSpace(studentName)) studentName = profile.FullName;
+                    if (string.IsNullOrWhiteSpace(className)) className = profile.ClassName;
+                }
+            }
+        }
+
+        var entry = plannedExam.Attendance.FirstOrDefault(item =>
+            (userId is not null && item.StudentUserId == userId) ||
+            (!string.IsNullOrWhiteSpace(username) &&
+                string.Equals(item.StudentUsername, username, StringComparison.OrdinalIgnoreCase)));
+
+        if (entry is null)
+        {
+            entry = new PlannedExamAttendanceEntry();
+            plannedExam.Attendance.Add(entry);
+        }
+
+        entry.StudentUserId = userId ?? entry.StudentUserId;
+        entry.StudentUsername = FirstNonEmpty(username, entry.StudentUsername);
+        entry.StudentName = FirstNonEmpty(studentName, entry.StudentName);
+        entry.ClassName = FirstNonEmpty(className, entry.ClassName);
+        entry.JoinedLive = entry.JoinedLive || request.JoinedLive;
+        entry.CameraReady = entry.CameraReady || request.CameraReady;
+        entry.CheckedInAtUtc ??= DateTime.UtcNow;
+        entry.UpdatedAtUtc = DateTime.UtcNow;
+        if (!entry.ManualOverride)
+        {
+            entry.Status = ResolveCheckInStatus(plannedExam, entry.CheckedInAtUtc.Value);
+        }
+
+        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, items, username, cancellationToken);
+        return Ok(MapAttendanceEntry(entry));
+    }
+
+    // Öğretmen: planlı sınavın yoklama listesi (check-in yapanlar + sınıf öğrencileri).
+    [HttpGet("{id:guid}/attendance")]
+    [Authorize(Roles = "Teacher,Admin,InstitutionAdmin,Idare,Administrative")]
+    public async Task<IActionResult> GetAttendance(Guid id, CancellationToken cancellationToken)
+    {
+        var items = await CompatibilitySnapshotStore.LoadListAsync<PlannedExamSnapshot>(dbContext, SectionKey, cancellationToken);
+        var plannedExam = items.FirstOrDefault(item => item.Id == id);
+        if (plannedExam is null)
+        {
+            return NotFound();
+        }
+
+        var roster = plannedExam.Attendance
+            .Select(MapAttendanceEntry)
+            .ToList();
+
+        var seenUsernames = plannedExam.Attendance
+            .Select(item => CompatibilitySnapshotStore.NormalizeText(item.StudentUsername))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet();
+        var seenNames = plannedExam.Attendance
+            .Select(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName))
+            .Where(value => !string.IsNullOrWhiteSpace(value))
+            .ToHashSet();
+
+        // Sınıfın henüz giriş yapmamış öğrencilerini "Yok" olarak ekle.
+        var users = await dbContext.Users.AsNoTracking().ToDictionaryAsync(item => item.Id, cancellationToken);
+        var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
+        foreach (var profile in students)
+        {
+            if (!ClassMatchesAny(plannedExam.ClassName, new[] { profile.ClassName }))
+            {
+                continue;
+            }
+
+            var username = users.TryGetValue(profile.UserId, out var user) ? user.Username : string.Empty;
+            if (seenUsernames.Contains(CompatibilitySnapshotStore.NormalizeText(username)) ||
+                seenNames.Contains(CompatibilitySnapshotStore.NormalizeText(profile.FullName)))
+            {
+                continue;
+            }
+
+            roster.Add(new
+            {
+                studentUserId = (Guid?)profile.UserId,
+                studentUsername = username,
+                studentName = profile.FullName,
+                className = profile.ClassName,
+                joinedLive = false,
+                cameraReady = false,
+                checkedInAtUtc = (DateTime?)null,
+                status = "Absent",
+                manualOverride = false,
+                updatedAtUtc = (DateTime?)null,
+            });
+        }
+
+        return Ok(roster
+            .OrderByDescending(item => GetCheckedInAtUtc(item) ?? DateTime.MinValue)
+            .ToList());
+    }
+
+    // Öğretmen yoklama durumunu manuel düzeltir (Var/Yok/Geç).
+    [HttpPost("{id:guid}/attendance")]
+    [Authorize(Roles = "Teacher,Admin,InstitutionAdmin,Idare,Administrative")]
+    public async Task<IActionResult> SaveAttendance(Guid id, [FromBody] SavePlannedExamAttendanceRequest request, CancellationToken cancellationToken)
+    {
+        var items = await CompatibilitySnapshotStore.LoadListAsync<PlannedExamSnapshot>(dbContext, SectionKey, cancellationToken);
+        var plannedExam = items.FirstOrDefault(item => item.Id == id);
+        if (plannedExam is null)
+        {
+            return NotFound();
+        }
+
+        foreach (var update in request.Entries ?? [])
+        {
+            var username = update.StudentUsername?.Trim() ?? string.Empty;
+            var name = update.StudentName?.Trim() ?? string.Empty;
+            var entry = plannedExam.Attendance.FirstOrDefault(item =>
+                (update.StudentUserId is not null && item.StudentUserId == update.StudentUserId) ||
+                (!string.IsNullOrWhiteSpace(username) && string.Equals(item.StudentUsername, username, StringComparison.OrdinalIgnoreCase)) ||
+                (!string.IsNullOrWhiteSpace(name) && string.Equals(item.StudentName, name, StringComparison.OrdinalIgnoreCase)));
+
+            if (entry is null)
+            {
+                entry = new PlannedExamAttendanceEntry
+                {
+                    StudentUserId = update.StudentUserId,
+                    StudentUsername = username,
+                    StudentName = name,
+                    ClassName = update.ClassName?.Trim() ?? string.Empty,
+                };
+                plannedExam.Attendance.Add(entry);
+            }
+
+            entry.Status = string.IsNullOrWhiteSpace(update.Status) ? entry.Status : update.Status.Trim();
+            entry.ManualOverride = true;
+            entry.UpdatedAtUtc = DateTime.UtcNow;
+        }
+
+        await CompatibilitySnapshotStore.SaveListAsync(dbContext, SectionKey, items, User.Identity?.Name ?? "system", cancellationToken);
+
+        // Sınav yoklamasını genel devamsızlık modülüne de yaz (sınıf bazında).
+        await MirrorAttendanceToGeneralModuleAsync(plannedExam, request.Entries ?? [], cancellationToken);
+
+        return Ok(plannedExam.Attendance.Select(MapAttendanceEntry).ToList());
+    }
+
+    private async Task MirrorAttendanceToGeneralModuleAsync(
+        PlannedExamSnapshot plannedExam,
+        IReadOnlyList<PlannedExamAttendanceUpdate> entries,
+        CancellationToken cancellationToken)
+    {
+        var lessonLabel = $"Sınav: {plannedExam.Title}".Trim();
+        var lessonDate = CompatibilitySnapshotStore.ParseDateLabel(plannedExam.DateLabel).Date;
+
+        var byClass = entries
+            .Where(entry => !string.IsNullOrWhiteSpace(entry.StudentName) && !string.IsNullOrWhiteSpace(entry.ClassName))
+            .GroupBy(entry => entry.ClassName!.Trim());
+
+        foreach (var group in byClass)
+        {
+            var students = group
+                .Select(entry => new SaveAttendanceStudentRequest(
+                    entry.StudentName!.Trim(),
+                    MapExamStatusToAttendance(entry.Status)))
+                .ToList();
+
+            await attendanceService.SaveLessonAttendanceAsync(
+                new SaveAttendanceRequest(group.Key, lessonLabel, lessonDate, students),
+                cancellationToken);
+        }
+    }
+
+    private static string MapExamStatusToAttendance(string? status) => (status ?? string.Empty).Trim() switch
+    {
+        "Present" => "present",
+        "Late" => "late",
+        _ => "absent",
+    };
+
     [HttpGet("{id:guid}/submissions")]
     public async Task<IActionResult> GetSubmissions(Guid id, CancellationToken cancellationToken)
     {
@@ -167,6 +376,12 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             .OrderByDescending(item => item.CompletedAtUtc ?? item.StartedAtUtc)
             .Select(MapSubmission)
             .ToList<object>();
+
+        var solutionSubmissions = await LoadSolutionSubmissionsAsync(plannedExam.Id, cancellationToken);
+        response.AddRange(solutionSubmissions);
+        response = response
+            .OrderByDescending(item => GetSubmittedAtUtc(item) ?? DateTime.MinValue)
+            .ToList();
 
         if (response.Count == 0)
         {
@@ -200,6 +415,52 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
         }
 
         return Ok(response);
+    }
+
+    private async Task<List<object>> LoadSolutionSubmissionsAsync(Guid plannedExamId, CancellationToken cancellationToken)
+    {
+        var solutionSessions = await dbContext.ExamSessions
+            .AsNoTracking()
+            .Where(item => item.PlannedExamId == plannedExamId && item.Status == "Completed")
+            .OrderByDescending(item => item.CompletedAtUtc ?? item.StartedAtUtc)
+            .ToListAsync(cancellationToken);
+
+        if (solutionSessions.Count == 0)
+        {
+            return [];
+        }
+
+        var sessionIds = solutionSessions.Select(item => item.Id).ToHashSet();
+        var attempts = await dbContext.QuestionAttempts
+            .AsNoTracking()
+            .Where(item => sessionIds.Contains(item.ExamSessionId))
+            .OrderBy(item => item.SortOrder)
+            .ToListAsync(cancellationToken);
+        var attemptIds = attempts.Select(item => item.Id).ToHashSet();
+        var questionIds = attempts.Select(item => item.QuestionBankItemId).ToHashSet();
+        var questions = await dbContext.QuestionBankItems
+            .AsNoTracking()
+            .Where(item => questionIds.Contains(item.Id))
+            .ToDictionaryAsync(item => item.Id, cancellationToken);
+        var latestAnswers = (await dbContext.AnswerSelections
+                .AsNoTracking()
+                .Where(item => attemptIds.Contains(item.QuestionAttemptId))
+                .ToListAsync(cancellationToken))
+            .GroupBy(item => item.QuestionAttemptId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(item => item.SavedAtUtc).First());
+        var attemptsBySession = attempts
+            .GroupBy(item => item.ExamSessionId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        return solutionSessions
+            .Select(session => MapSolutionSubmission(
+                session,
+                attemptsBySession.GetValueOrDefault(session.Id) ?? [],
+                questions,
+                latestAnswers))
+            .ToList<object>();
     }
 
     private static object MapSubmission(ExamSessionSnapshot session)
@@ -261,6 +522,139 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
         };
     }
 
+    private static object MapSolutionSubmission(
+        ExamSession session,
+        IReadOnlyList<QuestionAttempt> attempts,
+        IReadOnlyDictionary<Guid, QuestionBankItem> questions,
+        IReadOnlyDictionary<Guid, AnswerSelection> answers)
+    {
+        var answered = attempts.Count(item => answers.ContainsKey(item.Id));
+        var correct = attempts.Count(item => answers.TryGetValue(item.Id, out var answer) && answer.IsCorrect);
+        var wrong = answered - correct;
+        var blank = attempts.Count - answered;
+        var score = attempts.Count == 0 ? 0 : (int)Math.Round((double)correct / attempts.Count * 100, MidpointRounding.AwayFromZero);
+
+        return new
+        {
+            id = session.Id,
+            sessionId = session.Id,
+            studentName = session.StudentName,
+            studentUsername = session.StudentUsername,
+            score,
+            net = correct,
+            correct,
+            wrong,
+            blank,
+            total = attempts.Count,
+            submittedAtUtc = session.CompletedAtUtc ?? session.StartedAtUtc,
+            status = "Onay Bekliyor",
+            approvalStatus = "Pending",
+            answers = attempts
+                .OrderBy(item => item.SortOrder)
+                .Select(attempt =>
+                {
+                    questions.TryGetValue(attempt.QuestionBankItemId, out var question);
+                    answers.TryGetValue(attempt.Id, out var answer);
+                    var options = CompatibilitySnapshotStore.DeserializeStringList(question?.OptionsSerialized);
+                    var selectedOptionIndex = answer?.SelectedOptionIndex;
+                    var correctOptionIndex = question?.CorrectOptionIndex ?? 0;
+                    return new
+                    {
+                        questionId = attempt.Id,
+                        questionBankItemId = attempt.QuestionBankItemId,
+                        sortOrder = attempt.SortOrder,
+                        subject = question?.Subject ?? session.Subject,
+                        topic = question?.Topic ?? string.Empty,
+                        questionText = question?.QuestionText ?? string.Empty,
+                        options,
+                        selectedOptionIndex,
+                        selectedAnswerText = selectedOptionIndex.HasValue && selectedOptionIndex.Value >= 0 && selectedOptionIndex.Value < options.Count
+                            ? options[selectedOptionIndex.Value]
+                            : answer?.OpenAnswer ?? string.Empty,
+                        correctOptionIndex,
+                        correctAnswerText = correctOptionIndex >= 0 && correctOptionIndex < options.Count
+                            ? options[correctOptionIndex]
+                            : question?.ExpectedAnswer ?? string.Empty,
+                        isCorrect = answer?.IsCorrect,
+                        answeredAtUtc = answer?.SavedAtUtc,
+                    };
+                })
+                .ToList(),
+        };
+    }
+
+    private static DateTime? GetSubmittedAtUtc(object item)
+    {
+        var property = item.GetType().GetProperty("submittedAtUtc");
+        var value = property?.GetValue(item);
+        return value is DateTime date ? date : null;
+    }
+
+    private string CurrentUsername()
+    {
+        return User.FindFirstValue("unique_name")
+            ?? User.FindFirstValue(ClaimTypes.NameIdentifier)
+            ?? User.Identity?.Name
+            ?? string.Empty;
+    }
+
+    private static string FirstNonEmpty(params string?[] values)
+    {
+        foreach (var value in values)
+        {
+            if (!string.IsNullOrWhiteSpace(value))
+            {
+                return value.Trim();
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static string ResolveCheckInStatus(PlannedExamSnapshot plannedExam, DateTime checkedInAtUtc)
+    {
+        if (TryResolvePlannedStartUtc(plannedExam, out var startsAtUtc) && checkedInAtUtc > startsAtUtc.AddMinutes(1))
+        {
+            return "Late";
+        }
+
+        return "Present";
+    }
+
+    private static bool TryResolvePlannedStartUtc(PlannedExamSnapshot plannedExam, out DateTime startsAtUtc)
+    {
+        var dateLabel = plannedExam.DateLabel ?? string.Empty;
+        var hasTimeInDate = Regex.IsMatch(dateLabel, @"\d{1,2}:\d{2}");
+        var combined = !hasTimeInDate && !string.IsNullOrWhiteSpace(plannedExam.StartTime)
+            ? $"{dateLabel} {plannedExam.StartTime}"
+            : dateLabel;
+        return ExamSessionsController.TryResolvePlannedStartUtc(combined, out startsAtUtc);
+    }
+
+    private static object MapAttendanceEntry(PlannedExamAttendanceEntry entry)
+    {
+        return new
+        {
+            studentUserId = entry.StudentUserId,
+            studentUsername = entry.StudentUsername,
+            studentName = entry.StudentName,
+            className = entry.ClassName,
+            joinedLive = entry.JoinedLive,
+            cameraReady = entry.CameraReady,
+            checkedInAtUtc = entry.CheckedInAtUtc,
+            status = entry.Status,
+            manualOverride = entry.ManualOverride,
+            updatedAtUtc = (DateTime?)entry.UpdatedAtUtc,
+        };
+    }
+
+    private static DateTime? GetCheckedInAtUtc(object item)
+    {
+        var property = item.GetType().GetProperty("checkedInAtUtc");
+        var value = property?.GetValue(item);
+        return value is DateTime date ? date : null;
+    }
+
     private static object MapResponse(PlannedExamSnapshot item)
     {
         return new
@@ -276,6 +670,7 @@ public sealed class PlannedExamsController(CourseIntellectDbContext dbContext) :
             endTime = item.EndTime,
             duration = item.Duration,
             lateEntryLimitMinutes = item.LateEntryLimitMinutes,
+            liveLinkUrl = item.LiveLinkUrl,
             requireCamera = item.RequireCamera,
             requireFullscreen = item.RequireFullscreen,
             blockTabChange = item.BlockTabChange,
@@ -370,6 +765,7 @@ public sealed class PlannedExamCreateRequest
     public string? EndTime { get; set; }
     public string Duration { get; set; } = string.Empty;
     public int LateEntryLimitMinutes { get; set; } = 5;
+    public string? LiveLinkUrl { get; set; }
     public bool RequireCamera { get; set; } = true;
     public bool RequireFullscreen { get; set; } = true;
     public bool BlockTabChange { get; set; } = true;
@@ -391,6 +787,29 @@ public sealed class PlannedExamSourceRequest
     public string? ImagePlacement { get; set; }
 }
 
+public sealed class PlannedExamCheckInRequest
+{
+    public string? StudentUsername { get; set; }
+    public string? StudentName { get; set; }
+    public string? ClassName { get; set; }
+    public bool JoinedLive { get; set; }
+    public bool CameraReady { get; set; }
+}
+
+public sealed class SavePlannedExamAttendanceRequest
+{
+    public List<PlannedExamAttendanceUpdate>? Entries { get; set; }
+}
+
+public sealed class PlannedExamAttendanceUpdate
+{
+    public Guid? StudentUserId { get; set; }
+    public string? StudentUsername { get; set; }
+    public string? StudentName { get; set; }
+    public string? ClassName { get; set; }
+    public string? Status { get; set; }
+}
+
 public sealed class PlannedExamSnapshot
 {
     public Guid Id { get; set; }
@@ -403,6 +822,7 @@ public sealed class PlannedExamSnapshot
     public string EndTime { get; set; } = string.Empty;
     public string Duration { get; set; } = string.Empty;
     public int LateEntryLimitMinutes { get; set; } = 5;
+    public string LiveLinkUrl { get; set; } = string.Empty;
     public bool RequireCamera { get; set; } = true;
     public bool RequireFullscreen { get; set; } = true;
     public bool BlockTabChange { get; set; } = true;
@@ -413,7 +833,22 @@ public sealed class PlannedExamSnapshot
     public string TeacherName { get; set; } = string.Empty;
     public string SourceType { get; set; } = string.Empty;
     public List<PlannedExamSourceSnapshot> Sources { get; set; } = [];
+    public List<PlannedExamAttendanceEntry> Attendance { get; set; } = [];
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+public sealed class PlannedExamAttendanceEntry
+{
+    public Guid? StudentUserId { get; set; }
+    public string StudentUsername { get; set; } = string.Empty;
+    public string StudentName { get; set; } = string.Empty;
+    public string ClassName { get; set; } = string.Empty;
+    public bool JoinedLive { get; set; }
+    public bool CameraReady { get; set; }
+    public DateTime? CheckedInAtUtc { get; set; }
+    public string Status { get; set; } = "Present";
+    public bool ManualOverride { get; set; }
+    public DateTime UpdatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class PlannedExamSourceSnapshot

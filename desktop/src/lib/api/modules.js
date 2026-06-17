@@ -918,6 +918,26 @@ export async function fetchPlannedExamSubmissions(id) {
   return response;
 }
 
+export async function checkinPlannedExam(id, payload) {
+  const response = await api.post(`/api/plannedexams/${id}/checkin`, payload);
+  return response;
+}
+
+export async function fetchPlannedExamAttendance(id) {
+  const response = await api.get(`/api/plannedexams/${id}/attendance`);
+  return response;
+}
+
+export async function savePlannedExamAttendance(id, payload) {
+  const response = await api.post(`/api/plannedexams/${id}/attendance`, payload);
+  return response;
+}
+
+export async function fetchMyExamPapers(params) {
+  const response = await api.get('/api/solution-sessions/my-papers', { params });
+  return response;
+}
+
 export async function startExamSession(payload) {
   const response = await api.post('/api/examsessions/start', payload);
   return response;

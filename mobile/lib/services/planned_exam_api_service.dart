@@ -39,8 +39,15 @@ class PlannedExamRecord {
   final String className;
   final String subject;
   final String date;
+  final String startTime;
   final String duration;
   final int questionCount;
+  final int lateEntryLimitMinutes;
+  final String liveLinkUrl;
+  final bool requireCamera;
+  final bool requireFullscreen;
+  final bool blockTabChange;
+  final bool blockCopyPaste;
   final String status;
   final String teacherName;
   final String sourceType;
@@ -53,8 +60,15 @@ class PlannedExamRecord {
     required this.className,
     required this.subject,
     required this.date,
+    required this.startTime,
     required this.duration,
     required this.questionCount,
+    required this.lateEntryLimitMinutes,
+    required this.liveLinkUrl,
+    required this.requireCamera,
+    required this.requireFullscreen,
+    required this.blockTabChange,
+    required this.blockCopyPaste,
     required this.status,
     required this.teacherName,
     required this.sourceType,
@@ -69,8 +83,15 @@ class PlannedExamRecord {
       className: map['className'] as String,
       subject: map['subject'] as String,
       date: map['date'] as String? ?? map['dateLabel'] as String? ?? '',
+      startTime: map['startTime'] as String? ?? '',
       duration: map['duration'] as String? ?? '',
       questionCount: map['questionCount'] as int? ?? 0,
+      lateEntryLimitMinutes: map['lateEntryLimitMinutes'] as int? ?? 5,
+      liveLinkUrl: map['liveLinkUrl'] as String? ?? '',
+      requireCamera: map['requireCamera'] as bool? ?? false,
+      requireFullscreen: map['requireFullscreen'] as bool? ?? false,
+      blockTabChange: map['blockTabChange'] as bool? ?? false,
+      blockCopyPaste: map['blockCopyPaste'] as bool? ?? false,
       status: map['status'] as String? ?? 'Planlandi',
       teacherName: map['teacherName'] as String? ?? '',
       sourceType: map['sourceType'] as String? ?? '',
@@ -254,6 +275,37 @@ class PlannedExamApiService {
     return PlannedExamRecord.fromMap(
       Map<String, dynamic>.from(jsonDecode(response.body) as Map),
     );
+  }
+
+  Future<void> checkIn(
+    String id, {
+    String? studentName,
+    String? studentUsername,
+    String? className,
+    bool joinedLive = false,
+    bool cameraReady = false,
+  }) async {
+    final session = await _session();
+    final response = await http.post(
+      Uri.parse('${ApiConfig.baseUrl}/api/plannedexams/$id/checkin'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${session.accessToken}',
+      },
+      body: jsonEncode({
+        'studentName': ?studentName,
+        'studentUsername': ?studentUsername,
+        'className': ?className,
+        'joinedLive': joinedLive,
+        'cameraReady': cameraReady,
+      }),
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw PlannedExamApiException(
+        'Yoklama kaydı yapılamadı (${response.statusCode}).',
+      );
+    }
   }
 
   Future<void> deletePlannedExam(String id) async {

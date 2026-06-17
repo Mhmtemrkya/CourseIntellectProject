@@ -15,6 +15,7 @@ import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useApp } from '../../context/AppContext';
 import { deletePlannedExam, fetchExamResults, fetchPlannedExams } from '../../lib/api/modules';
 import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
+import ExamAttendanceDialog from '../../components/teacher/ExamAttendanceDialog';
 
 
 const containerVariants = {
@@ -79,6 +80,7 @@ export default function TeacherExams() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [attendanceExam, setAttendanceExam] = useState(null);
 
   const loadExams = useCallback(async () => {
     try {
@@ -256,7 +258,8 @@ export default function TeacherExams() {
                           </div>
                         ))}
                       </div>
-                      <div className="flex justify-end">
+                      <div className="flex justify-end gap-2">
+                        <Button variant="outline" className="rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300" onClick={() => setAttendanceExam(exam)}>Yoklama</Button>
                         <Button variant="outline" className="rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300" onClick={() => deletePlannedExam(exam.id).then(() => setPlannedExams((prev) => prev.filter((item) => item.id !== exam.id)))}>Sil</Button>
                       </div>
                     </div>
@@ -376,6 +379,10 @@ export default function TeacherExams() {
           ) : null}
         </TabsContent>
       </Tabs>
+
+      {attendanceExam ? (
+        <ExamAttendanceDialog exam={attendanceExam} onClose={() => setAttendanceExam(null)} />
+      ) : null}
     </motion.div>
   );
 }

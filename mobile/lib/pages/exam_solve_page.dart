@@ -369,70 +369,109 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
   void _showCompletionSheet() {
     final summary = _summary;
     if (summary == null) return;
-    showModalBottomSheet<void>(
+    showDialog<void>(
       context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
+      barrierDismissible: false,
       builder: (context) {
         final colors = _SolveColors.of(context);
-        return Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: colors.surface,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 44,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: colors.border,
-                    borderRadius: BorderRadius.circular(99),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                const Icon(
-                  Icons.check_circle_rounded,
-                  size: 64,
-                  color: Color(0xFF34D399),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Sınav tamamlandı',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: colors.text,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Doğru: ${summary.correct} • Yanlış: ${summary.wrong} • Boş: ${summary.empty} • Başarı: %${summary.successPercent}',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: colors.muted),
-                ),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: summary.report?.downloadUrl == null
-                      ? null
-                      : () => _openPdf(summary.report),
-                  icon: const Icon(Icons.picture_as_pdf_rounded),
-                  label: Text(
-                    summary.report?.downloadUrl == null
-                        ? 'PDF hazırlanıyor'
-                        : 'PDF raporu hazır',
-                  ),
-                ),
-                TextButton(
-                  onPressed: () =>
-                      Navigator.popUntil(context, (route) => route.isFirst),
-                  child: const Text('Ana sayfaya dön'),
+        return Dialog(
+          insetPadding: const EdgeInsets.all(18),
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: colors.surface,
+              borderRadius: BorderRadius.circular(32),
+              border: Border.all(color: const Color(0xFF34D399).withValues(alpha: 0.28)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.28),
+                  blurRadius: 32,
+                  offset: const Offset(0, 18),
                 ),
               ],
+            ),
+            child: SafeArea(
+              top: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 78,
+                    height: 78,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF34D399).withValues(alpha: 0.14),
+                      borderRadius: BorderRadius.circular(26),
+                      border: Border.all(
+                        color: const Color(0xFF34D399).withValues(alpha: 0.32),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle_rounded,
+                      size: 48,
+                      color: Color(0xFF34D399),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Teslim başarılı',
+                    style: TextStyle(
+                      color: Color(0xFF34D399),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Sınavınız öğretmeninize gönderilmiştir',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 24,
+                      height: 1.12,
+                      fontWeight: FontWeight.w900,
+                      color: colors.text,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Cevapların kaydedildi. Öğretmenin sınav teslimleri ve öğrenci sınavları ekranından teslimini görebilir.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: colors.muted, height: 1.42),
+                  ),
+                  const SizedBox(height: 18),
+                  Row(
+                    children: [
+                      Expanded(child: _completionMetric(colors, 'Doğru', '${summary.correct}')),
+                      const SizedBox(width: 10),
+                      Expanded(child: _completionMetric(colors, 'Yanlış', '${summary.wrong}')),
+                      const SizedBox(width: 10),
+                      Expanded(child: _completionMetric(colors, 'Boş', '${summary.empty}')),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () =>
+                          Navigator.popUntil(context, (route) => route.isFirst),
+                      icon: const Icon(Icons.assignment_turned_in_rounded),
+                      label: const Text('Sınavlarıma Dön'),
+                    ),
+                  ),
+                  if (summary.report?.downloadUrl != null) ...[
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () => _openPdf(summary.report),
+                        icon: const Icon(Icons.picture_as_pdf_rounded),
+                        label: const Text('PDF raporunu aç'),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         );
@@ -440,24 +479,88 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
     );
   }
 
+  Widget _completionMetric(_SolveColors colors, String label, String value) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: BoxDecoration(
+        color: colors.surfaceSoft,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: colors.border),
+      ),
+      child: Column(
+        children: [
+          Text(
+            value,
+            style: TextStyle(
+              color: colors.text,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 3),
+          Text(
+            label,
+            style: TextStyle(
+              color: colors.muted,
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = _SolveColors.of(context);
-    return Scaffold(
-      body: DecoratedBox(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [colors.backgroundDeep, colors.background],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+    // Sınav bitmeden (özet oluşmadan) sayfadan çıkışı engelle.
+    final examActive = _summary == null && _session != null;
+    return PopScope(
+      canPop: !examActive,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        final navigator = Navigator.of(context);
+        final leave = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: const Text('Sınavdan çıkılsın mı?'),
+            content: const Text(
+              'Sınav devam ediyor. Çıkmak için önce "Sınavı Bitir" demelisin. '
+              'Yine de çıkmak istiyor musun?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: const Text('Sınava Dön'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, true),
+                child: const Text('Çık'),
+              ),
+            ],
           ),
-        ),
-        child: SafeArea(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : _error != null
-              ? _ErrorState(message: _error!, onRetry: _startSession)
-              : _buildContent(context),
+        );
+        if (leave == true && mounted) {
+          navigator.pop();
+        }
+      },
+      child: Scaffold(
+        body: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [colors.backgroundDeep, colors.background],
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+            ),
+          ),
+          child: SafeArea(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : _error != null
+                ? _ErrorState(message: _error!, onRetry: _startSession)
+                : _buildContent(context),
+          ),
         ),
       ),
     );

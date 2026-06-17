@@ -28,9 +28,15 @@ class BottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.fact_check_rounded,
-          label: 'Deneme',
+          label: 'Sınavlarım',
           pageBuilder: (_) => const ExamsPage(),
           sidebarColor: const Color(0xFF7C3AED),
+        ),
+        AdaptiveDestination(
+          icon: Icons.workspace_premium_rounded,
+          label: 'Deneme',
+          pageBuilder: (_) => const ExamsPage(mockOnly: true),
+          sidebarColor: const Color(0xFFF97316),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

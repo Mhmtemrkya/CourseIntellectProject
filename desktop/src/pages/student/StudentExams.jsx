@@ -13,8 +13,10 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
+import ExamEntryGate from '../../components/student/ExamEntryGate';
 import { useApp } from '../../context/AppContext';
 import {
+  checkinPlannedExam,
   completeExamSession,
   fetchPlannedExams,
   submitExamSessionAnswer,
@@ -61,7 +63,12 @@ function formatDuration(value) {
   return value;
 }
 
-export default function StudentExams() {
+function isMockExam(item) {
+  const type = String(item?.type || '').trim().toLowerCase();
+  return type === 'mockexam' || type.includes('deneme');
+}
+
+export default function StudentExams({ mockOnly = false }) {
   const { user } = useApp();
   const navigate = useNavigate();
   const [plannedExams, setPlannedExams] = useState([]);
@@ -72,6 +79,7 @@ export default function StudentExams() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [deliveryState, setDeliveryState] = useState(null);
+  const [gateExam, setGateExam] = useState(null);
 
   const loadExams = useCallback(async () => {
     try {
@@ -90,28 +98,67 @@ export default function StudentExams() {
     loadExams();
   }, [loadExams]);
 
-  const upcomingExams = useMemo(() => plannedExams.map((item) => ({
-    id: item.id,
-    name: item.title,
-    subject: item.subject,
-    date: parseDate(item.dateLabel || item.date) || new Date(),
-    type: item.type || 'Deneme',
-    className: item.className,
-    questionCount: item.questionCount,
-    duration: item.duration,
-  })), [plannedExams]);
+  const upcomingExams = useMemo(() => plannedExams
+    .filter((item) => (mockOnly ? isMockExam(item) : !isMockExam(item)))
+    .map((item) => ({
+      id: item.id,
+      name: item.title,
+      subject: item.subject,
+      date: parseDate(item.dateLabel || item.date) || new Date(),
+      type: item.type || (mockOnly ? 'Deneme' : 'Sınav'),
+      className: item.className,
+      questionCount: item.questionCount,
+      duration: item.duration,
+      dateLabel: item.dateLabel || item.date,
+      startTime: item.startTime,
+      lateEntryLimitMinutes: item.lateEntryLimitMinutes,
+      requireCamera: item.requireCamera,
+      requireFullscreen: item.requireFullscreen,
+      blockTabChange: item.blockTabChange,
+      blockCopyPaste: item.blockCopyPaste,
+      liveLinkUrl: item.liveLinkUrl,
+    })), [mockOnly, plannedExams]);
 
-  const startExam = async (exam) => {
+  const startExam = (exam) => {
+    // Kamera veya canlı yayın zorunluysa önce giriş kapısını göster.
+    if (exam.requireCamera || (exam.liveLinkUrl || '').trim()) {
+      setGateExam(exam);
+      return;
+    }
+    enterExam(exam, { joinedLive: false, cameraReady: false });
+  };
+
+  const enterExam = async (exam, gateResult = {}) => {
+    if (exam.id) {
+      try {
+        await checkinPlannedExam(exam.id, {
+          studentName: user?.name || '',
+          studentUsername: user?.username || '',
+          className: exam.className || '',
+          joinedLive: !!gateResult.joinedLive,
+          cameraReady: !!gateResult.cameraReady,
+        });
+      } catch {
+        // Yoklama check-in başarısız olsa bile sınava girişi engelleme.
+      }
+    }
+
     const params = new URLSearchParams({
-      title: exam.name || 'Deneme Sınavı',
+      title: exam.name || (mockOnly ? 'Deneme Sınavı' : 'Sınav'),
       subject: exam.subject || 'Genel',
       className: exam.className || '',
       questionCount: String(exam.questionCount || 20),
       durationSeconds: String(Number.parseInt(String(exam.duration || '').replace(/\D/g, ''), 10) * 60 || 5400),
       studentName: user?.name || '',
       studentUsername: user?.username || '',
+      requireCamera: exam.requireCamera ? '1' : '0',
+      requireFullscreen: exam.requireFullscreen ? '1' : '0',
+      blockTabChange: exam.blockTabChange ? '1' : '0',
+      blockCopyPaste: exam.blockCopyPaste ? '1' : '0',
     });
     if (exam.id) params.set('plannedExamId', exam.id);
+    if ((exam.liveLinkUrl || '').trim()) params.set('liveLinkUrl', exam.liveLinkUrl.trim());
+    setGateExam(null);
     navigate(`/s/solve?${params.toString()}`);
   };
 
@@ -160,6 +207,25 @@ export default function StudentExams() {
     totalExams: upcomingExams.length,
     bestSubject: upcomingExams[0]?.subject || 'Henüz yok',
   };
+  const pageCopy = mockOnly
+    ? {
+        title: 'Deneme Sınavları',
+        description: 'Deneme sınavlarına gir, çözümünü gönder ve durumunu tek ekranda takip et.',
+        totalLabel: 'Deneme',
+        emptyTitle: 'Henüz deneme sınavı yok',
+        emptyDescription: 'Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol.',
+        emptyAction: 'Denemeleri Yenile',
+        testId: 'student-mock-exams-page',
+      }
+    : {
+        title: 'Sınavlarım',
+        description: 'Öğretmenin tarafından oluşturulan sınavlara gir, çözümünü gönder ve durumunu tek ekranda takip et.',
+        totalLabel: 'Sınavlarım',
+        emptyTitle: 'Henüz sınav yok',
+        emptyDescription: 'Öğretmenin sınav oluşturduğunda burada görünecek. Listeyi yenileyerek yeni sınavları kontrol edebilirsin.',
+        emptyAction: 'Sınavları Yenile',
+        testId: 'student-exams-page',
+      };
 
   const currentQuestion = session?.questions?.[currentIndex] || null;
   const progress = session?.questions?.length ? ((currentIndex + 1) / session.questions.length) * 100 : 0;
@@ -174,18 +240,18 @@ export default function StudentExams() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="student-exams-page">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid={pageCopy.testId}>
       <div>
-        <h1 className="text-3xl font-bold font-heading">Sınavlarım</h1>
-        <p className="text-muted-foreground mt-1">Gerçek sınav akışına gir, çözümünü gönder ve durumunu tek ekranda takip et.</p>
+        <h1 className="text-3xl font-bold font-heading">{pageCopy.title}</h1>
+        <p className="text-muted-foreground mt-1">{pageCopy.description}</p>
       </div>
 
       {error ? <ErrorBanner title="Sınav verileri alınamadı" message={error} onRetry={loadExams} /> : null}
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {[
-          [overallStats.totalExams, 'Sınavlarım', FileQuestion, 'text-brand-primary'],
-          [upcomingExams.filter((item) => item.type.toLowerCase().includes('deneme')).length, 'Deneme', Target, 'text-green-600'],
+          [overallStats.totalExams, pageCopy.totalLabel, FileQuestion, 'text-brand-primary'],
+          [upcomingExams.length, 'Planlanan', Target, 'text-green-600'],
           [overallStats.bestSubject, 'Odak Ders', Calendar, 'text-brand-accent'],
           [upcomingExams.filter((item) => item.questionCount > 0).length, 'Hazır Oturum', Layers3, 'text-blue-600'],
         ].map(([value, label, Icon, color]) => (
@@ -208,9 +274,9 @@ export default function StudentExams() {
           <StudentEmptyState
             variant="exam"
             accent="purple"
-            title="Henüz deneme sınavı yok"
-            description="Sana uygun deneme sınavları yakında burada olacak. Kendini test etmeye hazır ol."
-            primaryLabel="Tüm Deneme Sınavlarını Keşfet"
+            title={pageCopy.emptyTitle}
+            description={pageCopy.emptyDescription}
+            primaryLabel={pageCopy.emptyAction}
             onPrimary={loadExams}
           />
         ) : upcomingExams.map((exam) => {
@@ -388,6 +454,14 @@ export default function StudentExams() {
           )}
         </DialogContent>
       </Dialog>
+
+      {gateExam ? (
+        <ExamEntryGate
+          exam={gateExam}
+          onCancel={() => setGateExam(null)}
+          onEnter={(gateResult) => enterExam(gateExam, gateResult)}
+        />
+      ) : null}
     </motion.div>
   );
 }

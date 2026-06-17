@@ -130,6 +130,7 @@ export default function TeacherQuestionStudio() {
     duration: '40 dk',
     lateEntryLimitMinutes: '5',
     totalPoint: '100',
+    liveLinkUrl: '',
     requireCamera: true,
     requireFullscreen: true,
     blockTabChange: true,
@@ -557,6 +558,21 @@ export default function TeacherQuestionStudio() {
                     </div>
                   ))}
                 </div>
+                {examForm.requireCamera ? (
+                  <div className="lg:col-span-5">
+                    <Field label="Canlı Yayın / Toplantı Linki (Zoom, Google Meet vb.)">
+                      <Input
+                        value={examForm.liveLinkUrl}
+                        onChange={(event) => { setExamForm((v) => ({ ...v, liveLinkUrl: event.target.value })); touch(); }}
+                        placeholder="https://zoom.us/j/... veya https://meet.google.com/..."
+                        className="border-white/10 bg-white/5 text-white"
+                      />
+                    </Field>
+                    <p className="mt-1 text-xs text-slate-400">
+                      Kamera zorunluyken öğrenci bu canlı yayına girip kamerasını açmadan sınava başlayamaz. Linke giren öğrenciler yoklamada otomatik "Var" olarak işaretlenir.
+                    </p>
+                  </div>
+                ) : null}
               </div>
               {examQuestions.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">

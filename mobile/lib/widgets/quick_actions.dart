@@ -32,7 +32,13 @@ class QuickActions extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, Set<String> disabled) {
     final allActions = [
-      (Icons.message_rounded, "Mesajlar", Colors.blue, const MessagesPage(), 'messaging'),
+      (
+        Icons.message_rounded,
+        "Mesajlar",
+        Colors.blue,
+        const MessagesPage(),
+        'messaging',
+      ),
       (
         Icons.help_center_rounded,
         "Soru Sor",
@@ -63,9 +69,16 @@ class QuickActions extends StatelessWidget {
       ),
       (
         Icons.fact_check_rounded,
-        "Deneme Sınavları",
+        "Sınavlarım",
         const Color(0xFF7C3AED),
         const ExamsPage(),
+        'exams',
+      ),
+      (
+        Icons.workspace_premium_rounded,
+        "Deneme Sınavları",
+        const Color(0xFFF97316),
+        const ExamsPage(mockOnly: true),
         'exams',
       ),
       (

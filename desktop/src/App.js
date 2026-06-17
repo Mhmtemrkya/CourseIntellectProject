@@ -72,6 +72,7 @@ import StudentDashboard from "./pages/student/StudentDashboard";
 import StudentSchedule from "./pages/student/StudentSchedule";
 import StudentContent from "./pages/student/StudentContent";
 import StudentExams from "./pages/student/StudentExams";
+import StudentMockExams from "./pages/student/StudentMockExams";
 import StudentQuestions from "./pages/student/StudentQuestions";
 import StudentLive from "./pages/student/StudentLive";
 import StudentAssignments from "./pages/student/StudentAssignments";
@@ -314,6 +315,7 @@ function App() {
               <Route path="/s/schedule" element={<StudentSchedule />} />
               <Route path="/s/content" element={<StudentContent />} />
               <Route path="/s/exams" element={<StudentExams />} />
+              <Route path="/s/mock-exams" element={<StudentMockExams />} />
               <Route path="/s/solve" element={<ExamSolvingPage />} />
               <Route path="/s/questions" element={<StudentQuestions />} />
               <Route path="/s/live" element={<StudentLive />} />

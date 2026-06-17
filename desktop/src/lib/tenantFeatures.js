@@ -29,7 +29,7 @@ export function resetTenantFeatureCache() {
 // Özellik anahtarı → menü yolu önekleri.
 const FEATURE_PATHS = {
   attendance: ['/attendance', '/t/attendance', '/s/attendance', '/p/attendance', '/kiosk-qr', '/s/attendance-qr'],
-  exams: ['/exams', '/t/exams', '/s/exams', '/t/mock-exams', '/t/grade-entry', '/s/exam-results', '/t/student-exams', '/s/solve', '/t/exam-workbench', '/p/exams'],
+  exams: ['/exams', '/t/exams', '/s/exams', '/s/mock-exams', '/t/mock-exams', '/t/grade-entry', '/s/exam-results', '/t/student-exams', '/s/solve', '/t/exam-workbench', '/p/exams'],
   questionBank: ['/questions', '/t/question-bank', '/s/questions', '/t/question-studio', '/s/question-practice', '/s/wrong-answers'],
   questionBox: ['/t/questions', '/s/question-box'],
   studyPlan: ['/s/study-plan', '/s/badges'],

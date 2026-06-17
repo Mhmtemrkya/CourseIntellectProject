@@ -29,14 +29,6 @@ public sealed class ExamSessionsController(
             ? plannedExams.FirstOrDefault(item => item.Id == request.PlannedExamId.Value)
             : null;
 
-        if (plannedExam is not null && TryResolvePlannedStartUtc(plannedExam.DateLabel, out var startsAtUtc) && DateTime.UtcNow < startsAtUtc)
-        {
-            return Conflict(new
-            {
-                message = $"Sınav saati gelmeden sınava giriş yapılamaz. Başlangıç: {plannedExam.DateLabel}",
-            });
-        }
-
         var sessions = await CompatibilitySnapshotStore.LoadListAsync<ExamSessionSnapshot>(dbContext, SectionKey, cancellationToken);
         if (plannedExam is not null)
         {
@@ -56,6 +48,27 @@ public sealed class ExamSessionsController(
             if (existingSession is not null)
             {
                 return Ok(MapSession(existingSession));
+            }
+
+            if (TryResolvePlannedStartUtc(plannedExam, out var startsAtUtc))
+            {
+                var now = DateTime.UtcNow;
+                if (now < startsAtUtc)
+                {
+                    return Conflict(new
+                    {
+                        message = $"Sınav saati gelmeden sınava giriş yapılamaz. Başlangıç: {plannedExam.DateLabel} {plannedExam.StartTime}".Trim(),
+                    });
+                }
+
+                var lateLimitMinutes = plannedExam.LateEntryLimitMinutes <= 0 ? 5 : plannedExam.LateEntryLimitMinutes;
+                if (now > startsAtUtc.AddMinutes(lateLimitMinutes))
+                {
+                    return Conflict(new
+                    {
+                        message = $"Geç giriş süresi doldu. Bu sınava başlangıçtan sonraki ilk {lateLimitMinutes} dakika içinde girilebilir.",
+                    });
+                }
             }
         }
 
@@ -549,6 +562,16 @@ public sealed class ExamSessionsController(
         }
 
         return false;
+    }
+
+    private static bool TryResolvePlannedStartUtc(PlannedExamSnapshot plannedExam, out DateTime startsAtUtc)
+    {
+        var dateLabel = plannedExam.DateLabel ?? string.Empty;
+        var hasTimeInDate = System.Text.RegularExpressions.Regex.IsMatch(dateLabel, @"\d{1,2}:\d{2}");
+        var combined = !hasTimeInDate && !string.IsNullOrWhiteSpace(plannedExam.StartTime)
+            ? $"{dateLabel} {plannedExam.StartTime}"
+            : dateLabel;
+        return TryResolvePlannedStartUtc(combined, out startsAtUtc);
     }
 
     private static List<string> NormalizeQuestionOptions(QuestionBankItem item)

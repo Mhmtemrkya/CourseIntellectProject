@@ -30,6 +30,11 @@ class _SummaryCardsState extends State<SummaryCards> {
   int _examResultCount = 0;
   int _pendingHomeworkCount = 0;
 
+  bool _isMockExam(PlannedExamRecord exam) {
+    final type = exam.type.trim().toLowerCase();
+    return type == 'mockexam' || type.contains('deneme');
+  }
+
   @override
   void initState() {
     super.initState();
@@ -68,7 +73,9 @@ class _SummaryCardsState extends State<SummaryCards> {
       if (!mounted) return;
       setState(() {
         _liveLessonCount = liveLessons.length;
-        _upcomingExamCount = plannedExams.length;
+        _upcomingExamCount = plannedExams
+            .where((item) => !_isMockExam(item))
+            .length;
         _examResultCount = examResults.length;
         _pendingHomeworkCount = pendingHomework;
         _loading = false;
@@ -98,11 +105,11 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.track_changes_rounded,
-        title: "Deneme Sınavları",
+        title: "Sınavlarım",
         value: _loading ? "..." : "$_upcomingExamCount",
         hint: _upcomingExamCount > 0
-            ? "Çözmeye hazır denemeler var"
-            : "Yaklaşan deneme bulunmuyor",
+            ? "Çözmeye hazır sınavlar var"
+            : "Yaklaşan sınav bulunmuyor",
         color: const Color(0xFF7C3AED),
         onTap: widget.onExamTap,
       ),

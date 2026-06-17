@@ -24,6 +24,14 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     text: "1. Yazılı",
   );
 
+  final TextEditingController liveLinkController = TextEditingController();
+
+  int _lateEntryLimitMinutes = 5;
+  bool _requireCamera = true;
+  bool _requireFullscreen = true;
+  bool _blockTabChange = true;
+  bool _blockCopyPaste = true;
+
   bool _loadingSources = true;
   String selectedSource = "Manuel Ekle";
   String selectedClass = '';
@@ -140,6 +148,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     dateController.dispose();
     durationController.dispose();
     questionCountController.dispose();
+    liveLinkController.dispose();
     for (final item in _manualQuestions) {
       item.dispose();
     }
@@ -333,6 +342,12 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
           ? _manualQuestions.length
           : (int.tryParse(questionCountController.text.trim()) ?? 0),
       "duration": durationController.text.trim(),
+      "lateEntryLimitMinutes": _lateEntryLimitMinutes,
+      "liveLinkUrl": liveLinkController.text.trim(),
+      "requireCamera": _requireCamera,
+      "requireFullscreen": _requireFullscreen,
+      "blockTabChange": _blockTabChange,
+      "blockCopyPaste": _blockCopyPaste,
       "status": "Planlandı",
       "statusColor": const Color(0xFF4E8DF5),
       "accentColor": const Color(0xFFFF7A00),
@@ -507,6 +522,91 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                     controller: questionCountController,
                     readOnly: selectedSource != "Manuel Ekle",
                     decoration: const InputDecoration(labelText: "Soru Sayısı"),
+                  ),
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF7A00).withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFFF7A00).withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "Sınav Güvenliği",
+                          style: TextStyle(fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 8),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: _requireCamera,
+                          onChanged: (value) =>
+                              setState(() => _requireCamera = value),
+                          title: const Text("Kamera zorunlu"),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: _requireFullscreen,
+                          onChanged: (value) =>
+                              setState(() => _requireFullscreen = value),
+                          title: const Text("Tam ekran zorunlu"),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: _blockTabChange,
+                          onChanged: (value) =>
+                              setState(() => _blockTabChange = value),
+                          title: const Text("Sekme/uygulama değiştirme yasak"),
+                        ),
+                        SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: _blockCopyPaste,
+                          onChanged: (value) =>
+                              setState(() => _blockCopyPaste = value),
+                          title: const Text("Kopyala/yapıştır yasak"),
+                        ),
+                        Row(
+                          children: [
+                            const Expanded(child: Text("Geç giriş limiti (dk)")),
+                            DropdownButton<int>(
+                              value: _lateEntryLimitMinutes,
+                              items: const [0, 5, 10, 15, 20, 30]
+                                  .map(
+                                    (value) => DropdownMenuItem(
+                                      value: value,
+                                      child: Text("$value dk"),
+                                    ),
+                                  )
+                                  .toList(),
+                              onChanged: (value) => setState(
+                                () => _lateEntryLimitMinutes = value ?? 5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_requireCamera) ...[
+                          const SizedBox(height: 4),
+                          TextField(
+                            controller: liveLinkController,
+                            decoration: const InputDecoration(
+                              labelText: "Canlı Yayın / Toplantı Linki",
+                              hintText: "https://zoom.us/j/... veya Meet linki",
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            "Kamera zorunluyken öğrenci bu canlı yayına girip "
+                            "kamerasını açmadan sınava başlayamaz. Linke giren "
+                            "öğrenciler yoklamada otomatik \"Var\" işaretlenir.",
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 16),
                   if (selectedSource != "Manuel Ekle")

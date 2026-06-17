@@ -3,9 +3,10 @@ import { motion } from 'framer-motion';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   ArrowLeft, ArrowRight, Bookmark, CheckCircle2, ClipboardList, Clock3, Download, FileDown,
-  Flag, Grid2X2, Loader2, MessageSquareText, NotebookPen, Save, Send, Sparkles, X,
+  Flag, Grid2X2, Loader2, Maximize, MessageSquareText, NotebookPen, Save, Send, ShieldAlert, Sparkles, X,
 } from 'lucide-react';
 import { DrawingCanvas } from '../../features/solving/canvas/DrawingCanvas';
+import CameraMonitor from '../../components/student/CameraMonitor';
 import { useApp } from '../../context/AppContext';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import {
@@ -49,10 +50,21 @@ export default function ExamSolvingPage() {
   const [summary, setSummary] = useState(null);
   const [panel, setPanel] = useState('solution');
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [violationCount, setViolationCount] = useState(0);
+  const [showViolation, setShowViolation] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const normalizedRole = String(user?.role || '').toLowerCase();
   const canReview = ['teacher', 'admin', 'institutionadmin', 'idare'].some((role) => normalizedRole.includes(role));
   const isTeacherPreview = canReview && (searchParams.get('teacherPreview') === 'true' || normalizedRole.includes('teacher'));
+
+  // Öğretmenin sınav oluştururken seçtiği güvenlik kuralları (öğrenci için).
+  const requireCamera = searchParams.get('requireCamera') === '1' && !isTeacherPreview;
+  const requireFullscreen = searchParams.get('requireFullscreen') === '1' && !isTeacherPreview;
+  const blockTabChange = searchParams.get('blockTabChange') === '1' && !isTeacherPreview;
+  const blockCopyPaste = searchParams.get('blockCopyPaste') === '1' && !isTeacherPreview;
+  const liveLinkUrl = (searchParams.get('liveLinkUrl') || '').trim();
+  const examActive = session?.status === 'Active' && !summary;
 
   const loadOrStart = useCallback(async () => {
     try {
@@ -101,6 +113,61 @@ export default function ExamSolvingPage() {
     }, 1000);
     return () => window.clearInterval(timer);
   }, [session]);
+
+  // Kopyala/yapıştır ve sağ tık engeli.
+  useEffect(() => {
+    if (!blockCopyPaste || !examActive) return undefined;
+    const prevent = (event) => event.preventDefault();
+    const events = ['copy', 'cut', 'paste', 'contextmenu', 'dragstart'];
+    events.forEach((name) => document.addEventListener(name, prevent));
+    return () => events.forEach((name) => document.removeEventListener(name, prevent));
+  }, [blockCopyPaste, examActive]);
+
+  // Sekme/pencere değiştirme tespiti — uyarı gösterip ihlal sayar.
+  useEffect(() => {
+    if (!blockTabChange || !examActive) return undefined;
+    const onVisibility = () => {
+      if (document.hidden) {
+        setViolationCount((value) => value + 1);
+        setShowViolation(true);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => document.removeEventListener('visibilitychange', onVisibility);
+  }, [blockTabChange, examActive]);
+
+  // Sayfadan ayrılma / yenileme uyarısı (sınavı bitirmeden çıkış).
+  useEffect(() => {
+    if (!examActive) return undefined;
+    const onBeforeUnload = (event) => {
+      event.preventDefault();
+      event.returnValue = '';
+      return '';
+    };
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, [examActive]);
+
+  // Tam ekran durumunu takip et.
+  useEffect(() => {
+    if (!requireFullscreen) return undefined;
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', onChange);
+    onChange();
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [requireFullscreen]);
+
+  const enterFullscreen = useCallback(() => {
+    document.documentElement.requestFullscreen?.().catch(() => {});
+  }, []);
+
+  const guardedBack = useCallback(() => {
+    if (examActive) {
+      const confirmed = window.confirm('Sınav devam ediyor. Çıkmak için önce "Sınavı Bitir" demelisin. Yine de çıkmak istiyor musun?');
+      if (!confirmed) return;
+    }
+    navigate(-1);
+  }, [examActive, navigate]);
 
   const questions = session?.questions || [];
   const question = questions[currentIndex] || null;
@@ -275,6 +342,44 @@ export default function ExamSolvingPage() {
   }
 
   return (
+    <>
+      {summary ? (
+        <SubmissionSuccessModal
+          summary={summary}
+          onBackToExams={() => navigate('/s/exams')}
+          onResults={() => navigate('/s/exam-results')}
+        />
+      ) : null}
+
+      <CameraMonitor active={requireCamera && examActive} />
+
+      {requireFullscreen && !isFullscreen && examActive ? (
+        <div className="fixed left-1/2 top-4 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/15 px-4 py-2 text-sm text-amber-100 backdrop-blur">
+          <Maximize className="h-4 w-4" />
+          Bu sınav tam ekran gerektiriyor.
+          <button type="button" onClick={enterFullscreen} className="rounded-xl bg-amber-500 px-3 py-1 text-xs font-bold text-white hover:bg-amber-600">
+            Tam Ekrana Geç
+          </button>
+        </div>
+      ) : null}
+
+      {showViolation ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur">
+          <div className="w-full max-w-md rounded-[28px] border border-red-400/30 bg-[#1a0d12] p-7 text-center text-white">
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-red-500/15 text-red-300">
+              <ShieldAlert className="h-8 w-8" />
+            </div>
+            <h2 className="mt-4 text-xl font-black">Sınav ekranından ayrıldın</h2>
+            <p className="mt-2 text-sm text-slate-300">
+              Sınav sırasında başka sekme/pencereye geçmek yasaktır. Bu durum kaydedildi.
+            </p>
+            <p className="mt-2 text-sm font-bold text-red-200">Uyarı sayısı: {violationCount}</p>
+            <button type="button" onClick={() => setShowViolation(false)} className="mt-5 w-full rounded-2xl bg-orange-500 px-5 py-3 font-black text-white hover:bg-orange-600">
+              Sınava Devam Et
+            </button>
+          </div>
+        </div>
+      ) : null}
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-h-[82vh] overflow-hidden rounded-[36px] border border-white/10 bg-[#06101f] text-white shadow-2xl shadow-slate-950/20">
       <div className="grid min-h-[82vh] grid-cols-[86px_1fr_330px]">
         <aside className="border-r border-white/10 bg-slate-950/80 p-4">
@@ -296,7 +401,7 @@ export default function ExamSolvingPage() {
         <main className="min-w-0 p-5">
           <header className="mb-5 flex items-center justify-between rounded-[28px] border border-white/10 bg-white/5 p-4 backdrop-blur">
             <div className="flex items-center gap-4">
-              <button type="button" onClick={() => navigate(-1)} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/60 text-slate-200 hover:bg-white/10">
+              <button type="button" onClick={guardedBack} className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-slate-950/60 text-slate-200 hover:bg-white/10">
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
@@ -318,30 +423,11 @@ export default function ExamSolvingPage() {
                   <div className="h-full rounded-full bg-gradient-to-r from-orange-400 to-orange-600" style={{ width: `${progress}%` }} />
                 </div>
               </div>
-              <button type="button" onClick={finish} disabled={saving} className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-orange-500/25 disabled:opacity-60">
+              <button type="button" onClick={finish} disabled={saving || !!summary} className="rounded-2xl bg-orange-500 px-5 py-3 text-sm font-black text-white shadow-lg shadow-orange-500/25 disabled:opacity-60">
                 Sınavı Bitir
               </button>
             </div>
           </header>
-
-          {summary ? (
-            <div className="mb-5 rounded-[28px] border border-emerald-400/30 bg-emerald-500/10 p-5">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-8 w-8 text-emerald-300" />
-                  <div>
-                    <h2 className="text-lg font-black">Çözüm tamamlandı</h2>
-                    <p className="text-sm text-emerald-100/80">PDF raporu oluşturuldu ve öğretmen merkezine gönderildi.</p>
-                  </div>
-                </div>
-                {summary.report?.downloadUrl ? (
-                  <a href={buildImageUrl(summary.report.downloadUrl)} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-300/30 px-4 py-2 text-sm font-bold text-emerald-100">
-                    <Download className="mr-2 inline h-4 w-4" /> PDF İndir
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
 
           <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
             <section className="rounded-[32px] border border-white/10 bg-slate-950/55 p-6">
@@ -514,5 +600,54 @@ export default function ExamSolvingPage() {
         </aside>
       </div>
     </motion.div>
+    </>
+  );
+}
+
+function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-[36px] border border-emerald-300/25 bg-[#071426] p-8 text-center text-white shadow-2xl shadow-emerald-950/40">
+        <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/20 blur-3xl" />
+        <div className="absolute -bottom-20 -left-12 h-48 w-48 rounded-full bg-orange-400/15 blur-3xl" />
+        <div className="relative">
+          <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-[28px] bg-emerald-400/15 ring-1 ring-emerald-300/30">
+            <CheckCircle2 className="h-11 w-11 text-emerald-300" />
+          </div>
+          <p className="mt-6 text-xs font-black uppercase tracking-[0.24em] text-emerald-200/80">Teslim başarılı</p>
+          <h2 className="mt-2 text-3xl font-black">Sınavınız öğretmeninize gönderilmiştir</h2>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-slate-300">
+            Cevapların kaydedildi ve sınav teslimleri ile öğrenci sınavları ekranında öğretmenin tarafından görüntülenebilir.
+          </p>
+          <div className="mt-6 grid grid-cols-3 gap-3 rounded-[28px] border border-white/10 bg-white/[0.04] p-3">
+            <MetricBox label="Doğru" value={summary.correct} />
+            <MetricBox label="Yanlış" value={summary.wrong} />
+            <MetricBox label="Boş" value={summary.empty} />
+          </div>
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:justify-center">
+            <button type="button" onClick={onBackToExams} className="rounded-2xl bg-orange-500 px-5 py-3 font-black text-white shadow-lg shadow-orange-500/25 hover:bg-orange-600">
+              Sınavlarıma Dön
+            </button>
+            <button type="button" onClick={onResults} className="rounded-2xl border border-white/12 bg-white/5 px-5 py-3 font-black text-white hover:bg-white/10">
+              Sonuçlarım
+            </button>
+            {summary.report?.downloadUrl ? (
+              <a href={buildImageUrl(summary.report.downloadUrl)} target="_blank" rel="noreferrer" className="rounded-2xl border border-emerald-300/30 px-5 py-3 font-black text-emerald-100 hover:bg-emerald-300/10">
+                <Download className="mr-2 inline h-4 w-4" /> PDF
+              </a>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MetricBox({ label, value }) {
+  return (
+    <div className="rounded-2xl bg-slate-950/70 p-4">
+      <div className="text-2xl font-black">{value}</div>
+      <div className="mt-1 text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</div>
+    </div>
   );
 }

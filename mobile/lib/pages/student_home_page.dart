@@ -90,6 +90,13 @@ class _StudentHomePageState extends State<StudentHomePage>
     );
   }
 
+  void goToMockExams() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => const ExamsPage(mockOnly: true)),
+    );
+  }
+
   void goToHomework() {
     Navigator.push(
       context,
@@ -510,10 +517,16 @@ class _StudentHomePageState extends State<StudentHomePage>
                 onTap: goToAttendanceScan,
               ),
               _miniAction(
-                title: "Deneme Sınavları",
+                title: "Sınavlarım",
                 icon: Icons.fact_check_rounded,
                 color: const Color(0xFF7C3AED),
                 onTap: goToExams,
+              ),
+              _miniAction(
+                title: "Deneme Sınavları",
+                icon: Icons.workspace_premium_rounded,
+                color: const Color(0xFFF97316),
+                onTap: goToMockExams,
               ),
               _miniAction(
                 title: "Sınav Sonuçlarım",

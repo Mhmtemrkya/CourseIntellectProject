@@ -645,8 +645,14 @@ const menuConfigs = {
     {
       path: "/s/exams",
       icon: FileQuestion,
-      label: "Deneme Sınavları",
+      label: "Sınavlarım",
       color: "#a855f7",
+    },
+    {
+      path: "/s/mock-exams",
+      icon: ClipboardCheck,
+      label: "Deneme Sınavları",
+      color: "#f97316",
     },
     {
       path: "/s/exam-results",
@@ -855,7 +861,7 @@ const MODULE_MENU_REGISTRY = {
   exams: {
     default: { path: "/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
     teacher: { path: "/t/exams", icon: FileQuestion, label: "Sınavlar", color: "#a855f7" },
-    student: { path: "/s/exams", icon: FileQuestion, label: "Deneme Sınavları", color: "#a855f7" },
+    student: { path: "/s/exams", icon: FileQuestion, label: "Sınavlarım", color: "#a855f7" },
     parent: { path: "/p/exams", icon: FileQuestion, label: "Sınav Sonuçları", color: "#a855f7" },
   },
   "grade-entry": {
@@ -863,6 +869,7 @@ const MODULE_MENU_REGISTRY = {
   },
   "mock-exams": {
     teacher: { path: "/t/mock-exams", icon: ClipboardCheck, label: "Deneme Sınavları", color: "#f97316" },
+    student: { path: "/s/mock-exams", icon: ClipboardCheck, label: "Deneme Sınavları", color: "#f97316" },
   },
   assignments: {
     teacher: { path: "/t/assignments", icon: FileText, label: "Ödevler", color: "#f59e0b" },
@@ -982,6 +989,7 @@ function inferModuleKey(item) {
     "/t/mock-exams": "mock-exams",
     "/t/mock-exams/create": "mock-exams",
     "/s/exams": "exams",
+    "/s/mock-exams": "mock-exams",
     "/p/exams": "exams",
     "/t/assignments": "assignments",
     "/s/assignments": "assignments",
