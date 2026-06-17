@@ -46,6 +46,9 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AccountingInstallment> AccountingInstallments => Set<AccountingInstallment>();
     public DbSet<AccountingNotification> AccountingNotifications => Set<AccountingNotification>();
     public DbSet<AccountingAuditLog> AccountingAuditLogs => Set<AccountingAuditLog>();
+    public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
+    public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
+    public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
     public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
     public DbSet<HomeworkAssignment> HomeworkAssignments => Set<HomeworkAssignment>();
     public DbSet<HomeworkSubmission> HomeworkSubmissions => Set<HomeworkSubmission>();
@@ -351,6 +354,55 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.SourceType).HasMaxLength(40).IsRequired();
             entity.Property(x => x.SourceKey).HasMaxLength(180).IsRequired();
+        });
+
+        modelBuilder.Entity<EnrollmentContract>(entity =>
+        {
+            entity.ToTable("enrollment_contracts");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ClassName).HasMaxLength(120);
+            entity.Property(x => x.AcademicYear).HasMaxLength(40);
+            entity.Property(x => x.GrossAmount).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountAmount).HasPrecision(18, 2);
+            entity.Property(x => x.DiscountReason).HasMaxLength(200);
+            entity.Property(x => x.NetAmount).HasPrecision(18, 2);
+            entity.Property(x => x.DownPayment).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.HasIndex(x => x.StudentUserId);
+        });
+
+        modelBuilder.Entity<FinanceInstallment>(entity =>
+        {
+            entity.ToTable("finance_installments");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Label).HasMaxLength(80);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.PaidAmount).HasPrecision(18, 2);
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
+            entity.HasIndex(x => x.EnrollmentContractId);
+            entity.HasIndex(x => x.StudentUserId);
+        });
+
+        modelBuilder.Entity<FinancePayment>(entity =>
+        {
+            entity.ToTable("finance_payments");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Method).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ReceiptNo).HasMaxLength(40);
+            entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(500);
+            entity.HasIndex(x => x.StudentUserId);
+            entity.HasIndex(x => x.FinanceInstallmentId);
         });
 
         modelBuilder.Entity<HomeworkAssignment>(entity =>

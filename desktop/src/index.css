@@ -13,10 +13,7 @@ body {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     min-height: 100vh;
-    background:
-        radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.15), transparent 28%),
-        radial-gradient(circle at top right, hsl(var(--chart-4) / 0.18), transparent 24%),
-        linear-gradient(180deg, hsl(var(--background)) 0%, hsl(var(--background)) 100%);
+    background: var(--ci-app-background);
     color-scheme: light;
 }
 
@@ -27,29 +24,51 @@ code {
 /* CourseIntellect Design Tokens */
 @layer base {
     :root {
+        /* CourseIntellect Theme Engine aliases */
+        --ci-primary: 200 100% 15%;
+        --ci-secondary: 211 58% 22%;
+        --ci-accent: 30 90% 45%;
+        --ci-success: 142 76% 36%;
+        --ci-warning: 38 92% 50%;
+        --ci-danger: 0 84% 60%;
+        --ci-background: 216 33% 97%;
+        --ci-foreground: 221 39% 11%;
+        --ci-card: 0 0% 100%;
+        --ci-card-muted: 214 32% 94%;
+        --ci-border: 214 26% 88%;
+        --ci-sidebar-gradient-start: 211 68% 11%;
+        --ci-sidebar-gradient-end: 216 74% 6%;
+        --ci-logo-background: 30 96% 54%;
+        --ci-app-background:
+            radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.12), transparent 28%),
+            radial-gradient(circle at top right, hsl(var(--chart-4) / 0.12), transparent 24%),
+            linear-gradient(135deg, hsl(216 33% 98%) 0%, hsl(214 32% 95%) 48%, hsl(220 32% 97%) 100%);
+        --ci-panel-background: linear-gradient(180deg, hsl(var(--card) / 0.94), hsl(var(--card) / 0.88));
+        --ci-panel-shadow: 0 20px 50px hsl(220 45% 20% / 0.10);
+
         /* Brand Colors */
         --brand-primary: 200 100% 15%; /* #00354F */
         --brand-accent: 30 90% 45%; /* #D9790B */
         
         /* Shadcn Base */
-        --background: 0 0% 100%;
-        --foreground: 200 100% 15%;
-        --card: 0 0% 100%;
-        --card-foreground: 200 100% 15%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 200 100% 15%;
+        --background: var(--ci-background);
+        --foreground: var(--ci-foreground);
+        --card: var(--ci-card);
+        --card-foreground: var(--ci-foreground);
+        --popover: var(--ci-card);
+        --popover-foreground: var(--ci-foreground);
         --primary: 200 100% 15%;
         --primary-foreground: 0 0% 98%;
-        --secondary: 210 20% 96%;
-        --secondary-foreground: 200 100% 15%;
-        --muted: 210 20% 96%;
+        --secondary: var(--ci-card-muted);
+        --secondary-foreground: var(--ci-foreground);
+        --muted: var(--ci-card-muted);
         --muted-foreground: 215 16% 47%;
-        --accent: 30 90% 45%;
+        --accent: var(--ci-accent);
         --accent-foreground: 0 0% 100%;
-        --destructive: 0 84.2% 60.2%;
+        --destructive: var(--ci-danger);
         --destructive-foreground: 0 0% 98%;
-        --border: 214 20% 90%;
-        --input: 214 20% 90%;
+        --border: var(--ci-border);
+        --input: var(--ci-border);
         --ring: 200 100% 15%;
         --chart-1: 200 100% 15%;
         --chart-2: 30 90% 45%;
@@ -62,24 +81,46 @@ code {
     }
     
     .dark {
-        --background: 200 30% 8%;
-        --foreground: 0 0% 95%;
-        --card: 200 25% 10%;
-        --card-foreground: 0 0% 95%;
-        --popover: 200 25% 10%;
-        --popover-foreground: 0 0% 95%;
+        --ci-primary: 30 90% 58%;
+        --ci-secondary: 213 42% 16%;
+        --ci-accent: 30 90% 54%;
+        --ci-success: 150 72% 47%;
+        --ci-warning: 38 96% 56%;
+        --ci-danger: 0 74% 58%;
+        --ci-background: 213 49% 7%;
+        --ci-foreground: 210 40% 98%;
+        --ci-card: 213 42% 11%;
+        --ci-card-muted: 215 31% 16%;
+        --ci-border: 214 29% 18%;
+        --ci-sidebar-gradient-start: 213 63% 8%;
+        --ci-sidebar-gradient-end: 220 68% 4%;
+        --ci-logo-background: 30 96% 54%;
+        --ci-app-background:
+            radial-gradient(circle at 8% 0%, hsl(var(--brand-accent) / 0.12), transparent 26%),
+            radial-gradient(circle at 90% 8%, hsl(219 84% 56% / 0.16), transparent 28%),
+            radial-gradient(circle at 55% 100%, hsl(200 90% 35% / 0.09), transparent 34%),
+            linear-gradient(135deg, hsl(213 49% 7%) 0%, hsl(214 45% 9%) 52%, hsl(220 52% 6%) 100%);
+        --ci-panel-background: linear-gradient(180deg, hsl(var(--card) / 0.86), hsl(var(--card) / 0.72));
+        --ci-panel-shadow: 0 24px 70px hsl(220 60% 2% / 0.42);
+
+        --background: var(--ci-background);
+        --foreground: var(--ci-foreground);
+        --card: var(--ci-card);
+        --card-foreground: var(--ci-foreground);
+        --popover: var(--ci-card);
+        --popover-foreground: var(--ci-foreground);
         --primary: 0 0% 98%;
         --primary-foreground: 200 100% 15%;
-        --secondary: 200 20% 15%;
-        --secondary-foreground: 0 0% 95%;
-        --muted: 200 20% 15%;
+        --secondary: var(--ci-card-muted);
+        --secondary-foreground: var(--ci-foreground);
+        --muted: var(--ci-card-muted);
         --muted-foreground: 215 16% 65%;
-        --accent: 30 90% 45%;
+        --accent: var(--ci-accent);
         --accent-foreground: 0 0% 100%;
-        --destructive: 0 62.8% 30.6%;
+        --destructive: var(--ci-danger);
         --destructive-foreground: 0 0% 98%;
-        --border: 200 20% 18%;
-        --input: 200 20% 18%;
+        --border: var(--ci-border);
+        --input: var(--ci-border);
         --ring: 30 90% 45%;
         --chart-1: 220 70% 50%;
         --chart-2: 30 90% 45%;
@@ -98,6 +139,32 @@ code {
     }
     body {
         @apply bg-background text-foreground;
+    }
+
+    html,
+    body,
+    #root {
+        min-height: 100%;
+    }
+
+    html.light {
+        color-scheme: light;
+    }
+
+    html.dark {
+        color-scheme: dark;
+    }
+
+    input,
+    textarea,
+    select {
+        color: hsl(var(--foreground));
+        background-color: hsl(var(--background) / 0.25);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+        color: hsl(var(--muted-foreground));
     }
 }
 
@@ -229,11 +296,143 @@ code {
 .desktop-panel {
     border-radius: 24px;
     border: 1px solid hsl(var(--border) / 0.65);
-    background:
-        linear-gradient(180deg, hsl(var(--card) / 0.92), hsl(var(--card) / 0.84));
+    background: var(--ci-panel-background);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    box-shadow: 0 20px 50px hsl(var(--foreground) / 0.08);
+    box-shadow: var(--ci-panel-shadow);
+}
+
+.theme-surface,
+.theme-card {
+    border: 1px solid hsl(var(--border) / 0.72);
+    background: hsl(var(--card) / 0.88);
+    color: hsl(var(--card-foreground));
+}
+
+.theme-muted-surface {
+    border: 1px solid hsl(var(--border) / 0.64);
+    background: hsl(var(--muted) / 0.72);
+    color: hsl(var(--foreground));
+}
+
+.theme-gradient-surface {
+    background:
+        radial-gradient(circle at 10% 0%, hsl(var(--brand-accent) / 0.10), transparent 28%),
+        radial-gradient(circle at 100% 10%, hsl(var(--chart-4) / 0.12), transparent 32%),
+        linear-gradient(180deg, hsl(var(--card) / 0.92), hsl(var(--card) / 0.76));
+    color: hsl(var(--foreground));
+}
+
+/* Theme compatibility layer for older pages that still use fixed Tailwind colors. */
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-gray-50,
+.dark .bg-zinc-50,
+.dark .bg-neutral-50 {
+    background-color: hsl(var(--card)) !important;
+}
+
+.dark .bg-white\/90,
+.dark .bg-white\/80,
+.dark .bg-white\/70,
+.dark .bg-white\/60,
+.dark .bg-white\/50 {
+    background-color: hsl(var(--card) / 0.86) !important;
+}
+
+.dark .bg-slate-100,
+.dark .bg-gray-100,
+.dark .bg-zinc-100,
+.dark .bg-neutral-100 {
+    background-color: hsl(var(--muted)) !important;
+}
+
+.dark .text-black,
+.dark .text-slate-950,
+.dark .text-slate-900,
+.dark .text-gray-950,
+.dark .text-gray-900,
+.dark .text-zinc-950,
+.dark .text-zinc-900 {
+    color: hsl(var(--foreground)) !important;
+}
+
+.dark .text-slate-800,
+.dark .text-slate-700,
+.dark .text-gray-800,
+.dark .text-gray-700,
+.dark .text-zinc-800,
+.dark .text-zinc-700 {
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.dark .border-slate-200,
+.dark .border-gray-200,
+.dark .border-zinc-200,
+.dark .border-neutral-200 {
+    border-color: hsl(var(--border)) !important;
+}
+
+.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]),
+.dark .divide-gray-200 > :not([hidden]) ~ :not([hidden]) {
+    border-color: hsl(var(--border)) !important;
+}
+
+.light .bg-slate-950,
+.light .bg-slate-900,
+.light .bg-gray-950,
+.light .bg-gray-900 {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.light .border-slate-800,
+.light .border-slate-900,
+.light .border-white\/10 {
+    border-color: hsl(var(--border)) !important;
+}
+
+.light .text-slate-400,
+.light .text-slate-300 {
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.light [data-ci-sidebar] {
+    color: hsl(var(--foreground));
+    border-right-color: hsl(var(--border) / 0.85) !important;
+    box-shadow: 18px 0 60px hsl(220 35% 20% / 0.10);
+}
+
+.light [data-ci-sidebar] .border-white\/10,
+.light [data-ci-sidebar] .border-white\/20 {
+    border-color: hsl(var(--border) / 0.72) !important;
+}
+
+.light [data-ci-sidebar] .bg-white\/5,
+.light [data-ci-sidebar] .bg-white\/10,
+.light [data-ci-sidebar] .bg-white\/20,
+.light [data-ci-sidebar] .bg-white\/\[0\.025\],
+.light [data-ci-sidebar] .bg-white\/\[0\.045\] {
+    background-color: hsl(var(--card) / 0.72) !important;
+}
+
+.light [data-ci-sidebar] .text-white\/90,
+.light [data-ci-sidebar] .text-white\/80 {
+    color: hsl(var(--foreground)) !important;
+}
+
+.light [data-ci-sidebar] .text-white\/70,
+.light [data-ci-sidebar] .text-white\/60,
+.light [data-ci-sidebar] .text-white\/50,
+.light [data-ci-sidebar] .text-white\/40 {
+    color: hsl(var(--muted-foreground)) !important;
+}
+
+.light [data-ci-sidebar] a[aria-current="page"],
+.light [data-ci-sidebar] a[aria-current="page"] *,
+.light [data-ci-sidebar] [data-active="true"],
+.light [data-ci-sidebar] [data-active="true"] * {
+    color: #fff !important;
 }
 
 /* Font Classes */

@@ -342,6 +342,12 @@ function AdministrativeReportOverview() {
           programType: student.programType || 'Sayisal',
           averageScore,
           attendanceRate: Math.max(65, 100 - missedLessons * 5),
+          enrollmentNet: Number(student.enrollmentNet || 0),
+          enrollmentPaid: Number(student.enrollmentPaid || 0),
+          enrollmentBalance: Number(student.enrollmentBalance || 0),
+          enrollmentCurrency: student.enrollmentCurrency || 'TRY',
+          enrollmentStatus: student.enrollmentStatus || 'Kayıt yok',
+          enrollmentOverdueCount: Number(student.enrollmentOverdueCount || 0),
           raw: student,
         };
       });
@@ -705,7 +711,7 @@ function AdministrativeReportOverview() {
                           <span>{student.programType}</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-6 text-right">
+                      <div className="grid grid-cols-3 gap-6 text-right">
                         <div>
                           <p className="text-sm text-muted-foreground">Ortalama</p>
                           <p className="font-semibold">{student.averageScore}</p>
@@ -713,6 +719,14 @@ function AdministrativeReportOverview() {
                         <div>
                           <p className="text-sm text-muted-foreground">Devam</p>
                           <p className="font-semibold">%{student.attendanceRate}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-muted-foreground">Kalan Borç</p>
+                          <p className={`font-semibold ${student.enrollmentBalance > 0 ? (student.enrollmentOverdueCount > 0 ? 'text-red-500' : 'text-amber-600') : 'text-green-600'}`}>
+                            {student.enrollmentNet > 0
+                              ? `${student.enrollmentBalance.toLocaleString('tr-TR')} ₺`
+                              : '—'}
+                          </p>
                         </div>
                       </div>
                     </button>

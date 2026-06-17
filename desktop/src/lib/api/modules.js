@@ -281,6 +281,72 @@ export async function createStudent(payload) {
   return response;
 }
 
+export async function createEnrollment(payload) {
+  const response = await api.post('/api/student-finance/enrollments', payload);
+  return response;
+}
+
+export async function fetchStudentFinanceAccount(params) {
+  const response = await api.get('/api/student-finance/account', { params });
+  return response;
+}
+
+export async function recordFinancePayment(payload) {
+  const response = await api.post('/api/student-finance/payments', payload);
+  return response;
+}
+
+export async function fetchFinanceSummaries(className) {
+  const response = await api.get('/api/student-finance/summaries', {
+    params: className ? { className } : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchFinanceDashboard(className) {
+  const response = await api.get('/api/student-finance/dashboard', {
+    params: className ? { className } : undefined,
+  });
+  return response;
+}
+
+export async function refundFinancePayment(payload) {
+  const response = await api.post('/api/student-finance/refunds', payload);
+  return response;
+}
+
+export async function sendFinanceReminders(upcomingWindowDays = 7) {
+  const response = await api.post('/api/student-finance/reminders', null, {
+    params: { upcomingWindowDays },
+  });
+  return response;
+}
+
+export async function createFinancePaymentIntent(payload) {
+  const response = await api.post('/api/student-finance/payments/intent', payload);
+  return response;
+}
+
+export async function confirmFinancePayment(payload) {
+  const response = await api.post('/api/student-finance/payments/confirm', payload);
+  return response;
+}
+
+export async function reconcileFinance(payload) {
+  const response = await api.post('/api/student-finance/reconciliation', payload);
+  return response;
+}
+
+export async function issueFinanceEInvoice(payload) {
+  const response = await api.post('/api/student-finance/e-invoice/issue', payload);
+  return response;
+}
+
+export async function calculatePayroll(payload) {
+  const response = await api.post('/api/student-finance/payroll/calculate', payload);
+  return response;
+}
+
 export async function updateStudent(id, payload) {
   const response = await api.put(`/api/students/${id}`, payload);
   return response;

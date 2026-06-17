@@ -15,7 +15,12 @@ import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchAccountingDashboard } from '../../lib/api/modules';
+import { useToast } from '../../hooks/use-toast';
+import { fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
+
+function tl(value) {
+  return `${Number(value || 0).toLocaleString('tr-TR')} ₺`;
+}
 
 function parseMoney(value) {
   const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
@@ -33,7 +38,10 @@ function normalizeStatus(value = '') {
 
 export default function AdminFinance() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [dashboard, setDashboard] = useState(null);
+  const [enrollmentFinance, setEnrollmentFinance] = useState(null);
+  const [sendingReminders, setSendingReminders] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -41,13 +49,33 @@ export default function AdminFinance() {
     try {
       setLoading(true);
       setError('');
-      setDashboard(await fetchAccountingDashboard());
+      const [accounting, finance] = await Promise.all([
+        fetchAccountingDashboard(),
+        fetchFinanceDashboard().catch(() => null),
+      ]);
+      setDashboard(accounting);
+      setEnrollmentFinance(finance);
     } catch (err) {
       setError(err.message || 'Finans verileri alınamadı.');
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleSendReminders = useCallback(async () => {
+    try {
+      setSendingReminders(true);
+      const result = await sendFinanceReminders(7);
+      toast({
+        title: 'Hatırlatmalar gönderildi',
+        description: `${result?.notified || 0} öğrenci/veli bilgilendirildi (${result?.overdueCount || 0} geciken, ${result?.upcomingCount || 0} yaklaşan taksit).`,
+      });
+    } catch (err) {
+      toast({ title: 'Hatırlatma gönderilemedi', description: err.message, variant: 'destructive' });
+    } finally {
+      setSendingReminders(false);
+    }
+  }, [toast]);
 
   useEffect(() => {
     loadDashboard();
@@ -179,6 +207,69 @@ export default function AdminFinance() {
           </CardContent>
         </Card>
       </div>
+
+      {enrollmentFinance ? (
+        <Card>
+          <CardHeader>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>Kayıt Finansmanı (Öğrenci Cari)</CardTitle>
+              <Button variant="outline" onClick={handleSendReminders} disabled={sendingReminders}>
+                <AlertCircle className="mr-2 h-4 w-4" />
+                {sendingReminders ? 'Gönderiliyor...' : 'Ödeme Hatırlatması Gönder'}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-5">
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {[
+                ['Sözleşme Net', tl(enrollmentFinance.netTotal)],
+                ['Tahsil Edilen', tl(enrollmentFinance.collectedTotal)],
+                ['Kalan Alacak', tl(enrollmentFinance.outstandingTotal)],
+                ['Geciken', `${tl(enrollmentFinance.overdueTotal)} (${enrollmentFinance.overdueStudentCount} öğr.)`],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-xl border bg-muted/20 p-4">
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                  <p className="mt-1 text-xl font-bold">{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="rounded-xl border p-4">
+                <p className="text-sm text-muted-foreground">Tahsilat Oranı</p>
+                <p className="text-2xl font-bold">%{enrollmentFinance.collectionRatePercent}</p>
+                <Progress value={enrollmentFinance.collectionRatePercent} className="mt-2" />
+                <p className="mt-2 text-xs text-muted-foreground">Ortalama tahsil süresi: {enrollmentFinance.averageCollectionDays} gün</p>
+              </div>
+              <div className="rounded-xl border p-4">
+                <p className="mb-2 text-sm text-muted-foreground">Yaşlandırma (Aging)</p>
+                <div className="space-y-1">
+                  {(enrollmentFinance.aging || []).map((bucket) => (
+                    <div key={bucket.label} className="flex items-center justify-between text-sm">
+                      <span>{bucket.label} <span className="text-muted-foreground">({bucket.count})</span></span>
+                      <span className="font-semibold">{tl(bucket.amount)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {(enrollmentFinance.topDebtors || []).length > 0 ? (
+              <div className="rounded-xl border p-4">
+                <p className="mb-2 text-sm text-muted-foreground">En Yüksek Borçlular</p>
+                <div className="space-y-2">
+                  {enrollmentFinance.topDebtors.slice(0, 5).map((debtor) => (
+                    <div key={debtor.studentName} className="flex items-center justify-between text-sm">
+                      <span>{debtor.studentName} <span className="text-muted-foreground">{debtor.className}</span></span>
+                      <span className="font-semibold text-red-600">{tl(debtor.balance)}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

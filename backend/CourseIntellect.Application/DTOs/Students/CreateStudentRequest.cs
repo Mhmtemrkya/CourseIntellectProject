@@ -12,5 +12,12 @@ public sealed record CreateStudentRequest(
     string ParentPhone,
     string ParentEmail,
     string Address,
-    string Note
+    string Note,
+    // Opsiyonel kayıt finansalı: doluysa kayıtta otomatik sözleşme + taksit planı üretilir.
+    decimal? EnrollmentGrossAmount = null,
+    decimal? EnrollmentDiscountAmount = null,
+    string? EnrollmentDiscountReason = null,
+    decimal? EnrollmentDownPayment = null,
+    int? EnrollmentInstallmentCount = null,
+    string? AcademicYear = null
 );

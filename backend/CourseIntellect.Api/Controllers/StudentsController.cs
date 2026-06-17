@@ -1,3 +1,5 @@
+using System.Security.Claims;
+using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -7,7 +9,9 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
-public sealed class StudentsController(IAcademicQueryService academicQueryService) : ControllerBase
+public sealed class StudentsController(
+    IAcademicQueryService academicQueryService,
+    IStudentFinanceService studentFinanceService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> GetStudents(CancellationToken cancellationToken)
@@ -23,6 +27,28 @@ public sealed class StudentsController(IAcademicQueryService academicQueryServic
         CancellationToken cancellationToken)
     {
         var result = await academicQueryService.CreateStudentAsync(request, cancellationToken);
+
+        // Kayıt ücreti girildiyse otomatik sözleşme + taksit planı oluştur.
+        if (request.EnrollmentGrossAmount is decimal gross && gross > 0)
+        {
+            await studentFinanceService.CreateEnrollmentAsync(
+                new CreateEnrollmentRequest(
+                    result.UserId,
+                    result.FullName,
+                    result.ClassName,
+                    request.AcademicYear ?? string.Empty,
+                    gross,
+                    request.EnrollmentDiscountAmount ?? 0,
+                    request.EnrollmentDiscountReason,
+                    request.EnrollmentDownPayment ?? 0,
+                    request.EnrollmentInstallmentCount ?? 0,
+                    null,
+                    "TRY",
+                    "Kayıt sırasında oluşturuldu"),
+                CurrentUserId(),
+                cancellationToken);
+        }
+
         return CreatedAtAction(nameof(GetStudents), new { id = result.UserId }, result);
     }
 
@@ -43,5 +69,11 @@ public sealed class StudentsController(IAcademicQueryService academicQueryServic
     {
         var removed = await academicQueryService.DeleteStudentAsync(id, cancellationToken);
         return removed ? NoContent() : NotFound(new { message = "Ogrenci bulunamadi." });
+    }
+
+    private Guid? CurrentUserId()
+    {
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 }

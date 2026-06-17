@@ -44,6 +44,12 @@ const emptyForm = {
   parentEmail: '',
   address: '',
   note: '',
+  academicYear: '',
+  enrollmentGrossAmount: '',
+  enrollmentDiscountAmount: '',
+  enrollmentDiscountReason: '',
+  enrollmentDownPayment: '',
+  enrollmentInstallmentCount: '',
 };
 
 export default function AdminStudentRegistration() {
@@ -113,6 +119,12 @@ export default function AdminStudentRegistration() {
         parentEmail: form.parentEmail.trim(),
         address: form.address.trim(),
         note: form.note.trim(),
+        academicYear: form.academicYear.trim(),
+        enrollmentGrossAmount: form.enrollmentGrossAmount ? Number(form.enrollmentGrossAmount) : null,
+        enrollmentDiscountAmount: form.enrollmentDiscountAmount ? Number(form.enrollmentDiscountAmount) : null,
+        enrollmentDiscountReason: form.enrollmentDiscountReason.trim() || null,
+        enrollmentDownPayment: form.enrollmentDownPayment ? Number(form.enrollmentDownPayment) : null,
+        enrollmentInstallmentCount: form.enrollmentInstallmentCount ? Number(form.enrollmentInstallmentCount) : null,
       });
       const studentInfo = {
         fullName: created.fullName || form.fullName.trim(),
@@ -309,6 +321,58 @@ export default function AdminStudentRegistration() {
                   <div>
                     <Label>Notlar</Label>
                     <Textarea value={form.note} onChange={(e) => handleChange('note', e.target.value)} rows={2} />
+                  </div>
+
+                  <div className="rounded-xl border p-4 space-y-4">
+                    <div>
+                      <p className="font-semibold">Kayıt Ücreti & Taksit Planı</p>
+                      <p className="text-xs text-muted-foreground">Tutar girilirse kayıtta otomatik sözleşme ve taksit planı oluşturulur. Boş bırakılırsa finans kaydı oluşturulmaz.</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label>Toplam Ücret (₺)</Label>
+                        <Input type="number" min="0" value={form.enrollmentGrossAmount} onChange={(e) => handleChange('enrollmentGrossAmount', e.target.value)} placeholder="Örn: 60000" />
+                      </div>
+                      <div>
+                        <Label>İndirim (₺)</Label>
+                        <Input type="number" min="0" value={form.enrollmentDiscountAmount} onChange={(e) => handleChange('enrollmentDiscountAmount', e.target.value)} placeholder="Örn: 5000" />
+                      </div>
+                      <div>
+                        <Label>İndirim Sebebi</Label>
+                        <Input value={form.enrollmentDiscountReason} onChange={(e) => handleChange('enrollmentDiscountReason', e.target.value)} placeholder="Kardeş / erken kayıt vb." maxLength={200} />
+                      </div>
+                      <div>
+                        <Label>Akademik Yıl</Label>
+                        <Input value={form.academicYear} onChange={(e) => handleChange('academicYear', e.target.value)} placeholder="2025-2026" maxLength={40} />
+                      </div>
+                      <div>
+                        <Label>Peşinat (₺)</Label>
+                        <Input type="number" min="0" value={form.enrollmentDownPayment} onChange={(e) => handleChange('enrollmentDownPayment', e.target.value)} placeholder="Örn: 10000" />
+                      </div>
+                      <div>
+                        <Label>Taksit Sayısı</Label>
+                        <Input type="number" min="0" max="48" value={form.enrollmentInstallmentCount} onChange={(e) => handleChange('enrollmentInstallmentCount', e.target.value)} placeholder="Örn: 10" />
+                      </div>
+                    </div>
+                    {form.enrollmentGrossAmount ? (
+                      <div className="rounded-lg bg-muted/40 p-3 text-sm">
+                        {(() => {
+                          const gross = Number(form.enrollmentGrossAmount) || 0;
+                          const discount = Math.min(Number(form.enrollmentDiscountAmount) || 0, gross);
+                          const net = gross - discount;
+                          const down = Math.min(Number(form.enrollmentDownPayment) || 0, net);
+                          const count = Number(form.enrollmentInstallmentCount) || 0;
+                          const perInstallment = count > 0 ? Math.round(((net - down) / count) * 100) / 100 : 0;
+                          return (
+                            <div className="flex flex-wrap gap-x-6 gap-y-1">
+                              <span>Net: <b>{net.toLocaleString('tr-TR')} ₺</b></span>
+                              <span>Peşinat: <b>{down.toLocaleString('tr-TR')} ₺</b></span>
+                              {count > 0 ? <span>{count} taksit × <b>{perInstallment.toLocaleString('tr-TR')} ₺</b></span> : <span>Taksit yok</span>}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    ) : null}
                   </div>
                 </TabsContent>
               </Tabs>

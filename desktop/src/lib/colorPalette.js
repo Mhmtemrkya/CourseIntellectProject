@@ -105,6 +105,7 @@ export function generateBrandCSSVariables(primaryHex, accentHex) {
   vars['--brand-primary-hex'] = primaryHex;
   // Tailwind brand.primary token'ı (hsl-var formatı, opacity modifier'ları destekler)
   vars['--brand-primary'] = hexToHSLString(primaryHex);
+  vars['--ci-primary'] = hexToHSLString(primaryHex);
 
   // Accent renk paleti
   for (const [shade, hex] of Object.entries(accentPalette)) {
@@ -113,11 +114,14 @@ export function generateBrandCSSVariables(primaryHex, accentHex) {
   vars['--brand-accent-hex'] = accentHex;
   // Tailwind brand.accent token'ı
   vars['--brand-accent'] = hexToHSLString(accentHex);
+  vars['--ci-accent'] = hexToHSLString(accentHex);
 
   // Sidebar gradient
   vars['--sidebar-from'] = primaryPalette[900];
   vars['--sidebar-via'] = primaryPalette[800];
   vars['--sidebar-to'] = primaryPalette[950];
+  vars['--ci-sidebar-gradient-start'] = hexToHSLString(primaryPalette[900]);
+  vars['--ci-sidebar-gradient-end'] = hexToHSLString(primaryPalette[950]);
 
   // Aktif menü item rengi
   vars['--sidebar-active-bg'] = primaryPalette[700];

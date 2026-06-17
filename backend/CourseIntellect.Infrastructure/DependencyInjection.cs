@@ -71,6 +71,11 @@ public static class DependencyInjection
         services.AddScoped<IETAService, BasicETAService>();
         services.AddScoped<IServiceTrackingService, ServiceTrackingService>();
         services.AddScoped<IExamSolvingService, ExamSolvingService>();
+        services.AddScoped<IStudentFinanceService, StudentFinanceService>();
+        services.AddScoped<IPaymentGatewayService, StubPaymentGatewayService>();
+        services.AddScoped<IEInvoiceService, StubEInvoiceService>();
+        services.AddSingleton<IPayrollService, PayrollService>();
+        services.AddScoped<IReconciliationService, ReconciliationService>();
 
         return services;
     }

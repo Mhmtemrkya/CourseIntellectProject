@@ -44,6 +44,8 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
     }
 
     root.classList.add(effectiveTheme);
+    root.dataset.theme = effectiveTheme;
+    root.style.colorScheme = effectiveTheme;
     setResolvedTheme(effectiveTheme);
   }, [theme]);
 
@@ -55,6 +57,8 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
         root.classList.remove('light', 'dark');
         const newTheme = e.matches ? 'dark' : 'light';
         root.classList.add(newTheme);
+        root.dataset.theme = newTheme;
+        root.style.colorScheme = newTheme;
         setResolvedTheme(newTheme);
       };
 

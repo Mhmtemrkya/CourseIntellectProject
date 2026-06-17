@@ -1284,7 +1284,9 @@ export function ModernSidebar() {
     tenantName: rawTenantName,
     primaryColor,
     accentColor,
+    resolvedTheme,
   } = useTheme();
+  const isLightMode = resolvedTheme === "light";
 
   // Primary role + admin tarafından atanan extraRoles + isPlatformAdmin
   // birlikte değerlendirilir. Böylece bir öğrenciye "Teacher" rolü eklenince
@@ -1454,6 +1456,8 @@ export function ModernSidebar() {
       {/* Sidebar */}
       <motion.aside
         data-testid="sidebar"
+        data-ci-sidebar
+        data-sidebar-theme={isLightMode ? "light" : "dark"}
         variants={sidebarVariants}
         initial={false}
         animate={sidebarCollapsed ? "collapsed" : "expanded"}
@@ -1463,7 +1467,9 @@ export function ModernSidebar() {
         )}
         style={{
           width: 280,
-          background: `linear-gradient(to bottom, var(--sidebar-from, #00354F), var(--sidebar-via, #002a40), var(--sidebar-to, #001f30))`,
+          background: isLightMode
+            ? `radial-gradient(circle at 16% 0%, hsl(var(--brand-accent) / 0.16), transparent 28%), linear-gradient(to bottom, hsl(var(--card) / 0.96), hsl(var(--background) / 0.94))`
+            : `linear-gradient(to bottom, var(--sidebar-from, #00354F), var(--sidebar-via, #002a40), var(--sidebar-to, #001f30))`,
         }}
       >
         {/* Animated background elements */}
@@ -1518,7 +1524,12 @@ export function ModernSidebar() {
               animate={{ opacity: 1, width: "auto" }}
               className="overflow-hidden"
             >
-              <span className="font-heading font-bold text-lg whitespace-nowrap bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+              <span
+                className={cn(
+                  "font-heading font-bold text-lg whitespace-nowrap bg-gradient-to-r bg-clip-text text-transparent",
+                  isLightMode ? "from-slate-950 to-slate-700" : "from-white to-white/80",
+                )}
+              >
                 {tenantName}
               </span>
             </motion.div>
@@ -1733,7 +1744,7 @@ export function ModernSidebar() {
               {user?.name?.[0] || "Ö"}
             </motion.div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
+              <p className={cn("text-sm font-medium truncate", isLightMode ? "text-foreground" : "text-white")}>
                 {user?.name || "Öğrenci"}
               </p>
               <p className="text-xs text-white/60 truncate">

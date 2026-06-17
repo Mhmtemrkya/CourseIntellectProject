@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,7 +13,9 @@ namespace CourseIntellect.Api.Controllers;
 [Authorize]
 [Route("api/reports")]
 [Route("reports")]
-public sealed class ReportsController(CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class ReportsController(
+    CourseIntellectDbContext dbContext,
+    IStudentFinanceService studentFinanceService) : ControllerBase
 {
     public const string TeacherWeeklyReportsSectionKey = "teacher-weekly-reports";
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -216,12 +219,19 @@ public sealed class ReportsController(CourseIntellectDbContext dbContext) : Cont
             ? students
             : students.Where(item => CompatibilitySnapshotStore.NormalizeText(item.ClassName) == CompatibilitySnapshotStore.NormalizeText(className)).ToList();
 
+        // Öğrenci kayıt/finans özetleri (kayıt ücreti, ödenen, kalan borç).
+        var financeSummaries = await studentFinanceService.GetAllSummariesAsync(className, cancellationToken);
+        var financeByName = financeSummaries
+            .GroupBy(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName))
+            .ToDictionary(group => group.Key, group => group.First());
+
         var result = scoped.Select(student =>
         {
             var studentExams = exams.Where(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == CompatibilitySnapshotStore.NormalizeText(student.FullName)).ToList();
             var studentAttendance = attendance.Where(item => CompatibilitySnapshotStore.NormalizeText(item.StudentName) == CompatibilitySnapshotStore.NormalizeText(student.FullName)).ToList();
             var present = studentAttendance.Count(item => item.Status.Contains("Kat", StringComparison.OrdinalIgnoreCase));
             var total = studentAttendance.Count;
+            financeByName.TryGetValue(CompatibilitySnapshotStore.NormalizeText(student.FullName), out var finance);
             return new
             {
                 id = student.Id,
@@ -234,6 +244,14 @@ public sealed class ReportsController(CourseIntellectDbContext dbContext) : Cont
                 averageScore = studentExams.Any() ? Math.Round(studentExams.Average(item => item.Score), 1) : 0,
                 attendanceRate = total > 0 ? (int)Math.Round((double)present / total * 100) : 0,
                 status = "Aktif",
+                // Finans özeti (Faz 1)
+                enrollmentNet = finance?.NetTotal ?? 0,
+                enrollmentPaid = finance?.PaidTotal ?? 0,
+                enrollmentBalance = finance?.Balance ?? 0,
+                enrollmentOverdueCount = finance?.OverdueCount ?? 0,
+                enrollmentCurrency = finance?.Currency ?? "TRY",
+                enrollmentStatus = finance?.Status ?? "Kayıt yok",
+                enrollmentNextDueDateUtc = finance?.NextDueDateUtc,
             };
         }).ToList();
 
