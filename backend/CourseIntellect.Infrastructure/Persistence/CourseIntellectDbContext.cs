@@ -48,6 +48,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<StaffLeaveRequest> StaffLeaveRequests => Set<StaffLeaveRequest>();
     public DbSet<StaffAssetAssignment> StaffAssetAssignments => Set<StaffAssetAssignment>();
+    public DbSet<AdminDocument> AdminDocuments => Set<AdminDocument>();
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
     public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
     public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
@@ -391,6 +392,25 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.EntityId).HasMaxLength(120);
             entity.Property(x => x.Detail).HasMaxLength(2000);
             entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+        });
+
+        modelBuilder.Entity<AdminDocument>(entity =>
+        {
+            entity.ToTable("admin_documents");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(220).IsRequired();
+            entity.Property(x => x.Category).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Direction).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.DocumentNo).HasMaxLength(80);
+            entity.Property(x => x.RelatedParty).HasMaxLength(200);
+            entity.Property(x => x.FileUrl).HasMaxLength(700);
+            entity.Property(x => x.ContentType).HasMaxLength(120);
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.UploadedByName).HasMaxLength(150);
+            entity.HasIndex(x => new { x.TenantId, x.Category });
+            entity.HasIndex(x => new { x.TenantId, x.Status });
         });
 
         modelBuilder.Entity<StaffLeaveRequest>(entity =>

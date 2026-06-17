@@ -1,147 +1,188 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
 import {
-  ExternalLink, FileArchive, Files, Search, ShieldCheck,
+  ExternalLink, FileArchive, Files, Search, Upload, AlertTriangle, Clock3,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchAnnouncements, fetchContents } from '../../lib/api/modules';
+import { useToast } from '../../hooks/use-toast';
+import {
+  fetchAdminDocuments, createAdminDocument, archiveAdminDocument, uploadFile,
+} from '../../lib/api/modules';
+import { desktopApiBaseUrl } from '../../lib/auth';
+
+const CATEGORIES = ['Genel', 'Gelen Evrak', 'Giden Evrak', 'Sözleşme', 'Politika', 'Resmi Yazı'];
+const DIRECTIONS = [['Internal', 'Kurum İçi'], ['Incoming', 'Gelen'], ['Outgoing', 'Giden']];
+
+function fileUrl(path) {
+  if (!path) return null;
+  if (/^https?:\/\//i.test(path)) return path;
+  return `${desktopApiBaseUrl}/${String(path).replace(/^\/+/, '')}`;
+}
+
+function expiryInfo(value) {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  const days = Math.ceil((date.getTime() - Date.now()) / 86400000);
+  if (days < 0) return { tone: 'text-red-600', label: 'Süresi doldu', icon: AlertTriangle };
+  if (days <= 30) return { tone: 'text-amber-600', label: `${days} gün kaldı`, icon: Clock3 };
+  return { tone: 'text-muted-foreground', label: date.toLocaleDateString('tr-TR'), icon: Clock3 };
+}
 
 export default function AdministrativeDocuments() {
-  const navigate = useNavigate();
-  const [announcements, setAnnouncements] = useState([]);
-  const [contents, setContents] = useState([]);
-  const [selectedDoc, setSelectedDoc] = useState(null);
+  const { toast } = useToast();
+  const [docs, setDocs] = useState([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [form, setForm] = useState({ title: '', category: 'Gelen Evrak', direction: 'Incoming', documentNo: '', relatedParty: '', expiryDate: '', note: '' });
+  const [file, setFile] = useState(null);
 
-  const loadDocuments = useCallback(async () => {
+  const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [announcementItems, contentItems] = await Promise.all([
-        fetchAnnouncements().catch(() => []),
-        fetchContents(false).catch(() => []),
-      ]);
-      setAnnouncements(announcementItems);
-      setContents(contentItems);
+      setDocs(await fetchAdminDocuments(categoryFilter ? { category: categoryFilter } : undefined));
     } catch (err) {
-      setError(err.message || 'Evrak görünümü alınamadı.');
+      setError(err.message || 'Belgeler alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [categoryFilter]);
 
-  useEffect(() => { loadDocuments(); }, [loadDocuments]);
+  useEffect(() => { load(); }, [load]);
 
-  const docs = useMemo(() => [
-    ...announcements.slice(0, 5).map((item) => ({ id: `ann-${item.id}`, title: item.title, type: 'Duyuru', detail: item.detail, route: '/admin/announcements' })),
-    ...contents.slice(0, 5).map((item) => ({ id: `content-${item.id}`, title: item.title, type: item.fileType || 'İçerik', detail: item.description, route: '/content' })),
-  ], [announcements, contents]);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return docs;
+    return docs.filter((d) => [d.title, d.documentNo, d.relatedParty, d.category].some((v) => String(v || '').toLowerCase().includes(q)));
+  }, [docs, search]);
 
-  const filteredDocs = useMemo(() => docs.filter((item) => `${item.title} ${item.type} ${item.detail || ''}`.toLowerCase().includes(search.toLowerCase())), [docs, search]);
+  const submit = async () => {
+    if (!form.title.trim()) { toast({ title: 'Başlık zorunlu.', variant: 'destructive' }); return; }
+    try {
+      setBusy(true);
+      let uploadedUrl = '';
+      let contentType = '';
+      if (file) {
+        const fd = new FormData();
+        fd.append('file', file);
+        const res = await uploadFile(fd, 'admin-documents');
+        uploadedUrl = res?.fileUrl || res?.url || res?.path || '';
+        contentType = file.type || '';
+      }
+      await createAdminDocument({
+        title: form.title.trim(),
+        category: form.category,
+        direction: form.direction,
+        documentNo: form.documentNo.trim() || null,
+        relatedParty: form.relatedParty.trim() || null,
+        fileUrl: uploadedUrl || null,
+        contentType: contentType || null,
+        expiryDate: form.expiryDate || null,
+        note: form.note.trim() || null,
+      });
+      toast({ title: 'Belge eklendi' });
+      setForm({ title: '', category: 'Gelen Evrak', direction: 'Incoming', documentNo: '', relatedParty: '', expiryDate: '', note: '' });
+      setFile(null);
+      await load();
+    } catch (err) {
+      toast({ title: 'Belge eklenemedi', description: err.message, variant: 'destructive' });
+    } finally { setBusy(false); }
+  };
+
+  const archive = async (item) => {
+    try {
+      setBusy(true);
+      await archiveAdminDocument(item.id);
+      setDocs((prev) => prev.map((d) => (d.id === item.id ? { ...d, status: 'Archived' } : d)));
+      toast({ title: 'Belge arşivlendi' });
+    } catch (err) {
+      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+    } finally { setBusy(false); }
+  };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="administrative-documents-page">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-documents-page">
       <div>
-        <h1 className="text-3xl font-bold font-heading">Belge Merkezi</h1>
-        <p className="text-muted-foreground mt-1">Duyuru, içerik ve operasyon kayıtlarını idari görünümde yönetin</p>
+        <h1 className="text-3xl font-bold font-heading flex items-center gap-2"><Files className="h-7 w-7 text-brand-primary" />Belge / Evrak Merkezi</h1>
+        <p className="text-muted-foreground mt-1">Gelen-giden evrak defteri ve kurumsal belgeler; son kullanma takibi ve arşiv.</p>
       </div>
-      {error ? <ErrorBanner title="Belge merkezi alınamadı" message={error} onRetry={loadDocuments} /> : null}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
-          [docs.length, 'Toplam Belge', Files, 'bg-brand-primary/10 text-brand-primary'],
-          [announcements.length, 'Duyuru Kayıtları', FileArchive, 'bg-amber-500/10 text-amber-600'],
-          [contents.length, 'İçerik Kayıtları', ShieldCheck, 'bg-emerald-500/10 text-emerald-600'],
-          [docs.filter((item) => item.type === 'Duyuru').length, 'İşleme Açık', ExternalLink, 'bg-blue-500/10 text-blue-600'],
-        ].map(([value, label, Icon, tone]) => (
-          <Card key={label}>
-            <CardContent className="p-5 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="mt-1 text-2xl font-bold">{value}</p>
-              </div>
-              <div className={`rounded-2xl p-3 ${tone}`}>
-                <Icon className="h-5 w-5" />
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {error ? <ErrorBanner title="Belgeler alınamadı" message={error} onRetry={load} /> : null}
+
       <Card>
-        <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" placeholder="Belge, tür veya içerik ara..." />
+        <CardHeader><CardTitle>Yeni Belge / Evrak</CardTitle></CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-2">
+          <Input placeholder="Başlık" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} />
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+            {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+          <select className="h-10 rounded-md border bg-background px-3 text-sm" value={form.direction} onChange={(e) => setForm((f) => ({ ...f, direction: e.target.value }))}>
+            {DIRECTIONS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+          </select>
+          <Input placeholder="Evrak No" value={form.documentNo} onChange={(e) => setForm((f) => ({ ...f, documentNo: e.target.value }))} />
+          <Input placeholder="İlgili kurum/kişi" value={form.relatedParty} onChange={(e) => setForm((f) => ({ ...f, relatedParty: e.target.value }))} />
+          <div>
+            <label className="text-xs text-muted-foreground">Son kullanma (varsa)</label>
+            <Input type="date" value={form.expiryDate} onChange={(e) => setForm((f) => ({ ...f, expiryDate: e.target.value }))} />
+          </div>
+          <Input className="md:col-span-2" placeholder="Not" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+          <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3">
+            <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-sm" />
+            <Button onClick={submit} disabled={busy}><Upload className="mr-2 h-4 w-4" />{busy ? 'Kaydediliyor...' : 'Belgeyi Kaydet'}</Button>
           </div>
         </CardContent>
       </Card>
-      <div className="grid gap-4">
-        {filteredDocs.length === 0 ? (
-          <Card>
-            <CardContent className="p-8 flex flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-              <Files className="h-10 w-10 text-brand-primary" />
-              <div>
-                <p className="font-medium text-foreground">Henüz evrak kaydı görünmüyor</p>
-                <p className="text-sm">Duyurular ve içerikler oluştukça belge merkezi bunları idari görünümde listeler.</p>
-              </div>
-              <Button variant="outline" onClick={() => navigate('/content')}>İçerik Merkezini Aç</Button>
-            </CardContent>
-          </Card>
-        ) : filteredDocs.map((item) => (
-          <Card key={item.id}>
-            <CardContent className="p-5 flex items-center justify-between gap-4">
-              <div className="flex items-start gap-3">
-                <FileArchive className="h-5 w-5 text-brand-primary mt-0.5" />
-                <div>
-                  <p className="font-medium">{item.title}</p>
-                  <p className="text-sm text-muted-foreground">{item.detail || 'Detay yok'}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{item.type}</Badge>
-                <Button variant="outline" size="sm" onClick={() => setSelectedDoc(item)}>Detay</Button>
-                <Button variant="outline" size="sm" onClick={() => navigate(item.route)}>Aç</Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Belge ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        <select className="h-10 rounded-md border bg-background px-3 text-sm" value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)}>
+          <option value="">Tüm kategoriler</option>
+          {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
       </div>
 
-      <Dialog open={!!selectedDoc} onOpenChange={(open) => !open && setSelectedDoc(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{selectedDoc?.title || 'Belge detayı'}</DialogTitle>
-            <DialogDescription>Seçili duyuru veya içerik kaydının idari görünümü.</DialogDescription>
-          </DialogHeader>
-          {selectedDoc ? (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{selectedDoc.type}</Badge>
-              </div>
-              <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
-                {selectedDoc.detail || 'Bu kayıt için ayrıntı görünmüyor.'}
-              </div>
-            </div>
-          ) : null}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => selectedDoc && navigate(selectedDoc.route)}>
-              <ExternalLink className="mr-2 h-4 w-4" />
-              İlgili Modülü Aç
-            </Button>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setSelectedDoc(null)}>Kapat</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <div className="grid gap-3">
+        {filtered.length === 0 ? <Card><CardContent className="p-6 text-sm text-muted-foreground">Belge bulunamadı.</CardContent></Card>
+          : filtered.map((item) => {
+            const exp = expiryInfo(item.expiryDateUtc);
+            const url = fileUrl(item.fileUrl);
+            return (
+              <Card key={item.id} className={item.status === 'Archived' ? 'opacity-70' : ''}>
+                <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-semibold">{item.title}</span>
+                      <Badge variant="outline">{item.category}</Badge>
+                      {item.documentNo ? <Badge className="bg-muted text-muted-foreground">No: {item.documentNo}</Badge> : null}
+                      {item.status === 'Archived' ? <Badge>Arşiv</Badge> : null}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {item.relatedParty || '—'} • {new Date(item.createdAtUtc).toLocaleDateString('tr-TR')}
+                      {exp ? <span className={`ml-2 inline-flex items-center gap-1 ${exp.tone}`}><exp.icon className="h-3.5 w-3.5" />{exp.label}</span> : null}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    {url ? <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary/10"><ExternalLink className="h-4 w-4" />Aç</a> : null}
+                    {item.status !== 'Archived' ? <Button size="sm" variant="outline" disabled={busy} onClick={() => archive(item)}><FileArchive className="mr-1 h-4 w-4" />Arşivle</Button> : null}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+      </div>
     </motion.div>
   );
 }
