@@ -457,6 +457,11 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
+export async function fetchAdminOverview() {
+  const response = await api.get('/api/admin/overview');
+  return response || {};
+}
+
 export async function fetchAdminTasks(params) {
   const response = await api.get('/api/admin-tasks', { params });
   return Array.isArray(response) ? response : [];

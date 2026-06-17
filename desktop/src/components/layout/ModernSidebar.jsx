@@ -159,6 +159,12 @@ const menuConfigs = {
       color: "#0ea5e9",
     },
     {
+      path: "/admin/audit-log",
+      icon: CheckSquare,
+      label: "Denetim Kayıtları",
+      color: "#64748b",
+    },
+    {
       path: "/admin/password-reset-requests",
       icon: KeyRound,
       label: "Şifre Talepleri",
@@ -317,6 +323,12 @@ const menuConfigs = {
       icon: CheckSquare,
       label: "Personel / İK",
       color: "#0ea5e9",
+    },
+    {
+      path: "/admin/audit-log",
+      icon: CheckSquare,
+      label: "Denetim Kayıtları",
+      color: "#64748b",
     },
     {
       path: "/admin/password-reset-requests",
