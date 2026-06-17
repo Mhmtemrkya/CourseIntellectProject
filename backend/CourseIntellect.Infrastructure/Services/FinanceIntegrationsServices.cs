@@ -153,8 +153,9 @@ public sealed class ReconciliationService(CourseIntellectDbContext dbContext) : 
         }
 
         var tolerance = Math.Max(0, request.DateToleranceDays);
-        var minDate = rows.Min(item => item.Date).AddDays(-tolerance - 1);
-        var maxDate = rows.Max(item => item.Date).AddDays(tolerance + 1);
+        // JSON'dan gelen tarihler Unspecified olabilir; Postgres timestamptz için UTC'ye sabitle.
+        var minDate = DateTime.SpecifyKind(rows.Min(item => item.Date).AddDays(-tolerance - 1), DateTimeKind.Utc);
+        var maxDate = DateTime.SpecifyKind(rows.Max(item => item.Date).AddDays(tolerance + 1), DateTimeKind.Utc);
 
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .Where(item => item.Amount > 0 && item.PaidAtUtc >= minDate && item.PaidAtUtc <= maxDate)
