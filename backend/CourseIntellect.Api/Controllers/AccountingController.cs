@@ -198,24 +198,30 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [Authorize(Roles = "Accounting,Admin")]
     public async Task<IActionResult> UpdateCollection(Guid id, [FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)
     {
-        var item = await dbContext.AccountingCollections.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
-        item.Name = request.Name.Trim();
-        item.ClassName = request.ClassName.Trim();
-        item.Amount = NormalizeMoney(request.Amount);
+        item.StudentName = request.Name.Trim();
+        item.Amount = ParseMoney(request.Amount);
         item.Method = request.Method.Trim();
         item.Note = request.Note.Trim();
         await dbContext.SaveChangesAsync(cancellationToken);
-        return Ok(new AccountingCollectionDto(item.Id.ToString(), item.Name, item.ClassName, item.Amount, item.Method, item.Time, item.Note));
+        return Ok(new AccountingCollectionDto(
+            item.Id.ToString(),
+            item.StudentName,
+            request.ClassName.Trim(),
+            $"₺{item.Amount:N2}",
+            item.Method,
+            item.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
+            item.Note));
     }
 
     [HttpDelete("collections/{id:guid}")]
     [Authorize(Roles = "Accounting,Admin")]
     public async Task<IActionResult> DeleteCollection(Guid id, CancellationToken cancellationToken)
     {
-        var item = await dbContext.AccountingCollections.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
-        dbContext.AccountingCollections.Remove(item);
+        dbContext.FinancePayments.Remove(item);
         await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -256,15 +262,14 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [Authorize(Roles = "Accounting,Admin")]
     public async Task<IActionResult> SendBulkReminders(CancellationToken cancellationToken)
     {
-        var installments = await dbContext.AccountingInstallments
+        var now = DateTime.UtcNow;
+        var installments = await dbContext.FinanceInstallments
             .AsNoTracking()
-            .OrderByDescending(x => x.Id)
             .ToListAsync(cancellationToken);
 
-        var overdue = installments.Where(item =>
-            item.Status.Contains("Gec", StringComparison.OrdinalIgnoreCase) ||
-            item.Status.Contains("Overdue", StringComparison.OrdinalIgnoreCase) ||
-            CompatibilitySnapshotStore.ParseDateLabel(item.Due) < DateTime.Today).ToList();
+        var overdue = installments
+            .Where(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now)
+            .ToList();
 
         if (overdue.Count == 0)
         {
@@ -277,7 +282,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
             {
                 Id = Guid.NewGuid(),
                 Title = "Ödeme hatırlatması",
-                Message = $"{item.Student} için {item.Amount} tutarlı ödeme bekleniyor.",
+                Message = $"{item.StudentName} için ₺{(item.Amount - item.PaidAmount):N2} tutarlı ödeme bekleniyor.",
                 TimeLabel = "Bugün",
                 Audience = "Parent",
                 TargetRole = "Parent",

@@ -21,14 +21,12 @@ public sealed class PlatformOperationsService(
         var homework = await dbContext.HomeworkAssignments.AsNoTracking().ToListAsync(cancellationToken);
         var meetings = await dbContext.MeetingRequests.AsNoTracking().ToListAsync(cancellationToken);
         var invoices = await dbContext.AccountingInvoices.AsNoTracking().ToListAsync(cancellationToken);
-        var collections = await dbContext.AccountingCollections.AsNoTracking().ToListAsync(cancellationToken);
-        var installments = await dbContext.AccountingInstallments.AsNoTracking().ToListAsync(cancellationToken);
+        var collections = await dbContext.FinancePayments.AsNoTracking().ToListAsync(cancellationToken);
+        var installments = await dbContext.FinanceInstallments.AsNoTracking().ToListAsync(cancellationToken);
+        var nowUtc = DateTime.UtcNow;
 
         var totalRequests = notifications.Count * 8 + threads.Count * 12 + contents.Count * 6 + homework.Count * 5;
-        var errorCount = installments.Count(x =>
-            !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase)
-            && !string.Equals(x.Status, "odendi", StringComparison.OrdinalIgnoreCase)
-            && ParseDate(x.Due) < DateTime.Today);
+        var errorCount = installments.Count(x => x.Amount - x.PaidAmount > 0 && x.DueDateUtc < nowUtc);
 
         var aiModels = BuildAiModels(notifications.Count, threads.Count, homework.Count, contents.Count, meetings.Count);
         var aiLogs = BuildAiLogs(notifications, threads);
@@ -36,9 +34,9 @@ public sealed class PlatformOperationsService(
             tenants.Count,
             tenants.Count(x => string.Equals(x.Status, "active", StringComparison.OrdinalIgnoreCase)),
             tenants.Sum(x => x.Users),
-            collections.Sum(x => ParseDecimal(x.Amount)),
+            collections.Sum(x => x.Amount),
             invoices.Where(x => !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(x.Status, "onaylandi", StringComparison.OrdinalIgnoreCase)).Sum(x => ParseDecimal(x.Amount)),
-            installments.Where(x => ParseDate(x.Due) < DateTime.Today && !string.Equals(x.Status, "paid", StringComparison.OrdinalIgnoreCase) && !string.Equals(x.Status, "odendi", StringComparison.OrdinalIgnoreCase)).Sum(x => ParseDecimal(x.Amount)),
+            installments.Where(x => x.Amount - x.PaidAmount > 0 && x.DueDateUtc < nowUtc).Sum(x => x.Amount - x.PaidAmount),
             tenants.Sum(x => x.Storage),
             tenants.Sum(x => x.Api),
             tickets.Count(x => string.Equals(x.Status, "open", StringComparison.OrdinalIgnoreCase)),
@@ -70,7 +68,7 @@ public sealed class PlatformOperationsService(
         var students = await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken);
         var staff = await dbContext.Staff.AsNoTracking().ToListAsync(cancellationToken);
         var invoices = await dbContext.AccountingInvoices.AsNoTracking().ToListAsync(cancellationToken);
-        var collections = await dbContext.AccountingCollections.AsNoTracking().ToListAsync(cancellationToken);
+        var collections = await dbContext.FinancePayments.AsNoTracking().ToListAsync(cancellationToken);
         var campuses = staff.Select(x => string.IsNullOrWhiteSpace(x.DepartmentOrBranch) ? "Merkez Kampus" : x.DepartmentOrBranch)
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToList();
@@ -93,7 +91,7 @@ public sealed class PlatformOperationsService(
                 : students;
 
             var fee = invoices.Where((_, invoiceIndex) => invoiceIndex % campuses.Count == index).Sum(x => ParseDecimal(x.Amount));
-            var collected = collections.Where((_, collectionIndex) => collectionIndex % campuses.Count == index).Sum(x => ParseDecimal(x.Amount));
+            var collected = collections.Where((_, collectionIndex) => collectionIndex % campuses.Count == index).Sum(x => x.Amount);
             var slug = NormalizeSlug(campus);
 
             return new TenantWorkspaceDto(
@@ -363,8 +361,9 @@ public sealed class PlatformOperationsService(
 
         await DeleteTenantScopedAsync<AccountingApproval>(id, cancellationToken);
         await DeleteTenantScopedAsync<AccountingAuditLog>(id, cancellationToken);
-        await DeleteTenantScopedAsync<AccountingCollection>(id, cancellationToken);
-        await DeleteTenantScopedAsync<AccountingInstallment>(id, cancellationToken);
+        await DeleteTenantScopedAsync<FinancePayment>(id, cancellationToken);
+        await DeleteTenantScopedAsync<FinanceInstallment>(id, cancellationToken);
+        await DeleteTenantScopedAsync<EnrollmentContract>(id, cancellationToken);
         await DeleteTenantScopedAsync<AccountingInvoice>(id, cancellationToken);
         await DeleteTenantScopedAsync<AccountingNotification>(id, cancellationToken);
         await DeleteTenantScopedAsync<AccountingSalary>(id, cancellationToken);

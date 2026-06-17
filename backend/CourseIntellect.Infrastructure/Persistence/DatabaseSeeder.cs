@@ -518,20 +518,8 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             new AccountingApproval { Title = "Su alımı tedarik onayı", Reason = "Yeni dönem ofis gider planı", Category = "Gider", Status = "Onaylandı", SourceType = "expense", SourceKey = "Su alımı tedarik onayı" }
         ], cancellationToken);
 
-        await dbContext.AccountingCollections.AddRangeAsync(
-        [
-            new AccountingCollection { Name = "Ahmet Yılmaz", ClassName = "11-A", Amount = "₺18.500", Method = "Kredi Kartı", Time = "14:10", Note = "Mart ödemesi" },
-            new AccountingCollection { Name = "Zeynep Kara", ClassName = "10-B", Amount = "₺7.200", Method = "Havale", Time = "13:25", Note = "Etüt paketi" },
-            new AccountingCollection { Name = "Ece Demir", ClassName = "9-C", Amount = "₺4.000", Method = "Nakit", Time = "11:40", Note = "Kısmi ödeme" }
-        ], cancellationToken);
-
-        await dbContext.AccountingInstallments.AddRangeAsync(
-        [
-            new AccountingInstallment { Student = "Ahmet Yılmaz", Status = "Bekleyen", Amount = "₺9.500", Due = "18 Mart 2026", Note = "Nisan taksiti" },
-            new AccountingInstallment { Student = "Mehmet Kaya", Status = "Geciken", Amount = "₺12.000", Due = "01 Mart 2026", Note = "Mart taksiti" },
-            new AccountingInstallment { Student = "Zeynep Kara", Status = "Alınan", Amount = "₺8.250", Due = "05 Mart 2026", Note = "Şubat kapanışı" },
-            new AccountingInstallment { Student = "Defne Çetin", Status = "Sonraki Ay", Amount = "₺10.000", Due = "05 Nisan 2026", Note = "Yeni plan" }
-        ], cancellationToken);
+        // Tahsilat ve taksit demo verisi normalize finans modeline (EnrollmentContract /
+        // FinanceInstallment / FinancePayment) taşındı; eski seed kaldırıldı.
 
         await dbContext.AccountingNotifications.AddRangeAsync(
         [
@@ -848,8 +836,6 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
         await AssignNullTenantEntitiesAsync(dbContext.AccountingInvoices, demoTenant.Id, cancellationToken);
         await AssignNullTenantEntitiesAsync(dbContext.AccountingSalaries, demoTenant.Id, cancellationToken);
         await AssignNullTenantEntitiesAsync(dbContext.AccountingApprovals, demoTenant.Id, cancellationToken);
-        await AssignNullTenantEntitiesAsync(dbContext.AccountingCollections, demoTenant.Id, cancellationToken);
-        await AssignNullTenantEntitiesAsync(dbContext.AccountingInstallments, demoTenant.Id, cancellationToken);
         await AssignNullTenantEntitiesAsync(dbContext.AccountingNotifications, demoTenant.Id, cancellationToken);
         await AssignNullTenantEntitiesAsync(dbContext.AccountingAuditLogs, demoTenant.Id, cancellationToken);
         await AssignNullTenantEntitiesAsync(dbContext.AttendanceEntries, demoTenant.Id, cancellationToken);

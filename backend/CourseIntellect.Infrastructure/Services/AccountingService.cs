@@ -1,4 +1,6 @@
+using System.Globalization;
 using CourseIntellect.Application.DTOs.Accounting;
+using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
@@ -6,17 +8,52 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAccountingService
+// Not: Öğrenci tahsilat/taksit verisi normalize finans modeline (FinancePayment /
+// FinanceInstallment) taşındı. Bu servis tahsilat ve taksit dilimlerini artık o
+// tablolardan üretir; fatura/maaş/onay/bildirim/audit kayıtları kendi tablolarında kalır.
+public sealed class AccountingService(
+    CourseIntellectDbContext dbContext,
+    IStudentFinanceService studentFinanceService) : IAccountingService
 {
     public async Task<AccountingDashboardDto> GetDashboardAsync(CancellationToken cancellationToken = default)
     {
         var invoices = await dbContext.AccountingInvoices.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var salaries = await dbContext.AccountingSalaries.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var approvals = await dbContext.AccountingApprovals.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
-        var collections = await dbContext.AccountingCollections.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
-        var installments = await dbContext.AccountingInstallments.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var notifications = await dbContext.AccountingNotifications.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var auditLogs = await dbContext.AccountingAuditLogs.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
+
+        // Sınıf bilgisini öğrenci adından sözleşmeye bakarak tamamla.
+        var classByStudent = await dbContext.EnrollmentContracts.AsNoTracking()
+            .GroupBy(x => x.StudentName)
+            .Select(g => new { Name = g.Key, ClassName = g.Max(x => x.ClassName) })
+            .ToDictionaryAsync(x => x.Name, x => x.ClassName, cancellationToken);
+
+        var payments = await dbContext.FinancePayments.AsNoTracking()
+            .OrderByDescending(x => x.PaidAtUtc)
+            .Take(500)
+            .ToListAsync(cancellationToken);
+        var collections = payments.Select(payment => new AccountingCollectionDto(
+            payment.Id.ToString(),
+            payment.StudentName,
+            classByStudent.GetValueOrDefault(payment.StudentName) ?? string.Empty,
+            FormatAmount(payment.Amount),
+            payment.Method,
+            payment.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),
+            string.IsNullOrWhiteSpace(payment.ReceiptNo) ? payment.Note : $"{payment.ReceiptNo} • {payment.Note}".Trim(' ', '•'))).ToList();
+
+        var now = DateTime.UtcNow;
+        var financeInstallments = await dbContext.FinanceInstallments.AsNoTracking()
+            .OrderBy(x => x.DueDateUtc)
+            .ToListAsync(cancellationToken);
+        var installments = financeInstallments.Select(item => new AccountingInstallmentDto(
+            item.Id.ToString(),
+            item.StudentName,
+            MapInstallmentStatus(item, now),
+            FormatAmount(item.Amount),
+            item.DueDateUtc.ToLocalTime().ToString("dd.MM.yyyy", CultureInfo.GetCultureInfo("tr-TR")),
+            item.Amount - item.PaidAmount > 0 ? $"Kalan {FormatAmount(item.Amount - item.PaidAmount)}" : "Tamamlandı")).ToList();
+
         return new AccountingDashboardDto(invoices, salaries, approvals, collections, installments, notifications, auditLogs);
     }
 
@@ -30,8 +67,6 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
             Amount = NormalizeAmount(request.Amount),
             Status = "Bekliyor"
         };
-        // ID stable. Önceden Title kullanılıyordu fakat title değişebilir/çakışabilir,
-        // onay sonrası ilgili invoice bulunamazdı. Artık entity Id ile bağlanır.
         await dbContext.AccountingInvoices.AddAsync(invoice, cancellationToken);
         var approval = new AccountingApproval
         {
@@ -69,7 +104,6 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
             SourceType = "salary",
             SourceKey = salary.Id.ToString()
         };
-        await dbContext.AccountingSalaries.AddAsync(salary, cancellationToken);
         await dbContext.AccountingApprovals.AddAsync(approval, cancellationToken);
         await AddNotificationAsync("Yeni bordro kaydı", $"{salary.Employee} için bordro yönetici onayına gönderildi.", cancellationToken);
         await AddAuditAsync("Bordro oluşturuldu", $"{salary.Employee} için {salary.Amount} tutarlı bordro planı hazırlandı.", cancellationToken);
@@ -77,55 +111,77 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
         return ToDto(salary);
     }
 
+    // Manuel tahsilat artık normalize finans modeline yazılır ve öğrencinin
+    // taksitlerine (FIFO) mahsup edilir.
     public async Task<AccountingCollectionDto> CreateCollectionAsync(CreateCollectionRequest request, CancellationToken cancellationToken = default)
     {
-        var collection = new AccountingCollection
-        {
-            Name = request.Name.Trim(),
-            ClassName = request.ClassName.Trim(),
-            Amount = NormalizeAmount(request.Amount),
-            Method = request.Method.Trim(),
-            Time = TimeLabel(),
-            Note = request.Note.Trim()
-        };
-        await dbContext.AccountingCollections.AddAsync(collection, cancellationToken);
-        await AddNotificationAsync("Tahsilat tamamlandı", $"{collection.Name} için {collection.Amount} tutarında {collection.Method} tahsilatı alındı.", cancellationToken);
-        await AddAuditAsync("Tahsilat işlendi", $"{collection.Name} için {collection.Method} ile {collection.Amount} tutarında ödeme kaydedildi.", cancellationToken);
+        var amount = ParseAmount(request.Amount);
+        var payment = await studentFinanceService.RecordPaymentAsync(
+            new RecordPaymentRequest(
+                null,
+                request.Name.Trim(),
+                null,
+                null,
+                amount,
+                string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim(),
+                request.Note?.Trim()),
+            null,
+            cancellationToken);
+
+        await AddNotificationAsync("Tahsilat tamamlandı", $"{request.Name} için {FormatAmount(amount)} tutarında {request.Method} tahsilatı alındı.", cancellationToken);
+        await AddAuditAsync("Tahsilat işlendi", $"{request.Name} için {request.Method} ile {FormatAmount(amount)} tutarında ödeme kaydedildi.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToDto(collection);
+
+        return new AccountingCollectionDto(
+            payment.Id.ToString(),
+            request.Name.Trim(),
+            request.ClassName?.Trim() ?? string.Empty,
+            FormatAmount(amount),
+            request.Method.Trim(),
+            DateTime.Now.ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),
+            payment.ReceiptNo);
     }
 
+    // Manuel taksit (standalone) normalize taksit tablosuna yazılır.
     public async Task<AccountingInstallmentDto> CreateInstallmentAsync(CreateInstallmentRequest request, CancellationToken cancellationToken = default)
     {
-        var installment = new AccountingInstallment
+        var amount = ParseAmount(request.Amount);
+        var installment = new FinanceInstallment
         {
-            Student = request.Student.Trim(),
-            Status = "Bekleyen",
-            Amount = NormalizeAmount(request.Amount),
-            Due = request.Due.Trim(),
-            Note = request.Note.Trim()
+            EnrollmentContractId = Guid.Empty,
+            StudentName = request.Student.Trim(),
+            SeqNo = 1,
+            Label = "Manuel Taksit",
+            DueDateUtc = ParseDueDate(request.Due),
+            Amount = amount,
+            PaidAmount = 0,
+            Status = "Pending",
+            Currency = "TRY",
         };
-        await dbContext.AccountingInstallments.AddAsync(installment, cancellationToken);
-        await AddNotificationAsync("Yeni taksit planı", $"{installment.Student} için yeni taksit planı oluşturuldu.", cancellationToken);
-        await AddAuditAsync("Taksit planı açıldı", $"{installment.Student} için {installment.Amount} tutarlı yeni taksit oluşturuldu.", cancellationToken);
+        await dbContext.FinanceInstallments.AddAsync(installment, cancellationToken);
+        await AddNotificationAsync("Yeni taksit planı", $"{installment.StudentName} için yeni taksit planı oluşturuldu.", cancellationToken);
+        await AddAuditAsync("Taksit planı açıldı", $"{installment.StudentName} için {FormatAmount(amount)} tutarlı yeni taksit oluşturuldu.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToDto(installment);
+        return new AccountingInstallmentDto(installment.Id.ToString(), installment.StudentName, MapInstallmentStatus(installment, DateTime.UtcNow), FormatAmount(amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
     }
 
     public async Task<AccountingInstallmentDto?> UpdateInstallmentAsync(Guid id, UpdateInstallmentRequest request, CancellationToken cancellationToken = default)
     {
-        var installment = await dbContext.AccountingInstallments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        var installment = await dbContext.FinanceInstallments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (installment is null) return null;
 
-        installment.Amount = NormalizeAmount(request.Amount);
-        installment.Due = request.Due.Trim();
-        installment.Status = request.Status.Trim();
-        installment.Note = request.Note.Trim();
+        installment.Amount = ParseAmount(request.Amount);
+        installment.DueDateUtc = ParseDueDate(request.Due);
+        if (string.Equals(request.Status.Trim(), "Ödendi", StringComparison.OrdinalIgnoreCase))
+        {
+            installment.PaidAmount = installment.Amount;
+            installment.Status = "Paid";
+        }
 
-        await AddNotificationAsync("Taksit güncellendi", $"{installment.Student} için taksit planı güncellendi.", cancellationToken);
-        await AddAuditAsync("Taksit güncellendi", $"{installment.Student} için taksit {installment.Amount} / {installment.Status} olarak güncellendi.", cancellationToken);
+        await AddNotificationAsync("Taksit güncellendi", $"{installment.StudentName} için taksit planı güncellendi.", cancellationToken);
+        await AddAuditAsync("Taksit güncellendi", $"{installment.StudentName} için taksit {FormatAmount(installment.Amount)} olarak güncellendi.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
-        return ToDto(installment);
+        return new AccountingInstallmentDto(installment.Id.ToString(), installment.StudentName, MapInstallmentStatus(installment, DateTime.UtcNow), FormatAmount(installment.Amount), request.Due.Trim(), request.Note?.Trim() ?? string.Empty);
     }
 
     public async Task<AccountingApprovalDto?> UpdateApprovalStatusAsync(Guid id, UpdateApprovalStatusRequest request, CancellationToken cancellationToken = default)
@@ -206,9 +262,36 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
         {
             Title = title,
             Detail = detail,
-            Time = $"12 Mart 2026 • {TimeLabel()}"
+            Time = $"{DateTime.Now:dd MMMM yyyy} • {TimeLabel()}"
         }, cancellationToken);
     }
+
+    private static string MapInstallmentStatus(FinanceInstallment installment, DateTime nowUtc)
+    {
+        var remaining = installment.Amount - installment.PaidAmount;
+        if (remaining <= 0) return "Ödendi";
+        if (installment.DueDateUtc < nowUtc) return "Gecikti";
+        return installment.PaidAmount > 0 ? "Kısmi" : "Bekleyen";
+    }
+
+    private static DateTime ParseDueDate(string value)
+    {
+        if (DateTime.TryParse(value, CultureInfo.GetCultureInfo("tr-TR"), DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out var parsed))
+        {
+            return DateTime.SpecifyKind(parsed, DateTimeKind.Utc);
+        }
+
+        return DateTime.UtcNow.Date.AddMonths(1);
+    }
+
+    private static decimal ParseAmount(string amount)
+    {
+        var cleaned = new string((amount ?? string.Empty).Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-').ToArray());
+        cleaned = cleaned.Replace(".", string.Empty).Replace(',', '.');
+        return decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var value) ? value : 0;
+    }
+
+    private static string FormatAmount(decimal amount) => $"₺{amount.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
 
     private static string NormalizeAmount(string amount)
     {
@@ -225,8 +308,6 @@ public sealed class AccountingService(CourseIntellectDbContext dbContext) : IAcc
     private static AccountingInvoiceDto ToDto(AccountingInvoice x) => new(x.Id.ToString(), x.Title, x.Category, x.Subtitle, x.Amount, x.Status);
     private static AccountingSalaryDto ToDto(AccountingSalary x) => new(x.Id.ToString(), x.Employee, x.Role, x.Amount, x.PayDate, x.Status);
     private static AccountingApprovalDto ToDto(AccountingApproval x) => new(x.Id.ToString(), x.Title, x.Reason, x.Category, x.Status, x.SourceType, x.SourceKey);
-    private static AccountingCollectionDto ToDto(AccountingCollection x) => new(x.Id.ToString(), x.Name, x.ClassName, x.Amount, x.Method, x.Time, x.Note);
-    private static AccountingInstallmentDto ToDto(AccountingInstallment x) => new(x.Id.ToString(), x.Student, x.Status, x.Amount, x.Due, x.Note);
     private static AccountingNotificationDto ToDto(AccountingNotification x) => new(x.Id.ToString(), x.Title, x.Message, x.Time, x.Unread);
     private static AccountingAuditLogDto ToDto(AccountingAuditLog x) => new(x.Id.ToString(), x.Title, x.Detail, x.Time);
 }

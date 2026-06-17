@@ -42,8 +42,6 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AccountingInvoice> AccountingInvoices => Set<AccountingInvoice>();
     public DbSet<AccountingSalary> AccountingSalaries => Set<AccountingSalary>();
     public DbSet<AccountingApproval> AccountingApprovals => Set<AccountingApproval>();
-    public DbSet<AccountingCollection> AccountingCollections => Set<AccountingCollection>();
-    public DbSet<AccountingInstallment> AccountingInstallments => Set<AccountingInstallment>();
     public DbSet<AccountingNotification> AccountingNotifications => Set<AccountingNotification>();
     public DbSet<AccountingAuditLog> AccountingAuditLogs => Set<AccountingAuditLog>();
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
@@ -549,31 +547,6 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.TenantId, x.StudentName }).IsUnique();
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.PlanItemsSerialized).HasColumnName("plan_items").HasMaxLength(12000).IsRequired();
-        });
-
-        modelBuilder.Entity<AccountingCollection>(entity =>
-        {
-            entity.ToTable("accounting_collections");
-            entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
-            entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.ClassName).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Method).HasMaxLength(60).IsRequired();
-            entity.Property(x => x.Time).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Note).HasMaxLength(500).IsRequired();
-        });
-
-        modelBuilder.Entity<AccountingInstallment>(entity =>
-        {
-            entity.ToTable("accounting_installments");
-            entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
-            entity.Property(x => x.Student).HasMaxLength(150).IsRequired();
-            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Amount).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Due).HasMaxLength(40).IsRequired();
-            entity.Property(x => x.Note).HasMaxLength(500).IsRequired();
         });
 
         modelBuilder.Entity<AccountingNotification>(entity =>
