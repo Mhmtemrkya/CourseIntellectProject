@@ -44,6 +44,8 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AccountingApproval> AccountingApprovals => Set<AccountingApproval>();
     public DbSet<AccountingNotification> AccountingNotifications => Set<AccountingNotification>();
     public DbSet<AccountingAuditLog> AccountingAuditLogs => Set<AccountingAuditLog>();
+    public DbSet<ApprovalRequest> ApprovalRequests => Set<ApprovalRequest>();
+    public DbSet<AuditLogEntry> AuditLogEntries => Set<AuditLogEntry>();
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
     public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
     public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
@@ -352,6 +354,41 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.SourceType).HasMaxLength(40).IsRequired();
             entity.Property(x => x.SourceKey).HasMaxLength(180).IsRequired();
+        });
+
+        modelBuilder.Entity<ApprovalRequest>(entity =>
+        {
+            entity.ToTable("approval_requests");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Category).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(2000);
+            entity.Property(x => x.RequesterName).HasMaxLength(150);
+            entity.Property(x => x.Unit).HasMaxLength(120);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Priority).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.DecisionNote).HasMaxLength(2000);
+            entity.Property(x => x.DecidedByName).HasMaxLength(150);
+            entity.Property(x => x.ReferenceType).HasMaxLength(60);
+            entity.Property(x => x.ReferenceKey).HasMaxLength(120);
+            entity.HasIndex(x => new { x.TenantId, x.Status });
+            entity.HasIndex(x => new { x.TenantId, x.Category });
+        });
+
+        modelBuilder.Entity<AuditLogEntry>(entity =>
+        {
+            entity.ToTable("audit_log_entries");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.ActorName).HasMaxLength(150);
+            entity.Property(x => x.Action).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Category).HasMaxLength(60).IsRequired();
+            entity.Property(x => x.EntityType).HasMaxLength(80);
+            entity.Property(x => x.EntityId).HasMaxLength(120);
+            entity.Property(x => x.Detail).HasMaxLength(2000);
+            entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
         });
 
         modelBuilder.Entity<EnrollmentContract>(entity =>

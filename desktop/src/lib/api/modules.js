@@ -437,6 +437,26 @@ export async function upsertPlatformConfiguration(payload) {
   return response;
 }
 
+export async function fetchApprovals(params) {
+  const response = await api.get('/api/approvals', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createApproval(payload) {
+  const response = await api.post('/api/approvals', payload);
+  return response;
+}
+
+export async function decideApproval(id, payload) {
+  const response = await api.post(`/api/approvals/${id}/decide`, payload);
+  return response;
+}
+
+export async function fetchAuditLogs(params) {
+  const response = await api.get('/api/audit-logs', { params });
+  return Array.isArray(response) ? response : [];
+}
+
 export async function fetchAppSettings(category) {
   const response = await api.get('/api/appsettings', {
     params: category ? { category } : undefined,

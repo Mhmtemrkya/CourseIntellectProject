@@ -1,0 +1,71 @@
+using System.Security.Claims;
+using CourseIntellect.Application.DTOs.Admin;
+using CourseIntellect.Application.Interfaces;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CourseIntellect.Api.Controllers;
+
+[ApiController]
+[Authorize]
+[Route("api/approvals")]
+public sealed class ApprovalsController(IApprovalService approvalService) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> Get(
+        [FromQuery] string? status,
+        [FromQuery] string? category,
+        CancellationToken cancellationToken)
+    {
+        return Ok(await approvalService.GetAsync(status, category, cancellationToken));
+    }
+
+    [HttpPost]
+    public async Task<IActionResult> Create([FromBody] CreateApprovalRequest request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            return BadRequest(new { message = "Başlık zorunludur." });
+        }
+
+        return Ok(await approvalService.CreateAsync(request, CurrentUserId(), CurrentUserName(), cancellationToken));
+    }
+
+    [HttpPost("{id:guid}/decide")]
+    [Authorize(Roles = "Admin,Administrative")]
+    public async Task<IActionResult> Decide(Guid id, [FromBody] ApprovalDecisionRequest decision, CancellationToken cancellationToken)
+    {
+        var result = await approvalService.DecideAsync(id, decision, CurrentUserId(), CurrentUserName(), cancellationToken);
+        return result is null ? NotFound() : Ok(result);
+    }
+
+    private Guid? CurrentUserId()
+    {
+        var raw = User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(raw, out var id) ? id : null;
+    }
+
+    private string CurrentUserName()
+    {
+        return User.FindFirstValue("name")
+            ?? User.FindFirstValue(ClaimTypes.Name)
+            ?? User.FindFirstValue("unique_name")
+            ?? User.Identity?.Name
+            ?? "Bilinmiyor";
+    }
+}
+
+[ApiController]
+[Authorize(Roles = "Admin,Administrative")]
+[Route("api/audit-logs")]
+public sealed class AuditLogsController(IAuditLogService auditLogService) : ControllerBase
+{
+    [HttpGet]
+    public async Task<IActionResult> Get(
+        [FromQuery] string? category,
+        [FromQuery] int take = 200,
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await auditLogService.GetAsync(category, take, cancellationToken));
+    }
+}
