@@ -21,6 +21,14 @@ import { Progress } from '../components/ui/progress';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
+import {
+  MiniBarChart,
+  MiniDonut,
+  MiniLineChart,
+  PremiumListRow,
+  PremiumMetricCard,
+  PremiumPanel,
+} from '../components/ui/premium-dashboard';
 import { fetchScheduleEntries } from '../lib/api/modules';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
 
@@ -44,23 +52,10 @@ const todayKeyMap = {
   0: 'Pazar',
 };
 
-function StatCard({ title, value, icon: Icon, trend, color, onClick }) {
+function StatCard({ title, value, icon: Icon, trend, tone, onClick }) {
   return (
     <motion.div variants={itemVariants}>
-      <Card className="relative overflow-hidden border-l-4 cursor-pointer hover:shadow-lg transition-shadow" style={{ borderLeftColor: color }} onClick={onClick}>
-        <CardContent className="p-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground font-medium">{title}</p>
-              <p className="text-3xl font-bold mt-2 font-heading">{value}</p>
-              {trend ? <p className="text-sm text-green-600 mt-2">{trend}</p> : null}
-            </div>
-            <div className="p-3 rounded-xl" style={{ backgroundColor: `${color}15` }}>
-              <Icon className="h-6 w-6" style={{ color }} />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <PremiumMetricCard title={title} value={value} icon={Icon} trend={trend} tone={tone} onClick={onClick} />
     </motion.div>
   );
 }
@@ -79,9 +74,9 @@ function LessonCard({ lesson }) {
   };
 
   return (
-    <div className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
+    <div className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition-all hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
       <div className="flex-shrink-0 w-16 text-center">
-        <p className="text-lg font-bold text-brand-primary">{lesson.time}</p>
+        <p className="text-lg font-bold text-[hsl(var(--brand-accent))]">{lesson.time}</p>
         <p className="text-xs text-muted-foreground">Program</p>
       </div>
       <div className="flex-1 min-w-0">
@@ -106,15 +101,7 @@ function ActivityItem({ activity }) {
   const Icon = iconMap[activity.icon] || AlertCircle;
 
   return (
-    <div className="flex items-start gap-3 py-3 border-b border-border last:border-0">
-      <div className="p-2 rounded-lg bg-muted">
-        <Icon className="h-4 w-4 text-muted-foreground" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm">{activity.message}</p>
-        <p className="text-xs text-muted-foreground mt-1">{activity.time}</p>
-      </div>
-    </div>
+    <PremiumListRow icon={Icon} title={activity.message} subtitle={activity.time} accent={activity.icon === 'check'} />
   );
 }
 
@@ -181,6 +168,14 @@ export default function Dashboard() {
   const pendingItems = data?.pendingItems || [];
   const activities = data?.activities || [];
   const quickStats = data?.quickStats || {};
+  const operationalChart = [
+    stats.totalStudents || 0,
+    stats.totalTeachers || 0,
+    stats.totalClasses || 0,
+    quickStats.attendanceRate || stats.todayAttendanceRate || 0,
+    quickStats.answeredMessagesRate || 0,
+    quickStats.examRate || 0,
+  ];
 
   return (
     <motion.div
@@ -203,27 +198,76 @@ export default function Dashboard() {
         />
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard title="Toplam Öğrenci" value={stats.totalStudents || 0} icon={Users} trend="Backend canlı" color="#00354F" onClick={() => navigate(statRoutes['Toplam Öğrenci'])} />
-        <StatCard title="Toplam Öğretmen" value={stats.totalTeachers || 0} icon={GraduationCap} color="#D9790B" onClick={() => navigate(statRoutes['Toplam Öğretmen'])} />
-        <StatCard title="Aktif Sınıf" value={stats.totalClasses || 0} icon={School} color="#10B981" onClick={() => navigate(statRoutes['Aktif Sınıf'])} />
-        <StatCard title="Bugünkü Devam" value={`${stats.todayAttendanceRate || 0}%`} icon={ClipboardCheck} color="#3B82F6" onClick={() => navigate(statRoutes['Bugünkü Devam'])} />
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Toplam Öğrenci" value={stats.totalStudents || 0} icon={Users} trend="Backend" tone="blue" onClick={() => navigate(statRoutes['Toplam Öğrenci'])} />
+        <StatCard title="Toplam Öğretmen" value={stats.totalTeachers || 0} icon={GraduationCap} trend="Aktif" tone="amber" onClick={() => navigate(statRoutes['Toplam Öğretmen'])} />
+        <StatCard title="Aktif Sınıf" value={stats.totalClasses || 0} icon={School} trend="Sınıf" tone="emerald" onClick={() => navigate(statRoutes['Aktif Sınıf'])} />
+        <StatCard title="Bugünkü Devam" value={`${stats.todayAttendanceRate || 0}%`} icon={ClipboardCheck} trend="Oran" tone="violet" onClick={() => navigate(statRoutes['Bugünkü Devam'])} />
+      </div>
+
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <motion.div variants={itemVariants} className="xl:col-span-8">
+          <PremiumPanel title="Finansal Performans" description="Operasyon sinyalleri ve canlı özet eğrisi">
+            <div className="grid gap-5 lg:grid-cols-[1fr_210px]">
+              <div className="rounded-3xl border border-white/10 bg-[#020B1F]/35 p-5">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Genel operasyon grafiği</p>
+                    <p className="mt-1 text-2xl font-black tracking-tight">Canlı Dashboard</p>
+                  </div>
+                  <Badge variant="outline">Bugün</Badge>
+                </div>
+                <MiniLineChart values={operationalChart} className="h-40" />
+                <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
+                  <span>1 May</span>
+                  <span className="text-center">15 May</span>
+                  <span className="text-right">Bugün</span>
+                </div>
+              </div>
+              <div className="grid gap-4">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Haftalık Devam</p>
+                  <div className="mt-4 flex justify-center">
+                    <MiniDonut value={quickStats.attendanceRate || stats.todayAttendanceRate || 0} label="Devam" />
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Kanal Yoğunluğu</p>
+                  <MiniBarChart values={[quickStats.answeredMessagesRate || 0, quickStats.contentRate || 0, quickStats.examRate || 0, stats.totalClasses || 0, stats.totalTeachers || 0]} className="mt-4" />
+                </div>
+              </div>
+            </div>
+          </PremiumPanel>
+        </motion.div>
+        <motion.div variants={itemVariants} className="xl:col-span-4">
+          <PremiumPanel title="Sistem Özeti" description="Referans dashboard tarzı yoğun özet">
+            <div className="space-y-3">
+              {[
+                ['Ders akışı', lessons.length, Calendar],
+                ['Bekleyen etkileşim', pendingItems.length, HelpCircle],
+                ['Aktivite', activities.length, TrendingUp],
+                ['Performans', `${quickStats.examRate || 0}%`, FileQuestion],
+              ].map(([label, value, Icon]) => (
+                <PremiumListRow key={label} icon={Icon} title={label} subtitle="Canlı backend verisi" meta={value} accent />
+              ))}
+            </div>
+          </PremiumPanel>
+        </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div variants={itemVariants} className="lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-xl">Bugünkü Dersler</CardTitle>
-                <CardDescription>Bugünün sınıf programındaki ders akışı</CardDescription>
-              </div>
+          <PremiumPanel
+            title="Bugünkü Dersler"
+            description="Bugünün sınıf programındaki ders akışı"
+            action={(
               <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
                 <Calendar className="h-4 w-4 mr-2" />
                 Program Yönetimi
               </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
+            )}
+            contentClassName="space-y-3"
+          >
               {lessons.length > 0 ? lessons.map((lesson, index) => (
                 <LessonCard key={`${lesson.subject}-${lesson.class}-${index}`} lesson={lesson} />
               )) : (
@@ -231,35 +275,22 @@ export default function Dashboard() {
                   Bugün için kayıtlı ders akışı bulunmuyor.
                 </div>
               )}
-            </CardContent>
-          </Card>
+          </PremiumPanel>
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <div>
-                <CardTitle className="text-xl">Bekleyen Etkileşimler</CardTitle>
-                <CardDescription>{pendingItems.length} konuşma geri dönüş bekliyor</CardDescription>
-              </div>
+          <PremiumPanel
+            title="Bekleyen Etkileşimler"
+            description={`${pendingItems.length} konuşma geri dönüş bekliyor`}
+            action={(
               <Badge variant="default" className="bg-brand-accent">
                 {pendingItems.length}
               </Badge>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            )}
+            contentClassName="space-y-4"
+          >
               {pendingItems.length > 0 ? pendingItems.map((item) => (
-                <button type="button" key={item.id} className="w-full text-left flex items-start gap-3 p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors" onClick={() => setSelectedInteraction(item)}>
-                  <Avatar className="h-8 w-8">
-                    <AvatarFallback className="bg-brand-primary text-white text-xs">
-                      {item.studentName.split(' ').map((part) => part[0]).join('').slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{item.studentName}</p>
-                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{item.question}</p>
-                    <Badge variant="outline" className="mt-2 text-xs">{item.subject}</Badge>
-                  </div>
-                </button>
+                <PremiumListRow key={item.id} icon={HelpCircle} title={item.studentName} subtitle={item.question} meta={item.subject} accent onClick={() => setSelectedInteraction(item)} />
               )) : (
                 <p className="text-sm text-muted-foreground">Bekleyen mesaj veya etkileşim bulunmuyor.</p>
               )}
@@ -268,35 +299,23 @@ export default function Dashboard() {
                   Tüm Etkileşimleri Aç
                 </Button>
               ) : null}
-            </CardContent>
-          </Card>
+          </PremiumPanel>
         </motion.div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Son Aktiviteler</CardTitle>
-              <CardDescription>Duyuru ve bildirim akışından derlendi</CardDescription>
-            </CardHeader>
-            <CardContent>
+          <PremiumPanel title="Son Aktiviteler" description="Duyuru ve bildirim akışından derlendi">
               {activities.length > 0 ? activities.map((activity) => (
                 <ActivityItem key={activity.id} activity={activity} />
               )) : (
                 <p className="text-sm text-muted-foreground">Henüz aktivite kaydı yok.</p>
               )}
-            </CardContent>
-          </Card>
+          </PremiumPanel>
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Hızlı İstatistikler</CardTitle>
-              <CardDescription>Canlı özet göstergeleri</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
+          <PremiumPanel title="Hızlı İstatistikler" description="Canlı özet göstergeleri" contentClassName="space-y-6">
               {[
                 ['Haftalık Devam Oranı', quickStats.attendanceRate || 0],
                 ['Yanıtlanan Mesajlar', quickStats.answeredMessagesRate || 0],
@@ -311,8 +330,7 @@ export default function Dashboard() {
                   <Progress value={value} className="h-2" />
                 </div>
               ))}
-            </CardContent>
-          </Card>
+          </PremiumPanel>
         </motion.div>
       </div>
 

@@ -27,6 +27,13 @@ import { fetchStudentDashboardData } from '../../lib/api/dashboardData';
 import { BADGE_TOTAL, collectNewBadges, getAllBadges, nextBadge, unlockedBadgeCount } from '../../lib/badges';
 import BadgeShield from '../../components/badges/BadgeShield';
 import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
+import {
+  MiniBarChart,
+  MiniDonut,
+  MiniLineChart,
+  PremiumMetricCard,
+  PremiumPanel,
+} from '../../components/ui/premium-dashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -83,11 +90,11 @@ export default function StudentDashboard() {
     { icon: Sparkles, label: 'AI Asistan', onClick: () => navigate('/s/ai') },
   ];
   const summaryCards = [
-    ['Bugünkü Ders', stats.todayLessons || 0, Calendar, 'from-blue-500 to-cyan-500', () => navigate('/s/schedule')],
-    ['Yaklaşan Sınav', stats.upcomingExams || 0, Target, 'from-purple-500 to-pink-500', () => navigate('/s/exams')],
-    ['Devamsızlıklarım', stats.absentDays || stats.absentCount || 0, ClipboardCheck, 'from-amber-500 to-orange-500', () => navigate('/s/attendance')],
-    ['Sınav Sonuçlarım', data?.recentResults?.length || 0, Trophy, 'from-emerald-500 to-green-600', () => navigate('/s/exam-results')],
-    ['Bekleyen Ödev', stats.pendingAssignments || 0, Clock, 'from-yellow-500 to-orange-500', () => navigate('/s/assignments')],
+    ['Bugünkü Ders', stats.todayLessons || 0, Calendar, 'blue', 'Ders', () => navigate('/s/schedule')],
+    ['Yaklaşan Sınav', stats.upcomingExams || 0, Target, 'violet', 'Sınav', () => navigate('/s/exams')],
+    ['Devamsızlıklarım', stats.absentDays || stats.absentCount || 0, ClipboardCheck, 'amber', 'Devam', () => navigate('/s/attendance')],
+    ['Sınav Sonuçlarım', data?.recentResults?.length || 0, Trophy, 'emerald', 'Sonuç', () => navigate('/s/exam-results')],
+    ['Bekleyen Ödev', stats.pendingAssignments || 0, Clock, 'rose', 'Ödev', () => navigate('/s/assignments')],
   ];
   const xp = Number(stats.xp || 0);
   const unlockedBadges = unlockedBadgeCount(xp);
@@ -139,26 +146,40 @@ export default function StudentDashboard() {
 
       {error ? <ErrorBanner title="Öğrenci paneli yüklenemedi" message={error} onRetry={loadDashboard} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-        {summaryCards.map(([label, value, Icon, gradient, onClick]) => (
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
+        {summaryCards.map(([label, value, Icon, tone, trend, onClick]) => (
           <motion.div key={label} variants={itemVariants}>
-            <Card className="relative overflow-hidden border-0 shadow-lg cursor-pointer transition-transform hover:-translate-y-1" onClick={onClick}>
-              <div className={`absolute inset-0 bg-gradient-to-br ${gradient} opacity-5`} />
-              <CardContent className="p-6 relative">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground font-medium">{label}</p>
-                    <p className="text-4xl font-bold mt-2">{value}</p>
-                  </div>
-                  <div className={`p-4 rounded-2xl bg-gradient-to-br ${gradient} shadow-lg`}>
-                    <Icon className="h-7 w-7 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <PremiumMetricCard title={label} value={value} icon={Icon} tone={tone} trend={trend} onClick={onClick} />
           </motion.div>
         ))}
       </div>
+
+      <motion.div variants={itemVariants}>
+        <PremiumPanel title="Çalışma İstatistiklerim" description="Ders, sınav, içerik ve soru çözüm sinyalleri">
+          <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Haftalık çalışma grafiği</p>
+                  <p className="mt-1 text-2xl font-black">Öğrenci paneli</p>
+                </div>
+                <Badge variant="outline">Bu Hafta</Badge>
+              </div>
+              <MiniLineChart values={[stats.todayLessons || 0, stats.upcomingExams || 0, stats.pendingAssignments || 0, data?.summary?.watchedVideos || 0, data?.summary?.solvedQuestions || 0, data?.recentResults?.length || 0]} className="h-40" />
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">İçerik Tamamlanma</p>
+              <div className="mt-5 flex justify-center">
+                <MiniDonut value={stats.completedContent || 0} label="İlerleme" />
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Aktivite Dağılımı</p>
+              <MiniBarChart values={[data?.summary?.watchedVideos || 0, data?.summary?.solvedQuestions || 0, stats.xp || 0, unlockedBadges || 0, stats.streak || 0]} className="mt-5" />
+            </div>
+          </div>
+        </PremiumPanel>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div variants={itemVariants} className="lg:col-span-2">

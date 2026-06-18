@@ -21,6 +21,13 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchParentDashboardData } from '../../lib/api/dashboardData';
+import {
+  MiniBarChart,
+  MiniDonut,
+  MiniLineChart,
+  PremiumMetricCard,
+  PremiumPanel,
+} from '../../components/ui/premium-dashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -155,31 +162,45 @@ export default function ParentDashboard() {
         </motion.div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         {[
-          ['Devamsızlık', `${100 - (selectedSummary?.attendance || 0)}%`, ClipboardCheck, 'Bu dönem'],
-          ['Son Sınav', selectedSummary?.lastExam?.score || 0, FileQuestion, selectedSummary?.lastExam?.subject || 'Henüz kayıt yok'],
-          ['Bekleyen Ödeme', `₺${(selectedSummary?.pendingPayment || 0).toLocaleString('tr-TR')}`, CreditCard, 'Finans takibi'],
-          ['Mesajlar', data?.unreadMessages || 0, MessageSquare, 'Okunmamış'],
-        ].map(([title, value, Icon, subtitle]) => (
+          ['Devamsızlık', `${100 - (selectedSummary?.attendance || 0)}%`, ClipboardCheck, 'amber', 'Bu dönem'],
+          ['Son Sınav', selectedSummary?.lastExam?.score || 0, FileQuestion, 'violet', selectedSummary?.lastExam?.subject || 'Henüz kayıt yok'],
+          ['Bekleyen Ödeme', `₺${(selectedSummary?.pendingPayment || 0).toLocaleString('tr-TR')}`, CreditCard, 'rose', 'Finans'],
+          ['Mesajlar', data?.unreadMessages || 0, MessageSquare, 'blue', 'Okunmamış'],
+        ].map(([title, value, Icon, tone, subtitle]) => (
           <motion.div variants={itemVariants} key={title}>
-            <Card className="cursor-pointer hover:shadow-card-hover transition-all">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{title}</p>
-                    <p className="text-3xl font-bold mt-2">{value}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-muted">
-                    <Icon className="h-6 w-6 text-brand-primary" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <PremiumMetricCard title={title} value={value} icon={Icon} tone={tone} trend={subtitle} />
           </motion.div>
         ))}
       </div>
+
+      <motion.div variants={itemVariants}>
+        <PremiumPanel title="Öğrenci Genel Görünüm" description="Akademik, devamsızlık ve ödeme göstergeleri">
+          <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Veli takip grafiği</p>
+                  <p className="mt-1 text-2xl font-black">{selectedChild?.fullName || 'Öğrenci'}</p>
+                </div>
+                <Badge variant="outline">{selectedChild?.className || 'Sınıf'}</Badge>
+              </div>
+              <MiniLineChart values={[selectedSummary?.attendance || 0, selectedSummary?.lastExam?.score || 0, data?.attendanceBreakdown?.present || 0, data?.attendanceBreakdown?.absent || 0, data?.attendanceBreakdown?.excuse || 0, data?.unreadMessages || 0]} className="h-40" />
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Devam Oranı</p>
+              <div className="mt-5 flex justify-center">
+                <MiniDonut value={selectedSummary?.attendance || 0} label="Devam" />
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Finans / Devam</p>
+              <MiniBarChart values={[selectedSummary?.pendingPayment || 0, selectedSummary?.paidTotal || 0, data?.attendanceBreakdown?.present || 0, data?.attendanceBreakdown?.absent || 0]} className="mt-5" />
+            </div>
+          </div>
+        </PremiumPanel>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>

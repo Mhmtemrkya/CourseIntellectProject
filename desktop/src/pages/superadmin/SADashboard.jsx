@@ -10,6 +10,14 @@ import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchPlatformOverview } from '../../lib/api/modules';
+import {
+  MiniBarChart,
+  MiniDonut,
+  MiniLineChart,
+  PremiumListRow,
+  PremiumMetricCard,
+  PremiumPanel,
+} from '../../components/ui/premium-dashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -58,67 +66,55 @@ export default function SADashboard() {
 
       {error ? <ErrorBanner title="Platform verileri alınamadı" message={error} onRetry={loadPlatform} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         {[
-          ['Toplam Kurum', stats.totalTenants, Building2, 'border-l-brand-primary'],
-          ['Toplam Kullanıcı', stats.totalUsers, Users, 'border-l-brand-accent'],
-          ['Toplam Tahsilat', `₺${Number(stats.monthlyRevenue || 0).toLocaleString('tr-TR')}`, CreditCard, 'border-l-green-500'],
-          ['API Çağrısı', Number(stats.apiCalls || 0).toLocaleString('tr-TR'), Activity, 'border-l-blue-500'],
-        ].map(([label, value, Icon, border]) => (
-          <Card key={label} className={`border-l-4 ${border}`}>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{label}</p>
-                  <p className="text-3xl font-bold mt-2">{value}</p>
-                  <div className="flex items-center gap-1 mt-2 text-green-500">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="text-sm">Canlı veri</span>
-                  </div>
-                </div>
-                <div className="p-3 rounded-xl bg-muted">
-                  <Icon className="h-6 w-6 text-brand-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          ['Toplam Kurum', stats.totalTenants, Building2, 'blue'],
+          ['Toplam Kullanıcı', stats.totalUsers, Users, 'violet'],
+          ['Toplam Tahsilat', `₺${Number(stats.monthlyRevenue || 0).toLocaleString('tr-TR')}`, CreditCard, 'emerald'],
+          ['API Çağrısı', Number(stats.apiCalls || 0).toLocaleString('tr-TR'), Activity, 'amber'],
+        ].map(([label, value, Icon, tone]) => (
+          <PremiumMetricCard key={label} title={label} value={value} icon={Icon} tone={tone} trend="Canlı" />
         ))}
       </div>
 
+      <motion.div>
+        <PremiumPanel title="Platform Trafiği" description="Kurum, kullanıcı, API ve depolama sinyalleri">
+          <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Platform grafiği</p>
+                  <p className="mt-1 text-2xl font-black">SaaS operasyonu</p>
+                </div>
+                <Badge variant="outline">Genel</Badge>
+              </div>
+              <MiniLineChart values={[stats.totalTenants || 0, stats.totalUsers || 0, stats.monthlyRevenue || 0, stats.apiCalls || 0, apiHealthPct, storagePct]} className="h-40" />
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">API Sağlığı</p>
+              <div className="mt-5 flex justify-center">
+                <MiniDonut value={apiHealthPct} label="API" />
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Kaynak Dağılımı</p>
+              <MiniBarChart values={[apiHealthPct, storagePct, dbUsagePct, stats.openTickets || 0]} className="mt-5" />
+            </div>
+          </div>
+        </PremiumPanel>
+      </motion.div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Kurumsal Görünüm</CardTitle>
-            <CardDescription>Backend operasyon modülünden gelen kurum görünümü</CardDescription>
-          </CardHeader>
-          <CardContent>
+        <PremiumPanel title="Kurumsal Görünüm" description="Backend operasyon modülünden gelen kurum görünümü">
             <div className="space-y-4">
               {recentTenants.map((tenant) => (
-                <div key={tenant.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-lg bg-brand-primary/10"><Building2 className="h-5 w-5 text-brand-primary" /></div>
-                    <div>
-                      <p className="font-medium">{tenant.name}</p>
-                      <p className="text-sm text-muted-foreground">{tenant.users} kullanıcı</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline">{tenant.plan}</Badge>
-                    <Badge className={tenant.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}>
-                      {tenant.status === 'active' ? 'Aktif' : 'İzleme'}
-                    </Badge>
-                  </div>
-                </div>
+                <PremiumListRow key={tenant.id} icon={Building2} title={tenant.name} subtitle={`${tenant.users} kullanıcı • ${tenant.plan}`} meta={tenant.status === 'active' ? 'Aktif' : 'İzleme'} accent={tenant.status === 'active'} />
               ))}
             </div>
-          </CardContent>
-        </Card>
+        </PremiumPanel>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><Server className="h-5 w-5" />Sistem Durumu</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <PremiumPanel title="Sistem Durumu" description="Sunucu, veritabanı ve destek sinyalleri" action={<Server className="h-5 w-5 text-[hsl(var(--brand-accent))]" />}>
+          <div className="space-y-4">
             <div>
               <div className="flex justify-between text-sm mb-2">
                 <span>API Sunucusu</span>
@@ -158,8 +154,8 @@ export default function SADashboard() {
                 <p className="text-xs text-muted-foreground mt-1">{stats.openTickets} bekleyen talep mevcut</p>
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </PremiumPanel>
       </div>
 
       {(stats.overduePayments || 0) > 0 ? (

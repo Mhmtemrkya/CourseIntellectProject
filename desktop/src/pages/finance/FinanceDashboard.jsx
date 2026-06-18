@@ -15,6 +15,14 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
+import {
+  MiniBarChart,
+  MiniDonut,
+  MiniLineChart,
+  PremiumListRow,
+  PremiumMetricCard,
+  PremiumPanel,
+} from '../../components/ui/premium-dashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -111,126 +119,71 @@ export default function FinanceDashboard() {
 
       {error ? <ErrorBanner title="Finans verileri alınamadı" message={error} onRetry={loadDashboard} /> : null}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 items-stretch">
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-l-4 border-l-brand-primary">
-            <CardContent className="p-6 h-full">
-              <div className="flex h-full items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Toplam Alacak</p>
-                  <p className="text-3xl font-bold mt-2">₺{stats.totalReceivable.toLocaleString('tr-TR')}</p>
-                  <p className="mt-3 text-xs text-muted-foreground">Fatura ve planlanan tahsilat toplamı</p>
-                </div>
-                <div className="p-3 rounded-xl bg-brand-primary/10">
-                  <Wallet className="h-6 w-6 text-brand-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PremiumMetricCard title="Toplam Alacak" value={`₺${stats.totalReceivable.toLocaleString('tr-TR')}`} caption="Fatura ve planlanan tahsilat" icon={Wallet} tone="blue" trend="Alacak" />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-l-4 border-l-green-500">
-            <CardContent className="p-6 h-full">
-              <div className="flex h-full items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Tahsil Edilen</p>
-                  <p className="text-3xl font-bold mt-2">₺{stats.totalCollected.toLocaleString('tr-TR')}</p>
-                  <div className="flex items-center gap-1 mt-2 text-green-500">
-                    <TrendingUp className="h-4 w-4" />
-                    <span className="text-sm">%{stats.collectionRate} oran</span>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">Gerçek tahsilat kayıtları üzerinden hesaplandı</p>
-                </div>
-                <div className="p-3 rounded-xl bg-green-100 dark:bg-green-900/30">
-                  <CreditCard className="h-6 w-6 text-green-600 dark:text-green-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PremiumMetricCard title="Tahsil Edilen" value={`₺${stats.totalCollected.toLocaleString('tr-TR')}`} caption="Gerçek tahsilat kayıtları" icon={CreditCard} tone="emerald" trend={`%${stats.collectionRate}`} />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-l-4 border-l-yellow-500">
-            <CardContent className="p-6 h-full">
-              <div className="flex h-full items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Bekleyen</p>
-                  <p className="text-3xl font-bold mt-2">₺{stats.pendingPayments.toLocaleString('tr-TR')}</p>
-                  <p className="mt-3 text-xs text-muted-foreground">Henüz tamamlanmamış taksit ve borç bakiyesi</p>
-                </div>
-                <div className="p-3 rounded-xl bg-yellow-100 dark:bg-yellow-900/30">
-                  <Calendar className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PremiumMetricCard title="Bekleyen" value={`₺${stats.pendingPayments.toLocaleString('tr-TR')}`} caption="Taksit ve borç bakiyesi" icon={Calendar} tone="amber" trend="Bekleyen" />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <Card className="h-full border-l-4 border-l-red-500">
-            <CardContent className="p-6 h-full">
-              <div className="flex h-full items-start justify-between gap-4">
-                <div>
-                  <p className="text-sm text-muted-foreground">Gecikmiş</p>
-                  <p className="text-3xl font-bold mt-2">₺{stats.overduePayments.toLocaleString('tr-TR')}</p>
-                  <div className="flex items-center gap-1 mt-2 text-red-500">
-                    <AlertCircle className="h-4 w-4" />
-                    <span className="text-sm">{stats.overdueEntries.length} kayıt</span>
-                  </div>
-                  <p className="mt-3 text-xs text-muted-foreground">Yakın takip gerektiren tahsilat riski</p>
-                </div>
-                <div className="p-3 rounded-xl bg-red-100 dark:bg-red-900/30">
-                  <TrendingDown className="h-6 w-6 text-red-600 dark:text-red-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <PremiumMetricCard title="Gecikmiş" value={`₺${stats.overduePayments.toLocaleString('tr-TR')}`} caption="Tahsilat riski" icon={TrendingDown} tone="rose" trend={`${stats.overdueEntries.length} kayıt`} />
         </motion.div>
       </div>
 
+      <motion.div variants={itemVariants}>
+        <PremiumPanel title="Gelir - Gider Grafiği" description="Tahsilat, bekleyen ödeme ve gecikme dağılımı">
+          <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Finansal akış</p>
+                  <p className="mt-1 text-2xl font-black">Muhasebe Paneli</p>
+                </div>
+                <Badge variant="outline">Canlı</Badge>
+              </div>
+              <MiniLineChart values={[stats.totalReceivable, stats.totalCollected, stats.pendingPayments, stats.overduePayments, stats.collectionRate]} className="h-40" />
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Tahsilat Oranı</p>
+              <div className="mt-5 flex justify-center">
+                <MiniDonut value={stats.collectionRate} label="Tahsilat" />
+              </div>
+            </div>
+            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gelir Dağılımı</p>
+              <MiniBarChart values={[stats.totalCollected, stats.pendingPayments, stats.overduePayments, stats.totalReceivable]} className="mt-5" />
+            </div>
+          </div>
+        </PremiumPanel>
+      </motion.div>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Son Tahsilatlar</CardTitle>
-                <CardDescription>Gerçek tahsilat kayıtları</CardDescription>
-              </div>
+          <PremiumPanel
+            title="Son Tahsilatlar"
+            description="Gerçek tahsilat kayıtları"
+            action={(
               <Button asChild variant="outline" size="sm">
                 <Link to="/finance/collections">
                   Tümünü Gör
                   <ArrowUpRight className="h-4 w-4 ml-1" />
                 </Link>
               </Button>
-            </CardHeader>
-            <CardContent>
+            )}
+          >
               <div className="space-y-4">
                 {stats.recentCollections.map((collection) => (
-                  <button
-                    type="button"
-                    key={collection.id}
-                    className="w-full text-left flex items-center justify-between p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
-                    onClick={() => setSelectedCollection(collection)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
-                        <CreditCard className="h-4 w-4 text-green-600 dark:text-green-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium">{collection.name}</p>
-                        <p className="text-sm text-muted-foreground">{collection.method} • {collection.note || 'Tahsilat'}</p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-green-600">+₺{parseMoney(collection.amount).toLocaleString('tr-TR')}</p>
-                      <p className="text-xs text-muted-foreground">{collection.time || 'Zaman yok'}</p>
-                    </div>
-                  </button>
+                  <PremiumListRow key={collection.id} icon={CreditCard} title={collection.name} subtitle={`${collection.method} • ${collection.note || 'Tahsilat'}`} meta={`+₺${parseMoney(collection.amount).toLocaleString('tr-TR')}`} accent onClick={() => setSelectedCollection(collection)} />
                 ))}
               </div>
-            </CardContent>
-          </Card>
+          </PremiumPanel>
         </motion.div>
 
         <motion.div variants={itemVariants}>

@@ -10,14 +10,20 @@ import {
   BookOpen,
   Bell,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Avatar, AvatarFallback } from '../../components/ui/avatar';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchTeacherDashboardData } from '../../lib/api/dashboardData';
+import {
+  MiniBarChart,
+  MiniDonut,
+  MiniLineChart,
+  PremiumListRow,
+  PremiumMetricCard,
+  PremiumPanel,
+} from '../../components/ui/premium-dashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -68,18 +74,26 @@ export default function TeacherDashboard() {
   const quickStats = data?.quickStats || {};
   const todayLabel = new Intl.DateTimeFormat('tr-TR', { weekday: 'long' }).format(new Date());
   const teacherQuickActions = [
-    { label: 'Yoklama Al', icon: ClipboardCheck, color: 'text-brand-primary', onClick: () => navigate('/t/attendance') },
-    { label: 'Canlı Ders', icon: Video, color: 'text-brand-accent', onClick: () => navigate('/t/live-lessons') },
-    { label: 'İçerik Yükle', icon: BookOpen, color: 'text-green-600', onClick: () => navigate('/t/content') },
-    { label: 'Duyurular', icon: Bell, color: 'text-brand-primary', onClick: () => navigate('/t/announcements') },
+    { label: 'Yoklama Al', icon: ClipboardCheck, onClick: () => navigate('/t/attendance') },
+    { label: 'Canlı Ders', icon: Video, onClick: () => navigate('/t/live-lessons') },
+    { label: 'İçerik Yükle', icon: BookOpen, onClick: () => navigate('/t/content') },
+    { label: 'Duyurular', icon: Bell, onClick: () => navigate('/t/announcements') },
   ];
-
   const statRoutes = {
     'Bugünkü Ders': '/t/schedule',
     'Bekleyen Mesaj': '/t/questions',
     'Alınan Yoklama': '/t/attendance',
     'Toplam Öğrenci': '/t/attendance',
   };
+  const teacherSignal = [
+    stats.todayLessons || 0,
+    stats.pendingQuestions || 0,
+    stats.completedAttendance || 0,
+    stats.totalStudents || 0,
+    quickStats.activeHomework || 0,
+    quickStats.visibleContent || 0,
+    quickStats.notifications || 0,
+  ];
 
   return (
     <motion.div
@@ -98,124 +112,93 @@ export default function TeacherDashboard() {
         <ErrorBanner title="Öğretmen paneli yüklenemedi" message={error} onRetry={loadDashboard} />
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
         {[
-          ['Bugünkü Ders', stats.todayLessons || 0, Calendar, 'text-brand-primary', 'border-l-brand-primary'],
-          ['Bekleyen Mesaj', stats.pendingQuestions || 0, HelpCircle, 'text-brand-accent', 'border-l-brand-accent'],
-          ['Alınan Yoklama', `${stats.completedAttendance || 0}/${stats.todayLessons || 0}`, ClipboardCheck, 'text-green-600', 'border-l-green-500'],
-          ['Toplam Öğrenci', stats.totalStudents || 0, Users, 'text-brand-primary', 'border-l-brand-primary'],
-        ].map(([title, value, Icon, iconColor, borderClass]) => (
+          ['Bugünkü Ders', stats.todayLessons || 0, Calendar, 'blue', 'Program'],
+          ['Bekleyen Mesaj', stats.pendingQuestions || 0, HelpCircle, 'amber', 'Etkileşim'],
+          ['Alınan Yoklama', `${stats.completedAttendance || 0}/${stats.todayLessons || 0}`, ClipboardCheck, 'emerald', 'Yoklama'],
+          ['Toplam Öğrenci', stats.totalStudents || 0, Users, 'violet', 'Sınıflar'],
+        ].map(([title, value, Icon, tone, trend]) => (
           <motion.div variants={itemVariants} key={title}>
-            <Card className={`border-l-4 cursor-pointer hover:shadow-card-hover transition-all ${borderClass}`} onClick={() => navigate(statRoutes[title])}>
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{title}</p>
-                    <p className="text-3xl font-bold mt-2">{value}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-muted">
-                    <Icon className={`h-6 w-6 ${iconColor}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <PremiumMetricCard title={title} value={value} icon={Icon} tone={tone} trend={trend} onClick={() => navigate(statRoutes[title])} />
           </motion.div>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle>Bugünkü Program</CardTitle>
-                <CardDescription>{todayLabel} gününe ait ders akışı</CardDescription>
-              </div>
-              <Button variant="outline" size="sm" onClick={() => navigate('/t/schedule')}>Tam Takvim</Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {todaySchedule.length > 0 ? todaySchedule.map((lesson, index) => (
-                <div key={`${lesson.subject}-${lesson.class}-${index}`} className="flex items-center gap-4 p-4 rounded-xl bg-card border border-border">
-                  <div className="flex-shrink-0 w-20 text-center">
-                    <p className="text-sm font-bold text-brand-primary">{lesson.time}</p>
-                    <p className="text-xs text-muted-foreground">{lesson.class}</p>
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
+        <motion.div variants={itemVariants} className="xl:col-span-8">
+          <PremiumPanel title="Haftalık Ders Programı" description="Ders yoğunluğu ve sınıf operasyon sinyali">
+            <div className="grid gap-5 lg:grid-cols-[1fr_180px]">
+              <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+                <div className="mb-5 flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Ders dağılımı</p>
+                    <p className="mt-1 text-2xl font-black">Öğretmen paneli</p>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h4 className="font-semibold">{lesson.subject}</h4>
-                      <Badge variant="outline" className="text-xs">{lesson.class}</Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{lesson.room}</p>
-                  </div>
-                  <Badge className="bg-brand-accent/10 text-brand-accent">Hazır</Badge>
+                  <Badge variant="outline">{todayLabel}</Badge>
                 </div>
-              )) : (
-                <p className="text-sm text-muted-foreground">Bugün için ders kaydı bulunmuyor.</p>
-              )}
-            </CardContent>
-          </Card>
+                <MiniLineChart values={teacherSignal} className="h-40" />
+              </div>
+              <div className="grid gap-4">
+                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Yoklama Tamam</p>
+                  <div className="mt-4 flex justify-center">
+                    <MiniDonut value={stats.todayLessons ? Math.round(((stats.completedAttendance || 0) / stats.todayLessons) * 100) : 0} label="Yoklama" />
+                  </div>
+                </div>
+                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">İçerik / Ödev</p>
+                  <MiniBarChart values={[quickStats.activeHomework || 0, quickStats.visibleContent || 0, quickStats.notifications || 0, stats.totalStudents || 0]} className="mt-4" />
+                </div>
+              </div>
+            </div>
+          </PremiumPanel>
         </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2">
-                  <HelpCircle className="h-5 w-5 text-brand-accent" />
-                  Bekleyen Etkileşimler
-                </CardTitle>
-                <CardDescription>{pendingQuestions.length} konuşma geri dönüş bekliyor</CardDescription>
-              </div>
-              <Badge className="bg-brand-accent">{pendingQuestions.length}</Badge>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {pendingQuestions.length > 0 ? pendingQuestions.map((question) => (
-                <div key={question.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/50">
-                  <Avatar className="h-10 w-10">
-                    <AvatarFallback className="bg-brand-primary text-white text-sm">
-                      {question.student.split(' ').map((n) => n[0]).join('').slice(0, 2)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="font-medium truncate">{question.student}</p>
-                      <span className="text-xs text-muted-foreground">{question.time}</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{question.question}</p>
-                    <Badge variant="outline" className="mt-2 text-xs">{question.class}</Badge>
-                  </div>
-                </div>
-              )) : (
-                <p className="text-sm text-muted-foreground">Bekleyen mesaj bulunmuyor.</p>
-              )}
-            </CardContent>
-          </Card>
+        <motion.div variants={itemVariants} className="xl:col-span-4">
+          <PremiumPanel title="Hızlı İşlemler" description={`Aktif ödev: ${quickStats.activeHomework || 0} • Yayındaki içerik: ${quickStats.visibleContent || 0}`}>
+            <div className="grid gap-3">
+              {teacherQuickActions.map((action) => (
+                <PremiumListRow key={action.label} icon={action.icon} title={action.label} subtitle="Tek tıkla aç" accent onClick={action.onClick} />
+              ))}
+            </div>
+          </PremiumPanel>
         </motion.div>
       </div>
 
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Hızlı İşlemler</CardTitle>
-            <CardDescription>
-              Aktif ödev: {quickStats.activeHomework || 0} • Yayındaki içerik: {quickStats.visibleContent || 0} • Bildirim: {quickStats.notifications || 0}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {teacherQuickActions.map((action) => {
-                const Icon = action.icon;
-                return (
-                  <Button key={action.label} variant="outline" className="h-auto py-4 flex-col gap-2" onClick={action.onClick}>
-                    <Icon className={`h-6 w-6 ${action.color}`} />
-                    <span>{action.label}</span>
-                  </Button>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <motion.div variants={itemVariants}>
+          <PremiumPanel title="Bugünkü Program" description={`${todayLabel} gününe ait ders akışı`} action={<Button variant="outline" size="sm" onClick={() => navigate('/t/schedule')}>Tam Takvim</Button>} contentClassName="space-y-3">
+            {todaySchedule.length > 0 ? todaySchedule.map((lesson, index) => (
+              <div key={`${lesson.subject}-${lesson.class}-${index}`} className="flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4">
+                <div className="flex-shrink-0 w-20 text-center">
+                  <p className="text-sm font-bold text-[hsl(var(--brand-accent))]">{lesson.time}</p>
+                  <p className="text-xs text-muted-foreground">{lesson.class}</p>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-semibold">{lesson.subject}</h4>
+                    <Badge variant="outline" className="text-xs">{lesson.class}</Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{lesson.room}</p>
+                </div>
+                <Badge className="bg-brand-accent/10 text-brand-accent">Hazır</Badge>
+              </div>
+            )) : (
+              <p className="text-sm text-muted-foreground">Bugün için ders kaydı bulunmuyor.</p>
+            )}
+          </PremiumPanel>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <PremiumPanel title="Bekleyen Etkileşimler" description={`${pendingQuestions.length} konuşma geri dönüş bekliyor`} action={<Badge className="bg-brand-accent">{pendingQuestions.length}</Badge>} contentClassName="space-y-3">
+            {pendingQuestions.length > 0 ? pendingQuestions.map((question) => (
+              <PremiumListRow key={question.id} icon={HelpCircle} title={question.student} subtitle={question.question} meta={question.time} accent />
+            )) : (
+              <p className="text-sm text-muted-foreground">Bekleyen mesaj bulunmuyor.</p>
+            )}
+          </PremiumPanel>
+        </motion.div>
+      </div>
     </motion.div>
   );
 }
