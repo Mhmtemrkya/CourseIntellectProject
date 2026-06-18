@@ -280,11 +280,11 @@ export function PremiumSidebar() {
         variants={variants}
         initial={false}
         animate={sidebarCollapsed ? "collapsed" : "expanded"}
-        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.07] text-white shadow-[18px_0_48px_rgba(0,0,0,0.22)] lg:relative"
+        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.08] text-white shadow-[18px_0_48px_rgba(0,0,0,0.28)] lg:relative"
         style={{
           background: light
-            ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), linear-gradient(165deg, #ffffff 0%, #f6f8fb 58%, #edf2f7 100%)"
-            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.065), transparent 27%), radial-gradient(circle at 82% 24%, hsl(var(--brand-primary) / 0.16), transparent 32%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)",
+            ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), radial-gradient(circle at 88% 20%, rgba(0,91,160,0.18), transparent 30%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)"
+            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), radial-gradient(circle at 88% 20%, rgba(0,91,160,0.18), transparent 30%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)",
         }}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
@@ -295,7 +295,7 @@ export function PremiumSidebar() {
 
         <header
           className={cn(
-            "relative flex h-[72px] flex-shrink-0 items-center border-b border-white/[0.07]",
+            "relative flex h-[64px] flex-shrink-0 items-center border-b border-white/[0.08]",
             compact ? "justify-center px-2" : "justify-between px-4",
           )}
         >
@@ -359,7 +359,7 @@ export function PremiumSidebar() {
           </button>
         ) : (
           <>
-            <div className={cn("relative mx-3 mt-3 rounded-2xl border p-3 backdrop-blur-xl", light ? "border-slate-200 bg-white/65" : "border-white/[0.08] bg-white/[0.035]")}>
+            <div className={cn("relative mx-3 mt-3 rounded-[10px] border p-2.5 backdrop-blur-xl", light ? "border-white/[0.08] bg-white/[0.035]" : "border-white/[0.08] bg-white/[0.035]")}>
               <div className="flex items-center gap-2.5">
                 <div
                   className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-white/10 text-sm font-bold text-white shadow-lg"
@@ -388,9 +388,9 @@ export function PremiumSidebar() {
               type="button"
               onClick={() => setCommandPaletteOpen(true)}
               className={cn(
-                "relative mx-3 mt-2.5 flex h-11 items-center gap-2.5 rounded-xl border px-3 text-left transition",
+                "relative mx-3 mt-2.5 flex h-9 items-center gap-2.5 rounded-[9px] border px-3 text-left transition",
                 light
-                  ? "border-slate-200 bg-white/70 text-slate-500 hover:bg-white"
+                  ? "border-white/[0.10] bg-[#061A31]/70 text-white/45 hover:bg-white/[0.07]"
                   : "border-white/10 bg-white/[0.035] text-white/45 hover:bg-white/[0.07] hover:text-white/70",
               )}
             >
@@ -456,7 +456,7 @@ export function PremiumSidebar() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.025 }}
                           className={cn(
-                            "overflow-hidden rounded-[11px] border p-0.5",
+                    "overflow-hidden rounded-[9px] border p-0.5",
                             light
                               ? "border-slate-200/90 bg-white/55"
                               : "border-white/[0.08] bg-white/[0.025]",
@@ -470,7 +470,7 @@ export function PremiumSidebar() {
                             type="button"
                             onClick={() => toggleGroup(group.id)}
                             className={cn(
-                              "flex w-full items-center justify-between rounded-[9px] px-2.5 py-1.5 text-left transition hover:bg-white/[0.06]",
+                              "flex w-full items-center justify-between rounded-[7px] px-2.5 py-1.5 text-left transition hover:bg-white/[0.06]",
                               light ? "text-slate-600" : "text-white/62",
                               active && (light ? "text-slate-950" : "text-white"),
                             )}
