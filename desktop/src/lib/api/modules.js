@@ -477,6 +477,25 @@ export async function parentPay(payload) {
   return response;
 }
 
+export async function fetchOrgUnits() {
+  const response = await api.get('/api/org-units');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createOrgUnit(payload) {
+  const response = await api.post('/api/org-units', payload);
+  return response;
+}
+
+export async function updateOrgUnit(id, payload) {
+  const response = await api.put(`/api/org-units/${id}`, payload);
+  return response;
+}
+
+export async function deleteOrgUnit(id) {
+  await api.delete(`/api/org-units/${id}`);
+}
+
 export async function fetchAdminOverview() {
   const response = await api.get('/api/admin/overview');
   return response || {};

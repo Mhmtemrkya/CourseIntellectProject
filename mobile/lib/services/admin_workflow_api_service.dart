@@ -49,8 +49,42 @@ class AdminWorkflowApiService {
     return response.body.isEmpty ? null : jsonDecode(response.body);
   }
 
+  Future<void> _delete(String path) async {
+    final session = await _session();
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+    final response = await http.delete(uri, headers: {'Authorization': 'Bearer ${session.accessToken}'});
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AdminWorkflowApiException('Silme başarısız (${response.statusCode}).');
+    }
+  }
+
   List<Map<String, dynamic>> _list(dynamic raw) =>
       (raw as List<dynamic>? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+  // ---- Organizasyon birimleri ----
+  Future<List<Map<String, dynamic>>> getOrgUnits() async =>
+      _list(await _get('/api/org-units'));
+
+  Future<Map<String, dynamic>> createOrgUnit({
+    required String name,
+    required String unitType,
+    String? parentUnitId,
+    String? managerName,
+    String? note,
+  }) async =>
+      Map<String, dynamic>.from(await _post('/api/org-units', {
+        'name': name,
+        'unitType': unitType,
+        'parentUnitId': ?parentUnitId,
+        'managerName': ?managerName,
+        'note': ?note,
+      }) as Map);
+
+  Future<void> deleteOrgUnit(String id) async => _delete('/api/org-units/$id');
+
+  // ---- Roller (RBAC, salt okunur) ----
+  Future<List<Map<String, dynamic>>> getRoles() async =>
+      _list(await _get('/api/users/roles'));
 
   // ---- Onaylar ----
   Future<List<Map<String, dynamic>>> getApprovals({String? status, String? category}) async =>

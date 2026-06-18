@@ -124,6 +124,8 @@ import Destek from "./pages/admin/Destek";
 import AdminPersonnelApprovals from "./pages/admin/AdminPersonnelApprovals";
 import AdminStaffHr from "./pages/admin/AdminStaffHr";
 import AdminAuditLog from "./pages/admin/AdminAuditLog";
+import AdminOrgUnits from "./pages/admin/AdminOrgUnits";
+import AdminRbacMatrix from "./pages/admin/AdminRbacMatrix";
 import AdminRoleManagement from "./pages/admin/AdminRoleManagement";
 import AdministrativeRecords from "./pages/admin/AdministrativeRecords";
 import AdministrativeNotifications from "./pages/admin/AdministrativeNotifications";
@@ -240,6 +242,8 @@ function App() {
               <Route path="/admin/personnel-approvals" element={<AdminPersonnelApprovals />} />
               <Route path="/admin/staff-hr" element={<AdminStaffHr />} />
               <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+              <Route path="/admin/org-units" element={<AdminOrgUnits />} />
+              <Route path="/admin/rbac" element={<AdminRbacMatrix />} />
               <Route path="/admin/finance-approvals" element={<Approvals />} />
               <Route path="/admin/role-management" element={<AdminRoleManagement />} />
               <Route path="/admin/records" element={<AdministrativeRecords />} />

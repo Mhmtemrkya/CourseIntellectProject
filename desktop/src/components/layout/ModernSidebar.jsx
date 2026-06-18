@@ -165,6 +165,18 @@ const menuConfigs = {
       color: "#64748b",
     },
     {
+      path: "/admin/org-units",
+      icon: CheckSquare,
+      label: "Organizasyon Birimleri",
+      color: "#0d9488",
+    },
+    {
+      path: "/admin/rbac",
+      icon: CheckSquare,
+      label: "Yetki Matrisi",
+      color: "#9333ea",
+    },
+    {
       path: "/admin/password-reset-requests",
       icon: KeyRound,
       label: "Şifre Talepleri",
@@ -329,6 +341,18 @@ const menuConfigs = {
       icon: CheckSquare,
       label: "Denetim Kayıtları",
       color: "#64748b",
+    },
+    {
+      path: "/admin/org-units",
+      icon: CheckSquare,
+      label: "Organizasyon Birimleri",
+      color: "#0d9488",
+    },
+    {
+      path: "/admin/rbac",
+      icon: CheckSquare,
+      label: "Yetki Matrisi",
+      color: "#9333ea",
     },
     {
       path: "/admin/password-reset-requests",
