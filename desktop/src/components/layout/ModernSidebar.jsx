@@ -64,7 +64,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 
 // Menu items for each role
-const menuConfigs = {
+export const menuConfigs = {
   admin: [
     {
       path: "/dashboard",
@@ -874,7 +874,7 @@ const menuConfigs = {
   ],
 };
 
-const ROLE_LABELS = {
+export const ROLE_LABELS = {
   admin: "Kurum Yöneticisi",
   administrative: "İdari Personel",
   finance: "Muhasebe",
@@ -1220,7 +1220,7 @@ function inferModuleKey(item) {
   return "";
 }
 
-function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", hasRoleManagementPolicy = false) {
+export function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", hasRoleManagementPolicy = false) {
   if (!hasRoleManagementPolicy) return baseItems;
 
   const merged = [];
@@ -1253,7 +1253,7 @@ function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", ha
   return merged;
 }
 
-function buildGroupedMenuItems(items, primaryRole) {
+export function buildGroupedMenuItems(items, primaryRole) {
   const definitions = ROLE_MENU_GROUPS[primaryRole] || ROLE_MENU_GROUPS.admin;
   const groups = definitions.map((group) => ({ ...group, items: [] }));
   const fallback = { id: "other", title: "Diğer", modules: [], items: [] };

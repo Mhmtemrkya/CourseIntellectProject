@@ -3,7 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { checkIsServiceDriver } from '../../lib/driverGuard';
-import { ModernSidebar } from './ModernSidebar';
+import { PremiumSidebar } from './PremiumSidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { Sheet, SheetContent } from '../ui/sheet';
@@ -49,7 +49,7 @@ export function DashboardLayout() {
   return (
     <div className="app-shell flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
-      <ModernSidebar />
+      <PremiumSidebar />
 
       {/* Main Content - adjusts based on sidebar state */}
       <motion.div 
@@ -57,7 +57,7 @@ export function DashboardLayout() {
         initial={false}
         animate={{
           marginLeft: sidebarCollapsed ? 0 : 0,
-          width: sidebarCollapsed ? '100%' : 'calc(100% - 280px)',
+          width: '100%',
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         style={{
