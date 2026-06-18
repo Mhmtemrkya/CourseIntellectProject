@@ -813,6 +813,18 @@ const menuConfigs = {
       color: "#16a34a",
     },
     {
+      path: "/p/service",
+      icon: FileText,
+      label: "Servis Takip",
+      color: "#0891b2",
+    },
+    {
+      path: "/p/cafeteria",
+      icon: FileText,
+      label: "Yemek Menüsü",
+      color: "#ea580c",
+    },
+    {
       path: "/p/announcements",
       icon: Bell,
       label: "Duyurular",

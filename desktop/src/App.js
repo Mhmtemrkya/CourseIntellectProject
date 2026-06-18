@@ -154,6 +154,8 @@ import TeacherAnnouncements from "./pages/teacher/TeacherAnnouncements";
 import ParentExcuseRequest from "./pages/parent/ParentExcuseRequest";
 import ParentRequests from "./pages/parent/ParentRequests";
 import ParentAcademic from "./pages/parent/ParentAcademic";
+import ParentService from "./pages/parent/ParentService";
+import ParentCafeteria from "./pages/parent/ParentCafeteria";
 
 // New Finance Pages
 const Salary = lazy(() => import("./pages/finance/Salary"));
@@ -357,6 +359,8 @@ function App() {
               <Route path="/p/excuse-request" element={<ParentExcuseRequest />} />
               <Route path="/p/requests" element={<ParentRequests />} />
               <Route path="/p/academic" element={<ParentAcademic />} />
+              <Route path="/p/service" element={<ParentService />} />
+              <Route path="/p/cafeteria" element={<ParentCafeteria />} />
               <Route path="/p/profile" element={<ParentProfile />} />
               <Route path="/p/chat" element={<Chat />} />
               <Route path="/p/cafeteria" element={<CafeteriaWeeklyMenu />} />
