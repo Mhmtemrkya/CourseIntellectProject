@@ -16,7 +16,8 @@ public sealed class AcademicQueryService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
     UsernameGenerator usernameGenerator,
-    IHttpContextAccessor httpContextAccessor) : IAcademicQueryService
+    IHttpContextAccessor httpContextAccessor,
+    IParentNotifier parentNotifier) : IAcademicQueryService
 {
     public async Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default)
     {
@@ -107,6 +108,14 @@ public sealed class AcademicQueryService(
 
         await dbContext.ExamResults.AddAsync(result, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Sınav sonucu girilince veliye anlık bildirim.
+        await parentNotifier.NotifyStudentParentAsync(
+            result.StudentName,
+            "Sınav sonucu açıklandı",
+            $"{result.ExamTitle}: {result.Score} puan / {result.Net} net",
+            "ExamResult",
+            cancellationToken);
 
         return new ExamResultDto(
             result.Id,

@@ -1,4 +1,5 @@
 using CourseIntellect.Application.DTOs.Attendance;
+using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Services;
 
 namespace CourseIntellect.Tests;
@@ -6,7 +7,13 @@ namespace CourseIntellect.Tests;
 public sealed class AttendanceServiceTests : IDisposable
 {
     private readonly TestDb db = new();
-    private AttendanceService Service => new(db.Context);
+    private AttendanceService Service => new(db.Context, new NoopParentNotifier());
+
+    private sealed class NoopParentNotifier : IParentNotifier
+    {
+        public Task NotifyStudentParentAsync(string studentName, string title, string message, string category, CancellationToken cancellationToken = default)
+            => Task.CompletedTask;
+    }
 
     [Fact]
     public async Task SaveLessonAttendance_MapsUiStatusesToTurkishLabels()

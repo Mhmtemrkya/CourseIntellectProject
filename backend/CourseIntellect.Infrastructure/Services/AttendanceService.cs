@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class AttendanceService(CourseIntellectDbContext dbContext) : IAttendanceService
+public sealed class AttendanceService(
+    CourseIntellectDbContext dbContext,
+    IParentNotifier parentNotifier) : IAttendanceService
 {
     public async Task<IReadOnlyList<AttendanceEntryDto>> GetAttendanceAsync(
         string? studentName = null,
@@ -68,6 +70,17 @@ public sealed class AttendanceService(CourseIntellectDbContext dbContext) : IAtt
 
         await dbContext.Set<AttendanceEntry>().AddRangeAsync(entries, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Devamsız işaretlenen öğrencilerin velilerine anlık bildirim.
+        foreach (var entry in entries.Where(x => x.Status == "Devamsiz"))
+        {
+            await parentNotifier.NotifyStudentParentAsync(
+                entry.StudentName,
+                "Devamsızlık bildirimi",
+                $"{entry.StudentName} bugün {entry.Lesson} dersinde devamsız görünüyor.",
+                "AttendanceAlert",
+                cancellationToken);
+        }
 
         return entries
             .OrderBy(x => x.StudentName)
