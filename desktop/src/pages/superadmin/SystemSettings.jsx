@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Settings, ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle, ScanText,
+  Settings, ToggleLeft, Shield, Server, Bell, Save, CheckCircle, AlertCircle, ScanText, CreditCard, Receipt,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -29,6 +29,21 @@ const AZURE_KEYS = {
   apiKey: 'AzureDocumentIntelligence:ApiKey',
 };
 
+const PAYMENT_KEYS = {
+  enabled: 'PaymentGateway:Enabled',
+  provider: 'PaymentGateway:Provider',
+  baseUrl: 'PaymentGateway:BaseUrl',
+  currency: 'PaymentGateway:Currency',
+  apiKey: 'PaymentGateway:ApiKey',
+};
+
+const EINVOICE_KEYS = {
+  enabled: 'EInvoice:Enabled',
+  provider: 'EInvoice:Provider',
+  baseUrl: 'EInvoice:BaseUrl',
+  apiKey: 'EInvoice:ApiKey',
+};
+
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 const SETTINGS_MARKER = 'SA_SYSTEM_SETTINGS';
 
@@ -42,6 +57,19 @@ export default function SystemSettings() {
   const [aiOcrEndpoint, setAiOcrEndpoint] = useState('');
   const [aiOcrKeyConfigured, setAiOcrKeyConfigured] = useState(false);
   const [aiOcrKeyInput, setAiOcrKeyInput] = useState('');
+  // Ödeme ağ geçidi
+  const [payEnabled, setPayEnabled] = useState(false);
+  const [payProvider, setPayProvider] = useState('');
+  const [payBaseUrl, setPayBaseUrl] = useState('');
+  const [payCurrency, setPayCurrency] = useState('TRY');
+  const [payKeyConfigured, setPayKeyConfigured] = useState(false);
+  const [payKeyInput, setPayKeyInput] = useState('');
+  // e-Fatura
+  const [invEnabled, setInvEnabled] = useState(false);
+  const [invProvider, setInvProvider] = useState('');
+  const [invBaseUrl, setInvBaseUrl] = useState('');
+  const [invKeyConfigured, setInvKeyConfigured] = useState(false);
+  const [invKeyInput, setInvKeyInput] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -61,6 +89,19 @@ export default function SystemSettings() {
       setAiOcrEndpoint(findSetting(AZURE_KEYS.endpoint)?.value || '');
       setAiOcrKeyConfigured(Boolean(findSetting(AZURE_KEYS.apiKey)?.value));
       setAiOcrKeyInput('');
+      // Ödeme ağ geçidi ayarları
+      setPayEnabled(findSetting(PAYMENT_KEYS.enabled)?.value === 'true' || findSetting(PAYMENT_KEYS.enabled)?.value === '1');
+      setPayProvider(findSetting(PAYMENT_KEYS.provider)?.value || '');
+      setPayBaseUrl(findSetting(PAYMENT_KEYS.baseUrl)?.value || '');
+      setPayCurrency(findSetting(PAYMENT_KEYS.currency)?.value || 'TRY');
+      setPayKeyConfigured(Boolean(findSetting(PAYMENT_KEYS.apiKey)?.value));
+      setPayKeyInput('');
+      // e-Fatura ayarları
+      setInvEnabled(findSetting(EINVOICE_KEYS.enabled)?.value === 'true' || findSetting(EINVOICE_KEYS.enabled)?.value === '1');
+      setInvProvider(findSetting(EINVOICE_KEYS.provider)?.value || '');
+      setInvBaseUrl(findSetting(EINVOICE_KEYS.baseUrl)?.value || '');
+      setInvKeyConfigured(Boolean(findSetting(EINVOICE_KEYS.apiKey)?.value));
+      setInvKeyInput('');
       const savedSettings = savedRecords
         .filter((item) => item.scopeKey === 'global')
         .sort((a, b) => new Date(b.updatedAtUtc || 0).getTime() - new Date(a.updatedAtUtc || 0).getTime())[0];
@@ -157,6 +198,31 @@ export default function SystemSettings() {
         setAiOcrKeyConfigured(true);
         setAiOcrKeyInput('');
       }
+
+      // Ödeme ağ geçidi ayarları
+      const paymentItems = [
+        { key: PAYMENT_KEYS.enabled, value: payEnabled ? 'true' : 'false', type: 'boolean', category: 'integrations', description: 'Online ödeme ağ geçidi açık/kapalı' },
+        { key: PAYMENT_KEYS.provider, value: payProvider.trim(), type: 'string', category: 'integrations', description: 'Ödeme sağlayıcı (iyzico/PayTR vb.)' },
+        { key: PAYMENT_KEYS.baseUrl, value: payBaseUrl.trim(), type: 'string', category: 'integrations', description: 'Ödeme sağlayıcı REST taban adresi' },
+        { key: PAYMENT_KEYS.currency, value: payCurrency.trim() || 'TRY', type: 'string', category: 'integrations', description: 'Para birimi' },
+      ];
+      if (payKeyInput.trim()) {
+        paymentItems.push({ key: PAYMENT_KEYS.apiKey, value: payKeyInput.trim(), type: 'string', category: 'integrations', description: 'Ödeme sağlayıcı API anahtarı' });
+      }
+      await saveAppSettings(paymentItems);
+      if (payKeyInput.trim()) { setPayKeyConfigured(true); setPayKeyInput(''); }
+
+      // e-Fatura ayarları
+      const invoiceItems = [
+        { key: EINVOICE_KEYS.enabled, value: invEnabled ? 'true' : 'false', type: 'boolean', category: 'integrations', description: 'e-Fatura/e-Arşiv açık/kapalı' },
+        { key: EINVOICE_KEYS.provider, value: invProvider.trim(), type: 'string', category: 'integrations', description: 'e-Fatura entegratörü' },
+        { key: EINVOICE_KEYS.baseUrl, value: invBaseUrl.trim(), type: 'string', category: 'integrations', description: 'e-Fatura entegratör REST taban adresi' },
+      ];
+      if (invKeyInput.trim()) {
+        invoiceItems.push({ key: EINVOICE_KEYS.apiKey, value: invKeyInput.trim(), type: 'string', category: 'integrations', description: 'e-Fatura entegratör API anahtarı' });
+      }
+      await saveAppSettings(invoiceItems);
+      if (invKeyInput.trim()) { setInvKeyConfigured(true); setInvKeyInput(''); }
       toast({
         title: maintenanceMode ? 'Bakım modu AKTİF' : 'Ayarlar kaydedildi',
         description: maintenanceMode
@@ -264,6 +330,63 @@ export default function SystemSettings() {
                 <p className="text-xs text-muted-foreground">
                   Güvenlik için mevcut anahtar gösterilmez. Boş bırakırsan değişmez.
                 </p>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><CreditCard className="h-5 w-5" />Online Ödeme Ağ Geçidi</CardTitle>
+          <CardDescription>Veli online ödemeleri için iyzico/PayTR benzeri REST sağlayıcı. Anahtar girilince gerçek ödeme akışı aktifleşir; aksi halde güvenli test modu.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div>
+              <p className="font-medium">Online ödemeyi etkinleştir</p>
+              <p className="text-sm text-muted-foreground">Kapalıyken sadece TEST-OK token'ı ile test ödemesi alınır.</p>
+            </div>
+            <Switch checked={payEnabled} onCheckedChange={setPayEnabled} />
+          </div>
+          {payEnabled ? (
+            <div className="space-y-3">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="space-y-2"><Label>Sağlayıcı</Label><Input placeholder="iyzico / paytr" value={payProvider} onChange={(e) => setPayProvider(e.target.value)} /></div>
+                <div className="space-y-2"><Label>Para Birimi</Label><Input placeholder="TRY" value={payCurrency} onChange={(e) => setPayCurrency(e.target.value)} /></div>
+              </div>
+              <div className="space-y-2"><Label>REST Taban Adresi (BaseUrl)</Label><Input placeholder="https://api.saglayici.com/v1" value={payBaseUrl} onChange={(e) => setPayBaseUrl(e.target.value)} /></div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">API Anahtarı {payKeyConfigured ? <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Tanımlı</Badge> : <Badge variant="outline">Tanımlı değil</Badge>}</Label>
+                <Input type="password" autoComplete="new-password" placeholder={payKeyConfigured ? '•••••••• (değiştirmek için yeni anahtar gir)' : 'Sağlayıcı API anahtarı'} value={payKeyInput} onChange={(e) => setPayKeyInput(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Güvenlik için mevcut anahtar gösterilmez. Boş bırakırsan değişmez.</p>
+              </div>
+            </div>
+          ) : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Receipt className="h-5 w-5" />e-Fatura / e-Arşiv</CardTitle>
+          <CardDescription>GİB entegratörü. Anahtar girilince gerçek e-Fatura kesilir; aksi halde KDV hesaplı örnek (stub) belge üretilir.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div>
+              <p className="font-medium">e-Faturayı etkinleştir</p>
+              <p className="text-sm text-muted-foreground">Kapalıyken belgeler stub (örnek) ETTN ile üretilir.</p>
+            </div>
+            <Switch checked={invEnabled} onCheckedChange={setInvEnabled} />
+          </div>
+          {invEnabled ? (
+            <div className="space-y-3">
+              <div className="space-y-2"><Label>Entegratör</Label><Input placeholder="GİB / özel entegratör" value={invProvider} onChange={(e) => setInvProvider(e.target.value)} /></div>
+              <div className="space-y-2"><Label>REST Taban Adresi (BaseUrl)</Label><Input placeholder="https://api.entegratör.com" value={invBaseUrl} onChange={(e) => setInvBaseUrl(e.target.value)} /></div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">API Anahtarı {invKeyConfigured ? <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">Tanımlı</Badge> : <Badge variant="outline">Tanımlı değil</Badge>}</Label>
+                <Input type="password" autoComplete="new-password" placeholder={invKeyConfigured ? '•••••••• (değiştirmek için yeni anahtar gir)' : 'Entegratör API anahtarı'} value={invKeyInput} onChange={(e) => setInvKeyInput(e.target.value)} />
+                <p className="text-xs text-muted-foreground">Güvenlik için mevcut anahtar gösterilmez. Boş bırakırsan değişmez.</p>
               </div>
             </div>
           ) : null}

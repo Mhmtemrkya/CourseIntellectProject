@@ -2,80 +2,11 @@ using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-/// <summary>
-/// Ödeme ağ geçidi soyutlaması. "PaymentGateway:Provider" + "ApiKey"
-/// yapılandırılınca gerçek sağlayıcıya bağlanacak şekilde tasarlandı; şimdilik
-/// güvenli stub (test akışı): confirm yalnızca "TEST-OK" token'ı ya da gerçek
-/// yapılandırma ile başarılı döner.
-/// </summary>
-public sealed class StubPaymentGatewayService(IConfiguration configuration) : IPaymentGatewayService
-{
-    private readonly string? _provider = configuration["PaymentGateway:Provider"];
-    private readonly string? _apiKey = configuration["PaymentGateway:ApiKey"];
-
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_provider) && !string.IsNullOrWhiteSpace(_apiKey);
-
-    public Task<PaymentIntentDto> CreateIntentAsync(PaymentIntentRequest request, CancellationToken cancellationToken = default)
-    {
-        var provider = string.IsNullOrWhiteSpace(_provider) ? "stub" : _provider!;
-        var intentId = $"PI-{Guid.NewGuid():N}";
-        // Gerçek sağlayıcıda burada checkout/token oluşturulur. Stub'da null döner.
-        return Task.FromResult(new PaymentIntentDto(
-            provider,
-            intentId,
-            IsConfigured ? "RequiresAction" : "StubReady",
-            null,
-            IsConfigured));
-    }
-
-    public Task<bool> ConfirmAsync(ConfirmPaymentRequest request, CancellationToken cancellationToken = default)
-    {
-        if (IsConfigured)
-        {
-            // Gerçek sağlayıcıda token doğrulanır. Stub modunda yapılandırma varsa başarı kabul.
-            return Task.FromResult(!string.IsNullOrWhiteSpace(request.Token));
-        }
-
-        // Yapılandırma yoksa yalnızca açık test token'ı ile başarı.
-        return Task.FromResult(string.Equals(request.Token, "TEST-OK", StringComparison.OrdinalIgnoreCase));
-    }
-}
-
-/// <summary>
-/// e-Fatura/e-Arşiv soyutlaması. "EInvoice:Provider" + "ApiKey" yapılandırılınca
-/// GİB entegratörüne gönderilecek şekilde; şimdilik KDV hesaplı stub (mock ETTN).
-/// </summary>
-public sealed class StubEInvoiceService(IConfiguration configuration) : IEInvoiceService
-{
-    private readonly string? _provider = configuration["EInvoice:Provider"];
-    private readonly string? _apiKey = configuration["EInvoice:ApiKey"];
-
-    public bool IsConfigured => !string.IsNullOrWhiteSpace(_provider) && !string.IsNullOrWhiteSpace(_apiKey);
-
-    public Task<EInvoiceResultDto> IssueAsync(IssueEInvoiceRequest request, CancellationToken cancellationToken = default)
-    {
-        // Tutar KDV dahil kabul edilir; net ve KDV ayrıştırılır.
-        var vatRate = request.VatRate <= 0 ? 0m : request.VatRate;
-        var gross = Math.Max(0, request.Amount);
-        var net = vatRate > 0 ? Math.Round(gross / (1 + vatRate / 100m), 2, MidpointRounding.AwayFromZero) : gross;
-        var vat = gross - net;
-        var provider = string.IsNullOrWhiteSpace(_provider) ? "stub" : _provider!;
-
-        return Task.FromResult(new EInvoiceResultDto(
-            provider,
-            IsConfigured ? "Issued" : "Stub",
-            $"{Guid.NewGuid():N}"[..32].ToUpperInvariant(),
-            net,
-            vat,
-            gross,
-            IsConfigured,
-            IsConfigured ? null : "e-Fatura sağlayıcısı yapılandırılmadı; örnek (stub) belge üretildi."));
-    }
-}
+// Ödeme ağ geçidi ve e-Fatura servisleri FinanceProviderServices.cs içinde
+// (config + IAppSettingService ile sürülen, anahtar girilince gerçek HTTP çağrısı).
 
 /// <summary>
 /// Türkiye bordrosu yaklaşık hesabı (2025): SGK işçi %14, işsizlik işçi %1,
