@@ -48,17 +48,17 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
       onClick={() => mobile && onNavigate()}
       data-testid={`nav-${item.path.replace(/\//g, "-").slice(1)}`}
       className={cn(
-        "group relative flex items-center overflow-hidden rounded-xl border transition-all duration-200",
-        compact ? "mx-auto h-12 w-12 justify-center" : "gap-3 px-3 py-2.5",
+        "group relative flex items-center overflow-hidden rounded-[11px] border transition-all duration-200",
+        compact ? "mx-auto h-10 w-10 justify-center" : "gap-2.5 px-2.5 py-2",
         active
-          ? "border-[hsl(var(--brand-accent)/0.4)] text-white shadow-[0_12px_30px_hsl(var(--brand-primary)/0.22)]"
-          : "border-transparent text-white/65 hover:border-white/10 hover:bg-white/[0.07] hover:text-white",
+          ? "border-[hsl(var(--brand-accent)/0.34)] text-white shadow-[0_8px_24px_hsl(var(--brand-accent)/0.12)]"
+          : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.055] hover:text-white",
       )}
       style={
         active
           ? {
               background:
-                "linear-gradient(100deg, hsl(var(--brand-primary) / 0.82), hsl(var(--brand-accent) / 0.34))",
+                "linear-gradient(100deg, hsl(var(--brand-primary) / 0.42), hsl(var(--brand-accent) / 0.2))",
             }
           : undefined
       }
@@ -71,12 +71,12 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
       )}
       <span
         className={cn(
-          "relative z-10 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition",
+          "relative z-10 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition",
           active ? "bg-white/15" : "group-hover:bg-white/[0.08]",
         )}
       >
         <Icon
-          className="h-[19px] w-[19px]"
+          className="h-[17px] w-[17px]"
           style={{ color: active ? "#fff" : item.color }}
         />
         {item.pulse && (
@@ -85,7 +85,7 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
       </span>
       {!compact && (
         <>
-          <span className="relative z-10 min-w-0 flex-1 truncate text-sm font-medium">
+          <span className="relative z-10 min-w-0 flex-1 truncate text-[13px] font-medium">
             {item.label}
           </span>
           {item.new && (
@@ -209,6 +209,11 @@ export function PremiumSidebar() {
   const moduleGroups = groups.filter((group) => group.id !== "main");
   const allItems = groups.flatMap((group) => group.items);
   const compact = sidebarCollapsed && !mobile;
+  const displayEmail =
+    user?.username?.includes("@") &&
+    user?.email?.toLowerCase().startsWith(`${user.username.toLowerCase()}@`)
+      ? user.username
+      : user?.email || user?.username || "";
 
   const toggleGroup = (id) => {
     setOpenGroups((current) => {
@@ -225,12 +230,12 @@ export function PremiumSidebar() {
 
   const variants = {
     expanded: {
-      width: mobile ? "90vw" : 304,
+      width: mobile ? "90vw" : 280,
       x: 0,
       transition: { duration: 0.28, ease: "easeInOut" },
     },
     collapsed: {
-      width: mobile ? "90vw" : 88,
+      width: mobile ? "90vw" : 76,
       x: mobile ? "-100%" : 0,
       transition: { duration: 0.28, ease: "easeInOut" },
     },
@@ -271,23 +276,23 @@ export function PremiumSidebar() {
         variants={variants}
         initial={false}
         animate={sidebarCollapsed ? "collapsed" : "expanded"}
-        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-white/10 text-white shadow-[20px_0_60px_rgba(0,0,0,0.2)] lg:relative"
+        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.07] text-white shadow-[18px_0_48px_rgba(0,0,0,0.22)] lg:relative"
         style={{
           background: light
-            ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.13), transparent 29%), linear-gradient(165deg, #ffffff 0%, #f4f7fb 58%, #edf2f8 100%)"
-            : "linear-gradient(to bottom, var(--sidebar-from, #07192c), var(--sidebar-via, #071525), var(--sidebar-to, #040d18))",
+            ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), linear-gradient(165deg, #ffffff 0%, #f6f8fb 58%, #edf2f7 100%)"
+            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.07), transparent 27%), linear-gradient(180deg, #071423 0%, #05111e 48%, #030b14 100%)",
         }}
       >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden">
-          <GlowingOrb color={accentColor} size={210} className="-right-24 -top-20" />
-          <GlowingOrb color={primaryColor} size={170} className="-bottom-16 -left-24" />
-          <FloatingParticles count={mobile ? 6 : 13} colors={[accentColor, primaryColor, "#22c55e"]} />
+        <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
+          <GlowingOrb color={accentColor} size={180} className="-right-24 -top-24" />
+          <GlowingOrb color={primaryColor} size={140} className="-bottom-20 -left-24" />
+          <FloatingParticles count={mobile ? 4 : 8} colors={[accentColor, primaryColor]} />
         </div>
 
         <header
           className={cn(
-            "relative flex h-[88px] flex-shrink-0 items-center border-b border-white/10",
-            compact ? "justify-center px-2" : "justify-between px-5",
+            "relative flex h-[72px] flex-shrink-0 items-center border-b border-white/[0.07]",
+            compact ? "justify-center px-2" : "justify-between px-4",
           )}
         >
           <div className="flex min-w-0 items-center gap-3">
@@ -295,25 +300,25 @@ export function PremiumSidebar() {
               <img
                 src={tenantLogo}
                 alt={tenantName || "Kurum logosu"}
-                className="h-11 w-11 flex-shrink-0 rounded-xl object-contain shadow-lg"
+                className="h-10 w-10 flex-shrink-0 rounded-xl object-contain shadow-lg"
               />
             ) : (
               <div
-                className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-xl shadow-lg"
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl shadow-lg"
                 style={{
                   background:
                     "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
                 }}
               >
-                <GraduationCap className="h-6 w-6 text-white" />
+                <GraduationCap className="h-5 w-5 text-white" />
               </div>
             )}
             {!compact && (
               <div className="min-w-0">
-                <p className={cn("truncate text-[17px] font-bold", light ? "text-slate-950" : "text-white")}>
+                <p className={cn("truncate text-[16px] font-bold", light ? "text-slate-950" : "text-white")}>
                   Course<span className="text-[hsl(var(--brand-accent))]">Intellect</span>
                 </p>
-                <p className={cn("max-w-[170px] truncate text-[10px]", light ? "text-slate-500" : "text-white/42")}>
+                <p className={cn("max-w-[154px] truncate text-[9px]", light ? "text-slate-500" : "text-white/38")}>
                   {tenantName || ROLE_LABELS[primaryRole]}
                 </p>
               </div>
@@ -324,12 +329,12 @@ export function PremiumSidebar() {
               type="button"
               onClick={() => setSidebarCollapsed(true)}
               className={cn(
-                "rounded-xl border p-2 transition hover:bg-white/10",
+                "rounded-[10px] border p-1.5 transition hover:bg-white/10",
                 light ? "border-slate-200 text-slate-500" : "border-white/10 text-white/65",
               )}
               data-testid="sidebar-close-button"
             >
-              {mobile ? <X className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
+              {mobile ? <X className="h-[18px] w-[18px]" /> : <ChevronLeft className="h-[18px] w-[18px]" />}
             </button>
           )}
         </header>
@@ -339,21 +344,21 @@ export function PremiumSidebar() {
             type="button"
             onClick={() => setSidebarCollapsed(false)}
             className={cn(
-              "relative mx-auto mt-3 flex h-10 w-10 items-center justify-center rounded-xl border transition",
+              "relative mx-auto mt-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] border transition",
               light
                 ? "border-slate-200 bg-white/70 text-slate-600 hover:bg-white"
                 : "border-white/10 bg-white/[0.05] text-white/65 hover:bg-white/10 hover:text-white",
             )}
             aria-label="Menüyü genişlet"
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-[18px] w-[18px]" />
           </button>
         ) : (
           <>
-            <div className={cn("relative mx-4 mt-4 rounded-2xl border p-3.5 backdrop-blur-xl", light ? "border-slate-200 bg-white/65" : "border-white/10 bg-white/[0.045]")}>
-              <div className="flex items-center gap-3">
+            <div className={cn("relative mx-3 mt-3 rounded-2xl border p-3 backdrop-blur-xl", light ? "border-slate-200 bg-white/65" : "border-white/[0.08] bg-white/[0.035]")}>
+              <div className="flex items-center gap-2.5">
                 <div
-                  className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full border-4 border-white/10 font-bold text-white shadow-lg"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-white/10 text-sm font-bold text-white shadow-lg"
                   style={{
                     background:
                       "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
@@ -362,13 +367,13 @@ export function PremiumSidebar() {
                   {user?.name?.charAt(0)?.toUpperCase() || "K"}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={cn("truncate text-sm font-semibold", light ? "text-slate-950" : "text-white")}>
+                  <p className={cn("truncate text-[13px] font-semibold", light ? "text-slate-950" : "text-white")}>
                     {user?.name || "Kullanıcı"}
                   </p>
-                  <p className={cn("truncate text-[11px]", light ? "text-slate-500" : "text-white/45")}>
-                    {user?.email || user?.username || ""}
+                  <p className={cn("truncate text-[10px]", light ? "text-slate-500" : "text-white/42")}>
+                    {displayEmail}
                   </p>
-                  <span className="mt-1 inline-flex rounded-full bg-[hsl(var(--brand-accent)/0.13)] px-2 py-0.5 text-[10px] font-semibold text-[hsl(var(--brand-accent))]">
+                  <span className="mt-1 inline-flex rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[9px] font-semibold text-[hsl(var(--brand-accent))]">
                     {ROLE_LABELS[primaryRole] || primaryRole}
                   </span>
                 </div>
@@ -379,14 +384,14 @@ export function PremiumSidebar() {
               type="button"
               onClick={() => setCommandPaletteOpen(true)}
               className={cn(
-                "relative mx-4 mt-3 flex h-12 items-center gap-3 rounded-xl border px-3 text-left transition",
+                "relative mx-3 mt-2.5 flex h-11 items-center gap-2.5 rounded-xl border px-3 text-left transition",
                 light
                   ? "border-slate-200 bg-white/70 text-slate-500 hover:bg-white"
                   : "border-white/10 bg-white/[0.035] text-white/45 hover:bg-white/[0.07] hover:text-white/70",
               )}
             >
               <Search className="h-4 w-4" />
-              <span className="flex-1 text-sm">Ara...</span>
+              <span className="flex-1 text-[13px]">Ara...</span>
               <span className="flex items-center gap-0.5 text-[10px]">
                 <Command className="h-3 w-3" />K
               </span>
@@ -394,7 +399,7 @@ export function PremiumSidebar() {
           </>
         )}
 
-        <nav className={cn("relative flex-1 overflow-y-auto py-4 scrollbar-thin scrollbar-thumb-white/10", compact ? "px-2" : "px-4")}>
+        <nav className={cn("relative flex-1 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-white/10", compact ? "px-2" : "px-3")}>
           {compact ? (
             <div className="space-y-2">
               {allItems.map((item) => (
@@ -408,10 +413,10 @@ export function PremiumSidebar() {
               ))}
             </div>
           ) : (
-            <div className="space-y-5">
+            <div className="space-y-4">
               {mainGroup && (
                 <section>
-                  <p className={cn("mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em]", light ? "text-slate-400" : "text-white/32")}>
+                  <p className={cn("mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em]", light ? "text-slate-400" : "text-white/30")}>
                     Ana Panel
                   </p>
                   <div className="space-y-1">
@@ -429,10 +434,10 @@ export function PremiumSidebar() {
 
               {moduleGroups.length > 0 && (
                 <section>
-                  <p className={cn("mb-2 px-2 text-[10px] font-bold uppercase tracking-[0.18em]", light ? "text-slate-400" : "text-white/32")}>
+                  <p className={cn("mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em]", light ? "text-slate-400" : "text-white/30")}>
                     Modüller
                   </p>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {moduleGroups.map((group, index) => {
                       const open = openGroups.has(group.id);
                       const active = group.items.some((item) =>
@@ -447,7 +452,7 @@ export function PremiumSidebar() {
                           animate={{ opacity: 1, x: 0 }}
                           transition={{ delay: index * 0.025 }}
                           className={cn(
-                            "overflow-hidden rounded-xl border p-1",
+                            "overflow-hidden rounded-[11px] border p-0.5",
                             light
                               ? "border-slate-200/90 bg-white/55"
                               : "border-white/[0.08] bg-white/[0.025]",
@@ -461,24 +466,24 @@ export function PremiumSidebar() {
                             type="button"
                             onClick={() => toggleGroup(group.id)}
                             className={cn(
-                              "flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left transition hover:bg-white/[0.07]",
+                              "flex w-full items-center justify-between rounded-[9px] px-2.5 py-1.5 text-left transition hover:bg-white/[0.06]",
                               light ? "text-slate-600" : "text-white/62",
                               active && (light ? "text-slate-950" : "text-white"),
                             )}
                           >
                             <span className="flex min-w-0 items-center gap-3">
-                              <span className={cn("flex h-8 w-8 items-center justify-center rounded-lg", light ? "bg-slate-100" : "bg-white/[0.06]")}>
+                              <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", light ? "bg-slate-100" : "bg-white/[0.055]")}>
                                 <GroupIcon
-                                  className="h-[18px] w-[18px]"
+                                  className="h-4 w-4"
                                   style={{ color: group.items[0]?.color }}
                                 />
                               </span>
-                              <span className="truncate text-sm font-medium">
+                              <span className="truncate text-[13px] font-medium">
                                 {group.title}
                               </span>
                             </span>
                             <span className="ml-2 flex items-center gap-2">
-                              <span className={cn("rounded-full px-2 py-0.5 text-[10px]", light ? "bg-slate-100 text-slate-500" : "bg-white/10 text-white/50")}>
+                              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px]", light ? "bg-slate-100 text-slate-500" : "bg-white/[0.08] text-white/45")}>
                                 {group.items.length}
                               </span>
                               <ChevronDown
@@ -518,17 +523,17 @@ export function PremiumSidebar() {
           )}
         </nav>
 
-        <footer className={cn("relative flex-shrink-0 border-t border-white/10", compact ? "p-2" : "p-4")}>
-          <div className={cn("flex items-center", compact ? "flex-col gap-2" : "justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-2")}>
+        <footer className={cn("relative flex-shrink-0 border-t border-white/[0.07]", compact ? "p-2" : "p-3")}>
+          <div className={cn("flex items-center", compact ? "flex-col gap-2" : "justify-between rounded-xl border border-white/[0.08] bg-white/[0.025] p-1.5")}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={() => setTheme(light ? "dark" : "light")}
-                  className={cn("flex h-10 w-10 items-center justify-center rounded-xl transition hover:bg-white/10", light ? "text-slate-500 hover:text-slate-950" : "text-white/60 hover:text-white")}
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-[10px] transition hover:bg-white/10", light ? "text-slate-500 hover:text-slate-950" : "text-white/55 hover:text-white")}
                   aria-label={light ? "Koyu temaya geç" : "Açık temaya geç"}
                 >
-                  {light ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+                  {light ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">{light ? "Koyu tema" : "Açık tema"}</TooltipContent>
@@ -536,7 +541,7 @@ export function PremiumSidebar() {
             {!compact && (
               <div className="min-w-0 px-2 text-center">
                 <p className={cn("max-w-[150px] truncate text-[10px]", light ? "text-slate-500" : "text-white/40")}>
-                  {user?.email || user?.username}
+                  {displayEmail}
                 </p>
                 <p className={cn("mt-1 text-[9px]", light ? "text-slate-400" : "text-white/25")}>
                   © 2026 CourseIntellect
@@ -548,10 +553,10 @@ export function PremiumSidebar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex h-10 w-10 items-center justify-center rounded-xl text-white/60 transition hover:bg-red-500/10 hover:text-red-300"
+                  className="flex h-9 w-9 items-center justify-center rounded-[10px] text-white/55 transition hover:bg-red-500/10 hover:text-red-300"
                   aria-label="Çıkış yap"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-[18px] w-[18px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">Çıkış yap</TooltipContent>
