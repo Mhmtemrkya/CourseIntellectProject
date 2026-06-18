@@ -195,6 +195,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Topic).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Slot).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.MeetingLink).HasMaxLength(500);
         });
 
         modelBuilder.Entity<MessageThread>(entity =>

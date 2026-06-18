@@ -24,6 +24,7 @@ class MeetingRequestApiRecord {
   final bool onlineMeeting;
   final String note;
   final String status;
+  final String meetingLink;
 
   const MeetingRequestApiRecord({
     required this.id,
@@ -35,6 +36,7 @@ class MeetingRequestApiRecord {
     required this.onlineMeeting,
     required this.note,
     required this.status,
+    this.meetingLink = '',
   });
 
   factory MeetingRequestApiRecord.fromMap(Map<String, dynamic> map) {
@@ -48,6 +50,7 @@ class MeetingRequestApiRecord {
       onlineMeeting: map['onlineMeeting'] as bool,
       note: map['note'] as String,
       status: map['status'] as String,
+      meetingLink: map['meetingLink'] as String? ?? '',
     );
   }
 }

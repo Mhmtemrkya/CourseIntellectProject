@@ -37,7 +37,8 @@ public sealed class MeetingRequestService(CourseIntellectDbContext dbContext) : 
                 x.Slot,
                 x.OnlineMeeting,
                 x.Note,
-                x.Status))
+                x.Status,
+                x.MeetingLink))
             .ToListAsync(cancellationToken);
     }
 
@@ -70,6 +71,10 @@ public sealed class MeetingRequestService(CourseIntellectDbContext dbContext) : 
         }
 
         item.Status = request.Status.Trim();
+        if (request.MeetingLink is not null)
+        {
+            item.MeetingLink = request.MeetingLink.Trim();
+        }
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToDto(item);
     }
@@ -85,7 +90,8 @@ public sealed class MeetingRequestService(CourseIntellectDbContext dbContext) : 
             item.Slot,
             item.OnlineMeeting,
             item.Note,
-            item.Status);
+            item.Status,
+            item.MeetingLink);
     }
 
     private static string Normalize(string value)

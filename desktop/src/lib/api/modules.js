@@ -1039,8 +1039,8 @@ export async function deleteMeetingAvailability(id) {
   return response;
 }
 
-export async function updateMeetingRequestStatus(id, status) {
-  const response = await api.put(`/api/meetingrequests/${id}/status`, { status });
+export async function updateMeetingRequestStatus(id, status, meetingLink = null) {
+  const response = await api.put(`/api/meetingrequests/${id}/status`, { status, meetingLink });
   return response;
 }
 

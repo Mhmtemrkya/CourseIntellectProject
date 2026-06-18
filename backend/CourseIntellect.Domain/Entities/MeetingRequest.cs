@@ -12,4 +12,5 @@ public sealed class MeetingRequest : ITenantScopedEntity
     public bool OnlineMeeting { get; set; }
     public string Note { get; set; } = string.Empty;
     public string Status { get; set; } = "Bekliyor";
+    public string MeetingLink { get; set; } = string.Empty;
 }

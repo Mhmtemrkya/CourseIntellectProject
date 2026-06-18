@@ -167,8 +167,15 @@ export default function TeacherMeetingApprovals() {
 
   const updateStatus = async (item, status) => {
     try {
-      await updateMeetingRequestStatus(item.id, status);
-      setRequests((prev) => prev.map((entry) => (entry.id === item.id ? { ...entry, status } : entry)));
+      let meetingLink = null;
+      // Online görüşme onaylanıyorsa canlı bağlantı linki iste (veli bu linke katılır).
+      if (status === 'Onaylandı' && item.onlineMeeting) {
+        // eslint-disable-next-line no-alert
+        const entered = window.prompt('Canlı görüşme bağlantısı (Zoom/Meet vb.):', item.meetingLink || '');
+        if (entered !== null) meetingLink = entered.trim();
+      }
+      const updated = await updateMeetingRequestStatus(item.id, status, meetingLink);
+      setRequests((prev) => prev.map((entry) => (entry.id === item.id ? { ...entry, status, meetingLink: updated?.meetingLink ?? meetingLink ?? entry.meetingLink } : entry)));
       toast({ title: status === 'Onaylandı' ? 'Talep onaylandı' : 'Talep reddedildi' });
     } catch (err) {
       toast({ title: err.message || 'Durum güncellenemedi', variant: 'destructive' });

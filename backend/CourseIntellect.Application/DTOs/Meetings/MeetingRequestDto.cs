@@ -9,5 +9,6 @@ public sealed record MeetingRequestDto(
     string Slot,
     bool OnlineMeeting,
     string Note,
-    string Status
+    string Status,
+    string MeetingLink
 );

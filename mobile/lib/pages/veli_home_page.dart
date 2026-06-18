@@ -19,6 +19,7 @@ import 'veli_odeme_page.dart';
 import 'veli_finance_page.dart';
 import 'veli_requests_page.dart';
 import 'veli_academic_page.dart';
+import 'veli_meetings_list_page.dart';
 import 'veli_online_odeme_page.dart';
 import 'veli_receipt_archive_page.dart';
 import 'veli_support_plan_page.dart';
@@ -857,6 +858,11 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 onPressed: () => _openMeetingRequest(_preferredAdvisor),
                 icon: const Icon(Icons.video_call_outlined),
                 label: const Text('Görüşme Talebi'),
+              ),
+              OutlinedButton.icon(
+                onPressed: () => _openPage(context, const VeliMeetingsListPage()),
+                icon: const Icon(Icons.event_available_outlined),
+                label: const Text('Görüşmelerim'),
               ),
               OutlinedButton.icon(
                 onPressed: () => _openPage(context, const VeliDuyurularPage()),

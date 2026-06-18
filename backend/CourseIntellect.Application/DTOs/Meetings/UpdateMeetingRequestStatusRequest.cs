@@ -1,5 +1,6 @@
 namespace CourseIntellect.Application.DTOs.Meetings;
 
 public sealed record UpdateMeetingRequestStatusRequest(
-    string Status
+    string Status,
+    string? MeetingLink = null
 );
