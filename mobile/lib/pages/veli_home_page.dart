@@ -18,6 +18,7 @@ import 'veli_meeting_request_page.dart';
 import 'veli_odeme_page.dart';
 import 'veli_finance_page.dart';
 import 'veli_requests_page.dart';
+import 'veli_academic_page.dart';
 import 'veli_online_odeme_page.dart';
 import 'veli_receipt_archive_page.dart';
 import 'veli_support_plan_page.dart';
@@ -1388,9 +1389,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
               FilledButton(
                 onPressed: () {
                   Navigator.pop(context);
-                  _openPage(this.context, const VeliExamResultsPage());
+                  _openPage(this.context, const VeliAcademicPage());
                 },
-                child: const Text('Sınav Sonuçlarına Git'),
+                child: const Text('Detaylı Akademik Özet'),
               ),
             ],
           ),

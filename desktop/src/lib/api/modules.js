@@ -462,6 +462,11 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
+export async function fetchParentAcademic() {
+  const response = await api.get('/api/parent/academic/children');
+  return Array.isArray(response) ? response : [];
+}
+
 export async function fetchParentChildrenFinance() {
   const response = await api.get('/api/parent/finance/children');
   return Array.isArray(response) ? response : [];

@@ -39,6 +39,20 @@ class ParentRequestApiService {
         .toList();
   }
 
+  Future<List<Map<String, dynamic>>> getChildrenAcademic() async {
+    final session = await _session();
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/parent/academic/children'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ParentRequestApiException('Akademik özet alınamadı (${response.statusCode}).');
+    }
+    return (jsonDecode(response.body) as List<dynamic>? ?? const [])
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
   Future<Map<String, dynamic>> createRequest({
     required String category,
     required String title,

@@ -807,6 +807,12 @@ const menuConfigs = {
       color: "#6366f1",
     },
     {
+      path: "/p/academic",
+      icon: FileText,
+      label: "Akademik Özet",
+      color: "#16a34a",
+    },
+    {
       path: "/p/announcements",
       icon: Bell,
       label: "Duyurular",
