@@ -77,7 +77,11 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
       >
         <Icon
           className="h-[17px] w-[17px]"
-          style={{ color: active ? "#fff" : item.color }}
+          style={{
+            color: active
+              ? "#fff"
+              : "hsl(var(--brand-primary-text, var(--brand-accent)))",
+          }}
         />
         {item.pulse && (
           <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-400 ring-2 ring-[#071120]" />
@@ -280,7 +284,7 @@ export function PremiumSidebar() {
         style={{
           background: light
             ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), linear-gradient(165deg, #ffffff 0%, #f6f8fb 58%, #edf2f7 100%)"
-            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.07), transparent 27%), linear-gradient(180deg, #071423 0%, #05111e 48%, #030b14 100%)",
+            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.065), transparent 27%), radial-gradient(circle at 82% 24%, hsl(var(--brand-primary) / 0.16), transparent 32%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)",
         }}
       >
         <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
@@ -475,7 +479,10 @@ export function PremiumSidebar() {
                               <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", light ? "bg-slate-100" : "bg-white/[0.055]")}>
                                 <GroupIcon
                                   className="h-4 w-4"
-                                  style={{ color: group.items[0]?.color }}
+                                  style={{
+                                    color:
+                                      "hsl(var(--brand-primary-text, var(--brand-accent)))",
+                                  }}
                                 />
                               </span>
                               <span className="truncate text-[13px] font-medium">

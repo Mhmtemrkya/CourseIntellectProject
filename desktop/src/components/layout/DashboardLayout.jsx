@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
@@ -7,6 +7,7 @@ import { PremiumSidebar } from './PremiumSidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { Sheet, SheetContent } from '../ui/sheet';
+import { gsap } from 'gsap';
 
 const pageVariants = {
   initial: { opacity: 0, y: 10 },
@@ -22,6 +23,7 @@ const pageTransition = {
 export function DashboardLayout() {
   const { isAuthenticated, user, drawerOpen, drawerContent, closeDrawer, sidebarCollapsed } = useApp();
   const location = useLocation();
+  const pageRef = useRef(null);
   const [isServiceDriver, setIsServiceDriver] = useState(false);
 
   // Aktif şoför kaydı olan kullanıcı panellere giremez; yalnızca
@@ -37,6 +39,23 @@ export function DashboardLayout() {
       active = false;
     };
   }, [isAuthenticated, user]);
+
+  useLayoutEffect(() => {
+    if (!pageRef.current) return undefined;
+    const context = gsap.context(() => {
+      gsap.fromTo(
+        pageRef.current,
+        { autoAlpha: 0, y: 12 },
+        { autoAlpha: 1, y: 0, duration: 0.42, ease: 'power2.out', clearProps: 'transform,opacity,visibility' },
+      );
+      gsap.fromTo(
+        pageRef.current.querySelectorAll('.ci-card, [data-ci-reveal]'),
+        { autoAlpha: 0, y: 14 },
+        { autoAlpha: 1, y: 0, duration: 0.38, stagger: 0.035, ease: 'power2.out', delay: 0.05, clearProps: 'transform,opacity,visibility' },
+      );
+    }, pageRef);
+    return () => context.revert();
+  }, [location.pathname]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -79,7 +98,7 @@ export function DashboardLayout() {
               transition={pageTransition}
               className="h-full"
             >
-              <div className="p-5 lg:p-7">
+              <div ref={pageRef} className="ci-page p-4 lg:p-5 xl:p-6">
                 <Outlet />
               </div>
             </motion.div>

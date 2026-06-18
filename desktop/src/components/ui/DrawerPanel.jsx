@@ -49,7 +49,7 @@ export function DrawerPanel({
             animate="visible"
             exit="hidden"
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm"
+            className="fixed inset-0 z-40 bg-[#020817]/72 backdrop-blur-md"
           />
 
           {/* Drawer */}
@@ -59,14 +59,14 @@ export function DrawerPanel({
             animate="visible"
             exit="exit"
             className={cn(
-              'fixed right-0 top-0 z-50 h-full bg-background border-l shadow-xl',
+              'ci-drawer fixed right-3 top-3 z-50 h-[calc(100%_-_1.5rem)] rounded-3xl border border-border/70 bg-card/94 shadow-[0_24px_90px_hsl(220_70%_2%/0.48)] backdrop-blur-2xl',
               'w-full sm:w-auto',
               width,
               className
             )}
           >
             {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b">
+            <div className="flex items-center justify-between border-b border-border/60 p-5">
               <div>
                 {title && (
                   <h2 className="text-lg font-semibold font-heading">{title}</h2>

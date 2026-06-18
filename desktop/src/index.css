@@ -25,17 +25,17 @@ code {
 @layer base {
     :root {
         /* CourseIntellect Theme Engine aliases */
-        --ci-primary: 200 100% 15%;
-        --ci-secondary: 211 58% 22%;
-        --ci-accent: 30 90% 45%;
+        --ci-primary: 219 74% 10%;
+        --ci-secondary: 218 52% 17%;
+        --ci-accent: 29 100% 50%;
         --ci-success: 142 76% 36%;
         --ci-warning: 38 92% 50%;
         --ci-danger: 0 84% 60%;
-        --ci-background: 216 33% 97%;
+        --ci-background: 220 33% 97%;
         --ci-foreground: 221 39% 11%;
         --ci-card: 0 0% 100%;
-        --ci-card-muted: 214 32% 94%;
-        --ci-border: 214 26% 88%;
+        --ci-card-muted: 216 30% 95%;
+        --ci-border: 214 28% 89%;
         --ci-sidebar-gradient-start: 211 68% 11%;
         --ci-sidebar-gradient-end: 216 74% 6%;
         --ci-logo-background: 30 96% 54%;
@@ -47,8 +47,28 @@ code {
         --ci-panel-shadow: 0 20px 50px hsl(220 45% 20% / 0.10);
 
         /* Brand Colors */
-        --brand-primary: 200 100% 15%; /* #00354F */
-        --brand-accent: 30 90% 45%; /* #D9790B */
+        --brand-primary: 219 74% 10%; /* #07152E */
+        --brand-accent: 29 100% 50%; /* #FF7A00 */
+        --brand-primary-hover: 218 68% 17%;
+        --brand-primary-soft: 219 74% 10% / 0.12;
+        --brand-primary-glow: 219 74% 10% / 0.28;
+        --brand-primary-border: 219 74% 10% / 0.32;
+        --brand-primary-text: 217 78% 58%;
+        --brand-accent-hover: 26 100% 45%;
+        --brand-accent-soft: 29 100% 50% / 0.13;
+        --brand-accent-glow: 29 100% 50% / 0.35;
+        --brand-accent-border: 29 100% 50% / 0.4;
+        --brand-gradient-start: 29 100% 50%;
+        --brand-gradient-end: 217 78% 48%;
+        --ci-radius-sm: 10px;
+        --ci-radius-md: 14px;
+        --ci-radius-lg: 18px;
+        --ci-radius-xl: 24px;
+        --ci-shadow-sm: 0 8px 24px hsl(220 38% 15% / 0.08);
+        --ci-shadow-md: 0 18px 48px hsl(220 45% 12% / 0.12);
+        --ci-shadow-lg: 0 30px 90px hsl(220 50% 8% / 0.16);
+        --ci-transition-fast: 140ms cubic-bezier(.2,.8,.2,1);
+        --ci-transition-base: 220ms cubic-bezier(.2,.8,.2,1);
         
         /* Shadcn Base */
         --background: var(--ci-background);
@@ -57,7 +77,7 @@ code {
         --card-foreground: var(--ci-foreground);
         --popover: var(--ci-card);
         --popover-foreground: var(--ci-foreground);
-        --primary: 200 100% 15%;
+        --primary: var(--brand-accent);
         --primary-foreground: 0 0% 98%;
         --secondary: var(--ci-card-muted);
         --secondary-foreground: var(--ci-foreground);
@@ -69,7 +89,7 @@ code {
         --destructive-foreground: 0 0% 98%;
         --border: var(--ci-border);
         --input: var(--ci-border);
-        --ring: 200 100% 15%;
+        --ring: var(--brand-accent);
         --chart-1: 200 100% 15%;
         --chart-2: 30 90% 45%;
         --chart-3: 142 76% 36%;
@@ -81,27 +101,27 @@ code {
     }
     
     .dark {
-        --ci-primary: 30 90% 58%;
-        --ci-secondary: 213 42% 16%;
-        --ci-accent: 30 90% 54%;
+        --ci-primary: 217 78% 56%;
+        --ci-secondary: 217 61% 13%;
+        --ci-accent: 29 100% 50%;
         --ci-success: 150 72% 47%;
         --ci-warning: 38 96% 56%;
         --ci-danger: 0 74% 58%;
-        --ci-background: 213 49% 7%;
+        --ci-background: 221 88% 6%;
         --ci-foreground: 210 40% 98%;
-        --ci-card: 213 42% 11%;
-        --ci-card-muted: 215 31% 16%;
-        --ci-border: 214 29% 18%;
+        --ci-card: 217 58% 15%;
+        --ci-card-muted: 218 48% 12%;
+        --ci-border: 216 45% 23%;
         --ci-sidebar-gradient-start: 213 63% 8%;
         --ci-sidebar-gradient-end: 220 68% 4%;
         --ci-logo-background: 30 96% 54%;
         --ci-app-background:
-            radial-gradient(circle at 8% 0%, hsl(var(--brand-accent) / 0.12), transparent 26%),
-            radial-gradient(circle at 90% 8%, hsl(219 84% 56% / 0.16), transparent 28%),
-            radial-gradient(circle at 55% 100%, hsl(200 90% 35% / 0.09), transparent 34%),
-            linear-gradient(135deg, hsl(213 49% 7%) 0%, hsl(214 45% 9%) 52%, hsl(220 52% 6%) 100%);
-        --ci-panel-background: linear-gradient(180deg, hsl(var(--card) / 0.86), hsl(var(--card) / 0.72));
-        --ci-panel-shadow: 0 24px 70px hsl(220 60% 2% / 0.42);
+            radial-gradient(circle at 8% 0%, hsl(var(--brand-accent) / 0.09), transparent 24%),
+            radial-gradient(circle at 91% 7%, hsl(217 90% 54% / 0.13), transparent 27%),
+            radial-gradient(circle at 52% 100%, hsl(200 90% 35% / 0.06), transparent 34%),
+            linear-gradient(135deg, #020b1f 0%, #041026 48%, #020817 100%);
+        --ci-panel-background: linear-gradient(180deg, hsl(var(--card) / 0.76), hsl(var(--card) / 0.6));
+        --ci-panel-shadow: 0 22px 64px hsl(220 70% 2% / 0.36);
 
         --background: var(--ci-background);
         --foreground: var(--ci-foreground);
@@ -109,8 +129,8 @@ code {
         --card-foreground: var(--ci-foreground);
         --popover: var(--ci-card);
         --popover-foreground: var(--ci-foreground);
-        --primary: 0 0% 98%;
-        --primary-foreground: 200 100% 15%;
+        --primary: var(--brand-accent);
+        --primary-foreground: 0 0% 100%;
         --secondary: var(--ci-card-muted);
         --secondary-foreground: var(--ci-foreground);
         --muted: var(--ci-card-muted);
@@ -250,16 +270,21 @@ code {
 .app-shell {
     position: relative;
     isolation: isolate;
+    background: var(--ci-app-background);
 }
 
 .app-shell::before {
     content: "";
     position: absolute;
-    inset: 12px 12px 16px;
+    inset: 0;
     pointer-events: none;
-    border-radius: 28px;
-    box-shadow: var(--shell-shadow), var(--shell-outline);
-    opacity: 0.9;
+    border-radius: 0;
+    background-image:
+        linear-gradient(hsl(var(--foreground) / 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, hsl(var(--foreground) / 0.018) 1px, transparent 1px);
+    background-size: 32px 32px;
+    mask-image: linear-gradient(to bottom, black, transparent 88%);
+    opacity: 0.45;
     z-index: 0;
 }
 
@@ -294,12 +319,156 @@ code {
 }
 
 .desktop-panel {
-    border-radius: 24px;
+    border-radius: 18px;
     border: 1px solid hsl(var(--border) / 0.65);
     background: var(--ci-panel-background);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     box-shadow: var(--ci-panel-shadow);
+}
+
+.ci-page {
+    width: 100%;
+    max-width: 1920px;
+    margin-inline: auto;
+}
+
+.ci-page > * {
+    min-width: 0;
+}
+
+.ci-page h1 {
+    letter-spacing: -0.035em;
+}
+
+.ci-page h1 + p {
+    max-width: 72ch;
+}
+
+.ci-card {
+    position: relative;
+    isolation: isolate;
+    background: var(--ci-panel-background);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+
+.ci-card:hover {
+    border-color: hsl(var(--brand-accent) / 0.22);
+    box-shadow:
+        0 22px 60px hsl(220 70% 2% / 0.2),
+        0 0 0 1px hsl(var(--brand-accent) / 0.045);
+}
+
+.light .ci-card {
+    background: hsl(var(--card) / 0.94);
+    box-shadow: var(--ci-shadow-sm);
+}
+
+.ci-dialog::before,
+.ci-drawer::before,
+.ci-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    background: linear-gradient(135deg, hsl(var(--foreground) / 0.035), transparent 28%);
+    opacity: 0.65;
+}
+
+.ci-dialog > *,
+.ci-drawer > *,
+.ci-card > * {
+    position: relative;
+    z-index: 1;
+}
+
+.ci-dialog[class*="bg-[#"],
+.ci-drawer[class*="bg-[#"] {
+    background: hsl(var(--card) / 0.95) !important;
+    color: hsl(var(--card-foreground)) !important;
+    border-color: hsl(var(--border) / 0.75) !important;
+}
+
+.ci-dialog[class*="border-white"],
+.ci-drawer[class*="border-white"] {
+    border-color: hsl(var(--border) / 0.75) !important;
+}
+
+.ci-input:focus,
+.ci-input:focus-visible {
+    box-shadow: 0 0 0 4px hsl(var(--brand-accent) / 0.09);
+}
+
+.ci-table-wrap {
+    box-shadow: inset 0 1px 0 hsl(var(--foreground) / 0.035);
+}
+
+.ci-page table:not(.ci-table) {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.ci-page table:not(.ci-table) thead {
+    background: hsl(var(--muted) / 0.72);
+}
+
+.ci-page table:not(.ci-table) th {
+    color: hsl(var(--muted-foreground));
+    font-size: 11px;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+
+.ci-page table:not(.ci-table) th,
+.ci-page table:not(.ci-table) td {
+    border-bottom: 1px solid hsl(var(--border) / 0.56);
+}
+
+.ci-page table:not(.ci-table) tbody tr {
+    transition: background-color var(--ci-transition-fast);
+}
+
+.ci-page table:not(.ci-table) tbody tr:hover {
+    background: hsl(var(--brand-accent) / 0.05);
+}
+
+.ci-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.ci-page textarea,
+.ci-page select {
+    border-radius: 12px;
+    border-color: hsl(var(--border) / 0.8);
+    background: hsl(var(--card) / 0.45);
+    transition: border-color var(--ci-transition-fast), box-shadow var(--ci-transition-fast), background var(--ci-transition-fast);
+}
+
+.ci-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus,
+.ci-page textarea:focus,
+.ci-page select:focus {
+    border-color: hsl(var(--brand-accent) / 0.58);
+    box-shadow: 0 0 0 4px hsl(var(--brand-accent) / 0.09);
+    outline: none;
+}
+
+.ci-skeleton {
+    position: relative;
+    overflow: hidden;
+}
+
+.ci-skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--foreground) / 0.08), transparent);
+    animation: ci-skeleton-shimmer 1.6s infinite;
+}
+
+@keyframes ci-skeleton-shimmer {
+    100% { transform: translateX(100%); }
 }
 
 .theme-surface,
@@ -383,6 +552,29 @@ code {
 .light .bg-gray-950,
 .light .bg-gray-900 {
     background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.light .ci-page [class*="bg-[#0"],
+.light .ci-page [class*="bg-[#1"] {
+    background-color: hsl(var(--card)) !important;
+    color: hsl(var(--foreground)) !important;
+}
+
+.light .ci-page [class*="border-white/"],
+.light .ci-page [class*="border-slate-7"],
+.light .ci-page [class*="border-slate-8"] {
+    border-color: hsl(var(--border)) !important;
+}
+
+.dark .ci-page [class*="bg-gray-100"],
+.dark .ci-page [class*="bg-slate-50"],
+.dark .ci-page [class*="bg-white"] {
+    background-color: hsl(var(--card) / 0.8) !important;
+}
+
+.dark .ci-page [class*="text-slate-900"],
+.dark .ci-page [class*="text-gray-900"] {
     color: hsl(var(--foreground)) !important;
 }
 

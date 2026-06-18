@@ -16,13 +16,13 @@ export function EmptyState({
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       className={cn(
-        'flex flex-col items-center justify-center py-12 px-4 text-center',
+        'flex flex-col items-center justify-center rounded-3xl border border-dashed border-border/70 bg-card/30 px-6 py-14 text-center backdrop-blur-lg',
         className
       )}
     >
       {Icon && (
-        <div className="p-4 rounded-full bg-muted mb-4">
-          <Icon className="h-12 w-12 text-muted-foreground/50" />
+        <div className="mb-4 rounded-2xl border border-[hsl(var(--brand-accent)/0.2)] bg-[hsl(var(--brand-accent)/0.09)] p-4">
+          <Icon className="h-10 w-10 text-[hsl(var(--brand-accent)/0.7)]" />
         </div>
       )}
       
@@ -37,7 +37,7 @@ export function EmptyState({
       {action && actionLabel && (
         <Button 
           onClick={action}
-          className="bg-brand-primary hover:bg-brand-primary/90"
+          className=""
         >
           {actionLabel}
         </Button>

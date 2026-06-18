@@ -164,7 +164,7 @@ export function Topbar() {
   return (
     <header
       data-testid="topbar"
-      className="desktop-panel h-16 border-b border-border/70 bg-card/72 sticky top-3 z-20 mx-3 mt-3 flex items-center justify-between px-6"
+      className="desktop-panel sticky top-3 z-20 mx-3 mt-3 flex h-14 items-center justify-between border-border/60 px-4 shadow-[0_14px_42px_hsl(220_70%_2%/0.2)] backdrop-blur-2xl xl:px-5"
     >
       {/* Left: Breadcrumb */}
       <Breadcrumb>
@@ -192,13 +192,13 @@ export function Topbar() {
       </Breadcrumb>
 
       {/* Right: Actions */}
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2">
         {/* Search Button */}
         <Button
           data-testid="search-button"
           variant="outline"
           size="sm"
-          className="hidden md:flex items-center gap-2 text-muted-foreground"
+          className="hidden min-w-52 items-center justify-start gap-2 border-border/55 bg-background/25 text-muted-foreground md:flex"
           onClick={() => setCommandPaletteOpen(true)}
         >
           <Search className="h-4 w-4" />

@@ -106,6 +106,11 @@ export function generateBrandCSSVariables(primaryHex, accentHex) {
   // Tailwind brand.primary token'ı (hsl-var formatı, opacity modifier'ları destekler)
   vars['--brand-primary'] = hexToHSLString(primaryHex);
   vars['--ci-primary'] = hexToHSLString(primaryHex);
+  vars['--brand-primary-hover'] = hexToHSLString(primaryPalette[600]);
+  vars['--brand-primary-soft'] = `${hexToHSLString(primaryHex)} / 0.14`;
+  vars['--brand-primary-glow'] = `${hexToHSLString(primaryHex)} / 0.32`;
+  vars['--brand-primary-border'] = `${hexToHSLString(primaryHex)} / 0.38`;
+  vars['--brand-primary-text'] = hexToHSLString(primaryPalette[400]);
 
   // Accent renk paleti
   for (const [shade, hex] of Object.entries(accentPalette)) {
@@ -115,6 +120,12 @@ export function generateBrandCSSVariables(primaryHex, accentHex) {
   // Tailwind brand.accent token'ı
   vars['--brand-accent'] = hexToHSLString(accentHex);
   vars['--ci-accent'] = hexToHSLString(accentHex);
+  vars['--brand-accent-hover'] = hexToHSLString(accentPalette[600]);
+  vars['--brand-accent-soft'] = `${hexToHSLString(accentHex)} / 0.14`;
+  vars['--brand-accent-glow'] = `${hexToHSLString(accentHex)} / 0.35`;
+  vars['--brand-accent-border'] = `${hexToHSLString(accentHex)} / 0.42`;
+  vars['--brand-gradient-start'] = hexToHSLString(accentPalette[500]);
+  vars['--brand-gradient-end'] = hexToHSLString(primaryPalette[600]);
 
   // Sidebar gradient
   vars['--sidebar-from'] = primaryPalette[900];
@@ -155,5 +166,5 @@ export function removeBrandVariables(vars) {
 }
 
 // Varsayılan CourseIntellect renkleri
-export const DEFAULT_PRIMARY = '#00354F';
-export const DEFAULT_ACCENT = '#D9790B';
+export const DEFAULT_PRIMARY = '#07152E';
+export const DEFAULT_ACCENT = '#FF7A00';
