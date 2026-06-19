@@ -419,6 +419,10 @@ export async function fetchParentDashboardData(user) {
     api.get('/api/messages/threads'),
     api.get('/api/attendance'),
     api.get('/api/accounting/dashboard'),
+    api.get('/api/homework'),
+    api.get('/api/schedule'),
+    api.get('/api/plannedexams'),
+    api.get('/api/notifications', { params: { targetRole: 'Parent' } }),
   ]);
 
   const students = safeData(results[0], []);
@@ -426,56 +430,132 @@ export async function fetchParentDashboardData(user) {
   const threads = safeData(results[2], []);
   const attendance = safeData(results[3], []);
   const accounting = results[4].status === 'fulfilled' ? results[4].value : null;
+  const homework = safeData(results[5], []);
+  const scheduleEntries = safeData(results[6], []);
+  const plannedExams = safeData(results[7], []);
+  const notifications = safeData(results[8], []);
 
   const selectedChild = children[0] || null;
 
-  const exams = selectedChild
-    ? await api.get('/api/examresults', { params: { studentName: selectedChild.fullName } }).catch(() => [])
-    : [];
-
-  const childAttendance = selectedChild
-    ? attendance.filter((item) => normalizeText(item.studentName) === normalizeText(selectedChild.fullName))
-    : [];
-
-  const presentCount = childAttendance.filter((item) => normalizeText(item.status) === 'katildi').length;
-  const excuseCount = childAttendance.filter((item) => normalizeText(item.status) === 'izinli').length;
-  const absentCount = childAttendance.filter((item) => normalizeText(item.status) === 'devamsiz').length;
-  const totalAttendance = childAttendance.length || 1;
-  const attendanceRate = Math.round((presentCount / totalAttendance) * 100);
-
-  const childCollections = (accounting?.collections || []).filter(
-    (item) => normalizeText(item.name) === normalizeText(selectedChild?.fullName)
+  const examResults = await Promise.allSettled(
+    children.map((child) => api.get('/api/examresults', { params: { studentName: child.fullName } }))
   );
-  const childInstallments = (accounting?.installments || []).filter(
-    (item) => normalizeText(item.student) === normalizeText(selectedChild?.fullName)
-  );
+  const examsByChild = new Map();
+  children.forEach((child, index) => {
+    examsByChild.set(child.fullName, safeData(examResults[index], []));
+  });
+  const exams = selectedChild ? (examsByChild.get(selectedChild.fullName) || []) : [];
 
-  const paidTotal = childCollections.reduce((sum, item) => sum + safeNumber(item.amount), 0);
-  const pendingPayment = childInstallments
-    .filter((item) => normalizeText(item.status) !== 'odendi')
-    .reduce((sum, item) => sum + safeNumber(item.amount), 0);
+  const buildChildSummary = (child) => {
+    const childExams = examsByChild.get(child.fullName) || [];
+    const childAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(child.fullName));
+    const presentCount = childAttendance.filter((item) => normalizeText(item.status).includes('katildi')).length;
+    const excuseCount = childAttendance.filter((item) => normalizeText(item.status).includes('izinli')).length;
+    const absentCount = childAttendance.filter((item) => normalizeText(item.status).includes('devamsiz')).length;
+    const totalAttendance = childAttendance.length;
+    const attendanceRate = totalAttendance > 0 ? Math.round((presentCount / totalAttendance) * 100) : 0;
+    const childCollections = (accounting?.collections || []).filter(
+      (item) => normalizeText(item.name) === normalizeText(child.fullName)
+    );
+    const childInstallments = (accounting?.installments || []).filter(
+      (item) => normalizeText(item.student) === normalizeText(child.fullName)
+    );
+    const paidTotal = childCollections.reduce((sum, item) => sum + safeNumber(item.amount), 0);
+    const pendingPayment = childInstallments
+      .filter((item) => normalizeText(item.status) !== 'odendi')
+      .reduce((sum, item) => sum + safeNumber(item.amount), 0);
+
+    return {
+      attendance: attendanceRate,
+      attendanceCounts: {
+        present: presentCount,
+        absent: absentCount,
+        excuse: excuseCount,
+        total: totalAttendance,
+      },
+      lastExam: childExams[0]
+        ? { subject: childExams[0].subject, score: safeNumber(childExams[0].score), title: childExams[0].examTitle || childExams[0].title || '' }
+        : null,
+      examTrend: childExams.slice(0, 7).reverse().map((item) => safeNumber(item.score)).filter((value) => value > 0),
+      pendingPayment,
+      paidTotal,
+      exams: childExams,
+    };
+  };
+
+  const childSummaries = children.reduce((map, child) => {
+    map[child.fullName] = buildChildSummary(child);
+    return map;
+  }, {});
+
+  const selectedSummary = selectedChild ? childSummaries[selectedChild.fullName] : null;
+  const classNames = new Set(children.map((child) => normalizeText(child.className)).filter(Boolean));
+  const childNames = new Set(children.map((child) => normalizeText(child.fullName)).filter(Boolean));
+  const todayLessons = selectedChild ? pickScheduleTodayForClass(scheduleEntries, selectedChild.className).slice(0, 5) : [];
+  const pendingHomework = homework
+    .filter((item) => {
+      const classMatches = !item.className || classNames.has(normalizeText(item.className));
+      const submitted = (item.submissions || []).some((submission) => childNames.has(normalizeText(submission.studentName)));
+      return classMatches && !submitted;
+    })
+    .slice(0, 4)
+    .map((item) => ({
+      id: item.id,
+      title: item.title || 'Ödev',
+      subject: item.subject || 'Genel',
+      className: item.className || '',
+      deadline: item.deadline || item.dueDate || item.dateLabel || '',
+      status: item.status || 'Bekliyor',
+    }));
+
+  const upcomingExams = plannedExams
+    .filter((item) => {
+      const className = normalizeText(item.className || item.targetClass || item.class);
+      return !className || classNames.has(className);
+    })
+    .slice(0, 4)
+    .map((item) => ({
+      id: item.id,
+      title: item.title || item.examTitle || 'Sınav',
+      subject: item.subject || '',
+      className: item.className || item.targetClass || '',
+      date: item.dateLabel || item.date || item.startAtUtc || '',
+      status: item.status || 'Planlandı',
+    }));
+
+  const activities = [
+    ...mapActivities(announcements, notifications),
+    ...exams.slice(0, 3).map((item) => ({
+      id: item.id || `${item.subject}-${item.score}`,
+      message: `${item.subject || 'Sınav'} sonucu girildi`,
+      time: item.dateLabel || item.date || '',
+      icon: 'exam',
+    })),
+    ...pendingHomework.slice(0, 3).map((item) => ({
+      id: `homework-${item.id || item.title}`,
+      message: `${item.subject} ödevi bekliyor`,
+      time: item.deadline || '',
+      icon: 'homework',
+    })),
+  ].slice(0, 6);
 
   return {
     children,
     selectedChild,
-    selectedChildSummary: selectedChild
-        ? {
-          attendance: attendanceRate,
-          lastExam: exams[0]
-            ? { subject: exams[0].subject, score: safeNumber(exams[0].score) }
-            : { subject: 'Henüz kayıt yok', score: 0 },
-          pendingPayment,
-          paidTotal,
-        }
-      : null,
+    childSummaries,
+    selectedChildSummary: selectedSummary,
     announcements: announcements.slice(0, 4),
     unreadMessages: threads.reduce((sum, item) => sum + safeNumber(item.unreadCount), 0),
     attendanceBreakdown: {
-      present: presentCount,
-      absent: absentCount,
-      excuse: excuseCount,
-      rate: attendanceRate,
+      present: selectedSummary?.attendanceCounts?.present || 0,
+      absent: selectedSummary?.attendanceCounts?.absent || 0,
+      excuse: selectedSummary?.attendanceCounts?.excuse || 0,
+      rate: selectedSummary?.attendance || 0,
     },
     exams: exams.slice(0, 4),
+    todayLessons,
+    pendingHomework,
+    upcomingExams,
+    activities,
   };
 }

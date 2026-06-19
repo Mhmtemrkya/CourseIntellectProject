@@ -12,7 +12,6 @@ import {
   GraduationCap,
   Mail,
   Megaphone,
-  MessageSquare,
   NotebookTabs,
   Users,
 } from 'lucide-react';
@@ -104,10 +103,19 @@ function Section({ title, action, children, className = '' }) {
   );
 }
 
-function ChildCard({ child, summary, index }) {
+function EmptyBlock({ title = 'Kayıt yok', description = 'Bu bölüm için canlı veri bulunamadı.' }) {
+  return (
+    <div className="rounded-[12px] border border-white/[0.06] bg-white/[0.025] p-6 text-center">
+      <p className="font-black text-white">{title}</p>
+      <p className="mt-1 text-sm text-slate-400">{description}</p>
+    </div>
+  );
+}
+
+function ChildCard({ child, summary, upcomingExamCount = 0 }) {
   const score = Number(summary?.lastExam?.score || 0);
   const attendance = Number(summary?.attendance || 0);
-  const values = [score - 8, score - 2, score - 10, score + 4, score - 1, score + 7, score + index * 3].map((v) => Math.max(12, Math.min(100, v || 70)));
+  const trendValues = Array.isArray(summary?.examTrend) ? summary.examTrend : [];
 
   return (
     <div className="rounded-[12px] border border-white/[0.08] bg-white/[0.035] p-4">
@@ -126,8 +134,8 @@ function ChildCard({ child, summary, index }) {
       <div className="my-4 h-px bg-white/[0.08]" />
       <p className="text-xs text-slate-400">Ortalama Başarı</p>
       <div className="mt-1 grid grid-cols-[88px_1fr] items-end gap-3">
-        <p className="text-[26px] font-black text-white">{score || 0}%</p>
-        <MiniLineChart values={values} className="h-9" />
+        <p className="text-[26px] font-black text-white">{summary?.lastExam ? `${score}%` : '-'}</p>
+        {trendValues.length ? <MiniLineChart values={trendValues} className="h-9" /> : <p className="pb-2 text-xs text-slate-500">Sınav trendi yok</p>}
       </div>
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between text-xs">
@@ -140,11 +148,18 @@ function ChildCard({ child, summary, index }) {
         <IconBox icon={GraduationCap} tone="orange" />
         <div>
           <p className="text-xs text-slate-400">Yaklaşan Sınav</p>
-          <p className="text-sm font-bold text-white">1 sınav</p>
+          <p className="text-sm font-bold text-white">{upcomingExamCount} sınav</p>
         </div>
       </div>
     </div>
   );
+}
+
+function formatDateLabel(value) {
+  if (!value) return '';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function ListRow({ icon: Icon, tone = 'blue', title, sub, meta, metaClass = 'text-slate-400' }) {
@@ -202,16 +217,22 @@ export default function ParentDashboard() {
 
   const children = data?.children || [];
   const firstChild = data?.selectedChild || children[0] || null;
-  const firstSummary = data?.selectedChildSummary || { attendance: 0, lastExam: { subject: 'Henüz kayıt yok', score: 0 }, pendingPayment: 0 };
-  const secondChild = children[1] || null;
+  const firstSummary = data?.selectedChildSummary || null;
   const childCards = useMemo(() => {
     const base = children.length ? children.slice(0, 2) : (firstChild ? [firstChild] : []);
     return base;
   }, [children, firstChild]);
-  const secondSummary = secondChild ? { ...firstSummary, attendance: Math.max(0, firstSummary.attendance - 4), lastExam: { ...firstSummary.lastExam, score: Math.max(0, Number(firstSummary.lastExam?.score || 0) - 7) } } : firstSummary;
   const exams = data?.exams || [];
   const announcements = data?.announcements || [];
   const attendance = data?.attendanceBreakdown || {};
+  const todayLessons = data?.todayLessons || [];
+  const pendingHomework = data?.pendingHomework || [];
+  const upcomingExams = data?.upcomingExams || [];
+  const activities = data?.activities || [];
+  const examScores = Array.isArray(firstSummary?.examTrend) ? firstSummary.examTrend : [];
+  const averageScore = examScores.length
+    ? Math.round((examScores.reduce((sum, value) => sum + Number(value || 0), 0) / examScores.length) * 10) / 10
+    : 0;
 
   if (loading) {
     return (
@@ -232,7 +253,7 @@ export default function ParentDashboard() {
     >
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="!text-[22px] !normal-case !tracking-[-0.03em] !text-white">Merhaba, {user?.name || 'Ayşe Yılmaz'} 👋</h1>
+          <h1 className="!text-[22px] !normal-case !tracking-[-0.03em] !text-white">Merhaba, {user?.name || 'Veli'} 👋</h1>
           <p className="mt-1 text-sm text-slate-400">Çocuğunuzun eğitim sürecini birlikte takip edelim.</p>
         </div>
       </div>
@@ -240,48 +261,51 @@ export default function ParentDashboard() {
       {error ? <ErrorBanner title="Veli verisi alınamadı" message={error} onRetry={loadDashboard} /> : null}
 
       <div className="grid gap-3 xl:grid-cols-5">
-        <StatCard icon={Users} tone="blue" label="Toplam Çocuğum" value={children.length || 1} sub="Aktif öğrenci" />
-        <StatCard icon={CalendarDays} tone="green" label="Bugünkü Ders" value="6" sub="Toplam 5 ders" />
-        <StatCard icon={FileText} tone="orange" label="Bekleyen Ödev" value="3" sub="Toplam 3 ödev" />
-        <StatCard icon={ClipboardList} tone="purple" label="Yaklaşan Sınav" value={Math.max(1, exams.length || 2)} sub="Önümüzdeki 7 gün" />
-        <StatCard label="Ortalama Başarı" value={Number(firstSummary?.lastExam?.score || 0) || 78.6} sub="Genel ortalama" donut />
+        <StatCard icon={Users} tone="blue" label="Toplam Çocuğum" value={children.length} sub="Canlı öğrenci bağlantısı" />
+        <StatCard icon={CalendarDays} tone="green" label="Bugünkü Ders" value={todayLessons.length} sub="Ders programından" />
+        <StatCard icon={FileText} tone="orange" label="Bekleyen Ödev" value={pendingHomework.length} sub="Teslim edilmemiş ödev" />
+        <StatCard icon={ClipboardList} tone="purple" label="Yaklaşan Sınav" value={upcomingExams.length} sub="Planlanan sınav" />
+        <StatCard label="Ortalama Başarı" value={averageScore} sub="Sınav sonuçlarından" donut />
       </div>
 
       <div className="grid gap-3 xl:grid-cols-[1.15fr_1fr_0.74fr]">
         <div className="space-y-3">
           <Section title="Çocuklarım" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/children')}>Tüm Çocuklarımın Detayları <ChevronRight className="h-4 w-4" /></Button>}>
             <div className="grid gap-3 md:grid-cols-2">
-              {childCards.map((child, index) => (
-                <ChildCard key={child.username || child.fullName} child={child} summary={index === 0 ? firstSummary : secondSummary} index={index} />
-              ))}
+              {childCards.length ? childCards.map((child) => {
+                const summary = data?.childSummaries?.[child.fullName] || null;
+                const classKey = String(child.className || '').trim().toLowerCase();
+                const childUpcomingExamCount = upcomingExams.filter((exam) => !exam.className || String(exam.className).trim().toLowerCase() === classKey).length;
+                return <ChildCard key={child.username || child.fullName} child={child} summary={summary} upcomingExamCount={childUpcomingExamCount} />;
+              }) : <EmptyBlock title="Bağlı çocuk yok" description="Bu veli hesabına bağlı öğrenci bulunamadı." />}
             </div>
           </Section>
 
           <div className="grid gap-3 lg:grid-cols-2">
             <Section title="Son Sınav Sonuçları" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/exams')}>Tüm Sonuçlar</Button>}>
               <div className="space-y-2">
-                {(exams.length ? exams : [
-                  { subject: firstSummary?.lastExam?.subject || 'Matematik 2. Dönem 1. Yazılı', score: firstSummary?.lastExam?.score || 85, className: firstChild?.className },
-                  { subject: 'Fizik 2. Dönem 1. Yazılı', score: 92, className: firstChild?.className },
-                  { subject: 'İngilizce 2. Dönem 1. Yazılı', score: 78, className: firstChild?.className },
-                ]).slice(0, 3).map((exam, index) => {
+                {exams.length ? exams.slice(0, 3).map((exam, index) => {
                   const score = Number(exam.score || 0);
                   return (
-                    <ListRow key={`${exam.subject}-${index}`} icon={NotebookTabs} tone={index === 0 ? 'purple' : index === 1 ? 'orange' : 'cyan'} title={exam.subject || 'Sınav'} sub={exam.className || firstChild?.className || 'Sınıf'} meta={`${score} ${scoreLetter(score)}`} metaClass={score >= 85 ? 'text-blue-300' : 'text-emerald-300'} />
+                    <ListRow key={exam.id || `${exam.subject}-${index}`} icon={NotebookTabs} tone={index === 0 ? 'purple' : index === 1 ? 'orange' : 'cyan'} title={exam.examTitle || exam.title || exam.subject || 'Sınav'} sub={`${exam.subject || ''}${exam.className || firstChild?.className ? ` • ${exam.className || firstChild?.className}` : ''}`} meta={`${score} ${scoreLetter(score)}`} metaClass={score >= 85 ? 'text-blue-300' : 'text-emerald-300'} />
                   );
-                })}
+                }) : <EmptyBlock title="Sınav sonucu yok" description="Bu öğrenci için canlı sınav sonucu bulunamadı." />}
               </div>
             </Section>
 
             <Section title="Son Ödevler" action={<Button variant="ghost" size="sm">Tüm Ödevler</Button>}>
               <div className="space-y-2">
-                {[
-                  ['Matematik - Problemler', firstChild?.className, 'Teslim Edildi', 'blue', 'text-emerald-300'],
-                  ['Türk Dili - Kompozisyon', firstChild?.className, 'Kontrol Ediliyor', 'orange', 'text-orange-300'],
-                  ['Fizik - Laboratuvar Raporu', firstChild?.className, 'Teslim Edildi', 'blue', 'text-emerald-300'],
-                ].map(([title, sub, meta, tone, metaClass]) => (
-                  <ListRow key={title} icon={ClipboardList} tone={tone} title={title} sub={sub || 'Sınıf'} meta={meta} metaClass={metaClass} />
-                ))}
+                {pendingHomework.length ? pendingHomework.map((item, index) => (
+                  <ListRow
+                    key={item.id || `${item.subject}-${item.title}`}
+                    icon={ClipboardList}
+                    tone={index % 2 === 0 ? 'blue' : 'orange'}
+                    title={`${item.subject || 'Ödev'} - ${item.title || 'Başlıksız'}`}
+                    sub={item.className || firstChild?.className || 'Sınıf bilgisi yok'}
+                    meta={item.deadline ? formatDateLabel(item.deadline) : item.status}
+                    metaClass="text-orange-300"
+                  />
+                )) : <EmptyBlock title="Bekleyen ödev yok" description="Canlı ödev kayıtlarında bekleyen ödev bulunamadı." />}
               </div>
             </Section>
           </div>
@@ -290,22 +314,26 @@ export default function ParentDashboard() {
         <div className="space-y-3">
           <Section title="Bugünkü Ders Programı" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/schedule')}>Tüm Program</Button>}>
             <div className="space-y-2">
-              {[
-                ['08:30 - 09:15', 'Matematik', 'Ahmet K.', 'Devam Ediyor', 'blue'],
-                ['09:20 - 10:05', 'Türk Dili ve Edebiyatı', 'Zeynep T.', 'Devam Ediyor', 'orange'],
-                ['10:20 - 11:05', 'Fizik', 'Mehmet S.', 'Sıradaki', 'purple'],
-                ['11:20 - 12:05', 'İngilizce', 'Canan D.', 'Yaklaşan', 'cyan'],
-                ['13:30 - 14:15', 'Kimya', 'Elif B.', 'Yaklaşan', 'green'],
-              ].map(([time, lesson, teacher, status, tone]) => (
-                <ListRow key={`${time}-${lesson}`} icon={BookOpen} tone={tone} title={lesson} sub={`${time} • ${firstChild?.className || '10-A'}`} meta={status} metaClass={status === 'Devam Ediyor' ? 'text-emerald-300' : status === 'Sıradaki' ? 'text-orange-300' : 'text-slate-400'} />
-              ))}
+              {todayLessons.length ? todayLessons.map((lesson, index) => (
+                <ListRow
+                  key={`${lesson.time}-${lesson.subject}-${index}`}
+                  icon={BookOpen}
+                  tone={index % 2 === 0 ? 'blue' : 'purple'}
+                  title={lesson.subject}
+                  sub={`${lesson.time || 'Saat yok'} • ${lesson.teacher || 'Öğretmen yok'}`}
+                  meta={lesson.class || firstChild?.className || ''}
+                  metaClass="text-slate-300"
+                />
+              )) : <EmptyBlock title="Bugün ders yok" description="Ders programında bugün için canlı kayıt bulunamadı." />}
             </div>
           </Section>
 
           <Section title="Devam Durumu Özeti" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/attendance')}>Tüm Rapor</Button>}>
             <div className="grid grid-cols-2 gap-4">
-              <AttendanceCircle name={firstChild?.fullName || 'Öğrenci'} className={firstChild?.className} value={attendance.rate || firstSummary.attendance || 0} />
-              <AttendanceCircle name={secondChild?.fullName || 'Öğrenci'} className={secondChild?.className || firstChild?.className} value={Math.max(0, (attendance.rate || firstSummary.attendance || 0) - 4)} />
+              {childCards.length ? childCards.map((child) => {
+                const summary = data?.childSummaries?.[child.fullName] || {};
+                return <AttendanceCircle key={child.fullName} name={child.fullName} className={child.className} value={summary.attendance || 0} />;
+              }) : <EmptyBlock title="Devam verisi yok" description="Bağlı öğrenci olmadığı için yoklama özeti üretilemedi." />}
             </div>
             <div className="mt-4 flex justify-center gap-5 text-xs text-slate-400">
               <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-emerald-400" /> Devam</span>
@@ -318,26 +346,25 @@ export default function ParentDashboard() {
         <aside className="space-y-3">
           <Section title="Yaklaşan Etkinlikler" action={<Button variant="ghost" size="sm">Tümünü Gör</Button>}>
             <div className="space-y-2">
-              {[
-                ['Veli Toplantısı', '11 Haziran 2026 - 14:00', '4 gün kaldı', CalendarDays, 'purple'],
-                ['Bilim Şenliği', '20 Haziran 2026', '13 gün kaldı', GraduationCap, 'orange'],
-                ['Dönem Sonu Gösterisi', '30 Haziran 2026', '23 gün kaldı', Megaphone, 'blue'],
-                ['Yaz Tatili Başlangıcı', '15 Temmuz 2026', '38 gün kaldı', Bell, 'orange'],
-              ].map(([title, sub, meta, Icon, tone]) => (
-                <ListRow key={title} icon={Icon} tone={tone} title={title} sub={sub} meta={meta} metaClass="text-emerald-300" />
-              ))}
+              {upcomingExams.length ? upcomingExams.map((item, index) => (
+                <ListRow
+                  key={item.id || `${item.title}-${index}`}
+                  icon={GraduationCap}
+                  tone={index % 2 === 0 ? 'purple' : 'orange'}
+                  title={item.title}
+                  sub={`${item.subject || 'Sınav'}${item.date ? ` • ${formatDateLabel(item.date)}` : ''}`}
+                  meta={item.status}
+                  metaClass="text-emerald-300"
+                />
+              )) : <EmptyBlock title="Yaklaşan sınav yok" description="Planlanan sınav kayıtlarında veri bulunamadı." />}
             </div>
           </Section>
 
           <Section title="Okul Duyuruları" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/announcements')}>Tümünü Gör</Button>}>
             <div className="space-y-2">
-              {(announcements.length ? announcements : [
-                { title: 'Kütüphane Haftası Etkinlikleri', dateLabel: '26 Mayıs 2026' },
-                { title: 'Yaz Okulu Kayıtları Başladı', dateLabel: '24 Mayıs 2026' },
-                { title: 'Servis Saatlerinde Düzenleme', dateLabel: '22 Mayıs 2026' },
-              ]).slice(0, 3).map((item, index) => (
+              {announcements.length ? announcements.slice(0, 3).map((item, index) => (
                 <ListRow key={item.id || item.title} icon={index === 0 ? Users : index === 1 ? Bell : Megaphone} tone={index === 0 ? 'purple' : index === 1 ? 'purple' : 'orange'} title={item.title} sub={item.dateLabel || item.date || 'Bugün'} />
-              ))}
+              )) : <EmptyBlock title="Duyuru yok" description="Veli hedefli canlı duyuru bulunamadı." />}
             </div>
           </Section>
 
@@ -363,14 +390,11 @@ export default function ParentDashboard() {
 
       <Section title="Son Aktiviteler" action={<Button variant="ghost" size="sm">Tüm Aktiviteler</Button>}>
         <div className="grid gap-3 xl:grid-cols-4">
-          {[
-            [firstChild?.fullName || 'Öğrenci', 'Matematik ödevini teslim etti.', '26 Mayıs 2026 - 14:30', Users, 'purple'],
-            [secondChild?.fullName || firstChild?.fullName || 'Öğrenci', 'Fizik sınavından 92 aldı.', '26 Mayıs 2026 - 11:15', FileText, 'orange'],
-            [firstChild?.fullName || 'Öğrenci', 'Devam durumu güncellendi.', '25 Mayıs 2026 - 16:45', ClipboardList, 'green'],
-            ['Okul Duyurusu', 'Yaz okulu kayıtları başladı.', '24 Mayıs 2026 - 09:20', Megaphone, 'blue'],
-          ].map(([title, sub, date, Icon, tone]) => (
-            <ListRow key={`${title}-${sub}`} icon={Icon} tone={tone} title={title} sub={`${sub} ${date}`} />
-          ))}
+          {activities.length ? activities.map((activity, index) => {
+            const Icon = activity.icon === 'exam' ? NotebookTabs : activity.icon === 'homework' ? ClipboardList : activity.icon === 'check' ? CheckCircle2 : FileText;
+            const tone = ['purple', 'orange', 'green', 'blue'][index % 4];
+            return <ListRow key={activity.id || `${activity.message}-${index}`} icon={Icon} tone={tone} title={activity.message} sub={activity.time || 'Zaman bilgisi yok'} />;
+          }) : <EmptyBlock title="Aktivite yok" description="Canlı duyuru, bildirim, sınav veya ödev aktivitesi bulunamadı." />}
         </div>
       </Section>
     </motion.div>
