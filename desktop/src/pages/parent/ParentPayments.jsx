@@ -1,44 +1,84 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  Wallet, CreditCard, CheckCircle2, Clock3, XCircle, Receipt, Loader2,
+  Building2,
+  CalendarDays,
+  CheckCircle2,
+  CreditCard,
+  Download,
+  FileText,
+  LockKeyhole,
+  Loader2,
+  ShieldCheck,
+  Wallet,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { useApp } from '../../context/AppContext';
 import { fetchParentChildrenFinance, parentPay } from '../../lib/api/modules';
+import {
+  DonutChart,
+  EmptyPanel,
+  IconTile,
+  PageHeader,
+  Panel,
+  SmallButton,
+  StatCard,
+  StatusPill,
+  decodeText,
+  formatDate,
+  formatMoney,
+  initials,
+  itemMotion,
+  pageMotion,
+  safeNumber,
+} from './parentPremiumUi';
 
-const STATUS_META = {
-  Paid: ['Ödendi', 'text-emerald-600', CheckCircle2],
-  Partial: ['Kısmi', 'text-amber-600', Clock3],
-  Overdue: ['Gecikmiş', 'text-red-600', XCircle],
-  Pending: ['Bekliyor', 'text-muted-foreground', Clock3],
+const STATUS = {
+  Paid: ['Ödendi', 'green'],
+  Partial: ['Kısmi', 'orange'],
+  Overdue: ['Vadesi Geçti', 'red'],
+  Pending: ['Bekliyor', 'orange'],
 };
 
-function tl(value, currency = 'TRY') {
-  return `${Number(value || 0).toLocaleString('tr-TR')} ${currency === 'TRY' ? '₺' : currency}`;
+function downloadReceiptLike(name, content) {
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  URL.revokeObjectURL(url);
 }
 
 export default function ParentPayments() {
+  const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useApp();
   const [accounts, setAccounts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const [selectedStudent, setSelectedStudent] = useState('');
   const [payFor, setPayFor] = useState(null);
   const [amount, setAmount] = useState('');
   const [paying, setPaying] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      setAccounts(await fetchParentChildrenFinance());
+      const payload = await fetchParentChildrenFinance();
+      const list = Array.isArray(payload) ? payload : [];
+      setAccounts(list);
+      setSelectedStudent((prev) => prev || list[0]?.studentName || '');
     } catch (err) {
       setError(err.message || 'Ödeme verileri alınamadı.');
+      setAccounts([]);
     } finally {
       setLoading(false);
     }
@@ -46,18 +86,46 @@ export default function ParentPayments() {
 
   useEffect(() => { load(); }, [load]);
 
-  const openPay = (account) => {
-    setPayFor(account);
-    setAmount(account.balance > 0 ? String(account.balance) : '');
+  const selectedAccount = useMemo(() => {
+    return accounts.find((account) => account.studentName === selectedStudent) || accounts[0] || null;
+  }, [accounts, selectedStudent]);
+
+  const summary = useMemo(() => {
+    const currency = selectedAccount?.currency || accounts[0]?.currency || 'TRY';
+    const netTotal = accounts.reduce((sum, account) => sum + safeNumber(account.netTotal), 0);
+    const paidTotal = accounts.reduce((sum, account) => sum + safeNumber(account.paidTotal), 0);
+    const balance = accounts.reduce((sum, account) => sum + safeNumber(account.balance), 0);
+    const overdue = accounts.reduce((sum, account) => sum + (account.installments || []).filter((item) => item.status === 'Overdue').reduce((inner, item) => inner + safeNumber(item.remaining || item.amount), 0), 0);
+    const nextDue = accounts
+      .flatMap((account) => account.installments || [])
+      .filter((item) => item.status !== 'Paid')
+      .sort((a, b) => new Date(a.dueDateUtc || 0) - new Date(b.dueDateUtc || 0))[0]?.dueDateUtc;
+    return { currency, netTotal, paidTotal, balance, overdue, nextDue };
+  }, [accounts, selectedAccount?.currency]);
+
+  const openPay = (account, installment = null) => {
+    const value = installment ? safeNumber(installment.remaining || installment.amount) : safeNumber(account?.balance);
+    setPayFor({ account, installment });
+    setAmount(value > 0 ? String(value) : '');
   };
 
   const submitPay = async () => {
     const value = Number(amount);
-    if (!value || value <= 0) { toast({ title: 'Geçerli bir tutar girin.', variant: 'destructive' }); return; }
+    if (!payFor?.account || !value || value <= 0) {
+      toast({ title: 'Geçerli bir ödeme tutarı girin.', variant: 'destructive' });
+      return;
+    }
     try {
       setPaying(true);
-      const result = await parentPay({ studentName: payFor.studentName, amount: value, method: 'Online' });
-      toast({ title: 'Ödeme alındı', description: `${tl(value)} • Makbuz: ${result?.receiptNo || '-'}` });
+      const result = await parentPay({
+        studentUserId: payFor.account.studentUserId,
+        studentName: payFor.account.studentName,
+        enrollmentContractId: payFor.installment?.enrollmentContractId || payFor.account.contracts?.[0]?.id,
+        financeInstallmentId: payFor.installment?.id,
+        amount: value,
+        method: 'Online',
+      });
+      toast({ title: 'Ödeme alındı', description: `${formatMoney(value, payFor.account.currency)} • Makbuz: ${result?.receiptNo || '-'}` });
       setPayFor(null);
       setAmount('');
       await load();
@@ -68,94 +136,194 @@ export default function ParentPayments() {
     }
   };
 
-  if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
+  if (loading) return <div className="flex min-h-[60vh] items-center justify-center"><LoadingDots /></div>;
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="parent-payments-page">
-      <div>
-        <h1 className="text-3xl font-bold font-heading flex items-center gap-2"><Wallet className="h-7 w-7 text-brand-primary" />Ödemeler</h1>
-        <p className="text-muted-foreground mt-1">Çocuklarınızın kayıt ücreti, taksit planı ve kalan borcu; online ödeme ve makbuzlar.</p>
-      </div>
+    <motion.div variants={pageMotion} initial="hidden" animate="visible" className="space-y-5 text-slate-100" data-testid="parent-payments-page">
+      <PageHeader
+        userName={user?.name}
+        title="Ödemeler"
+        description="Ödeme bilgilerinizi buradan görüntüleyebilir ve yönetebilirsiniz."
+        icon={<IconTile icon={CreditCard} tone="purple" className="h-14 w-14" />}
+        actions={(
+          <>
+            <Button className="h-11 rounded-[10px] bg-purple-600 px-8 font-black text-white hover:bg-purple-500" onClick={() => selectedAccount && openPay(selectedAccount)}>
+              <CreditCard className="mr-2 h-4 w-4" />Ödeme Yap
+            </Button>
+            <SmallButton onClick={() => document.getElementById('parent-payment-plan')?.scrollIntoView({ behavior: 'smooth' })}>
+              <CalendarDays className="mr-2 h-4 w-4" />Ödeme Planı
+            </SmallButton>
+          </>
+        )}
+      />
+
       {error ? <ErrorBanner title="Ödeme verileri alınamadı" message={error} onRetry={load} /> : null}
 
-      {accounts.length === 0 || accounts.every((a) => (a.netTotal || 0) <= 0) ? (
-        <Card><CardContent className="p-10 text-center text-muted-foreground">Tanımlı bir kayıt ücreti / taksit planı bulunamadı.</CardContent></Card>
-      ) : accounts.map((account) => {
-        if ((account.netTotal || 0) <= 0) return null;
-        const currency = account.currency || 'TRY';
-        return (
-          <Card key={account.studentName}>
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <CardTitle>{account.studentName}</CardTitle>
-                <Button onClick={() => openPay(account)} disabled={account.balance <= 0}>
-                  <CreditCard className="mr-2 h-4 w-4" />{account.balance > 0 ? 'Online Öde' : 'Borç Yok'}
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                {[
-                  ['Net', tl(account.netTotal, currency)],
-                  ['Ödenen', tl(account.paidTotal, currency)],
-                  ['Kalan', tl(account.balance, currency)],
-                  ['Geciken Taksit', account.overdueCount],
-                ].map(([label, value]) => (
-                  <div key={label} className="rounded-xl border bg-muted/20 p-3">
-                    <p className="text-xs text-muted-foreground">{label}</p>
-                    <p className="mt-1 text-lg font-bold">{value}</p>
-                  </div>
-                ))}
-              </div>
+      <div className="grid gap-4 xl:grid-cols-4">
+        <StatCard icon={Wallet} tone="purple" label="Toplam Borç" value={formatMoney(summary.balance, summary.currency)} sub={`${accounts.reduce((sum, account) => sum + safeNumber(account.overdueCount), 0)} adet ödenmemiş taksit`} />
+        <StatCard icon={CheckCircle2} tone="green" label="Ödenen Tutar" value={formatMoney(summary.paidTotal, summary.currency)} sub="Bu yıl toplam ödenen" />
+        <StatCard icon={FileText} tone="blue" label="Bekleyen Tutar" value={formatMoney(Math.max(0, summary.balance - summary.overdue), summary.currency)} sub="Vadesi gelmemiş borç" />
+        <StatCard icon={CalendarDays} tone="orange" label="Son Ödeme Tarihi" value={formatDate(summary.nextDue, '-')} sub="Sıradaki taksit için" />
+      </div>
 
-              <div>
-                <p className="mb-2 font-semibold">Taksitler</p>
-                <div className="space-y-2">
-                  {(account.installments || []).length === 0 ? <p className="text-sm text-muted-foreground">Taksit yok.</p>
-                    : account.installments.map((item) => {
-                      const [label, tone, Icon] = STATUS_META[item.status] || STATUS_META.Pending;
+      {accounts.length === 0 ? (
+        <EmptyPanel title="Tanımlı ödeme hesabı yok" description="Çocuğunuza ait kayıt ücreti veya taksit planı bulunamadı." />
+      ) : (
+        <div className="grid gap-4 xl:grid-cols-[1.75fr_1fr]">
+          <div className="space-y-4">
+            <Panel
+              title="Ödeme Planı"
+              action={(
+                <div className="flex flex-wrap gap-3">
+                  <select className="h-10 rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)}>
+                    {accounts.map((account) => <option key={account.studentName} value={account.studentName}>{decodeText(account.studentName)}</option>)}
+                  </select>
+                  <SmallButton><CalendarDays className="mr-2 h-4 w-4" />2025 - 2026 Eğitim Yılı</SmallButton>
+                </div>
+              )}
+              className="scroll-mt-6"
+            >
+              <div id="parent-payment-plan" className="overflow-x-auto">
+                <table className="w-full min-w-[760px] text-left text-sm">
+                  <thead className="text-xs text-slate-400">
+                    <tr className="border-b border-white/[0.08]">
+                      <th className="py-3 font-semibold">Taksit No</th>
+                      <th className="py-3 font-semibold">Son Ödeme Tarihi</th>
+                      <th className="py-3 font-semibold">Tutar</th>
+                      <th className="py-3 font-semibold">Durum</th>
+                      <th className="py-3 text-right font-semibold">İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(selectedAccount?.installments || []).map((item) => {
+                      const [label, tone] = STATUS[item.status] || STATUS.Pending;
+                      const isPaid = item.status === 'Paid';
                       return (
-                        <div key={item.id} className="flex items-center justify-between rounded-lg border bg-card p-3 text-sm">
-                          <span>{item.label || `${item.seqNo}. Taksit`} <span className="text-muted-foreground">{new Date(item.dueDateUtc).toLocaleDateString('tr-TR')}</span></span>
-                          <span className="flex items-center gap-3">
-                            <span>{tl(item.amount, currency)}</span>
-                            <span className={`inline-flex items-center gap-1 font-semibold ${tone}`}><Icon className="h-3.5 w-3.5" />{label}</span>
-                          </span>
-                        </div>
+                        <tr key={item.id} className="border-b border-white/[0.06] text-slate-200">
+                          <td className="py-4 font-semibold">{item.label || `${item.seqNo}. Taksit`}</td>
+                          <td className="py-4">{formatDate(item.dueDateUtc)}</td>
+                          <td className="py-4">{formatMoney(item.amount, item.currency || selectedAccount.currency)}</td>
+                          <td className="py-4"><StatusPill tone={tone}>{label}</StatusPill></td>
+                          <td className="py-4 text-right">
+                            {isPaid ? (
+                              <Button variant="ghost" size="icon" className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] text-slate-200" onClick={() => downloadReceiptLike(`taksit-${item.seqNo}.txt`, JSON.stringify(item, null, 2))}>
+                                <Download className="h-4 w-4" />
+                              </Button>
+                            ) : (
+                              <Button className="h-9 rounded-[10px] bg-purple-600 px-5 font-black text-white hover:bg-purple-500" onClick={() => openPay(selectedAccount, item)}>Öde</Button>
+                            )}
+                          </td>
+                        </tr>
                       );
                     })}
+                  </tbody>
+                </table>
+                {(selectedAccount?.installments || []).length === 0 ? <EmptyPanel title="Taksit planı yok" description="Bu öğrenci için taksit kaydı bulunamadı." /> : null}
+              </div>
+            </Panel>
+
+            <Panel title="Ödeme Yöntemleri">
+              <p className="mb-4 text-sm text-slate-400">Güvenli ödeme seçeneklerimizle kolayca ödeme yapın.</p>
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  ['Kredi / Banka Kartı', 'Kredi veya banka kartınız ile peşin veya taksitli ödeme yapın.', CreditCard, 'purple', 'Ödeme Yap', () => selectedAccount && openPay(selectedAccount)],
+                  ['Banka Havalesi', 'Banka hesabımıza havale/EFT ile ödeme yapabilirsiniz.', Building2, 'blue', 'Havale Bilgileri', () => toast({ title: 'Havale bilgileri', description: 'Kurum banka bilgileri finans birimi tarafından paylaşılır.' })],
+                  ['Kayıtlı Kartlarım', 'Kayıtlı kartlarınızla hızlı ve güvenli ödeme yapın.', Wallet, 'green', 'Kartlarımı Yönet', () => toast({ title: 'Kart yönetimi', description: 'Kart saklama sağlayıcısı yapılandırıldığında aktif olur.' })],
+                ].map(([title, text, Icon, tone, button, action]) => (
+                  <motion.div variants={itemMotion} key={title} className="rounded-[12px] border border-white/[0.08] bg-white/[0.035] p-4">
+                    <IconTile icon={Icon} tone={tone} />
+                    <p className="mt-4 font-black text-white">{title}</p>
+                    <p className="mt-2 min-h-[42px] text-sm text-slate-400">{text}</p>
+                    <Button className="mt-4 h-10 w-full rounded-[10px] bg-white/[0.06] text-slate-100 hover:bg-purple-500/20" onClick={action}>{button}</Button>
+                  </motion.div>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <aside className="space-y-4">
+            <Panel title="Ödeme Özeti" action={<SmallButton>Bu Yıl</SmallButton>}>
+              <div className="grid gap-5 md:grid-cols-[180px_1fr] xl:grid-cols-1 2xl:grid-cols-[180px_1fr]">
+                <DonutChart
+                  items={[
+                    { label: 'Ödenen', value: summary.paidTotal, color: '#22c55e' },
+                    { label: 'Bekleyen', value: summary.balance, color: '#8b5cf6' },
+                    { label: 'Vadesi Geçen', value: summary.overdue, color: '#f97316' },
+                  ]}
+                  center={(
+                    <div className="text-center">
+                      <p className="text-xs text-slate-400">Toplam</p>
+                      <p className="text-lg font-black text-white">{formatMoney(summary.netTotal, summary.currency)}</p>
+                    </div>
+                  )}
+                />
+                <div className="space-y-4">
+                  {[
+                    ['Ödenen Tutar', summary.paidTotal, '#22c55e'],
+                    ['Bekleyen Tutar', summary.balance, '#8b5cf6'],
+                    ['Vadesi Geçen Tutar', summary.overdue, '#f97316'],
+                  ].map(([label, value, color]) => (
+                    <div key={label} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="flex items-center gap-2 text-slate-300"><span className="h-3 w-3 rounded-full" style={{ background: color }} />{label}</span>
+                      <b className="text-white">{formatMoney(value, summary.currency)}</b>
+                    </div>
+                  ))}
                 </div>
               </div>
+            </Panel>
 
-              {(account.payments || []).length > 0 ? (
+            <Panel title="Kayıt Bilgileri">
+              <div className="flex items-center gap-3">
+                <div className="grid h-12 w-12 place-items-center rounded-full bg-[hsl(var(--brand-accent))] text-lg font-black text-white">{initials(selectedAccount?.studentName)}</div>
                 <div>
-                  <p className="mb-2 font-semibold">Makbuzlar</p>
-                  <div className="space-y-2">
-                    {account.payments.map((item) => (
-                      <div key={item.id} className="flex items-center justify-between rounded-lg border bg-muted/20 p-3 text-sm">
-                        <span className="inline-flex items-center gap-2"><Receipt className="h-4 w-4 text-muted-foreground" />{item.receiptNo || 'Makbuz'} · {item.method} · {new Date(item.paidAtUtc).toLocaleDateString('tr-TR')}</span>
-                        <span className={`font-bold ${item.amount < 0 ? 'text-red-600' : 'text-emerald-600'}`}>{tl(item.amount, currency)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <p className="font-black text-white">{decodeText(selectedAccount?.studentName || '-')}</p>
+                  <p className="text-sm text-slate-400">{decodeText(selectedAccount?.contracts?.[0]?.className || '-')}</p>
                 </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        );
-      })}
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-4 border-t border-white/[0.08] pt-5 text-sm">
+                <div><p className="text-slate-400">Kayıt Tarihi</p><p className="mt-1 font-bold text-white">{formatDate(selectedAccount?.contracts?.[0]?.createdAtUtc)}</p></div>
+                <div><p className="text-slate-400">Akademik Yıl</p><p className="mt-1 font-bold text-white">{decodeText(selectedAccount?.contracts?.[0]?.academicYear || '-')}</p></div>
+              </div>
+            </Panel>
+
+            <Panel title="Ödeme hakkında yardım mı gerekiyor?">
+              <p className="text-sm text-slate-400">Ödeme yöntemleri, taksitlendirme ve diğer sorularınız için bizimle iletişime geçebilirsiniz.</p>
+              <SmallButton className="mt-4" onClick={() => navigate('/support')}>Yardım Merkezine Git</SmallButton>
+            </Panel>
+
+            <motion.div variants={itemMotion} className="rounded-[14px] border border-white/[0.08] bg-white/[0.035] p-4">
+              <div className="flex items-center gap-4">
+                <IconTile icon={ShieldCheck} tone="blue" />
+                <div className="flex-1">
+                  <p className="font-black text-white">Güvenli Ödeme</p>
+                  <p className="text-sm text-slate-400">Tüm ödeme işlemleriniz güvenli bağlantı üzerinden yürütülür.</p>
+                </div>
+                <LockKeyhole className="h-6 w-6 text-slate-400" />
+              </div>
+            </motion.div>
+          </aside>
+        </div>
+      )}
 
       <Dialog open={!!payFor} onOpenChange={(open) => { if (!open) setPayFor(null); }}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Online Ödeme — {payFor?.studentName}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground">Kalan borç: <b>{tl(payFor?.balance, payFor?.currency)}</b></p>
-            <Input type="number" min="0" placeholder="Tutar" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <p className="text-xs text-muted-foreground">Ödeme en eski taksitten başlayarak mahsup edilir; makbuzunuz otomatik oluşur.</p>
+        <DialogContent className="border-white/[0.08] bg-[#07162A] text-white">
+          <DialogHeader>
+            <DialogTitle>Online Ödeme — {decodeText(payFor?.account?.studentName || '')}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="rounded-[12px] border border-white/[0.08] bg-white/[0.04] p-4">
+              <p className="text-sm text-slate-400">Kalan borç</p>
+              <p className="mt-1 text-2xl font-black">{formatMoney(payFor?.installment?.remaining || payFor?.account?.balance, payFor?.account?.currency)}</p>
+            </div>
+            <Input type="number" min="0" inputMode="decimal" placeholder="Tutar" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-[10px] border-white/[0.08] bg-white/[0.04] text-white" />
+            <p className="text-xs text-slate-400">Ödeme seçili taksite, taksit seçilmediyse en eski açık bakiyeye işlenir; makbuz otomatik oluşur.</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPayFor(null)}>Vazgeç</Button>
-            <Button onClick={submitPay} disabled={paying}>{paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}Öde</Button>
+            <Button variant="outline" onClick={() => setPayFor(null)} className="border-white/[0.08] bg-white/[0.04] text-white">Vazgeç</Button>
+            <Button onClick={submitPay} disabled={paying} className="bg-purple-600 text-white hover:bg-purple-500">
+              {paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
+              Öde
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
