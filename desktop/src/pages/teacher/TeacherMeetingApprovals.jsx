@@ -190,10 +190,10 @@ export default function TeacherMeetingApprovals() {
       <section className="rounded-[32px] border border-brand-primary/10 bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-7 text-white shadow-xl">
         <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
           <div className="space-y-3">
-            <Badge className="bg-white/12 text-white hover:bg-white/12">Görüşme Onayları</Badge>
+            <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">Görüşme Onayları</Badge>
             <div>
               <h1 className="text-3xl font-bold font-heading">Takvimini tanımla, veliye sadece uygun saatleri göster</h1>
-              <p className="mt-2 max-w-2xl text-sm text-white/75">
+              <p className="mt-2 max-w-2xl text-sm text-foreground/75">
                 Belirlediğin gün ve saatler veli tarafında liste halinde görünür. Gelen talepleri buradan onaylayabilir, reddedebilir ve tüm akışı düzenli bir görünümde takip edebilirsin.
               </p>
             </div>
@@ -203,9 +203,9 @@ export default function TeacherMeetingApprovals() {
               { label: 'Bekleyen', value: pendingCount },
               { label: 'Onaylanan', value: approvedCount },
             ].map((item) => (
-              <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur">
+              <div key={item.label} className="rounded-[24px] border border-foreground/10 bg-foreground/10 px-4 py-4 backdrop-blur">
                 <p className="text-2xl font-bold">{item.value}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/65">{item.label}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-foreground/65">{item.label}</p>
               </div>
             ))}
           </div>

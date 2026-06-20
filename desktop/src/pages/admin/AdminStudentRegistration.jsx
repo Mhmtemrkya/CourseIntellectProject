@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Save, Copy } from 'lucide-react';
+import { UserPlus, Save, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -32,6 +32,12 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+const STEPS = [
+  { value: 'personal', label: 'Kişisel' },
+  { value: 'parent', label: 'Veli' },
+  { value: 'other', label: 'Diğer' },
+];
+
 const emptyForm = {
   fullName: '',
   tcNo: '',
@@ -62,6 +68,33 @@ export default function AdminStudentRegistration() {
   const [recentStudents, setRecentStudents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState(null);
+  const [activeStep, setActiveStep] = useState('personal');
+
+  const currentStepIndex = STEPS.findIndex((step) => step.value === activeStep);
+  const isLastStep = currentStepIndex === STEPS.length - 1;
+
+  // Adimi ilerletmeden once o adimdaki zorunlu/format kontrolleri yapilir.
+  const validateStep = (step) => {
+    if (step === 'personal') {
+      if (!form.fullName.trim()) { toast({ title: 'Ad soyad zorunludur.', variant: 'destructive' }); return false; }
+      if (!form.className) { toast({ title: 'Sınıf seçimi zorunludur.', variant: 'destructive' }); return false; }
+      if (form.tcNo && !isValidTcKimlik(form.tcNo)) { toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' }); return false; }
+    }
+    if (step === 'parent') {
+      if (form.parentPhone && !isValidTrPhone(form.parentPhone)) { toast({ title: 'Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' }); return false; }
+      if (form.parentEmail && !isValidEmail(form.parentEmail)) { toast({ title: 'Geçerli bir veli e-posta adresi girin.', variant: 'destructive' }); return false; }
+    }
+    return true;
+  };
+
+  const goNext = () => {
+    if (!validateStep(activeStep)) return;
+    setActiveStep(STEPS[Math.min(currentStepIndex + 1, STEPS.length - 1)].value);
+  };
+
+  const goBack = () => {
+    setActiveStep(STEPS[Math.max(currentStepIndex - 1, 0)].value);
+  };
 
   const loadData = useCallback(async () => {
     try {
@@ -169,6 +202,7 @@ export default function AdminStudentRegistration() {
           : 'Bilgiler PDF olarak indirildi.',
       });
       setForm(emptyForm);
+      setActiveStep('personal');
       loadData();
     } catch (err) {
       const message = err?.response?.data?.message || err?.message || 'Kayıt başarısız.';
@@ -238,11 +272,13 @@ export default function AdminStudentRegistration() {
               <CardTitle>Öğrenci Bilgileri</CardTitle>
             </CardHeader>
             <CardContent>
-              <Tabs defaultValue="personal">
+              <Tabs value={activeStep} onValueChange={setActiveStep}>
                 <TabsList className="mb-4">
-                  <TabsTrigger value="personal">Kişisel</TabsTrigger>
-                  <TabsTrigger value="parent">Veli</TabsTrigger>
-                  <TabsTrigger value="other">Diğer</TabsTrigger>
+                  {STEPS.map((step, index) => (
+                    <TabsTrigger key={step.value} value={step.value}>
+                      <span className="mr-1.5 text-xs opacity-60">{index + 1}.</span>{step.label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
 
                 <TabsContent value="personal" className="space-y-4">
@@ -382,11 +418,25 @@ export default function AdminStudentRegistration() {
                 ve güçlü bir geçici şifre otomatik üretilir. Öğrenci ilk girişinde şifresini değiştirmek zorundadır.
               </div>
 
-              <div className="flex justify-end mt-6 gap-3">
-                <Button variant="outline" onClick={() => setForm(emptyForm)}>Temizle</Button>
-                <Button onClick={handleSubmit} disabled={saving}>
-                  <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Öğrenciyi Kaydet'}
-                </Button>
+              <div className="flex items-center justify-between mt-6 gap-3">
+                <Button variant="ghost" onClick={() => { setForm(emptyForm); setActiveStep('personal'); }}>Temizle</Button>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">Adım {currentStepIndex + 1}/{STEPS.length}</span>
+                  {currentStepIndex > 0 ? (
+                    <Button variant="outline" onClick={goBack}>
+                      <ChevronLeft className="h-4 w-4 mr-1" /> Geri
+                    </Button>
+                  ) : null}
+                  {isLastStep ? (
+                    <Button onClick={handleSubmit} disabled={saving}>
+                      <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Öğrenciyi Kaydet'}
+                    </Button>
+                  ) : (
+                    <Button onClick={goNext}>
+                      Devam <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

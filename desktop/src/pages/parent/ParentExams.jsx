@@ -181,7 +181,7 @@ export default function ParentExams() {
         icon={<IconTile icon={TrendingUp} tone="purple" className="h-14 w-14" />}
         actions={(
           <>
-            <select className="h-11 min-w-[190px] rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedChild} onChange={(event) => setSelectedChild(event.target.value)}>
+            <select className="h-11 min-w-[190px] rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedChild} onChange={(event) => setSelectedChild(event.target.value)}>
               {children.length === 0 ? <option value="">Çocuk bulunamadı</option> : null}
               {children.map((child) => (
                 <option key={child.id || child.fullName} value={child.fullName}>{decodeText(child.fullName)}</option>
@@ -195,7 +195,7 @@ export default function ParentExams() {
       {error ? <ErrorBanner title="Sonuçlar alınamadı" message={error} onRetry={loadExams} /> : null}
 
       <div className="grid gap-4 xl:grid-cols-[1.45fr_1fr_1fr_1fr_1fr]">
-        <motion.div variants={itemMotion} className="rounded-[14px] border border-white/[0.08] bg-white/[0.035] p-5">
+        <motion.div variants={itemMotion} className="rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.035] p-5">
           <div className="flex items-center gap-4">
             <div className="grid h-16 w-16 place-items-center rounded-full bg-[hsl(var(--brand-accent))] text-xl font-black text-white">
               {initials(selectedChild)}
@@ -231,7 +231,7 @@ export default function ParentExams() {
               {normalizedResults.slice(0, 5).map((exam) => {
                 const [label, tone] = resultStatus(exam._score);
                 return (
-                  <div key={exam._key} className="grid grid-cols-[48px_1fr_auto_auto] items-center gap-4 rounded-[12px] border border-white/[0.06] bg-white/[0.03] p-3">
+                  <div key={exam._key} className="grid grid-cols-[48px_1fr_auto_auto] items-center gap-4 rounded-[12px] border border-foreground/[0.06] bg-foreground/[0.03] p-3">
                     <IconTile icon={FileQuestion} tone={tone === 'red' ? 'orange' : tone} />
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-white">{exam._title}</p>
@@ -252,14 +252,14 @@ export default function ParentExams() {
 
       <div className="grid gap-4 xl:grid-cols-[1.8fr_1fr]">
         <Panel title="Sınav Geçmişi">
-          <div className="mb-4 flex flex-wrap gap-3 border-b border-white/[0.08] pb-3">
+          <div className="mb-4 flex flex-wrap gap-3 border-b border-foreground/[0.08] pb-3">
             {[
               ['all', 'Tümü'],
               ['yaz', 'Yazılı Sınavlar'],
               ['deneme', 'Deneme Sınavları'],
               ['kisa', 'Kısa Sınavlar'],
             ].map(([value, label]) => (
-              <button key={value} type="button" onClick={() => setActiveType(value)} className={`rounded-[10px] px-4 py-2 text-sm font-bold transition ${activeType === value ? 'bg-purple-500/20 text-purple-200 shadow-[inset_0_-2px_0_#a855f7]' : 'text-slate-400 hover:bg-white/[0.04] hover:text-white'}`}>
+              <button key={value} type="button" onClick={() => setActiveType(value)} className={`rounded-[10px] px-4 py-2 text-sm font-bold transition ${activeType === value ? 'bg-purple-500/20 text-purple-200 shadow-[inset_0_-2px_0_#a855f7]' : 'text-slate-400 hover:bg-foreground/[0.04] hover:text-white'}`}>
                 {label}
               </button>
             ))}
@@ -268,7 +268,7 @@ export default function ParentExams() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[760px] text-left text-sm">
                 <thead className="text-xs text-slate-400">
-                  <tr className="border-b border-white/[0.08]">
+                  <tr className="border-b border-foreground/[0.08]">
                     <th className="py-3 font-semibold">Sınav Adı</th>
                     <th className="py-3 font-semibold">Ders</th>
                     <th className="py-3 font-semibold">Tarih</th>
@@ -281,14 +281,14 @@ export default function ParentExams() {
                   {typeFiltered.map((exam) => {
                     const [label, tone] = resultStatus(exam._score);
                     return (
-                      <tr key={exam._key} className="border-b border-white/[0.06] text-slate-200">
+                      <tr key={exam._key} className="border-b border-foreground/[0.06] text-slate-200">
                         <td className="py-4 font-semibold">{exam._title}</td>
                         <td className="py-4">{exam._subject}</td>
                         <td className="py-4">{exam._date}</td>
                         <td className="py-4"><b className="text-white">{exam._score}</b> /100</td>
                         <td className="py-4"><StatusPill tone={tone}>{label}</StatusPill></td>
                         <td className="py-4 text-right">
-                          <Button variant="ghost" size="icon" className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] text-slate-200">
+                          <Button variant="ghost" size="icon" className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] text-slate-200">
                             <Eye className="h-4 w-4" />
                           </Button>
                         </td>
@@ -328,7 +328,7 @@ export default function ParentExams() {
                     <p className="text-xs text-slate-400">{exam._title}</p>
                   </div>
                 </div>
-                <div className="mt-4 h-2 rounded-full bg-white/[0.08]">
+                <div className="mt-4 h-2 rounded-full bg-foreground/[0.08]">
                   <div className="h-full rounded-full bg-orange-400" style={{ width: `${Math.min(100, exam._score)}%` }} />
                 </div>
                 <p className="mt-2 text-sm font-black text-orange-300">{exam._score} puan</p>

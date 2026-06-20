@@ -110,8 +110,8 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) { stopCamera(); onCancel(); } }}>
-      <DialogContent className="w-[min(96vw,720px)] max-w-[720px] overflow-hidden border-white/10 bg-[#0B1728] p-0 text-white">
-        <div className="flex items-center justify-between border-b border-white/10 px-6 py-4">
+      <DialogContent className="w-[min(96vw,720px)] max-w-[720px] overflow-hidden border-foreground/10 bg-[#0B1728] p-0 text-white">
+        <div className="flex items-center justify-between border-b border-foreground/10 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300">
               <ShieldCheck className="h-5 w-5" />
@@ -121,7 +121,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
               <p className="text-xs text-slate-400">{exam?.name || exam?.title}</p>
             </div>
           </div>
-          <button type="button" onClick={() => { stopCamera(); onCancel(); }} className="rounded-xl border border-white/10 p-2 text-slate-300 hover:bg-white/10">
+          <button type="button" onClick={() => { stopCamera(); onCancel(); }} className="rounded-xl border border-foreground/10 p-2 text-slate-300 hover:bg-foreground/10">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -134,7 +134,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
           ) : null}
 
           {liveLinkUrl ? (
-            <div className={`rounded-2xl border p-4 ${joinedLive ? 'border-emerald-400/30 bg-emerald-500/10' : 'border-white/10 bg-white/5'}`}>
+            <div className={`rounded-2xl border p-4 ${joinedLive ? 'border-emerald-400/30 bg-emerald-500/10' : 'border-foreground/10 bg-foreground/5'}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <Video className={`h-5 w-5 ${joinedLive ? 'text-emerald-300' : 'text-slate-300'}`} />
@@ -152,7 +152,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
           ) : null}
 
           {requireCamera ? (
-            <div className={`rounded-2xl border p-4 ${cameraReady ? 'border-emerald-400/30 bg-emerald-500/10' : 'border-white/10 bg-white/5'}`}>
+            <div className={`rounded-2xl border p-4 ${cameraReady ? 'border-emerald-400/30 bg-emerald-500/10' : 'border-foreground/10 bg-foreground/5'}`}>
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <Camera className={`h-5 w-5 ${cameraReady ? 'text-emerald-300' : 'text-slate-300'}`} />
@@ -163,7 +163,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
                 </div>
                 {cameraReady ? <CheckCircle2 className="h-5 w-5 text-emerald-300" /> : null}
               </div>
-              <div className="mt-3 overflow-hidden rounded-2xl border border-white/10 bg-black/40">
+              <div className="mt-3 overflow-hidden rounded-2xl border border-foreground/10 bg-black/40">
                 {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
                 <video ref={videoRef} muted playsInline className={`h-44 w-full object-cover ${cameraReady ? '' : 'hidden'}`} />
                 {!cameraReady ? (
@@ -184,13 +184,13 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
           ) : null}
 
           {!liveLinkUrl && !requireCamera ? (
-            <p className="rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-300">
+            <p className="rounded-2xl border border-foreground/10 bg-foreground/5 p-4 text-sm text-slate-300">
               Bu sınav için ek giriş şartı yok. Hazır olduğunda sınava başlayabilirsin.
             </p>
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-white/10 px-6 py-4">
+        <div className="flex items-center justify-between gap-3 border-t border-foreground/10 px-6 py-4">
           <button type="button" onClick={() => { stopCamera(); onCancel(); }} className="rounded-xl px-4 py-2 text-sm font-semibold text-slate-300 hover:text-white">
             Vazgeç
           </button>

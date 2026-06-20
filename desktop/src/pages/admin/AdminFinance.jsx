@@ -92,17 +92,31 @@ export default function AdminFinance() {
     const installments = dashboard?.installments || [];
     const collections = dashboard?.collections || [];
     const approvals = dashboard?.approvals || [];
-    const totalReceivable = invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-    const totalCollected = collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-    const pending = installments
-      .filter((item) => !normalizeStatus(item.status).includes('odendi'))
-      .reduce((sum, item) => sum + parseMoney(item.amount), 0);
+    // Geciken taksit listesi (isim/tutar gösterimi için accounting kaynaklı).
     const overdue = installments.filter((item) => {
       const status = normalizeStatus(item.status);
       return status.includes('gec') || status.includes('late');
     });
-    const overdueTotal = overdue.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-    const rate = totalReceivable > 0 ? Math.min(100, Math.round((totalCollected / totalReceivable) * 100)) : 0;
+
+    // Üst kart toplamları otoriter sözleşme bazlı kaynaktan (fetchFinanceDashboard)
+    // gelir; böylece kayıt ücreti taksitsiz de olsa "Toplam Alacak"a yansır.
+    // enrollmentFinance yoksa accounting verisinden hesaplanır (geriye dönük).
+    const hasFinance = enrollmentFinance != null;
+    const totalReceivable = hasFinance
+      ? Number(enrollmentFinance.netTotal) || 0
+      : invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+    const totalCollected = hasFinance
+      ? Number(enrollmentFinance.collectedTotal) || 0
+      : collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+    const pending = hasFinance
+      ? Number(enrollmentFinance.outstandingTotal) || 0
+      : installments.filter((item) => !normalizeStatus(item.status).includes('odendi')).reduce((sum, item) => sum + parseMoney(item.amount), 0);
+    const overdueTotal = hasFinance
+      ? Number(enrollmentFinance.overdueTotal) || 0
+      : overdue.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+    const rate = hasFinance
+      ? Number(enrollmentFinance.collectionRatePercent) || 0
+      : (totalReceivable > 0 ? Math.min(100, Math.round((totalCollected / totalReceivable) * 100)) : 0);
 
     return {
       totalReceivable,
@@ -114,7 +128,7 @@ export default function AdminFinance() {
       collections: collections.slice(0, 5),
       rate,
     };
-  }, [dashboard]);
+  }, [dashboard, enrollmentFinance]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;

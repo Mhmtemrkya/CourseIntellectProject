@@ -58,6 +58,47 @@ public sealed class QuestionBankService(CourseIntellectDbContext dbContext) : IQ
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<QuestionPracticeStatsDto> GetStatsAsync(string? studentUsername, string? className, CancellationToken cancellationToken = default)
+    {
+        // Toplam yayınlanmış soru (öğrencinin sınıfına göre kapsanır).
+        var totalQuery = dbContext.QuestionBankItems.Where(x => x.PublicationStatus == "Published");
+        if (!string.IsNullOrWhiteSpace(className))
+        {
+            var normalizedClass = className.Trim();
+            totalQuery = totalQuery.Where(x =>
+                x.ClassTargetsSerialized.Contains("\"Tum Siniflar\"") ||
+                x.ClassTargetsSerialized.Contains("\"Tüm Sınıflar\"") ||
+                x.ClassTargetsSerialized.Contains($"\"{normalizedClass}\""));
+        }
+
+        var total = await totalQuery.CountAsync(cancellationToken);
+
+        var attemptsQuery = dbContext.QuestionPracticeAttempts.AsQueryable();
+        if (!string.IsNullOrWhiteSpace(studentUsername))
+        {
+            var normalized = studentUsername.Trim();
+            attemptsQuery = attemptsQuery.Where(x => x.StudentUsername == normalized);
+        }
+
+        var attempts = await attemptsQuery
+            .Select(x => new { x.QuestionId, x.IsCorrect, x.SubmittedAtUtc })
+            .ToListAsync(cancellationToken);
+
+        // Soru başına en son deneme dikkate alınır (tekrar denemeler çift sayılmaz).
+        var latestByQuestion = attempts
+            .GroupBy(x => x.QuestionId)
+            .Select(group => group.OrderByDescending(item => item.SubmittedAtUtc).First())
+            .ToList();
+
+        var solved = latestByQuestion.Count;
+        var correct = latestByQuestion.Count(item => item.IsCorrect);
+        var wrong = solved - correct;
+        var blank = Math.Max(0, total - solved);
+        var net = Math.Round(correct - (wrong / 4.0), 2);
+
+        return new QuestionPracticeStatsDto(total, solved, correct, wrong, blank, net);
+    }
+
     public async Task<QuestionBankItemDto> CreateQuestionAsync(CreateQuestionBankItemRequest request, CancellationToken cancellationToken = default)
     {
         var item = new QuestionBankItem

@@ -11,6 +11,7 @@ import {
 } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
+import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import ExamEntryGate from '../../components/student/ExamEntryGate';
@@ -248,24 +249,22 @@ export default function StudentExams({ mockOnly = false }) {
 
       {error ? <ErrorBanner title="Sınav verileri alınamadı" message={error} onRetry={loadExams} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          [overallStats.totalExams, pageCopy.totalLabel, FileQuestion, 'text-brand-primary'],
-          [upcomingExams.length, 'Planlanan', Target, 'text-green-600'],
-          [overallStats.bestSubject, 'Odak Ders', Calendar, 'text-brand-accent'],
-          [upcomingExams.filter((item) => item.questionCount > 0).length, 'Hazır Oturum', Layers3, 'text-blue-600'],
-        ].map(([value, label, Icon, color]) => (
-          <Card key={label}>
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-muted">
-                <Icon className={`h-6 w-6 ${color}`} />
-              </div>
-              <div>
-                <p className="text-2xl font-bold">{value}</p>
-                <p className="text-sm text-muted-foreground">{label}</p>
-              </div>
-            </CardContent>
-          </Card>
+          [overallStats.totalExams, pageCopy.totalLabel, FileQuestion, 'from-sky-400 to-blue-600'],
+          [upcomingExams.length, 'Planlanan', Target, 'from-emerald-400 to-teal-600'],
+          [overallStats.bestSubject, 'Odak Ders', Calendar, 'from-amber-400 to-orange-600'],
+          [upcomingExams.filter((item) => item.questionCount > 0).length, 'Hazır Oturum', Layers3, 'from-violet-400 to-fuchsia-600'],
+        ].map(([value, label, Icon, gradient]) => (
+          <div key={label} className="ci-metric-card flex items-center gap-4 rounded-2xl border border-foreground/10 p-4">
+            <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.22)] ${gradient}`}>
+              <Icon className="h-5 w-5" />
+            </div>
+            <div className="min-w-0">
+              <p className="truncate text-2xl font-black tracking-tight"><AnimatedValue value={value} /></p>
+              <p className="text-sm text-muted-foreground">{label}</p>
+            </div>
+          </div>
         ))}
       </div>
 
@@ -282,7 +281,7 @@ export default function StudentExams({ mockOnly = false }) {
         ) : upcomingExams.map((exam) => {
           const theme = getResourceTheme(exam.subject);
           return (
-            <Card key={exam.id} className="overflow-hidden rounded-[24px] border border-white/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-white/20">
+            <Card key={exam.id} className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
               <CardContent className="p-0">
                 <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
                   <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>{theme.mark}</div>
@@ -294,16 +293,16 @@ export default function StudentExams({ mockOnly = false }) {
                       <h3 className="text-2xl font-black leading-tight">{exam.name}</h3>
                       <p className="mt-2 text-sm text-slate-400">{theme.tagline}</p>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-right">
+                    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.05] px-4 py-3 text-right">
                       <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Planlanan</div>
                       <div className="mt-1 text-base font-black text-white">{exam.date.toLocaleDateString('tr-TR')}</div>
                     </div>
                   </div>
                 </div>
-                <div className="space-y-4 border-t border-white/[0.07] p-6">
+                <div className="space-y-4 border-t border-foreground/[0.07] p-6">
                   <div className="flex flex-wrap items-center gap-2">
                     {[exam.className, exam.type].filter(Boolean).map((chip) => (
-                      <span key={chip} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{chip}</span>
+                      <span key={chip} className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{chip}</span>
                     ))}
                   </div>
                   <div className="grid gap-3 md:grid-cols-3">
@@ -312,7 +311,7 @@ export default function StudentExams({ mockOnly = false }) {
                       [Clock3, 'Süre', formatDuration(exam.duration)],
                       [Target, 'Sınav Tipi', exam.type],
                     ].map(([Icon, label, value]) => (
-                      <div key={label} className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4">
+                      <div key={label} className="rounded-2xl border border-foreground/[0.07] bg-foreground/[0.04] p-4">
                         <div className="flex items-center gap-2 text-sm text-slate-500">
                           <Icon className="h-4 w-4" style={{ color: theme.hue }} />
                           {label}
@@ -345,11 +344,11 @@ export default function StudentExams({ mockOnly = false }) {
         <DialogContent className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[92vh] overflow-y-auto">
           {deliveryState ? (
             <div className="rounded-[28px] bg-gradient-to-br from-emerald-500 to-teal-600 p-10 text-white">
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-white/15">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-foreground/15">
                 <Send className="h-10 w-10" />
               </div>
               <h2 className="mt-6 text-center text-3xl font-black">Öğretmeninize Gönderildi</h2>
-              <p className="mt-3 text-center text-white/85">
+              <p className="mt-3 text-center text-foreground/85">
                 Sınavın teslim edildi. Son değerlendirme öğretmen ekranında görünecek.
               </p>
             </div>
@@ -363,14 +362,14 @@ export default function StudentExams({ mockOnly = false }) {
                   <div className="rounded-[28px] bg-slate-950 p-6 text-white">
                     <div className="mb-5 flex items-center justify-between">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-white/60">{session?.subject}</div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/60">{session?.subject}</div>
                         <div className="mt-1 text-2xl font-black">{currentQuestion.topic}</div>
                       </div>
-                      <div className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">
+                      <div className="rounded-full bg-foreground/10 px-4 py-2 text-sm font-semibold">
                         {currentIndex + 1}/{session.questions.length}
                       </div>
                     </div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-2 overflow-hidden rounded-full bg-foreground/10">
                       <div className="h-full rounded-full bg-white transition-all" style={{ width: `${progress}%` }} />
                     </div>
                   </div>

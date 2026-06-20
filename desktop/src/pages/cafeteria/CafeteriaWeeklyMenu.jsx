@@ -156,7 +156,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
     <motion.main
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[calc(100vh-2rem)] rounded-[30px] border border-white/10 bg-[#070e19] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 md:p-7"
+      className="min-h-[calc(100vh-2rem)] rounded-[30px] border border-foreground/10 bg-[#070e19] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 md:p-7"
     >
       <header className="mb-7 flex flex-wrap items-start justify-between gap-5">
         <div>
@@ -171,17 +171,17 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <button type="button" aria-label="Önceki hafta" onClick={() => setWeekStart(addDays(weekStart, -7))} className="rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/10">
+          <button type="button" aria-label="Önceki hafta" onClick={() => setWeekStart(addDays(weekStart, -7))} className="rounded-xl border border-foreground/10 bg-foreground/[0.04] p-3 transition hover:bg-foreground/10">
             <ChevronLeft className="h-4 w-4" />
           </button>
-          <button type="button" aria-label="Sonraki hafta" onClick={() => setWeekStart(addDays(weekStart, 7))} className="rounded-xl border border-white/10 bg-white/[0.04] p-3 transition hover:bg-white/10">
+          <button type="button" aria-label="Sonraki hafta" onClick={() => setWeekStart(addDays(weekStart, 7))} className="rounded-xl border border-foreground/10 bg-foreground/[0.04] p-3 transition hover:bg-foreground/10">
             <ChevronRight className="h-4 w-4" />
           </button>
-          <div className="ml-2 flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm">
+          <div className="ml-2 flex items-center gap-2 rounded-xl border border-foreground/10 bg-foreground/[0.04] px-4 py-3 text-sm">
             <CalendarDays className="h-4 w-4 text-orange-400" />
             1 Hafta
           </div>
-          <button type="button" onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm font-medium transition hover:bg-white/10">
+          <button type="button" onClick={() => window.print()} className="flex items-center gap-2 rounded-xl border border-foreground/10 bg-foreground/[0.04] px-4 py-3 text-sm font-medium transition hover:bg-foreground/10">
             <Printer className="h-4 w-4" /> Yazdır / PDF
           </button>
           {editable && (
@@ -197,7 +197,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
       {message && <div className="mb-5 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{message}</div>}
 
       <div className={editable ? 'grid gap-5 xl:grid-cols-[minmax(680px,1fr)_330px]' : ''}>
-        <section className="min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
+        <section className="min-w-0 overflow-hidden rounded-2xl border border-foreground/10 bg-foreground/[0.025]">
           {loading ? (
             <div className="flex h-80 items-center justify-center gap-3 text-slate-400">
               <LoaderCircle className="h-5 w-5 animate-spin text-orange-400" /> Yemek programı yükleniyor
@@ -205,10 +205,10 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-[1020px]">
-                <div className="grid grid-cols-[112px_repeat(7,minmax(126px,1fr))] border-b border-white/10 bg-white/[0.025]">
+                <div className="grid grid-cols-[112px_repeat(7,minmax(126px,1fr))] border-b border-foreground/10 bg-foreground/[0.025]">
                   <div className="p-4 text-sm font-semibold text-slate-400">Öğünler</div>
                   {days.map((day, index) => (
-                    <div key={day} className="border-l border-white/5 px-4 py-4">
+                    <div key={day} className="border-l border-foreground/5 px-4 py-4">
                       <p className="text-sm font-semibold text-slate-100">{day}</p>
                       <p className="mt-1 text-xs text-slate-400">{formatDay(addDays(weekStart, index))}</p>
                     </div>
@@ -236,7 +236,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
                             type="button"
                             disabled={!editable}
                             onClick={() => editable && setSelectedKey(`${date}|${config.type}`)}
-                            className={`min-h-[238px] border-l border-white/10 p-4 text-left transition ${editable ? 'hover:bg-white/[0.055]' : 'cursor-default'} ${active ? 'ring-1 ring-inset ring-orange-400 bg-orange-500/[0.09]' : ''}`}
+                            className={`min-h-[238px] border-l border-foreground/10 p-4 text-left transition ${editable ? 'hover:bg-foreground/[0.055]' : 'cursor-default'} ${active ? 'ring-1 ring-inset ring-orange-400 bg-orange-500/[0.09]' : ''}`}
                           >
                             {cell.items.length > 0 ? (
                               <ul className="space-y-2 text-xs text-slate-200">
@@ -260,7 +260,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
         </section>
 
         {editable && (
-          <aside className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+          <aside className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-slate-400">Seçili Menü</h2>
             {!selectedMeal ? (
               <div className="mt-12 text-center text-sm text-slate-400">
@@ -296,7 +296,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
       </div>
 
       {!loading && week && (
-        <section className="mt-5 grid gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-5 lg:grid-cols-[1fr_320px]">
+        <section className="mt-5 grid gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.03] p-5 lg:grid-cols-[1fr_320px]">
           <div>
             <h2 className="mb-4 text-sm font-semibold">Haftalık Besin Değerleri Ortalaması</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
@@ -307,7 +307,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
               <Summary icon={Leaf} label="Lif" value={`${Math.round(total.fiber / 7)} g`} color="emerald" />
             </div>
           </div>
-          <div className="rounded-xl border border-white/10 p-4 text-sm text-slate-400">
+          <div className="rounded-xl border border-foreground/10 p-4 text-sm text-slate-400">
             <p className="mb-2 flex items-center gap-2 font-semibold text-slate-100"><Info className="h-4 w-4 text-sky-400" /> Bilgilendirme</p>
             Menüler kurum yemekhanesi tarafından haftalık olarak hazırlanır ve besin değerleri porsiyon bazında gösterilir.
           </div>
@@ -345,7 +345,7 @@ function Summary({ icon: Icon, label, value, color }) {
     emerald: 'bg-emerald-500/12 text-emerald-400',
   };
   return (
-    <div className="rounded-xl border border-white/5 bg-slate-950/25 p-3">
+    <div className="rounded-xl border border-foreground/5 bg-slate-950/25 p-3">
       <span className={`mb-2 inline-flex rounded-lg p-2 ${tones[color]}`}><Icon className="h-4 w-4" /></span>
       <p className="text-xs text-slate-400">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>

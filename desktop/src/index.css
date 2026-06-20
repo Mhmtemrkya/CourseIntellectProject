@@ -101,7 +101,42 @@ code {
         --shell-shadow: 0 24px 80px hsl(200 100% 8% / 0.38);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.06);
     }
-    
+
+    /* Gerçek açık tema: yalnızca ci- token'larını override eder; shadcn
+       token'ları (--background/--foreground/--card/--border/--muted...) bu
+       ci- değişkenlerine bağlı olduğu için otomatik olarak açık temaya döner.
+       .dark bloğuna dokunulmaz; karanlık tema birebir korunur. */
+    .light {
+        --ci-primary: 219 74% 26%;
+        --ci-secondary: 214 40% 90%;
+        --ci-accent: 29 100% 50%;
+        --ci-success: 142 70% 38%;
+        --ci-warning: 38 92% 46%;
+        --ci-danger: 0 78% 52%;
+        --ci-background: 210 40% 97%;
+        --ci-foreground: 222 47% 13%;
+        --ci-card: 0 0% 100%;
+        --ci-card-muted: 214 38% 95%;
+        --ci-border: 214 26% 85%;
+        --ci-sidebar-gradient-start: 210 44% 99%;
+        --ci-sidebar-gradient-end: 214 38% 95%;
+        --ci-logo-background: 30 96% 54%;
+        --ci-app-background:
+            radial-gradient(circle at 86% 7%, hsl(213 92% 52% / 0.06), transparent 24%),
+            radial-gradient(circle at 16% 90%, hsl(var(--brand-accent) / 0.06), transparent 28%),
+            linear-gradient(135deg, #f4f7fb 0%, #eef3f9 45%, #f6f8fc 100%);
+        --ci-panel-background:
+            radial-gradient(circle at 12% 0%, hsl(var(--brand-accent) / 0.05), transparent 28%),
+            linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 253, 0.94));
+        --ci-panel-shadow: 0 16px 40px hsl(220 40% 45% / 0.12);
+
+        --brand-primary-text: 219 74% 32%;
+        --muted-foreground: 215 16% 42%;
+        --primary-foreground: 0 0% 100%;
+        --shell-shadow: 0 24px 80px hsl(214 40% 60% / 0.20);
+        --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.7);
+    }
+
     .dark {
         --ci-primary: 217 78% 56%;
         --ci-secondary: 217 61% 13%;
@@ -407,13 +442,13 @@ code {
 .light .ci-metric-card,
 .light .ci-dashboard-panel {
     background:
-        radial-gradient(circle at 12% 0%, hsl(var(--brand-accent) / 0.10), transparent 24%),
-        radial-gradient(circle at 94% 10%, hsl(211 100% 50% / 0.12), transparent 28%),
-        linear-gradient(180deg, rgba(7, 31, 57, 0.96), rgba(5, 24, 45, 0.92)) !important;
-    color: hsl(210 40% 98%);
+        radial-gradient(circle at 12% 0%, hsl(var(--brand-accent) / 0.06), transparent 26%),
+        radial-gradient(circle at 94% 10%, hsl(211 100% 50% / 0.05), transparent 30%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 253, 0.95)) !important;
+    color: hsl(var(--ci-foreground));
     box-shadow:
-        inset 0 1px 0 hsl(0 0% 100% / 0.85),
-        0 18px 42px hsl(220 38% 28% / 0.10);
+        inset 0 1px 0 hsl(0 0% 100% / 0.9),
+        0 16px 40px hsl(220 40% 45% / 0.10);
 }
 
 .ci-card:hover {
@@ -421,6 +456,66 @@ code {
     box-shadow:
         0 22px 60px hsl(220 70% 2% / 0.2),
         0 0 0 1px hsl(var(--brand-accent) / 0.045);
+}
+
+/* SaaS micro-interactions */
+.ci-metric-card {
+    transition: transform 0.28s cubic-bezier(.2,.8,.2,1), box-shadow 0.28s ease, border-color 0.28s ease;
+    will-change: transform;
+}
+
+.ci-metric-card:hover {
+    transform: translateY(-4px);
+    border-color: hsl(var(--brand-accent) / 0.38) !important;
+    box-shadow:
+        inset 0 1px 0 hsl(0 0% 100% / 0.06),
+        0 26px 56px rgba(0, 0, 0, 0.36),
+        0 0 0 1px hsl(var(--brand-accent) / 0.12),
+        0 0 30px hsl(var(--brand-accent) / 0.16);
+}
+
+.ci-rise {
+    transition: transform 0.22s cubic-bezier(.2,.8,.2,1), box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
+}
+
+.ci-rise:hover {
+    transform: translateY(-3px);
+}
+
+@keyframes ci-fade-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes ci-pop-in {
+    0% { opacity: 0; transform: scale(0.94); }
+    100% { opacity: 1; transform: none; }
+}
+
+@keyframes ci-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-7px); }
+}
+
+@keyframes ci-dot-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 hsl(var(--brand-accent) / 0.55); }
+    50% { box-shadow: 0 0 14px 3px hsl(var(--brand-accent) / 0.0); }
+}
+
+@keyframes ci-grow-x {
+    from { transform: scaleX(0); }
+    to { transform: scaleX(1); }
+}
+
+.ci-anim-fade-up { animation: ci-fade-up 0.5s cubic-bezier(.2,.8,.2,1) both; }
+.ci-anim-pop { animation: ci-pop-in 0.4s cubic-bezier(.2,.8,.2,1) both; }
+.ci-float { animation: ci-float 4.5s ease-in-out infinite; }
+.ci-dot-pulse { animation: ci-dot-pulse 2.2s ease-in-out infinite; }
+.ci-bar-fill { transform-origin: left center; animation: ci-grow-x 0.9s cubic-bezier(.2,.8,.2,1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+    .ci-float, .ci-dot-pulse, .ci-bar-fill, .ci-anim-fade-up, .ci-anim-pop { animation: none !important; }
+    .ci-metric-card:hover, .ci-rise:hover { transform: none; }
 }
 
 .light .ci-card {
@@ -804,9 +899,20 @@ code {
     color: hsl(var(--muted-foreground)) !important;
 }
 
+/* Sidebar her iki temada da koyudur: içindeki foreground/border/card/muted
+   tabanlı yardımcı sınıflar (text-foreground, border-foreground/x,
+   bg-foreground/x...) koyu zeminde okunur kalsın diye token'lar açık
+   değerlere sabitlenir. Böylece tema açık olsa da sidebar metni görünür. */
+[data-ci-sidebar] {
+    --foreground: 210 40% 98%;
+    --muted-foreground: 215 20% 72%;
+    --border: 209 40% 32%;
+    --card: 214 60% 16%;
+    --card-muted: 214 55% 13%;
+}
+
 .light [data-ci-sidebar] {
-    color: hsl(var(--foreground));
-    border-right-color: hsl(var(--border) / 0.85) !important;
+    border-right-color: hsl(209 40% 32% / 0.85) !important;
     box-shadow: 18px 0 60px hsl(220 35% 20% / 0.10);
 }
 

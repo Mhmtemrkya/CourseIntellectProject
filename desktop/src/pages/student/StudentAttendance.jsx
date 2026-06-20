@@ -7,6 +7,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAttendance } from '../../lib/api/modules';
@@ -60,10 +61,10 @@ function Metric({ icon: Icon, label, value, hint, tone }) {
     purple: 'from-purple-500/20 to-purple-500/5 text-purple-300 border-purple-500/15',
   };
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-5 ${tones[tone]}`}>
+    <div className={`ci-rise rounded-2xl border bg-gradient-to-br p-5 ${tones[tone]}`}>
       <Icon className="h-6 w-6" />
       <p className="mt-4 text-sm text-muted-foreground">{label}</p>
-      <p className="text-3xl font-black text-foreground">{value}</p>
+      <p className="text-3xl font-black text-foreground"><AnimatedValue value={value} /></p>
       {hint ? <p className="text-xs text-muted-foreground">{hint}</p> : null}
     </div>
   );

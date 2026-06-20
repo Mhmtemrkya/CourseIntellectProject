@@ -447,7 +447,7 @@ export default function ServiceTrackingPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="overflow-hidden rounded-[28px] border border-slate-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-[#08111F] dark:shadow-2xl">
+      <div className="overflow-hidden rounded-[28px] border border-slate-200/70 bg-white shadow-sm dark:border-foreground/10 dark:bg-[#08111F] dark:shadow-2xl">
         <div className="relative p-5 sm:p-7">
           <div className="absolute inset-0 opacity-80 dark:opacity-100">
             <div className="absolute right-[-10%] top-[-35%] h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
@@ -467,7 +467,7 @@ export default function ServiceTrackingPage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" onClick={load} className="border-slate-200 bg-white/70 dark:border-white/10 dark:bg-white/5">
+              <Button variant="outline" onClick={load} className="border-slate-200 bg-foreground/70 dark:border-foreground/10 dark:bg-foreground/5">
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Yenile
               </Button>
@@ -494,7 +494,7 @@ export default function ServiceTrackingPage() {
         </div>
       ) : null}
 
-      <Card className="overflow-hidden border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
+      <Card className="overflow-hidden border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Navigation className="h-5 w-5 text-orange-500" />
@@ -571,7 +571,7 @@ export default function ServiceTrackingPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="overflow-hidden border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
+        <Card className="overflow-hidden border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <UserRoundCheck className="h-5 w-5 text-orange-500" />
@@ -626,7 +626,7 @@ export default function ServiceTrackingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/70 bg-white shadow-sm dark:border-white/10 dark:bg-gradient-to-br dark:from-[#08111F] dark:via-[#0B1628] dark:to-orange-950/30">
+        <Card className="border-slate-200/70 bg-white shadow-sm dark:border-foreground/10 dark:bg-gradient-to-br dark:from-[#08111F] dark:via-[#0B1628] dark:to-orange-950/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPinned className="h-5 w-5 text-orange-500" />
@@ -634,7 +634,7 @@ export default function ServiceTrackingPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-foreground/10 dark:bg-foreground/5">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-bold">Canlı araç konumları</p>
@@ -644,7 +644,7 @@ export default function ServiceTrackingPage() {
                 </div>
                 <Badge className="bg-orange-500/10 text-orange-500 hover:bg-orange-500/10">API bekliyor</Badge>
               </div>
-              <div className="mt-4 flex h-44 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.18),transparent_35%),linear-gradient(135deg,rgba(8,17,31,0.04),rgba(77,163,255,0.08))] dark:border-white/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.20),transparent_35%),linear-gradient(135deg,#07111F,#10223C)]">
+              <div className="mt-4 flex h-44 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.18),transparent_35%),linear-gradient(135deg,rgba(8,17,31,0.04),rgba(77,163,255,0.08))] dark:border-foreground/10 dark:bg-[radial-gradient(circle_at_top_left,rgba(255,157,46,0.20),transparent_35%),linear-gradient(135deg,#07111F,#10223C)]">
                 <div className="text-center">
                   <Navigation className="mx-auto h-9 w-9 text-orange-500" />
                   <p className="mt-3 text-sm font-bold">Konum verisi gelmedi</p>
@@ -677,7 +677,7 @@ export default function ServiceTrackingPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card className="border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
+        <Card className="border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <BusFront className="h-5 w-5 text-orange-500" />
@@ -692,7 +692,7 @@ export default function ServiceTrackingPage() {
             {vehicles.length === 0 ? (
               <EmptyCard title="Araç yok" detail="Rota oluşturmak için önce servis aracı ekleyin." />
             ) : vehicles.map((vehicle) => (
-              <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-white/10 dark:bg-white/5">
+              <div key={vehicle.id} className="flex items-center justify-between rounded-2xl border border-slate-200 bg-slate-50/70 p-4 dark:border-foreground/10 dark:bg-foreground/5">
                 <div>
                   <p className="font-semibold">{vehicle.plateNumber}</p>
                   <p className="text-sm text-muted-foreground">{vehicle.vehicleNumber ? `${vehicle.vehicleNumber} • ` : ''}{vehicle.brand || '-'} {vehicle.model || ''} • {vehicle.capacity} koltuk</p>
@@ -703,7 +703,7 @@ export default function ServiceTrackingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/70 bg-white/90 shadow-sm dark:border-white/10 dark:bg-[#0B1628]/90">
+        <Card className="border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Route className="h-5 w-5 text-orange-500" />
@@ -718,7 +718,7 @@ export default function ServiceTrackingPage() {
             {routes.length === 0 ? (
               <EmptyCard title="Rota yok" detail="Sabah veya akşam rotası oluşturup şoför ve araç bağlayın." />
             ) : routes.map((route) => (
-              <div key={route.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10 dark:border-white/10 dark:bg-white/5">
+              <div key={route.id} className="rounded-2xl border border-slate-200 bg-slate-50/70 p-4 transition hover:border-orange-500/50 hover:shadow-lg hover:shadow-orange-500/10 dark:border-foreground/10 dark:bg-foreground/5">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{route.name}</p>
@@ -1018,7 +1018,7 @@ function MetricCard({ icon: Icon, label, value, accent = 'orange' }) {
     purple: 'bg-violet-500/10 text-violet-500 shadow-violet-500/10',
   };
   return (
-    <Card className="border-slate-200/70 bg-white/85 shadow-sm backdrop-blur dark:border-white/10 dark:bg-white/5">
+    <Card className="border-slate-200/70 bg-foreground/85 shadow-sm backdrop-blur dark:border-foreground/10 dark:bg-foreground/5">
       <CardContent className="flex items-center gap-4 p-5">
         <div className={`rounded-2xl p-3 shadow-lg ${accents[accent] || accents.orange}`}>
           <Icon className="h-5 w-5" />

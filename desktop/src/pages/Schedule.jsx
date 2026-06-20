@@ -137,16 +137,16 @@ function LessonBlock({ lesson, onSelect }) {
     >
       <motion.div
         whileHover={{ y: -2, scale: 1.01 }}
-        className={`min-h-[92px] rounded-2xl border border-white/50 bg-gradient-to-br ${gradient} p-3 text-white shadow-sm transition`}
+        className={`min-h-[92px] rounded-2xl border border-foreground/50 bg-gradient-to-br ${gradient} p-3 text-white shadow-sm transition`}
       >
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{lesson.subject}</p>
-            <p className="mt-1 truncate text-[11px] text-white/80">{lesson.teacher}</p>
+            <p className="mt-1 truncate text-[11px] text-foreground/80">{lesson.teacher}</p>
           </div>
-          <Badge className="border-white/20 bg-white/12 text-white">{lesson.className}</Badge>
+          <Badge className="border-foreground/20 bg-foreground/12 text-white">{lesson.className}</Badge>
         </div>
-        <div className="mt-4 flex items-center justify-between text-[11px] text-white/80">
+        <div className="mt-4 flex items-center justify-between text-[11px] text-foreground/80">
           <span>{lesson.time}</span>
           <span>{lesson.room}</span>
         </div>
@@ -372,9 +372,9 @@ export default function Schedule() {
       <div className="rounded-[30px] border border-border p-7 text-white shadow-xl" style={{ background: `radial-gradient(circle at top left, var(--brand-a-400, #D9790B33) 0%, transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 52%, var(--brand-p-700, #0f766e) 100%)` }}>
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
-            <Badge className="border-white/20 bg-white/10 text-white">{roleTitle(window.location.pathname)}</Badge>
+            <Badge className="border-foreground/20 bg-foreground/10 text-white">{roleTitle(window.location.pathname)}</Badge>
             <h1 className="mt-4 text-3xl font-bold font-heading">Ders Programı Oluşturma</h1>
-            <p className="mt-2 text-sm text-white/80">
+            <p className="mt-2 text-sm text-foreground/80">
               Sınıf bazlı programı canlı backend verisiyle oluştur. Aynı öğretmen aynı gün ve saatte iki farklı sınıfa atanamaz; çakışma backend tarafından da engellenir.
             </p>
           </div>
@@ -385,9 +385,9 @@ export default function Schedule() {
               [stats.weeklySlots, 'Slot'],
               [`%${stats.occupancy}`, 'Doluluk'],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
+              <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3">
                 <p className="text-2xl font-bold">{value}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/70">{label}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-foreground/70">{label}</p>
               </div>
             ))}
           </div>
@@ -686,9 +686,9 @@ export default function Schedule() {
           {selectedLesson ? (
             <div className="space-y-4">
               <div className={`rounded-[26px] bg-gradient-to-br ${subjectColors[selectedLesson.subject] || 'from-slate-600 to-slate-800'} p-6 text-white`}>
-                <Badge className="border-white/20 bg-white/12 text-white">{selectedLesson.className}</Badge>
+                <Badge className="border-foreground/20 bg-foreground/12 text-white">{selectedLesson.className}</Badge>
                 <h3 className="mt-4 text-2xl font-semibold">{selectedLesson.subject}</h3>
-                <p className="mt-2 text-sm text-white/80">{selectedLesson.day} • {selectedLesson.time}</p>
+                <p className="mt-2 text-sm text-foreground/80">{selectedLesson.day} • {selectedLesson.time}</p>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <Card><CardContent className="p-4"><p className="text-sm text-muted-foreground">Öğretmen</p><p className="mt-1 font-semibold">{selectedLesson.teacher}</p></CardContent></Card>

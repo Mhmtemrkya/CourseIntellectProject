@@ -161,12 +161,12 @@ export function Sidebar() {
       className="h-screen bg-brand-primary text-white flex flex-col border-r border-[#00283B] relative z-30"
     >
       {/* Logo Section */}
-      <div className="h-16 flex items-center px-4 border-b border-white/10">
+      <div className="h-16 flex items-center px-4 border-b border-foreground/10">
         <motion.div 
           className="flex items-center gap-3 overflow-hidden"
           animate={{ justifyContent: sidebarCollapsed ? 'center' : 'flex-start' }}
         >
-          <div className="h-10 w-10 bg-white/10 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div className="h-10 w-10 bg-foreground/10 rounded-xl flex items-center justify-center flex-shrink-0">
             <GraduationCap className="h-6 w-6 text-brand-accent" />
           </div>
           <AnimatePresence>
@@ -203,7 +203,7 @@ export function Sidebar() {
                         data-testid={`nav-${item.path.replace(/\//g, '-').slice(1)}`}
                         className={cn(
                           "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200",
-                          "hover:bg-white/10",
+                          "hover:bg-foreground/10",
                           isActive && "bg-brand-accent text-white shadow-lg"
                         )}
                       >
@@ -245,7 +245,7 @@ export function Sidebar() {
       <button
         data-testid="sidebar-toggle"
         onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-        className="absolute -right-3 top-20 bg-brand-primary border-2 border-white/20 rounded-full p-1 hover:bg-brand-accent transition-colors"
+        className="absolute -right-3 top-20 bg-brand-primary border-2 border-foreground/20 rounded-full p-1 hover:bg-brand-accent transition-colors"
       >
         <motion.div
           animate={{ rotate: sidebarCollapsed ? 180 : 0 }}

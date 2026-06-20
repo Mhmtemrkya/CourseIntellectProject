@@ -217,25 +217,25 @@ export default function ParentReceipts() {
           <Panel>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[0.9fr_1fr_1fr_1.4fr_auto_auto]">
               <label className="space-y-2 text-xs font-semibold text-slate-400">Yıl
-                <select className="h-11 w-full rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={yearFilter} onChange={(event) => { setYearFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={yearFilter} onChange={(event) => { setYearFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tümü</option>
                   {years.map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
               </label>
               <label className="space-y-2 text-xs font-semibold text-slate-400">Çocuk
-                <select className="h-11 w-full rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={childFilter} onChange={(event) => { setChildFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={childFilter} onChange={(event) => { setChildFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tümü</option>
                   {children.map((child) => <option key={child} value={child}>{decodeText(child)}</option>)}
                 </select>
               </label>
               <label className="space-y-2 text-xs font-semibold text-slate-400">Ödeme Türü
-                <select className="h-11 w-full rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={methodFilter} onChange={(event) => { setMethodFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={methodFilter} onChange={(event) => { setMethodFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tümü</option>
                   {methods.map((method) => <option key={method} value={method}>{decodeText(method)}</option>)}
                 </select>
               </label>
               <div className="space-y-2 text-xs font-semibold text-slate-400">Tarih Aralığı
-                <div className="flex h-11 items-center gap-2 rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm text-white">
+                <div className="flex h-11 items-center gap-2 rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white">
                   <CalendarDays className="h-4 w-4 text-slate-400" />
                   Canlı ödeme tarihleri
                 </div>
@@ -255,7 +255,7 @@ export default function ParentReceipts() {
                 <div className="overflow-x-auto">
                   <table className="w-full min-w-[980px] text-left text-sm">
                     <thead className="text-xs text-slate-400">
-                      <tr className="border-b border-white/[0.08]">
+                      <tr className="border-b border-foreground/[0.08]">
                         <th className="py-3 font-semibold">Makbuz No</th>
                         <th className="py-3 font-semibold">Tarih</th>
                         <th className="py-3 font-semibold">Çocuk</th>
@@ -269,7 +269,7 @@ export default function ParentReceipts() {
                       {pageItems.map((item) => {
                         const MethodIcon = paymentMethodIcon(item.method);
                         return (
-                          <tr key={item.key} className="border-b border-white/[0.06] text-slate-200">
+                          <tr key={item.key} className="border-b border-foreground/[0.06] text-slate-200">
                             <td className="py-4 font-semibold">{item.receiptNo || item.id}</td>
                             <td className="py-4">{formatDate(item.paidAtUtc)}</td>
                             <td className="py-4"><b className="text-white">{decodeText(item.studentName)}</b><p className="text-xs text-slate-400">{decodeText(item.className)}</p></td>
@@ -283,10 +283,10 @@ export default function ParentReceipts() {
                             </td>
                             <td className="py-4 text-right">
                               <div className="inline-flex gap-2">
-                                <Button variant="ghost" size="icon" className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] text-slate-200" onClick={() => downloadText(`makbuz-${item.receiptNo || item.id}.txt`, buildReceiptText(item))}>
+                                <Button variant="ghost" size="icon" className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] text-slate-200" onClick={() => downloadText(`makbuz-${item.receiptNo || item.id}.txt`, buildReceiptText(item))}>
                                   <Download className="h-4 w-4" />
                                 </Button>
-                                <Button variant="ghost" size="icon" className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] text-slate-200" onClick={() => setSelectedReceipt(item)}>
+                                <Button variant="ghost" size="icon" className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] text-slate-200" onClick={() => setSelectedReceipt(item)}>
                                   <Eye className="h-4 w-4" />
                                 </Button>
                               </div>
@@ -302,7 +302,7 @@ export default function ParentReceipts() {
                   <div className="flex items-center gap-2">
                     <SmallButton disabled={page <= 1} onClick={() => setPage((prev) => Math.max(1, prev - 1))}><ChevronLeft className="h-4 w-4" /></SmallButton>
                     {Array.from({ length: totalPages }).slice(0, 4).map((_, index) => (
-                      <button key={index + 1} type="button" onClick={() => setPage(index + 1)} className={`h-10 w-10 rounded-[10px] border border-white/[0.08] font-black ${page === index + 1 ? 'bg-purple-600 text-white' : 'bg-white/[0.035] text-slate-300'}`}>{index + 1}</button>
+                      <button key={index + 1} type="button" onClick={() => setPage(index + 1)} className={`h-10 w-10 rounded-[10px] border border-foreground/[0.08] font-black ${page === index + 1 ? 'bg-purple-600 text-white' : 'bg-foreground/[0.035] text-slate-300'}`}>{index + 1}</button>
                     ))}
                     <SmallButton disabled={page >= totalPages} onClick={() => setPage((prev) => Math.min(totalPages, prev + 1))}><ChevronRight className="h-4 w-4" /></SmallButton>
                   </div>
@@ -324,7 +324,7 @@ export default function ParentReceipts() {
                 ['E-posta Gönder', Mail, 'purple', () => selectedReceipt ? toast({ title: 'E-posta hazır', description: `${selectedReceipt.receiptNo || 'Makbuz'} seçili.` }) : toast({ title: 'Önce bir makbuz seçin.' })],
                 ['Toplu İndir', Download, 'green', exportFiltered],
               ].map(([label, Icon, tone, action]) => (
-                <button key={label} type="button" onClick={action} className="rounded-[12px] border border-white/[0.08] bg-white/[0.035] p-4 text-center transition hover:bg-white/[0.07]">
+                <button key={label} type="button" onClick={action} className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4 text-center transition hover:bg-foreground/[0.07]">
                   <IconTile icon={Icon} tone={tone} className="mx-auto" />
                   <span className="mt-3 block text-xs font-black text-white">{label}</span>
                 </button>
@@ -342,13 +342,13 @@ export default function ParentReceipts() {
       </div>
 
       <Dialog open={!!selectedReceipt} onOpenChange={(open) => !open && setSelectedReceipt(null)}>
-        <DialogContent className="border-white/[0.08] bg-[#07162A] text-white">
+        <DialogContent className="border-foreground/[0.08] bg-[#07162A] text-white">
           <DialogHeader>
             <DialogTitle>Makbuz Detayı</DialogTitle>
           </DialogHeader>
           {selectedReceipt ? (
             <div className="space-y-4">
-              <div className="rounded-[14px] border border-white/[0.08] bg-white/[0.04] p-5">
+              <div className="rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.04] p-5">
                 <p className="text-sm text-slate-400">Makbuz No</p>
                 <p className="mt-1 text-xl font-black">{selectedReceipt.receiptNo || selectedReceipt.id}</p>
               </div>
@@ -361,7 +361,7 @@ export default function ParentReceipts() {
                   ['Ödeme Türü', decodeText(selectedReceipt.paymentType)],
                   ['Not', decodeText(selectedReceipt.note || '-')],
                 ].map(([label, value]) => (
-                  <div key={label} className="rounded-[12px] border border-white/[0.08] bg-white/[0.035] p-4">
+                  <div key={label} className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4">
                     <p className="text-xs text-slate-400">{label}</p>
                     <p className="mt-1 font-bold text-white">{value}</p>
                   </div>

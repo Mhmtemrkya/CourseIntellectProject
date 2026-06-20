@@ -12,10 +12,10 @@ import {
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
-import { fetchReportStudents, fetchTeacherPdfReports, fetchTeacherReportAnalytics } from '../../lib/api/modules';
+import { fetchReportStudents, fetchSolutionSession, fetchTeacherPdfReports, fetchTeacherReportAnalytics } from '../../lib/api/modules';
+import { downloadExamPaperPdf } from '../../lib/examPaperPdf';
 
 const reportTypes = ['Tümü', 'Sınav Raporları', 'Ödev Raporları', 'Gelişim Raporları', 'Devamsızlık Raporları', 'Karne Raporları'];
-const subjects = ['Tüm Dersler', 'Matematik', 'Türkçe', 'Fen Bilimleri', 'İngilizce', 'Sosyal Bilgiler'];
 const PDF_PAGE_WIDTH = 794;
 const PDF_PAGE_HEIGHT = 1123;
 const PDF_PREVIEW_BASE_WIDTH = 760;
@@ -40,7 +40,7 @@ function FilterSelect({ value, options, onChange, wide = false }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full appearance-none rounded-xl border border-white/10 bg-white/[0.045] px-4 pr-9 text-sm font-semibold text-slate-100 outline-none transition hover:border-orange-400/45 focus:border-orange-400/80"
+        className="h-11 w-full appearance-none rounded-xl border border-foreground/10 bg-foreground/[0.045] px-4 pr-9 text-sm font-semibold text-slate-100 outline-none transition hover:border-orange-400/45 focus:border-orange-400/80"
       >
         {options.map((option) => <option key={option} className="bg-[#08111F]" value={option}>{option}</option>)}
       </select>
@@ -62,13 +62,22 @@ function ReportCard({ report, active, onSelect, onPreview, onDownload }) {
     <button
       type="button"
       onClick={onSelect}
-      className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition duration-300 ${active ? 'border-orange-500/70 bg-orange-500/[0.075] shadow-[0_0_42px_-22px_rgba(255,157,46,0.9)]' : 'border-white/8 bg-white/[0.035] hover:border-orange-400/35 hover:bg-white/[0.06]'}`}
+      className={`group flex w-full items-center gap-4 rounded-2xl border p-4 text-left transition duration-300 ${active ? 'border-orange-500/70 bg-orange-500/[0.075] shadow-[0_0_42px_-22px_rgba(255,157,46,0.9)]' : 'border-foreground/8 bg-foreground/[0.035] hover:border-orange-400/35 hover:bg-foreground/[0.06]'}`}
     >
       <PdfIcon active={active} />
       <div className="min-w-0 flex-1">
         <h3 className="truncate text-sm font-black text-white">{report.name}</h3>
-        <p className="mt-1 text-xs text-slate-400">{report.date} • {report.pages} Sayfa</p>
+        <p className="mt-1 truncate text-xs text-slate-400">
+          {report.source === 'teacher-pdf-report'
+            ? `${report.className} • ${report.subject}`
+            : `${report.date} • ${report.pages} Sayfa`}
+        </p>
       </div>
+      {report.source === 'teacher-pdf-report' ? (
+        <Badge className="border-violet-400/20 bg-violet-400/12 text-violet-200 hover:bg-violet-400/12">
+          Puan {report.score}
+        </Badge>
+      ) : null}
       <Badge className="border-emerald-400/15 bg-emerald-400/12 text-emerald-300 hover:bg-emerald-400/12">
         {report.ready ? 'Hazır' : 'İşleniyor'}
       </Badge>
@@ -87,7 +96,7 @@ function ReportCard({ report, active, onSelect, onPreview, onDownload }) {
               onPreview?.();
             }
           }}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 transition group-hover:border-orange-400/30 group-hover:text-orange-200"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/10 bg-foreground/[0.04] text-slate-200 transition group-hover:border-orange-400/30 group-hover:text-orange-200"
           title="Önizleme"
         >
           <Eye className="h-4 w-4" />
@@ -106,7 +115,7 @@ function ReportCard({ report, active, onSelect, onPreview, onDownload }) {
               onDownload?.();
             }
           }}
-          className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-200 transition group-hover:border-orange-400/30 group-hover:text-orange-200"
+          className="flex h-10 w-10 items-center justify-center rounded-xl border border-foreground/10 bg-foreground/[0.04] text-slate-200 transition group-hover:border-orange-400/30 group-hover:text-orange-200"
           title="İndir"
         >
           <Download className="h-4 w-4" />
@@ -123,7 +132,7 @@ function ToolbarButton({ icon: Icon, label, onClick, disabled = false }) {
       size="icon"
       disabled={disabled}
       onClick={onClick}
-      className="h-10 w-10 rounded-xl text-slate-200 hover:bg-white/10 hover:text-orange-200 disabled:opacity-40"
+      className="h-10 w-10 rounded-xl text-slate-200 hover:bg-foreground/10 hover:text-orange-200 disabled:opacity-40"
       title={label}
     >
       <Icon className="h-4 w-4" />
@@ -134,7 +143,7 @@ function ToolbarButton({ icon: Icon, label, onClick, disabled = false }) {
 function MiniPage({ index, active, children }) {
   return (
     <button type="button" className="group w-full">
-      <div className={`aspect-[0.72] overflow-hidden rounded-xl border p-2 transition ${active ? 'border-orange-500 bg-orange-500/10' : 'border-white/10 bg-white/[0.04] hover:border-orange-400/40'}`}>
+      <div className={`aspect-[0.72] overflow-hidden rounded-xl border p-2 transition ${active ? 'border-orange-500 bg-orange-500/10' : 'border-foreground/10 bg-foreground/[0.04] hover:border-orange-400/40'}`}>
         {children}
       </div>
       <p className="mt-2 text-center text-xs font-bold text-slate-300">{index}</p>
@@ -175,25 +184,35 @@ function buildStudentReport(student) {
 }
 
 function buildPdfReportFromApi(item) {
-  const createdAt = item?.createdAtUtc || item?.createdAt || item?.readyAtUtc;
-  const ready = String(item?.status || '').toLowerCase() === 'ready' && Boolean(item?.downloadUrl);
+  const createdAt = item?.createdAtUtc || item?.completedAtUtc || item?.readyAtUtc;
+  const examSessionId = item?.examSessionId || '';
+  // Sınav kağıdı PDF'i istemci tarafında (HTML→PDF) examSessionId'den üretilir;
+  // sunucu dosyası (downloadUrl) zorunlu değildir. Oturum kimliği varsa hazırdır.
+  const ready = String(item?.status || '').toLowerCase() === 'ready'
+    && (Boolean(item?.downloadUrl) || Boolean(examSessionId));
+  const student = (item?.studentName || '').trim();
+  const className = (item?.className || '').trim();
+  const subject = (item?.subject || item?.title || 'Sınav').trim();
   return {
-    id: item?.id || item?.examSessionId,
+    id: item?.id || examSessionId,
     type: 'Sınav Raporları',
-    name: `Çözüm PDF Raporu${item?.examSessionId ? ` • ${String(item.examSessionId).slice(0, 8)}` : ''}`,
+    name: student || `Çözüm Kağıdı${examSessionId ? ` • ${String(examSessionId).slice(0, 8)}` : ''}`,
     date: createdAt ? new Intl.DateTimeFormat('tr-TR').format(new Date(createdAt)) : '-',
     pages: '-',
-    subject: 'Tüm Dersler',
-    className: '-',
-    student: '-',
+    subject,
+    examTitle: (item?.title || '').trim(),
+    className: className || '-',
+    student: student || '-',
     studentNo: '-',
-    score: 0,
+    score: Number(item?.scorePercent) || 0,
+    correct: Number(item?.correct) || 0,
+    total: Number(item?.total) || 0,
     ready,
     status: item?.status || 'Unknown',
     source: 'teacher-pdf-report',
     downloadUrl: item?.downloadUrl || null,
     errorMessage: item?.errorMessage || '',
-    examSessionId: item?.examSessionId || '',
+    examSessionId,
     createdAtUtc: createdAt || null,
   };
 }
@@ -206,6 +225,10 @@ function openDownloadUrl(url) {
 
 function sanitizeFileName(name) {
   return String(name || 'rapor').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'rapor';
+}
+
+function normalizeFilterValue(value) {
+  return String(value || '').trim();
 }
 
 function saveBlob(blob, fileName) {
@@ -254,7 +277,7 @@ function liveTopicRows(analytics) {
 
 function EmptyPdfSection({ title, detail }) {
   return (
-    <div className="rounded-3xl border border-dashed border-white/12 bg-white/[0.045] p-6 text-center">
+    <div className="rounded-3xl border border-dashed border-foreground/12 bg-foreground/[0.045] p-6 text-center">
       <FileText className="mx-auto h-8 w-8 text-slate-500" />
       <p className="mt-3 font-black text-white">{title}</p>
       <p className="mt-2 text-sm leading-6 text-slate-400">{detail}</p>
@@ -265,7 +288,7 @@ function EmptyPdfSection({ title, detail }) {
 function PdfPageShell({ children, className = '' }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-[4px] border border-white/10 bg-[#08111F] text-white shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)] ${className}`}
+      className={`relative overflow-hidden rounded-[4px] border border-foreground/10 bg-[#08111F] text-white shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)] ${className}`}
       style={{ width: PDF_PAGE_WIDTH, height: PDF_PAGE_HEIGHT }}
     >
       {children}
@@ -295,7 +318,7 @@ function CoverPage({ selectedReport }) {
         <div className="mt-20 grid grid-cols-[240px_1fr] items-center gap-14">
           <div className="relative">
             <div className="absolute inset-[-10px] rounded-full border-2 border-orange-400" />
-            <div className="flex h-56 w-56 items-center justify-center overflow-hidden rounded-full border border-white/12 bg-gradient-to-b from-slate-200 to-slate-400">
+            <div className="flex h-56 w-56 items-center justify-center overflow-hidden rounded-full border border-foreground/12 bg-gradient-to-b from-slate-200 to-slate-400">
               <span className="text-[104px] font-black leading-none text-slate-700">{studentInitial[0]}</span>
             </div>
           </div>
@@ -314,12 +337,12 @@ function CoverPage({ selectedReport }) {
           </div>
         </div>
 
-        <div className="mt-auto grid grid-cols-3 overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.055] backdrop-blur">
+        <div className="mt-auto grid grid-cols-3 overflow-hidden rounded-[28px] border border-foreground/10 bg-foreground/[0.055] backdrop-blur">
           <div className="flex min-w-0 flex-col items-center justify-center p-6 text-center">
             <GraduationCap className="h-9 w-9 text-orange-300" />
             <p className="mt-3 break-words text-xs font-bold text-white">{selectedReport.institution || 'Kurum'}</p>
           </div>
-          <div className="flex min-w-0 flex-col items-center justify-center border-x border-white/10 p-6 text-center">
+          <div className="flex min-w-0 flex-col items-center justify-center border-x border-foreground/10 p-6 text-center">
             <QrCode className="h-12 w-12 text-white" />
             <p className="mt-2 text-xs text-slate-300">Rapor Doğrulama QR Kod</p>
           </div>
@@ -336,7 +359,7 @@ function CoverPage({ selectedReport }) {
 
 function KpiCard({ label, value, icon: Icon, accent }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
       <div className="flex items-center justify-between">
         <Icon className="h-5 w-5" style={{ color: accent }} />
         <span className="text-xs text-slate-400">Canlı</span>
@@ -371,13 +394,13 @@ function ResultsPage({ selectedReport, analytics }) {
         {kpis.map(([label, value, Icon, accent]) => <KpiCard key={label} label={label} value={value} icon={Icon} accent={accent} />)}
       </div>
       <div className="mt-8 grid grid-cols-[240px_1fr] gap-5">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.055] p-6">
+        <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
           <div className="mx-auto flex h-40 w-40 items-center justify-center rounded-full border-[18px] border-orange-400 text-3xl font-black">
             {score ? `%${Math.round(score)}` : '-'}
           </div>
           <p className="mt-5 text-center text-sm text-slate-300">Donut başarı grafiği</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.055] p-6">
+        <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
           {[
             ['Öğrenci', score],
             ['Sınıf Ort.', Number(classAnalytics?.average || 0)],
@@ -386,7 +409,7 @@ function ResultsPage({ selectedReport, analytics }) {
           ].map(([label, value]) => (
             <div key={label} className="mb-5">
               <div className="mb-2 flex justify-between text-xs text-slate-300"><span>{label}</span><span>{value ? `${value}%` : '-'}</span></div>
-              <Progress value={Number(value || 0)} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
+              <Progress value={Number(value || 0)} className="h-2 bg-foreground/10 [&>div]:bg-orange-400" />
             </div>
           ))}
         </div>
@@ -406,14 +429,14 @@ function SubjectPage({ analytics }) {
             <EmptyPdfSection title="Ders analizi yok" detail="ExamResults verisi geldiğinde ders başarı kartları burada canlı olarak listelenir." />
           </div>
         ) : subjectRows.map(([name, score, average, color, level]) => (
-          <div key={name} className="rounded-3xl border border-white/10 bg-white/[0.055] p-5">
+          <div key={name} className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-5">
             <div className="flex items-center justify-between">
               <h3 className="font-black">{name}</h3>
-              <Badge className="border-white/10 bg-white/10 text-white hover:bg-white/10">{level}</Badge>
+              <Badge className="border-foreground/10 bg-foreground/10 text-white hover:bg-foreground/10">{level}</Badge>
             </div>
             <p className="mt-4 text-3xl font-black" style={{ color }}>{score}%</p>
             <p className="mt-1 text-xs text-slate-400">Ortalama: {average}%</p>
-            <Progress value={score} className="mt-4 h-2 bg-white/10" style={{ '--tw-bg-opacity': 1 }} />
+            <Progress value={score} className="mt-4 h-2 bg-foreground/10" style={{ '--tw-bg-opacity': 1 }} />
           </div>
         ))}
       </div>
@@ -440,7 +463,7 @@ function TopicPage({ analytics }) {
         {rows.length === 0 ? (
           <EmptyPdfSection title="Konu analizi yok" detail="Konu bazlı ExamResults verisi oluştuğunda bu bölüm otomatik dolacak." />
         ) : rows.map(([topic, percent, total, correct, wrong]) => (
-          <div key={topic} className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+          <div key={topic} className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
             <div className="mb-3 flex items-center justify-between">
               <div>
                 <h3 className="font-black">{topic}</h3>
@@ -448,7 +471,7 @@ function TopicPage({ analytics }) {
               </div>
               <span className="font-black text-orange-300">{percent}%</span>
             </div>
-            <Progress value={percent} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
+            <Progress value={percent} className="h-2 bg-foreground/10 [&>div]:bg-orange-400" />
           </div>
         ))}
       </div>
@@ -476,7 +499,7 @@ function GrowthPage({ selectedReport }) {
   return (
     <PdfPageShell className="p-8">
       <h2 className="text-2xl font-black">Gelişim Raporu</h2>
-      <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.055] p-6">
+      <div className="mt-6 rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
         <EmptyPdfSection title="Gelişim grafiği bekleniyor" detail={`${studentName} için zaman serisi rapor endpointi geldiğinde son sınavlar burada canlı grafik olarak gösterilecek.`} />
       </div>
       <div className="mt-5 grid grid-cols-3 gap-4">
@@ -488,18 +511,18 @@ function GrowthPage({ selectedReport }) {
           ['Sıralama Değişimi', selectedReport.rankChange ?? '-'],
           ['Aylık Başarı', selectedReport.score ? `%${Math.round(selectedReport.score)}` : '-'],
         ].map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+          <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
             <p className="text-xs text-slate-400">{label}</p>
             <p className="mt-2 text-2xl font-black text-white">{value}</p>
           </div>
         ))}
       </div>
       <div className="mt-5 grid grid-cols-3 gap-4">
-        <div className="col-span-2 rounded-3xl border border-white/10 bg-white/[0.055] p-5">
+        <div className="col-span-2 rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-5">
           <p className="font-black">Öğretmen Yorumu</p>
           <p className="mt-3 text-sm leading-6 text-slate-300">{studentName} için öğretmen değerlendirmesi PDF çıktısında kayıtlı yorum verisiyle gösterilir.</p>
         </div>
-        <div className="rounded-3xl border border-white/10 bg-white/[0.055] p-5 text-center">
+        <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-5 text-center">
           <p className="font-black">İmza / Mühür</p>
           <div className="mx-auto mt-5 h-16 w-16 rounded-full border border-dashed border-orange-400/60" />
         </div>
@@ -509,12 +532,12 @@ function GrowthPage({ selectedReport }) {
 }
 
 function ThumbnailContent({ page }) {
-  if (page === 1) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="h-4 w-10 rounded bg-orange-400" /><div className="mt-9 h-16 rounded-full bg-slate-400" /><div className="mt-3 h-3 rounded bg-white/70" /><div className="mt-1 h-3 w-3/4 rounded bg-orange-400" /></div>;
-  if (page === 2) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-5 rounded bg-white/10" />)}</div><div className="mt-3 h-12 rounded-full border-8 border-orange-400" /></div>;
-  if (page === 3) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 rounded bg-white/10" />)}</div></div>;
+  if (page === 1) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="h-4 w-10 rounded bg-orange-400" /><div className="mt-9 h-16 rounded-full bg-slate-400" /><div className="mt-3 h-3 rounded bg-foreground/70" /><div className="mt-1 h-3 w-3/4 rounded bg-orange-400" /></div>;
+  if (page === 2) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div><div className="mt-3 h-12 rounded-full border-8 border-orange-400" /></div>;
+  if (page === 3) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 rounded bg-foreground/10" />)}</div></div>;
   if (page === 4) return <div className="h-full rounded-lg bg-[#08111F] p-2">{Array.from({ length: 7 }).map((_, i) => <div key={i} className="mb-2 h-2 rounded bg-orange-400/70" />)}</div>;
-  if (page === 5) return <div className="h-full rounded-lg bg-[#08111F] p-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="mb-2 h-5 rounded bg-white/10" />)}</div>;
-  return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="flex h-20 items-end gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="flex-1 rounded bg-orange-400" style={{ height: `${35 + i * 7}%` }} />)}</div><div className="mt-4 grid grid-cols-2 gap-1">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-5 rounded bg-white/10" />)}</div></div>;
+  if (page === 5) return <div className="h-full rounded-lg bg-[#08111F] p-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="mb-2 h-5 rounded bg-foreground/10" />)}</div>;
+  return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="flex h-20 items-end gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="flex-1 rounded bg-orange-400" style={{ height: `${35 + i * 7}%` }} />)}</div><div className="mt-4 grid grid-cols-2 gap-1">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div></div>;
 }
 
 function PreviewPage({ page, selectedReport, analytics }) {
@@ -528,7 +551,7 @@ function PreviewPage({ page, selectedReport, analytics }) {
 
 function StudentMetric({ icon: Icon, label, value, detail, color = '#FF9D2E' }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.055] p-4">
+    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.055] p-4">
       <div className="flex items-center gap-3">
         <div className="flex h-11 w-11 items-center justify-center rounded-2xl" style={{ backgroundColor: `${color}22`, color }}>
           <Icon className="h-5 w-5" />
@@ -581,10 +604,10 @@ function StudentDetailModal({
       <motion.div
         initial={{ opacity: 0, y: 22, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-white/10 bg-[#08111F] text-white shadow-[0_35px_110px_-45px_rgba(0,0,0,0.95)]"
+        className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-foreground/10 bg-[#08111F] text-white shadow-[0_35px_110px_-45px_rgba(0,0,0,0.95)]"
       >
-        <div className="flex items-start gap-5 border-b border-white/10 bg-[radial-gradient(circle_at_20%_0%,rgba(255,157,46,0.13),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] p-6">
-          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-orange-400/35 bg-white/10 text-2xl font-black text-orange-200">
+        <div className="flex items-start gap-5 border-b border-foreground/10 bg-[radial-gradient(circle_at_20%_0%,rgba(255,157,46,0.13),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] p-6">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-orange-400/35 bg-foreground/10 text-2xl font-black text-orange-200">
             {initials(student.fullName)}
           </div>
           <div className="min-w-0 flex-1">
@@ -598,18 +621,18 @@ function StudentDetailModal({
             <p className="mt-1 text-xs text-slate-500">Veli: {student.parentName || '-'} • {student.parentEmail || '-'}</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={messageStudent} className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10">
+            <Button variant="outline" onClick={messageStudent} className="border-foreground/10 bg-foreground/[0.04] text-white hover:bg-foreground/10">
               <MessageSquare className="mr-2 h-4 w-4" />
               Mesaj Gönder
             </Button>
-            <Button variant="outline" onClick={addTeacherNote} className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10">
+            <Button variant="outline" onClick={addTeacherNote} className="border-foreground/10 bg-foreground/[0.04] text-white hover:bg-foreground/10">
               <NotebookPen className="mr-2 h-4 w-4" />
               Not Ekle
             </Button>
-            <Button variant="ghost" size="icon" onClick={onOpenPdf} className="text-slate-300 hover:bg-white/10 hover:text-white" title="PDF moduna geç">
+            <Button variant="ghost" size="icon" onClick={onOpenPdf} className="text-slate-300 hover:bg-foreground/10 hover:text-white" title="PDF moduna geç">
               <MoreVertical className="h-5 w-5" />
             </Button>
-            <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:bg-white/10 hover:text-white">
+            <Button variant="ghost" size="icon" onClick={onClose} className="text-slate-300 hover:bg-foreground/10 hover:text-white">
               <X className="h-5 w-5" />
             </Button>
           </div>
@@ -623,7 +646,7 @@ function StudentDetailModal({
             <StudentMetric icon={Sparkles} label="Genel Puan" value={student.totalPoint ?? '-'} detail="Puan verisi gelirse burada görünür" color="#4DA3FF" />
           </div>
 
-          <div className="mt-5 flex gap-2 overflow-x-auto border-b border-white/10">
+          <div className="mt-5 flex gap-2 overflow-x-auto border-b border-foreground/10">
             {tabs.map(([value, label]) => (
               <button
                 key={value}
@@ -641,14 +664,14 @@ function StudentDetailModal({
 
           {tab === 'overview' ? (
             <div className="mt-5 grid gap-4 lg:grid-cols-[0.85fr_1.15fr]">
-              <div className="rounded-3xl border border-white/10 bg-white/[0.055] p-6">
+              <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
                 <p className="font-black">Akademik Ortalama</p>
                 <div className="mx-auto mt-8 flex h-44 w-44 items-center justify-center rounded-full border-[16px] border-purple-500/80 text-4xl font-black">
                   {score}
                 </div>
                 <p className="mt-5 text-center text-sm text-slate-400">Gerçek sınav sonuçlarından hesaplandı.</p>
               </div>
-              <div className="rounded-3xl border border-white/10 bg-white/[0.055] p-6">
+              <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
                 <div className="flex items-center justify-between">
                   <p className="font-black">Sınıf Performansı</p>
                   <Badge className="bg-orange-400/12 text-orange-200 hover:bg-orange-400/12">{student.className || '-'}</Badge>
@@ -661,7 +684,7 @@ function StudentDetailModal({
                   ].map(([label, value, color]) => (
                     <div key={label}>
                       <div className="mb-2 flex justify-between text-sm text-slate-300"><span>{label}</span><span>%{value}</span></div>
-                      <Progress value={Number(value)} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
+                      <Progress value={Number(value)} className="h-2 bg-foreground/10 [&>div]:bg-orange-400" />
                       <div className="sr-only" style={{ color }} />
                     </div>
                   ))}
@@ -671,7 +694,7 @@ function StudentDetailModal({
           ) : null}
 
           {tab !== 'overview' ? (
-            <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.055] p-6">
+            <div className="mt-5 rounded-3xl border border-foreground/10 bg-foreground/[0.055] p-6">
               <p className="font-black">{tabs.find((item) => item[0] === tab)?.[1]}</p>
               <p className="mt-3 text-sm leading-6 text-slate-400">
                 Bu bölüm seçili öğrenci için API’den gelen kayıtlarla doldurulur. Veri bulunmadığında sabit değer yerine boş durum gösterilir.
@@ -679,10 +702,10 @@ function StudentDetailModal({
             </div>
           ) : null}
 
-          <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:justify-between">
+          <div className="mt-6 flex flex-col gap-3 border-t border-foreground/10 pt-5 sm:flex-row sm:justify-between">
             <p className="text-xs text-slate-500">Son güncelleme: {new Intl.DateTimeFormat('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date())}</p>
             <div className="flex gap-3">
-              <Button variant="outline" onClick={onOpenPdf} className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10">
+              <Button variant="outline" onClick={onOpenPdf} className="border-foreground/10 bg-foreground/[0.04] text-white hover:bg-foreground/10">
                 <FileText className="mr-2 h-4 w-4" />
                 PDF Raporu Oluştur
               </Button>
@@ -730,7 +753,7 @@ function StudentReportMode({
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-[calc(100vh-2rem)] rounded-[28px] border border-white/10 bg-[#08111F] p-6 text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
+      className="min-h-[calc(100vh-2rem)] rounded-[28px] border border-foreground/10 bg-[#08111F] p-6 text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
       data-testid="teacher-student-report-mode"
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -742,7 +765,7 @@ function StudentReportMode({
           <h1 className="text-3xl font-black tracking-tight">Raporlar</h1>
           <p className="mt-2 max-w-2xl text-sm text-slate-400">Öğrenciye tıklayın, detay modalından PDF moduna geçin ve premium raporu oluşturun.</p>
         </div>
-        <Button onClick={onReload} variant="outline" className="border-white/10 bg-white/[0.04] text-white hover:bg-white/10">
+        <Button onClick={onReload} variant="outline" className="border-foreground/10 bg-foreground/[0.04] text-white hover:bg-foreground/10">
           Verileri Yenile
         </Button>
       </div>
@@ -754,7 +777,7 @@ function StudentReportMode({
         <StudentMetric icon={FileText} label="PDF Modu" value="Hazır" detail="Detay modalından açılır" color="#7B61FF" />
       </div>
 
-      <div className="mt-6 rounded-3xl border border-white/10 bg-white/[0.045] p-5">
+      <div className="mt-6 rounded-3xl border border-foreground/10 bg-foreground/[0.045] p-5">
         <div className="flex flex-col gap-3 md:flex-row">
           <label className="relative flex-1">
             <Search className="absolute left-4 top-3.5 h-4 w-4 text-slate-500" />
@@ -762,7 +785,7 @@ function StudentReportMode({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Öğrenci ara..."
-              className="h-12 w-full rounded-2xl border border-white/10 bg-[#0B1728] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-orange-400/70"
+              className="h-12 w-full rounded-2xl border border-foreground/10 bg-[#0B1728] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-orange-400/70"
             />
           </label>
           <FilterSelect value={classFilter} options={classesFromStudents} onChange={setClassFilter} wide />
@@ -772,8 +795,8 @@ function StudentReportMode({
           <div className="mt-5 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100">{error}</div>
         ) : null}
 
-        <div className="mt-5 overflow-hidden rounded-2xl border border-white/10">
-          <div className="grid grid-cols-[1.4fr_0.8fr_0.7fr_0.7fr_0.7fr] bg-white/[0.06] px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-400">
+        <div className="mt-5 overflow-hidden rounded-2xl border border-foreground/10">
+          <div className="grid grid-cols-[1.4fr_0.8fr_0.7fr_0.7fr_0.7fr] bg-foreground/[0.06] px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-400">
             <span>Öğrenci</span><span>Sınıf / Şube</span><span>Devam</span><span>Ortalama</span><span>Durum</span>
           </div>
           {loading ? (
@@ -785,7 +808,7 @@ function StudentReportMode({
               key={item.id || item.username || item.fullName}
               type="button"
               onClick={() => onSelectStudent(item)}
-              className="grid w-full grid-cols-[1.4fr_0.8fr_0.7fr_0.7fr_0.7fr] items-center border-t border-white/10 px-4 py-4 text-left text-sm transition hover:bg-orange-400/10"
+              className="grid w-full grid-cols-[1.4fr_0.8fr_0.7fr_0.7fr_0.7fr] items-center border-t border-foreground/10 px-4 py-4 text-left text-sm transition hover:bg-orange-400/10"
             >
               <span className="flex items-center gap-3">
                 <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-400/14 text-xs font-black text-orange-200">{initials(item.fullName)}</span>
@@ -901,6 +924,19 @@ export default function TeacherPdfReportCenter() {
 
   const reportStudentOptions = useMemo(() => ['Tüm Öğrenciler', ...new Set(dynamicReports.map((item) => item.student).filter(Boolean))], [dynamicReports]);
   const reportClassOptions = useMemo(() => ['Tüm Sınıflar', ...new Set(dynamicReports.map((item) => item.className).filter(Boolean))], [dynamicReports]);
+  const reportSubjectOptions = useMemo(() => {
+    const realSubjects = dynamicReports
+      .map((item) => normalizeFilterValue(item.subject))
+      .filter((item) => item && item !== '-' && item !== 'Tüm Dersler');
+
+    return ['Tüm Dersler', ...Array.from(new Set(realSubjects)).sort((a, b) => a.localeCompare(b, 'tr'))];
+  }, [dynamicReports]);
+
+  useEffect(() => {
+    if (!reportSubjectOptions.includes(subject)) {
+      setSubject('Tüm Dersler');
+    }
+  }, [reportSubjectOptions, subject]);
 
   const openPdfMode = useCallback(() => {
     setSelectedId(selectedStudentReport.id);
@@ -955,6 +991,21 @@ export default function TeacherPdfReportCenter() {
   }, [exporting, generatePdfBlob, selectedReport.name]);
 
   const handleDownloadReport = useCallback(async (report = selectedReport) => {
+    // Çözülen sınav kağıtları: canlı oturum verisinden birebir tasarımla üretilir.
+    if (report?.source === 'teacher-pdf-report' && report?.examSessionId) {
+      try {
+        setActionMessage('Sınav kağıdı oluşturuluyor...');
+        const session = await fetchSolutionSession(report.examSessionId);
+        if (!session || !Array.isArray(session.questions) || session.questions.length === 0) {
+          throw new Error('Sınav verisi bulunamadı.');
+        }
+        await downloadExamPaperPdf(session, `sinav-kagidi-${session.title || report.examSessionId}`);
+        setActionMessage('Sınav kağıdı indirildi.');
+      } catch (error) {
+        setActionMessage(error.message || 'Sınav kağıdı oluşturulamadı.');
+      }
+      return;
+    }
     if (report?.downloadUrl) {
       try {
         setActionMessage('PDF indiriliyor...');
@@ -1075,11 +1126,11 @@ export default function TeacherPdfReportCenter() {
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[28px] border border-white/10 bg-[#08111F] text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
+      className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[28px] border border-foreground/10 bg-[#08111F] text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
       data-testid="teacher-pdf-report-center-page"
     >
       <div className="grid min-h-[calc(100vh-2rem)] grid-cols-1 xl:grid-cols-[minmax(380px,0.92fr)_minmax(0,1.45fr)]">
-        <aside className="flex min-w-0 flex-col border-b border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 xl:border-b-0 xl:border-r">
+        <aside className="flex min-w-0 flex-col border-b border-foreground/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-6 xl:border-b-0 xl:border-r">
           <div className="flex items-start justify-between gap-4">
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-orange-400/20 bg-orange-400/10 px-3 py-1 text-xs font-black text-orange-200">
@@ -1089,7 +1140,7 @@ export default function TeacherPdfReportCenter() {
               <h1 className="text-3xl font-black tracking-tight">PDF Raporları</h1>
               <p className="mt-2 text-sm text-slate-400">Oluşturulan veya indirilebilecek tüm raporları görüntüleyin.</p>
             </div>
-            <Button onClick={() => setViewMode('students')} variant="outline" className="rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white">
+            <Button onClick={() => setViewMode('students')} variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-100 hover:bg-foreground/10 hover:text-white">
               Öğrenci Detayına Dön
             </Button>
           </div>
@@ -1100,7 +1151,7 @@ export default function TeacherPdfReportCenter() {
                 key={type}
                 type="button"
                 onClick={() => setActiveType(type)}
-                className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${activeType === type ? 'border-orange-400/40 bg-orange-500/18 text-orange-200 shadow-[0_0_28px_-14px_rgba(255,157,46,0.95)]' : 'border-white/10 bg-white/[0.035] text-slate-300 hover:border-white/20'}`}
+                className={`shrink-0 rounded-xl border px-4 py-2 text-xs font-bold transition ${activeType === type ? 'border-orange-400/40 bg-orange-500/18 text-orange-200 shadow-[0_0_28px_-14px_rgba(255,157,46,0.95)]' : 'border-foreground/10 bg-foreground/[0.035] text-slate-300 hover:border-foreground/20'}`}
               >
                 {type}
               </button>
@@ -1108,7 +1159,7 @@ export default function TeacherPdfReportCenter() {
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-3 2xl:grid-cols-2">
-            <FilterSelect value={subject} options={subjects} onChange={setSubject} />
+            <FilterSelect value={subject} options={reportSubjectOptions} onChange={setSubject} />
             <FilterSelect value={dateFilter} options={['Tüm Tarihler', 'Bu Ay', 'Son 90 Gün']} onChange={setDateFilter} wide />
             <FilterSelect value={className} options={reportClassOptions} onChange={setClassName} />
             <FilterSelect value={student} options={reportStudentOptions} onChange={setStudent} wide />
@@ -1120,9 +1171,9 @@ export default function TeacherPdfReportCenter() {
               <div className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100">{loadError}</div>
             ) : null}
             {loadingStudents ? (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-8 text-center text-sm text-slate-400">Raporlar yükleniyor...</div>
+              <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-8 text-center text-sm text-slate-400">Raporlar yükleniyor...</div>
             ) : filteredReports.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.035] p-8 text-center text-sm text-slate-400">
+              <div className="rounded-2xl border border-dashed border-foreground/12 bg-foreground/[0.035] p-8 text-center text-sm text-slate-400">
                 Hazır PDF raporu bulunamadı. Öğrenci detayından canlı önizleme açabilir veya öğrenciler sınav bitirince oluşan gerçek PDF raporlarını burada görebilirsiniz.
               </div>
             ) : filteredReports.map((report) => (
@@ -1144,11 +1195,11 @@ export default function TeacherPdfReportCenter() {
           ) : null}
 
           <div className="mt-6 grid grid-cols-3 gap-3">
-            <Button variant="outline" disabled={exporting} onClick={handleBulkDownload} className="h-12 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white disabled:opacity-50">
+            <Button variant="outline" disabled={exporting} onClick={handleBulkDownload} className="h-12 rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-100 hover:bg-foreground/10 hover:text-white disabled:opacity-50">
               <Archive className="mr-2 h-4 w-4" />
               Toplu PDF
             </Button>
-            <Button variant="outline" disabled={exporting} onClick={handleZipDownload} className="h-12 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white disabled:opacity-50">
+            <Button variant="outline" disabled={exporting} onClick={handleZipDownload} className="h-12 rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-100 hover:bg-foreground/10 hover:text-white disabled:opacity-50">
               <FileArchive className="mr-2 h-4 w-4" />
               ZIP İndir
             </Button>
@@ -1160,12 +1211,12 @@ export default function TeacherPdfReportCenter() {
         </aside>
 
         <main className="min-w-0 bg-[radial-gradient(circle_at_20%_0%,rgba(77,163,255,0.12),transparent_25%),radial-gradient(circle_at_90%_8%,rgba(123,97,255,0.13),transparent_28%)] p-6">
-          <div className="flex h-full flex-col rounded-[24px] border border-white/10 bg-white/[0.035] p-5 backdrop-blur-xl">
-            <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-[#0B1728]/90 px-4 py-3">
+          <div className="flex h-full flex-col rounded-[24px] border border-foreground/10 bg-foreground/[0.035] p-5 backdrop-blur-xl">
+            <div className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-[#0B1728]/90 px-4 py-3">
               <div className="flex items-center gap-2">
                 <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={() => setZoom((value) => Math.min(160, value + 10))} />
                 <ToolbarButton icon={Minus} label="Zoom Out" onClick={() => setZoom((value) => Math.max(70, value - 10))} />
-                <div className="mx-2 h-6 w-px bg-white/10" />
+                <div className="mx-2 h-6 w-px bg-foreground/10" />
                 <ToolbarButton icon={ChevronLeft} label="Önceki Sayfa" disabled={activePage <= 1} onClick={() => setActivePage((page) => Math.max(1, page - 1))} />
                 <span className="px-3 text-sm font-black text-white">{activePage} / 6</span>
                 <ToolbarButton icon={ChevronRight} label="Sonraki Sayfa" disabled={activePage >= 6} onClick={() => setActivePage((page) => Math.min(6, page + 1))} />
@@ -1191,7 +1242,7 @@ export default function TeacherPdfReportCenter() {
                   ))}
                 </div>
               </div>
-              <div className="min-h-0 overflow-auto rounded-[18px] border border-white/10 bg-[#111827] p-4">
+              <div className="min-h-0 overflow-auto rounded-[18px] border border-foreground/10 bg-[#111827] p-4">
                 <motion.div
                   key={`${selectedReport.id}-${activePage}`}
                   initial={{ opacity: 0 }}

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
   BookOpen, Video, FileText, Play, Pause, Clock, CheckCircle, Search, Download, Eye, Maximize2, Rewind, FastForward,
   Star, Share2, NotebookPen, ThumbsUp, MessageCircle, ListChecks,
@@ -15,6 +16,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
+import { PremiumPanel, PremiumListRow } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
 import {
@@ -25,6 +27,8 @@ import {
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { setAppFullscreen } from '../../lib/tauri';
+
+const SUBJECT_TONES = ['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-600', 'from-emerald-400 to-teal-600', 'from-amber-400 to-orange-600', 'from-rose-400 to-red-600', 'from-cyan-400 to-blue-500'];
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -78,6 +82,7 @@ function buildContentFileUrl(contentFile) {
 }
 
 export default function StudentContent() {
+  const navigate = useNavigate();
   const [content, setContent] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('Tümü');
@@ -340,6 +345,29 @@ export default function StudentContent() {
     inProgress: content.filter((item) => Number(item.progress) > 0 && Number(item.progress) < 100).length,
   };
 
+  const overallProgress = content.length
+    ? Math.round(content.reduce((sum, item) => sum + (Number(item.progress) || 0), 0) / content.length)
+    : 0;
+  const subjectCards = Array.from(new Set(content.map((item) => item.subject).filter(Boolean))).map((subject) => {
+    const items = content.filter((item) => item.subject === subject);
+    const avg = items.length ? Math.round(items.reduce((sum, item) => sum + (Number(item.progress) || 0), 0) / items.length) : 0;
+    const done = items.filter((item) => Number(item.progress) >= 100).length;
+    return { subject, items, total: items.length, done, avg };
+  });
+  const inProgressItems = content.filter((item) => Number(item.progress) > 0 && Number(item.progress) < 100).slice(0, 4);
+  const suggestedItems = content.filter((item) => !(Number(item.progress) > 0)).slice(0, 4);
+  const popularItems = content.slice(0, 5);
+  const openItem = (item) => {
+    if (!item) return;
+    const type = normalizeType(item.fileType);
+    setSelectedItem(item);
+    setPlaySelectedVideo(type === 'video');
+    setVideoCurrentTime(0);
+    setVideoDuration(0);
+    setVideoSpeed(1);
+    setNoteDraft(lessonNotes[item.id || item.fileName] || '');
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4">
@@ -351,132 +379,136 @@ export default function StudentContent() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="student-content-page">
-      <div>
-        <h1 className="text-3xl font-bold font-heading">İçerikler</h1>
-        <p className="text-muted-foreground mt-1">Canlı backend içerikleri ve ders materyalleri</p>
+      <div className="flex items-center gap-3">
+        <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-600 text-white"><Play className="h-5 w-5" /></span>
+        <div>
+          <h1 className="text-xl font-black tracking-tight">Konu Anlatımı</h1>
+          <p className="text-sm text-muted-foreground">Dilediğin dersi seç, konuları keşfet ve öğrenmeye devam et.</p>
+        </div>
       </div>
 
       {error ? <ErrorBanner title="İçerikler yüklenemedi" message={error} onRetry={loadContent} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          [stats.total, 'Toplam İçerik', BookOpen, 'text-brand-primary'],
-          [stats.inProgress, 'Devam Eden', Clock, 'text-yellow-600'],
-          [stats.completed, 'Tamamlanan', CheckCircle, 'text-green-600'],
-        ].map(([value, label, Icon, color]) => (
-          <motion.div variants={itemVariants} key={label}>
-            <Card>
-              <CardContent className="p-4 flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-muted">
-                  <Icon className={`h-6 w-6 ${color}`} />
-                </div>
-                <div>
-                  <p className="text-2xl font-bold">{value}</p>
-                  <p className="text-sm text-muted-foreground">{label}</p>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
+      {/* Hero + İstatistik */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-gradient-to-br from-[#0b2a4a] to-[#06182d] p-6">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[hsl(var(--brand-accent)/0.18)] blur-3xl" />
+          <div className="relative flex items-center gap-5">
+            <div className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-accent)/0.14)]">
+              <span className="ci-float grid h-16 w-16 place-items-center rounded-full bg-[hsl(var(--brand-accent))] text-white shadow-[0_0_40px_hsl(var(--brand-accent)/0.6)]"><Play className="h-7 w-7" /></span>
+            </div>
+            <div>
+              <h2 className="text-2xl font-black leading-tight">Öğrenmenin<br />en etkili yolu</h2>
+              <p className="mt-2 max-w-sm text-sm text-muted-foreground">Her konu; detaylı anlatım videoları, örnekler ve ipuçlarıyla seni başarıya bir adım daha yaklaştırır.</p>
+              <Button className="mt-4 bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={() => navigate('/s/study-plan')}>Nasıl Çalışmalıyım?</Button>
+            </div>
+          </div>
+        </div>
+
+        <PremiumPanel title="Çalışma İstatistiklerim" description="Genel ilerleme özeti">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[
+              ['Toplam Konu', stats.total],
+              ['Tamamlanan', stats.completed],
+              ['Devam Eden', stats.inProgress],
+              ['Ortalama', `%${overallProgress}`],
+            ].map(([label, value]) => (
+              <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-center">
+                <p className="text-2xl font-black tracking-tight">{value}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-4">
+            <div className="mb-1.5 flex justify-between text-xs"><span className="text-muted-foreground">Genel İlerleme</span><span className="font-semibold">%{overallProgress}</span></div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className="h-full rounded-full bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]" style={{ width: `${overallProgress}%` }} /></div>
+          </div>
+        </PremiumPanel>
       </div>
 
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="İçerik ara..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {subjects.map((subject) => (
-                <Button
-                  key={subject}
-                  variant={selectedSubject === subject ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setSelectedSubject(subject)}
-                  className={selectedSubject === subject ? 'bg-brand-primary' : ''}
-                >
-                  {subject}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Tabs defaultValue="all" onValueChange={setActiveTab}>
-        <TabsList>
-          <TabsTrigger value="all">Tümü</TabsTrigger>
-          <TabsTrigger value="video">Videolar</TabsTrigger>
-          <TabsTrigger value="pdf">PDF</TabsTrigger>
-          <TabsTrigger value="inprogress">Devam Eden</TabsTrigger>
-          <TabsTrigger value="completed">Tamamlanan</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={activeTab} className="mt-6">
-          {filteredContent.length === 0 ? (
-            <StudentEmptyState
-              variant="content"
-              accent="purple"
-              title="Henüz içerik bulunmuyor"
-              description="Bu derse ait konu anlatımı içerikleri henüz eklenmemiş. Yeni içerikler eklendiğinde burada görebilirsin."
-              primaryLabel="İçeriklere Göz At"
-              onPrimary={loadContent}
-            />
-          ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredContent.map((item) => {
-              const normalizedType = normalizeType(item.fileType);
-              const progress = Math.round(Number(item.progress) || 0);
-              return (
-                <PremiumResourceCard
-                  key={item.id || `${item.title}-${item.subject}`}
-                  subject={item.subject}
-                  eyebrow={item.subject}
-                  title={item.title}
-                  subtitle={item.teacher}
-                  badge={item.fileType}
-                  chips={[item.grade || 'Tüm sınıflar', item.size || null]}
-                  footer={(
-                    <div className="mt-4 space-y-3">
-                      <div>
-                        <div className="mb-2 flex justify-between text-xs font-bold text-slate-400">
-                          <span>İlerleme</span>
-                          <span className="text-white">%{progress}</span>
-                        </div>
-                        <Progress value={progress} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          className="h-10 flex-1 rounded-xl bg-orange-500 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
-                          onClick={() => { setSelectedItem(item); setPlaySelectedVideo(normalizedType === 'video'); setVideoCurrentTime(0); setVideoDuration(0); setVideoSpeed(1); setNoteDraft(lessonNotes[item.id || item.fileName] || ''); }}
-                        >
-                          {normalizedType === 'video' ? <Play className="mr-2 h-4 w-4" /> : <Eye className="mr-2 h-4 w-4" />}
-                          {normalizedType === 'video' ? 'İzle' : 'Görüntüle'}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="h-10 rounded-xl border-white/10 bg-white/[0.04] px-3 text-slate-100 hover:bg-white/10 hover:text-white"
-                          onClick={() => openFile(item, true).catch(() => {})}
-                          title="İndir"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </div>
+      {/* Derslerim */}
+      {subjectCards.length ? (
+        <PremiumPanel title="Derslerim" description="Derslerine göre ilerleme">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {subjectCards.map((card, index) => (
+              <div key={card.subject} className="ci-rise rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.05)]">
+                <div className="flex items-center justify-between">
+                  <div className="flex min-w-0 items-center gap-2.5">
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-white ${SUBJECT_TONES[index % SUBJECT_TONES.length]}`}><BookOpen className="h-4 w-4" /></span>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold">{card.subject}</p>
+                      <p className="text-[11px] text-muted-foreground">{card.total} Konu</p>
                     </div>
-                  )}
-                />
-              );
-            })}
+                  </div>
+                  <span className="shrink-0 text-sm font-black text-[hsl(var(--brand-accent))]">%{card.avg}</span>
+                </div>
+                <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className={`h-full rounded-full bg-gradient-to-r ${SUBJECT_TONES[index % SUBJECT_TONES.length]}`} style={{ width: `${card.avg}%` }} /></div>
+                <p className="mt-1 text-[11px] text-muted-foreground">{card.done} / {card.total} Konu</p>
+                <Button size="sm" variant="outline" className="mt-3 w-full text-xs" onClick={() => openItem(card.items.find((item) => Number(item.progress) > 0 && Number(item.progress) < 100) || card.items[0])}>Devam Et →</Button>
+              </div>
+            ))}
           </div>
-          )}
-        </TabsContent>
-      </Tabs>
+        </PremiumPanel>
+      ) : null}
+
+      {/* Devam Ettiğim + Önerilen Konular */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <PremiumPanel title="Devam Ettiğim Konular" description="Kaldığın yerden devam et" className="lg:col-span-2" contentClassName="space-y-2.5">
+          {inProgressItems.length ? inProgressItems.map((item) => {
+            const progress = Math.round(Number(item.progress) || 0);
+            return (
+              <div key={item.id || item.title} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><Play className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{item.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">{item.subject}</p>
+                  <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className="h-full rounded-full bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]" style={{ width: `${progress}%` }} /></div>
+                </div>
+                <span className="shrink-0 text-sm font-bold tabular-nums">%{progress}</span>
+                <Button size="sm" className="shrink-0" onClick={() => openItem(item)}>Devam Et</Button>
+              </div>
+            );
+          }) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Devam eden konu yok.</div>}
+        </PremiumPanel>
+
+        <PremiumPanel title="Önerilen Konular" description="Sana özel öneriler" contentClassName="space-y-2.5">
+          {suggestedItems.length ? suggestedItems.map((item) => (
+            <PremiumListRow key={item.id || item.title} icon={Star} title={item.title} subtitle={item.subject} meta={<Play className="h-4 w-4 text-[hsl(var(--brand-accent))]" />} onClick={() => openItem(item)} />
+          )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Öneri bulunamadı.</div>}
+        </PremiumPanel>
+      </div>
+
+      {/* Popüler Konular + Hızlı işlemler */}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+        <PremiumPanel title="Popüler Konular" description="En çok izlenen konular" contentClassName="space-y-2.5">
+          {popularItems.length ? popularItems.map((item, index) => (
+            <button key={item.id || item.title} onClick={() => openItem(item)} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.14)] text-xs font-black text-[hsl(var(--brand-accent))]">{index + 1}</span>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.subject}</p></div>
+              <Play className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent))]" />
+            </button>
+          )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Henüz içerik yok.</div>}
+        </PremiumPanel>
+
+        <div className="grid grid-cols-2 gap-3 lg:col-span-2">
+          {[
+            ['Konu Video Arama', 'İstediğin konuyu hemen bul', Search, '/s/content'],
+            ['Çalışma Planı Oluştur', 'Kişisel planın ile daha verimli', NotebookPen, '/s/study-plan'],
+            ['Notlarını Senkronize Et', 'Tüm notların her yerde seninle', ListChecks, '/s/content'],
+            ['Favori Konuların', 'Favori konularına hızlıca ulaş', Star, '/s/content'],
+          ].map(([title, sub, Icon, href]) => (
+            <button key={title} onClick={() => navigate(href)} className="flex flex-col gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
+              <div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{sub}</p></div>
+            </button>
+          ))}
+        </div>
+      </div>
 
       <Dialog open={!!selectedItem} onOpenChange={() => { setSelectedItem(null); setVideoImmersiveMode(false); }}>
         <DialogContent className={normalizeType(selectedItem?.fileType) === 'video'
-          ? `${videoImmersiveMode ? 'h-screen w-screen max-w-none rounded-none border-0 p-0' : 'max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-white/10 bg-[#07111f] p-3 text-white sm:w-[calc(100vw-2rem)]'}`
-          : 'max-h-[94vh] max-w-4xl overflow-y-auto border-white/10 bg-[#07111f] text-white'}
+          ? `${videoImmersiveMode ? 'h-screen w-screen max-w-none rounded-none border-0 p-0' : 'max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[#07111f] p-3 text-white sm:w-[calc(100vw-2rem)]'}`
+          : 'max-h-[94vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[#07111f] text-white'}
         >
           {normalizeType(selectedItem?.fileType) === 'video' ? null : (
             <DialogHeader>
@@ -486,7 +518,7 @@ export default function StudentContent() {
           {selectedItem ? (
             <div className="space-y-4">
               {normalizeType(selectedItem.fileType) === 'video' ? (
-                <div className="flex flex-col gap-3 rounded-[28px] border border-white/10 bg-white/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-3 rounded-[28px] border border-foreground/10 bg-foreground/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-slate-400">
                       <span>Derslerim</span>
@@ -497,23 +529,23 @@ export default function StudentContent() {
                     </div>
                     <h2 className="text-2xl font-black text-white">{selectedItem.title}</h2>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      <Badge className="border-white/10 bg-white/[0.06] text-slate-200">{selectedItem.subject}</Badge>
-                      <Badge className="border-white/10 bg-white/[0.06] text-slate-200">{selectedItem.grade || 'Tüm sınıflar'}</Badge>
+                      <Badge className="border-foreground/10 bg-foreground/[0.06] text-slate-200">{selectedItem.subject}</Badge>
+                      <Badge className="border-foreground/10 bg-foreground/[0.06] text-slate-200">{selectedItem.grade || 'Tüm sınıflar'}</Badge>
                       <Badge className="border-orange-400/25 bg-orange-500/10 text-orange-200">{selectedItem.info || selectedItem.fileType}</Badge>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <Button variant="outline" className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]" onClick={() => openFile(selectedItem, true).catch(() => {})}>
+                    <Button variant="outline" className="rounded-full border-foreground/10 bg-foreground/[0.05] text-slate-100 hover:bg-foreground/[0.09]" onClick={() => openFile(selectedItem, true).catch(() => {})}>
                       <Download className="mr-2 h-4 w-4" />
                       İndir
                     </Button>
-                    <Button variant="outline" className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]" onClick={() => shareSelectedContent()}>
+                    <Button variant="outline" className="rounded-full border-foreground/10 bg-foreground/[0.05] text-slate-100 hover:bg-foreground/[0.09]" onClick={() => shareSelectedContent()}>
                       <Share2 className="mr-2 h-4 w-4" />
                       Paylaş
                     </Button>
                     <Button
                       variant="outline"
-                      className="rounded-full border-white/10 bg-white/[0.05] text-slate-100 hover:bg-white/[0.09]"
+                      className="rounded-full border-foreground/10 bg-foreground/[0.05] text-slate-100 hover:bg-foreground/[0.09]"
                       onClick={() => {
                         const nextFavorites = { ...favoriteIds, [selectedContentKey]: !favoriteIds[selectedContentKey] };
                         setFavoriteIds(nextFavorites);
@@ -583,7 +615,7 @@ export default function StudentContent() {
                           type="button"
                           variant="outline"
                           size="icon"
-                          className="rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60"
+                          className="rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60"
                           onClick={() => closeVideoFullscreen().catch(() => {})}
                         >
                           <Maximize2 className="h-4 w-4" />
@@ -593,7 +625,7 @@ export default function StudentContent() {
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60"
+                        className="rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60"
                         onClick={() => openFile(selectedItem, true).catch(() => {})}
                       >
                         <Download className="h-4 w-4" />
@@ -601,7 +633,7 @@ export default function StudentContent() {
                       <Button
                         type="button"
                         variant="outline"
-                        className="rounded-full border-white/20 bg-black/45 px-3 text-white hover:bg-black/60"
+                        className="rounded-full border-foreground/20 bg-black/45 px-3 text-white hover:bg-black/60"
                         onClick={() => updateVideoSpeed(videoSpeed === 1 ? 1.5 : 1)}
                       >
                         {videoSpeed}x
@@ -610,7 +642,7 @@ export default function StudentContent() {
                         type="button"
                         variant="outline"
                         size="icon"
-                        className="rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60"
+                        className="rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60"
                         onClick={() => openVideoFullscreen().catch(() => {})}
                       >
                         <Maximize2 className="h-4 w-4" />
@@ -634,13 +666,13 @@ export default function StudentContent() {
                       className="mb-3 w-full accent-red-500"
                     />
                     <div className="flex items-center gap-2 text-white">
-                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/10" onClick={toggleVideoPlayback}>
+                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-white hover:bg-foreground/10" onClick={toggleVideoPlayback}>
                         {playSelectedVideo ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/10" onClick={() => seekVideoBy(-10)}>
+                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-white hover:bg-foreground/10" onClick={() => seekVideoBy(-10)}>
                         <Rewind className="h-5 w-5" />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-white hover:bg-white/10" onClick={() => seekVideoBy(10)}>
+                      <Button type="button" variant="ghost" size="icon" className="rounded-full text-white hover:bg-foreground/10" onClick={() => seekVideoBy(10)}>
                         <FastForward className="h-5 w-5" />
                       </Button>
                       <div className="ml-2 text-sm font-medium">
@@ -679,9 +711,9 @@ export default function StudentContent() {
               </div>
               {normalizeType(selectedItem.fileType) === 'video' && buildContentFileUrl(selectedItem) ? (
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="space-y-4 rounded-[28px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl">
+                  <div className="space-y-4 rounded-[28px] border border-foreground/10 bg-foreground/[0.035] p-4 shadow-2xl">
                     {selectedItem.playlistTitle ? (
-                      <div className="rounded-2xl border border-white/10 bg-[#0b1626] px-4 py-3 text-sm">
+                      <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] px-4 py-3 text-sm">
                         <p className="font-semibold text-white">{selectedItem.playlistTitle}</p>
                         <p className="mt-1 text-slate-400">
                           {selectedPlaylist.length} videoluk seri
@@ -689,7 +721,7 @@ export default function StudentContent() {
                       </div>
                     ) : null}
                     <Tabs defaultValue="summary" className="w-full">
-                      <TabsList className="grid w-full grid-cols-4 border border-white/10 bg-[#0b1626]">
+                      <TabsList className="grid w-full grid-cols-4 border border-foreground/10 bg-[#0b1626]">
                         <TabsTrigger value="summary" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Konu Özeti</TabsTrigger>
                         <TabsTrigger value="notes" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Ders Notları</TabsTrigger>
                         <TabsTrigger value="practice" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Alıştırmalar</TabsTrigger>
@@ -697,13 +729,13 @@ export default function StudentContent() {
                       </TabsList>
                       <TabsContent value="summary" className="mt-4">
                         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-                          <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-5">
+                          <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-5">
                             <h3 className="text-lg font-bold text-white">{selectedItem.title}</h3>
                             <p className="mt-3 leading-7 text-slate-300">
                               {selectedItem.description || selectedItem.info || 'Bu içerik için öğretmen açıklaması henüz eklenmedi.'}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-5">
+                          <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-5">
                             <h3 className="mb-3 flex items-center gap-2 font-bold text-white">
                               <ListChecks className="h-5 w-5 text-orange-300" />
                               Bu Derste Öğreneceklerin
@@ -718,10 +750,10 @@ export default function StudentContent() {
                         </div>
                       </TabsContent>
                       <TabsContent value="notes" className="mt-4">
-                        <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-4">
+                        <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-4">
                           <Label className="mb-2 block text-slate-300">Bu içerik için notun</Label>
                           <Textarea
-                            className="min-h-[130px] border-white/10 bg-white/[0.05] text-white placeholder:text-slate-500"
+                            className="min-h-[130px] border-foreground/10 bg-foreground/[0.05] text-white placeholder:text-slate-500"
                             value={noteDraft}
                             onChange={(event) => setNoteDraft(event.target.value)}
                             placeholder="Önemli gördüğün yerleri buraya yaz..."
@@ -743,7 +775,7 @@ export default function StudentContent() {
                         </div>
                       </TabsContent>
                       <TabsContent value="practice" className="mt-4">
-                        <div className="space-y-3 rounded-2xl border border-white/10 bg-[#0b1626] p-5 text-sm text-slate-300">
+                        <div className="space-y-3 rounded-2xl border border-foreground/10 bg-[#0b1626] p-5 text-sm text-slate-300">
                           {contentExercises.length === 0 ? (
                             <p>Bu içerikle ilişkili alıştırma henüz eklenmedi.</p>
                           ) : contentExercises.map((exercise) => (
@@ -752,7 +784,7 @@ export default function StudentContent() {
                               href={exercise.url || '#'}
                               target={exercise.url ? '_blank' : undefined}
                               rel="noreferrer"
-                              className="block rounded-2xl border border-white/10 bg-white/[0.04] p-4 transition hover:bg-white/[0.08]"
+                              className="block rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-4 transition hover:bg-foreground/[0.08]"
                             >
                               <p className="font-semibold text-white">{exercise.title}</p>
                               {exercise.description ? <p className="mt-1 text-xs text-slate-400">{exercise.description}</p> : null}
@@ -761,7 +793,7 @@ export default function StudentContent() {
                         </div>
                       </TabsContent>
                       <TabsContent value="comments" className="mt-4">
-                        <div className="space-y-4 rounded-2xl border border-white/10 bg-[#0b1626] p-5 text-sm text-slate-300">
+                        <div className="space-y-4 rounded-2xl border border-foreground/10 bg-[#0b1626] p-5 text-sm text-slate-300">
                           <div className="flex items-center gap-2 font-semibold text-white">
                             <MessageCircle className="h-5 w-5 text-orange-300" />
                             Yorumlar
@@ -770,7 +802,7 @@ export default function StudentContent() {
                             {contentComments.length === 0 ? (
                               <p className="text-slate-400">Henüz yorum yok. İlk yorumu sen yazabilirsin.</p>
                             ) : contentComments.map((comment) => (
-                              <div key={comment.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
+                              <div key={comment.id} className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-3">
                                 <p className="text-xs text-slate-400">{comment.authorName} • {comment.authorRole}</p>
                                 <p className="mt-1 text-slate-200">{comment.message}</p>
                               </div>
@@ -778,7 +810,7 @@ export default function StudentContent() {
                           </div>
                           <div className="flex gap-2">
                             <Input
-                              className="border-white/10 bg-white/[0.05] text-white placeholder:text-slate-500"
+                              className="border-foreground/10 bg-foreground/[0.05] text-white placeholder:text-slate-500"
                               value={commentDraft}
                               onChange={(event) => setCommentDraft(event.target.value)}
                               placeholder="Yorum yaz..."
@@ -803,7 +835,7 @@ export default function StudentContent() {
                     <div className="grid gap-3 sm:grid-cols-3">
                       <Button
                         variant="outline"
-                        className="rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                        className="rounded-2xl border-foreground/10 bg-foreground/[0.04] text-slate-100 hover:bg-foreground/[0.08]"
                         onClick={() => {
                           const nextLikes = { ...likedIds, [selectedContentKey]: !likedIds[selectedContentKey] };
                           setLikedIds(nextLikes);
@@ -815,7 +847,7 @@ export default function StudentContent() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                        className="rounded-2xl border-foreground/10 bg-foreground/[0.04] text-slate-100 hover:bg-foreground/[0.08]"
                         onClick={() => {
                           const nextFavorites = { ...favoriteIds, [selectedContentKey]: !favoriteIds[selectedContentKey] };
                           setFavoriteIds(nextFavorites);
@@ -827,7 +859,7 @@ export default function StudentContent() {
                       </Button>
                       <Button
                         variant="outline"
-                        className="rounded-2xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/[0.08]"
+                        className="rounded-2xl border-foreground/10 bg-foreground/[0.04] text-slate-100 hover:bg-foreground/[0.08]"
                         onClick={() => setNoteDraft(lessonNotes[selectedContentKey] || noteDraft)}
                       >
                         <NotebookPen className="mr-2 h-4 w-4 text-orange-300" />
@@ -836,15 +868,15 @@ export default function StudentContent() {
                     </div>
                   </div>
                   {selectedPlaylist.length > 0 ? (
-                    <div className="rounded-[28px] border border-white/10 bg-white/[0.035] p-4 shadow-2xl">
+                    <div className="rounded-[28px] border border-foreground/10 bg-foreground/[0.035] p-4 shadow-2xl">
                       <div className="mb-3 flex items-center justify-between">
                         <div>
                           <p className="text-sm font-semibold text-white">İçerik Listesi</p>
                           <p className="text-xs text-slate-400">{selectedItem.playlistTitle || 'Bu ders serisi'}</p>
                         </div>
-                        <Badge className="border-white/10 bg-white/[0.06] text-slate-200">{selectedPlaylist.length} içerik</Badge>
+                        <Badge className="border-foreground/10 bg-foreground/[0.06] text-slate-200">{selectedPlaylist.length} içerik</Badge>
                       </div>
-                      <div className="mb-4 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="mb-4 h-2 overflow-hidden rounded-full bg-foreground/10">
                         <div className="h-full w-1/4 rounded-full bg-gradient-to-r from-orange-500 to-amber-300" />
                       </div>
                       <div className="space-y-2">
@@ -856,11 +888,11 @@ export default function StudentContent() {
                               type="button"
                               onClick={() => openPlaylistItem(item)}
                               className={`flex w-full items-start gap-3 rounded-2xl border px-2 py-2 text-left transition ${
-                                active ? 'border-orange-400/40 bg-orange-500/10' : 'border-white/10 bg-[#0b1626] hover:bg-white/[0.07]'
+                                active ? 'border-orange-400/40 bg-orange-500/10' : 'border-foreground/10 bg-[#0b1626] hover:bg-foreground/[0.07]'
                               }`}
                             >
                               <div className={`mt-0.5 overflow-hidden rounded-xl ${active ? 'ring-2 ring-brand-primary/30' : ''}`}>
-                                <div className={`flex h-14 w-24 items-center justify-center ${active ? 'bg-orange-500 text-white' : 'bg-white/[0.06] text-slate-300'}`}>
+                                <div className={`flex h-14 w-24 items-center justify-center ${active ? 'bg-orange-500 text-white' : 'bg-foreground/[0.06] text-slate-300'}`}>
                                 {active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
                                 </div>
                               </div>

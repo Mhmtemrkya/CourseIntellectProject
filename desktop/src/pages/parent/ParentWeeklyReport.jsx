@@ -136,7 +136,7 @@ export default function ParentWeeklyReport() {
         <Card className="lg:col-span-2 overflow-hidden border-slate-200/70">
           <CardHeader className="bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white">
             <CardTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5" />Öğretmenden Gelen Haftalık Raporlar</CardTitle>
-            <CardDescription className="text-white/75">Gönderilen özel raporlar seçili öğrencinin haftalık alanına düşer.</CardDescription>
+            <CardDescription className="text-foreground/75">Gönderilen özel raporlar seçili öğrencinin haftalık alanına düşer.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 p-5">
             {teacherReports.length === 0 ? (
@@ -165,9 +165,9 @@ export default function ParentWeeklyReport() {
                     <p className="max-w-3xl text-sm leading-6 text-slate-600">{report.summary}</p>
                   </div>
                   <div className="shrink-0 rounded-3xl bg-slate-950 px-5 py-4 text-center text-white">
-                    <div className="text-xs uppercase tracking-[0.18em] text-white/55">Ekler</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-foreground/55">Ekler</div>
                     <div className="mt-1 text-3xl font-bold">{report.attachments?.length || 0}</div>
-                    <div className="mt-2 inline-flex items-center gap-2 text-sm text-white/80"><Eye className="h-4 w-4" />Aç</div>
+                    <div className="mt-2 inline-flex items-center gap-2 text-sm text-foreground/80"><Eye className="h-4 w-4" />Aç</div>
                   </div>
                 </div>
               </button>
@@ -202,13 +202,13 @@ export default function ParentWeeklyReport() {
             <>
               <div className="bg-[linear-gradient(135deg,#111827_0%,#1e40af_60%,#38bdf8_100%)] px-8 py-8 text-white">
                 <div className="flex flex-wrap gap-2">
-                  <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedTeacherReport.subject}</Badge>
-                  <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedTeacherReport.weeklyPeriodLabel}</Badge>
-                  <Badge className="bg-white/12 text-white hover:bg-white/12">{selectedTeacherReport.className}</Badge>
+                  <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{selectedTeacherReport.subject}</Badge>
+                  <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{selectedTeacherReport.weeklyPeriodLabel}</Badge>
+                  <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{selectedTeacherReport.className}</Badge>
                 </div>
                 <DialogHeader className="mt-4 space-y-2 text-left">
                   <DialogTitle className="text-3xl font-bold text-white">{selectedTeacherReport.title}</DialogTitle>
-                  <DialogDescription className="text-white/75">
+                  <DialogDescription className="text-foreground/75">
                     {selectedTeacherReport.teacherName} • {new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }).format(new Date(selectedTeacherReport.createdAtUtc))}
                   </DialogDescription>
                 </DialogHeader>

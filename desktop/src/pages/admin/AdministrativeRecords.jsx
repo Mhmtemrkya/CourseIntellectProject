@@ -135,9 +135,9 @@ export default function AdministrativeRecords() {
       <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(14,165,233,0.16)), transparent 36%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 55%, var(--brand-p-700, #1d4d63) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <Badge className="border-white/20 bg-white/10 text-white">İdari Operasyon</Badge>
+            <Badge className="border-foreground/20 bg-foreground/10 text-white">İdari Operasyon</Badge>
             <h1 className="mt-4 text-3xl font-bold font-heading">İdari Kayıtlar</h1>
-            <p className="mt-2 text-sm text-white/80">
+            <p className="mt-2 text-sm text-foreground/80">
               Öğrenci, veli ve personel kayıtlarını daha okunur kartlar, sade detay görünümü ve gerçek dosya çıktısıyla yönetin.
             </p>
           </div>
@@ -148,9 +148,9 @@ export default function AdministrativeRecords() {
               [staff.length, 'Personel'],
               [records.length, 'Toplam'],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 backdrop-blur">
+              <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3 backdrop-blur">
                 <p className="text-2xl font-bold">{value}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/70">{label}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-foreground/70">{label}</p>
               </div>
             ))}
           </div>
@@ -231,15 +231,15 @@ export default function AdministrativeRecords() {
               <div className="rounded-[28px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(251,191,36,0.18)), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 45%, var(--brand-p-700, #115e59) 100%)' }}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <Badge className="border-white/10 bg-white/15 text-white">{selectedRecord.type}</Badge>
+                    <Badge className="border-foreground/10 bg-foreground/15 text-white">{selectedRecord.type}</Badge>
                     <h3 className="mt-4 text-2xl font-semibold">{selectedRecord.title}</h3>
-                    <p className="mt-2 text-sm text-white/80">{selectedRecord.detail}</p>
+                    <p className="mt-2 text-sm text-foreground/80">{selectedRecord.detail}</p>
                   </div>
                   <div className="grid gap-2 text-right">
-                    <div className="rounded-2xl bg-white/10 p-4">
+                    <div className="rounded-2xl bg-foreground/10 p-4">
                       {selectedRecord.type === 'Öğrenci' ? <School className="h-6 w-6" /> : selectedRecord.type === 'Personel' ? <BriefcaseBusiness className="h-6 w-6" /> : <Users className="h-6 w-6" />}
                     </div>
-                    <span className="text-xs uppercase tracking-[0.18em] text-white/65">Detay Dosyası</span>
+                    <span className="text-xs uppercase tracking-[0.18em] text-foreground/65">Detay Dosyası</span>
                   </div>
                 </div>
               </div>

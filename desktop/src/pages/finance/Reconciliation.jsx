@@ -62,7 +62,7 @@ export default function Reconciliation() {
         <Card className="xl:col-span-2 overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-slate-900 via-sky-900 to-cyan-900 text-white">
             <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Mutabakat Oranı</CardTitle>
-            <CardDescription className="text-white/75">Tahsilatların faturaları karşılama oranı</CardDescription>
+            <CardDescription className="text-foreground/75">Tahsilatların faturaları karşılama oranı</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6 p-6">
             <div className="grid gap-4 md:grid-cols-3">

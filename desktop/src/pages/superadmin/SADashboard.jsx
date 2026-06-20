@@ -80,7 +80,7 @@ export default function SADashboard() {
       <motion.div>
         <PremiumPanel title="Platform Trafiği" description="Kurum, kullanıcı, API ve depolama sinyalleri">
           <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
+            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-5">
               <div className="mb-4 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Platform grafiği</p>
@@ -90,13 +90,13 @@ export default function SADashboard() {
               </div>
               <MiniLineChart values={[stats.totalTenants || 0, stats.totalUsers || 0, stats.monthlyRevenue || 0, stats.apiCalls || 0, apiHealthPct, storagePct]} className="h-40" />
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">API Sağlığı</p>
               <div className="mt-5 flex justify-center">
                 <MiniDonut value={apiHealthPct} label="API" />
               </div>
             </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Kaynak Dağılımı</p>
               <MiniBarChart values={[apiHealthPct, storagePct, dbUsagePct, stats.openTickets || 0]} className="mt-5" />
             </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Bell, Plus, Settings, Clock, Mail, MessageSquare, AlertTriangle,
+  Bell, Plus, Settings, Clock, Mail, Smartphone, AlertTriangle,
   Edit, Trash2, Save,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
@@ -30,12 +30,18 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+// Eski kayitlardaki 'sms' kanali artik mobil 'notification' (anlik bildirim)
+// olarak normalize edilir; SMS yerine mobil uygulamadaki bildirim sistemi kullanilir.
+function normalizeChannel(channel) {
+  return channel === 'sms' ? 'notification' : (channel || 'notification');
+}
+
 const defaultRules = [
   {
     id: 1,
     name: 'Ilk Hatirlatma',
     daysAfterDue: 3,
-    channel: 'sms',
+    channel: 'notification',
     template: 'Sayin {parentName}, {studentName} icin {amount} TL tutarinda odemeniz gecmistir. Lutfen en kisa surede odemenizi yapiniz.',
     enabled: true,
   },
@@ -65,7 +71,7 @@ export default function OverdueRules() {
   const [form, setForm] = useState({
     name: '',
     daysAfterDue: 3,
-    channel: 'sms',
+    channel: 'notification',
     template: '',
     enabled: true,
   });
@@ -76,7 +82,8 @@ export default function OverdueRules() {
       try {
         const remote = await fetchOverdueRules();
         if (cancelled) return;
-        setRules(Array.isArray(remote) && remote.length > 0 ? remote : defaultRules);
+        const source = Array.isArray(remote) && remote.length > 0 ? remote : defaultRules;
+        setRules(source.map((r) => ({ ...r, channel: normalizeChannel(r.channel) })));
       } catch {
         if (!cancelled) setRules(defaultRules);
       }
@@ -110,7 +117,7 @@ export default function OverdueRules() {
     }
     setOpen(false);
     setEditingRule(null);
-    setForm({ name: '', daysAfterDue: 3, channel: 'sms', template: '', enabled: true });
+    setForm({ name: '', daysAfterDue: 3, channel: 'notification', template: '', enabled: true });
   };
 
   const handleEdit = (rule) => {
@@ -130,9 +137,9 @@ export default function OverdueRules() {
   };
 
   const channelLabel = (ch) => {
-    if (ch === 'sms') return { label: 'SMS', icon: <MessageSquare className="h-4 w-4" /> };
+    if (ch === 'notification' || ch === 'sms') return { label: 'Bildirim', icon: <Smartphone className="h-4 w-4" /> };
     if (ch === 'email') return { label: 'E-posta', icon: <Mail className="h-4 w-4" /> };
-    return { label: 'SMS + E-posta', icon: <Bell className="h-4 w-4" /> };
+    return { label: 'Bildirim + E-posta', icon: <Bell className="h-4 w-4" /> };
   };
 
   return (
@@ -145,10 +152,10 @@ export default function OverdueRules() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Gecikme Kurallari</h1>
-            <p className="text-sm text-muted-foreground">Otomatik hatirlatma ve uyari kurallari</p>
+            <p className="text-sm text-muted-foreground">Otomatik mobil bildirim ve uyari kurallari</p>
           </div>
         </div>
-        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingRule(null); setForm({ name: '', daysAfterDue: 3, channel: 'sms', template: '', enabled: true }); } }}>
+        <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) { setEditingRule(null); setForm({ name: '', daysAfterDue: 3, channel: 'notification', template: '', enabled: true }); } }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> Yeni Kural</Button>
           </DialogTrigger>
@@ -170,11 +177,12 @@ export default function OverdueRules() {
                 <Select value={form.channel} onValueChange={(v) => setForm((p) => ({ ...p, channel: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="sms">SMS</SelectItem>
+                    <SelectItem value="notification">Bildirim (Mobil)</SelectItem>
                     <SelectItem value="email">E-posta</SelectItem>
-                    <SelectItem value="both">SMS + E-posta</SelectItem>
+                    <SelectItem value="both">Bildirim + E-posta</SelectItem>
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-muted-foreground mt-1">Bildirim, mobil uygulamadaki anlik bildirim sistemi uzerinden veliye dogrudan iletilir.</p>
               </div>
               <div>
                 <Label>Mesaj Sablonu *</Label>

@@ -266,27 +266,41 @@ public sealed class StudentFinanceService(
         }
 
         var contractIds = contracts.Select(item => item.Id).ToHashSet();
+        var studentUserIds = contracts
+            .Where(item => item.StudentUserId != null)
+            .Select(item => item.StudentUserId!.Value)
+            .ToHashSet();
+        var studentNames = contracts
+            .Where(item => !string.IsNullOrWhiteSpace(item.StudentName))
+            .Select(item => item.StudentName)
+            .ToHashSet();
+
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId))
             .ToListAsync(cancellationToken);
+        // Ödemeler, hesap görünümüyle (GetAccountAsync) tutarlı olacak şekilde
+        // contract / öğrenci kullanıcı / öğrenci adı üzerinden eşleştirilir;
+        // aksi halde sözleşmeye bağlanmamış (peşin/manuel/iade) tahsilatlar rapora düşmez.
         var payments = await dbContext.FinancePayments.AsNoTracking()
-            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .Where(item =>
+                (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+                || (item.StudentUserId != null && studentUserIds.Contains(item.StudentUserId.Value))
+                || (item.StudentName != string.Empty && studentNames.Contains(item.StudentName)))
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
-        var paymentsByContract = payments
-            .GroupBy(item => item.EnrollmentContractId!.Value)
-            .ToDictionary(group => group.Key, group => group.Sum(payment => payment.Amount));
+        var paidByStudent = AttributePaymentsToStudents(contracts, payments);
+
         var installmentsByContract = installments
             .GroupBy(item => item.EnrollmentContractId)
             .ToDictionary(group => group.Key, group => group.ToList());
 
         return contracts
-            .GroupBy(item => string.IsNullOrWhiteSpace(item.StudentName) ? item.Id.ToString() : item.StudentName)
+            .GroupBy(ResolveStudentKey)
             .Select(group =>
             {
                 var net = group.Sum(item => item.NetAmount);
-                var paid = group.Sum(item => paymentsByContract.GetValueOrDefault(item.Id));
+                var paid = paidByStudent.GetValueOrDefault(group.Key);
                 var studentInstallments = group.SelectMany(item => installmentsByContract.GetValueOrDefault(item.Id) ?? []).ToList();
                 var overdue = studentInstallments.Count(item => item.Amount - item.PaidAmount > 0 && item.DueDateUtc < now);
                 var nextDue = studentInstallments
@@ -350,11 +364,25 @@ public sealed class StudentFinanceService(
 
         var contracts = await contractQuery.ToListAsync(cancellationToken);
         var contractIds = contracts.Select(item => item.Id).ToHashSet();
+        var studentUserIds = contracts
+            .Where(item => item.StudentUserId != null)
+            .Select(item => item.StudentUserId!.Value)
+            .ToHashSet();
+        var studentNames = contracts
+            .Where(item => !string.IsNullOrWhiteSpace(item.StudentName))
+            .Select(item => item.StudentName)
+            .ToHashSet();
+
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId))
             .ToListAsync(cancellationToken);
+        // Tahsilatlar sözleşmeye bağlanmamış (peşin/manuel/iade) olabilir; hesap görünümüyle
+        // tutarlı kalmak için contract / öğrenci kullanıcı / öğrenci adı üzerinden toplanır.
         var payments = await dbContext.FinancePayments.AsNoTracking()
-            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .Where(item =>
+                (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+                || (item.StudentUserId != null && studentUserIds.Contains(item.StudentUserId.Value))
+                || (item.StudentName != string.Empty && studentNames.Contains(item.StudentName)))
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -415,17 +443,14 @@ public sealed class StudentFinanceService(
             .Select(group => new MonthlyIncomeDto($"{group.Key.Year}-{group.Key.Month:D2}", group.Sum(payment => payment.Amount)))
             .ToList();
 
-        var paymentsByContract = payments
-            .Where(item => item.EnrollmentContractId != null)
-            .GroupBy(item => item.EnrollmentContractId!.Value)
-            .ToDictionary(group => group.Key, group => group.Sum(payment => payment.Amount));
+        var paidByStudent = AttributePaymentsToStudents(contracts, payments);
         var topDebtors = contracts
-            .GroupBy(item => string.IsNullOrWhiteSpace(item.StudentName) ? item.Id.ToString() : item.StudentName)
+            .GroupBy(ResolveStudentKey)
             .Select(group =>
             {
                 var first = group.First();
                 var groupNet = group.Sum(item => item.NetAmount);
-                var groupPaid = group.Sum(item => paymentsByContract.GetValueOrDefault(item.Id));
+                var groupPaid = paidByStudent.GetValueOrDefault(group.Key);
                 return new StudentFinanceSummaryDto(first.StudentUserId, first.StudentName, first.ClassName, first.Currency,
                     groupNet, groupPaid, groupNet - groupPaid, 0, null,
                     ResolveStatus(groupNet - groupPaid, 0, groupNet));
@@ -483,6 +508,40 @@ public sealed class StudentFinanceService(
     {
         var firstOfThisMonth = new DateTime(reference.Year, reference.Month, 1, 0, 0, 0, DateTimeKind.Utc);
         return firstOfThisMonth.AddMonths(1);
+    }
+
+    private static string ResolveStudentKey(EnrollmentContract contract) =>
+        string.IsNullOrWhiteSpace(contract.StudentName) ? contract.Id.ToString() : contract.StudentName;
+
+    // Tahsilatları öğrenci grubuna (ResolveStudentKey) toplar. Bir ödeme tek bir
+    // gruba atanır: önce bağlı olduğu sözleşme, yoksa öğrenci adı, yoksa öğrenci
+    // kullanıcı kimliği. Böylece sözleşmeye bağlanmamış ödemeler de doğru öğrenciye
+    // yansır ve çift sayım olmaz (GetAccountAsync ile tutarlı).
+    private static Dictionary<string, decimal> AttributePaymentsToStudents(
+        IReadOnlyList<EnrollmentContract> contracts,
+        IReadOnlyList<FinancePayment> payments)
+    {
+        var studentKeyByContractId = contracts.ToDictionary(item => item.Id, ResolveStudentKey);
+        var studentKeyByUserId = contracts
+            .Where(item => item.StudentUserId != null)
+            .GroupBy(item => item.StudentUserId!.Value)
+            .ToDictionary(group => group.Key, group => ResolveStudentKey(group.First()));
+
+        return payments
+            .Select(payment => new
+            {
+                Key = payment.EnrollmentContractId is Guid cid && studentKeyByContractId.TryGetValue(cid, out var byContract)
+                    ? byContract
+                    : !string.IsNullOrWhiteSpace(payment.StudentName)
+                        ? payment.StudentName
+                        : payment.StudentUserId is Guid uid && studentKeyByUserId.TryGetValue(uid, out var byUser)
+                            ? byUser
+                            : null,
+                payment.Amount,
+            })
+            .Where(item => item.Key != null)
+            .GroupBy(item => item.Key!)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount));
     }
 
     private static string ResolveStatus(decimal balance, int overdueCount, decimal net)

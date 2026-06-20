@@ -18,6 +18,15 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { GlowingOrb } from '../../components/animations/AnimatedBackground';
 import { fetchPlatformConfigurations, fetchPlatformTenants, upsertPlatformConfiguration } from '../../lib/api/modules';
+import { applyBrandVariables, generateBrandCSSVariables } from '../../lib/colorPalette';
+
+// Seçilen primary/accent rengini tüm uygulamaya anında uygular: --brand-accent,
+// --brand-primary vb. kök CSS değişkenlerini günceller; tüm bileşenler
+// hsl(var(--brand-accent)) kullandığından arayüz tek seferde o renge döner.
+function applyBrandColorsGlobally(primaryColor, accentColor) {
+  if (!primaryColor || !accentColor) return;
+  applyBrandVariables(generateBrandCSSVariables(primaryColor, accentColor));
+}
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -193,17 +202,24 @@ export default function TenantCustomization() {
 
   const handleColorChange = (type, color) => {
     if (!selectedTenant) return;
-    setCustomizations((prev) => ({
-      ...prev,
-      [selectedTenant.id]: {
-        ...prev[selectedTenant.id],
-        [type]: color,
-      },
-    }));
+    setCustomizations((prev) => {
+      const next = {
+        ...prev,
+        [selectedTenant.id]: {
+          ...prev[selectedTenant.id],
+          [type]: color,
+        },
+      };
+      // Renk seçilir seçilmez tüm arayüze uygula (canlı global tema).
+      const merged = next[selectedTenant.id];
+      applyBrandColorsGlobally(merged.primaryColor, merged.accentColor);
+      return next;
+    });
   };
 
   const handlePresetSelect = (preset) => {
     if (!selectedTenant) return;
+    applyBrandColorsGlobally(preset.primary, preset.accent);
     setCustomizations((prev) => ({
       ...prev,
       [selectedTenant.id]: {
@@ -218,6 +234,8 @@ export default function TenantCustomization() {
   const handleSave = () => {
     if (!selectedTenant) return;
     const payload = customizations[selectedTenant.id];
+    // Kaydedilen renkleri tüm arayüze uygula.
+    applyBrandColorsGlobally(payload?.primaryColor, payload?.accentColor);
     // Sadece kuruma özel olarak kaydet — global'i değiştirme
     upsertPlatformConfiguration({
       configurationType: 'tenant-customization',
@@ -464,7 +482,7 @@ export default function TenantCustomization() {
                         className="w-48 h-36 rounded-xl overflow-hidden shadow-lg flex-shrink-0"
                         style={{ background: `linear-gradient(to bottom, ${customization.primaryColor}, ${customization.primaryColor}dd)` }}
                       >
-                        <div className="p-3 border-b border-white/10 flex items-center gap-2">
+                        <div className="p-3 border-b border-foreground/10 flex items-center gap-2">
                           <div className="w-6 h-6 rounded-md flex items-center justify-center text-white text-[10px] font-bold"
                             style={{ background: `linear-gradient(135deg, ${customization.accentColor}, ${customization.accentColor}aa)` }}>
                             C
@@ -472,18 +490,18 @@ export default function TenantCustomization() {
                           <span className="text-white text-xs font-medium truncate">{customization.appName || 'CourseIntellect'}</span>
                         </div>
                         <div className="p-2 space-y-1">
-                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-white/70">
-                            <div className="w-3 h-3 rounded bg-white/20" />
-                            <div className="h-2 w-16 rounded bg-white/20" />
+                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-foreground/70">
+                            <div className="w-3 h-3 rounded bg-foreground/20" />
+                            <div className="h-2 w-16 rounded bg-foreground/20" />
                           </div>
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-white"
                             style={{ background: `linear-gradient(to right, ${customization.accentColor}, ${customization.accentColor}aa)` }}>
-                            <div className="w-3 h-3 rounded bg-white/30" />
-                            <div className="h-2 w-12 rounded bg-white/40" />
+                            <div className="w-3 h-3 rounded bg-foreground/30" />
+                            <div className="h-2 w-12 rounded bg-foreground/40" />
                           </div>
-                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-white/70">
-                            <div className="w-3 h-3 rounded bg-white/20" />
-                            <div className="h-2 w-20 rounded bg-white/20" />
+                          <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-foreground/70">
+                            <div className="w-3 h-3 rounded bg-foreground/20" />
+                            <div className="h-2 w-20 rounded bg-foreground/20" />
                           </div>
                         </div>
                       </div>

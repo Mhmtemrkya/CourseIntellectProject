@@ -28,6 +28,13 @@ public sealed class QuestionBankController(
         return Ok(items);
     }
 
+    [HttpGet("attempts/stats")]
+    public async Task<IActionResult> GetAttemptStats([FromQuery] string? studentUsername, [FromQuery] string? className, CancellationToken cancellationToken = default)
+    {
+        var stats = await questionBankService.GetStatsAsync(studentUsername, className, cancellationToken);
+        return Ok(stats);
+    }
+
     [HttpPost]
     [Authorize(Roles = "Teacher,Admin")]
     public async Task<IActionResult> Create([FromBody] CreateQuestionBankItemRequest request, CancellationToken cancellationToken)

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText, Video, Plus, Search, Eye, Upload, FolderOpen, CheckCircle2, Play, Pause, Download, Maximize2, Rewind, FastForward, Trash2,
-  CloudUpload, HardDrive, Sparkles, CalendarClock, Settings2, ImageIcon, X, ClipboardCheck, FileUp,
+  CloudUpload, HardDrive, Sparkles, CalendarClock, Settings2, ImageIcon, X, ClipboardCheck, FileUp, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -14,6 +14,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
+import { AnimatedValue, PremiumPanel } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { TeacherEmptyState } from '../../components/teacher/TeacherEmptyState';
 import { useToast } from '../../hooks/use-toast';
@@ -111,6 +112,8 @@ export default function TeacherContent() {
   const [classes, setClasses] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
+  const [subjectFilter, setSubjectFilter] = useState('all');
+  const [page, setPage] = useState(1);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -190,17 +193,30 @@ export default function TeacherContent() {
   }, [classOptions, form.grade]);
 
   const filteredContent = useMemo(() => content.filter((item) => {
+    const type = String(item.fileType).toLowerCase();
     const matchesSearch = `${item.title} ${item.subject} ${item.teacher}`.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType = filterType === 'all' || String(item.fileType).toLowerCase().includes(filterType);
-    return matchesSearch && matchesType;
-  }), [content, filterType, searchQuery]);
+    const matchesType = filterType === 'all'
+      || (filterType === 'video' && type.includes('video'))
+      || (filterType === 'dokuman' && (type.includes('pdf') || type.includes('doc') || type.includes('word')))
+      || (filterType === 'sunum' && (type.includes('sunum') || type.includes('ppt') || type.includes('slayt') || type.includes('presentation')));
+    const matchesSubject = subjectFilter === 'all' || item.subject === subjectFilter;
+    return matchesSearch && matchesType && matchesSubject;
+  }), [content, filterType, searchQuery, subjectFilter]);
 
+  const isSunum = (item) => /sunum|ppt|slayt|presentation/.test(String(item.fileType).toLowerCase());
   const stats = {
     total: content.length,
     pdf: content.filter((item) => String(item.fileType).toLowerCase().includes('pdf')).length,
     video: content.filter((item) => String(item.fileType).toLowerCase().includes('video')).length,
-    live: content.filter((item) => String(item.publishStatus).toLowerCase().includes('yay')).length,
+    sunum: content.filter(isSunum).length,
   };
+  const subjectOptions = [...new Set(content.map((item) => item.subject).filter(Boolean))];
+  const mostViewed = [...content].sort((a, b) => Number(b.views || 0) - Number(a.views || 0)).slice(0, 3);
+  const recentAdded = [...content].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).slice(0, 3);
+  const PAGE_SIZE = 6;
+  const pageCount = Math.max(1, Math.ceil(filteredContent.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pagedContent = filteredContent.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
   const teacherPlaylists = useMemo(() => {
     const teacherName = String(user?.name || '').trim().toLowerCase();
@@ -549,18 +565,18 @@ export default function TeacherContent() {
     <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-6" data-testid="teacher-content-page">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-heading">İçerik Yönetimi</h1>
-          <p className="text-muted-foreground mt-1">Ders materyallerini canlı backend ile yönetin</p>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Konu Anlatımı</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Derslerinize ait konu anlatımlarınızı oluşturun, düzenleyin ve paylaşın.</p>
         </div>
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90">
+            <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
               <Upload className="h-4 w-4 mr-2" />
-              Yeni İçerik
+              Yeni İçerik Ekle
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-white/10 bg-[#07111f] p-0 text-white shadow-2xl sm:w-[calc(100vw-2rem)]">
-            <div className="border-b border-white/10 bg-gradient-to-r from-[#091424] via-[#0d1628] to-[#160f08] px-6 py-5">
+          <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[#07111f] p-0 text-white shadow-2xl sm:w-[calc(100vw-2rem)]">
+            <div className="border-b border-foreground/10 bg-gradient-to-r from-[#091424] via-[#0d1628] to-[#160f08] px-6 py-5">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3 text-2xl text-white">
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30">
@@ -584,11 +600,11 @@ export default function TeacherContent() {
                     ['4', 'Önizleme & Yayınla'],
                   ].map(([number, label], index) => (
                     <div key={number} className="flex items-center gap-3">
-                      <span className={`flex h-8 w-8 items-center justify-center rounded-full ${index === 0 ? 'bg-orange-500 text-white shadow-[0_0_24px_rgba(249,115,22,0.45)]' : 'bg-white/8 text-slate-300 ring-1 ring-white/10'}`}>
+                      <span className={`flex h-8 w-8 items-center justify-center rounded-full ${index === 0 ? 'bg-orange-500 text-white shadow-[0_0_24px_rgba(249,115,22,0.45)]' : 'bg-foreground/8 text-slate-300 ring-1 ring-foreground/10'}`}>
                         {number}
                       </span>
                       <span>{label}</span>
-                      {index < 3 ? <span className="hidden h-px w-14 bg-white/10 md:block" /> : null}
+                      {index < 3 ? <span className="hidden h-px w-14 bg-foreground/10 md:block" /> : null}
                     </div>
                   ))}
                 </div>
@@ -601,10 +617,10 @@ export default function TeacherContent() {
                     event.preventDefault();
                     handleUploadFileSelected(event.dataTransfer.files?.[0]);
                   }}
-                  className="group relative flex min-h-[230px] w-full flex-col items-center justify-center overflow-hidden rounded-[28px] border border-dashed border-white/18 bg-white/[0.035] p-8 text-center transition hover:border-orange-400/60 hover:bg-orange-500/[0.06]"
+                  className="group relative flex min-h-[230px] w-full flex-col items-center justify-center overflow-hidden rounded-[28px] border border-dashed border-foreground/18 bg-foreground/[0.035] p-8 text-center transition hover:border-orange-400/60 hover:bg-orange-500/[0.06]"
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.18),transparent_42%)] opacity-0 transition group-hover:opacity-100" />
-                  <div className="relative flex h-20 w-20 items-center justify-center rounded-[26px] bg-white/[0.07] text-orange-300 ring-1 ring-white/10">
+                  <div className="relative flex h-20 w-20 items-center justify-center rounded-[26px] bg-foreground/[0.07] text-orange-300 ring-1 ring-foreground/10">
                     <FileUp className="h-10 w-10" />
                   </div>
                   <h3 className="relative mt-5 text-xl font-bold text-white">Dosyanızı buraya sürükleyip bırakın</h3>
@@ -631,7 +647,7 @@ export default function TeacherContent() {
                       key={title}
                       type="button"
                       onClick={() => title === 'Dosya Seç' && fileInputRef.current?.click()}
-                      className="rounded-2xl border border-white/10 bg-white/[0.045] p-4 text-left transition hover:border-orange-400/40 hover:bg-white/[0.075]"
+                      className="rounded-2xl border border-foreground/10 bg-foreground/[0.045] p-4 text-left transition hover:border-orange-400/40 hover:bg-foreground/[0.075]"
                     >
                       <Icon className="h-6 w-6 text-orange-300" />
                       <p className="mt-3 text-sm font-bold text-white">{title}</p>
@@ -640,7 +656,7 @@ export default function TeacherContent() {
                   ))}
                 </div>
 
-                <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                <div className="rounded-[24px] border border-foreground/10 bg-foreground/[0.035] p-4">
                   <div className="mb-3 flex items-center justify-between">
                     <h3 className="font-bold text-white">Yüklenen Dosya</h3>
                     {selectedFile ? (
@@ -651,7 +667,7 @@ export default function TeacherContent() {
                     ) : null}
                   </div>
                   {selectedFile ? (
-                    <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-[#0b1626] p-4 md:flex-row md:items-center">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-[#0b1626] p-4 md:flex-row md:items-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300">
                         {form.fileType === 'Video' ? <Video className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
                       </div>
@@ -659,20 +675,20 @@ export default function TeacherContent() {
                         <p className="truncate font-semibold text-white">{selectedFile.name}</p>
                         <p className="mt-1 text-xs text-slate-400">{form.fileType} • {formatFileSizeLabel(selectedFile.size)} • Yayına hazır</p>
                       </div>
-                      <div className="h-2 w-full overflow-hidden rounded-full bg-white/10 md:w-56">
+                      <div className="h-2 w-full overflow-hidden rounded-full bg-foreground/10 md:w-56">
                         <div className="h-full w-full rounded-full bg-gradient-to-r from-orange-500 to-amber-300" />
                       </div>
                       <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-white/10 bg-[#0b1626] p-5 text-sm text-slate-400">
+                    <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-5 text-sm text-slate-400">
                       Henüz dosya seçilmedi. Canlı içerik oluşturmak için bir dosya ekleyin.
                     </div>
                   )}
                 </div>
 
                 <div className="grid gap-4 xl:grid-cols-2">
-                  <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                  <div className="rounded-[24px] border border-foreground/10 bg-foreground/[0.035] p-4">
                     <h3 className="mb-4 flex items-center gap-2 font-bold text-white">
                       <Eye className="h-5 w-5 text-orange-300" />
                       İçerik Önizleme
@@ -680,7 +696,7 @@ export default function TeacherContent() {
                     <div className="relative flex min-h-[210px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#151f32] via-[#0b1424] to-[#261305]">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(249,115,22,0.28),transparent_42%)]" />
                       <div className="relative text-center">
-                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-white/10 text-orange-300 ring-1 ring-white/10">
+                        <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/10 text-orange-300 ring-1 ring-foreground/10">
                           {form.fileType === 'Video' ? <Play className="h-8 w-8" /> : <FileText className="h-8 w-8" />}
                         </div>
                         <p className="mt-4 max-w-sm px-4 text-sm font-semibold text-white">{form.title || 'İçerik başlığı burada görünecek'}</p>
@@ -689,7 +705,7 @@ export default function TeacherContent() {
                     </div>
                   </div>
 
-                  <div className="rounded-[24px] border border-white/10 bg-white/[0.035] p-4">
+                  <div className="rounded-[24px] border border-foreground/10 bg-foreground/[0.035] p-4">
                     <h3 className="mb-4 flex items-center gap-2 font-bold text-white">
                       <ClipboardCheck className="h-5 w-5 text-purple-300" />
                       İçerik Kontrolü
@@ -711,34 +727,34 @@ export default function TeacherContent() {
                 </div>
               </div>
 
-              <aside className="space-y-4 border-t border-white/10 bg-white/[0.025] p-5 lg:border-l lg:border-t-0 lg:p-6">
-                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+              <aside className="space-y-4 border-t border-foreground/10 bg-foreground/[0.025] p-5 lg:border-l lg:border-t-0 lg:p-6">
+                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
                   <h3 className="mb-4 text-lg font-bold text-white">İçerik Bilgileri</h3>
                   <div className="space-y-4">
                     <div className="space-y-2">
                       <Label className="text-slate-300">İçerik Adı</Label>
-                      <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="7. Sınıf Matematik - Üslü Sayılar" />
+                      <Input className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500" value={form.title} onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))} placeholder="7. Sınıf Matematik - Üslü Sayılar" />
                     </div>
                     <div className="space-y-2">
                       <Label className="text-slate-300">Açıklama</Label>
-                      <Textarea className="min-h-[96px] border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="İçeriğin öğrenciye ne kazandıracağını yaz..." />
+                      <Textarea className="min-h-[96px] border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500" value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="İçeriğin öğrenciye ne kazandıracağını yaz..." />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-2">
                         <Label className="text-slate-300">Ders</Label>
-                        <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))} placeholder="Matematik" />
+                        <Input className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500" value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))} placeholder="Matematik" />
                       </div>
                       <div className="space-y-2">
                         <Label className="text-slate-300">Sınıf</Label>
                         {classOptions.length > 0 ? (
                           <Select value={form.grade} onValueChange={(value) => setForm((prev) => ({ ...prev, grade: value }))}>
-                            <SelectTrigger className="border-white/10 bg-white/[0.06] text-white"><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
+                            <SelectTrigger className="border-foreground/10 bg-foreground/[0.06] text-white"><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
                             <SelectContent>
                               {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         ) : (
-                          <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.grade} onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))} placeholder="7. Sınıf" />
+                          <Input className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500" value={form.grade} onChange={(e) => setForm((prev) => ({ ...prev, grade: e.target.value }))} placeholder="7. Sınıf" />
                         )}
                       </div>
                     </div>
@@ -746,7 +762,7 @@ export default function TeacherContent() {
                       <div className="space-y-2">
                         <Label className="text-slate-300">Dosya Türü</Label>
                         <Select value={form.fileType} onValueChange={(value) => setForm((prev) => ({ ...prev, fileType: value }))}>
-                          <SelectTrigger className="border-white/10 bg-white/[0.06] text-white"><SelectValue /></SelectTrigger>
+                          <SelectTrigger className="border-foreground/10 bg-foreground/[0.06] text-white"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="PDF">PDF</SelectItem>
                             <SelectItem value="Video">Video</SelectItem>
@@ -758,7 +774,7 @@ export default function TeacherContent() {
                       </div>
                       <div className="space-y-2">
                         <Label className="text-slate-300">Boyut</Label>
-                        <Input className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500" value={form.size} onChange={(e) => setForm((prev) => ({ ...prev, size: e.target.value }))} placeholder="24 MB" />
+                        <Input className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500" value={form.size} onChange={(e) => setForm((prev) => ({ ...prev, size: e.target.value }))} placeholder="24 MB" />
                       </div>
                     </div>
                   </div>
@@ -780,7 +796,7 @@ export default function TeacherContent() {
                         key={value}
                         type="button"
                         variant={form.playlistMode === value ? 'default' : 'outline'}
-                        className={form.playlistMode === value ? 'bg-orange-500 text-white hover:bg-orange-600' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'}
+                        className={form.playlistMode === value ? 'bg-orange-500 text-white hover:bg-orange-600' : 'border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:bg-foreground/[0.08]'}
                         onClick={() => {
                           setForm((prev) => ({
                             ...prev,
@@ -802,7 +818,7 @@ export default function TeacherContent() {
                       <div className="space-y-2">
                         <Label className="text-slate-300">Liste Başlığı</Label>
                         <Input
-                          className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500"
                           value={form.playlistTitle}
                           onChange={(e) => setForm((prev) => ({ ...prev, playlistTitle: e.target.value }))}
                           placeholder="Orn: Trigonometri Kampi"
@@ -811,7 +827,7 @@ export default function TeacherContent() {
                       <div className="space-y-2">
                         <Label className="text-slate-300">Video Sırası</Label>
                         <Input
-                          className="border-white/10 bg-white/[0.06] text-white"
+                          className="border-foreground/10 bg-foreground/[0.06] text-white"
                           type="number"
                           min="1"
                           value={form.playlistOrder}
@@ -837,7 +853,7 @@ export default function TeacherContent() {
                               }));
                             }}
                           >
-                            <SelectTrigger className="border-white/10 bg-white/[0.06] text-white"><SelectValue placeholder="Liste seçin" /></SelectTrigger>
+                            <SelectTrigger className="border-foreground/10 bg-foreground/[0.06] text-white"><SelectValue placeholder="Liste seçin" /></SelectTrigger>
                             <SelectContent>
                               {teacherPlaylists.map((item) => (
                                 <SelectItem key={item.key} value={item.key}>{item.title}</SelectItem>
@@ -848,7 +864,7 @@ export default function TeacherContent() {
                         <div className="space-y-2">
                           <Label className="text-slate-300">Video Sırası</Label>
                           <Input
-                            className="border-white/10 bg-white/[0.06] text-white"
+                            className="border-foreground/10 bg-foreground/[0.06] text-white"
                             type="number"
                             min="1"
                             value={form.playlistOrder}
@@ -863,7 +879,7 @@ export default function TeacherContent() {
                 </div>
               ) : null}
 
-                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
                   <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
                     <Settings2 className="h-5 w-5 text-orange-300" />
                     İçerik Ayarları
@@ -878,7 +894,7 @@ export default function TeacherContent() {
                         key={label}
                         type="button"
                         onClick={() => setContentSettings((prev) => ({ ...prev, [key]: !prev[key] }))}
-                        className="flex w-full items-center justify-between rounded-2xl bg-white/[0.04] px-4 py-3 text-left text-sm"
+                        className="flex w-full items-center justify-between rounded-2xl bg-foreground/[0.04] px-4 py-3 text-left text-sm"
                       >
                         <span className="text-slate-300">{label}</span>
                         <span className={`h-6 w-11 rounded-full p-1 ${contentSettings[key] ? 'bg-orange-500' : 'bg-slate-700'}`}>
@@ -889,7 +905,7 @@ export default function TeacherContent() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
                   <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
                     <ImageIcon className="h-5 w-5 text-purple-300" />
                     Kapak Görseli
@@ -906,32 +922,32 @@ export default function TeacherContent() {
                     onClick={() => coverInputRef.current?.click()}
                     className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/30 via-[#101b2c] to-orange-500/25 p-4 text-left"
                   >
-                    <div className="flex h-24 items-center justify-center rounded-xl border border-white/10 bg-black/20">
+                    <div className="flex h-24 items-center justify-center rounded-xl border border-foreground/10 bg-black/20">
                       <span className="text-sm font-semibold text-slate-200">{coverFile?.name || form.subject || 'Kapak seç / otomatik kapak'}</span>
                     </div>
                   </button>
                   <p className="mt-3 text-xs text-slate-400">Kapak yüklenirse öğrenci izleme ekranında canlı olarak kullanılır.</p>
                 </div>
 
-                <div className="rounded-[24px] border border-white/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
                   <h3 className="mb-4 text-lg font-bold text-white">Alıştırmalar</h3>
                   <div className="space-y-3">
                     {exerciseDrafts.map((exercise, index) => (
-                      <div key={exercise.id} className="space-y-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3">
+                      <div key={exercise.id} className="space-y-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
                         <Input
-                          className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500"
                           value={exercise.title}
                           onChange={(event) => setExerciseDrafts((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, title: event.target.value } : item))}
                           placeholder="Alıştırma başlığı"
                         />
                         <Input
-                          className="border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          className="border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500"
                           value={exercise.url}
                           onChange={(event) => setExerciseDrafts((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, url: event.target.value } : item))}
                           placeholder="Bağlantı veya materyal URL"
                         />
                         <Textarea
-                          className="min-h-[70px] border-white/10 bg-white/[0.06] text-white placeholder:text-slate-500"
+                          className="min-h-[70px] border-foreground/10 bg-foreground/[0.06] text-white placeholder:text-slate-500"
                           value={exercise.description}
                           onChange={(event) => setExerciseDrafts((prev) => prev.map((item, itemIndex) => itemIndex === index ? { ...item, description: event.target.value } : item))}
                           placeholder="Kısa açıklama"
@@ -942,7 +958,7 @@ export default function TeacherContent() {
                   <Button
                     type="button"
                     variant="outline"
-                    className="mt-3 w-full border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]"
+                    className="mt-3 w-full border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:bg-foreground/[0.08]"
                     onClick={() => setExerciseDrafts((prev) => [...prev, { id: `exercise-${Date.now()}`, title: '', description: '', url: '' }])}
                   >
                     <Plus className="mr-2 h-4 w-4" />
@@ -952,8 +968,8 @@ export default function TeacherContent() {
               </aside>
             </div>
 
-            <DialogFooter className="sticky bottom-0 border-t border-white/10 bg-[#07111f]/95 px-6 py-4 backdrop-blur">
-              <Button variant="outline" className="border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]" onClick={() => { resetUploadForm(); setUploadOpen(false); }}>İptal</Button>
+            <DialogFooter className="sticky bottom-0 border-t border-foreground/10 bg-[#07111f]/95 px-6 py-4 backdrop-blur">
+              <Button variant="outline" className="border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:bg-foreground/[0.08]" onClick={() => { resetUploadForm(); setUploadOpen(false); }}>İptal</Button>
               <Button
                 onClick={handleCreate}
                 className="bg-orange-500 text-white hover:bg-orange-600"
@@ -979,48 +995,47 @@ export default function TeacherContent() {
 
       {error ? <ErrorBanner title="İçerikler alınamadı" message={error} onRetry={loadContent} /> : null}
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      {/* 4 stat kartı */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
-          [stats.total, 'Toplam İçerik', FolderOpen, 'text-brand-primary'],
-          [stats.pdf, 'PDF', FileText, 'text-red-600'],
-          [stats.video, 'Video', Video, 'text-brand-accent'],
-          [stats.live, 'Yayında', CheckCircle2, 'text-green-600'],
-        ].map(([value, label, Icon, color]) => (
-          <motion.div variants={itemVariants} key={label}>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="text-2xl font-bold">{value}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-muted">
-                    <Icon className={`h-5 w-5 ${color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          ['Toplam İçerik', stats.total, 'içerik', FolderOpen, 'from-violet-400 to-fuchsia-600'],
+          ['Video İçerikler', stats.video, 'video', Video, 'from-sky-400 to-blue-600'],
+          ['PDF İçerikler', stats.pdf, 'doküman', FileText, 'from-rose-400 to-red-600'],
+          ['Sunumlar', stats.sunum, 'sunum', FolderOpen, 'from-amber-400 to-orange-600'],
+        ].map(([label, value, unit, Icon, gradient]) => (
+          <motion.div variants={itemVariants} key={label} className="ci-metric-card flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+              <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br text-white ${gradient}`}><Icon className="h-4 w-4" /></div>
+            </div>
+            <div>
+              <p className="text-3xl font-black tracking-tight"><AnimatedValue value={value} /></p>
+              <p className="mt-0.5 text-[11px] text-muted-foreground">{unit}</p>
+            </div>
           </motion.div>
         ))}
       </div>
 
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="İçerik ara..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-9" />
-        </div>
-        <Select value={filterType} onValueChange={setFilterType}>
-          <SelectTrigger className="w-full sm:w-40">
-            <SelectValue placeholder="Tür" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Tümü</SelectItem>
-            <SelectItem value="pdf">PDF</SelectItem>
-            <SelectItem value="video">Video</SelectItem>
-          </SelectContent>
-        </Select>
-      </motion.div>
+      {/* Sekmeler */}
+      <div className="flex flex-wrap gap-1 rounded-full border border-foreground/10 bg-foreground/[0.04] p-1">
+        {[['all', 'Tüm İçerikler'], ['video', 'Videolar'], ['dokuman', 'Dokümanlar'], ['sunum', 'Sunumlar']].map(([value, label]) => (
+          <button key={value} onClick={() => { setFilterType(value); setPage(1); }} className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${filterType === value ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
+        ))}
+      </div>
 
+      {/* Filtre çubuğu */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input placeholder="İçerik ara..." value={searchQuery} onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }} className="pl-9" />
+        </div>
+        <select value={subjectFilter} onChange={(e) => { setSubjectFilter(e.target.value); setPage(1); }} className="rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2 text-sm outline-none">
+          <option value="all">Tüm Dersler</option>
+          {subjectOptions.map((s) => <option key={s} value={s}>{s}</option>)}
+        </select>
+      </div>
+
+      {/* İçerik tablosu */}
       {content.length === 0 ? (
         <motion.div variants={itemVariants}>
           <TeacherEmptyState
@@ -1031,65 +1046,94 @@ export default function TeacherContent() {
             description="Bu derse ait henüz bir konu anlatımı içeriği bulunmuyor. Hemen içerik ekleyerek öğrencilerinize sunabilirsiniz."
             primaryLabel="Yeni İçerik Ekle"
             onPrimary={() => setUploadOpen(true)}
-            secondaryLabel="İçerik Yükle"
-            onSecondary={() => setUploadOpen(true)}
-            tipTitle="Desteklenen İçerik Türleri"
-            tipDescription="PDF, DOCX, PPTX, video, ses ve görsel dosyalarını yükleyebilirsiniz."
           />
         </motion.div>
-      ) : filteredContent.length === 0 ? (
-        <Card>
-          <CardContent className="p-6 text-sm text-muted-foreground">
-            Bu filtrelere uygun içerik bulunamadı.
-          </CardContent>
-        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {filteredContent.map((item) => {
-            const published = String(item.publishStatus).toLowerCase().includes('yay');
-            return (
-              <PremiumResourceCard
-                key={item.id || item.title}
-                subject={item.subject}
-                eyebrow={item.subject}
-                title={item.title}
-                subtitle={`${item.grade || '-'} • ${item.teacher || '-'}`}
-                badge={item.fileType}
-                description={item.description || item.info || 'Bu içerik için henüz açıklama girilmedi.'}
-                chips={[
-                  published ? 'Yayında' : 'Taslak',
-                  item.playlistTitle ? `${item.playlistTitle} #${item.playlistOrder || 1}` : null,
-                ]}
-                stats={[
-                  ['Boyut', item.size || '-'],
-                  ['Görüntüleme', item.views ?? 0],
-                  ['Sınıf', item.grade || '-'],
-                ]}
-                footer={(
-                  <div className="mt-4 flex gap-2">
-                    <Button
-                      variant="outline"
-                      className="h-10 flex-1 rounded-xl border-white/10 bg-white/[0.04] text-slate-100 hover:bg-white/10 hover:text-white"
-                      onClick={() => {
-                        setSelectedContent(item);
-                        setPlayInlineVideo(false);
-                      }}
-                    >
-                      <Eye className="mr-2 h-4 w-4" />Detay
-                    </Button>
-                    <Button
-                      className="h-10 flex-1 rounded-xl bg-orange-500 text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
-                      onClick={() => handlePublish(item, published ? 'Taslak' : 'Yayinda')}
-                    >
-                      {published ? 'Taslağa Al' : 'Yayınla'}
-                    </Button>
-                  </div>
-                )}
-              />
-            );
-          })}
-        </div>
+        <motion.div variants={itemVariants}>
+          <PremiumPanel title="İçerikler" description={`${filteredContent.length} içerik`} contentClassName="p-0">
+            <div className="overflow-x-auto">
+              <table className="ci-table w-full min-w-[760px] text-sm">
+                <thead>
+                  <tr className="border-b border-foreground/10 text-left text-[11px] uppercase tracking-wide text-muted-foreground">
+                    <th className="px-4 py-3 font-semibold">İçerik Adı</th>
+                    <th className="px-4 py-3 font-semibold">Ders</th>
+                    <th className="px-4 py-3 font-semibold">Sınıf</th>
+                    <th className="px-4 py-3 font-semibold">Tür</th>
+                    <th className="px-4 py-3 font-semibold">Oluşturulma</th>
+                    <th className="px-4 py-3 text-right font-semibold">İşlemler</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pagedContent.length ? pagedContent.map((item) => {
+                    const t = String(item.fileType).toLowerCase();
+                    const tone = t.includes('video') ? 'border-sky-500/30 bg-sky-500/12 text-sky-300'
+                      : (t.includes('pdf') || t.includes('doc')) ? 'border-rose-500/30 bg-rose-500/12 text-rose-300'
+                      : isSunum(item) ? 'border-violet-500/30 bg-violet-500/12 text-violet-300'
+                      : 'border-foreground/10 bg-foreground/5 text-muted-foreground';
+                    const TypeIcon = t.includes('video') ? Video : FileText;
+                    const created = item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleDateString('tr-TR') : (item.dateLabel || '-');
+                    return (
+                      <tr key={item.id || item.title} className="border-b border-foreground/[0.06] transition-colors hover:bg-foreground/[0.025]">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            <div className="grid h-10 w-12 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><TypeIcon className="h-4 w-4" /></div>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold">{item.title}</p>
+                              {item.description ? <p className="truncate text-xs text-muted-foreground">{item.description}</p> : null}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.subject || '-'}</td>
+                        <td className="px-4 py-3 text-muted-foreground">{item.grade || '-'}</td>
+                        <td className="px-4 py-3"><span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${tone}`}>{item.fileType || 'Dosya'}</span></td>
+                        <td className="px-4 py-3 text-muted-foreground">{created}</td>
+                        <td className="px-4 py-3 text-right">
+                          <Button size="sm" variant="outline" className="text-xs" onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }}><Eye className="mr-1.5 h-3.5 w-3.5" />Detay</Button>
+                        </td>
+                      </tr>
+                    );
+                  }) : (
+                    <tr><td colSpan={6} className="px-4 py-10 text-center text-sm text-muted-foreground">Bu filtrede içerik bulunamadı.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {pageCount > 1 ? (
+              <div className="flex items-center justify-between border-t border-foreground/10 px-4 py-3">
+                <span className="text-xs text-muted-foreground">{(safePage - 1) * PAGE_SIZE + 1} - {Math.min(safePage * PAGE_SIZE, filteredContent.length)} / {filteredContent.length} içerik</span>
+                <div className="flex items-center gap-1">
+                  <Button size="icon" variant="outline" className="h-7 w-7" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}><ChevronLeft className="h-4 w-4" /></Button>
+                  <span className="px-2 text-xs font-semibold tabular-nums">{safePage} / {pageCount}</span>
+                  <Button size="icon" variant="outline" className="h-7 w-7" disabled={safePage >= pageCount} onClick={() => setPage(safePage + 1)}><ChevronRight className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            ) : null}
+          </PremiumPanel>
+        </motion.div>
       )}
+
+      {/* En Çok İzlenen + Son Eklenen */}
+      {content.length > 0 ? (
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+          <PremiumPanel title="En Çok İzlenen İçerikler" description="En çok izlenen konular" contentClassName="space-y-2.5">
+            {mostViewed.map((item, index) => (
+              <button key={item.id || index} onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.14)] text-xs font-black text-[hsl(var(--brand-accent))]">{index + 1}</span>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.grade || '-'} • {item.views || 0} izlenme</p></div>
+                <Eye className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent))]" />
+              </button>
+            ))}
+          </PremiumPanel>
+          <PremiumPanel title="Son Eklenen İçerikler" description="Yeni yüklenen materyaller" contentClassName="space-y-2.5">
+            {recentAdded.map((item, index) => (
+              <button key={item.id || index} onClick={() => { setSelectedContent(item); setPlayInlineVideo(false); }} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><FileText className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.createdAt && !Number.isNaN(new Date(item.createdAt).getTime()) ? new Date(item.createdAt).toLocaleDateString('tr-TR') : (item.dateLabel || '')}</p></div>
+              </button>
+            ))}
+          </PremiumPanel>
+        </div>
+      ) : null}
 
       <Dialog open={Boolean(selectedContent)} onOpenChange={(open) => {
         if (!open) {
@@ -1139,13 +1183,13 @@ export default function TeacherContent() {
                       {selectedContent.fileType}
                     </div>
                     <div className="flex flex-wrap items-center justify-end gap-2 sm:max-w-[70%]">
-                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60" onClick={() => handleOpenContentFile(selectedContent, true)}>
+                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60" onClick={() => handleOpenContentFile(selectedContent, true)}>
                         <Download className="h-4 w-4" />
                       </Button>
-                      <Button type="button" variant="outline" className="h-9 rounded-full border-white/20 bg-black/45 px-3 text-xs text-white hover:bg-black/60 sm:text-sm" onClick={() => updateVideoSpeed(videoSpeed === 1 ? 1.5 : 1)}>
+                      <Button type="button" variant="outline" className="h-9 rounded-full border-foreground/20 bg-black/45 px-3 text-xs text-white hover:bg-black/60 sm:text-sm" onClick={() => updateVideoSpeed(videoSpeed === 1 ? 1.5 : 1)}>
                         {videoSpeed}x
                       </Button>
-                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-white/20 bg-black/45 text-white hover:bg-black/60" onClick={() => openVideoFullscreen().catch(() => {})}>
+                      <Button type="button" variant="outline" size="icon" className="h-9 w-9 rounded-full border-foreground/20 bg-black/45 text-white hover:bg-black/60" onClick={() => openVideoFullscreen().catch(() => {})}>
                         <Maximize2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -1167,13 +1211,13 @@ export default function TeacherContent() {
                       className="mb-3 w-full accent-red-500"
                     />
                     <div className="flex flex-wrap items-center gap-1.5 text-white sm:gap-2">
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white hover:bg-white/10" onClick={toggleVideoPlayback}>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white hover:bg-foreground/10" onClick={toggleVideoPlayback}>
                         {playInlineVideo ? <Pause className="h-5 w-5" /> : <Play className="h-5 w-5" />}
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white hover:bg-white/10" onClick={() => seekVideoBy(-10)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white hover:bg-foreground/10" onClick={() => seekVideoBy(-10)}>
                         <Rewind className="h-5 w-5" />
                       </Button>
-                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white hover:bg-white/10" onClick={() => seekVideoBy(10)}>
+                      <Button type="button" variant="ghost" size="icon" className="h-9 w-9 rounded-full text-white hover:bg-foreground/10" onClick={() => seekVideoBy(10)}>
                         <FastForward className="h-5 w-5" />
                       </Button>
                       <div className="ml-1 min-w-[96px] text-xs font-medium sm:ml-2 sm:text-sm">
@@ -1195,11 +1239,11 @@ export default function TeacherContent() {
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.24),transparent_42%)]" />
                   <div className="relative flex items-start justify-between gap-4">
                     <div>
-                      <Badge className="border-white/20 bg-white/15 text-white">{selectedContent.subject}</Badge>
+                      <Badge className="border-foreground/20 bg-foreground/15 text-white">{selectedContent.subject}</Badge>
                       <h3 className="mt-4 text-2xl font-semibold">{selectedContent.title}</h3>
-                      <p className="mt-2 text-sm text-white/85">{selectedContent.teacher} • {selectedContent.grade}</p>
+                      <p className="mt-2 text-sm text-foreground/85">{selectedContent.teacher} • {selectedContent.grade}</p>
                     </div>
-                    <div className="rounded-2xl bg-white/15 p-3">
+                    <div className="rounded-2xl bg-foreground/15 p-3">
                       {(() => {
                         const DetailIcon = contentTypeIcon(selectedContent.fileType);
                         return <DetailIcon className="h-6 w-6 text-white" />;

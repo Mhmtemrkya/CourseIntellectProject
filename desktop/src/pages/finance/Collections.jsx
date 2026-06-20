@@ -467,12 +467,12 @@ export default function Collections() {
               <div className="rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 p-6 text-white shadow-xl">
                 <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <p className="text-xs uppercase tracking-[0.24em] text-white/70">Tahsilat Fişi</p>
+                    <p className="text-xs uppercase tracking-[0.24em] text-foreground/70">Tahsilat Fişi</p>
                     <h3 className="mt-2 text-2xl font-semibold">{selectedCollection.name}</h3>
-                    <p className="mt-2 text-white/80">{selectedCollection.className || 'Sınıf bilgisi yok'} • {selectedCollection.method}</p>
+                    <p className="mt-2 text-foreground/80">{selectedCollection.className || 'Sınıf bilgisi yok'} • {selectedCollection.method}</p>
                   </div>
-                  <div className="rounded-2xl bg-white/12 px-5 py-4 backdrop-blur">
-                    <div className="text-xs text-white/70">Tahsilat Tutarı</div>
+                  <div className="rounded-2xl bg-foreground/12 px-5 py-4 backdrop-blur">
+                    <div className="text-xs text-foreground/70">Tahsilat Tutarı</div>
                     <div className="mt-2 text-3xl font-bold">{formatCurrency(selectedCollection.amount)}</div>
                   </div>
                 </div>

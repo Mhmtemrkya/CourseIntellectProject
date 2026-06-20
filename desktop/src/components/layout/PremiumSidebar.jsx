@@ -52,7 +52,7 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
         compact ? "mx-auto h-10 w-10 justify-center" : "gap-2.5 px-2.5 py-2",
         active
           ? "border-[hsl(var(--brand-accent)/0.34)] text-white shadow-[0_8px_24px_hsl(var(--brand-accent)/0.12)]"
-          : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.055] hover:text-white",
+          : "border-transparent text-foreground/60 hover:border-foreground/10 hover:bg-foreground/[0.055] hover:text-white",
       )}
       style={
         active
@@ -72,7 +72,7 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
       <span
         className={cn(
           "relative z-10 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition",
-          active ? "bg-white/15" : "group-hover:bg-white/[0.08]",
+          active ? "bg-foreground/15" : "group-hover:bg-foreground/[0.08]",
         )}
       >
         <Icon
@@ -123,14 +123,16 @@ export function PremiumSidebar() {
   const {
     accentColor,
     primaryColor,
-    resolvedTheme,
     setTheme,
     tenantLogo,
     tenantName,
   } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  const light = resolvedTheme === "light";
+  // Sidebar her iki temada da koyu kalır (premium görünüm + metin okunaklılığı).
+  // Arka plan gradient'i zaten her iki temada özdeş koyu; metin/üst-katman
+  // sınıfları index.css'te [data-ci-sidebar] altında açık token'lara sabitlenir.
+  const light = false;
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
   const [disabledFeatures, setDisabledFeatures] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
@@ -280,7 +282,7 @@ export function PremiumSidebar() {
         variants={variants}
         initial={false}
         animate={sidebarCollapsed ? "collapsed" : "expanded"}
-        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-white/[0.08] text-white shadow-[18px_0_48px_rgba(0,0,0,0.28)] lg:relative"
+        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-foreground/[0.08] text-white shadow-[18px_0_48px_rgba(0,0,0,0.28)] lg:relative"
         style={{
           background: light
             ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), radial-gradient(circle at 88% 20%, rgba(0,91,160,0.18), transparent 30%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)"
@@ -295,7 +297,7 @@ export function PremiumSidebar() {
 
         <header
           className={cn(
-            "relative flex h-[64px] flex-shrink-0 items-center border-b border-white/[0.08]",
+            "relative flex h-[64px] flex-shrink-0 items-center border-b border-foreground/[0.08]",
             compact ? "justify-center px-2" : "justify-between px-4",
           )}
         >
@@ -322,7 +324,7 @@ export function PremiumSidebar() {
                 <p className={cn("truncate text-[16px] font-bold", light ? "text-slate-950" : "text-white")}>
                   Course<span className="text-[hsl(var(--brand-accent))]">Intellect</span>
                 </p>
-                <p className={cn("max-w-[154px] truncate text-[9px]", light ? "text-slate-500" : "text-white/38")}>
+                <p className={cn("max-w-[154px] truncate text-[9px]", light ? "text-slate-500" : "text-foreground/38")}>
                   {tenantName || ROLE_LABELS[primaryRole]}
                 </p>
               </div>
@@ -333,8 +335,8 @@ export function PremiumSidebar() {
               type="button"
               onClick={() => setSidebarCollapsed(true)}
               className={cn(
-                "rounded-[10px] border p-1.5 transition hover:bg-white/10",
-                light ? "border-slate-200 text-slate-500" : "border-white/10 text-white/65",
+                "rounded-[10px] border p-1.5 transition hover:bg-foreground/10",
+                light ? "border-slate-200 text-slate-500" : "border-foreground/10 text-foreground/65",
               )}
               data-testid="sidebar-close-button"
             >
@@ -350,8 +352,8 @@ export function PremiumSidebar() {
             className={cn(
               "relative mx-auto mt-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] border transition",
               light
-                ? "border-slate-200 bg-white/70 text-slate-600 hover:bg-white"
-                : "border-white/10 bg-white/[0.05] text-white/65 hover:bg-white/10 hover:text-white",
+                ? "border-slate-200 bg-foreground/70 text-slate-600 hover:bg-white"
+                : "border-foreground/10 bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10 hover:text-white",
             )}
             aria-label="Menüyü genişlet"
           >
@@ -359,10 +361,10 @@ export function PremiumSidebar() {
           </button>
         ) : (
           <>
-            <div className={cn("relative mx-3 mt-3 rounded-[10px] border p-2.5 backdrop-blur-xl", light ? "border-white/[0.08] bg-white/[0.035]" : "border-white/[0.08] bg-white/[0.035]")}>
+            <div className={cn("relative mx-3 mt-3 rounded-[10px] border p-2.5 backdrop-blur-xl", light ? "border-foreground/[0.08] bg-foreground/[0.035]" : "border-foreground/[0.08] bg-foreground/[0.035]")}>
               <div className="flex items-center gap-2.5">
                 <div
-                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-white/10 text-sm font-bold text-white shadow-lg"
+                  className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full border-[3px] border-foreground/10 text-sm font-bold text-white shadow-lg"
                   style={{
                     background:
                       "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
@@ -374,7 +376,7 @@ export function PremiumSidebar() {
                   <p className={cn("truncate text-[13px] font-semibold", light ? "text-slate-950" : "text-white")}>
                     {user?.name || "Kullanıcı"}
                   </p>
-                  <p className={cn("truncate text-[10px]", light ? "text-slate-500" : "text-white/42")}>
+                  <p className={cn("truncate text-[10px]", light ? "text-slate-500" : "text-foreground/42")}>
                     {displayEmail}
                   </p>
                   <span className="mt-1 inline-flex rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[9px] font-semibold text-[hsl(var(--brand-accent))]">
@@ -390,8 +392,8 @@ export function PremiumSidebar() {
               className={cn(
                 "relative mx-3 mt-2.5 flex h-9 items-center gap-2.5 rounded-[9px] border px-3 text-left transition",
                 light
-                  ? "border-white/[0.10] bg-[#061A31]/70 text-white/45 hover:bg-white/[0.07]"
-                  : "border-white/10 bg-white/[0.035] text-white/45 hover:bg-white/[0.07] hover:text-white/70",
+                  ? "border-foreground/[0.10] bg-[#061A31]/70 text-foreground/45 hover:bg-foreground/[0.07]"
+                  : "border-foreground/10 bg-foreground/[0.035] text-foreground/45 hover:bg-foreground/[0.07] hover:text-foreground/70",
               )}
             >
               <Search className="h-4 w-4" />
@@ -403,7 +405,7 @@ export function PremiumSidebar() {
           </>
         )}
 
-        <nav className={cn("relative flex-1 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-white/10", compact ? "px-2" : "px-3")}>
+        <nav className={cn("relative flex-1 overflow-y-auto py-3 scrollbar-thin scrollbar-thumb-foreground/10", compact ? "px-2" : "px-3")}>
           {compact ? (
             <div className="space-y-2">
               {allItems.map((item) => (
@@ -420,7 +422,7 @@ export function PremiumSidebar() {
             <div className="space-y-4">
               {mainGroup && (
                 <section>
-                  <p className={cn("mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em]", light ? "text-slate-400" : "text-white/30")}>
+                  <p className={cn("mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em]", light ? "text-slate-400" : "text-foreground/30")}>
                     Ana Panel
                   </p>
                   <div className="space-y-1">
@@ -438,7 +440,7 @@ export function PremiumSidebar() {
 
               {moduleGroups.length > 0 && (
                 <section>
-                  <p className={cn("mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em]", light ? "text-slate-400" : "text-white/30")}>
+                  <p className={cn("mb-1.5 px-2 text-[9px] font-bold uppercase tracking-[0.17em]", light ? "text-slate-400" : "text-foreground/30")}>
                     Modüller
                   </p>
                   <div className="space-y-1.5">
@@ -458,25 +460,25 @@ export function PremiumSidebar() {
                           className={cn(
                     "overflow-hidden rounded-[9px] border p-0.5",
                             light
-                              ? "border-slate-200/90 bg-white/55"
-                              : "border-white/[0.08] bg-white/[0.025]",
+                              ? "border-slate-200/90 bg-foreground/55"
+                              : "border-foreground/[0.08] bg-foreground/[0.025]",
                             active &&
                               (light
                                 ? "border-[hsl(var(--brand-primary)/0.24)] bg-white"
-                                : "border-white/15 bg-white/[0.05]"),
+                                : "border-foreground/15 bg-foreground/[0.05]"),
                           )}
                         >
                           <button
                             type="button"
                             onClick={() => toggleGroup(group.id)}
                             className={cn(
-                              "flex w-full items-center justify-between rounded-[7px] px-2.5 py-1.5 text-left transition hover:bg-white/[0.06]",
-                              light ? "text-slate-600" : "text-white/62",
+                              "flex w-full items-center justify-between rounded-[7px] px-2.5 py-1.5 text-left transition hover:bg-foreground/[0.06]",
+                              light ? "text-slate-600" : "text-foreground/62",
                               active && (light ? "text-slate-950" : "text-white"),
                             )}
                           >
                             <span className="flex min-w-0 items-center gap-3">
-                              <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", light ? "bg-slate-100" : "bg-white/[0.055]")}>
+                              <span className={cn("flex h-7 w-7 items-center justify-center rounded-lg", light ? "bg-slate-100" : "bg-foreground/[0.055]")}>
                                 <GroupIcon
                                   className="h-4 w-4"
                                   style={{
@@ -490,7 +492,7 @@ export function PremiumSidebar() {
                               </span>
                             </span>
                             <span className="ml-2 flex items-center gap-2">
-                              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px]", light ? "bg-slate-100 text-slate-500" : "bg-white/[0.08] text-white/45")}>
+                              <span className={cn("rounded-full px-1.5 py-0.5 text-[9px]", light ? "bg-slate-100 text-slate-500" : "bg-foreground/[0.08] text-foreground/45")}>
                                 {group.items.length}
                               </span>
                               <ChevronDown
@@ -530,14 +532,14 @@ export function PremiumSidebar() {
           )}
         </nav>
 
-        <footer className={cn("relative flex-shrink-0 border-t border-white/[0.07]", compact ? "p-2" : "p-3")}>
-          <div className={cn("flex items-center", compact ? "flex-col gap-2" : "justify-between rounded-xl border border-white/[0.08] bg-white/[0.025] p-1.5")}>
+        <footer className={cn("relative flex-shrink-0 border-t border-foreground/[0.07]", compact ? "p-2" : "p-3")}>
+          <div className={cn("flex items-center", compact ? "flex-col gap-2" : "justify-between rounded-xl border border-foreground/[0.08] bg-foreground/[0.025] p-1.5")}>
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   type="button"
                   onClick={() => setTheme(light ? "dark" : "light")}
-                  className={cn("flex h-9 w-9 items-center justify-center rounded-[10px] transition hover:bg-white/10", light ? "text-slate-500 hover:text-slate-950" : "text-white/55 hover:text-white")}
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-[10px] transition hover:bg-foreground/10", light ? "text-slate-500 hover:text-slate-950" : "text-foreground/55 hover:text-white")}
                   aria-label={light ? "Koyu temaya geç" : "Açık temaya geç"}
                 >
                   {light ? <Moon className="h-[18px] w-[18px]" /> : <Sun className="h-[18px] w-[18px]" />}
@@ -547,10 +549,10 @@ export function PremiumSidebar() {
             </Tooltip>
             {!compact && (
               <div className="min-w-0 px-2 text-center">
-                <p className={cn("max-w-[150px] truncate text-[10px]", light ? "text-slate-500" : "text-white/40")}>
+                <p className={cn("max-w-[150px] truncate text-[10px]", light ? "text-slate-500" : "text-foreground/40")}>
                   {displayEmail}
                 </p>
-                <p className={cn("mt-1 text-[9px]", light ? "text-slate-400" : "text-white/25")}>
+                <p className={cn("mt-1 text-[9px]", light ? "text-slate-400" : "text-foreground/25")}>
                   © 2026 CourseIntellect
                 </p>
               </div>
@@ -560,7 +562,7 @@ export function PremiumSidebar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex h-9 w-9 items-center justify-center rounded-[10px] text-white/55 transition hover:bg-red-500/10 hover:text-red-300"
+                  className="flex h-9 w-9 items-center justify-center rounded-[10px] text-foreground/55 transition hover:bg-red-500/10 hover:text-red-300"
                   aria-label="Çıkış yap"
                 >
                   <LogOut className="h-[18px] w-[18px]" />

@@ -11,6 +11,7 @@ import { Textarea } from '../../components/ui/textarea';
 import { Progress } from '../../components/ui/progress';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../../components/ui/sheet';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
@@ -81,14 +82,14 @@ function StatCard({ icon: Icon, label, value, tone }) {
     red: 'from-rose-500/20 to-rose-500/5 text-rose-300 border-rose-400/15',
   };
   return (
-    <div className={`rounded-2xl border bg-gradient-to-br p-5 ${tones[tone]}`}>
+    <div className={`ci-rise rounded-2xl border bg-gradient-to-br p-5 ${tones[tone]}`}>
       <div className="flex items-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/10">
+        <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-foreground/10">
           <Icon className="h-5 w-5" />
         </div>
         <div>
-          <p className="text-xs text-slate-400">{label}</p>
-          <p className="text-3xl font-black text-white dark:text-white">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          <p className="text-3xl font-black text-foreground"><AnimatedValue value={value} /></p>
         </div>
       </div>
     </div>
@@ -310,7 +311,7 @@ export default function TeacherAttendance() {
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5 text-slate-950 dark:text-white" data-testid="teacher-attendance-page">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5" data-testid="teacher-attendance-page">
       <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-4">
@@ -318,7 +319,7 @@ export default function TeacherAttendance() {
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><CalendarDays className="h-4 w-4" /> {formatDate(selectedDate)}</span>
             <span className="inline-flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" /> {formatTime(new Date())}</span>
           </div>
-          <p className="mt-1 text-sm text-muted-foreground">QR kod ve manuel yoklama aynı sayfada, mevcut backend ile çalışır.</p>
+          <p className="mt-1 text-sm text-muted-foreground">QR kod ile yoklama veya manuel yoklama yapabilirsiniz.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-xl" onClick={() => setHistoryOpen(true)}><History className="mr-2 h-4 w-4" /> Geçmiş Yoklamalar</Button>
@@ -461,10 +462,10 @@ export default function TeacherAttendance() {
                         className={`rounded-xl border px-3 py-2 text-sm font-bold transition ${
                           active === status.value
                             ? status.value === 'present'
-                              ? 'border-emerald-500 bg-emerald-500/15 text-emerald-600'
+                              ? 'border-emerald-500/60 bg-emerald-500/15 text-emerald-300'
                               : status.value === 'late'
-                                ? 'border-amber-500 bg-amber-500/15 text-amber-600'
-                                : 'border-rose-500 bg-rose-500/15 text-rose-600'
+                                ? 'border-amber-500/60 bg-amber-500/15 text-amber-300'
+                                : 'border-rose-500/60 bg-rose-500/15 text-rose-300'
                             : 'border-border bg-background hover:bg-muted'
                         }`}
                       >

@@ -214,10 +214,10 @@ export default function TeacherAnnouncements() {
       <section className="rounded-[32px] border border-brand-primary/10 bg-[linear-gradient(135deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] p-7 text-white shadow-xl">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="space-y-3">
-            <Badge className="bg-white/12 text-white hover:bg-white/12">Öğretmen Duyuru Merkezi</Badge>
+            <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">Öğretmen Duyuru Merkezi</Badge>
             <div>
               <h1 className="text-3xl font-bold font-heading">Sınıf seç, kişiyi belirle, doğrudan hedefe yayınla</h1>
-              <p className="mt-2 max-w-2xl text-sm text-white/75">
+              <p className="mt-2 max-w-2xl text-sm text-foreground/75">
                 Velilere veya öğrencilere toplu ama seçili kişi bazlı duyuru gönder. Her kayıt daha sonra yönetici ekranında tüm detaylarıyla izlenebilir.
               </p>
             </div>
@@ -228,10 +228,10 @@ export default function TeacherAnnouncements() {
               { label: 'Öğrenci Duyurusu', value: summaryStats.studentCount, icon: GraduationCap },
               { label: 'Seçili Kişi', value: summaryStats.targetedCount, icon: CheckCircle2 },
             ].map((item) => (
-              <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur">
-                <item.icon className="h-5 w-5 text-white/85" />
+              <div key={item.label} className="rounded-[24px] border border-foreground/10 bg-foreground/10 px-4 py-4 backdrop-blur">
+                <item.icon className="h-5 w-5 text-foreground/85" />
                 <p className="mt-3 text-2xl font-bold">{item.value}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/65">{item.label}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-foreground/65">{item.label}</p>
               </div>
             ))}
           </div>
@@ -250,11 +250,11 @@ export default function TeacherAnnouncements() {
           <DialogContent className="sm:max-w-4xl p-0 overflow-hidden">
             <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
               <div className="bg-[linear-gradient(180deg,var(--brand-primary-hex)_0%,var(--brand-accent-hex)_100%)] px-7 py-8 text-white">
-                <Badge className="bg-white/12 text-white hover:bg-white/12">Hedefli yayın</Badge>
+                <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">Hedefli yayın</Badge>
                 <DialogHeader className="mt-4 space-y-2 text-left">
                   <DialogTitle className="text-3xl font-bold text-white">Kime gideceğini sen belirle</DialogTitle>
                 </DialogHeader>
-                <p className="mt-3 text-sm leading-7 text-white/78">
+                <p className="mt-3 text-sm leading-7 text-foreground/78">
                   Özellikle veli duyurularında sınıf seç, sonra öğrenci veya veli listesi üstünden sadece istediğin kişileri işaretle. Bu duyuru sadece o bağlı hesaplarda görünsün.
                 </p>
                 <div className="mt-8 space-y-3">
@@ -263,7 +263,7 @@ export default function TeacherAnnouncements() {
                     'Sonra öğrenci mi veli mi listesiyle çalışacağına karar ver.',
                     'İşaretlediğin kişiler dışında kimse bu duyuruyu görmesin.',
                   ].map((item) => (
-                    <div key={item} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white/80">
+                    <div key={item} className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3 text-sm text-foreground/80">
                       {item}
                     </div>
                   ))}
@@ -312,7 +312,7 @@ export default function TeacherAnnouncements() {
                             className={`rounded-2xl border px-4 py-3 text-left transition ${form.targetRecipientType === item ? 'border-brand-primary bg-brand-primary text-white' : 'border-brand-primary/10 bg-brand-primary/5 text-slate-700'}`}
                           >
                             <p className="font-semibold">{item}</p>
-                            <p className={`mt-1 text-xs ${form.targetRecipientType === item ? 'text-white/70' : 'text-slate-500'}`}>
+                            <p className={`mt-1 text-xs ${form.targetRecipientType === item ? 'text-foreground/70' : 'text-slate-500'}`}>
                               {item === 'Veliler' ? 'Sınıftaki velileri doğrudan seç.' : 'Seçtiğin öğrencilerin bağlı velilerine göster.'}
                             </p>
                           </button>
@@ -340,7 +340,7 @@ export default function TeacherAnnouncements() {
                                   <Checkbox checked={checked} onCheckedChange={() => toggleRecipient(option)} className={checked ? 'border-white data-[state=checked]:bg-white data-[state=checked]:text-brand-primary' : ''} />
                                   <div className="min-w-0">
                                     <p className="font-medium">{option.label}</p>
-                                    <p className={`text-xs ${checked ? 'text-white/70' : 'text-slate-500'}`}>{option.helper}</p>
+                                    <p className={`text-xs ${checked ? 'text-foreground/70' : 'text-slate-500'}`}>{option.helper}</p>
                                   </div>
                                 </label>
                               );
@@ -375,12 +375,12 @@ export default function TeacherAnnouncements() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-white/12 text-white hover:bg-white/12">{item.audience || 'Genel'}</Badge>
-                    {item.targetClassName ? <Badge className="bg-white/12 text-white hover:bg-white/12">{item.targetClassName}</Badge> : null}
+                    <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{item.audience || 'Genel'}</Badge>
+                    {item.targetClassName ? <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">{item.targetClassName}</Badge> : null}
                   </div>
                   <h3 className="mt-3 text-2xl font-bold">{item.title}</h3>
                 </div>
-                <Megaphone className="h-6 w-6 text-white/70" />
+                <Megaphone className="h-6 w-6 text-foreground/70" />
               </div>
             </div>
             <CardContent className="space-y-5 p-6">

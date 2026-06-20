@@ -1,5 +1,6 @@
 import "@/App.css";
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
+import { lazyWithReload } from "./lib/lazyWithReload";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
@@ -29,26 +30,26 @@ import Settings from "./pages/Settings";
 import Chat from "./pages/chat/Chat";
 
 // Finance Pages
-const FinanceDashboard = lazy(() => import("./pages/finance/FinanceDashboard"));
-const StudentAccounts = lazy(() => import("./pages/finance/StudentAccounts"));
-const Collections = lazy(() => import("./pages/finance/Collections"));
-const Installments = lazy(() => import("./pages/finance/Installments"));
-const LatePayments = lazy(() => import("./pages/finance/LatePayments"));
-const InvoicesReceipts = lazy(() => import("./pages/finance/InvoicesReceipts"));
-const DiscountsScholarships = lazy(() => import("./pages/finance/DiscountsScholarships"));
-const FinanceExport = lazy(() => import("./pages/finance/Export"));
-const Approvals = lazy(() => import("./pages/finance/Approvals"));
+const FinanceDashboard = lazyWithReload(() => import("./pages/finance/FinanceDashboard"));
+const StudentAccounts = lazyWithReload(() => import("./pages/finance/StudentAccounts"));
+const Collections = lazyWithReload(() => import("./pages/finance/Collections"));
+const Installments = lazyWithReload(() => import("./pages/finance/Installments"));
+const LatePayments = lazyWithReload(() => import("./pages/finance/LatePayments"));
+const InvoicesReceipts = lazyWithReload(() => import("./pages/finance/InvoicesReceipts"));
+const DiscountsScholarships = lazyWithReload(() => import("./pages/finance/DiscountsScholarships"));
+const FinanceExport = lazyWithReload(() => import("./pages/finance/Export"));
+const Approvals = lazyWithReload(() => import("./pages/finance/Approvals"));
 
 // Super Admin Pages
-const SADashboard = lazy(() => import("./pages/superadmin/SADashboard"));
-const Tenants = lazy(() => import("./pages/superadmin/Tenants"));
-const Plans = lazy(() => import("./pages/superadmin/Plans"));
-const Billing = lazy(() => import("./pages/superadmin/Billing"));
-const SystemSettings = lazy(() => import("./pages/superadmin/SystemSettings"));
-const Limits = lazy(() => import("./pages/superadmin/Limits"));
-const Support = lazy(() => import("./pages/superadmin/Support"));
-const AIManagement = lazy(() => import("./pages/superadmin/AIManagement"));
-const TenantCustomization = lazy(() => import("./pages/superadmin/TenantCustomization"));
+const SADashboard = lazyWithReload(() => import("./pages/superadmin/SADashboard"));
+const Tenants = lazyWithReload(() => import("./pages/superadmin/Tenants"));
+const Plans = lazyWithReload(() => import("./pages/superadmin/Plans"));
+const Billing = lazyWithReload(() => import("./pages/superadmin/Billing"));
+const SystemSettings = lazyWithReload(() => import("./pages/superadmin/SystemSettings"));
+const Limits = lazyWithReload(() => import("./pages/superadmin/Limits"));
+const Support = lazyWithReload(() => import("./pages/superadmin/Support"));
+const AIManagement = lazyWithReload(() => import("./pages/superadmin/AIManagement"));
+const TenantCustomization = lazyWithReload(() => import("./pages/superadmin/TenantCustomization"));
 
 // Teacher Pages
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
@@ -107,11 +108,11 @@ import TeacherLiveRoom from "./pages/teacher/TeacherLiveRoom";
 import TeacherContentStudio from "./pages/teacher/TeacherContentStudio";
 import TeacherQuestionWorkflow from "./pages/teacher/TeacherQuestionWorkflow";
 import TeacherExamWorkbench from "./pages/teacher/TeacherExamWorkbench";
-const AuditLog = lazy(() => import("./pages/finance/AuditLog"));
-const CollectionCalendar = lazy(() => import("./pages/finance/CollectionCalendar"));
-const Reconciliation = lazy(() => import("./pages/finance/Reconciliation"));
-const BulkActions = lazy(() => import("./pages/finance/BulkActions"));
-const FinanceDetailHub = lazy(() => import("./pages/finance/FinanceDetailHub"));
+const AuditLog = lazyWithReload(() => import("./pages/finance/AuditLog"));
+const CollectionCalendar = lazyWithReload(() => import("./pages/finance/CollectionCalendar"));
+const Reconciliation = lazyWithReload(() => import("./pages/finance/Reconciliation"));
+const BulkActions = lazyWithReload(() => import("./pages/finance/BulkActions"));
+const FinanceDetailHub = lazyWithReload(() => import("./pages/finance/FinanceDetailHub"));
 import AdminAcademics from "./pages/admin/AdminAcademics";
 import AdminCourses from "./pages/admin/AdminCourses";
 import AdminFinance from "./pages/admin/AdminFinance";
@@ -160,10 +161,10 @@ import ParentService from "./pages/parent/ParentService";
 import ParentCafeteria from "./pages/parent/ParentCafeteria";
 
 // New Finance Pages
-const Salary = lazy(() => import("./pages/finance/Salary"));
-const CashReport = lazy(() => import("./pages/finance/CashReport"));
-const OverdueRules = lazy(() => import("./pages/finance/OverdueRules"));
-const Ledger = lazy(() => import("./pages/finance/Ledger"));
+const Salary = lazyWithReload(() => import("./pages/finance/Salary"));
+const CashReport = lazyWithReload(() => import("./pages/finance/CashReport"));
+const OverdueRules = lazyWithReload(() => import("./pages/finance/OverdueRules"));
+const Ledger = lazyWithReload(() => import("./pages/finance/Ledger"));
 
 import { useApp } from "./context/AppContext";
 import { getUserHomePath } from "./lib/auth";
@@ -232,6 +233,7 @@ function App() {
               <Route path="/settings" element={<Settings />} />
               <Route path="/chat" element={<Chat />} />
               <Route path="/admin/academics" element={<AdminAcademics />} />
+              <Route path="/admin/exam-papers" element={<TeacherReports />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
               <Route path="/admin/finance" element={<AdminFinance />} />
               <Route path="/admin/profile" element={<AdminProfile />} />

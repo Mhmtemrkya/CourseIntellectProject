@@ -83,9 +83,9 @@ export default function AdminMeetings() {
       <section className="rounded-[32px] border border-border p-7 text-white shadow-xl" style={{ background: 'linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #334155) 48%, var(--brand-p-700, #0f766e) 100%)' }}>
         <div className="grid gap-5 lg:grid-cols-[1.35fr_0.65fr] lg:items-end">
           <div>
-            <Badge className="bg-white/12 text-white hover:bg-white/12">Yönetici Görüşme Denetimi</Badge>
+            <Badge className="bg-foreground/12 text-white hover:bg-foreground/12">Yönetici Görüşme Denetimi</Badge>
             <h1 className="mt-3 text-3xl font-bold font-heading">Kim talep gönderdi, hangi öğretmen ne yaptı tek ekranda gör</h1>
-            <p className="mt-2 max-w-2xl text-sm text-white/75">Veli taleplerini, öğretmen onay durumlarını ve görüşme formatlarını kurumsal düzeyde izle.</p>
+            <p className="mt-2 max-w-2xl text-sm text-foreground/75">Veli taleplerini, öğretmen onay durumlarını ve görüşme formatlarını kurumsal düzeyde izle.</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {[
@@ -93,9 +93,9 @@ export default function AdminMeetings() {
               { label: 'Bekleyen', value: stats.pending },
               { label: 'Onaylanan', value: stats.approved },
             ].map((item) => (
-              <div key={item.label} className="rounded-[24px] border border-white/10 bg-white/10 px-4 py-4 backdrop-blur">
+              <div key={item.label} className="rounded-[24px] border border-foreground/10 bg-foreground/10 px-4 py-4 backdrop-blur">
                 <p className="text-2xl font-bold">{item.value}</p>
-                <p className="text-xs uppercase tracking-[0.18em] text-white/65">{item.label}</p>
+                <p className="text-xs uppercase tracking-[0.18em] text-foreground/65">{item.label}</p>
               </div>
             ))}
           </div>

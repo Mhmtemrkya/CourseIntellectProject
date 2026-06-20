@@ -87,24 +87,24 @@ export function TeacherEmptyState({
   const tone = accentClass[accent] || accentClass.orange;
 
   return (
-    <div className={`relative overflow-hidden rounded-[28px] border border-white/10 bg-[#07101c] ${large ? 'p-10 md:p-14' : 'p-8'} text-white shadow-2xl`}>
+    <div className={`relative overflow-hidden rounded-[28px] border border-foreground/10 bg-[#07101c] ${large ? 'p-10 md:p-14' : 'p-8'} text-white shadow-2xl`}>
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(249,115,22,0.14),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent)]" />
-      <div className="pointer-events-none absolute inset-5 rounded-[24px] border border-dashed border-white/10" />
+      <div className="pointer-events-none absolute inset-5 rounded-[24px] border border-dashed border-foreground/10" />
 
       <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
         <div className="relative mb-7 h-56 w-full max-w-md">
-          <div className="absolute left-1/2 top-1/2 h-24 w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-dashed border-white/15" />
+          <div className="absolute left-1/2 top-1/2 h-24 w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-dashed border-foreground/15" />
           <CloudUpload className={`absolute left-1/2 top-3 h-16 w-16 -translate-x-1/2 ${tone.text} drop-shadow-[0_0_18px_rgba(249,115,22,0.55)]`} />
-          <div className={`absolute left-1/2 top-24 h-20 w-36 -translate-x-1/2 rounded-b-[42px] border border-white/10 bg-slate-800/80 shadow-2xl ${tone.glow}`}>
+          <div className={`absolute left-1/2 top-24 h-20 w-36 -translate-x-1/2 rounded-b-[42px] border border-foreground/10 bg-slate-800/80 shadow-2xl ${tone.glow}`}>
             <div className={`absolute left-1/2 top-0 h-20 w-3 -translate-x-1/2 bg-gradient-to-b from-orange-400 to-transparent ${tone.glow}`} />
-            <div className="absolute -left-8 top-0 h-12 w-24 rotate-12 rounded-lg border border-white/10 bg-slate-700/80" />
-            <div className="absolute -right-8 top-0 h-12 w-24 -rotate-12 rounded-lg border border-white/10 bg-slate-700/80" />
+            <div className="absolute -left-8 top-0 h-12 w-24 rotate-12 rounded-lg border border-foreground/10 bg-slate-700/80" />
+            <div className="absolute -right-8 top-0 h-12 w-24 -rotate-12 rounded-lg border border-foreground/10 bg-slate-700/80" />
           </div>
 
           {icons.map((FloatingIcon, index) => (
             <div
               key={index}
-              className={`absolute grid h-14 w-14 place-items-center rounded-2xl border ${tone.border} bg-white/[0.035] ${tone.text}`}
+              className={`absolute grid h-14 w-14 place-items-center rounded-2xl border ${tone.border} bg-foreground/[0.035] ${tone.text}`}
               style={{
                 left: index === 0 ? '12%' : index === 1 ? '76%' : '70%',
                 top: index === 0 ? '42%' : index === 1 ? '48%' : '72%',
@@ -134,7 +134,7 @@ export function TeacherEmptyState({
             </Button>
           ) : null}
           {secondaryLabel ? (
-            <Button variant="outline" onClick={onSecondary} className="border-white/10 bg-white/[0.035] px-7 text-white hover:bg-white/10">
+            <Button variant="outline" onClick={onSecondary} className="border-foreground/10 bg-foreground/[0.035] px-7 text-white hover:bg-foreground/10">
               <CloudUpload className="mr-2 h-4 w-4" />
               {secondaryLabel}
             </Button>
@@ -142,7 +142,7 @@ export function TeacherEmptyState({
         </div>
 
         {tipDescription ? (
-          <div className="mt-8 flex w-full max-w-2xl items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-left">
+          <div className="mt-8 flex w-full max-w-2xl items-start gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5 text-left">
             <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl ${tone.bg} ${tone.text}`}>
               <Lightbulb className="h-5 w-5" />
             </div>

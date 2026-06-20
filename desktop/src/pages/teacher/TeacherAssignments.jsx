@@ -326,7 +326,7 @@ export default function TeacherAssignments() {
                             <span>Teslim oranı</span>
                             <span className="text-white">{assignment.submitted || 0}/{assignment.total || 0} • %{submissionRate}</span>
                           </div>
-                          <Progress value={submissionRate} className="h-2 bg-white/10 [&>div]:bg-orange-400" />
+                          <Progress value={submissionRate} className="h-2 bg-foreground/10 [&>div]:bg-orange-400" />
                         </div>
                       )}
                       actions={(

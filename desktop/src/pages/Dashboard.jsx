@@ -74,7 +74,7 @@ function LessonCard({ lesson }) {
   };
 
   return (
-    <div className="group flex items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition-all hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
+    <div className="group flex items-center gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 transition-all hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
       <div className="flex-shrink-0 w-16 text-center">
         <p className="text-lg font-bold text-[hsl(var(--brand-accent))]">{lesson.time}</p>
         <p className="text-xs text-muted-foreground">Program</p>
@@ -209,7 +209,7 @@ export default function Dashboard() {
         <motion.div variants={itemVariants} className="xl:col-span-8">
           <PremiumPanel title="Finansal Performans" description="Operasyon sinyalleri ve canlı özet eğrisi">
             <div className="grid gap-5 lg:grid-cols-[1fr_210px]">
-              <div className="rounded-3xl border border-white/10 bg-[#020B1F]/35 p-5">
+              <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/35 p-5">
                 <div className="mb-4 flex items-center justify-between">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Genel operasyon grafiği</p>
@@ -225,13 +225,13 @@ export default function Dashboard() {
                 </div>
               </div>
               <div className="grid gap-4">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Haftalık Devam</p>
                   <div className="mt-4 flex justify-center">
                     <MiniDonut value={quickStats.attendanceRate || stats.todayAttendanceRate || 0} label="Devam" />
                   </div>
                 </div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
+                <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Kanal Yoğunluğu</p>
                   <MiniBarChart values={[quickStats.answeredMessagesRate || 0, quickStats.contentRate || 0, quickStats.examRate || 0, stats.totalClasses || 0, stats.totalTeachers || 0]} className="mt-4" />
                 </div>

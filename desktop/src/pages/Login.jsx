@@ -262,7 +262,7 @@ export default function Login() {
 
         {/* Animated circles */}
         <motion.div
-          className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-white/5"
+          className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-foreground/5"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 90, 180, 270, 360],
@@ -325,7 +325,7 @@ export default function Login() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5, duration: 0.6 }}
-            className="text-lg text-white/80 mb-10 max-w-md"
+            className="text-lg text-foreground/80 mb-10 max-w-md"
           >
             Kurumunuzun tüm eğitim süreçlerini tek bir platformda yönetin.
           </motion.p>
@@ -341,7 +341,7 @@ export default function Login() {
               <motion.li
                 key={index}
                 variants={itemVariants}
-                className="flex items-center gap-3 text-white/90"
+                className="flex items-center gap-3 text-foreground/90"
                 whileHover={{ x: 10, color: "#D9790B" }}
                 transition={{ duration: 0.2 }}
               >
@@ -382,7 +382,7 @@ export default function Login() {
                 >
                   {stat.value}
                 </motion.p>
-                <p className="text-sm text-white/70">{stat.label}</p>
+                <p className="text-sm text-foreground/70">{stat.label}</p>
               </motion.div>
             ))}
           </motion.div>
@@ -586,7 +586,7 @@ export default function Login() {
                           repeat: Infinity,
                           ease: "linear",
                         }}
-                        className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full"
+                        className="h-5 w-5 border-2 border-foreground/30 border-t-white rounded-full"
                       />
                     ) : (
                       <span className="flex items-center gap-2">

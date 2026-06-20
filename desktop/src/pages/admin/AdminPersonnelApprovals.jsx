@@ -95,9 +95,9 @@ export default function AdminPersonnelApprovals() {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-personnel-approvals-page">
       <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(34,197,94,0.18)), transparent 30%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #132b4c) 50%, var(--brand-p-700, #14532d) 100%)' }}>
         <div className="max-w-3xl">
-          <Badge className="border-white/20 bg-white/10 text-white">Onay Merkezi</Badge>
+          <Badge className="border-foreground/20 bg-foreground/10 text-white">Onay Merkezi</Badge>
           <h1 className="mt-4 text-3xl font-bold font-heading">Onay / İş Akışı</h1>
-          <p className="mt-2 text-sm text-white/80">İzin, satınalma, masraf, evrak ve personel talepleri tek merkezden onaylanır ya da reddedilir. Tüm kararlar denetim kaydına işlenir.</p>
+          <p className="mt-2 text-sm text-foreground/80">İzin, satınalma, masraf, evrak ve personel talepleri tek merkezden onaylanır ya da reddedilir. Tüm kararlar denetim kaydına işlenir.</p>
         </div>
       </div>
       {error ? <ErrorBanner title="Onaylar alınamadı" message={error} onRetry={loadApprovals} /> : null}
@@ -164,9 +164,9 @@ export default function AdminPersonnelApprovals() {
           {selected ? (
             <div className="space-y-5">
               <div className="rounded-[24px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(250,204,21,0.16)), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #1d4d63) 55%, var(--brand-p-700, #166534) 100%)' }}>
-                <Badge className="border-white/15 bg-white/10 text-white">{statusLabel(selected.status)}</Badge>
+                <Badge className="border-foreground/15 bg-foreground/10 text-white">{statusLabel(selected.status)}</Badge>
                 <h3 className="mt-4 text-2xl font-semibold">{selected.title}</h3>
-                <p className="mt-2 text-sm text-white/80">{selected.category}{selected.unit ? ` • ${selected.unit}` : ''}</p>
+                <p className="mt-2 text-sm text-foreground/80">{selected.category}{selected.unit ? ` • ${selected.unit}` : ''}</p>
               </div>
               {selected.description ? <p className="text-sm text-muted-foreground">{selected.description}</p> : null}
               <div className="grid gap-4 md:grid-cols-2">

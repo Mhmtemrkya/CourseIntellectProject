@@ -559,12 +559,12 @@ function AdministrativeReportOverview() {
                         className={`p-4 rounded-lg cursor-pointer transition-all ${selectedReport?.id === report.id ? 'bg-brand-primary text-white' : 'hover:bg-muted'}`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${selectedReport?.id === report.id ? 'bg-white/20' : 'bg-muted'}`}>
+                          <div className={`p-2 rounded-lg ${selectedReport?.id === report.id ? 'bg-foreground/20' : 'bg-muted'}`}>
                             <Icon className={`h-5 w-5 ${selectedReport?.id === report.id ? 'text-white' : 'text-brand-primary'}`} />
                           </div>
                           <div>
                             <p className="font-medium">{report.name}</p>
-                            <p className={`text-xs ${selectedReport?.id === report.id ? 'text-white/70' : 'text-muted-foreground'}`}>
+                            <p className={`text-xs ${selectedReport?.id === report.id ? 'text-foreground/70' : 'text-muted-foreground'}`}>
                               {report.description}
                             </p>
                           </div>

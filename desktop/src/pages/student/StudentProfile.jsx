@@ -11,6 +11,7 @@ import { Progress } from '../../components/ui/progress';
 import { Switch } from '../../components/ui/switch';
 import { useApp } from '../../context/AppContext';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import { AnimatedValue } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { LegalDocumentsPanel } from '../../components/legal/LegalDocumentsPanel';
 import { fetchAttendance, fetchExamResults, fetchStudents } from '../../lib/api/modules';
@@ -101,9 +102,9 @@ export default function StudentProfile() {
               <Badge className="mt-2 bg-brand-accent">{student?.className || 'Sınıf yok'}</Badge>
               <Separator className="my-4" />
               <div className="grid grid-cols-3 gap-4 text-center">
-                <div><p className="text-2xl font-bold text-brand-primary">%{stats.attendanceRate}</p><p className="text-xs text-muted-foreground">Devam</p></div>
-                <div><p className="text-2xl font-bold text-brand-accent">{stats.avgScore}</p><p className="text-xs text-muted-foreground">Ortalama</p></div>
-                <div><p className="text-2xl font-bold text-green-600">{stats.examCount}</p><p className="text-xs text-muted-foreground">Sınav</p></div>
+                <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-[hsl(var(--brand-primary-text))]"><AnimatedValue value={`%${stats.attendanceRate}`} /></p><p className="text-xs text-muted-foreground">Devam</p></div>
+                <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-[hsl(var(--brand-accent))]"><AnimatedValue value={stats.avgScore} /></p><p className="text-xs text-muted-foreground">Ortalama</p></div>
+                <div className="ci-rise rounded-xl p-1"><p className="text-2xl font-black text-emerald-400"><AnimatedValue value={stats.examCount} /></p><p className="text-xs text-muted-foreground">Sınav</p></div>
               </div>
             </CardContent>
           </Card>

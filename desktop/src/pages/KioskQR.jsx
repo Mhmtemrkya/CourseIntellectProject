@@ -76,7 +76,7 @@ export default function KioskQR() {
             variant="outline" 
             size="icon"
             onClick={generateQR}
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            className="bg-foreground/10 border-foreground/20 text-white hover:bg-foreground/20"
           >
             <RotateCw className="h-5 w-5" />
           </Button>
@@ -84,14 +84,14 @@ export default function KioskQR() {
             variant="outline" 
             size="icon"
             onClick={toggleLock}
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            className="bg-foreground/10 border-foreground/20 text-white hover:bg-foreground/20"
           >
             <Lock className="h-5 w-5" />
           </Button>
           <Button 
             variant="outline"
             onClick={() => navigate('/attendance')}
-            className="bg-white/10 border-white/20 text-white hover:bg-white/20"
+            className="bg-foreground/10 border-foreground/20 text-white hover:bg-foreground/20"
           >
             Çıkış
           </Button>
@@ -152,8 +152,8 @@ export default function KioskQR() {
         className="mt-12 text-center text-white"
       >
         <h2 className="text-3xl font-heading font-bold mb-4">Yoklama için QR Kodu Taratın</h2>
-        <p className="text-lg text-white/80">Telefonunuzdaki CourseIntellect uygulamasını açın</p>
-        <p className="text-lg text-white/80">ve QR kodu tarayarak yoklamanızı onaylayın.</p>
+        <p className="text-lg text-foreground/80">Telefonunuzdaki CourseIntellect uygulamasını açın</p>
+        <p className="text-lg text-foreground/80">ve QR kodu tarayarak yoklamanızı onaylayın.</p>
       </motion.div>
 
       {/* Lock Overlay */}
@@ -167,7 +167,7 @@ export default function KioskQR() {
           <Button 
             variant="ghost" 
             size="icon"
-            className="text-white/30 hover:text-white hover:bg-white/10"
+            className="text-foreground/30 hover:text-white hover:bg-foreground/10"
           >
             <Unlock className="h-6 w-6" />
           </Button>
@@ -179,7 +179,7 @@ export default function KioskQR() {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 0.5 }}
-        className="absolute bottom-8 text-white/50 text-sm"
+        className="absolute bottom-8 text-foreground/50 text-sm"
       >
         © 2025 CourseIntellect - Kiosk Modu
       </motion.p>

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BookOpen, Search, DollarSign, Users, TrendingUp, AlertCircle,
-  ChevronDown, ChevronRight, Eye,
+  BookOpen, Search, DollarSign, Users, TrendingUp, AlertCircle, Eye, FilePlus2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
@@ -15,12 +15,22 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from '../../components/ui/table';
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
-import { fetchStudents, fetchAccountingDashboard } from '../../lib/api/modules';
+import { useToast } from '../../hooks/use-toast';
+import { fetchStudents, fetchFinanceSummaries, fetchStudentFinanceAccount, createEnrollment } from '../../lib/api/modules';
+
+const emptyEnrollForm = {
+  grossAmount: '',
+  discountAmount: '',
+  discountReason: '',
+  downPayment: '',
+  installmentCount: '',
+  academicYear: '',
+  firstInstallmentDate: '',
+};
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -33,7 +43,7 @@ const itemVariants = {
 };
 
 function formatCurrency(val) {
-  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(val || 0);
+  return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(Number(val) || 0);
 }
 
 function normalizeLedgerKey(value) {
@@ -50,37 +60,35 @@ function normalizeLedgerKey(value) {
     .replaceAll(' ', '');
 }
 
-function parseAmount(value) {
-  const normalized = String(value ?? '0')
-    .replaceAll('₺', '')
-    .replaceAll('.', '')
-    .replaceAll(',', '')
-    .trim();
-  const parsed = Number.parseInt(normalized, 10);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
 export default function Ledger() {
+  const { toast } = useToast();
   const [students, setStudents] = useState([]);
-  const [dashboard, setDashboard] = useState({});
+  const [summaries, setSummaries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [accountDetail, setAccountDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  // Sonradan sözleşme/ücret ekleme akışı.
+  const [enrollStudent, setEnrollStudent] = useState(null);
+  const [enrollOpen, setEnrollOpen] = useState(false);
+  const [enrollSaving, setEnrollSaving] = useState(false);
+  const [enrollForm, setEnrollForm] = useState(emptyEnrollForm);
 
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [studentData, dashData] = await Promise.all([
+      const [studentData, summaryData] = await Promise.all([
         fetchStudents().catch(() => []),
-        fetchAccountingDashboard().catch(() => ({})),
+        fetchFinanceSummaries(),
       ]);
       setStudents(Array.isArray(studentData) ? studentData : []);
-      setDashboard(dashData || {});
+      setSummaries(Array.isArray(summaryData) ? summaryData : []);
     } catch (err) {
-      setError(err.message || 'Veriler yuklenemedi.');
+      setError(err.message || 'Hesap defteri verileri yuklenemedi.');
     } finally {
       setLoading(false);
     }
@@ -88,63 +96,67 @@ export default function Ledger() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const collections = useMemo(() => {
-    const list = dashboard?.recentCollections || dashboard?.collections || [];
-    return Array.isArray(list) ? list : [];
-  }, [dashboard]);
+  // Canlı backend ozetlerini (studentUserId / ad ile) hizli erisim icin indeksle.
+  const summaryByUserId = useMemo(() => {
+    const map = new Map();
+    summaries.forEach((item) => { if (item.studentUserId) map.set(String(item.studentUserId), item); });
+    return map;
+  }, [summaries]);
 
-  const installments = useMemo(() => {
-    const list = dashboard?.installments || [];
-    return Array.isArray(list) ? list : [];
-  }, [dashboard]);
+  const summaryByName = useMemo(() => {
+    const map = new Map();
+    summaries.forEach((item) => {
+      const key = normalizeLedgerKey(item.studentName);
+      if (key) map.set(key, item);
+    });
+    return map;
+  }, [summaries]);
 
-  // Build student ledger from collections and installments
+  // Tum ogrenci kadrosu listelenir; finansal degerler backend ozetinden
+  // (studentUserId, yoksa ad eslesmesi) birebir alinir. Kadroda olmayip yalnizca
+  // sozlesmede gecen ogrenciler de eklenir; boylece hicbir canli kayit dusmez.
   const ledger = useMemo(() => {
-    const fallbackNames = new Set([
-      ...collections.map((c) => c?.name).filter(Boolean),
-      ...installments.map((i) => i?.student).filter(Boolean),
-    ]);
-    const sourceStudents = students.length > 0
-      ? students
-      : Array.from(fallbackNames).map((name, index) => ({
-        id: `ledger-${index}`,
-        fullName: name,
-        className: '-',
-      }));
+    const usedSummaryKeys = new Set();
+    const resolveSummary = (student) => {
+      const byId = student.id != null ? summaryByUserId.get(String(student.id)) : undefined;
+      const summary = byId || summaryByName.get(normalizeLedgerKey(student.fullName || student.name || ''))
+        || summaryByName.get(normalizeLedgerKey(student.username || ''));
+      if (summary) usedSummaryKeys.add(summary);
+      return summary;
+    };
 
-    return sourceStudents.map((s) => {
-      const name = s.fullName || s.name || '';
-      const normalizedFullName = normalizeLedgerKey(name);
-      const normalizedUsername = normalizeLedgerKey(s.username || '');
-      const studentCollections = collections.filter((c) => {
-        const candidate = normalizeLedgerKey(c.name);
-        return candidate && (candidate === normalizedFullName || candidate === normalizedUsername);
-      });
-      const studentInstallments = installments.filter((i) => {
-        const candidate = normalizeLedgerKey(i.student);
-        return candidate && (candidate === normalizedFullName || candidate === normalizedUsername);
-      });
-      const totalPaid = studentCollections.reduce((sum, c) => sum + parseAmount(c.amount), 0);
-      const totalDue = studentInstallments.reduce((sum, i) => sum + parseAmount(i.amount), 0);
-      const balance = totalDue - totalPaid;
-      const hasOverdue = studentInstallments.some((i) => {
-        const due = new Date(i.due || i.dueDate || i.date);
-        const status = String(i.status || '').toLowerCase();
-        return status.includes('gecik') || status.includes('overdue') || due < new Date();
-      });
+    const rosterRows = students.map((s) => {
+      const summary = resolveSummary(s);
+      const totalDue = Number(summary?.netTotal) || 0;
+      const totalPaid = Number(summary?.paidTotal) || 0;
       return {
-        id: s.id,
-        name,
-        className: s.className || s.class || '-',
+        id: s.id || normalizeLedgerKey(s.fullName || s.name),
+        studentUserId: summary?.studentUserId || s.id || null,
+        name: s.fullName || s.name || summary?.studentName || '',
+        className: summary?.className || s.className || s.class || '-',
         totalDue,
         totalPaid,
-        balance,
-        hasOverdue,
-        collections: studentCollections,
-        installments: studentInstallments,
+        balance: summary ? Number(summary.balance) || 0 : totalDue - totalPaid,
+        hasOverdue: (summary?.overdueCount || 0) > 0,
       };
     });
-  }, [students, collections, installments]);
+
+    // Kadroda eslesmeyen (yalnizca finans kaydi olan) ogrenciler.
+    const extraRows = summaries
+      .filter((summary) => !usedSummaryKeys.has(summary))
+      .map((summary) => ({
+        id: summary.studentUserId || normalizeLedgerKey(summary.studentName),
+        studentUserId: summary.studentUserId || null,
+        name: summary.studentName || '',
+        className: summary.className || '-',
+        totalDue: Number(summary.netTotal) || 0,
+        totalPaid: Number(summary.paidTotal) || 0,
+        balance: Number(summary.balance) || 0,
+        hasOverdue: (summary.overdueCount || 0) > 0,
+      }));
+
+    return [...rosterRows, ...extraRows];
+  }, [students, summaries, summaryByUserId, summaryByName]);
 
   const filtered = useMemo(() => {
     let list = ledger;
@@ -158,15 +170,91 @@ export default function Ledger() {
     return list;
   }, [ledger, search, filterStatus]);
 
+  // Kartlar dogrudan canli backend ozetlerinin toplamindan hesaplanir.
   const totals = useMemo(() => ({
-    due: ledger.reduce((s, l) => s + l.totalDue, 0),
-    paid: ledger.reduce((s, l) => s + l.totalPaid, 0),
-    balance: ledger.reduce((s, l) => s + l.balance, 0),
-    overdue: ledger.filter((l) => l.hasOverdue).length,
-  }), [ledger]);
+    due: summaries.reduce((s, item) => s + (Number(item.netTotal) || 0), 0),
+    paid: summaries.reduce((s, item) => s + (Number(item.paidTotal) || 0), 0),
+    balance: summaries.reduce((s, item) => s + (Number(item.balance) || 0), 0),
+    overdue: summaries.filter((item) => (item.overdueCount || 0) > 0).length,
+  }), [summaries]);
+
+  const openDetail = useCallback(async (row) => {
+    setSelectedStudent(row);
+    setAccountDetail(null);
+    if (!row.studentUserId && !row.name) return;
+    try {
+      setDetailLoading(true);
+      const params = row.studentUserId ? { studentUserId: row.studentUserId } : { studentName: row.name };
+      const detail = await fetchStudentFinanceAccount(params);
+      setAccountDetail(detail || null);
+    } catch {
+      setAccountDetail(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, []);
+
+  const openEnroll = (row) => {
+    if (!row) return;
+    setEnrollStudent(row);
+    setEnrollForm(emptyEnrollForm);
+    setEnrollOpen(true);
+    // Detay diyalogunu kapat: tek seferde tek diyalog acik olsun.
+    setSelectedStudent(null);
+    setAccountDetail(null);
+  };
+
+  const handleCreateEnrollment = async () => {
+    const gross = Number(enrollForm.grossAmount);
+    if (!enrollStudent || !Number.isFinite(gross) || gross <= 0) {
+      toast({ title: 'Geçerli bir toplam ücret girin.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setEnrollSaving(true);
+      await createEnrollment({
+        studentUserId: enrollStudent.studentUserId || null,
+        studentName: enrollStudent.name,
+        className: enrollStudent.className && enrollStudent.className !== '-' ? enrollStudent.className : '',
+        academicYear: enrollForm.academicYear.trim(),
+        grossAmount: gross,
+        discountAmount: Number(enrollForm.discountAmount) || 0,
+        discountReason: enrollForm.discountReason.trim() || null,
+        downPayment: Number(enrollForm.downPayment) || 0,
+        installmentCount: Number(enrollForm.installmentCount) || 0,
+        firstInstallmentDate: enrollForm.firstInstallmentDate || null,
+        currency: 'TRY',
+        note: 'Sonradan eklenen sözleşme',
+      });
+      toast({ title: 'Sözleşme oluşturuldu', description: `${enrollStudent.name} için ücret/taksit planı eklendi.` });
+      setEnrollOpen(false);
+      setEnrollStudent(null);
+      await loadData();
+    } catch (err) {
+      toast({
+        title: 'Sözleşme oluşturulamadı',
+        description: err?.response?.data?.message || err?.message || 'Tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEnrollSaving(false);
+    }
+  };
 
   if (loading) return <div className="flex justify-center py-20"><LoadingDots /></div>;
   if (error) return <ErrorBanner message={error} onRetry={loadData} />;
+
+  const payments = Array.isArray(accountDetail?.payments) ? accountDetail.payments : [];
+  const enrollPreview = (() => {
+    const gross = Number(enrollForm.grossAmount) || 0;
+    if (!gross) return null;
+    const discount = Math.min(Number(enrollForm.discountAmount) || 0, gross);
+    const net = gross - discount;
+    const down = Math.min(Number(enrollForm.downPayment) || 0, net);
+    const count = Number(enrollForm.installmentCount) || 0;
+    const per = count > 0 ? Math.round(((net - down) / count) * 100) / 100 : 0;
+    return { net, down, count, per };
+  })();
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
@@ -279,7 +367,12 @@ export default function Ledger() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedStudent(item)}>
+                        {item.totalDue === 0 && item.totalPaid === 0 ? (
+                          <Button variant="ghost" size="sm" onClick={() => openEnroll(item)} title="Sözleşme / Ücret Ekle">
+                            <FilePlus2 className="h-4 w-4 text-[hsl(var(--brand-accent))]" />
+                          </Button>
+                        ) : null}
+                        <Button variant="ghost" size="sm" onClick={() => openDetail(item)}>
                           <Eye className="h-4 w-4" />
                         </Button>
                       </TableCell>
@@ -293,7 +386,7 @@ export default function Ledger() {
       </motion.div>
 
       {/* Detail Dialog */}
-      <Dialog open={!!selectedStudent} onOpenChange={(v) => !v && setSelectedStudent(null)}>
+      <Dialog open={!!selectedStudent} onOpenChange={(v) => { if (!v) { setSelectedStudent(null); setAccountDetail(null); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>{selectedStudent?.name} - Hesap Detayi</DialogTitle>
@@ -313,18 +406,89 @@ export default function Ledger() {
                 <p className="text-xs text-muted-foreground">Kalan</p>
               </div>
             </div>
-            {selectedStudent?.collections?.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-2">Son Odemeler</h4>
-                {selectedStudent.collections.slice(0, 5).map((c, i) => (
-                  <div key={i} className="flex justify-between py-1 text-sm border-b last:border-0">
-                    <span>{c.date ? new Date(c.date).toLocaleDateString('tr-TR') : '-'}</span>
-                    <span className="font-mono text-green-600">{formatCurrency(c.amount)}</span>
+            <div>
+              <h4 className="font-medium mb-2">Son Odemeler</h4>
+              {detailLoading ? (
+                <div className="flex justify-center py-6"><LoadingDots /></div>
+              ) : payments.length > 0 ? (
+                payments.slice(0, 8).map((payment) => (
+                  <div key={payment.id} className="flex items-center justify-between py-1.5 text-sm border-b last:border-0">
+                    <span className="text-muted-foreground">
+                      {payment.paidAtUtc ? new Date(payment.paidAtUtc).toLocaleDateString('tr-TR') : '-'}
+                      {payment.method ? ` • ${payment.method}` : ''}
+                    </span>
+                    <span className="font-mono text-green-600">{formatCurrency(payment.amount)}</span>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              ) : (
+                <p className="py-4 text-center text-sm text-muted-foreground">Bu ogrenci icin odeme kaydi bulunmuyor.</p>
+              )}
+            </div>
           </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => openEnroll(selectedStudent)}>
+              <FilePlus2 className="h-4 w-4 mr-1.5" /> Sözleşme / Ücret Ekle
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sözleşme / Ücret Ekleme Dialog */}
+      <Dialog open={enrollOpen} onOpenChange={(v) => { setEnrollOpen(v); if (!v) { setEnrollStudent(null); setEnrollForm(emptyEnrollForm); } }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sözleşme / Ücret Ekle</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{enrollStudent?.name}</span>
+              {enrollStudent?.className && enrollStudent.className !== '-' ? ` • ${enrollStudent.className}` : ''}
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Toplam Ücret (₺) *</Label>
+                <Input type="number" min="0" value={enrollForm.grossAmount} onChange={(e) => setEnrollForm((p) => ({ ...p, grossAmount: e.target.value }))} placeholder="Örn: 60000" />
+              </div>
+              <div>
+                <Label>İndirim (₺)</Label>
+                <Input type="number" min="0" value={enrollForm.discountAmount} onChange={(e) => setEnrollForm((p) => ({ ...p, discountAmount: e.target.value }))} placeholder="Örn: 5000" />
+              </div>
+              <div className="col-span-2">
+                <Label>İndirim Sebebi</Label>
+                <Input value={enrollForm.discountReason} onChange={(e) => setEnrollForm((p) => ({ ...p, discountReason: e.target.value }))} placeholder="Kardeş / erken kayıt vb." maxLength={200} />
+              </div>
+              <div>
+                <Label>Peşinat (₺)</Label>
+                <Input type="number" min="0" value={enrollForm.downPayment} onChange={(e) => setEnrollForm((p) => ({ ...p, downPayment: e.target.value }))} placeholder="Örn: 10000" />
+              </div>
+              <div>
+                <Label>Taksit Sayısı</Label>
+                <Input type="number" min="0" max="48" value={enrollForm.installmentCount} onChange={(e) => setEnrollForm((p) => ({ ...p, installmentCount: e.target.value }))} placeholder="Örn: 10" />
+              </div>
+              <div>
+                <Label>Akademik Yıl</Label>
+                <Input value={enrollForm.academicYear} onChange={(e) => setEnrollForm((p) => ({ ...p, academicYear: e.target.value }))} placeholder="2025-2026" maxLength={40} />
+              </div>
+              <div>
+                <Label>İlk Taksit Tarihi</Label>
+                <Input type="date" value={enrollForm.firstInstallmentDate} onChange={(e) => setEnrollForm((p) => ({ ...p, firstInstallmentDate: e.target.value }))} />
+              </div>
+            </div>
+            {enrollPreview ? (
+              <div className="rounded-lg bg-muted/40 p-3 text-sm flex flex-wrap gap-x-6 gap-y-1">
+                <span>Net: <b>{formatCurrency(enrollPreview.net)}</b></span>
+                <span>Peşinat: <b>{formatCurrency(enrollPreview.down)}</b></span>
+                {enrollPreview.count > 0 ? <span>{enrollPreview.count} taksit × <b>{formatCurrency(enrollPreview.per)}</b></span> : <span>Taksit yok</span>}
+              </div>
+            ) : null}
+            <p className="text-xs text-muted-foreground">Taksit sayısı boş/0 bırakılırsa yalnızca toplam alacak (net) kaydedilir, taksit planı oluşturulmaz.</p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEnrollOpen(false)}>İptal</Button>
+            <Button onClick={handleCreateEnrollment} disabled={enrollSaving}>
+              {enrollSaving ? 'Kaydediliyor...' : 'Sözleşme Oluştur'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>

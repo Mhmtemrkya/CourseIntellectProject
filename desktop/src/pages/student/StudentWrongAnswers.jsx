@@ -135,7 +135,7 @@ export default function StudentWrongAnswers() {
             </CardContent>
           </Card>
           {weakSubjects.map((item) => (
-            <Card key={`${item.subject}-${item.topic}`} className="overflow-hidden border border-slate-200/80 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-white/10 dark:bg-slate-950">
+            <Card key={`${item.subject}-${item.topic}`} className="overflow-hidden border border-slate-200/80 bg-white shadow-[0_18px_40px_-28px_rgba(15,23,42,0.35)] dark:border-foreground/10 dark:bg-slate-950">
               <CardHeader className="border-b bg-gradient-to-r from-rose-50 to-orange-50 dark:from-rose-950/20 dark:to-orange-950/10">
                 <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-rose-600" />{item.subject}</CardTitle>
               </CardHeader>
@@ -149,7 +149,7 @@ export default function StudentWrongAnswers() {
                 </div>
                 <div className="space-y-3">
                   {item.preview.map((question) => (
-                    <div key={question.attemptId} className="rounded-2xl border border-slate-200/70 p-4 dark:border-white/10">
+                    <div key={question.attemptId} className="rounded-2xl border border-slate-200/70 p-4 dark:border-foreground/10">
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <p className="font-medium">{decodeText(question.questionText) || 'Soru'}</p>

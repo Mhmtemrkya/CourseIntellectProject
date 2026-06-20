@@ -104,7 +104,7 @@ function SelectBox({ label, value, options, onChange }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none transition focus:border-orange-400 dark:border-white/10 dark:bg-[#0B1728] dark:text-white"
+        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none transition focus:border-orange-400 dark:border-foreground/10 dark:bg-[#0B1728] dark:text-white"
       >
         {options.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
@@ -123,7 +123,7 @@ function DetailPanel({ row, rows, subject, onClose }) {
     ['0 - 49', rows.filter((item) => item.finalGrade < 50).length, '#EF4444'],
   ];
   return (
-    <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-white/10 dark:bg-[#0E1A2F] dark:shadow-black/30">
+    <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-foreground/10 dark:bg-[#0E1A2F] dark:shadow-black/30">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/15 text-xl font-black text-orange-500">{initials(row.fullName)}</div>
@@ -143,14 +143,14 @@ function DetailPanel({ row, rows, subject, onClose }) {
           ['Devamsızlık', '-', '#F59E0B'],
           ['Etüt Katılımı', '-', '#22C55E'],
         ].map(([label, value, color]) => (
-          <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-white/10 dark:bg-white/[0.04]">
+          <div key={label} className="rounded-2xl border border-slate-200 bg-slate-50 p-3 dark:border-foreground/10 dark:bg-foreground/[0.04]">
             <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
             <p className="mt-2 text-xl font-black" style={{ color }}>{value}</p>
           </div>
         ))}
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-foreground/10 dark:bg-foreground/[0.04]">
         <p className="font-black text-slate-950 dark:text-white">Not Bilgileri</p>
         {[
           ['1. Yazılı', '%40', row.firstGrade || '-'],
@@ -163,13 +163,13 @@ function DetailPanel({ row, rows, subject, onClose }) {
             <span className="text-right font-black text-slate-900 dark:text-white">{value}</span>
           </div>
         ))}
-        <div className="mt-4 flex justify-between border-t border-slate-200 pt-3 text-sm dark:border-white/10">
+        <div className="mt-4 flex justify-between border-t border-slate-200 pt-3 text-sm dark:border-foreground/10">
           <span className="font-bold text-slate-950 dark:text-white">Dönem Sonu Notu</span>
           <span className="font-black text-emerald-500">{row.finalGrade.toFixed(2)}</span>
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-foreground/10 dark:bg-foreground/[0.04]">
         <p className="font-black text-slate-950 dark:text-white">Not Dağılımı</p>
         <div className="mt-4 space-y-3">
           {distribution.map(([label, count, color]) => (
@@ -184,14 +184,14 @@ function DetailPanel({ row, rows, subject, onClose }) {
         </div>
       </div>
 
-      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/[0.04]">
+      <div className="mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-foreground/10 dark:bg-foreground/[0.04]">
         <div className="flex justify-between">
           <p className="font-black text-slate-950 dark:text-white">Son Sınav Sonuçları</p>
           <span className="text-xs text-blue-500">{subject}</span>
         </div>
         <div className="mt-3 space-y-2">
           {row.recent.length === 0 ? <p className="text-sm text-slate-500">Kayıt bulunamadı.</p> : row.recent.map((item) => (
-            <div key={`${item.examTitle}-${item.date}-${item.score}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm dark:bg-white/[0.04]">
+            <div key={`${item.examTitle}-${item.date}-${item.score}`} className="flex items-center justify-between rounded-xl bg-white px-3 py-2 text-sm dark:bg-foreground/[0.04]">
               <span className="font-bold text-slate-800 dark:text-white">{decodeText(item.examTitle)}</span>
               <span className="text-slate-500 dark:text-slate-400">{item.score}</span>
             </div>
@@ -399,7 +399,7 @@ export default function TeacherGradeEntry() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0E1A2F] lg:grid-cols-5">
+      <div className="mt-5 grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[#0E1A2F] lg:grid-cols-5">
         <SelectBox label="Sınıf" value={selectedClass} options={classOptions} onChange={setSelectedClass} />
         <SelectBox label="Ders" value={selectedSubject} options={subjectOptions} onChange={setSelectedSubject} />
         <SelectBox label="Dönem" value={period} options={['2024 - 2025 / 1. Dönem', '2024 - 2025 / 2. Dönem', '2025 - 2026 / 1. Dönem']} onChange={setPeriod} />
@@ -424,7 +424,7 @@ export default function TeacherGradeEntry() {
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Öğrenciler sınavı tamamladı. Onayladığınızda sonuç, sınavı oluştururken yazdığınız tür etiketiyle ({pendingApprovals[0]?.assessmentLabel || '1. Yazılı'} gibi) not girişine otomatik işlenir.</p>
           <div className="mt-3 space-y-2">
             {pendingApprovals.map((item) => (
-              <div key={item.sessionId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-white/10 dark:bg-[#0E1A2F]">
+              <div key={item.sessionId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-foreground/10 dark:bg-[#0E1A2F]">
                 <div className="flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/15 text-xs font-black text-orange-500">{initials(item.studentName)}</span>
                   <div>
@@ -453,17 +453,17 @@ export default function TeacherGradeEntry() {
       ) : null}
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-white/10 dark:bg-[#0E1A2F] dark:shadow-black/20">
-          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-white/10 md:flex-row md:items-center">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-foreground/10 dark:bg-[#0E1A2F] dark:shadow-black/20">
+          <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-foreground/10 md:flex-row md:items-center">
             <label className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Öğrenci ara..." className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none focus:border-orange-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-white" />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Öğrenci ara..." className="h-10 w-full rounded-xl border border-slate-200 bg-slate-50 pl-10 pr-3 text-sm outline-none focus:border-orange-400 dark:border-foreground/10 dark:bg-foreground/[0.04] dark:text-white" />
             </label>
             <p className="text-xs text-slate-500">{rows.length} öğrenci listeleniyor.</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[920px] text-sm">
-              <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-white/[0.04] dark:text-slate-400">
+              <thead className="bg-slate-50 text-xs uppercase text-slate-500 dark:bg-foreground/[0.04] dark:text-slate-400">
                 <tr>
                   {['No', 'Öğrenci Adı Soyadı', '1. Yazılı (%40)', '2. Yazılı (%40)', 'Performans (%20)', 'Dönem Sonu Notu', 'Not Durumu', 'İşlemler'].map((head) => (
                     <th key={head} className="px-4 py-3 text-left font-black">{head}</th>
@@ -478,7 +478,7 @@ export default function TeacherGradeEntry() {
                 ) : rows.map((row, index) => {
                   const status = statusFor(row.finalGrade);
                   return (
-                    <tr key={row.id} onClick={() => setSelectedRowId(row.id)} className={`cursor-pointer border-t border-slate-100 transition hover:bg-blue-500/5 dark:border-white/10 dark:hover:bg-blue-500/10 ${selectedRow?.id === row.id ? 'bg-orange-500/10 ring-1 ring-inset ring-orange-400/50' : ''}`}>
+                    <tr key={row.id} onClick={() => setSelectedRowId(row.id)} className={`cursor-pointer border-t border-slate-100 transition hover:bg-blue-500/5 dark:border-foreground/10 dark:hover:bg-blue-500/10 ${selectedRow?.id === row.id ? 'bg-orange-500/10 ring-1 ring-inset ring-orange-400/50' : ''}`}>
                       <td className="px-4 py-3">{index + 1}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
@@ -496,7 +496,7 @@ export default function TeacherGradeEntry() {
                             value={value}
                             onClick={(event) => event.stopPropagation()}
                             onChange={(event) => updateDraft(row.id, key, event.target.value)}
-                            className="h-9 w-20 rounded-lg border border-slate-200 bg-slate-50 px-3 text-center font-bold outline-none focus:border-orange-400 dark:border-white/10 dark:bg-white/[0.04] dark:text-white"
+                            className="h-9 w-20 rounded-lg border border-slate-200 bg-slate-50 px-3 text-center font-bold outline-none focus:border-orange-400 dark:border-foreground/10 dark:bg-foreground/[0.04] dark:text-white"
                           />
                         </td>
                       ))}
@@ -534,7 +534,7 @@ export default function TeacherGradeEntry() {
           [stats.missing, 'Notu Girilmeyen', FileText, 'text-purple-500'],
           [stats.total, 'Toplam Öğrenci', Users, 'text-cyan-500'],
         ].map(([value, label, Icon, color]) => (
-          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#0E1A2F]">
+          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[#0E1A2F]">
             <Icon className={`h-5 w-5 ${color}`} />
             <p className="mt-3 text-2xl font-black">{value}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>

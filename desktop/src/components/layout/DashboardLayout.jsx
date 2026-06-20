@@ -6,6 +6,7 @@ import { checkIsServiceDriver } from '../../lib/driverGuard';
 import { PremiumSidebar } from './PremiumSidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
+import { PageErrorBoundary } from '../system/PageErrorBoundary';
 import { Sheet, SheetContent } from '../ui/sheet';
 import { gsap } from 'gsap';
 
@@ -99,7 +100,9 @@ export function DashboardLayout() {
               className="h-full"
             >
               <div ref={pageRef} className="ci-page p-4 lg:p-5 xl:p-6">
-                <Outlet />
+                <PageErrorBoundary key={location.pathname}>
+                  <Outlet />
+                </PageErrorBoundary>
               </div>
             </motion.div>
           </AnimatePresence>

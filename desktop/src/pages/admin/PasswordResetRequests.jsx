@@ -151,12 +151,12 @@ export default function PasswordResetRequests() {
       <div className="overflow-hidden rounded-[28px] border border-border bg-slate-950 p-7 text-white shadow-xl">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
-            <Badge className="border-white/20 bg-white/10 text-white">
+            <Badge className="border-foreground/20 bg-foreground/10 text-white">
               <KeyRound className="mr-1 h-3.5 w-3.5" />
               Güvenli Şifre Akışı
             </Badge>
             <h1 className="mt-4 text-3xl font-bold font-heading">Şifre Sıfırlama Talepleri</h1>
-            <p className="mt-2 text-sm text-white/75">
+            <p className="mt-2 text-sm text-foreground/75">
               Kullanıcı talep oluşturur, kurum yöneticisi veya idareci onaylar; sistem tek kullanımlık geçici şifre üretir.
             </p>
           </div>

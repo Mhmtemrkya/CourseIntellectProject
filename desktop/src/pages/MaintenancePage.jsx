@@ -25,12 +25,12 @@ export default function MaintenancePage({ message, since, onRetry, onLogout }) {
           <h1 className="mt-6 font-display text-3xl font-semibold text-white md:text-4xl tracking-[-0.02em]">
             Sistem şu anda bakımda
           </h1>
-          <p className="mt-4 text-[15px] leading-relaxed text-white/65">
+          <p className="mt-4 text-[15px] leading-relaxed text-foreground/65">
             {message || 'CourseIntellect platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak.'}
           </p>
 
           {sinceDate && (
-            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/60">
+            <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-foreground/[0.03] px-3 py-1.5 text-xs text-foreground/60">
               <Clock className="h-3.5 w-3.5" />
               Başlangıç: {sinceDate.toLocaleString('tr-TR')}
             </div>
@@ -48,7 +48,7 @@ export default function MaintenancePage({ message, since, onRetry, onLogout }) {
               <Button
                 variant="outline"
                 onClick={onLogout}
-                className="h-11 border-white/15 bg-transparent text-white/85 hover:border-white/30 hover:bg-white/[0.04]"
+                className="h-11 border-foreground/15 bg-transparent text-foreground/85 hover:border-foreground/30 hover:bg-foreground/[0.04]"
               >
                 <LogOut className="mr-2 h-4 w-4" />
                 Çıkış yap
@@ -56,7 +56,7 @@ export default function MaintenancePage({ message, since, onRetry, onLogout }) {
             )}
           </div>
 
-          <div className="mt-8 flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-white/60">
+          <div className="mt-8 flex items-start gap-2.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-xs text-foreground/60">
             <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400" />
             <div>
               Verileriniz güvende. Bakım yalnızca girişleri kapatır; veri kaybı yaşanmaz.

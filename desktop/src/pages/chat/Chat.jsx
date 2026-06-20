@@ -797,7 +797,7 @@ export default function Chat() {
                                         onClick={() => handleOpenAttachment(attachment)}
                                         className={cn(
                                           'flex w-full items-center gap-2 rounded-xl border px-3 py-2 text-left text-sm',
-                                          isMine ? 'border-white/20 bg-white/10' : 'border-border bg-background/80'
+                                          isMine ? 'border-foreground/20 bg-foreground/10' : 'border-border bg-background/80'
                                         )}
                                       >
                                         {isImage ? <ImageIcon className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
@@ -809,7 +809,7 @@ export default function Chat() {
                                 </div>
                               ) : null}
                               <div className={cn('flex items-center gap-1 mt-1', isMine ? 'justify-end' : 'justify-start')}>
-                                <span className={cn('text-xs', isMine ? 'text-white/70' : 'text-muted-foreground')}>
+                                <span className={cn('text-xs', isMine ? 'text-foreground/70' : 'text-muted-foreground')}>
                                   {formatMessageTime(msg.sentAtUtc)}
                                 </span>
                                 {isMine ? renderStatusIcon((msg.status === 'read' || msg.isRead) ? 'read' : msg.status) : null}
@@ -817,7 +817,7 @@ export default function Chat() {
                                   <Button
                                     variant="ghost"
                                     size="icon"
-                                    className={cn('h-5 w-5 ml-1', isMine ? 'text-white/70 hover:text-white' : 'text-muted-foreground')}
+                                    className={cn('h-5 w-5 ml-1', isMine ? 'text-foreground/70 hover:text-white' : 'text-muted-foreground')}
                                     onClick={() => handleDeleteForMe(msg)}
                                   >
                                     <Trash2 className="h-3 w-3" />

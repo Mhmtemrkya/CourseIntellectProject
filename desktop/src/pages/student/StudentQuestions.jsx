@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Brain, Search, Play, CheckCircle, Zap, Target, BookOpen,
+  Brain, Search, Play, CheckCircle, Zap, Target, BookOpen, XCircle, MinusCircle, TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -13,6 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../componen
 import { DialogFooter } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import PremiumResourceCard from '../../components/ui/PremiumResourceCard';
+import { PremiumPanel, PremiumDonutChart, PremiumStatusPill, CHART_COLORS } from '../../components/ui/premium-dashboard';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { AnimatedCounter, CircularProgress } from '../../components/animations/AnimatedCounter';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
@@ -21,6 +22,7 @@ import { useApp } from '../../context/AppContext';
 import {
   addStudyPlanXp,
   fetchQuestionBank,
+  fetchQuestionPracticeStats,
   incrementQuestionUsage,
   submitQuestionPracticeAttempt,
 } from '../../lib/api/modules';
@@ -191,21 +193,21 @@ function AutoCover({ subject }) {
   const theme = getSubjectTheme(safeSubject);
   return (
     <div className={`relative flex h-44 overflow-hidden rounded-2xl bg-gradient-to-br ${theme.gradient} p-5 text-white`}>
-      <div className="absolute left-[-18px] top-[-22px] h-28 w-28 rounded-full bg-white/12" />
+      <div className="absolute left-[-18px] top-[-22px] h-28 w-28 rounded-full bg-foreground/12" />
       <div className="absolute bottom-[-34px] right-[-24px] h-40 w-40 rounded-full bg-black/10" />
-      <div className="absolute left-6 top-5 text-[54px] font-black tracking-[-0.08em] text-white/10">
+      <div className="absolute left-6 top-5 text-[54px] font-black tracking-[-0.08em] text-foreground/10">
         {getSubjectMark(safeSubject)}
       </div>
       <div className="mt-auto flex items-end gap-3">
-        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/20 bg-white/15 text-base font-bold text-white backdrop-blur-sm">
+        <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-foreground/20 bg-foreground/15 text-base font-bold text-white backdrop-blur-sm">
           {theme.icon}
         </div>
         <div className="min-w-0 flex-1">
-          <div className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-white/80">{safeSubject || 'Genel'}</div>
-          <div className="truncate text-[11px] font-bold tracking-[0.18em] text-white/70">{getSubjectTagline(safeSubject)}</div>
+          <div className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-foreground/80">{safeSubject || 'Genel'}</div>
+          <div className="truncate text-[11px] font-bold tracking-[0.18em] text-foreground/70">{getSubjectTagline(safeSubject)}</div>
           <div className="line-clamp-2 text-[22px] font-black leading-[1.02] tracking-tight">Soru Bankası</div>
         </div>
-        <div className="h-14 w-2 rounded-full bg-white/35" />
+        <div className="h-14 w-2 rounded-full bg-foreground/35" />
       </div>
     </div>
   );
@@ -216,6 +218,7 @@ export default function StudentQuestions() {
   const { user } = useApp();
   const navigate = useNavigate();
   const [questions, setQuestions] = useState([]);
+  const [practiceStats, setPracticeStats] = useState(null);
   const [selectedSubject, setSelectedSubject] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedSet, setSelectedSet] = useState(null);
@@ -234,14 +237,19 @@ export default function StudentQuestions() {
     try {
       setLoading(true);
       setError('');
-      const payload = await fetchQuestionBank();
+      const username = user?.username || user?.email || (user?.name || 'ogrenci').toLowerCase().replaceAll(' ', '');
+      const [payload, statsPayload] = await Promise.all([
+        fetchQuestionBank(),
+        fetchQuestionPracticeStats({ studentUsername: username }).catch(() => null),
+      ]);
       setQuestions(payload);
+      setPracticeStats(statsPayload);
     } catch (err) {
       setError(err.message || 'Soru bankası alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadQuestions();
@@ -274,6 +282,21 @@ export default function StudentQuestions() {
     successRate: questions.length ? Math.round((questions.filter((item) => Number(item.usageCount || 0) > 0).length / questions.length) * 100) : 0,
     xp: questions.reduce((sum, item) => sum + Math.min(10, Number(item.usageCount || 0)), 0),
   };
+  const remaining = Math.max(0, stats.totalQuestions - stats.solved);
+  // Gerçek çözüm kırılımı (backend /attempts/stats). Veri yoksa güvenli varsayılan.
+  const totalCount = practiceStats?.total ?? stats.totalQuestions;
+  const solvedCount = practiceStats?.solved ?? stats.solved;
+  const correctCount = practiceStats?.correct ?? 0;
+  const wrongCount = practiceStats?.wrong ?? 0;
+  const blankCount = practiceStats?.blank ?? remaining;
+  const netScore = practiceStats?.net ?? 0;
+  const difficultyBreakdown = [
+    ['Kolay', 'bg-emerald-400'],
+    ['Orta', 'bg-amber-400'],
+    ['Zor', 'bg-rose-400'],
+  ].map(([level, color]) => ({ level, color, count: questions.filter((item) => (item.difficulty || 'Orta') === level).length }));
+  const maxDifficulty = Math.max(1, ...difficultyBreakdown.map((entry) => entry.count));
+  const recentSolved = questions.filter((item) => Number(item.usageCount || 0) > 0).slice(0, 5);
 
   const handleOpenSet = async (set) => {
     const questionIds = set.questions.map((question) => question.id).filter(Boolean);
@@ -470,134 +493,152 @@ export default function StudentQuestions() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-8 relative" data-testid="student-questions-page">
-      <motion.div variants={itemVariants}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="p-4 rounded-2xl bg-gradient-to-br from-teal-500 to-cyan-500 shadow-lg">
-              <Brain className="h-8 w-8 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold font-heading">Soru Bankası</h1>
-              <p className="text-muted-foreground">Canlı backend soru arşivi</p>
-            </div>
+    <motion.div variants={containerVariants} initial="hidden" animate="visible" className="space-y-5 relative" data-testid="student-questions-page">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <span className="grid h-11 w-11 place-items-center rounded-2xl bg-gradient-to-br from-violet-400 to-fuchsia-600 text-white"><Brain className="h-5 w-5" /></span>
+          <div>
+            <h1 className="text-xl font-black tracking-tight">Soru Bankası</h1>
+            <p className="text-sm text-muted-foreground">Binlerce soru ile konularını pekiştir, eksiklerini tamamla.</p>
           </div>
-          <Button
-            className="bg-gradient-to-r from-teal-500 to-cyan-500 hover:from-teal-600 hover:to-cyan-600"
-            onClick={handleRandomQuestion}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Rastgele Soru Çöz
-          </Button>
         </div>
-      </motion.div>
+        <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={handleRandomQuestion}>
+          <Play className="mr-2 h-4 w-4" />Rastgele Soru Çöz
+        </Button>
+      </div>
 
       {error ? <ErrorBanner title="Soru bankası alınamadı" message={error} onRetry={loadQuestions} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      {/* 6 stat kartı */}
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
         {[
-          ['Toplam Soru', stats.totalQuestions, BookOpen, 'from-blue-500 to-cyan-500'],
-          ['Çözülen', stats.solved, CheckCircle, 'from-green-500 to-emerald-500'],
-          ['Başarı Oranı', `${stats.successRate}%`, Target, 'from-purple-500 to-pink-500'],
-          ['Kazanılan XP', stats.xp, Zap, 'from-yellow-500 to-orange-500'],
-        ].map(([label, value, Icon, gradient]) => (
-          <motion.div variants={itemVariants} key={label}>
-            <Card className="border-0 shadow-lg overflow-hidden">
-              <CardContent className="p-5">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="text-3xl font-bold mt-1">{value}</p>
-                  </div>
-                  <div className={`p-3 rounded-xl bg-gradient-to-br ${gradient}`}>
-                    <Icon className="h-6 w-6 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+          ['Toplam Soru', totalCount, BookOpen, 'from-sky-400 to-blue-600', 'Tüm branşlar'],
+          ['Çözülen Soru', solvedCount, Target, 'from-violet-400 to-fuchsia-600', 'Bu zamana kadar'],
+          ['Doğru', correctCount, CheckCircle, 'from-emerald-400 to-teal-600', totalCount ? `%${Math.round((correctCount / Math.max(1, solvedCount)) * 100)} doğru oranı` : 'Doğru cevap'],
+          ['Yanlış', wrongCount, XCircle, 'from-rose-400 to-red-600', solvedCount ? `%${Math.round((wrongCount / Math.max(1, solvedCount)) * 100)} yanlış oranı` : 'Yanlış cevap'],
+          ['Boş', blankCount, MinusCircle, 'from-slate-400 to-slate-600', 'Çözülmeyen soru'],
+          ['Net', netScore >= 0 ? `+${netScore}` : `${netScore}`, TrendingUp, 'from-amber-400 to-orange-600', 'Net puan'],
+        ].map(([label, value, Icon, gradient, sub]) => (
+          <div key={label} className="ci-metric-card flex flex-col gap-2 rounded-2xl border border-foreground/10 p-3.5">
+            <div className={`grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br text-white ${gradient}`}><Icon className="h-4 w-4" /></div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</p>
+              <p className="mt-0.5 text-2xl font-black tracking-tight">{value}</p>
+              <p className="text-[10px] text-muted-foreground">{sub}</p>
+            </div>
+          </div>
         ))}
       </div>
 
-      <motion.div variants={itemVariants}>
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-[#D9790B]" />
-              Dersler
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-              {subjects.map((subject) => {
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        {/* Sol */}
+        <div className="space-y-5 xl:col-span-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Soru, konu veya kazanım ara..." className="w-full rounded-xl border border-foreground/10 bg-foreground/[0.04] py-2.5 pl-9 pr-3 text-sm outline-none" />
+          </div>
+
+          <PremiumPanel title="Branşlara Göre" description="Branş bazında çözüm durumu">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {subjects.map((subject, index) => {
                 const percentage = subject.questions > 0 ? Math.round((subject.solved / subject.questions) * 100) : 0;
+                const active = selectedSubject === subject.name;
                 return (
-                  <div
+                  <button
                     key={subject.name}
-                    onClick={() => setSelectedSubject(selectedSubject === subject.name ? 'all' : subject.name)}
-                    className={`cursor-pointer p-4 rounded-xl border-2 transition-all ${
-                      selectedSubject === subject.name ? 'border-[#D9790B] bg-[#D9790B]/10 shadow-lg shadow-orange-500/20' : 'border-border hover:border-[#D9790B]/50'
-                    }`}
+                    onClick={() => setSelectedSubject(active ? 'all' : subject.name)}
+                    className={`rounded-2xl border p-3.5 text-left transition-all ${active ? 'border-[hsl(var(--brand-accent)/0.5)] bg-[hsl(var(--brand-accent)/0.08)]' : 'border-foreground/10 bg-foreground/[0.035] hover:bg-[hsl(var(--brand-accent)/0.05)]'}`}
                   >
-                    <div className="text-center">
-                      <p className="font-semibold">{subject.name}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{subject.solved}/{subject.questions}</p>
-                      <Progress value={percentage} className="h-1.5 mt-2" />
+                    <div className="flex items-center gap-2">
+                      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-gradient-to-br text-white ${['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-600', 'from-emerald-400 to-teal-600', 'from-amber-400 to-orange-600', 'from-rose-400 to-red-600', 'from-cyan-400 to-blue-500'][index % 6]}`}><BookOpen className="h-4 w-4" /></span>
+                      <p className="truncate text-sm font-semibold">{decodeSubject(subject.name)}</p>
                     </div>
-                  </div>
+                    <p className="mt-2 text-[11px] text-muted-foreground">{subject.solved}/{subject.questions} çözüldü</p>
+                    <div className="mt-1.5 h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className="h-full rounded-full bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]" style={{ width: `${percentage}%` }} /></div>
+                  </button>
                 );
               })}
             </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+          </PremiumPanel>
 
-      <motion.div variants={itemVariants} className="flex gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Konu ara..." className="pl-10 h-12 rounded-xl" />
-        </div>
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        {filteredQuestionSets.length === 0 ? (
-          <StudentEmptyState
-            variant="question"
-            accent="purple"
-            title="Henüz soru çözmedin"
-            description="Soru bankamızdan konu çalışmaya başlayın. Sana özel sorular ve çözümler burada olacak."
-            primaryLabel="Soru Çözmeye Başla"
-            onPrimary={loadQuestions}
-          />
-        ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredQuestionSets.map((set) => (
-            <PremiumResourceCard
-              key={set.key}
-              subject={decodeSubject(set.subject)}
-              eyebrow={decodeSubject(set.subject)}
-              title={set.title}
-              subtitle={`${set.teacher} • ${set.difficulty}`}
-              badge={`${set.questions.length} soru`}
-              chips={[
-                set.imageCount > 0 ? `${set.imageCount} görselli soru` : null,
-                set.totalUsage > 0 ? `${set.totalUsage} kez çözüldü` : 'Yeni set',
-              ]}
-              footer={(
-                <div className="mt-4">
-                  <Button
-                    className="h-11 w-full rounded-xl bg-orange-500 font-black text-white shadow-[0_14px_30px_-18px_rgba(255,157,46,0.9)] hover:bg-orange-600"
-                    onClick={() => handleOpenSet(set)}
-                  >
-                    <Play className="mr-2 h-4 w-4" /> Seti Başlat
-                  </Button>
+          <PremiumPanel title="Kazanım Testleri" description="Kazanımlarına göre test çöz, eksiklerini gör." contentClassName="space-y-2.5">
+            {filteredQuestionSets.length ? filteredQuestionSets.slice(0, 6).map((set) => (
+              <div key={set.key} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><BookOpen className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{decodeSubject(set.subject)}</p>
+                  <p className="truncate text-xs text-muted-foreground">{set.title}</p>
                 </div>
-              )}
-            />
-          ))}
+                <div className="hidden shrink-0 text-right text-xs text-muted-foreground sm:block">
+                  <p className="font-semibold text-foreground">{set.questions.length} Soru</p>
+                  <p>{set.totalUsage} çözüm</p>
+                </div>
+                <Button size="sm" className="shrink-0" onClick={() => handleOpenSet(set)}>Testlere Git →</Button>
+              </div>
+            )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Bu filtrede test bulunmuyor.</div>}
+          </PremiumPanel>
+
+          {filteredQuestionSets.length ? (
+            <PremiumPanel title="Önerilen Testler" description="Senin için önerilen testler">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
+                {filteredQuestionSets.slice(0, 5).map((set, index) => (
+                  <div key={`sug-${set.key}`} className="flex flex-col gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
+                    <span className={`grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br text-white ${['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-600', 'from-emerald-400 to-teal-600', 'from-amber-400 to-orange-600', 'from-rose-400 to-red-600'][index % 5]}`}><BookOpen className="h-4 w-4" /></span>
+                    <div className="min-w-0">
+                      <p className="truncate text-xs font-semibold">{decodeSubject(set.subject)}</p>
+                      <p className="truncate text-[11px] text-muted-foreground">{set.title}</p>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">{set.questions.length} Soru</p>
+                    <Button size="sm" className="w-full text-xs" onClick={() => handleOpenSet(set)}>Çöz →</Button>
+                  </div>
+                ))}
+              </div>
+            </PremiumPanel>
+          ) : null}
         </div>
-        )}
-      </motion.div>
+
+        {/* Sağ ray */}
+        <div className="space-y-5">
+          <PremiumPanel title="Çözüm İstatistiklerim" description="Doğru / yanlış / boş dağılımı">
+            <PremiumDonutChart
+              segments={[
+                { label: 'Doğru', value: correctCount, color: '#10B981' },
+                { label: 'Yanlış', value: wrongCount, color: '#F43F5E' },
+                { label: 'Boş', value: blankCount, color: '#F59E0B' },
+              ]}
+              centerValue={solvedCount}
+              centerLabel="Çözülen Soru"
+            />
+          </PremiumPanel>
+
+          <PremiumPanel title="Zorluk Seviyelerine Göre" description="Soru havuzu dağılımı">
+            <div className="space-y-3">
+              {difficultyBreakdown.map((entry) => (
+                <div key={entry.level}>
+                  <div className="mb-1.5 flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2 font-medium"><span className={`h-2.5 w-2.5 rounded-full ${entry.color}`} />{entry.level}</span>
+                    <span className="font-semibold text-muted-foreground">{entry.count}</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className={`h-full rounded-full ${entry.color}`} style={{ width: `${Math.round((entry.count / maxDifficulty) * 100)}%` }} /></div>
+                </div>
+              ))}
+            </div>
+          </PremiumPanel>
+
+          <PremiumPanel title="Son Çözülen Sorular" description="Son çözüm aktivitelerin" contentClassName="space-y-2.5">
+            {recentSolved.length ? recentSolved.map((item, index) => (
+              <div key={item.id || index} className="flex items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><BookOpen className="h-4 w-4" /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{decodeSubject(item.subject)} - {item.topic || 'Konu'}</p>
+                  <p className="truncate text-xs text-muted-foreground">{item.usageCount} çözüm</p>
+                </div>
+                <PremiumStatusPill tone="done">Çözüldü</PremiumStatusPill>
+              </div>
+            )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Henüz çözülmüş soru yok.</div>}
+          </PremiumPanel>
+        </div>
+      </div>
 
       <Dialog
         open={!!selectedSet}
@@ -674,25 +715,25 @@ export default function StudentQuestions() {
                   <div className="overflow-hidden rounded-[28px] border border-emerald-200/70 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 p-6 text-white shadow-[0_24px_60px_-28px_rgba(16,185,129,0.6)]">
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                       <div className="min-w-0">
-                        <div className="inline-flex rounded-full border border-white/20 bg-white/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-white/80">
+                        <div className="inline-flex rounded-full border border-foreground/20 bg-foreground/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-foreground/80">
                           Set Tamamlandı
                         </div>
                         <div className="mt-4 text-3xl font-black tracking-tight">
                           {selectedSet.title}
                         </div>
-                        <div className="mt-3 max-w-xl text-sm leading-6 text-white/85">
+                        <div className="mt-3 max-w-xl text-sm leading-6 text-foreground/85">
                           Soruları tamamladın. Doğru sayın, bonusların ve kazandığın XP aşağıda anında işlendi.
                         </div>
                         <div className="mt-5 flex flex-wrap gap-3">
-                          <div className="rounded-2xl border border-white/20 bg-white/12 px-4 py-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Doğru</div>
+                          <div className="rounded-2xl border border-foreground/20 bg-foreground/12 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/70">Doğru</div>
                             <div className="mt-1 text-2xl font-black">
                               <AnimatedCounter value={resultSummary?.correctCount ?? 0} />
-                              <span className="ml-1 text-base font-semibold text-white/75">/ {selectedSet.questions.length}</span>
+                              <span className="ml-1 text-base font-semibold text-foreground/75">/ {selectedSet.questions.length}</span>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-white/20 bg-white/12 px-4 py-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">Kazanılan XP</div>
+                          <div className="rounded-2xl border border-foreground/20 bg-foreground/12 px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground/70">Kazanılan XP</div>
                             <div className="mt-1 text-2xl font-black">
                               +<AnimatedCounter value={resultSummary?.totalXp ?? 0} />
                             </div>
@@ -700,7 +741,7 @@ export default function StudentQuestions() {
                         </div>
                       </div>
                       <div className="flex justify-center lg:justify-end">
-                        <div className="rounded-[26px] border border-white/20 bg-slate-950/18 p-4 backdrop-blur-md">
+                        <div className="rounded-[26px] border border-foreground/20 bg-slate-950/18 p-4 backdrop-blur-md">
                           <CircularProgress
                             value={Math.round((((resultSummary?.correctCount ?? 0) / Math.max(1, selectedSet.questions.length)) * 100))}
                             size={156}
@@ -717,7 +758,7 @@ export default function StudentQuestions() {
                   {resultSummary?.bonuses?.length ? (
                     <div className="grid gap-3 md:grid-cols-2">
                       {resultSummary.bonuses.map((bonus) => (
-                        <div key={bonus} className="rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm dark:border-white/10 dark:bg-slate-950 dark:text-slate-300">
+                        <div key={bonus} className="rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm dark:border-foreground/10 dark:bg-slate-950 dark:text-slate-300">
                           {bonus}
                         </div>
                       ))}

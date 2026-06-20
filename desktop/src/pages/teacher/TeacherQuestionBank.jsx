@@ -200,21 +200,21 @@ function EmptyQuestionBankState({ onCreate, onImport }) {
 
   return (
     <motion.div variants={itemVariants} className="flex justify-center">
-      <div className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#070c16] px-6 py-9 text-center shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)] dark:bg-[#070c16]">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-foreground/10 bg-[#070c16] px-6 py-9 text-center shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)] dark:bg-[#070c16]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_29%,rgba(249,115,22,0.16),transparent_25%),radial-gradient(circle_at_50%_45%,rgba(59,130,246,0.10),transparent_32%)]" />
         <div className="relative mx-auto h-[245px] max-w-3xl">
-          <div className="absolute left-[13%] right-[13%] top-[106px] h-[90px] rounded-[50%] border border-dashed border-white/20" />
+          <div className="absolute left-[13%] right-[13%] top-[106px] h-[90px] rounded-[50%] border border-dashed border-foreground/20" />
           <Brain className="absolute left-1/2 top-3 h-20 w-20 -translate-x-1/2 text-white drop-shadow-[0_0_22px_rgba(255,255,255,0.35)]" />
           <div className="absolute left-1/2 top-[96px] h-[126px] w-[220px] -translate-x-1/2">
             <div className="absolute left-1/2 top-8 h-28 w-28 -translate-x-1/2 rounded-xl bg-gradient-to-b from-slate-800 to-slate-950 shadow-[0_-22px_55px_rgba(249,115,22,0.35)]">
               <Brain className="mx-auto mt-12 h-8 w-8 text-orange-300/80" />
             </div>
-            <div className="absolute left-6 top-3 h-12 w-24 -rotate-[24deg] rounded-md border border-white/10 bg-gradient-to-br from-slate-500 to-slate-900" />
-            <div className="absolute right-6 top-3 h-12 w-24 rotate-[24deg] rounded-md border border-white/10 bg-gradient-to-bl from-slate-500 to-slate-900" />
+            <div className="absolute left-6 top-3 h-12 w-24 -rotate-[24deg] rounded-md border border-foreground/10 bg-gradient-to-br from-slate-500 to-slate-900" />
+            <div className="absolute right-6 top-3 h-12 w-24 rotate-[24deg] rounded-md border border-foreground/10 bg-gradient-to-bl from-slate-500 to-slate-900" />
             <div className="absolute left-1/2 top-12 h-24 w-5 -translate-x-1/2 bg-gradient-to-b from-orange-400/70 to-transparent blur-sm" />
           </div>
           {floatingIcons.map(({ Icon, className, color }) => (
-            <div key={className} className={`absolute ${className} flex h-14 w-14 items-center justify-center rounded-2xl border bg-white/[0.035] shadow-xl ${color}`}>
+            <div key={className} className={`absolute ${className} flex h-14 w-14 items-center justify-center rounded-2xl border bg-foreground/[0.035] shadow-xl ${color}`}>
               <Icon className="h-7 w-7" />
             </div>
           ))}
@@ -229,12 +229,12 @@ function EmptyQuestionBankState({ onCreate, onImport }) {
               <Plus className="mr-2 h-5 w-5" />
               Yeni Soru Ekle
             </Button>
-            <Button onClick={onImport} variant="outline" className="h-14 rounded-2xl border-white/15 bg-white/[0.02] px-9 text-base font-bold text-white hover:bg-white/10 hover:text-white">
+            <Button onClick={onImport} variant="outline" className="h-14 rounded-2xl border-foreground/15 bg-foreground/[0.02] px-9 text-base font-bold text-white hover:bg-foreground/10 hover:text-white">
               <Upload className="mr-2 h-5 w-5" />
               İçe Aktar
             </Button>
           </div>
-          <div className="mx-auto mt-8 flex max-w-xl items-center gap-4 rounded-2xl border border-white/10 bg-white/[0.035] p-5 text-left">
+          <div className="mx-auto mt-8 flex max-w-xl items-center gap-4 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5 text-left">
             <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-blue-500/15">
               <Lightbulb className="h-6 w-6 text-blue-300" />
             </div>
@@ -983,7 +983,7 @@ export default function TeacherQuestionBank() {
       <motion.div variants={itemVariants}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQuestionSets.length === 0 ? (
-            <Card className="col-span-full border border-slate-200/80 bg-white dark:border-white/10 dark:bg-slate-950">
+            <Card className="col-span-full border border-slate-200/80 bg-white dark:border-foreground/10 dark:bg-slate-950">
               <CardContent className="p-8 text-center text-muted-foreground">
                 Bu filtrelere uygun soru bulunamadı.
               </CardContent>

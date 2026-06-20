@@ -79,26 +79,26 @@ export default function StudentBadges() {
         <Card className="border-0 shadow-lg overflow-hidden">
           <div className="bg-gradient-to-br from-[#08111F] to-[#FF7A1A] p-6 text-white">
             <h1 className="text-2xl lg:text-3xl font-black">300 BAŞARI ROZETİ</h1>
-            <p className="text-white/85 mt-1">Her soru, her ödev, her adım seni zirveye taşır.</p>
+            <p className="text-foreground/85 mt-1">Her soru, her ödev, her adım seni zirveye taşır.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 max-w-xl">
-              <div className="rounded-2xl bg-white/15 px-4 py-3">
+              <div className="rounded-2xl bg-foreground/15 px-4 py-3">
                 <p className="text-xl font-black">{unlocked} / {BADGE_TOTAL}</p>
-                <p className="text-xs text-white/80 font-semibold">Açılan Rozet</p>
+                <p className="text-xs text-foreground/80 font-semibold">Açılan Rozet</p>
               </div>
-              <div className="rounded-2xl bg-white/15 px-4 py-3">
+              <div className="rounded-2xl bg-foreground/15 px-4 py-3">
                 <p className="text-xl font-black">{xp} XP</p>
-                <p className="text-xs text-white/80 font-semibold">Toplam XP</p>
+                <p className="text-xs text-foreground/80 font-semibold">Toplam XP</p>
               </div>
               {next && (
-                <div className="rounded-2xl bg-white/15 px-4 py-3 col-span-2 sm:col-span-1">
+                <div className="rounded-2xl bg-foreground/15 px-4 py-3 col-span-2 sm:col-span-1">
                   <p className="text-sm font-black truncate">{next.name}</p>
-                  <p className="text-xs text-white/80 font-semibold">Sıradaki • {next.xpThreshold} XP</p>
+                  <p className="text-xs text-foreground/80 font-semibold">Sıradaki • {next.xpThreshold} XP</p>
                 </div>
               )}
             </div>
             {next && (
               <div className="mt-4 max-w-xl">
-                <Progress value={nextProgress} className="h-3 bg-white/20" />
+                <Progress value={nextProgress} className="h-3 bg-foreground/20" />
               </div>
             )}
           </div>

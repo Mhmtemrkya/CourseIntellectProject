@@ -121,21 +121,21 @@ function FileTypeIcon({ fileName = '' }) {
 
 function StepRail({ currentStep }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.9)]">
+    <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5 shadow-[0_20px_70px_-50px_rgba(15,23,42,0.9)]">
       <div className="grid gap-3 lg:grid-cols-5">
         {steps.map((step, index) => {
           const active = currentStep === step.key;
           const completed = currentStep > step.key;
           return (
             <div key={step.key} className="flex items-center gap-3">
-              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-sm font-black ${active ? 'border-orange-400 bg-orange-500 text-white shadow-[0_0_26px_rgba(249,115,22,0.45)]' : completed ? 'border-blue-400 bg-blue-500 text-white' : 'border-white/15 bg-white/5 text-slate-300'}`}>
+              <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full border text-sm font-black ${active ? 'border-orange-400 bg-orange-500 text-white shadow-[0_0_26px_rgba(249,115,22,0.45)]' : completed ? 'border-blue-400 bg-blue-500 text-white' : 'border-foreground/15 bg-foreground/5 text-slate-300'}`}>
                 {completed ? <Check className="h-5 w-5" /> : step.key}
               </div>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-white">{step.title}</p>
                 <p className="truncate text-xs text-slate-400">{step.desc}</p>
               </div>
-              {index < steps.length - 1 ? <div className="hidden h-px flex-1 bg-white/15 lg:block" /> : null}
+              {index < steps.length - 1 ? <div className="hidden h-px flex-1 bg-foreground/15 lg:block" /> : null}
             </div>
           );
         })}
@@ -146,7 +146,7 @@ function StepRail({ currentStep }) {
 
 function MetricCard({ label, value, icon: Icon, color = 'text-orange-300' }) {
   return (
-    <div className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
+    <div className="rounded-xl border border-foreground/10 bg-foreground/[0.035] p-4">
       <div className="mb-2 flex items-center gap-2 text-xs text-slate-400">
         <Icon className={`h-4 w-4 ${color}`} />
         {label}
@@ -479,11 +479,11 @@ export default function TeacherBulkQuestionUpload() {
             <p className="mt-1 text-sm text-slate-400">PDF, Word, Excel, CSV, ZIP ve görselleri analiz ederek soru bankasına aktarın.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setHistoryOpen((prev) => !prev)}>
+            <Button variant="outline" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={() => setHistoryOpen((prev) => !prev)}>
               <History className="mr-2 h-4 w-4" />
               Yükleme Geçmişi
             </Button>
-            <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={downloadSource} disabled={!job?.fileUrl}>
+            <Button variant="outline" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={downloadSource} disabled={!job?.fileUrl}>
               <Download className="mr-2 h-4 w-4" />
               Kaynak Dosya
             </Button>
@@ -493,7 +493,7 @@ export default function TeacherBulkQuestionUpload() {
         <StepRail currentStep={currentStep} />
 
         {historyOpen ? (
-          <div className="rounded-2xl border border-white/10 bg-[#0B1628]/95 p-4 shadow-2xl">
+          <div className="rounded-2xl border border-foreground/10 bg-[#0B1628]/95 p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-white">Yükleme Geçmişi</p>
@@ -503,9 +503,9 @@ export default function TeacherBulkQuestionUpload() {
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {history.length === 0 ? (
-                <div className="rounded-xl border border-dashed border-white/15 p-4 text-sm text-slate-400">Henüz yükleme kaydı yok.</div>
+                <div className="rounded-xl border border-dashed border-foreground/15 p-4 text-sm text-slate-400">Henüz yükleme kaydı yok.</div>
               ) : history.map((item) => (
-                <div key={item.id} className="rounded-xl border border-white/10 bg-white/[0.035] p-4">
+                <div key={item.id} className="rounded-xl border border-foreground/10 bg-foreground/[0.035] p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex min-w-0 gap-3">
                       <FileTypeIcon fileName={item.fileName} />
@@ -555,7 +555,7 @@ export default function TeacherBulkQuestionUpload() {
                   setDragging(false);
                   handleFile(event.dataTransfer.files?.[0]);
                 }}
-                className={`flex min-h-[230px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed p-6 text-center transition ${dragging ? 'border-orange-300 bg-orange-500/10' : 'border-blue-400/40 bg-white/[0.025] hover:border-orange-400/70 hover:bg-orange-500/5'}`}
+                className={`flex min-h-[230px] cursor-pointer flex-col items-center justify-center rounded-2xl border border-dashed p-6 text-center transition ${dragging ? 'border-orange-300 bg-orange-500/10' : 'border-blue-400/40 bg-foreground/[0.025] hover:border-orange-400/70 hover:bg-orange-500/5'}`}
               >
                 <input
                   ref={fileInputRef}
@@ -564,7 +564,7 @@ export default function TeacherBulkQuestionUpload() {
                   className="hidden"
                   onChange={(event) => handleFile(event.target.files?.[0])}
                 />
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-[#101D33]">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-foreground/10 bg-[#101D33]">
                   {uploading ? <Loader2 className="h-8 w-8 animate-spin text-orange-300" /> : <UploadCloud className="h-8 w-8 text-blue-300" />}
                 </div>
                 <p className="text-lg font-black text-white">Dosyanızı yükleyin</p>
@@ -575,12 +575,12 @@ export default function TeacherBulkQuestionUpload() {
                 </Button>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+              <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5">
                 {job ? (
                   <div className="space-y-5">
                     <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                       <div className="flex min-w-0 gap-4">
-                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-white/5">
+                        <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-foreground/5">
                           <FileTypeIcon fileName={job.fileName} />
                         </div>
                         <div className="min-w-0">
@@ -596,7 +596,7 @@ export default function TeacherBulkQuestionUpload() {
                         <span className="text-slate-300">{job.status === 'Analyzing' ? 'İçerik analiz ediliyor...' : 'Analiz sonucu hazır'}</span>
                         <span className="font-black text-white">%{job.progress || 0}</span>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                      <div className="h-2 overflow-hidden rounded-full bg-foreground/10">
                         <div className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-orange-500 transition-all" style={{ width: `${job.progress || 0}%` }} />
                       </div>
                     </div>
@@ -615,7 +615,7 @@ export default function TeacherBulkQuestionUpload() {
                     ) : null}
                   </div>
                 ) : (
-                  <div className="flex min-h-[230px] flex-col justify-center rounded-xl border border-dashed border-white/10 p-6 text-center">
+                  <div className="flex min-h-[230px] flex-col justify-center rounded-xl border border-dashed border-foreground/10 p-6 text-center">
                     <p className="text-lg font-black text-white">Henüz import işi yok</p>
                     <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-400">Dosya yükleyin veya geçmişten bir import seçin. Bu alan yalnızca backend’den dönen canlı job verisini gösterir.</p>
                   </div>
@@ -623,7 +623,7 @@ export default function TeacherBulkQuestionUpload() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+            <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-5">
               <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-lg font-black text-white">Bulunan Sorular ({filteredQuestions.length})</h2>
@@ -632,17 +632,17 @@ export default function TeacherBulkQuestionUpload() {
                 <div className="flex flex-wrap gap-2">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Sorularda ara..." className="h-10 w-full border-white/10 bg-[#0B1628] pl-9 text-white placeholder:text-slate-500 md:w-64" />
+                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Sorularda ara..." className="h-10 w-full border-foreground/10 bg-[#0B1628] pl-9 text-white placeholder:text-slate-500 md:w-64" />
                   </div>
-                  <select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#0B1628] px-3 text-sm text-white">
+                  <select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
                     <option value="all">Tüm Zorluklar</option>
                     {difficultyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
-                  <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={toggleAll}>
+                  <Button variant="outline" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={toggleAll}>
                     <Filter className="mr-2 h-4 w-4" />
                     Tümünü Seç
                   </Button>
-                  <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}>
+                  <Button variant="outline" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={() => setViewMode(viewMode === 'list' ? 'grid' : 'list')}>
                     {viewMode === 'list' ? <Grid2X2 className="h-4 w-4" /> : <LayoutList className="h-4 w-4" />}
                   </Button>
                 </div>
@@ -650,13 +650,13 @@ export default function TeacherBulkQuestionUpload() {
 
               <div className={viewMode === 'grid' ? 'grid gap-3 lg:grid-cols-2' : 'space-y-3'}>
                 {filteredQuestions.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-sm text-slate-400">Gösterilecek soru yok.</div>
+                  <div className="rounded-xl border border-dashed border-foreground/15 p-8 text-center text-sm text-slate-400">Gösterilecek soru yok.</div>
                 ) : filteredQuestions.map((question) => {
                   const selected = selectedIds.includes(question.id);
                   return (
-                    <div key={question.id} className={`rounded-2xl border p-4 transition ${selected ? 'border-orange-400 bg-orange-500/5 shadow-[0_0_30px_rgba(255,157,46,0.08)]' : 'border-white/10 bg-[#0B1628]/70'}`}>
+                    <div key={question.id} className={`rounded-2xl border p-4 transition ${selected ? 'border-orange-400 bg-orange-500/5 shadow-[0_0_30px_rgba(255,157,46,0.08)]' : 'border-foreground/10 bg-[#0B1628]/70'}`}>
                       <div className="flex flex-col gap-4 md:flex-row md:items-start">
-                        <button type="button" onClick={() => toggleQuestion(question.id)} className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${selected ? 'border-orange-400 bg-orange-500 text-white' : 'border-white/20 text-transparent'}`}>
+                        <button type="button" onClick={() => toggleQuestion(question.id)} className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${selected ? 'border-orange-400 bg-orange-500 text-white' : 'border-foreground/20 text-transparent'}`}>
                           <Check className="h-4 w-4" />
                         </button>
                         <div className="min-w-0 flex-1">
@@ -671,7 +671,7 @@ export default function TeacherBulkQuestionUpload() {
                           {question.options?.length > 0 ? (
                             <div className="mt-4 grid gap-2 md:grid-cols-2">
                               {question.options.map((option) => (
-                                <div key={`${question.id}-${option.label}`} className={`rounded-lg border px-3 py-2 text-sm ${option.isCorrect ? 'border-emerald-400/35 bg-emerald-500/10 text-emerald-100' : 'border-white/10 bg-white/[0.025] text-slate-300'}`}>
+                                <div key={`${question.id}-${option.label}`} className={`rounded-lg border px-3 py-2 text-sm ${option.isCorrect ? 'border-emerald-400/35 bg-emerald-500/10 text-emerald-100' : 'border-foreground/10 bg-foreground/[0.025] text-slate-300'}`}>
                                   <span className="mr-2 font-black">{option.label}</span>
                                   {option.text}
                                 </div>
@@ -681,10 +681,10 @@ export default function TeacherBulkQuestionUpload() {
                           {question.correctAnswer ? <p className="mt-3 text-sm font-bold text-emerald-300">Doğru Cevap: {question.correctAnswer}</p> : null}
                         </div>
                         <div className="flex shrink-0 gap-2 md:flex-col">
-                          <Button size="icon" variant="outline" className="border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white" onClick={() => openEdit(question)}>
+                          <Button size="icon" variant="outline" className="border-foreground/10 bg-foreground/5 text-slate-200 hover:bg-foreground/10 hover:text-white" onClick={() => openEdit(question)}>
                             <Edit3 className="h-4 w-4" />
                           </Button>
-                          <Button size="icon" variant="outline" className="border-white/10 bg-white/5 text-slate-200 hover:bg-white/10 hover:text-white" onClick={() => duplicateQuestion(question)} disabled={busyAction === `duplicate-${question.id}`}>
+                          <Button size="icon" variant="outline" className="border-foreground/10 bg-foreground/5 text-slate-200 hover:bg-foreground/10 hover:text-white" onClick={() => duplicateQuestion(question)} disabled={busyAction === `duplicate-${question.id}`}>
                             <Copy className="h-4 w-4" />
                           </Button>
                           <Button size="icon" variant="outline" className="border-red-400/25 bg-red-500/10 text-red-200 hover:bg-red-500/20 hover:text-white" onClick={() => deleteQuestion(question)} disabled={busyAction === `delete-${question.id}`}>
@@ -700,7 +700,7 @@ export default function TeacherBulkQuestionUpload() {
           </div>
 
           <aside className="space-y-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-5">
               <h3 className="font-black text-white">Yükleme Özeti</h3>
               <div className="mt-5 flex items-center gap-4">
                 <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-[conic-gradient(#30D158_0_72%,#FF9D2E_72%_88%,#ef4444_88%_100%)]">
@@ -717,7 +717,7 @@ export default function TeacherBulkQuestionUpload() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-5">
               <h3 className="font-black text-white">Toplu Düzenleme</h3>
               <div className="mt-4 space-y-3">
                 {[
@@ -730,19 +730,19 @@ export default function TeacherBulkQuestionUpload() {
                 ].map(([key, label, placeholder]) => (
                   <label key={key} className="block">
                     <span className="mb-1 block text-xs text-slate-400">{label}</span>
-                    <Input value={bulkDraft[key]} onChange={(event) => setBulkDraft((prev) => ({ ...prev, [key]: event.target.value }))} placeholder={placeholder} className="border-white/10 bg-[#0B1628] text-white placeholder:text-slate-600" />
+                    <Input value={bulkDraft[key]} onChange={(event) => setBulkDraft((prev) => ({ ...prev, [key]: event.target.value }))} placeholder={placeholder} className="border-foreground/10 bg-[#0B1628] text-white placeholder:text-slate-600" />
                   </label>
                 ))}
                 <label className="block">
                   <span className="mb-1 block text-xs text-slate-400">Zorluk</span>
-                  <select value={bulkDraft.difficulty} onChange={(event) => setBulkDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-white/10 bg-[#0B1628] px-3 text-sm text-white">
+                  <select value={bulkDraft.difficulty} onChange={(event) => setBulkDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
                     <option value="">Değiştirme</option>
                     {difficultyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-xs text-slate-400">Soru Tipi</span>
-                  <select value={bulkDraft.type} onChange={(event) => setBulkDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-white/10 bg-[#0B1628] px-3 text-sm text-white">
+                  <select value={bulkDraft.type} onChange={(event) => setBulkDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
                     <option value="">Değiştirme</option>
                     {typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
@@ -754,11 +754,11 @@ export default function TeacherBulkQuestionUpload() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.04] p-5">
+            <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.04] p-5">
               <h3 className="font-black text-white">Aktarım</h3>
               <label className="mt-4 block">
                 <span className="mb-1 block text-xs text-slate-400">Aktarım Hedefi</span>
-                <select value={target} onChange={(event) => setTarget(event.target.value)} className="h-10 w-full rounded-lg border border-white/10 bg-[#0B1628] px-3 text-sm text-white">
+                <select value={target} onChange={(event) => setTarget(event.target.value)} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
                   {targetOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
@@ -766,17 +766,17 @@ export default function TeacherBulkQuestionUpload() {
                 {busyAction === 'commit' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                 Soru Bankasına Aktar
               </Button>
-              <Button variant="outline" className="mt-3 w-full border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => navigate('/t/question-bank')}>
+              <Button variant="outline" className="mt-3 w-full border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={() => navigate('/t/question-bank')}>
                 Soru Bankasına Dön
               </Button>
             </div>
           </aside>
         </div>
 
-        <div className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.035] p-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-slate-400">{job ? `${questions.length} sorudan ${filteredQuestions.length} tanesi gösteriliyor.` : 'Import başlatmak için dosya seçin.'}</p>
           <div className="flex gap-2">
-            <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={currentStep <= 1} onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}>
+            <Button variant="outline" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" disabled={currentStep <= 1} onClick={() => setCurrentStep((prev) => Math.max(1, prev - 1))}>
               <ChevronLeft className="mr-2 h-4 w-4" />
               Geri
             </Button>
@@ -790,7 +790,7 @@ export default function TeacherBulkQuestionUpload() {
 
       {editingQuestion ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-white/10 bg-[#0B1628] p-5 shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-foreground/10 bg-[#0B1628] p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-white">Soru Düzenle</h2>
@@ -804,7 +804,7 @@ export default function TeacherBulkQuestionUpload() {
             <div className="grid gap-4 md:grid-cols-2">
               <label className="md:col-span-2">
                 <span className="mb-1 block text-xs text-slate-400">Soru Metni</span>
-                <Textarea value={editDraft.questionText} onChange={(event) => setEditDraft((prev) => ({ ...prev, questionText: event.target.value }))} className="min-h-[120px] border-white/10 bg-[#08111F] text-white" />
+                <Textarea value={editDraft.questionText} onChange={(event) => setEditDraft((prev) => ({ ...prev, questionText: event.target.value }))} className="min-h-[120px] border-foreground/10 bg-[#08111F] text-white" />
               </label>
               {[
                 ['subject', 'Ders'],
@@ -817,24 +817,24 @@ export default function TeacherBulkQuestionUpload() {
               ].map(([key, label]) => (
                 <label key={key}>
                   <span className="mb-1 block text-xs text-slate-400">{label}</span>
-                  <Input value={editDraft[key]} onChange={(event) => setEditDraft((prev) => ({ ...prev, [key]: key === 'points' ? Number(event.target.value || 0) : event.target.value }))} className="border-white/10 bg-[#08111F] text-white" />
+                  <Input value={editDraft[key]} onChange={(event) => setEditDraft((prev) => ({ ...prev, [key]: key === 'points' ? Number(event.target.value || 0) : event.target.value }))} className="border-foreground/10 bg-[#08111F] text-white" />
                 </label>
               ))}
               <label>
                 <span className="mb-1 block text-xs text-slate-400">Zorluk</span>
-                <select value={editDraft.difficulty} onChange={(event) => setEditDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-white/10 bg-[#08111F] px-3 text-sm text-white">
+                <select value={editDraft.difficulty} onChange={(event) => setEditDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#08111F] px-3 text-sm text-white">
                   {difficultyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
               <label>
                 <span className="mb-1 block text-xs text-slate-400">Soru Tipi</span>
-                <select value={editDraft.type} onChange={(event) => setEditDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-white/10 bg-[#08111F] px-3 text-sm text-white">
+                <select value={editDraft.type} onChange={(event) => setEditDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#08111F] px-3 text-sm text-white">
                   {typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
               <label className="md:col-span-2">
                 <span className="mb-1 block text-xs text-slate-400">Açıklama / Çözüm</span>
-                <Textarea value={editDraft.explanation || ''} onChange={(event) => setEditDraft((prev) => ({ ...prev, explanation: event.target.value }))} className="border-white/10 bg-[#08111F] text-white" />
+                <Textarea value={editDraft.explanation || ''} onChange={(event) => setEditDraft((prev) => ({ ...prev, explanation: event.target.value }))} className="border-foreground/10 bg-[#08111F] text-white" />
               </label>
             </div>
 
@@ -842,9 +842,9 @@ export default function TeacherBulkQuestionUpload() {
               <p className="text-sm font-bold text-white">Şıklar</p>
               {editDraft.options.map((option, index) => (
                 <div key={`${option.label}-${index}`} className="grid gap-2 md:grid-cols-[80px_minmax(0,1fr)_120px]">
-                  <Input value={option.label} onChange={(event) => updateOption(index, 'label', event.target.value)} className="border-white/10 bg-[#08111F] text-white" />
-                  <Input value={option.text} onChange={(event) => updateOption(index, 'text', event.target.value)} className="border-white/10 bg-[#08111F] text-white" />
-                  <Button variant="outline" className={`${option.isCorrect ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-100' : 'border-white/10 bg-white/5 text-white'} hover:bg-white/10 hover:text-white`} onClick={() => {
+                  <Input value={option.label} onChange={(event) => updateOption(index, 'label', event.target.value)} className="border-foreground/10 bg-[#08111F] text-white" />
+                  <Input value={option.text} onChange={(event) => updateOption(index, 'text', event.target.value)} className="border-foreground/10 bg-[#08111F] text-white" />
+                  <Button variant="outline" className={`${option.isCorrect ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-100' : 'border-foreground/10 bg-foreground/5 text-white'} hover:bg-foreground/10 hover:text-white`} onClick={() => {
                     setEditDraft((prev) => ({
                       ...prev,
                       correctAnswer: option.label,
@@ -858,7 +858,7 @@ export default function TeacherBulkQuestionUpload() {
             </div>
 
             <div className="mt-6 flex justify-end gap-2">
-              <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setEditingQuestion(null)}>Vazgeç</Button>
+              <Button variant="outline" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={() => setEditingQuestion(null)}>Vazgeç</Button>
               <Button className="bg-orange-500 text-white hover:bg-orange-600" onClick={saveEdit} disabled={busyAction === 'edit'}>
                 {busyAction === 'edit' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                 Kaydet

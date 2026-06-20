@@ -175,7 +175,7 @@ export default function ParentPayments() {
               title="Ödeme Planı"
               action={(
                 <div className="flex flex-wrap gap-3">
-                  <select className="h-10 rounded-[10px] border border-white/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)}>
+                  <select className="h-10 rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)}>
                     {accounts.map((account) => <option key={account.studentName} value={account.studentName}>{decodeText(account.studentName)}</option>)}
                   </select>
                   <SmallButton><CalendarDays className="mr-2 h-4 w-4" />2025 - 2026 Eğitim Yılı</SmallButton>
@@ -186,7 +186,7 @@ export default function ParentPayments() {
               <div id="parent-payment-plan" className="overflow-x-auto">
                 <table className="w-full min-w-[760px] text-left text-sm">
                   <thead className="text-xs text-slate-400">
-                    <tr className="border-b border-white/[0.08]">
+                    <tr className="border-b border-foreground/[0.08]">
                       <th className="py-3 font-semibold">Taksit No</th>
                       <th className="py-3 font-semibold">Son Ödeme Tarihi</th>
                       <th className="py-3 font-semibold">Tutar</th>
@@ -199,14 +199,14 @@ export default function ParentPayments() {
                       const [label, tone] = STATUS[item.status] || STATUS.Pending;
                       const isPaid = item.status === 'Paid';
                       return (
-                        <tr key={item.id} className="border-b border-white/[0.06] text-slate-200">
+                        <tr key={item.id} className="border-b border-foreground/[0.06] text-slate-200">
                           <td className="py-4 font-semibold">{item.label || `${item.seqNo}. Taksit`}</td>
                           <td className="py-4">{formatDate(item.dueDateUtc)}</td>
                           <td className="py-4">{formatMoney(item.amount, item.currency || selectedAccount.currency)}</td>
                           <td className="py-4"><StatusPill tone={tone}>{label}</StatusPill></td>
                           <td className="py-4 text-right">
                             {isPaid ? (
-                              <Button variant="ghost" size="icon" className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] text-slate-200" onClick={() => downloadReceiptLike(`taksit-${item.seqNo}.txt`, JSON.stringify(item, null, 2))}>
+                              <Button variant="ghost" size="icon" className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] text-slate-200" onClick={() => downloadReceiptLike(`taksit-${item.seqNo}.txt`, JSON.stringify(item, null, 2))}>
                                 <Download className="h-4 w-4" />
                               </Button>
                             ) : (
@@ -230,11 +230,11 @@ export default function ParentPayments() {
                   ['Banka Havalesi', 'Banka hesabımıza havale/EFT ile ödeme yapabilirsiniz.', Building2, 'blue', 'Havale Bilgileri', () => toast({ title: 'Havale bilgileri', description: 'Kurum banka bilgileri finans birimi tarafından paylaşılır.' })],
                   ['Kayıtlı Kartlarım', 'Kayıtlı kartlarınızla hızlı ve güvenli ödeme yapın.', Wallet, 'green', 'Kartlarımı Yönet', () => toast({ title: 'Kart yönetimi', description: 'Kart saklama sağlayıcısı yapılandırıldığında aktif olur.' })],
                 ].map(([title, text, Icon, tone, button, action]) => (
-                  <motion.div variants={itemMotion} key={title} className="rounded-[12px] border border-white/[0.08] bg-white/[0.035] p-4">
+                  <motion.div variants={itemMotion} key={title} className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4">
                     <IconTile icon={Icon} tone={tone} />
                     <p className="mt-4 font-black text-white">{title}</p>
                     <p className="mt-2 min-h-[42px] text-sm text-slate-400">{text}</p>
-                    <Button className="mt-4 h-10 w-full rounded-[10px] bg-white/[0.06] text-slate-100 hover:bg-purple-500/20" onClick={action}>{button}</Button>
+                    <Button className="mt-4 h-10 w-full rounded-[10px] bg-foreground/[0.06] text-slate-100 hover:bg-purple-500/20" onClick={action}>{button}</Button>
                   </motion.div>
                 ))}
               </div>
@@ -280,7 +280,7 @@ export default function ParentPayments() {
                   <p className="text-sm text-slate-400">{decodeText(selectedAccount?.contracts?.[0]?.className || '-')}</p>
                 </div>
               </div>
-              <div className="mt-5 grid grid-cols-2 gap-4 border-t border-white/[0.08] pt-5 text-sm">
+              <div className="mt-5 grid grid-cols-2 gap-4 border-t border-foreground/[0.08] pt-5 text-sm">
                 <div><p className="text-slate-400">Kayıt Tarihi</p><p className="mt-1 font-bold text-white">{formatDate(selectedAccount?.contracts?.[0]?.createdAtUtc)}</p></div>
                 <div><p className="text-slate-400">Akademik Yıl</p><p className="mt-1 font-bold text-white">{decodeText(selectedAccount?.contracts?.[0]?.academicYear || '-')}</p></div>
               </div>
@@ -291,7 +291,7 @@ export default function ParentPayments() {
               <SmallButton className="mt-4" onClick={() => navigate('/support')}>Yardım Merkezine Git</SmallButton>
             </Panel>
 
-            <motion.div variants={itemMotion} className="rounded-[14px] border border-white/[0.08] bg-white/[0.035] p-4">
+            <motion.div variants={itemMotion} className="rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.035] p-4">
               <div className="flex items-center gap-4">
                 <IconTile icon={ShieldCheck} tone="blue" />
                 <div className="flex-1">
@@ -306,20 +306,20 @@ export default function ParentPayments() {
       )}
 
       <Dialog open={!!payFor} onOpenChange={(open) => { if (!open) setPayFor(null); }}>
-        <DialogContent className="border-white/[0.08] bg-[#07162A] text-white">
+        <DialogContent className="border-foreground/[0.08] bg-[#07162A] text-white">
           <DialogHeader>
             <DialogTitle>Online Ödeme — {decodeText(payFor?.account?.studentName || '')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="rounded-[12px] border border-white/[0.08] bg-white/[0.04] p-4">
+            <div className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.04] p-4">
               <p className="text-sm text-slate-400">Kalan borç</p>
               <p className="mt-1 text-2xl font-black">{formatMoney(payFor?.installment?.remaining || payFor?.account?.balance, payFor?.account?.currency)}</p>
             </div>
-            <Input type="number" min="0" inputMode="decimal" placeholder="Tutar" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-[10px] border-white/[0.08] bg-white/[0.04] text-white" />
+            <Input type="number" min="0" inputMode="decimal" placeholder="Tutar" value={amount} onChange={(event) => setAmount(event.target.value)} className="h-12 rounded-[10px] border-foreground/[0.08] bg-foreground/[0.04] text-white" />
             <p className="text-xs text-slate-400">Ödeme seçili taksite, taksit seçilmediyse en eski açık bakiyeye işlenir; makbuz otomatik oluşur.</p>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setPayFor(null)} className="border-white/[0.08] bg-white/[0.04] text-white">Vazgeç</Button>
+            <Button variant="outline" onClick={() => setPayFor(null)} className="border-foreground/[0.08] bg-foreground/[0.04] text-white">Vazgeç</Button>
             <Button onClick={submitPay} disabled={paying} className="bg-purple-600 text-white hover:bg-purple-500">
               {paying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CreditCard className="mr-2 h-4 w-4" />}
               Öde

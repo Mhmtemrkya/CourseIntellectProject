@@ -166,7 +166,7 @@ export default function DiscountsScholarships() {
       <div className="flex flex-col gap-4 xl:flex-row xl:items-stretch xl:justify-between">
         <div className="flex-1 rounded-3xl bg-gradient-to-br from-rose-500 via-fuchsia-600 to-indigo-700 p-6 text-white shadow-xl">
           <h1 className="text-3xl font-bold font-heading">İndirim & Burs</h1>
-          <p className="mt-2 max-w-2xl text-sm text-white/80">Gerçek öğrenci kayıtları ve backend üzerinde saklanan burs/indirim profilleri tek ekranda yönetilir.</p>
+          <p className="mt-2 max-w-2xl text-sm text-foreground/80">Gerçek öğrenci kayıtları ve backend üzerinde saklanan burs/indirim profilleri tek ekranda yönetilir.</p>
         </div>
         <Card className="xl:w-[320px]">
           <CardContent className="flex h-full flex-col justify-between gap-4 p-5">

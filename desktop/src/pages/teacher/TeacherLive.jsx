@@ -1,14 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  Video, Calendar, Clock, Users, ExternalLink, Plus,
-  Copy, CheckCircle, Settings, Monitor, Trash2,
+  Video, Clock, Plus, Trash2, Play,
+  CalendarPlus, PenTool, BarChart3, FolderOpen,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
-import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
+import { PremiumPanel, PremiumDonutChart, PremiumStatusPill } from '../../components/ui/premium-dashboard';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter,
 } from '../../components/ui/dialog';
@@ -77,9 +77,13 @@ const statusConfig = {
 export default function TeacherLive() {
   const { toast } = useToast();
   const { user } = useApp();
+  const navigate = useNavigate();
   const [createOpen, setCreateOpen] = useState(false);
   const [copiedId, setCopiedId] = useState(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [detailLesson, setDetailLesson] = useState(null);
+  const [activeTab, setActiveTab] = useState('upcoming');
+  const [studentCounts, setStudentCounts] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [lessons, setLessons] = useState([]);
@@ -106,6 +110,11 @@ export default function TeacherLive() {
         .map(mapSessionToLesson)
         .sort((a, b) => new Date(`${a.date}T${a.time || '00:00'}`).getTime() - new Date(`${b.date}T${b.time || '00:00'}`).getTime());
       const classes = [...new Set(students.map((item) => item.className).filter(Boolean))];
+      const counts = students.reduce((acc, student) => {
+        if (student.className) acc[student.className] = (acc[student.className] || 0) + 1;
+        return acc;
+      }, {});
+      setStudentCounts(counts);
       setLessons(items);
       setAvailableClasses(classes);
       setForm((prev) => ({ ...prev, className: prev.className || classes[0] || 'Tüm Sınıflar' }));
@@ -222,8 +231,25 @@ export default function TeacherLive() {
   };
 
   const liveLesson = lessons.find((lesson) => lesson.status === 'live');
-  const weeklyCount = lessons.filter((lesson) => lesson.status !== 'completed').length;
-  const totalDuration = lessons.reduce((sum, lesson) => sum + Number(lesson.duration || 0), 0);
+  const upcomingLessons = lessons.filter((lesson) => lesson.status !== 'completed');
+  const pastLessons = lessons.filter((lesson) => lesson.status === 'completed');
+  const nextLesson = liveLesson || upcomingLessons[0] || null;
+  const startableId = nextLesson?.id;
+  const attendanceOf = (lesson) => {
+    const total = studentCounts[lesson?.class] || lesson?.participants || 0;
+    const attended = lesson?.participants || 0;
+    return { total, attended, absent: Math.max(0, total - attended), rate: total ? Math.round((attended / total) * 100) : 0 };
+  };
+  const liveTools = [
+    ['Ders Planla', CalendarPlus, () => setCreateOpen(true)],
+    ['Toplantı Oluştur', Video, () => setCreateOpen(true)],
+    ['Beyaz Tahta', PenTool, () => openExternalUrl('https://excalidraw.com')],
+    ['Anket Oluştur', BarChart3, () => toast({ title: 'Anket aracı yakında' })],
+    ['Dosya Paylaş', FolderOpen, () => navigate('/t/content')],
+  ];
+  const openDetail = (lesson) => { setDetailLesson(lesson); setSettingsOpen(true); };
+  const activeList = activeTab === 'upcoming' ? upcomingLessons : pastLessons;
+  const detailOrLive = detailLesson || liveLesson;
 
   if (loading) {
     return (
@@ -244,14 +270,17 @@ export default function TeacherLive() {
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-heading">Canlı Dersler</h1>
-          <p className="text-muted-foreground mt-1">Online ders planlarınızı yönetin</p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Canlı Ders</h1>
+            <PremiumStatusPill tone="soon">Yaklaşan</PremiumStatusPill>
+          </div>
+          <p className="mt-1 text-sm text-muted-foreground">Derslerinizi canlı olarak başlatın, öğrencilerinizle etkileşimde bulunun.</p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90">
+            <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
               <Plus className="h-4 w-4 mr-2" />
-              Yeni Canlı Ders
+              Canlı Ders Oluştur
             </Button>
           </DialogTrigger>
           <DialogContent>
@@ -312,216 +341,158 @@ export default function TeacherLive() {
 
       {error ? <ErrorBanner title="Canlı dersler alınamadı" message={error} onRetry={loadLessons} /> : null}
 
-      {liveLesson ? (
+      {nextLesson ? (
         <motion.div variants={itemVariants}>
-          <Card className="bg-gradient-to-r from-green-600 to-green-500 text-white border-0">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="relative">
-                    <div className="p-4 rounded-xl bg-white/20">
-                      <Video className="h-8 w-8" />
+          <PremiumPanel title="Bir Sonraki Canlı Ders" description="Sıradaki oturumun">
+            <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr]">
+              <div className="flex flex-col justify-between gap-4">
+                <div className="flex items-start gap-4">
+                  <span className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Video className="h-7 w-7" /></span>
+                  <div className="min-w-0">
+                    <PremiumStatusPill tone={nextLesson.status === 'live' ? 'live' : 'soon'}>{nextLesson.class}</PremiumStatusPill>
+                    <h3 className="mt-2 text-xl font-black leading-tight">{nextLesson.title}</h3>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                      <span className="flex items-center gap-1"><CalendarPlus className="h-4 w-4" />{nextLesson.date ? new Date(nextLesson.date).toLocaleDateString('tr-TR') : 'Bugün'}</span>
+                      <span className="flex items-center gap-1"><Clock className="h-4 w-4" />{nextLesson.time} ({nextLesson.duration} dk)</span>
                     </div>
-                    <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-                      <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500" />
-                    </span>
-                  </div>
-                  <div>
-                    <Badge className="bg-white/20 text-white mb-2">CANLI</Badge>
-                    <h2 className="text-2xl font-bold">{liveLesson.title}</h2>
-                    <p className="text-white/80">{liveLesson.class} • {liveLesson.teacher}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="secondary"
-                    className="bg-white text-green-600 hover:bg-white/90"
-                    onClick={() => handleOpenLesson(liveLesson.link)}
-                  >
-                    <Monitor className="h-4 w-4 mr-2" />
-                    Derse Git
-                  </Button>
-                  <Button
-                    variant="outline"
-                    className="border-white/30 text-white hover:bg-white/10"
-                    onClick={() => setSettingsOpen(true)}
-                  >
-                    <Settings className="h-4 w-4 mr-2" />
-                    Ayarlar
-                  </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="outline" onClick={() => openDetail(nextLesson)}>Ders Detayları</Button>
+                  <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={() => handleOpenLesson(nextLesson.link)}><Play className="mr-1.5 h-4 w-4" />Dersi Başlat</Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div>
+                <p className="mb-3 text-sm font-semibold">Derse Katılım</p>
+                {(() => { const a = attendanceOf(nextLesson); return (
+                  <PremiumDonutChart
+                    segments={[
+                      { label: 'Katıldı', value: a.attended, color: '#10B981' },
+                      { label: 'Katılmadı', value: a.absent, color: '#F59E0B' },
+                    ]}
+                    centerValue={`${a.attended}/${a.total}`}
+                    centerLabel={`%${a.rate}`}
+                  />
+                ); })()}
+              </div>
+            </div>
+          </PremiumPanel>
         </motion.div>
       ) : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {[
-          [weeklyCount, 'Planlanan Ders', Calendar, 'text-brand-primary'],
-          [totalDuration, 'Toplam Süre', Clock, 'text-brand-accent'],
-          [lessons.filter((lesson) => lesson.status === 'completed').length, 'Tamamlanan', CheckCircle, 'text-green-600'],
-        ].map(([value, label, Icon, color]) => (
-          <motion.div variants={itemVariants} key={label}>
-            <Card>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">{label}</p>
-                    <p className="text-2xl font-bold">{value}</p>
-                  </div>
-                  <div className="p-3 rounded-xl bg-muted/70">
-                    <Icon className={`h-5 w-5 ${color}`} />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
-
+      {/* Sekmeler + ders listesi */}
       <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Ders Takvimi</CardTitle>
-            <CardDescription>Planlanmış ve tamamlanmış canlı dersler</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {lessons.length === 0 ? (
-              <TeacherEmptyState
-                variant="live"
-                accent="red"
-                title="Henüz canlı ders oluşturulmamış"
-                description="Öğrencilerle buluşmak için ilk canlı dersini oluştur ve etkileşimli bir öğrenme deneyimi başlat."
-                primaryLabel="Canlı Ders Oluştur"
-                onPrimary={() => setCreateOpen(true)}
-                secondaryLabel="Nasıl Çalışır?"
-                onSecondary={() => setSettingsOpen(true)}
-                tipDescription="Canlı dersler, öğrencilerle gerçek zamanlı etkileşim kurmanın en etkili yoludur."
-              />
-            ) : lessons.map((lesson) => (
-              <motion.div
-                key={lesson.id}
-                whileHover={{ scale: 1.01 }}
-                className="flex items-center justify-between p-4 rounded-xl border hover:border-brand-primary/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <div className={`p-3 rounded-xl ${lesson.status === 'completed' ? 'bg-gray-100 dark:bg-gray-800' : 'bg-brand-primary/10'}`}>
-                    <Video className={`h-6 w-6 ${lesson.status === 'completed' ? 'text-gray-500' : 'text-brand-primary'}`} />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{lesson.title}</h3>
-                    <div className="flex items-center gap-3 mt-1 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(lesson.date).toLocaleDateString('tr-TR')}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {lesson.time} • {lesson.duration} dk
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {lesson.class}
-                      </span>
-                    </div>
-                  </div>
+        <PremiumPanel
+          title={activeTab === 'upcoming' ? 'Yaklaşan Dersler' : 'Geçmiş Dersler'}
+          description={`${upcomingLessons.length} yaklaşan · ${pastLessons.length} geçmiş`}
+          action={(
+            <div className="flex rounded-full border border-foreground/10 bg-foreground/[0.04] p-0.5">
+              {[['upcoming', 'Yaklaşan'], ['past', 'Geçmiş']].map(([value, label]) => (
+                <button key={value} onClick={() => setActiveTab(value)} className={`rounded-full px-3 py-1 text-xs font-semibold transition-colors ${activeTab === value ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}>{label}</button>
+              ))}
+            </div>
+          )}
+          contentClassName="space-y-3"
+        >
+          {lessons.length === 0 ? (
+            <TeacherEmptyState
+              variant="live"
+              accent="red"
+              title="Henüz canlı ders oluşturulmamış"
+              description="Öğrencilerle buluşmak için ilk canlı dersini oluştur ve etkileşimli bir öğrenme deneyimi başlat."
+              primaryLabel="Canlı Ders Oluştur"
+              onPrimary={() => setCreateOpen(true)}
+            />
+          ) : activeList.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">{activeTab === 'upcoming' ? 'Yaklaşan ders yok.' : 'Geçmiş ders yok.'}</div>
+          ) : activeList.map((lesson) => {
+            const att = attendanceOf(lesson);
+            const startable = lesson.id === startableId || lesson.status === 'live';
+            return (
+              <div key={lesson.id} className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 sm:flex-row sm:items-center">
+                <div className="w-16 shrink-0 text-center">
+                  <p className="text-sm font-bold tabular-nums">{String(lesson.time).split('-')[0] || lesson.time}</p>
+                  <p className="text-[11px] text-muted-foreground">{lesson.duration} dk</p>
                 </div>
-                <div className="flex items-center gap-3">
-                  <Badge className={statusConfig[lesson.status].color}>
-                    {statusConfig[lesson.status].label}
-                  </Badge>
-                  {lesson.link ? (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => copyLink(lesson.id, lesson.link)}
-                      >
-                        {copiedId === lesson.id ? <CheckCircle className="h-4 w-4 mr-1" /> : <Copy className="h-4 w-4 mr-1" />}
-                        {copiedId === lesson.id ? 'Kopyalandı' : 'Link Kopyala'}
-                      </Button>
-                      <Button
-                        variant={lesson.status === 'live' ? 'default' : 'outline'}
-                        size="sm"
-                        onClick={() => handleOpenLesson(lesson.link)}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-1" />
-                        Aç
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-                        onClick={() => handleDeleteLesson(lesson)}
-                      >
-                        <Trash2 className="h-4 w-4 mr-1" />
-                        Sil
-                      </Button>
-                    </div>
-                  ) : null}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="shrink-0 rounded-lg bg-[hsl(var(--brand-accent)/0.14)] px-2 py-0.5 text-[11px] font-bold text-[hsl(var(--brand-accent))]">{lesson.class}</span>
+                    <p className="truncate text-sm font-semibold">{lesson.title}</p>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">{lesson.date ? new Date(lesson.date).toLocaleDateString('tr-TR') : ''}</p>
                 </div>
-              </motion.div>
-            ))}
-          </CardContent>
-        </Card>
+                <div className="shrink-0 text-center">
+                  <p className="text-sm font-black tabular-nums">{att.attended}/{att.total}</p>
+                  <p className="text-[11px] text-muted-foreground">Katılım</p>
+                </div>
+                {startable ? (
+                  <Button className="shrink-0 bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={() => handleOpenLesson(lesson.link)}><Play className="mr-1.5 h-4 w-4" />Dersi Başlat</Button>
+                ) : (
+                  <Button variant="outline" className="shrink-0" onClick={() => openDetail(lesson)}>Ders Detayları</Button>
+                )}
+              </div>
+            );
+          })}
+        </PremiumPanel>
       </motion.div>
 
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+      {/* Araçlar */}
+      <motion.div variants={itemVariants}>
+        <PremiumPanel title="Canlı Ders Araçları" description="Hızlı erişim">
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
+            {liveTools.map(([label, Icon, onClick]) => (
+              <button key={label} onClick={onClick} className="ci-rise flex flex-col items-center gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-center hover:border-[hsl(var(--brand-accent)/0.28)]">
+                <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
+                <span className="text-[11px] font-semibold">{label}</span>
+              </button>
+            ))}
+          </div>
+        </PremiumPanel>
+      </motion.div>
+
+      <Dialog open={settingsOpen} onOpenChange={(open) => { setSettingsOpen(open); if (!open) setDetailLesson(null); }}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>Canlı Ders Ayarları</DialogTitle>
+            <DialogTitle>Ders Detayları</DialogTitle>
             <DialogDescription>
-              Aktif ders bağlantısı, tarih ve sınıf bilgisini yönetin.
+              Ders bağlantısı, tarih ve sınıf bilgisini yönetin.
             </DialogDescription>
           </DialogHeader>
-          {liveLesson ? (
+          {detailOrLive ? (
             <div className="space-y-4 py-2">
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Sınıf</p>
-                    <p className="mt-1 font-semibold">{liveLesson.class}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Öğretmen</p>
-                    <p className="mt-1 font-semibold">{liveLesson.teacher}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Tarih / Saat</p>
-                    <p className="mt-1 font-semibold">{liveLesson.date} • {liveLesson.time}</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Süre</p>
-                    <p className="mt-1 font-semibold">{liveLesson.duration} dakika</p>
-                  </CardContent>
-                </Card>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  ['Sınıf', detailOrLive.class],
+                  ['Öğretmen', detailOrLive.teacher],
+                  ['Tarih / Saat', `${detailOrLive.date} • ${detailOrLive.time}`],
+                  ['Süre', `${detailOrLive.duration} dakika`],
+                ].map(([label, value]) => (
+                  <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
+                    <p className="text-sm text-muted-foreground">{label}</p>
+                    <p className="mt-1 font-semibold">{value}</p>
+                  </div>
+                ))}
               </div>
               <div className="space-y-2">
                 <Label>Ders Bağlantısı</Label>
-                <Input value={liveLesson.link} readOnly />
+                <Input value={detailOrLive.link} readOnly />
               </div>
             </div>
           ) : (
             <div className="rounded-xl border bg-muted/20 p-4 text-sm text-muted-foreground">
-              Şu anda aktif canlı ders bulunmuyor. Yeni planlanan bir ders canlıya geçtiğinde ayarlar burada görünür.
+              Ders bilgisi bulunamadı.
             </div>
           )}
           <DialogFooter>
-            {liveLesson ? (
+            {detailOrLive ? (
               <>
-                <Button variant="outline" onClick={() => copyLink(liveLesson.id, liveLesson.link)}>Bağlantıyı Kopyala</Button>
-                <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => handleOpenLesson(liveLesson.link)}>Derse Git</Button>
-                <Button variant="outline" className="border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleDeleteLesson(liveLesson)}>
-                  Sil
-                </Button>
+                <Button variant="outline" onClick={() => copyLink(detailOrLive.id, detailOrLive.link)}>Bağlantıyı Kopyala</Button>
+                <Button className="bg-[hsl(var(--brand-accent))] text-white hover:bg-[hsl(var(--brand-accent-hover))]" onClick={() => handleOpenLesson(detailOrLive.link)}>Dersi Başlat</Button>
+                {detailOrLive.status !== 'completed' ? (
+                  <Button variant="outline" className="border-rose-500/40 text-rose-300 hover:bg-rose-500/10" onClick={() => handleDeleteLesson(detailOrLive)}>
+                    <Trash2 className="mr-1.5 h-4 w-4" />Bitir
+                  </Button>
+                ) : null}
               </>
             ) : (
               <Button variant="outline" onClick={() => setSettingsOpen(false)}>Kapat</Button>

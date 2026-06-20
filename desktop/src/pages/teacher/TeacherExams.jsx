@@ -220,7 +220,7 @@ export default function TeacherExams() {
             const theme = getResourceTheme(exam.subject);
             return (
               <motion.div key={`${exam.title}-${index}`} variants={itemVariants}>
-                <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-white/20">
+                <Card className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
                   <CardContent className="p-0">
                     <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
                       <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>
@@ -234,16 +234,16 @@ export default function TeacherExams() {
                           <h3 className="text-2xl font-black leading-tight">{exam.title}</h3>
                           <p className="mt-2 text-sm text-slate-400">{subjectMeta(exam.subject).tagline}</p>
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-right">
+                        <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.05] px-4 py-3 text-right">
                           <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Planlanan</div>
                           <div className="mt-1 text-base font-black text-white">{exam.dateLabel || exam.date}</div>
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-4 border-t border-white/[0.07] p-6">
+                    <div className="space-y-4 border-t border-foreground/[0.07] p-6">
                       <div className="flex flex-wrap items-center gap-2">
                         {[exam.className, exam.type, exam.sourceType].filter(Boolean).map((chip) => (
-                          <span key={chip} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{chip}</span>
+                          <span key={chip} className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{chip}</span>
                         ))}
                       </div>
                       <div className="grid gap-3 md:grid-cols-3">
@@ -252,15 +252,15 @@ export default function TeacherExams() {
                           ['Süre', exam.duration],
                           ['İçerik', exam.sources?.length || 0],
                         ].map(([label, value]) => (
-                          <div key={label} className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4">
+                          <div key={label} className="rounded-2xl border border-foreground/[0.07] bg-foreground/[0.04] p-4">
                             <div className="text-sm text-slate-500">{label}</div>
                             <div className="mt-2 text-2xl font-black text-white">{value}</div>
                           </div>
                         ))}
                       </div>
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" className="rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300" onClick={() => setAttendanceExam(exam)}>Yoklama</Button>
-                        <Button variant="outline" className="rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300" onClick={() => deletePlannedExam(exam.id).then(() => setPlannedExams((prev) => prev.filter((item) => item.id !== exam.id)))}>Sil</Button>
+                        <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300" onClick={() => setAttendanceExam(exam)}>Yoklama</Button>
+                        <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300" onClick={() => deletePlannedExam(exam.id).then(() => setPlannedExams((prev) => prev.filter((item) => item.id !== exam.id)))}>Sil</Button>
                       </div>
                     </div>
                   </CardContent>
@@ -287,7 +287,7 @@ export default function TeacherExams() {
             const theme = getResourceTheme(decodeText(exam.subject));
             return (
               <motion.div key={exam.key || `${exam.title}-${index}`} variants={itemVariants}>
-                <Card className="overflow-hidden rounded-[24px] border border-white/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-white/20">
+                <Card className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
                   <CardContent className="p-0">
                     <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
                       <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>
@@ -301,16 +301,16 @@ export default function TeacherExams() {
                           <h3 className="text-2xl font-black leading-tight">{decodeText(exam.title)}</h3>
                           <p className="mt-2 text-sm text-slate-400">{exam.className} • {exam.dateLabel}</p>
                         </div>
-                        <div className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-right">
+                        <div className="rounded-2xl border border-foreground/10 bg-foreground/[0.05] px-4 py-3 text-right">
                           <div className="text-xs font-bold uppercase tracking-[0.14em] text-slate-500">Ortalama</div>
                           <div className="mt-1 text-2xl font-black" style={{ color: theme.hue }}>{exam.averageScore}</div>
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-4 border-t border-white/[0.07] p-6">
+                    <div className="space-y-4 border-t border-foreground/[0.07] p-6">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{decodeText(exam.type)}</span>
-                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{exam.participantCount} teslim</span>
+                        <span className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{decodeText(exam.type)}</span>
+                        <span className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">{exam.participantCount} teslim</span>
                       </div>
                       <div className="grid gap-3 md:grid-cols-3">
                         {[
@@ -318,7 +318,7 @@ export default function TeacherExams() {
                           [Trophy, 'En Yüksek', exam.highestScore],
                           [Target, 'Ortalama Net', exam.averageNet],
                         ].map(([Icon, label, value]) => (
-                          <div key={label} className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-4">
+                          <div key={label} className="rounded-2xl border border-foreground/[0.07] bg-foreground/[0.04] p-4">
                             <div className="flex items-center gap-2 text-sm text-slate-500">
                               <Icon className="h-4 w-4" style={{ color: theme.hue }} />
                               {label}
@@ -327,17 +327,17 @@ export default function TeacherExams() {
                           </div>
                         ))}
                       </div>
-                      <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-4">
+                      <div className="rounded-2xl border border-foreground/[0.07] bg-foreground/[0.03] p-4">
                         <div className="mb-3 flex items-center justify-between gap-3">
                           <div>
                             <p className="text-sm font-black text-white">Teslim Edenler</p>
                             <p className="text-xs text-slate-500">Öğrencilerin puan ve net özeti</p>
                           </div>
-                          <Badge className="border-white/10 bg-white/[0.06] text-slate-300 hover:bg-white/[0.06]">{exam.items.length} kayıt</Badge>
+                          <Badge className="border-foreground/10 bg-foreground/[0.06] text-slate-300 hover:bg-foreground/[0.06]">{exam.items.length} kayıt</Badge>
                         </div>
                         <div className="space-y-2">
                           {exam.items.slice(0, 4).map((item) => (
-                            <div key={`${item.studentName}-${item.date}-${item.score}`} className="flex items-center justify-between rounded-xl border border-white/[0.06] bg-white/[0.04] px-3 py-2">
+                            <div key={`${item.studentName}-${item.date}-${item.score}`} className="flex items-center justify-between rounded-xl border border-foreground/[0.06] bg-foreground/[0.04] px-3 py-2">
                               <div className="min-w-0">
                                 <p className="truncate text-sm font-bold text-white">{decodeText(item.studentName)}</p>
                                 <p className="text-xs text-slate-500">{item.net} net</p>
@@ -354,7 +354,7 @@ export default function TeacherExams() {
                         </div>
                       </div>
                       <div className="flex justify-end">
-                        <Button variant="outline" className="rounded-xl border-white/10 bg-white/[0.04] text-slate-200 hover:border-orange-400/40 hover:bg-orange-400/10 hover:text-orange-200" onClick={() => navigate('/t/exam-workbench')}>
+                        <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:border-orange-400/40 hover:bg-orange-400/10 hover:text-orange-200" onClick={() => navigate('/t/exam-workbench')}>
                           Sonuçları Aç
                         </Button>
                       </div>

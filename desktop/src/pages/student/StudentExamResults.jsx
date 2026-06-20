@@ -1,27 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import {
-  BarChart3, Trophy, TrendingUp, FileText, Download, Eye, Clock3,
+  BarChart3, Trophy, TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { StudentEmptyState } from '../../components/student/StudentEmptyState';
+import { PremiumPanel, PremiumScoreCard } from '../../components/ui/premium-dashboard';
 import { useApp } from '../../context/AppContext';
-import { fetchExamResults, fetchMyExamPapers } from '../../lib/api/modules';
-import { desktopApiBaseUrl } from '../../lib/auth';
+import { fetchExamResults } from '../../lib/api/modules';
 
-function buildFileUrl(path) {
-  if (!path) return null;
-  if (/^https?:\/\//i.test(path)) return path;
-  return `${desktopApiBaseUrl}/${String(path).replace(/^\/+/, '')}`;
+const SCORE_TONES = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
+
+function letterGrade(score) {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'F';
 }
 
 export default function StudentExamResults() {
+  const navigate = useNavigate();
   const { user } = useApp();
   const [records, setRecords] = useState([]);
-  const [papers, setPapers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -29,18 +33,14 @@ export default function StudentExamResults() {
     try {
       setLoading(true);
       setError('');
-      const [payload, paperList] = await Promise.all([
-        fetchExamResults({ studentName: user?.name || '' }),
-        fetchMyExamPapers({ studentName: user?.name || '', studentUsername: user?.username || '' }).catch(() => []),
-      ]);
+      const payload = await fetchExamResults({ studentName: user?.name || '' });
       setRecords(payload);
-      setPapers(Array.isArray(paperList) ? paperList : []);
     } catch (err) {
       setError(err.message || 'Sınav sonuçları alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, [user?.name, user?.username]);
+  }, [user?.name]);
 
   useEffect(() => {
     loadResults();
@@ -67,111 +67,49 @@ export default function StudentExamResults() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          [stats.average, 'Genel Ortalama', BarChart3],
-          [records.length, 'Toplam Kayıt', TrendingUp],
-          [stats.best?.subject || 'Kayıt yok', 'En İyi Ders', Trophy],
-        ].map(([value, label, Icon]) => (
-          <Card key={label}>
-            <CardContent className="p-5 flex items-center gap-4">
-              <Icon className="h-6 w-6 text-brand-primary" />
-              <div>
+          [stats.average, 'Genel Ortalama', BarChart3, 'from-amber-400 to-orange-600'],
+          [records.length, 'Toplam Kayıt', TrendingUp, 'from-sky-400 to-blue-600'],
+          [stats.best?.subject || 'Kayıt yok', 'En İyi Ders', Trophy, 'from-emerald-400 to-teal-600'],
+        ].map(([value, label, Icon, gradient]) => (
+          <Card key={label} className="ci-metric-card border-foreground/10">
+            <CardContent className="flex items-center gap-4 p-4">
+              <div className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.22)] ${gradient}`}>
+                <Icon className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
                 <p className="text-sm text-muted-foreground">{label}</p>
-                <p className="text-2xl font-bold">{value}</p>
+                <p className="truncate text-2xl font-black tracking-tight">{value}</p>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-brand-primary" />
-          <h2 className="text-xl font-bold">Sınav Kağıtlarım (PDF)</h2>
-        </div>
-        {papers.length === 0 ? (
-          <Card>
-            <CardContent className="p-5 text-sm text-muted-foreground">
-              Sınavını bitirdiğinde kağıdın otomatik olarak burada PDF şeklinde oluşur; önizleyip indirebilirsin.
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-3 md:grid-cols-2">
-            {papers.map((paper) => {
-              const url = buildFileUrl(paper.downloadUrl);
-              const ready = paper.status === 'Ready' && url;
-              return (
-                <Card key={paper.sessionId}>
-                  <CardContent className="flex items-center justify-between gap-4 p-5">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">{paper.subject}</Badge>
-                        {!ready ? (
-                          <span className="inline-flex items-center gap-1 text-xs text-amber-600">
-                            <Clock3 className="h-3 w-3" /> Hazırlanıyor
-                          </span>
-                        ) : null}
-                      </div>
-                      <p className="mt-1 truncate font-semibold">{paper.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {paper.completedAtUtc ? new Date(paper.completedAtUtc).toLocaleString('tr-TR') : paper.className}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 gap-2">
-                      <a
-                        href={ready ? url : undefined}
-                        target="_blank"
-                        rel="noreferrer"
-                        aria-disabled={!ready}
-                        className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold ${ready ? 'border-brand-primary/30 text-brand-primary hover:bg-brand-primary/10' : 'pointer-events-none border-muted text-muted-foreground opacity-50'}`}
-                      >
-                        <Eye className="h-4 w-4" /> Önizle
-                      </a>
-                      <a
-                        href={ready ? url : undefined}
-                        download
-                        aria-disabled={!ready}
-                        className={`inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-white ${ready ? 'bg-brand-primary hover:opacity-90' : 'pointer-events-none bg-muted opacity-50'}`}
-                      >
-                        <Download className="h-4 w-4" /> İndir
-                      </a>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+      {records.length === 0 ? (
+        <StudentEmptyState
+          variant="exam"
+          accent="green"
+          title="Henüz sınav sonucunuz bulunmuyor"
+          description="Girdiğiniz sınavların sonuçları ve analizleri burada görüntülenecek."
+          primaryLabel="Deneme Sınavlarına Git"
+          onPrimary={() => navigate('/s/mock-exams')}
+        />
+      ) : (
+        <PremiumPanel title="Sonuç Geçmişi" description="Ders bazında tüm sınav sonuçların">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {records.map((item, index) => (
+              <PremiumScoreCard
+                key={`${item.examTitle}-${index}`}
+                subject={`${item.subject} • ${item.type}`}
+                score={item.score}
+                grade={letterGrade(Number(item.score || 0))}
+                date={`${item.dateLabel || item.date || ''}${item.net != null ? ` · ${item.net} net` : ''}`}
+                tone={SCORE_TONES[index % SCORE_TONES.length]}
+              />
+            ))}
           </div>
-        )}
-      </div>
-
-      <div className="grid gap-4">
-        {records.length === 0 ? (
-          <StudentEmptyState
-            variant="exam"
-            accent="green"
-            title="Henüz sınav sonucunuz bulunmuyor"
-            description="Girdiğiniz sınavların sonuçları ve analizleri burada görüntülenecek."
-            primaryLabel="Deneme Sınavlarına Git"
-            onPrimary={() => window.location.assign('/s/mock-exams')}
-          />
-        ) : records.map((item, index) => (
-          <Card key={`${item.examTitle}-${index}`}>
-            <CardContent className="p-5 flex items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Badge variant="outline">{item.subject}</Badge>
-                  <Badge>{item.type}</Badge>
-                </div>
-                <p className="font-semibold text-lg">{item.examTitle || item.title}</p>
-                <p className="text-sm text-muted-foreground">{item.dateLabel || item.date}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-3xl font-bold text-brand-primary">{item.score}</p>
-                <p className="text-sm text-muted-foreground">{item.net} net</p>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+        </PremiumPanel>
+      )}
     </motion.div>
   );
 }

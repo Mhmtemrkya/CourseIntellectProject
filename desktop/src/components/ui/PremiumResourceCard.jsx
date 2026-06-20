@@ -32,7 +32,7 @@ export function CardIconAction({ icon: Icon, title, onClick, disabled = false, t
       title={title}
       disabled={disabled}
       onClick={onClick}
-      className={`flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] transition disabled:opacity-40 ${tones[tone] || tones.default}`}
+      className={`flex h-9 w-9 items-center justify-center rounded-xl border border-foreground/10 bg-foreground/[0.04] transition disabled:opacity-40 ${tones[tone] || tones.default}`}
     >
       <Icon className="h-4 w-4" />
     </button>
@@ -63,7 +63,7 @@ export default function PremiumResourceCard({
       <Wrapper
         type={clickable ? 'button' : undefined}
         onClick={onClick}
-        className={`group relative flex h-full w-full flex-col overflow-hidden rounded-[24px] border border-white/10 bg-[#0B1728] p-5 text-left text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition duration-300 hover:-translate-y-0.5 hover:border-white/20 ${clickable ? 'cursor-pointer' : ''}`}
+        className={`group relative flex h-full w-full flex-col overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] p-5 text-left text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition duration-300 hover:-translate-y-0.5 hover:border-foreground/20 ${clickable ? 'cursor-pointer' : ''}`}
         style={{ '--hue': theme.hue }}
       >
         <div
@@ -92,7 +92,7 @@ export default function PremiumResourceCard({
           {badge ? (
             <span
               className={`shrink-0 rounded-full border px-3 py-1 text-xs font-black ${badgeTone === 'muted'
-                ? 'border-white/10 bg-white/[0.06] text-slate-300'
+                ? 'border-foreground/10 bg-foreground/[0.06] text-slate-300'
                 : ''}`}
               style={badgeTone === 'muted' ? undefined : { borderColor: `${theme.hue}38`, backgroundColor: `${theme.hue}1a`, color: theme.hue }}
             >
@@ -113,7 +113,7 @@ export default function PremiumResourceCard({
         {chips.length > 0 ? (
           <div className="relative mt-4 flex flex-wrap gap-2">
             {chips.filter(Boolean).map((chip) => (
-              <span key={chip} className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">
+              <span key={chip} className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-slate-300">
                 {chip}
               </span>
             ))}
@@ -123,7 +123,7 @@ export default function PremiumResourceCard({
         {stats.length > 0 ? (
           <div className={`relative mt-4 grid gap-2 ${stats.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}`}>
             {stats.map(([label, value]) => (
-              <div key={label} className="rounded-2xl border border-white/[0.07] bg-white/[0.04] p-3 text-center">
+              <div key={label} className="rounded-2xl border border-foreground/[0.07] bg-foreground/[0.04] p-3 text-center">
                 <p className="text-[11px] font-semibold text-slate-500">{label}</p>
                 <p className="mt-1 truncate text-sm font-black text-white">{value}</p>
               </div>
@@ -134,7 +134,7 @@ export default function PremiumResourceCard({
         <div className="relative mt-auto">
           {footer}
           {(actions || statusNote) ? (
-            <div className="mt-4 flex items-center justify-between gap-2 border-t border-white/[0.08] pt-4">
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-foreground/[0.08] pt-4">
               <div className="min-w-0 text-xs font-bold text-slate-500">{statusNote}</div>
               <div className="flex shrink-0 items-center gap-2">{actions}</div>
             </div>

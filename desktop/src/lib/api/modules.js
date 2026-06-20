@@ -1004,6 +1004,11 @@ export async function submitQuestionPracticeAttempt(id, payload) {
   return response;
 }
 
+export async function fetchQuestionPracticeStats(params) {
+  const response = await api.get('/api/questionbank/attempts/stats', { params });
+  return response;
+}
+
 export async function fetchWrongAnswers(params) {
   const response = await api.get('/api/wronganswers', {
     params,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
   Search,
@@ -416,6 +417,7 @@ function AddStudentDialog({
 }
 
 export default function Students() {
+  const navigate = useNavigate();
   const { openDrawer } = useApp();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
@@ -531,7 +533,7 @@ export default function Students() {
           <h1 className="text-3xl font-bold font-heading">Öğrenciler</h1>
           <p className="text-muted-foreground mt-1">{students.length} kayıtlı öğrenci</p>
         </div>
-        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
+        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/admin/student-registration')}>
           <Plus className="h-4 w-4 mr-2" />
           Yeni Öğrenci
         </Button>

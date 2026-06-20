@@ -64,7 +64,7 @@ function generateCode(name, academicYear) {
 
 function StepRail({ step }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-4 shadow-sm dark:bg-[#0D1B2A]/80">
+    <div className="rounded-2xl border border-foreground/10 bg-[#0D1B2A]/80 p-4 shadow-sm dark:bg-[#0D1B2A]/80">
       <div className="grid gap-3 lg:grid-cols-4">
         {steps.map(([key, title, desc], index) => {
           const active = step === index;
@@ -74,7 +74,7 @@ function StepRail({ step }) {
               <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full border text-sm font-black ${
                 done ? 'border-teal-400 bg-teal-500 text-white'
                   : active ? 'border-blue-400 bg-blue-600 text-white shadow-[0_0_22px_rgba(37,99,235,0.45)]'
-                    : 'border-white/10 bg-white/5 text-slate-400'
+                    : 'border-foreground/10 bg-foreground/5 text-slate-400'
               }`}
               >
                 {done ? <Check className="h-5 w-5" /> : index + 1}
@@ -118,7 +118,7 @@ function ClassIcon({ name, color = '#2563EB' }) {
 function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
   const advisor = selectedTeachers.find((item) => item.id === form.advisorTeacherId);
   return (
-    <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 text-white shadow-sm">
+    <div className="rounded-2xl border border-foreground/10 bg-[#0D1B2A]/80 p-5 text-white shadow-sm">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-black">Sınıf Önizlemesi</h3>
         <span className="rounded-lg bg-blue-500/15 px-2 py-1 text-xs font-bold text-blue-300">Taslak</span>
@@ -136,7 +136,7 @@ function Preview({ form, selectedTeachers, selectedStudents, assignments }) {
           ['Öğrenci Sayısı', selectedStudents.length],
           ['Ders Sayısı', assignments.length],
         ].map(([label, value]) => (
-          <div key={label} className="flex justify-between gap-4 border-b border-white/5 pb-2 last:border-b-0">
+          <div key={label} className="flex justify-between gap-4 border-b border-foreground/5 pb-2 last:border-b-0">
             <span className="text-slate-400">{label}</span>
             <b className="text-right">{value || '-'}</b>
           </div>
@@ -347,7 +347,7 @@ export default function Classes() {
           <p className="text-sm text-slate-300">Yeni bir sınıf oluşturarak öğrencilerinizi organize edin ve eğitiminizi planlayın.</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" className="rounded-xl border-white/15 bg-white/5 text-white hover:bg-white/10 hover:text-white" onClick={() => setStep(0)}>İptal</Button>
+          <Button variant="outline" className="rounded-xl border-foreground/15 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={() => setStep(0)}>İptal</Button>
           <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={submit} disabled={saving}>
             <Check className="mr-2 h-4 w-4" /> {saving ? 'Oluşturuluyor...' : 'Sınıfı Oluştur'}
           </Button>
@@ -358,37 +358,37 @@ export default function Classes() {
       <StepRail step={step} />
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <main className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 shadow-sm">
+        <main className="rounded-2xl border border-foreground/10 bg-[#0D1B2A]/80 p-5 shadow-sm">
           {step === 0 ? (
             <section className="space-y-6">
               <div><h2 className="text-xl font-black">Temel Bilgiler</h2><p className="text-sm text-slate-400">Sınıfınızın temel bilgilerini girerek başlayın.</p></div>
               <div className="grid gap-5 md:grid-cols-2">
-                <Field label="Sınıf Adı" required><Input value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="border-white/10 bg-[#071120] text-white" placeholder="7-A" /></Field>
-                <Field label="Sınıf Kodu" required><Input value={form.code} onChange={(event) => updateForm('code', event.target.value)} className="border-white/10 bg-[#071120] text-white" /></Field>
+                <Field label="Sınıf Adı" required><Input value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="border-foreground/10 bg-[#071120] text-white" placeholder="7-A" /></Field>
+                <Field label="Sınıf Kodu" required><Input value={form.code} onChange={(event) => updateForm('code', event.target.value)} className="border-foreground/10 bg-[#071120] text-white" /></Field>
                 <Field label="Kurum Birimi" required>
-                  <select value={form.institutionUnit} onChange={(event) => updateForm('institutionUnit', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                  <select value={form.institutionUnit} onChange={(event) => updateForm('institutionUnit', event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white">
                     {unitOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </Field>
                 <Field label="Sınıf Seviyesi" required>
-                  <select value={form.grade} onChange={(event) => updateForm('grade', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                  <select value={form.grade} onChange={(event) => updateForm('grade', event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white">
                     {gradeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </Field>
                 <Field label="Şube / Sınıf" required>
-                  <select value={form.section} onChange={(event) => updateForm('section', event.target.value)} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                  <select value={form.section} onChange={(event) => updateForm('section', event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white">
                     {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </Field>
-                <Field label="Eğitim Dönemi" required><Input value={form.academicYear} onChange={(event) => updateForm('academicYear', event.target.value)} className="border-white/10 bg-[#071120] text-white" /></Field>
+                <Field label="Eğitim Dönemi" required><Input value={form.academicYear} onChange={(event) => updateForm('academicYear', event.target.value)} className="border-foreground/10 bg-[#071120] text-white" /></Field>
                 <Field label="Sınıf Danışmanı">
-                  <select value={form.advisorTeacherId} onChange={(event) => { updateForm('advisorTeacherId', event.target.value); if (event.target.value && !selectedTeacherIds.includes(event.target.value)) setSelectedTeacherIds((prev) => [...prev, event.target.value]); }} className="h-11 w-full rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white">
+                  <select value={form.advisorTeacherId} onChange={(event) => { updateForm('advisorTeacherId', event.target.value); if (event.target.value && !selectedTeacherIds.includes(event.target.value)) setSelectedTeacherIds((prev) => [...prev, event.target.value]); }} className="h-11 w-full rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white">
                     <option value="">Danışman seçin</option>
                     {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName} • {teacher.departmentOrBranch}</option>)}
                   </select>
                 </Field>
                 <Field label="Açıklama" className="md:col-span-2">
-                  <Textarea value={form.description} maxLength={250} onChange={(event) => updateForm('description', event.target.value)} className="min-h-[110px] border-white/10 bg-[#071120] text-white" placeholder="Sınıf açıklaması..." />
+                  <Textarea value={form.description} maxLength={250} onChange={(event) => updateForm('description', event.target.value)} className="min-h-[110px] border-foreground/10 bg-[#071120] text-white" placeholder="Sınıf açıklaması..." />
                   <p className="mt-1 text-right text-xs text-slate-500">{form.description.length} / 250</p>
                 </Field>
                 <div className="rounded-2xl border border-dashed border-blue-400/40 p-8 text-center md:col-span-1">
@@ -413,15 +413,15 @@ export default function Classes() {
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <div>
                   <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_180px]">
-                    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={teacherQuery} onChange={(event) => setTeacherQuery(event.target.value)} placeholder="Öğretmen ara..." className="border-white/10 bg-[#071120] pl-9 text-white" /></div>
-                    <select value={teacherBranchFilter} onChange={(event) => setTeacherBranchFilter(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="all">Tümü</option>{branches.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+                    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={teacherQuery} onChange={(event) => setTeacherQuery(event.target.value)} placeholder="Öğretmen ara..." className="border-foreground/10 bg-[#071120] pl-9 text-white" /></div>
+                    <select value={teacherBranchFilter} onChange={(event) => setTeacherBranchFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white"><option value="all">Tümü</option>{branches.map((item) => <option key={item} value={item}>{item}</option>)}</select>
                   </div>
-                  <div className="max-h-[360px] overflow-y-auto rounded-xl border border-white/10">
+                  <div className="max-h-[360px] overflow-y-auto rounded-xl border border-foreground/10">
                     {filteredTeachers.map((teacher) => {
                       const selected = selectedTeacherIds.includes(teacher.id);
                       return (
-                        <button key={teacher.id} type="button" onClick={() => toggleTeacher(teacher)} className={`flex w-full items-center gap-3 border-b border-white/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}>
-                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-white/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
+                        <button key={teacher.id} type="button" onClick={() => toggleTeacher(teacher)} className={`flex w-full items-center gap-3 border-b border-foreground/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-foreground/5'}`}>
+                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-foreground/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
                           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500 text-xs font-black">{initials(teacher.fullName)}</span>
                           <span><b>{teacher.fullName}</b><small className="block text-slate-400">{teacher.departmentOrBranch}</small></span>
                         </button>
@@ -429,21 +429,21 @@ export default function Classes() {
                     })}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/10 p-4">
+                <div className="rounded-xl border border-foreground/10 p-4">
                   <div className="mb-3 flex justify-between"><b>Seçilen Öğretmenler ({selectedTeachers.length})</b><button className="text-xs text-slate-400" onClick={() => setSelectedTeacherIds([])}>Temizle</button></div>
                   <div className="space-y-2">{selectedTeachers.map((teacher) => <SelectedPill key={teacher.id} label={teacher.fullName} sub={teacher.departmentOrBranch} onRemove={() => toggleTeacher(teacher)} />)}</div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/10 p-4">
-                <div className="mb-3 flex items-center justify-between"><h3 className="font-black">Derse Atanacak Öğretmenler</h3><Button variant="outline" size="sm" className="border-white/10 bg-white/5 text-white hover:bg-white/10" onClick={addCourse}><Plus className="mr-2 h-4 w-4" /> Ders Ekle</Button></div>
+              <div className="rounded-2xl border border-foreground/10 p-4">
+                <div className="mb-3 flex items-center justify-between"><h3 className="font-black">Derse Atanacak Öğretmenler</h3><Button variant="outline" size="sm" className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10" onClick={addCourse}><Plus className="mr-2 h-4 w-4" /> Ders Ekle</Button></div>
                 <div className="space-y-3">
                   {assignments.map((assignment, index) => (
-                    <div key={`${assignment.courseName}-${index}`} className="grid gap-2 rounded-xl border border-white/10 p-3 lg:grid-cols-[1fr_1fr_110px_110px_44px]">
-                      <Input value={assignment.courseName} onChange={(event) => updateAssignment(index, 'courseName', event.target.value)} placeholder="Ders" className="border-white/10 bg-[#071120] text-white" />
-                      <select value={assignment.teacherId || ''} onChange={(event) => updateAssignment(index, 'teacherId', event.target.value || null)} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="">Öğretmen seç</option>{selectedTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}</select>
-                      <Input type="number" value={assignment.weeklyHours} onChange={(event) => updateAssignment(index, 'weeklyHours', event.target.value)} className="border-white/10 bg-[#071120] text-white" />
-                      <select value={assignment.isRequired ? 'required' : 'optional'} onChange={(event) => updateAssignment(index, 'isRequired', event.target.value === 'required')} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="required">Zorunlu</option><option value="optional">Seçmeli</option></select>
-                      <Button variant="outline" size="icon" className="border-white/10 bg-white/5 text-red-300 hover:bg-red-500/10" onClick={() => setAssignments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-4 w-4" /></Button>
+                    <div key={`${assignment.courseName}-${index}`} className="grid gap-2 rounded-xl border border-foreground/10 p-3 lg:grid-cols-[1fr_1fr_110px_110px_44px]">
+                      <Input value={assignment.courseName} onChange={(event) => updateAssignment(index, 'courseName', event.target.value)} placeholder="Ders" className="border-foreground/10 bg-[#071120] text-white" />
+                      <select value={assignment.teacherId || ''} onChange={(event) => updateAssignment(index, 'teacherId', event.target.value || null)} className="h-10 rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white"><option value="">Öğretmen seç</option>{selectedTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}</select>
+                      <Input type="number" value={assignment.weeklyHours} onChange={(event) => updateAssignment(index, 'weeklyHours', event.target.value)} className="border-foreground/10 bg-[#071120] text-white" />
+                      <select value={assignment.isRequired ? 'required' : 'optional'} onChange={(event) => updateAssignment(index, 'isRequired', event.target.value === 'required')} className="h-10 rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white"><option value="required">Zorunlu</option><option value="optional">Seçmeli</option></select>
+                      <Button variant="outline" size="icon" className="border-foreground/10 bg-foreground/5 text-red-300 hover:bg-red-500/10" onClick={() => setAssignments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
                 </div>
@@ -457,15 +457,15 @@ export default function Classes() {
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
                 <div>
                   <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_160px]">
-                    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Öğrenci ara..." className="border-white/10 bg-[#071120] pl-9 text-white" /></div>
-                    <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)} className="h-10 rounded-lg border border-white/10 bg-[#071120] px-3 text-sm text-white"><option value="all">Filtrele</option><option value="active">Aktif</option><option value="waiting">Sınıf Bekleyen</option></select>
+                    <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Öğrenci ara..." className="border-foreground/10 bg-[#071120] pl-9 text-white" /></div>
+                    <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[#071120] px-3 text-sm text-white"><option value="all">Filtrele</option><option value="active">Aktif</option><option value="waiting">Sınıf Bekleyen</option></select>
                   </div>
-                  <div className="max-h-[430px] overflow-y-auto rounded-xl border border-white/10">
+                  <div className="max-h-[430px] overflow-y-auto rounded-xl border border-foreground/10">
                     {filteredStudents.map((student) => {
                       const selected = selectedStudentIds.includes(student.id);
                       return (
-                        <button key={student.id} type="button" onClick={() => toggleStudent(student)} className={`grid w-full grid-cols-[28px_60px_1fr] items-center gap-3 border-b border-white/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-white/5'}`}>
-                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-white/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
+                        <button key={student.id} type="button" onClick={() => toggleStudent(student)} className={`grid w-full grid-cols-[28px_60px_1fr] items-center gap-3 border-b border-foreground/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-foreground/5'}`}>
+                          <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-foreground/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
                           <span className="text-sm text-slate-400">{student.schoolNumber || '-'}</span>
                           <span><b>{student.fullName}</b><small className="block text-slate-400">{student.className || 'Sınıf bekliyor'}</small></span>
                         </button>
@@ -473,7 +473,7 @@ export default function Classes() {
                     })}
                   </div>
                 </div>
-                <div className="rounded-xl border border-white/10 p-4">
+                <div className="rounded-xl border border-foreground/10 p-4">
                   <div className="mb-3 flex justify-between"><b>Seçilen Öğrenciler ({selectedStudents.length})</b><button className="text-xs text-slate-400" onClick={() => setSelectedStudentIds([])}>Tümünü Temizle</button></div>
                   <div className="max-h-[410px] space-y-2 overflow-y-auto">{selectedStudents.map((student) => <SelectedPill key={student.id} label={student.fullName} sub={student.schoolNumber || student.className} onRemove={() => toggleStudent(student)} />)}</div>
                 </div>
@@ -488,7 +488,7 @@ export default function Classes() {
                 <div className="flex flex-wrap gap-4 pt-2">{colorOptions.map((color) => <button key={color} type="button" onClick={() => updateForm('themeColor', color)} className={`h-10 w-10 rounded-full border-2 ${form.themeColor === color ? 'border-white ring-2 ring-blue-500' : 'border-transparent'}`} style={{ background: color }} />)}</div>
               </Field>
               <Field label="Sınıf Simgesi">
-                <div className="grid grid-cols-6 gap-2 sm:grid-cols-10">{iconOptions.map((icon) => <button key={icon} type="button" onClick={() => updateForm('icon', icon)} className={`flex h-12 items-center justify-center rounded-xl border ${form.icon === icon ? 'border-blue-400 bg-blue-500/20' : 'border-white/10 bg-white/5'}`}><ClassIcon name={icon} color={form.themeColor} /></button>)}</div>
+                <div className="grid grid-cols-6 gap-2 sm:grid-cols-10">{iconOptions.map((icon) => <button key={icon} type="button" onClick={() => updateForm('icon', icon)} className={`flex h-12 items-center justify-center rounded-xl border ${form.icon === icon ? 'border-blue-400 bg-blue-500/20' : 'border-foreground/10 bg-foreground/5'}`}><ClassIcon name={icon} color={form.themeColor} /></button>)}</div>
               </Field>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                 {Object.entries({
@@ -499,7 +499,7 @@ export default function Classes() {
                   study: 'Etüt Sistemi',
                   messaging: 'Mesajlaşma',
                 }).map(([key, label]) => (
-                  <button key={key} type="button" onClick={() => setModules((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center justify-between rounded-xl border p-4 ${modules[key] ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100' : 'border-white/10 bg-white/5 text-slate-300'}`}>
+                  <button key={key} type="button" onClick={() => setModules((prev) => ({ ...prev, [key]: !prev[key] }))} className={`flex items-center justify-between rounded-xl border p-4 ${modules[key] ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100' : 'border-foreground/10 bg-foreground/5 text-slate-300'}`}>
                     <span>{label}</span><span className={`h-5 w-9 rounded-full ${modules[key] ? 'bg-emerald-500' : 'bg-slate-700'}`} />
                   </button>
                 ))}
@@ -508,7 +508,7 @@ export default function Classes() {
           ) : null}
 
           <div className="mt-8 flex items-center justify-between">
-            <Button variant="outline" className="rounded-xl border-white/10 bg-white/5 text-white hover:bg-white/10 hover:text-white" disabled={step === 0} onClick={() => setStep((prev) => Math.max(0, prev - 1))}><ArrowLeft className="mr-2 h-4 w-4" /> Geri</Button>
+            <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" disabled={step === 0} onClick={() => setStep((prev) => Math.max(0, prev - 1))}><ArrowLeft className="mr-2 h-4 w-4" /> Geri</Button>
             {step < steps.length - 1 ? (
               <Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={nextStep}>İleri: {steps[step + 1][1]} <ChevronRight className="ml-2 h-4 w-4" /></Button>
             ) : (
@@ -519,13 +519,13 @@ export default function Classes() {
 
         <aside className="space-y-5">
           <Preview form={form} selectedTeachers={selectedTeachers} selectedStudents={selectedStudents} assignments={assignments} />
-          <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 text-white">
+          <div className="rounded-2xl border border-foreground/10 bg-[#0D1B2A]/80 p-5 text-white">
             <h3 className="font-black">Sınıf Oluşturma Süreci</h3>
-            <div className="mt-4 space-y-2">{steps.map(([key, title, desc], index) => <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${step >= index ? 'border-blue-400/40 bg-blue-500/10' : 'border-white/10 bg-white/5'}`}><div className={`flex h-8 w-8 items-center justify-center rounded-full ${step > index ? 'bg-teal-500' : step === index ? 'bg-blue-600' : 'bg-slate-700'}`}>{step > index ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</div><div><b className="text-sm">{title}</b><p className="text-xs text-slate-400">{desc}</p></div></div>)}</div>
+            <div className="mt-4 space-y-2">{steps.map(([key, title, desc], index) => <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${step >= index ? 'border-blue-400/40 bg-blue-500/10' : 'border-foreground/10 bg-foreground/5'}`}><div className={`flex h-8 w-8 items-center justify-center rounded-full ${step > index ? 'bg-teal-500' : step === index ? 'bg-blue-600' : 'bg-slate-700'}`}>{step > index ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</div><div><b className="text-sm">{title}</b><p className="text-xs text-slate-400">{desc}</p></div></div>)}</div>
           </div>
-          <div className="rounded-2xl border border-white/10 bg-[#0D1B2A]/80 p-5 text-white">
+          <div className="rounded-2xl border border-foreground/10 bg-[#0D1B2A]/80 p-5 text-white">
             <h3 className="font-black">Kayıtlı Sınıflar</h3>
-            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-white/10 p-3"><div className="flex items-center justify-between"><b>{item.name}</b><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
+            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-foreground/10 p-3"><div className="flex items-center justify-between"><b>{item.name}</b><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
           </div>
         </aside>
       </div>
@@ -544,7 +544,7 @@ function Field({ label, required, className = '', children }) {
 
 function SelectedPill({ label, sub, onRemove }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-foreground/10 bg-foreground/5 p-3">
       <div className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-orange-500 text-xs font-black text-white">{initials(label)}</span>
         <span className="min-w-0"><b className="block truncate text-sm">{label}</b><small className="truncate text-slate-400">{sub}</small></span>

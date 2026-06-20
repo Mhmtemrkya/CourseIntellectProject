@@ -36,7 +36,7 @@ const itemVariants = {
 };
 
 const panel =
-  'rounded-[12px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.84),rgba(5,23,43,0.78))] shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl';
+  'rounded-[12px] border border-foreground/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.84),rgba(5,23,43,0.78))] shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl';
 
 const iconTones = {
   blue: 'from-blue-500/30 to-blue-600/10 text-blue-300 shadow-blue-500/20',
@@ -105,7 +105,7 @@ function Section({ title, action, children, className = '' }) {
 
 function EmptyBlock({ title = 'Kayıt yok', description = 'Bu bölüm için canlı veri bulunamadı.' }) {
   return (
-    <div className="rounded-[12px] border border-white/[0.06] bg-white/[0.025] p-6 text-center">
+    <div className="rounded-[12px] border border-foreground/[0.06] bg-foreground/[0.025] p-6 text-center">
       <p className="font-black text-white">{title}</p>
       <p className="mt-1 text-sm text-slate-400">{description}</p>
     </div>
@@ -118,9 +118,9 @@ function ChildCard({ child, summary, upcomingExamCount = 0 }) {
   const trendValues = Array.isArray(summary?.examTrend) ? summary.examTrend : [];
 
   return (
-    <div className="rounded-[12px] border border-white/[0.08] bg-white/[0.035] p-4">
+    <div className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.035] p-4">
       <div className="flex items-center gap-4">
-        <Avatar className="h-[66px] w-[66px] border border-white/10">
+        <Avatar className="h-[66px] w-[66px] border border-foreground/10">
           <AvatarFallback className="bg-[hsl(var(--brand-accent))] text-lg font-black text-white">
             {initials(child.fullName)}
           </AvatarFallback>
@@ -131,7 +131,7 @@ function ChildCard({ child, summary, upcomingExamCount = 0 }) {
           <Badge className="mt-1 bg-emerald-500/15 text-emerald-300">Aktif</Badge>
         </div>
       </div>
-      <div className="my-4 h-px bg-white/[0.08]" />
+      <div className="my-4 h-px bg-foreground/[0.08]" />
       <p className="text-xs text-slate-400">Ortalama Başarı</p>
       <div className="mt-1 grid grid-cols-[88px_1fr] items-end gap-3">
         <p className="text-[26px] font-black text-white">{summary?.lastExam ? `${score}%` : '-'}</p>
@@ -144,7 +144,7 @@ function ChildCard({ child, summary, upcomingExamCount = 0 }) {
         </div>
         <Progress value={attendance} className="h-2" />
       </div>
-      <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-white/[0.06] bg-white/[0.035] p-3">
+      <div className="mt-4 flex items-center gap-3 rounded-[10px] border border-foreground/[0.06] bg-foreground/[0.035] p-3">
         <IconBox icon={GraduationCap} tone="orange" />
         <div>
           <p className="text-xs text-slate-400">Yaklaşan Sınav</p>
@@ -164,7 +164,7 @@ function formatDateLabel(value) {
 
 function ListRow({ icon: Icon, tone = 'blue', title, sub, meta, metaClass = 'text-slate-400' }) {
   return (
-    <div className="flex items-center gap-4 rounded-[10px] border border-white/[0.06] bg-white/[0.025] p-3">
+    <div className="flex items-center gap-4 rounded-[10px] border border-foreground/[0.06] bg-foreground/[0.025] p-3">
       <IconBox icon={Icon} tone={tone} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-bold text-white">{title}</p>
@@ -376,7 +376,7 @@ export default function ParentDashboard() {
                 ['Devam Durumu', CheckCircle2, 'green', '/p/attendance'],
                 ['Mesaj Gönder', Mail, 'blue', '/chat'],
               ].map(([label, Icon, tone, path]) => (
-                <button key={label} type="button" onClick={() => navigate(path)} className="rounded-[10px] border border-white/[0.08] bg-white/[0.04] p-3 text-center transition hover:border-[hsl(var(--brand-accent)/0.45)] hover:bg-[hsl(var(--brand-accent)/0.10)]">
+                <button key={label} type="button" onClick={() => navigate(path)} className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] p-3 text-center transition hover:border-[hsl(var(--brand-accent)/0.45)] hover:bg-[hsl(var(--brand-accent)/0.10)]">
                   <div className="mx-auto mb-2">
                     <IconBox icon={Icon} tone={tone} />
                   </div>

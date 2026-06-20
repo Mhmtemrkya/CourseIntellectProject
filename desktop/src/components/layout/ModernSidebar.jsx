@@ -64,6 +64,27 @@ import { useTheme } from "../../context/ThemeContext";
 import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 
 // Menu items for each role
+// Muhasebe rolündeki tüm finans sayfaları. Kurum yöneticisi (admin) de bu
+// sayfaların tamamına "Finans" grubu altında erişebilsin diye paylaşılır.
+const FINANCE_MENU_ITEMS = [
+  { path: "/finance/dashboard", icon: LayoutDashboard, label: "Muhasebe Özet", color: "#3b82f6" },
+  { path: "/finance/student-accounts", icon: Users, label: "Öğrenci Hesapları", color: "#8b5cf6" },
+  { path: "/finance/collections", icon: CreditCard, label: "Tahsilatlar", color: "#10b981" },
+  { path: "/finance/installments", icon: Receipt, label: "Taksitler", color: "#f59e0b" },
+  { path: "/finance/invoices-receipts", icon: FileText, label: "Fatura & Makbuz", color: "#06b6d4" },
+  { path: "/finance/collection-calendar", icon: Calendar, label: "Tahsilat Takvimi", color: "#14b8a6" },
+  { path: "/finance/reconciliation", icon: Shield, label: "Mutabakat", color: "#22c55e" },
+  { path: "/finance/bulk-actions", icon: Layers, label: "Toplu İşlemler", color: "#f97316" },
+  { path: "/finance/audit-log", icon: Activity, label: "Audit Log", color: "#6366f1" },
+  { path: "/finance/discounts-scholarships", icon: Gift, label: "İndirim & Burs", color: "#ec4899" },
+  { path: "/finance/late-payments", icon: AlertCircle, label: "Gecikenler", color: "#ef4444" },
+  { path: "/finance/overdue-rules", icon: Bell, label: "Gecikme Kuralları", color: "#f43f5e" },
+  { path: "/finance/salary", icon: Wallet, label: "Maaş Yönetimi", color: "#10b981" },
+  { path: "/finance/cash-report", icon: Receipt, label: "Kasa Raporu", color: "#a855f7" },
+  { path: "/finance/ledger", icon: BookOpen, label: "Hesap Defteri", color: "#6366f1" },
+  { path: "/finance/export", icon: Download, label: "Dışa Aktar", color: "#84cc16" },
+];
+
 export const menuConfigs = {
   admin: [
     {
@@ -107,6 +128,14 @@ export const menuConfigs = {
       icon: Wallet,
       label: "Finans Kontrolü",
       color: "#16a34a",
+    },
+    // Kurum yöneticisi muhasebedeki tüm finans sayfalarına erişir.
+    ...FINANCE_MENU_ITEMS,
+    {
+      path: "/admin/exam-papers",
+      icon: FileText,
+      label: "Sınav Kağıtları",
+      color: "#a855f7",
     },
     {
       path: "/admin/task-center",
@@ -892,7 +921,7 @@ const ROLE_MENU_GROUPS = {
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "approvals", "password-reset"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons"] },
     { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
-    { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "installments", "billing", "salary", "cash-report"] },
+    { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "installments", "billing", "late-payments", "discounts-scholarships", "collection-calendar", "reconciliation", "bulk-actions", "overdue-rules", "salary", "cash-report", "ledger", "finance-export", "finance-audit-log", "finance-detail-hub"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat", "support"] },
     { id: "services", title: "Servis & Yemekhane", modules: ["service", "cafeteria"] },
     { id: "system", title: "Sistem", modules: ["role-management", "profile", "system"] },
@@ -1137,6 +1166,7 @@ function inferModuleKey(item) {
     "/t/live-room": "live-lessons",
     "/s/live": "live-lessons",
     "/reports": "reports",
+    "/admin/exam-papers": "reports",
     "/t/reports": "reports",
     "/s/exam-results": "reports",
     "/s/wrong-answers": "reports",
@@ -1310,7 +1340,7 @@ function StudentStats({ collapsed }) {
           initial={{ opacity: 0, height: 0 }}
           animate={{ opacity: 1, height: "auto" }}
           exit={{ opacity: 0, height: 0 }}
-          className="mx-3 mb-4 p-3 rounded-xl bg-white/5 backdrop-blur-sm border border-white/10"
+          className="mx-3 mb-4 p-3 rounded-xl bg-foreground/5 backdrop-blur-sm border border-foreground/10"
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
@@ -1320,7 +1350,7 @@ function StudentStats({ collapsed }) {
               >
                 <Flame className="h-5 w-5 text-orange-400" />
               </motion.div>
-              <span className="text-sm font-medium text-white/90">
+              <span className="text-sm font-medium text-foreground/90">
                 {stats.streak} Gün Serisi
               </span>
             </div>
@@ -1331,7 +1361,7 @@ function StudentStats({ collapsed }) {
               </span>
             </div>
           </div>
-          <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+          <div className="h-2 bg-foreground/10 rounded-full overflow-hidden">
             <motion.div
               className="h-full bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500 rounded-full"
               initial={{ width: 0 }}
@@ -1339,7 +1369,7 @@ function StudentStats({ collapsed }) {
               transition={{ duration: 1, delay: 0.5 }}
             />
           </div>
-          <p className="text-xs text-white/60 mt-2">
+          <p className="text-xs text-foreground/60 mt-2">
             Seviye {stats.level} • {stats.xpToNext} XP kaldı
           </p>
         </motion.div>
@@ -1534,7 +1564,7 @@ export function ModernSidebar() {
         initial={false}
         animate={sidebarCollapsed ? "collapsed" : "expanded"}
         className={cn(
-          "h-screen text-white flex flex-col border-r border-white/10 z-40 overflow-hidden flex-shrink-0",
+          "h-screen text-white flex flex-col border-r border-foreground/10 z-40 overflow-hidden flex-shrink-0",
           "fixed lg:relative",
         )}
         style={{
@@ -1563,7 +1593,7 @@ export function ModernSidebar() {
         </div>
 
         {/* Logo Section with Close Button */}
-        <div className="relative h-16 flex items-center justify-between px-4 border-b border-white/10">
+        <div className="relative h-16 flex items-center justify-between px-4 border-b border-foreground/10">
           <motion.div
             className="flex items-center gap-3 overflow-hidden"
             initial={false}
@@ -1599,7 +1629,7 @@ export function ModernSidebar() {
               <span
                 className={cn(
                   "font-heading font-bold text-lg whitespace-nowrap bg-gradient-to-r bg-clip-text text-transparent",
-                  isLightMode ? "from-slate-950 to-slate-700" : "from-white to-white/80",
+                  isLightMode ? "from-slate-950 to-slate-700" : "from-white to-foreground/80",
                 )}
               >
                 {tenantName}
@@ -1610,12 +1640,12 @@ export function ModernSidebar() {
           {/* Close Button */}
           <motion.button
             onClick={() => setSidebarCollapsed(true)}
-            className="p-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="p-2 rounded-lg hover:bg-foreground/10 transition-colors"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
             data-testid="sidebar-close-button"
           >
-            <X className="h-5 w-5 text-white/70" />
+            <X className="h-5 w-5 text-foreground/70" />
           </motion.button>
         </div>
 
@@ -1623,7 +1653,7 @@ export function ModernSidebar() {
         {isStudent && <StudentStats collapsed={false} />}
 
         {/* Navigation */}
-        <nav className="relative flex-1 overflow-y-auto py-4 px-3 scrollbar-thin scrollbar-thumb-white/10">
+        <nav className="relative flex-1 overflow-y-auto py-4 px-3 scrollbar-thin scrollbar-thumb-foreground/10">
           <TooltipProvider delayDuration={0}>
             <div className="space-y-2">
               {groupedMenuItems.map((group, groupIndex) => {
@@ -1636,21 +1666,21 @@ export function ModernSidebar() {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ delay: groupIndex * 0.03 }}
                     className={cn(
-                      "rounded-2xl border border-white/10 bg-white/[0.025] p-1",
-                      hasActive && "border-white/20 bg-white/[0.045]",
+                      "rounded-2xl border border-foreground/10 bg-foreground/[0.025] p-1",
+                      hasActive && "border-foreground/20 bg-foreground/[0.045]",
                     )}
                   >
                     <button
                       type="button"
                       onClick={() => toggleGroup(group.id)}
                       className={cn(
-                        "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-black uppercase tracking-[0.18em] text-white/50 transition hover:bg-white/10 hover:text-white/80",
-                        hasActive && "text-white/90",
+                        "flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-black uppercase tracking-[0.18em] text-foreground/50 transition hover:bg-foreground/10 hover:text-foreground/80",
+                        hasActive && "text-foreground/90",
                       )}
                     >
                       <span className="truncate">{group.title}</span>
                       <span className="ml-2 flex items-center gap-2">
-                        <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] tracking-normal text-white/60">{group.items.length}</span>
+                        <span className="rounded-full bg-foreground/10 px-2 py-0.5 text-[10px] tracking-normal text-foreground/60">{group.items.length}</span>
                         <ChevronDown className={cn("h-3.5 w-3.5 transition-transform", isOpen && "rotate-180")} />
                       </span>
                     </button>
@@ -1691,7 +1721,7 @@ export function ModernSidebar() {
                                         "group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all duration-300 relative overflow-hidden",
                                         isActive
                                           ? "text-white shadow-lg"
-                                          : "hover:bg-white/10 text-white/70 hover:text-white",
+                                          : "hover:bg-foreground/10 text-foreground/70 hover:text-white",
                                       )}
                                       style={
                                         isActive
@@ -1703,7 +1733,7 @@ export function ModernSidebar() {
                                     >
                                       {!isActive && (
                                         <motion.div
-                                          className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/5 to-white/0"
+                                          className="absolute inset-0 bg-gradient-to-r from-foreground/0 via-foreground/5 to-foreground/0"
                                           initial={{ x: "-100%" }}
                                           whileHover={{ x: "100%" }}
                                           transition={{ duration: 0.5 }}
@@ -1722,8 +1752,8 @@ export function ModernSidebar() {
                                           className={cn(
                                             "p-2 rounded-lg transition-all duration-300",
                                             isActive
-                                              ? "bg-white/20"
-                                              : "bg-transparent group-hover:bg-white/10",
+                                              ? "bg-foreground/20"
+                                              : "bg-transparent group-hover:bg-foreground/10",
                                           )}
                                           style={{
                                             boxShadow: isActive
@@ -1766,7 +1796,7 @@ export function ModernSidebar() {
                                           "relative z-10 text-sm font-medium whitespace-nowrap",
                                           item.special &&
                                             !isActive &&
-                                            "bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent",
+                                            "bg-gradient-to-r from-white to-foreground/60 bg-clip-text text-transparent",
                                         )}
                                       >
                                         {item.label}
@@ -1800,11 +1830,11 @@ export function ModernSidebar() {
         </nav>
 
         {/* User info section */}
-        <div className="relative border-t border-white/10 p-3">
+        <div className="relative border-t border-foreground/10 p-3">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="flex items-center gap-3 p-2 rounded-xl bg-white/5 backdrop-blur-sm"
+            className="flex items-center gap-3 p-2 rounded-xl bg-foreground/5 backdrop-blur-sm"
           >
             <motion.div
               className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold"
@@ -1819,7 +1849,7 @@ export function ModernSidebar() {
               <p className={cn("text-sm font-medium truncate", isLightMode ? "text-foreground" : "text-white")}>
                 {user?.name || "Öğrenci"}
               </p>
-              <p className="text-xs text-white/60 truncate">
+              <p className="text-xs text-foreground/60 truncate">
                 {user?.email || "ogrenci@okul.com"}
               </p>
             </div>
@@ -1827,7 +1857,7 @@ export function ModernSidebar() {
         </div>
 
         {/* Project Logo at the bottom */}
-        <div className="relative border-t border-white/10 p-4">
+        <div className="relative border-t border-foreground/10 p-4">
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1841,7 +1871,7 @@ export function ModernSidebar() {
             />
           </motion.div>
           <motion.p
-            className="text-[10px] text-white/40 text-center mt-2"
+            className="text-[10px] text-foreground/40 text-center mt-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
