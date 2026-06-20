@@ -281,13 +281,122 @@ export async function fetchStudentDashboardData(user) {
     : 0;
   const examSignals = announcements.filter((item) => /sinav|deneme|quiz/i.test(`${item.title} ${item.detail || ''}`));
 
+  // Not ortalaması ve devam oranı (gerçek veriden türetilir).
+  const examScores = exams.map((item) => safeNumber(item.score)).filter((value) => value > 0);
+  const averageScore = examScores.length
+    ? Math.round((examScores.reduce((sum, value) => sum + value, 0) / examScores.length) * 10) / 10
+    : 0;
+  const presentCount = studentAttendance.filter((item) => normalizeText(item.status).includes('katildi')).length;
+  const attendanceRate = studentAttendance.length
+    ? Math.round((presentCount / studentAttendance.length) * 100)
+    : 0;
+
+  // Derse göre performans (Ders Performansım paneli).
+  const subjectMap = new Map();
+  exams.forEach((item) => {
+    const subject = item.subject || 'Genel';
+    if (!subjectMap.has(subject)) subjectMap.set(subject, []);
+    subjectMap.get(subject).push(safeNumber(item.score));
+  });
+  const subjectPerformance = Array.from(subjectMap.entries())
+    .map(([subject, scores]) => ({
+      subject,
+      average: scores.length ? Math.round(scores.reduce((sum, value) => sum + value, 0) / scores.length) : 0,
+      count: scores.length,
+    }))
+    .sort((a, b) => b.average - a.average);
+
+  // Bekleyen ödev listesi + derse göre dağılım (Yaklaşan Ödevler / Ders Dağılımı).
+  const pendingList = pendingAssignments.slice(0, 6).map((item) => ({
+    subject: item.subject || 'Genel',
+    title: item.title || 'Ödev',
+    deadline: item.deadline || '',
+    status: item.status || 'Bekliyor',
+  }));
+  const distributionMap = new Map();
+  pendingAssignments.forEach((item) => {
+    const subject = item.subject || 'Genel';
+    distributionMap.set(subject, (distributionMap.get(subject) || 0) + 1);
+  });
+  const totalPending = pendingAssignments.length || 1;
+  const assignmentsBySubject = Array.from(distributionMap.entries())
+    .map(([subject, count]) => ({ subject, count, percent: Math.round((count / totalPending) * 100) }))
+    .sort((a, b) => b.count - a.count);
+
+  // Yaklaşan etkinlikler (gün sayacı), duyurular, önerilen içerikler, haftalık istatistik.
+  const dayMs = 24 * 60 * 60 * 1000;
+  const upcomingEvents = (examSignals.length ? examSignals : exams)
+    .slice(0, 4)
+    .map((item) => {
+      const when = parseHumanDateLabel(item.dateLabel || item.date);
+      const days = when ? Math.max(0, Math.ceil((when.getTime() - Date.now()) / dayMs)) : null;
+      return {
+        title: item.subject || item.title || 'Etkinlik',
+        detail: item.type || item.detail || item.audience || '',
+        days,
+      };
+    });
+  const announcementList = announcements.slice(0, 3).map((item) => ({
+    title: item.title || 'Duyuru',
+    detail: item.detail || item.body || item.message || '',
+    date: item.dateLabel || item.date || '',
+  }));
+  const suggestedContents = contents.slice(0, 4).map((item) => ({
+    title: item.title || 'İçerik',
+    subject: item.subject || item.grade || '',
+    type: item.fileType || item.type || 'İçerik',
+    meta: item.duration || item.timeLabel || '',
+  }));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const dayKey = (value) => {
+    if (!value) return '';
+    const parsed = parseHumanDateLabel(value) || new Date(value);
+    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().slice(0, 10);
+  };
+  const weeklySeries = Array.from({ length: 7 }).map((_, index) => {
+    const day = new Date(today);
+    day.setDate(today.getDate() - (6 - index));
+    const key = day.toISOString().slice(0, 10);
+    const submittedHomework = homework.reduce((sum, item) => {
+      const submissions = item.submissions || [];
+      return sum + submissions.filter((submission) => {
+        const submittedAt = submission.submittedAtUtc || submission.submittedAt || submission.createdAt;
+        return normalizeText(submission.studentName) === normalizeText(studentName)
+          && submittedAt
+          && dayKey(submittedAt) === key;
+      }).length;
+    }, 0);
+    const newContents = contents.filter((item) => {
+      const createdAt = item.createdAtUtc || item.createdAt || item.publishedAtUtc || item.publishedAt;
+      return createdAt && dayKey(createdAt) === key;
+    }).length;
+    const examResultsForDay = exams.filter((item) => {
+      return dayKey(item.dateLabel || item.date || item.createdAt) === key;
+    }).length;
+    return submittedHomework + newContents + examResultsForDay;
+  });
+  const weekly = {
+    solvedQuestions: questionBank.length,
+    watchedVideos: contents.filter((item) => normalizeText(item.fileType).includes('video')).length,
+    contentCount: contents.length,
+    series: weeklySeries,
+  };
+
   return {
     greetingName: studentName.split(' ')[0],
+    className,
+    upcomingEvents,
+    announcementList,
+    suggestedContents,
+    weekly,
     stats: {
       todayLessons: todayLessons.length,
       upcomingExams: examSignals.length || Math.min(2, exams.length),
       completedContent: contentProgress,
       pendingAssignments: pendingAssignments.length,
+      averageScore,
+      attendanceRate,
       streak: safeNumber(studyPlan?.streakCount, 0),
       xp: safeNumber(studyPlan?.xpPoints, 0),
       level: Math.max(1, Math.floor(safeNumber(studyPlan?.xpPoints, 0) / 100) + 1),
@@ -295,6 +404,9 @@ export async function fetchStudentDashboardData(user) {
       rank: Math.max(1, Math.min(students.length || 1, Math.floor((students.length || 1) / 5))),
       totalStudents: students.length || 1,
     },
+    subjectPerformance,
+    pendingList,
+    assignmentsBySubject,
     todayLessons,
     upcomingExams: (examSignals.length ? examSignals : exams)
       .slice(0, 2)
@@ -303,7 +415,7 @@ export async function fetchStudentDashboardData(user) {
         date: parseHumanDateLabel(item.dateLabel || item.date)?.toISOString() || new Date().toISOString(),
         type: item.type || item.audience || 'Planlandı',
       })),
-    recentResults: exams.slice(0, 4).map((item) => ({
+    recentResults: exams.slice(0, 5).map((item) => ({
       subject: item.subject,
       score: safeNumber(item.score),
       date: parseHumanDateLabel(item.dateLabel || item.date)?.toISOString() || new Date().toISOString(),
@@ -355,6 +467,9 @@ export async function fetchTeacherDashboardData(user) {
     api.get('/api/contents', { params: { visibleOnly: false } }),
     api.get('/api/notifications', { params: { targetRole: 'Teacher' } }),
     api.get('/api/schedule'),
+    api.get('/api/examresults'),
+    api.get('/api/plannedexams'),
+    api.get('/api/announcements', { params: { audience: 'Ogretmen' } }),
   ]);
 
   const students = safeData(results[0], []);
@@ -364,34 +479,138 @@ export async function fetchTeacherDashboardData(user) {
   const contents = safeData(results[4], []);
   const notifications = safeData(results[5], []);
   const scheduleEntries = safeData(results[6], []);
+  const examResults = safeData(results[7], []);
+  const plannedExams = safeData(results[8], []);
+  const announcements = safeData(results[9], []);
 
-  // Bugünkü program /api/schedule'dan; attendance sadece yoklama durumu için.
-  const todayLessons = pickScheduleTodayForTeacher(scheduleEntries, user?.name).slice(0, 4);
-  const todayAttendanceGroups = new Set(
-    attendance
-      .filter((item) => isToday(item.lessonDate))
-      .map((item) => `${item.className}-${item.lesson}-${item.lessonDate}`)
-  ).size;
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const toMinutes = (value) => {
+    const match = String(value || '').match(/(\d{1,2}):(\d{2})/);
+    return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+  };
+
+  // Bugünkü program + zamana göre durum (Tamamlandı/Devam Ediyor/Sıradaki/Bekliyor).
+  let nextMarked = false;
+  const todaySchedule = pickScheduleTodayForTeacher(scheduleEntries, user?.name).slice(0, 5).map((lesson) => {
+    const [startStr, endStr] = String(lesson.time || '').split(/[-–]/).map((part) => part.trim());
+    const start = toMinutes(startStr);
+    const end = toMinutes(endStr);
+    let status = 'pending';
+    if (end != null && end < nowMinutes) status = 'done';
+    else if (start != null && end != null && start <= nowMinutes && nowMinutes <= end) status = 'live';
+    else if (!nextMarked && start != null && start > nowMinutes) { status = 'next'; nextMarked = true; }
+    return { ...lesson, status };
+  });
+  const completedToday = todaySchedule.filter((lesson) => lesson.status === 'done').length;
+
+  // Sınav ortalaması ve sınıf ortalamaları.
+  const examScores = examResults.map((item) => safeNumber(item.score)).filter((value) => value > 0);
+  const overallAvg = examScores.length ? Math.round((examScores.reduce((a, b) => a + b, 0) / examScores.length) * 10) / 10 : 0;
+  const classExamMap = new Map();
+  examResults.forEach((item) => {
+    const cls = item.className || 'Tanımsız';
+    if (!classExamMap.has(cls)) classExamMap.set(cls, []);
+    classExamMap.get(cls).push(safeNumber(item.score));
+  });
+  const studentsByClass = new Map();
+  students.forEach((item) => {
+    const cls = item.className || 'Tanımsız';
+    studentsByClass.set(cls, (studentsByClass.get(cls) || 0) + 1);
+  });
+  const teacherClasses = new Set(
+    scheduleEntries.filter((item) => normalizeText(item.teacher) === normalizeText(user?.name)).map((item) => item.className).filter(Boolean),
+  );
+  const overviewClasses = teacherClasses.size ? [...teacherClasses] : [...studentsByClass.keys()];
+  const classOverview = overviewClasses.map((className) => {
+    const scores = classExamMap.get(className) || [];
+    const average = scores.length ? Math.round((scores.reduce((a, b) => a + b, 0) / scores.length) * 10) / 10 : 0;
+    return {
+      className,
+      studentCount: studentsByClass.get(className) || 0,
+      average,
+      trend: average && overallAvg ? Math.round((average - overallAvg) * 10) / 10 : 0,
+    };
+  }).sort((a, b) => b.average - a.average).slice(0, 6);
+
+  // Sınav istatistikleri (donut).
+  const completedExams = new Set(examResults.map((item) => `${item.examTitle || item.title}-${item.className}`)).size;
+  const plannedFuture = plannedExams.filter((item) => {
+    const date = parseHumanDateLabel(item.dateLabel || item.date || item.examDate);
+    return date && date.getTime() > now.getTime();
+  });
+  const plannedToday = plannedExams.filter((item) => {
+    const date = parseHumanDateLabel(item.dateLabel || item.date || item.examDate);
+    return date && isToday(date);
+  });
+  const examStats = { completed: completedExams, ongoing: plannedToday.length, planned: plannedFuture.length };
+
+  // Ödev dağılımı (donut) + bekleyen değerlendirmeler.
+  const homeworkDistribution = { delivered: 0, pending: 0, overdue: 0 };
+  let pendingGradingCount = 0;
+  const pendingGrading = [];
+  homework.forEach((item) => {
+    const subs = item.submissions || [];
+    const due = item.deadline ? new Date(item.deadline) : null;
+    const ungraded = subs.filter((sub) => sub.grade == null).length;
+    pendingGradingCount += ungraded;
+    if (ungraded > 0) pendingGrading.push({ className: item.className, title: item.title, count: ungraded });
+    if (students.length && subs.length >= students.length) homeworkDistribution.delivered += 1;
+    else if (due && due < now) homeworkDistribution.overdue += 1;
+    else homeworkDistribution.pending += 1;
+  });
+
+  const contentViews = contents.reduce((sum, item) => sum + safeNumber(item.viewCount ?? item.views ?? item.usageCount), 0);
+  const dayMs = 86400000;
 
   return {
     teacherName: user?.name || 'Öğretmenim',
     stats: {
-      todayLessons: todayLessons.length,
-      pendingQuestions: threads.reduce((sum, item) => sum + safeNumber(item.unreadCount), 0),
-      completedAttendance: todayAttendanceGroups,
+      totalCourses: teacherClasses.size
+        ? new Set(scheduleEntries.filter((item) => normalizeText(item.teacher) === normalizeText(user?.name)).map((item) => `${item.subject}|${item.className}`)).size
+        : new Set(homework.map((item) => item.subject).filter(Boolean)).size,
       totalStudents: students.length,
+      todayLessons: todaySchedule.length,
+      completedToday,
+      pendingGradingCount,
+      avgSuccess: overallAvg,
+      pendingQuestions: threads.reduce((sum, item) => sum + safeNumber(item.unreadCount), 0),
     },
-    todaySchedule: todayLessons,
-    pendingQuestions: threads
-      .filter((item) => safeNumber(item.unreadCount) > 0)
-      .slice(0, 3)
-      .map((item) => ({
-        id: item.id,
-        student: item.contactName,
-        question: item.lastMessagePreview,
-        time: formatLongDate(item.lastMessageAtUtc),
-        class: item.contactRole,
-      })),
+    classOverview,
+    todaySchedule,
+    recentActivities: notifications.slice(0, 4).map((item) => ({
+      title: item.title || 'Aktivite',
+      detail: item.message || '',
+      time: item.timeLabel || 'Şimdi',
+    })),
+    examStats,
+    homeworkDistribution,
+    homeworkTotal: homework.length,
+    contentViews,
+    contentViewSeries: contents.slice(0, 12).map((item) => safeNumber(item.viewCount ?? item.views ?? item.usageCount)),
+    pendingGrading: pendingGrading.slice(0, 4),
+    upcomingExams: plannedFuture
+      .map((item) => {
+        const date = parseHumanDateLabel(item.dateLabel || item.date || item.examDate);
+        return {
+          title: item.title || item.examTitle || 'Sınav',
+          className: item.className || (item.classTargets || []).join(', '),
+          date,
+          days: date ? Math.max(0, Math.ceil((date.getTime() - now.getTime()) / dayMs)) : null,
+        };
+      })
+      .sort((a, b) => (a.date?.getTime() || 0) - (b.date?.getTime() || 0))
+      .slice(0, 3),
+    recentContents: contents.slice(0, 3).map((item) => ({
+      title: item.title || 'İçerik',
+      type: item.fileType || 'İçerik',
+      date: item.createdAt ? formatShortDate(item.createdAt) : (item.dateLabel || ''),
+    })),
+    announcementList: announcements.slice(0, 3).map((item) => ({
+      title: item.title || 'Duyuru',
+      detail: item.detail || item.body || '',
+      date: item.dateLabel || item.date || '',
+    })),
     quickStats: {
       activeHomework: homework.length,
       visibleContent: contents.filter((item) => normalizeText(item.publishStatus) === 'yayinda').length,

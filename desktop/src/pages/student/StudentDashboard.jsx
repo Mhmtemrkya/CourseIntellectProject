@@ -2,48 +2,80 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Calendar,
   BookOpen,
-  Clock,
-  Video,
-  ClipboardCheck,
-  TrendingUp,
+  GraduationCap,
+  CalendarCheck,
+  Target,
+  Medal,
+  ClipboardList,
+  CalendarClock,
+  PlayCircle,
+  ArrowRight,
   Flame,
   Trophy,
-  Target,
-  Zap,
-  Brain,
-  Sparkles,
-  Play,
+  ChevronRight,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { useApp } from '../../context/AppContext';
-import { fetchStudentDashboardData } from '../../lib/api/dashboardData';
-import { BADGE_TOTAL, collectNewBadges, getAllBadges, nextBadge, unlockedBadgeCount } from '../../lib/badges';
 import BadgeShield from '../../components/badges/BadgeShield';
 import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
+import { useApp } from '../../context/AppContext';
+import { fetchStudentDashboardData } from '../../lib/api/dashboardData';
+import { BADGE_TOTAL, collectNewBadges, getAllBadges, unlockedBadgeCount } from '../../lib/badges';
 import {
   MiniBarChart,
-  MiniDonut,
-  MiniLineChart,
+  PremiumListRow,
   PremiumMetricCard,
   PremiumPanel,
+  PremiumProgressRow,
+  PremiumScheduleRow,
+  PremiumScoreCard,
+  PremiumStatusPill,
 } from '../../components/ui/premium-dashboard';
 
 const containerVariants = {
   hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 
 const itemVariants = {
   hidden: { opacity: 0, y: 16 },
   visible: { opacity: 1, y: 0 },
 };
+
+const tones = ['brand', 'blue', 'emerald', 'violet', 'amber', 'rose'];
+
+function letterGrade(score) {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B';
+  if (score >= 70) return 'C';
+  if (score >= 60) return 'D';
+  return 'F';
+}
+
+function scoreLabel(score) {
+  if (score >= 85) return 'Çok İyi';
+  if (score >= 70) return 'İyi';
+  if (score >= 50) return 'Orta';
+  return 'Gelişmeli';
+}
+
+function lessonStatus(status) {
+  if (status === 'ongoing') return { label: 'Devam Ediyor', tone: 'live' };
+  if (status === 'completed') return { label: 'Tamamlandı', tone: 'done' };
+  return { label: 'Yaklaşan', tone: 'soon' };
+}
+
+function DayMeta({ days }) {
+  if (days == null) return <ChevronRight className="h-4 w-4" />;
+  return (
+    <div className="text-right leading-none">
+      <span className="text-base font-black text-[hsl(var(--brand-accent))]">{days}</span>
+      <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Gün</span>
+    </div>
+  );
+}
 
 export default function StudentDashboard() {
   const { user } = useApp();
@@ -82,333 +114,296 @@ export default function StudentDashboard() {
   }
 
   const stats = data?.stats || {};
-  const actionMap = [
-    { icon: Video, label: 'Canlı Derse Katıl', onClick: () => navigate('/s/live') },
-    { icon: BookOpen, label: 'Konu Anlatımı', onClick: () => navigate('/s/content') },
-    { icon: ClipboardCheck, label: 'Devamsızlıklarım', onClick: () => navigate('/s/attendance') },
-    { icon: Brain, label: 'Soru Bankası', onClick: () => navigate('/s/questions') },
-    { icon: Sparkles, label: 'AI Asistan', onClick: () => navigate('/s/ai') },
-  ];
-  const summaryCards = [
-    ['Bugünkü Ders', stats.todayLessons || 0, Calendar, 'blue', 'Ders', () => navigate('/s/schedule')],
-    ['Yaklaşan Sınav', stats.upcomingExams || 0, Target, 'violet', 'Sınav', () => navigate('/s/exams')],
-    ['Devamsızlıklarım', stats.absentDays || stats.absentCount || 0, ClipboardCheck, 'amber', 'Devam', () => navigate('/s/attendance')],
-    ['Sınav Sonuçlarım', data?.recentResults?.length || 0, Trophy, 'emerald', 'Sonuç', () => navigate('/s/exam-results')],
-    ['Bekleyen Ödev', stats.pendingAssignments || 0, Clock, 'rose', 'Ödev', () => navigate('/s/assignments')],
-  ];
   const xp = Number(stats.xp || 0);
   const unlockedBadges = unlockedBadgeCount(xp);
-  const recentBadges = getAllBadges().slice(Math.max(0, unlockedBadges - 4), unlockedBadges).reverse();
-  const upcomingBadge = nextBadge(xp);
+  const subjectPerformance = data?.subjectPerformance || [];
+  const pendingList = data?.pendingList || [];
+  const recentResults = data?.recentResults || [];
+  const todayLessons = data?.todayLessons || [];
+  const upcomingEvents = data?.upcomingEvents || [];
+  const announcementList = data?.announcementList || [];
+  const suggestedContents = data?.suggestedContents || [];
+  const weekly = data?.weekly || {};
+  const badges = getAllBadges();
+
+  const performanceTrend = subjectPerformance.map((item) => item.average);
+  const resultTrend = [...recentResults].reverse().map((item) => item.score);
+  const summaryCards = [
+    { title: 'Genel Not Ortalaması', value: stats.averageScore || 0, caption: scoreLabel(stats.averageScore || 0), icon: GraduationCap, tone: 'brand', chart: 'line', chartValues: performanceTrend },
+    { title: 'Devam Durumu', value: `${stats.attendanceRate || 0}%`, caption: scoreLabel(stats.attendanceRate || 0), icon: CalendarCheck, tone: 'blue', chart: 'bars', chartValues: [stats.attendanceRate || 0] },
+    { title: 'Başarı Sıralaması', value: `${stats.rank || 1} / ${stats.totalStudents || 1}`, caption: 'Sınıf sıralaması', icon: Target, tone: 'violet', chart: 'line', chartValues: resultTrend },
+    { title: 'Toplam Rozet', value: unlockedBadges, caption: `${BADGE_TOTAL} rozetten`, icon: Medal, tone: 'amber', chart: 'bars', chartValues: [unlockedBadges, Math.max(0, BADGE_TOTAL - unlockedBadges)] },
+    { title: 'İçerik Tamamlama', value: `${stats.completedContent || 0}%`, caption: 'Genel ilerleme', icon: Trophy, tone: 'emerald', chart: 'donut', donutValue: stats.completedContent || 0 },
+  ];
 
   return (
     <motion.div
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="space-y-8 relative"
+      className="space-y-5"
       data-testid="student-dashboard-page"
     >
-      <motion.div variants={itemVariants}>
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <span className="text-4xl">👋</span>
-              <h1 className="text-3xl lg:text-4xl font-bold font-heading bg-gradient-to-r from-[#00354F] to-[#D9790B] bg-clip-text text-transparent dark:from-white dark:to-[#D9790B]">
-                İyi Günler, {data?.greetingName || 'Öğrenci'}
-              </h1>
-            </div>
-            <p className="text-muted-foreground text-lg">Günün planı ve ilerleme özeti burada.</p>
+      {/* Karşılama */}
+      <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="text-2xl">👋</span>
+            <h1 className="text-xl font-black tracking-tight">Merhaba, {data?.greetingName || 'Öğrenci'}!</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-orange-100 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-800">
-              <Flame className="h-5 w-5 text-orange-600" />
-              <span className="font-bold text-orange-700 dark:text-orange-400">{stats.streak || 0} gün seri</span>
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-yellow-100 dark:bg-yellow-900/30 border border-yellow-300 dark:border-yellow-700">
-              <Trophy className="h-5 w-5 text-yellow-600" />
-              <span className="font-bold text-yellow-700 dark:text-yellow-400">#{stats.rank || 1}</span>
-              <span className="text-sm text-yellow-600 dark:text-yellow-500">/ {stats.totalStudents || 1}</span>
-            </div>
-          </div>
+          <p className="mt-1 text-sm text-muted-foreground">Bugün harika bir gün, kendini geliştirmeye devam et.</p>
         </div>
-        <div className="mt-6 rounded-2xl border bg-card p-5">
-          <div className="flex items-center justify-between mb-3">
-            <div>
-              <p className="text-sm text-muted-foreground">Seviye {stats.level || 1}</p>
-              <p className="text-xl font-bold">{stats.xp || 0} XP</p>
-            </div>
-            <Badge className="bg-brand-accent text-white">Sonraki seviye için {stats.xpToNext || 100} XP</Badge>
-          </div>
-          <Progress value={Math.max(5, 100 - (stats.xpToNext || 100))} className="h-3" />
+        <div className="flex flex-wrap items-center gap-2">
+          <PremiumStatusPill tone="warn"><Flame className="mr-1 h-3.5 w-3.5" />{stats.streak || 0} gün seri</PremiumStatusPill>
+          <PremiumStatusPill tone="live"><Trophy className="mr-1 h-3.5 w-3.5" />Seviye {stats.level || 1} · {xp} XP</PremiumStatusPill>
         </div>
       </motion.div>
 
       {error ? <ErrorBanner title="Öğrenci paneli yüklenemedi" message={error} onRetry={loadDashboard} /> : null}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-5">
-        {summaryCards.map(([label, value, Icon, tone, trend, onClick]) => (
-          <motion.div key={label} variants={itemVariants}>
-            <PremiumMetricCard title={label} value={value} icon={Icon} tone={tone} trend={trend} onClick={onClick} />
+      {/* Üst metrik kartları */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        {summaryCards.map((card) => (
+          <motion.div key={card.title} variants={itemVariants}>
+            <PremiumMetricCard {...card} />
           </motion.div>
         ))}
       </div>
 
-      <motion.div variants={itemVariants}>
-        <PremiumPanel title="Çalışma İstatistiklerim" description="Ders, sınav, içerik ve soru çözüm sinyalleri">
-          <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
-            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Haftalık çalışma grafiği</p>
-                  <p className="mt-1 text-2xl font-black">Öğrenci paneli</p>
-                </div>
-                <Badge variant="outline">Bu Hafta</Badge>
-              </div>
-              <MiniLineChart values={[stats.todayLessons || 0, stats.upcomingExams || 0, stats.pendingAssignments || 0, data?.summary?.watchedVideos || 0, data?.summary?.solvedQuestions || 0, data?.recentResults?.length || 0]} className="h-40" />
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">İçerik Tamamlanma</p>
-              <div className="mt-5 flex justify-center">
-                <MiniDonut value={stats.completedContent || 0} label="İlerleme" />
-              </div>
-            </div>
-            <div className="rounded-3xl border border-white/10 bg-white/[0.035] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Aktivite Dağılımı</p>
-              <MiniBarChart values={[data?.summary?.watchedVideos || 0, data?.summary?.solvedQuestions || 0, stats.xp || 0, unlockedBadges || 0, stats.streak || 0]} className="mt-5" />
-            </div>
-          </div>
-        </PremiumPanel>
-      </motion.div>
+      {/* Ana içerik + sağ ray */}
+      <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
+        {/* Sol + orta */}
+        <div className="space-y-5 xl:col-span-2">
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <motion.div variants={itemVariants}>
+              <PremiumPanel
+                title="Ders Performansım"
+                description="Derslerine göre başarı durumu"
+                action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/exam-results')}>Tüm Derslerim <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+                contentClassName="space-y-3"
+              >
+                {subjectPerformance.length ? subjectPerformance.slice(0, 6).map((item, index) => (
+                  <PremiumProgressRow
+                    key={item.subject}
+                    icon={BookOpen}
+                    title={item.subject}
+                    subtitle={`${item.count} sınav`}
+                    value={item.average}
+                    valueLabel={letterGrade(item.average)}
+                    progress={item.average}
+                    tone={tones[index % tones.length]}
+                  />
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
+                    Henüz sınav sonucu girilmemiş.
+                  </div>
+                )}
+              </PremiumPanel>
+            </motion.div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <motion.div variants={itemVariants} className="lg:col-span-2">
-          <Card className="border-0 shadow-lg overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-[#00354F] to-[#003d5c] text-white">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Calendar className="h-6 w-6" />
-                  <div>
-                    <CardTitle className="text-white">Bugünkü Dersler</CardTitle>
-                    <CardDescription className="text-white/70">Yoklama ve sınıf verisinden türetildi</CardDescription>
+            <motion.div variants={itemVariants}>
+              <PremiumPanel
+                title="Yaklaşan Etkinlikler"
+                description="Sınav, ödev ve sunum takvimi"
+                action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/exams')}>Tüm Etkinlikler <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+                contentClassName="space-y-2.5"
+              >
+                {upcomingEvents.length ? upcomingEvents.map((event, index) => (
+                  <PremiumListRow
+                    key={`${event.title}-${index}`}
+                    icon={CalendarClock}
+                    accent
+                    title={event.title}
+                    subtitle={event.detail}
+                    meta={<DayMeta days={event.days} />}
+                  />
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
+                    Yaklaşan etkinlik yok.
                   </div>
+                )}
+              </PremiumPanel>
+            </motion.div>
+          </div>
+
+          <motion.div variants={itemVariants}>
+            <PremiumPanel
+              title="Son Sınav Sonuçlarım"
+              description="En güncel sınav performansın"
+              action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/exam-results')}>Tüm Sonuçlar <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+            >
+              {recentResults.length ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                  {recentResults.map((result, index) => (
+                    <PremiumScoreCard
+                      key={`${result.subject}-${index}`}
+                      subject={`${result.subject} • ${result.type}`}
+                      score={result.score}
+                      grade={letterGrade(result.score)}
+                      date={new Date(result.date).toLocaleDateString('tr-TR')}
+                      values={recentResults.slice(Math.max(0, index - 3), index + 1).map((item) => item.score)}
+                      tone={tones[index % tones.length]}
+                    />
+                  ))}
                 </div>
-                <Badge className="bg-white/20 text-white border-0">
-                  {data?.todayLessons?.length || 0} ders
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-4 space-y-3">
-              {(data?.todayLessons || []).length > 0 ? data.todayLessons.map((lesson, index) => (
-                <div key={`${lesson.subject}-${index}`} className="flex items-center gap-4 p-4 rounded-xl bg-muted/40 border">
-                  <div className="flex-shrink-0 w-16 text-center">
-                    <p className="text-lg font-bold text-brand-primary">{lesson.time}</p>
-                  </div>
-                  <div className="w-1 h-12 rounded-full bg-brand-accent" />
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-lg">{lesson.subject}</h4>
-                    <p className="text-sm text-muted-foreground">{lesson.class} • {lesson.room}</p>
-                  </div>
-                  <Badge className="bg-brand-accent/10 text-brand-accent border-0">
-                    {lesson.status === 'ongoing' ? 'Devam ediyor' : 'Kayıtlı'}
-                  </Badge>
-                  {lesson.status === 'ongoing' ? (
-                    <Button size="sm" className="bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600" onClick={() => navigate('/s/live')}>
-                      <Play className="h-4 w-4 mr-1" /> Katıl
-                    </Button>
-                  ) : null}
+              ) : (
+                <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
+                  Henüz sınav sonucu yok.
                 </div>
-              )) : (
-                <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
+              )}
+            </PremiumPanel>
+          </motion.div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <motion.div variants={itemVariants}>
+              <PremiumPanel
+                title="Rozetlerim"
+                description={`${unlockedBadges}/${BADGE_TOTAL} açıldı`}
+                action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/badges')}>Tüm Rozetler <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+              >
+                <div className="grid grid-cols-3 gap-3">
+                  {badges.slice(0, 6).map((badge, index) => (
+                    <div key={badge.id} className="flex flex-col items-center gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-center">
+                      <BadgeShield badge={badge} size={42} glow={index < unlockedBadges} locked={index >= unlockedBadges} />
+                      <p className="line-clamp-1 text-[11px] font-semibold">{badge.name}</p>
+                    </div>
+                  ))}
+                </div>
+              </PremiumPanel>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <PremiumPanel title="Haftalık Çalışma İstatistiklerim" description="Bu haftaki çalışma sinyallerin">
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  {[
+                    ['Çözülen Soru', weekly.solvedQuestions || 0],
+                    ['İzlenen İçerik', weekly.watchedVideos || 0],
+                    ['Toplam İçerik', weekly.contentCount || 0],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
+                      <p className="text-2xl font-black tracking-tight">{value}</p>
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
+                    </div>
+                  ))}
+                </div>
+                <MiniBarChart values={weekly.series || []} className="mt-4" />
+                <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                  {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day) => <span key={day}>{day}</span>)}
+                </div>
+              </PremiumPanel>
+            </motion.div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+            <motion.div variants={itemVariants}>
+              <PremiumPanel
+                title="Duyurular"
+                description="Okul ve sınıf duyuruları"
+                action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/announcements')}>Tüm Duyurular <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+                contentClassName="space-y-2.5"
+              >
+                {announcementList.length ? announcementList.map((item, index) => (
+                  <div key={`${item.title}-${index}`} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3.5">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="truncate text-sm font-semibold">{item.title}</p>
+                      {item.date ? <span className="shrink-0 text-[11px] text-muted-foreground">{item.date}</span> : null}
+                    </div>
+                    {item.detail ? <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{item.detail}</p> : null}
+                  </div>
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
+                    Yeni duyuru yok.
+                  </div>
+                )}
+              </PremiumPanel>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <PremiumPanel
+                title="Önerilen İçerikler"
+                description="Sana özel çalışma materyalleri"
+                action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/content')}>Tümü <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+                contentClassName="space-y-2.5"
+              >
+                {suggestedContents.length ? suggestedContents.map((item, index) => (
+                  <PremiumListRow
+                    key={`${item.title}-${index}`}
+                    icon={PlayCircle}
+                    title={item.title}
+                    subtitle={[item.subject, item.type].filter(Boolean).join(' • ')}
+                    meta={item.meta || null}
+                    onClick={() => navigate('/s/content')}
+                  />
+                )) : (
+                  <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
+                    Önerilen içerik bulunamadı.
+                  </div>
+                )}
+              </PremiumPanel>
+            </motion.div>
+          </div>
+        </div>
+
+        {/* Sağ ray */}
+        <div className="space-y-5">
+          <motion.div variants={itemVariants}>
+            <PremiumPanel
+              title="Bugünkü Ders Programı"
+              description="Sınıfının bugünkü akışı"
+              action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/schedule')}>Tüm Program <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+              contentClassName="space-y-2.5"
+            >
+              {todayLessons.length ? todayLessons.map((lesson, index) => {
+                const status = lessonStatus(lesson.status);
+                return (
+                  <PremiumScheduleRow
+                    key={`${lesson.subject}-${index}`}
+                    time={lesson.time}
+                    icon={BookOpen}
+                    title={lesson.subject}
+                    subtitle={[lesson.class, lesson.teacher].filter(Boolean).join(' • ')}
+                    status={status.label}
+                    statusTone={status.tone}
+                    active={lesson.status === 'ongoing'}
+                  />
+                );
+              }) : (
+                <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
                   Bugün için kayıtlı ders görünmüyor.
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <div className="space-y-6">
-          <motion.div variants={itemVariants}>
-            <Card className="border-0 shadow-lg">
-              <CardHeader className="pb-2">
-                <CardTitle className="flex items-center gap-2">
-                  <Sparkles className="h-5 w-5 text-[#D9790B]" />
-                  Genel İlerleme
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 py-6">
-                <div>
-                  <div className="flex justify-between text-sm mb-2">
-                    <span>İçerik tamamlanma oranı</span>
-                    <span className="font-bold">{stats.completedContent || 0}%</span>
-                  </div>
-                  <Progress value={stats.completedContent || 0} className="h-3" />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 rounded-xl bg-green-50 dark:bg-green-900/20">
-                    <p className="text-2xl font-bold text-green-600">{data?.summary?.watchedVideos || 0}</p>
-                    <p className="text-xs text-muted-foreground">Video / içerik</p>
-                  </div>
-                  <div className="text-center p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20">
-                    <p className="text-2xl font-bold text-blue-600">{data?.summary?.solvedQuestions || 0}</p>
-                    <p className="text-xs text-muted-foreground">Soru erişimi</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            </PremiumPanel>
           </motion.div>
 
           <motion.div variants={itemVariants}>
-            <Card className="border-0 shadow-lg">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-purple-600" />
-                  Yaklaşan Sınavlar
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {(data?.upcomingExams || []).map((exam, index) => (
-                  <div key={`${exam.subject}-${index}`} className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 border border-purple-200 dark:border-purple-800">
-                    <div>
-                      <p className="font-medium">{exam.subject}</p>
-                      <p className="text-sm text-muted-foreground">{exam.type}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-purple-600">{new Date(exam.date).toLocaleDateString('tr-TR')}</p>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
+            <PremiumPanel
+              title="Görev & Ödevlerim"
+              description={`${stats.pendingAssignments || 0} bekleyen görev`}
+              action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/assignments')}>Tümünü Gör <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
+              contentClassName="space-y-2.5"
+            >
+              {pendingList.length ? pendingList.map((item, index) => (
+                <PremiumListRow
+                  key={`${item.title}-${index}`}
+                  icon={ClipboardList}
+                  title={item.title}
+                  subtitle={item.subject}
+                  meta={item.deadline || item.status}
+                  onClick={() => navigate('/s/assignments')}
+                />
+              )) : (
+                <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
+                  Bekleyen görev yok 🎉
+                </div>
+              )}
+            </PremiumPanel>
           </motion.div>
         </div>
       </div>
 
-      <motion.div variants={itemVariants}>
-        <Card className="border-0 shadow-lg overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-yellow-400 via-orange-500 to-red-500">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Trophy className="h-6 w-6 text-white" />
-                <CardTitle className="text-white">Başarı Rozetleri</CardTitle>
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge className="bg-white/20 text-white border-0">
-                  {unlockedBadges}/{BADGE_TOTAL} Açıldı
-                </Badge>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="bg-white/20 text-white border-0 hover:bg-white/30"
-                  onClick={() => navigate('/s/badges')}
-                  data-testid="all-badges-button"
-                >
-                  Tüm Rozetler
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-              {recentBadges.map((badge) => (
-                <div
-                  key={badge.id}
-                  className="relative p-4 rounded-xl text-center border-2 bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-300 dark:border-yellow-700"
-                >
-                  <div className="mx-auto mb-2 flex justify-center">
-                    <BadgeShield badge={badge} size={48} glow />
-                  </div>
-                  <p className="font-semibold text-sm">{badge.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {badge.category.name} • {badge.xpThreshold} XP
-                  </p>
-                </div>
-              ))}
-              {recentBadges.length === 0 && (
-                <div className="md:col-span-3 p-4 rounded-xl border-2 border-dashed border-slate-200 dark:border-slate-700 text-center text-sm text-muted-foreground flex items-center justify-center">
-                  Henüz rozet kazanmadın — soru çözerek XP topla, ilk rozetin seni bekliyor!
-                </div>
-              )}
-              {upcomingBadge && (
-                <div className="relative p-4 rounded-xl text-center border-2 bg-slate-50 dark:bg-slate-900/30 border-slate-200 dark:border-slate-700">
-                  <div className="mx-auto mb-2 flex justify-center">
-                    <BadgeShield badge={upcomingBadge} size={48} locked />
-                  </div>
-                  <p className="font-semibold text-sm">Sıradaki: {upcomingBadge.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {Math.max(0, upcomingBadge.xpThreshold - xp)} XP kaldı
-                  </p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
       {newBadges.length > 0 && (
         <BadgeUnlockModal badges={newBadges} onClose={() => setNewBadges([])} />
       )}
-
-      <motion.div variants={itemVariants}>
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-[#D9790B]" />
-              Hızlı İşlemler
-            </CardTitle>
-            <CardDescription>
-              Okunmamış mesaj: {data?.quickActionsCount?.unreadMessages || 0} • Duyuru: {data?.quickActionsCount?.announcements || 0}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {actionMap.map((action) => (
-                <Button key={action.label} variant="outline" className="h-auto py-6 w-full flex-col gap-3 border-2" onClick={action.onClick}>
-                  <action.icon className="h-6 w-6 text-brand-accent" />
-                  <span className="font-medium">{action.label}</span>
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
-      <motion.div variants={itemVariants}>
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-green-600" />
-              Son Sonuçlar
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(data?.recentResults || []).map((result, index) => (
-                <div key={`${result.subject}-${index}`} className="flex items-center justify-between p-4 rounded-xl bg-gradient-to-r from-gray-50 to-white dark:from-gray-800/50 dark:to-gray-900/50 border">
-                  <div className="flex items-center gap-4">
-                    <div className={`w-14 h-14 rounded-xl flex items-center justify-center text-white font-bold text-xl ${
-                      result.score >= 80
-                        ? 'bg-gradient-to-br from-green-500 to-emerald-600'
-                        : result.score >= 60
-                          ? 'bg-gradient-to-br from-yellow-500 to-orange-600'
-                          : 'bg-gradient-to-br from-red-500 to-pink-600'
-                    }`}>
-                      {result.score}
-                    </div>
-                    <div>
-                      <p className="font-semibold">{result.subject}</p>
-                      <p className="text-sm text-muted-foreground">{result.type}</p>
-                    </div>
-                  </div>
-                  <Badge variant="outline">
-                    {new Date(result.date).toLocaleDateString('tr-TR')}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
     </motion.div>
   );
 }

@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '../../components/ui/button';
 
@@ -12,7 +13,7 @@ export const itemMotion = {
 };
 
 export const panelClass =
-  'rounded-[14px] border border-white/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.86),rgba(5,22,42,0.78))] shadow-[0_18px_52px_rgba(0,0,0,0.24)] backdrop-blur-2xl';
+  'rounded-[14px] border border-foreground/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.86),rgba(5,22,42,0.78))] shadow-[0_18px_52px_rgba(0,0,0,0.24)] backdrop-blur-2xl';
 
 export const toneMap = {
   blue: 'from-blue-500/30 to-blue-600/10 text-blue-300 shadow-blue-500/20',
@@ -54,6 +55,23 @@ export function normalizeText(value = '') {
 export function safeNumber(value) {
   const number = Number(value || 0);
   return Number.isFinite(number) ? number : 0;
+}
+
+function buildSmoothPath(points) {
+  if (points.length < 2) return '';
+  const path = [`M ${points[0].x} ${points[0].y}`];
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p0 = points[index - 1] || points[index];
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    const p3 = points[index + 2] || p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    path.push(`C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${p2.x} ${p2.y}`);
+  }
+  return path.join(' ');
 }
 
 export function formatMoney(value, currency = 'TRY') {
@@ -142,14 +160,14 @@ export function StatusPill({ children, tone = 'green' }) {
     red: 'bg-red-500/12 text-red-300',
     blue: 'bg-blue-500/12 text-blue-300',
     purple: 'bg-purple-500/12 text-purple-300',
-    slate: 'bg-white/[0.06] text-slate-300',
+    slate: 'bg-foreground/[0.06] text-slate-300',
   };
   return <span className={`inline-flex rounded-[8px] px-3 py-1 text-xs font-black ${styles[tone] || styles.slate}`}>{children}</span>;
 }
 
 export function EmptyPanel({ title = 'Kayıt bulunamadı', description = 'Bu bölüm için henüz canlı veri gelmedi.' }) {
   return (
-    <div className="rounded-[12px] border border-white/[0.08] bg-white/[0.03] p-8 text-center">
+    <div className="rounded-[12px] border border-foreground/[0.08] bg-foreground/[0.03] p-8 text-center">
       <p className="text-base font-black text-white">{title}</p>
       <p className="mt-1 text-sm text-slate-400">{description}</p>
     </div>
@@ -161,7 +179,7 @@ export function SmallButton({ children, className = '', ...props }) {
     <Button
       type="button"
       variant="ghost"
-      className={`h-10 rounded-[10px] border border-white/[0.08] bg-white/[0.035] px-4 text-slate-200 hover:border-[hsl(var(--brand-accent)/0.45)] hover:bg-[hsl(var(--brand-accent)/0.12)] hover:text-white ${className}`}
+      className={`h-10 rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.035] px-4 text-slate-200 hover:border-[hsl(var(--brand-accent)/0.45)] hover:bg-[hsl(var(--brand-accent)/0.12)] hover:text-white ${className}`}
       {...props}
     >
       {children}
@@ -191,7 +209,10 @@ export function DonutChart({ items, center, size = 168 }) {
 }
 
 export function LineChart({ values, labels = [], color = '#a855f7', className = 'h-56' }) {
-  const clean = values.map(safeNumber);
+  const gid = useId();
+  const clean = values.map(safeNumber).filter((value) => Number.isFinite(value));
+  if (!clean.length) return <EmptyPanel title="Grafik verisi yok" description="Bu grafik canlı veri geldiğinde oluşacak." />;
+
   const max = Math.max(100, ...clean, 1);
   const width = 520;
   const height = 220;
@@ -202,24 +223,49 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
       return { x, y, value };
     })
     : [];
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
-  const area = points.length ? `${path} L ${points.at(-1).x} ${height} L ${points[0].x} ${height} Z` : '';
+  const path = buildSmoothPath(points);
+  const area = path ? `${path} L ${points.at(-1).x} ${height} L ${points[0].x} ${height} Z` : '';
 
   return (
     <div className={`w-full overflow-hidden ${className}`}>
       <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full">
         <defs>
-          <linearGradient id="parentLineFill" x1="0" x2="0" y1="0" y2="1">
+          <linearGradient id={`parentLineStroke-${gid}`} x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor={color} stopOpacity="0.75" />
+            <stop offset="55%" stopColor="#c084fc" />
+            <stop offset="100%" stopColor="#38bdf8" />
+          </linearGradient>
+          <linearGradient id={`parentLineFill-${gid}`} x1="0" x2="0" y1="0" y2="1">
             <stop offset="0%" stopColor={color} stopOpacity="0.34" />
             <stop offset="100%" stopColor={color} stopOpacity="0" />
           </linearGradient>
+          <filter id={`parentLineGlow-${gid}`} x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
         </defs>
         {[0, 25, 50, 75, 100].map((tick) => {
           const y = height - (tick / 100) * (height - 26) - 12;
-          return <line key={tick} x1="0" x2={width} y1={y} y2={y} stroke="rgba(255,255,255,0.06)" />;
+          return <line key={tick} x1="0" x2={width} y1={y} y2={y} stroke="rgba(255,255,255,0.07)" strokeDasharray="5 8" />;
         })}
-        {area ? <path d={area} fill="url(#parentLineFill)" /> : null}
-        {path ? <path d={path} fill="none" stroke={color} strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" /> : null}
+        {area ? <path d={area} fill={`url(#parentLineFill-${gid})`} /> : null}
+        {path ? (
+          <motion.path
+            d={path}
+            fill="none"
+            stroke={`url(#parentLineStroke-${gid})`}
+            strokeWidth="4"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            filter={`url(#parentLineGlow-${gid})`}
+            initial={{ pathLength: 0, opacity: 0.3 }}
+            animate={{ pathLength: 1, opacity: 1 }}
+            transition={{ duration: 1, ease: 'easeOut' }}
+          />
+        ) : null}
         {points.map((point, index) => (
           <g key={`${point.x}-${point.y}`}>
             <circle cx={point.x} cy={point.y} r="6" fill={color} stroke="#091a31" strokeWidth="3" />
@@ -241,7 +287,7 @@ export function BarChart({ items, color = '#7c3aed', className = 'h-56' }) {
         return (
           <div key={item.label} className="flex flex-1 flex-col items-center gap-2">
             <div className="text-xs font-bold text-slate-300">{item.display || item.value}</div>
-            <div className="relative h-40 w-full max-w-[42px] overflow-hidden rounded-t-[10px] bg-white/[0.05]">
+            <div className="relative h-40 w-full max-w-[42px] overflow-hidden rounded-t-[10px] bg-foreground/[0.05]">
               <div className="absolute bottom-0 left-0 right-0 rounded-t-[10px]" style={{ height: `${height}%`, background: `linear-gradient(180deg, ${color}, rgba(124,58,237,0.55))`, boxShadow: `0 0 26px ${color}55` }} />
             </div>
             <div className="text-center text-xs text-slate-400">{item.label}</div>
