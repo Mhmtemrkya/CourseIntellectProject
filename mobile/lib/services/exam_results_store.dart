@@ -8,7 +8,9 @@ class ExamScoreRecord {
   final String studentName;
   final String className;
   int score;
-  int net;
+  double net;
+  int? classRank;
+  int? overallRank;
 
   ExamScoreRecord({
     required this.examTitle,
@@ -19,6 +21,8 @@ class ExamScoreRecord {
     required this.className,
     required this.score,
     required this.net,
+    this.classRank,
+    this.overallRank,
   });
 }
 
@@ -73,7 +77,9 @@ class ExamResultsStore extends ChangeNotifier {
     required String studentName,
     required String className,
     required int score,
-    required int net,
+    required double net,
+    int? classRank,
+    int? overallRank,
   }) {
     final existing = _records
         .where(
@@ -85,6 +91,8 @@ class ExamResultsStore extends ChangeNotifier {
     if (existing != null) {
       existing.score = score;
       existing.net = net;
+      existing.classRank = classRank;
+      existing.overallRank = overallRank;
     } else {
       _records.insert(
         0,
@@ -97,6 +105,8 @@ class ExamResultsStore extends ChangeNotifier {
           className: className,
           score: score,
           net: net,
+          classRank: classRank,
+          overallRank: overallRank,
         ),
       );
     }

@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import 'admin_branch_comparison_page.dart';
 import 'admin_workflow_hub_page.dart';
+import 'duties_board_page.dart';
+import 'duty_create_page.dart';
 import 'admin_global_search_page.dart';
 import 'admin_kpi_dashboard_page.dart';
 import 'admin_announcements_page.dart';
@@ -185,6 +187,42 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
               const SizedBox(height: 18),
               const AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _quickCard(
+                      context,
+                      title: 'Nöbet Oluştur',
+                      subtitle: 'Öğretmenlere nöbet ata',
+                      color: const Color(0xFFF97316),
+                      icon: Icons.add_alarm_rounded,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DutyCreatePage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _quickCard(
+                      context,
+                      title: 'Tüm Nöbetler',
+                      subtitle: 'Çizelge, denge, boş günler',
+                      color: const Color(0xFFF59E0B),
+                      icon: Icons.shield_outlined,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const DutiesBoardPage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [

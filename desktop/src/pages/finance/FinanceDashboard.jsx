@@ -18,6 +18,7 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard, fetchFinanceDashboard } from '../../lib/api/modules';
+import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import {
   MiniBarChart,
   MiniDonut,
@@ -38,13 +39,11 @@ const itemVariants = {
 };
 
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
 }
 
 function normalizeStatus(value = '') {
-  return String(value).toLowerCase();
+  return normalizeFinanceText(value);
 }
 
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];

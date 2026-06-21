@@ -18,7 +18,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createAccountingNotification, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
-import { downloadCsvRows } from '../../lib/financeDocuments';
+import { downloadCsvRows, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,9 +31,7 @@ const itemVariants = {
 };
 
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
 }
 
 function calculateDaysLate(dueValue) {
@@ -77,7 +75,7 @@ export default function LatePayments() {
   const latePayments = useMemo(() => {
     const studentMap = new Map(students.map((student) => [String(student.fullName).toLowerCase(), student]));
     return (dashboard?.installments || [])
-      .filter((item) => String(item.status || '').toLowerCase().includes('gec'))
+      .filter((item) => normalizeFinanceText(item.status).includes('gec'))
       .map((item) => {
         const student = studentMap.get(String(item.student).toLowerCase());
         return {

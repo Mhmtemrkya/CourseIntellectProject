@@ -487,12 +487,38 @@ class AccountingFinanceStore extends ChangeNotifier {
       .fold<int>(0, (sum, item) => sum + parseAmount(item.amount));
 
   int parseAmount(String amount) {
-    final normalized = amount
-        .replaceAll('₺', '')
-        .replaceAll('.', '')
-        .replaceAll(',', '')
-        .trim();
-    return int.tryParse(normalized) ?? 0;
+    var normalized = amount.replaceAll(RegExp(r'[^0-9,.\-]'), '').trim();
+    if (normalized.isEmpty ||
+        normalized == '-' ||
+        normalized == ',' ||
+        normalized == '.') {
+      return 0;
+    }
+
+    final lastComma = normalized.lastIndexOf(',');
+    final lastDot = normalized.lastIndexOf('.');
+    String? decimalSeparator;
+    if (lastComma >= 0 && lastDot >= 0) {
+      decimalSeparator = lastComma > lastDot ? ',' : '.';
+    } else if (lastComma >= 0) {
+      final fractionLength = normalized.length - lastComma - 1;
+      decimalSeparator = fractionLength > 0 && fractionLength <= 2 ? ',' : null;
+    } else if (lastDot >= 0) {
+      final fractionLength = normalized.length - lastDot - 1;
+      decimalSeparator = fractionLength > 0 && fractionLength <= 2 ? '.' : null;
+    }
+
+    if (decimalSeparator != null) {
+      final thousandSeparator = decimalSeparator == ',' ? '.' : ',';
+      normalized = normalized
+          .replaceAll(thousandSeparator, '')
+          .replaceAll(decimalSeparator, '.');
+    } else {
+      normalized = normalized.replaceAll(RegExp(r'[,.]'), '');
+    }
+
+    final parsed = double.tryParse(normalized);
+    return parsed == null ? 0 : parsed.round();
   }
 
   String formatAmount(int amount) {

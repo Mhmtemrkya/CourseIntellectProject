@@ -192,19 +192,23 @@ public sealed class AccountingService(
 
         if (approval.SourceType == "invoice")
         {
-            var invoice = await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Title == approval.SourceKey, cancellationToken);
+            var invoice = Guid.TryParse(approval.SourceKey, out var invoiceId)
+                ? await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Id == invoiceId, cancellationToken)
+                : await dbContext.AccountingInvoices.FirstOrDefaultAsync(x => x.Title == approval.SourceKey, cancellationToken);
             if (invoice is not null)
             {
-                invoice.Status = approval.Status == "Onaylandı" ? "Onaylandı" : "Reddedildi";
+                invoice.Status = IsApprovedStatus(approval.Status) ? "Onaylandı" : "Reddedildi";
             }
         }
 
         if (approval.SourceType == "salary")
         {
-            var salary = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Employee == approval.SourceKey, cancellationToken);
+            var salary = Guid.TryParse(approval.SourceKey, out var salaryId)
+                ? await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == salaryId, cancellationToken)
+                : await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Employee == approval.SourceKey, cancellationToken);
             if (salary is not null)
             {
-                salary.Status = approval.Status == "Onaylandı" ? "Planlandı" : "Reddedildi";
+                salary.Status = IsApprovedStatus(approval.Status) ? "Planlandı" : "Reddedildi";
             }
         }
 
@@ -286,8 +290,7 @@ public sealed class AccountingService(
 
     private static decimal ParseAmount(string amount)
     {
-        var cleaned = new string((amount ?? string.Empty).Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-').ToArray());
-        cleaned = cleaned.Replace(".", string.Empty).Replace(',', '.');
+        var cleaned = NormalizeMoneyNumber(amount);
         return decimal.TryParse(cleaned, NumberStyles.Any, CultureInfo.InvariantCulture, out var value) ? value : 0;
     }
 
@@ -297,6 +300,39 @@ public sealed class AccountingService(
     {
         var value = amount.Trim();
         return value.StartsWith("₺") ? value : $"₺{value}";
+    }
+
+    private static bool IsApprovedStatus(string? status)
+    {
+        var normalized = (status ?? string.Empty).Trim().ToLowerInvariant();
+        return normalized is "approved" or "onaylandı" or "onaylandi";
+    }
+
+    private static string NormalizeMoneyNumber(string? amount)
+    {
+        var cleaned = new string((amount ?? string.Empty).Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-').ToArray());
+        var lastComma = cleaned.LastIndexOf(',');
+        var lastDot = cleaned.LastIndexOf('.');
+
+        if (lastComma >= 0 && lastDot >= 0)
+        {
+            return lastComma > lastDot
+                ? cleaned.Replace(".", string.Empty).Replace(',', '.')
+                : cleaned.Replace(",", string.Empty);
+        }
+
+        if (lastComma >= 0)
+        {
+            return cleaned.Replace(".", string.Empty).Replace(',', '.');
+        }
+
+        if (lastDot >= 0)
+        {
+            var decimals = cleaned.Length - lastDot - 1;
+            return decimals == 3 ? cleaned.Replace(".", string.Empty) : cleaned;
+        }
+
+        return cleaned;
     }
 
     private static string TimeLabel()

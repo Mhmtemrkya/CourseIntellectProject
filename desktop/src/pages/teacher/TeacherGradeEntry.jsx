@@ -349,7 +349,7 @@ export default function TeacherGradeEntry() {
           studentName: row.fullName,
           className: row.className,
           score: Math.round(row.finalGrade),
-          net: Math.round(row.finalGrade),
+          net: 0,
         });
       }
       setDrafts({});

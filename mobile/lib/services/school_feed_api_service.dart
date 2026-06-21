@@ -96,8 +96,18 @@ class LiveLessonRecord {
     if (diff == 1) return 'Yarın';
     if (diff == -1) return 'Dün';
     const months = [
-      'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-      'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+      'Ocak',
+      'Şubat',
+      'Mart',
+      'Nisan',
+      'Mayıs',
+      'Haziran',
+      'Temmuz',
+      'Ağustos',
+      'Eylül',
+      'Ekim',
+      'Kasım',
+      'Aralık',
     ];
     return '${startsAt!.day} ${months[startsAt!.month - 1]} ${startsAt!.year}';
   }
@@ -221,8 +231,10 @@ class SchoolFeedApiService {
                 date: map['dateLabel'] as String,
                 studentName: map['studentName'] as String,
                 className: map['className'] as String,
-                score: map['score'] as int,
-                net: map['net'] as int,
+                score: (map['score'] as num?)?.round() ?? 0,
+                net: (map['net'] as num?)?.toDouble() ?? 0,
+                classRank: (map['classRank'] as num?)?.round(),
+                overallRank: (map['overallRank'] as num?)?.round(),
               ),
             )
             .toList()
@@ -320,12 +332,11 @@ class SchoolFeedApiService {
   Future<List<LiveLessonRecord>> fetchLiveLessons() async {
     try {
       final rooms = await LiveRoomApiService.instance.fetchRooms();
-      return rooms.map(_mapLiveRoomSession).toList()
-        ..sort((a, b) {
-          final left = a.startsAt?.millisecondsSinceEpoch ?? 0;
-          final right = b.startsAt?.millisecondsSinceEpoch ?? 0;
-          return right.compareTo(left);
-        });
+      return rooms.map(_mapLiveRoomSession).toList()..sort((a, b) {
+        final left = a.startsAt?.millisecondsSinceEpoch ?? 0;
+        final right = b.startsAt?.millisecondsSinceEpoch ?? 0;
+        return right.compareTo(left);
+      });
     } on LiveRoomApiException catch (error) {
       throw SchoolFeedApiException(error.message);
     }
@@ -390,7 +401,7 @@ class SchoolFeedApiService {
     required String studentName,
     required String className,
     required int score,
-    required int net,
+    required double net,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
@@ -432,7 +443,9 @@ class SchoolFeedApiService {
       studentName: map['studentName'] as String,
       className: map['className'] as String,
       score: map['score'] as int,
-      net: map['net'] as int,
+      net: (map['net'] as num?)?.toDouble() ?? 0,
+      classRank: (map['classRank'] as num?)?.round(),
+      overallRank: (map['overallRank'] as num?)?.round(),
     );
     ExamResultsStore.instance.upsertScore(
       examTitle: record.examTitle,
@@ -443,6 +456,8 @@ class SchoolFeedApiService {
       className: record.className,
       score: record.score,
       net: record.net,
+      classRank: record.classRank,
+      overallRank: record.overallRank,
     );
     return record;
   }
@@ -457,7 +472,8 @@ class SchoolFeedApiService {
     int? durationMinutesOverride,
   }) {
     final startsAt = startsAtOverride ?? room.startedAtUtc?.toLocal();
-    final durationMinutes = durationMinutesOverride ??
+    final durationMinutes =
+        durationMinutesOverride ??
         _durationMinutesFromTimeLabel(room.timeLabel) ??
         60;
 

@@ -37,6 +37,22 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
         .replaceAll('&#x11E;', 'Ğ');
   }
 
+  String _formatNet(num value) {
+    final rounded = (value * 100).round() / 100;
+    if (rounded == rounded.roundToDouble()) {
+      return rounded.toStringAsFixed(0);
+    }
+    return rounded.toStringAsFixed(2).replaceAll('.', ',');
+  }
+
+  String _rankText(ExamScoreRecord item) {
+    final parts = <String>[
+      if (item.classRank != null) '${item.classRank}. sınıf',
+      if (item.overallRank != null) '${item.overallRank}. genel',
+    ];
+    return parts.isEmpty ? '' : ' • ${parts.join(' / ')}';
+  }
+
   @override
   void initState() {
     super.initState();
@@ -119,16 +135,16 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
       _error = null;
     });
     try {
-      final session = await AuthSessionStore.instance.load();
-      final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
-        session,
-      );
-      final records = await SchoolFeedApiService.instance.fetchExamResults(
-        studentName: studentName,
-      );
+      await AuthSessionStore.instance.load();
+      final records = await SchoolFeedApiService.instance.fetchExamResults();
+      final studentNames = {
+        for (final record in records) _decodeText(record.studentName),
+      }..removeWhere((name) => name.trim().isEmpty);
       if (!mounted) return;
       setState(() {
-        _studentName = studentName;
+        _studentName = studentNames.length == 1
+            ? studentNames.first
+            : 'Çocuklarınız';
         _records = records;
       });
     } catch (error) {
@@ -282,7 +298,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
               value: lastTrial == null ? '-' : '${lastTrial.score}',
               subtitle: lastTrial == null
                   ? 'Deneme yok'
-                  : '${lastTrial.date} • ${lastTrial.net} net',
+                  : '${lastTrial.date} • ${_formatNet(lastTrial.net)} net',
               color: const Color(0xFFB45309),
             ),
           ),
@@ -308,7 +324,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
           value: lastTrial == null ? '-' : '${lastTrial.score}',
           subtitle: lastTrial == null
               ? 'Deneme yok'
-              : '${lastTrial.date} • ${lastTrial.net} net',
+              : '${lastTrial.date} • ${_formatNet(lastTrial.net)} net',
           color: const Color(0xFFB45309),
         ),
       ],
@@ -372,7 +388,8 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
                     (item) => _resultRow(
                       context,
                       title: _decodeText(item.examTitle),
-                      subtitle: '${item.date} • ${item.net} net',
+                      subtitle:
+                          '${item.date} • ${_formatNet(item.net)} net${_rankText(item)}',
                       score: item.score,
                       color: const Color(0xFFB45309),
                     ),
@@ -469,7 +486,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
                       context,
                       title: _decodeText(item.examTitle),
                       subtitle:
-                          '${_decodeText(item.subject)} • ${item.date} • ${item.net} net',
+                          '${_decodeText(item.subject)} • ${_decodeText(item.studentName)} • ${item.date} • ${_formatNet(item.net)} net${_rankText(item)}',
                       score: item.score,
                       color: _subjectColor(item.subject),
                     ),

@@ -6,6 +6,53 @@ import '../services/student_registry_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/responsive_overlays.dart';
 
+const _monthOptions = <String, String>{
+  'all': 'Tüm Aylar',
+  '1': 'Ocak',
+  '2': 'Şubat',
+  '3': 'Mart',
+  '4': 'Nisan',
+  '5': 'Mayıs',
+  '6': 'Haziran',
+  '7': 'Temmuz',
+  '8': 'Ağustos',
+  '9': 'Eylül',
+  '10': 'Ekim',
+  '11': 'Kasım',
+  '12': 'Aralık',
+};
+
+DateTime? _parseFinanceDate(String value) {
+  final raw = value.trim();
+  if (raw.isEmpty) return null;
+
+  final trMatch = RegExp(r'(\d{1,2})\.(\d{1,2})\.(\d{4})').firstMatch(raw);
+  if (trMatch != null) {
+    return DateTime(
+      int.parse(trMatch.group(3)!),
+      int.parse(trMatch.group(2)!),
+      int.parse(trMatch.group(1)!),
+    );
+  }
+
+  final isoMatch = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})').firstMatch(raw);
+  if (isoMatch != null) {
+    return DateTime(
+      int.parse(isoMatch.group(1)!),
+      int.parse(isoMatch.group(2)!),
+      int.parse(isoMatch.group(3)!),
+    );
+  }
+
+  return DateTime.tryParse(raw);
+}
+
+bool _monthMatches(String value, String monthFilter) {
+  if (monthFilter == 'all') return true;
+  final date = _parseFinanceDate(value);
+  return date != null && date.month == int.tryParse(monthFilter);
+}
+
 class AccountingInstallmentsPage extends StatefulWidget {
   const AccountingInstallmentsPage({super.key});
 
@@ -18,6 +65,7 @@ class _AccountingInstallmentsPageState
     extends State<AccountingInstallmentsPage> {
   final AccountingFinanceStore _store = AccountingFinanceStore.instance;
   String _filter = 'Tümü';
+  String _monthFilter = 'all';
 
   @override
   void initState() {
@@ -49,6 +97,7 @@ class _AccountingInstallmentsPageState
   Widget build(BuildContext context) {
     final filtered = _store.installments
         .where((plan) => _filter == 'Tümü' || plan.status == _filter)
+        .where((plan) => _monthMatches(plan.due, _monthFilter))
         .toList();
 
     return AccountingScaffold(
@@ -77,12 +126,12 @@ class _AccountingInstallmentsPageState
               AccountingHeroMetric(
                 label: 'Bekleyen',
                 value:
-                    '${_store.installments.where((item) => item.status == 'Bekleyen').length} plan',
+                    '${filtered.where((item) => item.status == 'Bekleyen').length} plan',
               ),
               AccountingHeroMetric(
                 label: 'Geciken',
                 value:
-                    '${_store.installments.where((item) => item.status == 'Geciken').length} plan',
+                    '${filtered.where((item) => item.status == 'Geciken').length} plan',
               ),
             ],
           ),
@@ -90,7 +139,7 @@ class _AccountingInstallmentsPageState
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: ['Tümü', 'Bekleyen', 'Alınan', 'Geciken', 'Sonraki Ay']
+              children: ['Tümü', 'Bekleyen', 'Ödendi', 'Geciken', 'Sonraki Ay']
                   .map(
                     (status) => Padding(
                       padding: const EdgeInsets.only(right: 8),
@@ -104,7 +153,28 @@ class _AccountingInstallmentsPageState
                   .toList(),
             ),
           ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _monthFilter,
+            decoration: const InputDecoration(
+              labelText: 'Ay filtresi',
+              border: OutlineInputBorder(),
+            ),
+            items: _monthOptions.entries
+                .map(
+                  (entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _monthFilter = value ?? 'all'),
+          ),
           const SizedBox(height: 16),
+          if (filtered.isEmpty)
+            const AccountingPanel(
+              child: Text('Seçili filtreye uygun taksit bulunamadı.'),
+            ),
           ...filtered.map((plan) => _planCard(context, plan)),
         ],
       ),
@@ -113,7 +183,7 @@ class _AccountingInstallmentsPageState
 
   Widget _planCard(BuildContext context, InstallmentRecord plan) {
     final color = switch (plan.status) {
-      'Alınan' => const Color(0xFF0F766E),
+      'Ödendi' => const Color(0xFF0F766E),
       'Geciken' => const Color(0xFFB42318),
       'Sonraki Ay' => const Color(0xFF7C3AED),
       _ => const Color(0xFF2563EB),

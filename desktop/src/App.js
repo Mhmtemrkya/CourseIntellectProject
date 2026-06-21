@@ -61,6 +61,9 @@ import TeacherExams from "./pages/teacher/TeacherExams";
 import TeacherAssignments from "./pages/teacher/TeacherAssignments";
 import TeacherLive from "./pages/teacher/TeacherLive";
 import TeacherReports from "./pages/teacher/TeacherReports";
+const TeacherDuties = lazyWithReload(() => import("./pages/teacher/TeacherDuties"));
+const DutyCreate = lazyWithReload(() => import("./pages/admin/DutyCreate"));
+const DutiesBoard = lazyWithReload(() => import("./pages/admin/DutiesBoard"));
 import TeacherQuestionBank from "./pages/teacher/TeacherQuestionBank";
 import TeacherBulkQuestionUpload from "./pages/teacher/TeacherBulkQuestionUpload";
 import ExamSolvingPage from "./pages/solving/ExamSolvingPage";
@@ -234,6 +237,8 @@ function App() {
               <Route path="/chat" element={<Chat />} />
               <Route path="/admin/academics" element={<AdminAcademics />} />
               <Route path="/admin/exam-papers" element={<TeacherReports />} />
+              <Route path="/admin/duty-create" element={<DutyCreate />} />
+              <Route path="/admin/duties" element={<DutiesBoard />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
               <Route path="/admin/finance" element={<AdminFinance />} />
               <Route path="/admin/profile" element={<AdminProfile />} />
@@ -308,6 +313,7 @@ function App() {
               <Route path="/t/live-lessons" element={<TeacherLive />} />
               <Route path="/t/live-room" element={<TeacherLiveRoom />} />
               <Route path="/t/reports" element={<TeacherReports />} />
+              <Route path="/t/duties" element={<TeacherDuties />} />
               <Route path="/t/question-bank" element={<TeacherQuestionBank />} />
               <Route path="/t/question-bank/import" element={<TeacherBulkQuestionUpload />} />
               <Route path="/t/question-studio" element={<TeacherQuestionStudio />} />

@@ -11,10 +11,16 @@ import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
-import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 function normalizeDate(value) {
   if (!value) return null;
+  const trMatch = String(value).match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (trMatch) {
+    const [, day, month, year, hour = '0', minute = '0'] = trMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
@@ -90,7 +96,7 @@ export default function CollectionCalendar() {
   const summary = useMemo(() => ({
     total: calendarEntries.reduce((sum, item) => sum + item.amountValue, 0),
     count: calendarEntries.length,
-    overdue: calendarEntries.filter((item) => String(item.status || '').toLowerCase().includes('gec')).length,
+    overdue: calendarEntries.filter((item) => normalizeFinanceText(item.status).includes('gec')).length,
   }), [calendarEntries]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;

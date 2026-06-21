@@ -98,6 +98,7 @@ public sealed record TeacherExamPaperReportResponse(
     Guid Id,
     Guid ExamSessionId,
     string Status,
+    string? DownloadUrl,
     DateTime CreatedAtUtc,
     DateTime? ReadyAtUtc,
     string StudentName,

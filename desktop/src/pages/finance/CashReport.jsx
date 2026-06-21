@@ -18,6 +18,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
+import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -34,9 +35,7 @@ function formatCurrency(val) {
 }
 
 function parseAmount(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
 }
 
 export default function CashReport() {
@@ -66,17 +65,23 @@ export default function CashReport() {
   }, [dashboard]);
 
   const cashTotal = useMemo(
-    () => collections.filter((c) => String(c.method || c.paymentMethod || c.type || '').toLowerCase().includes('nakit')).reduce((s, c) => s + parseAmount(c.amount), 0),
+    () => collections.filter((c) => normalizeFinanceText(c.method || c.paymentMethod || c.type).includes('nakit')).reduce((s, c) => s + parseAmount(c.amount), 0),
     [collections],
   );
 
   const cardTotal = useMemo(
-    () => collections.filter((c) => String(c.method || c.paymentMethod || c.type || '').toLowerCase().includes('kart') || String(c.method || c.paymentMethod || c.type || '').toLowerCase().includes('credit')).reduce((s, c) => s + parseAmount(c.amount), 0),
+    () => collections.filter((c) => {
+      const method = normalizeFinanceText(c.method || c.paymentMethod || c.type);
+      return method.includes('kart') || method.includes('card') || method.includes('credit') || method.includes('pos');
+    }).reduce((s, c) => s + parseAmount(c.amount), 0),
     [collections],
   );
 
   const bankTotal = useMemo(
-    () => collections.filter((c) => String(c.method || c.paymentMethod || c.type || '').toLowerCase().includes('havale') || String(c.method || c.paymentMethod || c.type || '').toLowerCase().includes('eft') || String(c.method || c.paymentMethod || c.type || '').toLowerCase().includes('bank')).reduce((s, c) => s + parseAmount(c.amount), 0),
+    () => collections.filter((c) => {
+      const method = normalizeFinanceText(c.method || c.paymentMethod || c.type);
+      return method.includes('havale') || method.includes('eft') || method.includes('bank') || method.includes('banka') || method.includes('transfer');
+    }).reduce((s, c) => s + parseAmount(c.amount), 0),
     [collections],
   );
 

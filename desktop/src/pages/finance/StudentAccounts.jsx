@@ -29,6 +29,8 @@ import {
   buildFinanceDocumentHtml,
   downloadFinanceHtml,
   formatCurrency,
+  normalizeFinanceText,
+  parseFinanceMoney,
   printFinanceHtml,
 } from '../../lib/financeDocuments';
 
@@ -44,9 +46,7 @@ const itemVariants = {
 const FALLBACK_CLASSES = [];
 
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
 }
 
 function buildAccount(student, dashboard) {
@@ -56,7 +56,7 @@ function buildAccount(student, dashboard) {
   const totalFee = invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0) || installments.reduce((sum, item) => sum + parseMoney(item.amount), 0);
   const paid = collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
   const balance = paid - totalFee;
-  const overdue = installments.some((item) => String(item.status || '').toLowerCase().includes('gec'));
+  const overdue = installments.some((item) => normalizeFinanceText(item.status).includes('gec'));
   const status = totalFee > 0 && paid >= totalFee ? 'paid' : overdue ? 'overdue' : 'current';
   return {
     id: student.id,

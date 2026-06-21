@@ -13,5 +13,5 @@ public sealed class ExamResult : ITenantScopedEntity
     public string StudentName { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;
     public int Score { get; set; }
-    public int Net { get; set; }
+    public decimal Net { get; set; }
 }

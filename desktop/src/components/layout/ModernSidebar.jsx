@@ -46,7 +46,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield } from "lucide-react";
+import { Activity, Layers, Shield, ShieldCheck, CalendarPlus } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -136,6 +136,18 @@ export const menuConfigs = {
       icon: FileText,
       label: "Sınav Kağıtları",
       color: "#a855f7",
+    },
+    {
+      path: "/admin/duty-create",
+      icon: CalendarPlus,
+      label: "Nöbet Oluştur",
+      color: "#f97316",
+    },
+    {
+      path: "/admin/duties",
+      icon: ShieldCheck,
+      label: "Tüm Nöbetler",
+      color: "#f59e0b",
     },
     {
       path: "/admin/task-center",
@@ -310,6 +322,18 @@ export const menuConfigs = {
       icon: Activity,
       label: "Operasyon",
       color: "#14b8a6",
+    },
+    {
+      path: "/admin/duty-create",
+      icon: CalendarPlus,
+      label: "Nöbet Oluştur",
+      color: "#f97316",
+    },
+    {
+      path: "/admin/duties",
+      icon: ShieldCheck,
+      label: "Tüm Nöbetler",
+      color: "#f59e0b",
     },
     {
       path: "/admin/service-tracking",
@@ -655,6 +679,12 @@ export const menuConfigs = {
       color: "#22c55e",
     },
     {
+      path: "/t/duties",
+      icon: ShieldCheck,
+      label: "Nöbetlerim",
+      color: "#f97316",
+    },
+    {
       path: "/t/announcements",
       icon: Bell,
       label: "Duyurular",
@@ -917,7 +947,7 @@ export const ROLE_LABELS = {
 const ROLE_MENU_GROUPS = {
   admin: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks"] },
-    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses"] },
+    { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "approvals", "password-reset"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons"] },
     { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
@@ -927,7 +957,7 @@ const ROLE_MENU_GROUPS = {
     { id: "system", title: "Sistem", modules: ["role-management", "profile", "system"] },
   ],
   administrative: [
-    { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule"] },
+    { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule", "duties"] },
     { id: "records", title: "İdari İşler", modules: ["records", "documents", "approvals", "password-reset", "registrations", "role-management"] },
     { id: "reports", title: "Raporlar", modules: ["reports"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat"] },
@@ -950,7 +980,7 @@ const ROLE_MENU_GROUPS = {
     { id: "support", title: "Destek", modules: ["support"] },
   ],
   teacher: [
-    { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons"] },
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons", "duties"] },
     { id: "learning", title: "Ders & İçerik", modules: ["content", "question-bank", "questions"] },
     { id: "assessment", title: "Sınav & Not", modules: ["exams", "mock-exams", "grade-entry", "reports"] },
     { id: "students", title: "Öğrenci Takibi", modules: ["assignments", "meetings"] },
@@ -1168,6 +1198,9 @@ function inferModuleKey(item) {
     "/reports": "reports",
     "/admin/exam-papers": "reports",
     "/t/reports": "reports",
+    "/t/duties": "duties",
+    "/admin/duty-create": "duties",
+    "/admin/duties": "duties",
     "/s/exam-results": "reports",
     "/s/wrong-answers": "reports",
     "/p/weekly-report": "reports",

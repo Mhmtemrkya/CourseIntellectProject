@@ -8,5 +8,8 @@ public sealed record CreateExamResultRequest(
     string StudentName,
     string ClassName,
     int Score,
-    int Net
+    decimal Net,
+    int? CorrectCount = null,
+    int? WrongCount = null,
+    int? TotalQuestions = null
 );

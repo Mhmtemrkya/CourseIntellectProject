@@ -6,6 +6,53 @@ import '../services/student_registry_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/responsive_overlays.dart';
 
+const _monthOptions = <String, String>{
+  'all': 'Tüm Aylar',
+  '1': 'Ocak',
+  '2': 'Şubat',
+  '3': 'Mart',
+  '4': 'Nisan',
+  '5': 'Mayıs',
+  '6': 'Haziran',
+  '7': 'Temmuz',
+  '8': 'Ağustos',
+  '9': 'Eylül',
+  '10': 'Ekim',
+  '11': 'Kasım',
+  '12': 'Aralık',
+};
+
+DateTime? _parseFinanceDate(String value) {
+  final raw = value.trim();
+  if (raw.isEmpty) return null;
+
+  final trMatch = RegExp(r'(\d{1,2})\.(\d{1,2})\.(\d{4})').firstMatch(raw);
+  if (trMatch != null) {
+    return DateTime(
+      int.parse(trMatch.group(3)!),
+      int.parse(trMatch.group(2)!),
+      int.parse(trMatch.group(1)!),
+    );
+  }
+
+  final isoMatch = RegExp(r'(\d{4})-(\d{1,2})-(\d{1,2})').firstMatch(raw);
+  if (isoMatch != null) {
+    return DateTime(
+      int.parse(isoMatch.group(1)!),
+      int.parse(isoMatch.group(2)!),
+      int.parse(isoMatch.group(3)!),
+    );
+  }
+
+  return DateTime.tryParse(raw);
+}
+
+bool _monthMatches(String value, String monthFilter) {
+  if (monthFilter == 'all') return true;
+  final date = _parseFinanceDate(value);
+  return date != null && date.month == int.tryParse(monthFilter);
+}
+
 class AccountingReceiptsPage extends StatefulWidget {
   const AccountingReceiptsPage({super.key});
 
@@ -16,6 +63,8 @@ class AccountingReceiptsPage extends StatefulWidget {
 class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
   final AccountingFinanceStore _store = AccountingFinanceStore.instance;
   final StudentRegistryStore _studentStore = StudentRegistryStore.instance;
+  String _viewMode = 'received';
+  String _monthFilter = 'all';
 
   @override
   void initState() {
@@ -43,6 +92,25 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final filteredCollections = _store.collections
+        .where((item) => _monthMatches(item.time, _monthFilter))
+        .toList();
+    final filteredPlans = _store.installments
+        .where((item) => _monthMatches(item.due, _monthFilter))
+        .toList();
+    final visibleTotal = _viewMode == 'planned'
+        ? filteredPlans.fold<int>(
+            0,
+            (sum, item) => sum + _plannedCollectionAmount(item),
+          )
+        : filteredCollections.fold<int>(
+            0,
+            (sum, item) => sum + _store.parseAmount(item.amount),
+          );
+    final visibleCount = _viewMode == 'planned'
+        ? filteredPlans.length
+        : filteredCollections.length;
+
     return AccountingScaffold(
       appBar: AppBar(
         title: const Text(
@@ -68,50 +136,82 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
             metrics: [
               AccountingHeroMetric(
                 label: 'Toplam',
-                value: _store.formatAmount(_store.collectedTotal),
+                value: _store.formatAmount(visibleTotal),
               ),
-              AccountingHeroMetric(
-                label: 'İşlem',
-                value: '${_store.collections.length}',
-              ),
+              AccountingHeroMetric(label: 'İşlem', value: '$visibleCount'),
             ],
           ),
           const SizedBox(height: 16),
-          _summaryCard(context),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                AccountingFilterChip(
+                  label: 'Alınan Tahsilatlar',
+                  selected: _viewMode == 'received',
+                  onTap: () => setState(() => _viewMode = 'received'),
+                ),
+                const SizedBox(width: 8),
+                AccountingFilterChip(
+                  label: 'Planlanan Tahsilatlar',
+                  selected: _viewMode == 'planned',
+                  onTap: () => setState(() => _viewMode = 'planned'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          DropdownButtonFormField<String>(
+            initialValue: _monthFilter,
+            decoration: const InputDecoration(
+              labelText: 'Ay filtresi',
+              border: OutlineInputBorder(),
+            ),
+            items: _monthOptions.entries
+                .map(
+                  (entry) => DropdownMenuItem(
+                    value: entry.key,
+                    child: Text(entry.value),
+                  ),
+                )
+                .toList(),
+            onChanged: (value) => setState(() => _monthFilter = value ?? 'all'),
+          ),
           const SizedBox(height: 16),
-          ..._store.collections.map((item) => _collectionCard(context, item)),
+          _summaryCard(context, visibleTotal, visibleCount),
+          const SizedBox(height: 16),
+          if (_viewMode == 'received' && filteredCollections.isEmpty)
+            const AccountingPanel(
+              child: Text('Seçili ayda alınan tahsilat bulunamadı.'),
+            ),
+          if (_viewMode == 'planned' && filteredPlans.isEmpty)
+            const AccountingPanel(
+              child: Text('Seçili ayda planlanan tahsilat bulunamadı.'),
+            ),
+          if (_viewMode == 'received')
+            ...filteredCollections.map((item) => _collectionCard(context, item))
+          else
+            ...filteredPlans.map(
+              (item) => _plannedCollectionCard(context, item),
+            ),
         ],
       ),
     );
   }
 
-  Widget _summaryCard(BuildContext context) {
+  Widget _summaryCard(BuildContext context, int total, int count) {
     return AccountingPanel(
       child: Row(
         children: [
           Expanded(
-            child: _summaryItem(
-              context,
-              'Toplam',
-              _store.formatAmount(_store.collectedTotal),
-            ),
+            child: _summaryItem(context, 'Toplam', _store.formatAmount(total)),
           ),
-          Expanded(
-            child: _summaryItem(
-              context,
-              'İşlem',
-              '${_store.collections.length}',
-            ),
-          ),
+          Expanded(child: _summaryItem(context, 'İşlem', '$count')),
           Expanded(
             child: _summaryItem(
               context,
               'Ortalama',
-              _store.collections.isEmpty
-                  ? '₺0'
-                  : _store.formatAmount(
-                      _store.collectedTotal ~/ _store.collections.length,
-                    ),
+              count == 0 ? '₺0' : _store.formatAmount(total ~/ count),
             ),
           ),
         ],
@@ -190,6 +290,66 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _plannedCollectionCard(BuildContext context, InstallmentRecord item) {
+    final amount = _plannedCollectionAmount(item);
+    final isPaid = item.status == 'Ödendi';
+    final color = isPaid ? const Color(0xFF0F766E) : const Color(0xFFB45309);
+    return AccountingPanel(
+      margin: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(Icons.event_available_outlined, color: color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  item.student,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${item.status} • Vade: ${item.due}',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                _store.formatAmount(amount),
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: color,
+                ),
+              ),
+              const SizedBox(height: 6),
+              FilledButton.tonal(
+                onPressed: isPaid
+                    ? null
+                    : () => _showNewCollectionSheet(prefillPlan: item),
+                child: const Text('Tahsilat Al'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -342,13 +502,44 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
     );
   }
 
-  void _showNewCollectionSheet() {
+  int _plannedCollectionAmount(InstallmentRecord plan) {
+    final remainingMatch = RegExp(
+      r'Kalan\s+(.+)$',
+      caseSensitive: false,
+    ).firstMatch(plan.note);
+    if (remainingMatch != null) {
+      return _store.parseAmount(remainingMatch.group(1)!);
+    }
+    if (plan.status == 'Ödendi') return 0;
+    return _store.parseAmount(plan.amount);
+  }
+
+  void _showNewCollectionSheet({InstallmentRecord? prefillPlan}) {
     final studentOptions = _studentStore.students;
-    String selectedStudent = studentOptions.firstOrNull?.fullName ?? '';
-    String selectedClass = studentOptions.firstOrNull?.className ?? '';
-    String selectedMethod = 'Kredi Kartı';
-    final amountController = TextEditingController();
-    final noteController = TextEditingController();
+    String selectedStudent =
+        prefillPlan?.student ?? studentOptions.firstOrNull?.fullName ?? '';
+    String selectedClass =
+        studentOptions
+            .where((item) => item.fullName == selectedStudent)
+            .firstOrNull
+            ?.className ??
+        '';
+    bool hasSelectedStudentOption = studentOptions.any(
+      (item) => item.fullName == selectedStudent,
+    );
+    String selectedMethod = prefillPlan == null ? 'Kredi Kartı' : 'Nakit';
+    final amountController = TextEditingController(
+      text: prefillPlan == null
+          ? ''
+          : _plannedCollectionAmount(prefillPlan).toString(),
+    );
+    final noteController = TextEditingController(
+      text: prefillPlan == null
+          ? ''
+          : (prefillPlan.note.isNotEmpty
+                ? prefillPlan.note
+                : 'Taksit tahsilatı • ${prefillPlan.due}'),
+    );
 
     showModalBottomSheet<void>(
       context: context,
@@ -405,7 +596,9 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             ),
                             const SizedBox(height: 16),
                             DropdownButtonFormField<String>(
-                              initialValue: selectedStudent,
+                              initialValue: hasSelectedStudentOption
+                                  ? selectedStudent
+                                  : null,
                               decoration: const InputDecoration(
                                 labelText: 'Öğrenci',
                                 border: OutlineInputBorder(),
@@ -420,6 +613,9 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                                   .toList(),
                               onChanged: (value) => setSheetState(() {
                                 selectedStudent = value ?? selectedStudent;
+                                hasSelectedStudentOption = studentOptions.any(
+                                  (item) => item.fullName == selectedStudent,
+                                );
                                 final student = studentOptions
                                     .where(
                                       (item) =>

@@ -1,11 +1,25 @@
 export function parseFinanceMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
+  const raw = String(value ?? '0').trim();
+  const cleaned = raw.replace(/[^\d,.-]/g, '');
+  const hasComma = cleaned.includes(',');
+  const normalized = hasComma
+    ? cleaned.replace(/\./g, '').replace(',', '.')
+    : cleaned.replace(/,/g, '');
   const amount = Number(normalized);
   return Number.isFinite(amount) ? amount : 0;
 }
 
 export function formatCurrency(value) {
   return `₺${parseFinanceMoney(value).toLocaleString('tr-TR')}`;
+}
+
+export function normalizeFinanceText(value) {
+  return String(value || '')
+    .trim()
+    .toLocaleLowerCase('tr-TR')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replaceAll('ı', 'i');
 }
 
 function escapeHtml(value) {

@@ -302,7 +302,7 @@ public sealed class ExamSolvingService(
             .Where(item => item.ExamSessionId == sessionId && item.Status == "Ready")
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existing is not null) return MapReport(existing);
+        if (existing is not null && !string.IsNullOrWhiteSpace(existing.StorageKey)) return MapReport(existing);
 
         var report = new PdfReport
         {
@@ -317,10 +317,8 @@ public sealed class ExamSolvingService(
         try
         {
             var session = await GetAsync(sessionId, cancellationToken) ?? throw new InvalidOperationException("Oturum bulunamadı.");
-            // Sınav kağıdı PDF'i artık istemci tarafında (HTML→PDF) canlı oturum
-            // verisinden üretilir. Backend yalnızca rapor kaydını "hazır" işaretler;
-            // böylece öğrencinin "Sınav Kağıtlarım" listesinde görünür ve istemci
-            // talep ettiğinde birebir tasarımla oluşturulur.
+            var upload = await SaveServerPdfAsync(session, baseUrl, cancellationToken);
+            report.StorageKey = upload.FileUrl;
             report.Status = "Ready";
             report.ReadyAtUtc = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -347,7 +345,7 @@ public sealed class ExamSolvingService(
             .Where(item => item.ExamSessionId == session.Id && item.Status == "Ready")
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstOrDefaultAsync(cancellationToken);
-        if (existing is not null) return MapReport(existing);
+        if (existing is not null && !string.IsNullOrWhiteSpace(existing.StorageKey)) return MapReport(existing);
 
         var report = new PdfReport
         {
@@ -360,8 +358,8 @@ public sealed class ExamSolvingService(
 
         try
         {
-            // Sınav kağıdı istemci tarafında (HTML→PDF) üretilir; backend rapor
-            // kaydını "hazır" işaretler.
+            var upload = await SaveServerPdfAsync(session, baseUrl, cancellationToken);
+            report.StorageKey = upload.FileUrl;
             report.Status = "Ready";
             report.ReadyAtUtc = DateTime.UtcNow;
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -413,7 +411,7 @@ public sealed class ExamSolvingService(
             var correct = correctBySession.GetValueOrDefault(report.ExamSessionId);
             var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
             result.Add(new TeacherExamPaperReportResponse(
-                report.Id, report.ExamSessionId, report.Status, report.CreatedAtUtc, report.ReadyAtUtc,
+                report.Id, report.ExamSessionId, report.Status, report.StorageKey, report.CreatedAtUtc, report.ReadyAtUtc,
                 session.StudentName, session.ClassName, session.Title, session.Subject,
                 total, correct, score, session.CompletedAtUtc));
         }
@@ -530,6 +528,117 @@ public sealed class ExamSolvingService(
     private static PdfReportResponse MapReport(PdfReport report)
     {
         return new PdfReportResponse(report.Id, report.ExamSessionId, report.Status, report.StorageKey, report.ErrorMessage, report.CreatedAtUtc, report.ReadyAtUtc);
+    }
+
+    private async Task<CourseIntellect.Application.DTOs.Contents.UploadedAssetDto> SaveServerPdfAsync(
+        SolutionSessionResponse session,
+        string baseUrl,
+        CancellationToken cancellationToken)
+    {
+        var total = session.Questions.Count;
+        var correct = session.Questions.Count(item => item.Answer?.IsCorrect == true);
+        var answered = session.Questions.Count(item => item.Answer is not null
+            && (item.Answer.SelectedOptionIndex >= 0 || !string.IsNullOrWhiteSpace(item.Answer.OpenAnswer)));
+        var wrong = Math.Max(0, answered - correct);
+        var empty = Math.Max(0, total - answered);
+        var net = decimal.Round(correct - wrong / 4m, 2);
+        var score = total == 0 ? 0 : (int)Math.Round((decimal)correct / total * 100, MidpointRounding.AwayFromZero);
+
+        var lines = new List<string>
+        {
+            "CourseIntellect Sinav Raporu",
+            $"Sinav: {session.Title}",
+            $"Ogrenci: {session.StudentName}",
+            $"Sinif: {session.ClassName}",
+            $"Ders: {session.Subject}",
+            $"Tamamlanma: {(session.CompletedAtUtc ?? DateTime.UtcNow):dd.MM.yyyy HH:mm}",
+            $"Puan (%): {score}",
+            $"Net: {net:0.##}",
+            $"Dogru: {correct}  Yanlis: {wrong}  Bos: {empty}  Toplam: {total}",
+            string.Empty,
+            "Soru ozeti"
+        };
+        lines.AddRange(session.Questions
+            .OrderBy(item => item.SortOrder)
+            .Select(item =>
+            {
+                var status = item.Answer is null ? "Bos" : item.Answer.IsCorrect ? "Dogru" : "Yanlis";
+                return $"{item.SortOrder + 1}. {item.Subject} / {item.Topic} - {status}";
+            })
+            .Take(42));
+
+        var bytes = BuildSinglePagePdf(lines);
+        await using var stream = new MemoryStream(bytes);
+        return await fileStorageService.SaveAsync(
+            stream,
+            $"exam-report-{session.Id:N}.pdf",
+            "application/pdf",
+            "exam-reports",
+            baseUrl,
+            cancellationToken);
+    }
+
+    private static byte[] BuildSinglePagePdf(IReadOnlyList<string> lines)
+    {
+        static string Clean(string value)
+        {
+            var text = value
+                .Replace("ı", "i").Replace("İ", "I")
+                .Replace("ğ", "g").Replace("Ğ", "G")
+                .Replace("ü", "u").Replace("Ü", "U")
+                .Replace("ş", "s").Replace("Ş", "S")
+                .Replace("ö", "o").Replace("Ö", "O")
+                .Replace("ç", "c").Replace("Ç", "C");
+            return text.Replace("\\", "\\\\").Replace("(", "\\(").Replace(")", "\\)");
+        }
+
+        var content = new StringBuilder();
+        content.AppendLine("BT");
+        content.AppendLine("/F1 18 Tf");
+        content.AppendLine("50 790 Td");
+        content.AppendLine($"({Clean(lines.FirstOrDefault() ?? "CourseIntellect Sinav Raporu")}) Tj");
+        content.AppendLine("/F1 11 Tf");
+        content.AppendLine("0 -28 Td");
+        foreach (var line in lines.Skip(1))
+        {
+            content.AppendLine($"({Clean(line)}) Tj");
+            content.AppendLine("0 -17 Td");
+        }
+        content.AppendLine("ET");
+        var contentBytes = Encoding.ASCII.GetBytes(content.ToString());
+
+        var objects = new List<byte[]>
+        {
+            Encoding.ASCII.GetBytes("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"),
+            Encoding.ASCII.GetBytes("2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"),
+            Encoding.ASCII.GetBytes("3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n"),
+            Encoding.ASCII.GetBytes("4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n"),
+            Encoding.ASCII.GetBytes($"5 0 obj\n<< /Length {contentBytes.Length} >>\nstream\n{content}endstream\nendobj\n")
+        };
+
+        using var ms = new MemoryStream();
+        void Write(string value)
+        {
+            var bytes = Encoding.ASCII.GetBytes(value);
+            ms.Write(bytes, 0, bytes.Length);
+        }
+
+        Write("%PDF-1.4\n");
+        var offsets = new List<long> { 0 };
+        foreach (var obj in objects)
+        {
+            offsets.Add(ms.Position);
+            ms.Write(obj, 0, obj.Length);
+        }
+        var xref = ms.Position;
+        Write($"xref\n0 {objects.Count + 1}\n");
+        Write("0000000000 65535 f \n");
+        foreach (var offset in offsets.Skip(1))
+        {
+            Write($"{offset:0000000000} 00000 n \n");
+        }
+        Write($"trailer\n<< /Size {objects.Count + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n");
+        return ms.ToArray();
     }
 
     private static bool AnswersEqual(string submitted, string expected)

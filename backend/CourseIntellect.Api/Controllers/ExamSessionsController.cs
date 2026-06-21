@@ -212,6 +212,8 @@ public sealed class ExamSessionsController(
             var total = autoQuestions.Count;
             var answered = autoQuestions.Count(item => item.Answer is not null);
             var correct = autoQuestions.Count(item => item.Answer?.IsCorrect == true);
+            var wrong = Math.Max(0, answered - correct);
+            var net = decimal.Round(correct - wrong / 4m, 2);
             var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
 
             if (session.PlannedExamId.HasValue)
@@ -233,7 +235,7 @@ public sealed class ExamSessionsController(
                     StudentName = session.StudentName,
                     ClassName = session.ClassName,
                     Score = score,
-                    Net = correct,
+                    Net = net,
                 };
 
                 session.RecordedExamResultId = result.Id;
@@ -352,7 +354,10 @@ public sealed class ExamSessionsController(
 
         var autoQuestions = session.Questions.Where(item => item.Answer?.RequiresManualReview != true).ToList();
         var total = autoQuestions.Count;
+        var answered = autoQuestions.Count(item => item.Answer is not null);
         var correct = autoQuestions.Count(item => item.Answer?.IsCorrect == true);
+        var wrong = Math.Max(0, answered - correct);
+        var net = decimal.Round(correct - wrong / 4m, 2);
         var score = total == 0 ? 0 : (int)Math.Round((double)correct / total * 100, MidpointRounding.AwayFromZero);
 
         // Öğretmenin sınav oluştururken yazdığı serbest tür (örn. "1. Yazılı")
@@ -372,7 +377,7 @@ public sealed class ExamSessionsController(
             StudentName = session.StudentName,
             ClassName = session.ClassName,
             Score = score,
-            Net = correct,
+            Net = net,
         };
 
         session.RecordedExamResultId = result.Id;

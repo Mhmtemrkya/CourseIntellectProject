@@ -25,6 +25,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { createInstallment, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
+import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -32,15 +33,46 @@ const containerVariants = {
 };
 
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
+}
+
+const monthOptions = [
+  { value: 'all', label: 'Tüm Aylar' },
+  ...Array.from({ length: 12 }, (_, index) => ({
+    value: String(index + 1),
+    label: new Date(2026, index, 1).toLocaleDateString('tr-TR', { month: 'long' }),
+  })),
+];
+
+function parseFinanceDate(value) {
+  if (!value) return null;
+  const raw = String(value);
+  const trMatch = raw.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})/);
+  if (trMatch) {
+    const [, day, month, year] = trMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const isoMatch = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function monthMatches(value, monthFilter) {
+  if (monthFilter === 'all') return true;
+  const date = parseFinanceDate(value);
+  return date ? date.getMonth() + 1 === Number(monthFilter) : false;
 }
 
 function statusKey(status) {
-  const normalized = String(status || '').toLowerCase();
+  const normalized = normalizeFinanceText(status);
   if (normalized.includes('gec')) return 'overdue';
-  if (normalized.includes('odendi')) return 'completed';
+  if (normalized.includes('odendi') || normalized.includes('paid') || normalized.includes('completed')) return 'completed';
   return 'current';
 }
 
@@ -155,6 +187,7 @@ export default function Installments() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dashboard, setDashboard] = useState(null);
   const [students, setStudents] = useState([]);
@@ -186,8 +219,9 @@ export default function Installments() {
   const filteredPlans = useMemo(() => plans.filter((plan) => {
     const matchesSearch = String(plan.student || '').toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || statusKey(plan.status) === statusFilter;
-    return matchesSearch && matchesStatus;
-  }), [plans, search, statusFilter]);
+    const matchesMonth = monthMatches(plan.dueDate || plan.due, monthFilter);
+    return matchesSearch && matchesStatus && matchesMonth;
+  }), [monthFilter, plans, search, statusFilter]);
 
   const getStatusBadge = (status) => {
     const key = statusKey(status);
@@ -206,10 +240,10 @@ export default function Installments() {
   };
 
   const stats = useMemo(() => ({
-    completed: plans.filter((item) => statusKey(item.status) === 'completed').length,
-    current: plans.filter((item) => statusKey(item.status) === 'current').length,
-    overdue: plans.filter((item) => statusKey(item.status) === 'overdue').length,
-  }), [plans]);
+    completed: filteredPlans.filter((item) => statusKey(item.status) === 'completed').length,
+    current: filteredPlans.filter((item) => statusKey(item.status) === 'current').length,
+    overdue: filteredPlans.filter((item) => statusKey(item.status) === 'overdue').length,
+  }), [filteredPlans]);
 
   const handleCreated = (created) => {
     setDashboard((prev) => ({
@@ -238,7 +272,9 @@ export default function Installments() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading">Taksit Planları</h1>
-          <p className="text-muted-foreground mt-1">{plans.length} kayıt</p>
+          <p className="text-muted-foreground mt-1">
+            {filteredPlans.length} kayıt gösteriliyor • Toplam {plans.length} taksit
+          </p>
         </div>
         <Button
           className="bg-brand-primary hover:bg-brand-primary/90"
@@ -308,6 +344,16 @@ export default function Installments() {
                 <SelectItem value="current">Güncel</SelectItem>
                 <SelectItem value="overdue">Gecikmiş</SelectItem>
                 <SelectItem value="completed">Tamamlanan</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Ay seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

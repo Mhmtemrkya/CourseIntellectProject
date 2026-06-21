@@ -63,35 +63,31 @@ public sealed class AcademicQueryService(
 
     public async Task<IReadOnlyList<ExamResultDto>> GetExamResultsAsync(string? studentName, string? className, CancellationToken cancellationToken = default)
     {
-        var query = dbContext.ExamResults.AsQueryable();
+        var rankingPool = await dbContext.ExamResults
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        IEnumerable<ExamResult> query = rankingPool;
 
         if (!string.IsNullOrWhiteSpace(studentName))
         {
-            query = query.Where(x => EF.Functions.ILike(x.StudentName, $"%{studentName}%"));
+            query = query.Where(x => x.StudentName.Contains(studentName, StringComparison.OrdinalIgnoreCase));
         }
 
         if (!string.IsNullOrWhiteSpace(className))
         {
-            query = query.Where(x => x.ClassName == className);
+            query = query.Where(x => string.Equals(x.ClassName, className, StringComparison.OrdinalIgnoreCase));
         }
 
-        return await query
+        var results = query
             .OrderByDescending(x => x.DateLabel)
-            .Select(result => new ExamResultDto(
-                result.Id,
-                result.ExamTitle,
-                result.Type.ToString(),
-                result.Subject,
-                result.DateLabel,
-                result.StudentName,
-                result.ClassName,
-                result.Score,
-                result.Net))
-            .ToListAsync(cancellationToken);
+            .ToList();
+
+        return results.Select(result => ToExamResultDto(result, rankingPool)).ToList();
     }
 
     public async Task<ExamResultDto> CreateExamResultAsync(CreateExamResultRequest request, CancellationToken cancellationToken = default)
     {
+        var normalized = NormalizeExamScoring(request.Score, request.Net, request.CorrectCount, request.WrongCount, request.TotalQuestions);
         var result = new ExamResult
         {
             ExamTitle = request.ExamTitle.Trim(),
@@ -102,8 +98,8 @@ public sealed class AcademicQueryService(
                 : request.DateLabel.Trim(),
             StudentName = request.StudentName.Trim(),
             ClassName = request.ClassName.Trim(),
-            Score = request.Score,
-            Net = request.Net
+            Score = normalized.ScorePercent,
+            Net = normalized.Net
         };
 
         await dbContext.ExamResults.AddAsync(result, cancellationToken);
@@ -117,6 +113,22 @@ public sealed class AcademicQueryService(
             "ExamResult",
             cancellationToken);
 
+        var rankingPool = await dbContext.ExamResults
+            .AsNoTracking()
+            .Where(item => item.Subject == result.Subject && item.ExamTitle == result.ExamTitle)
+            .ToListAsync(cancellationToken);
+        return ToExamResultDto(result, rankingPool);
+    }
+
+    private static ExamResultDto ToExamResultDto(ExamResult result, IReadOnlyList<ExamResult> scope)
+    {
+        var comparable = scope
+            .Where(item => string.Equals(item.Subject, result.Subject, StringComparison.OrdinalIgnoreCase)
+                           && string.Equals(item.ExamTitle, result.ExamTitle, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        var classRank = RankWithin(comparable.Where(item => string.Equals(item.ClassName, result.ClassName, StringComparison.OrdinalIgnoreCase)), result);
+        var overallRank = RankWithin(comparable, result);
+
         return new ExamResultDto(
             result.Id,
             result.ExamTitle,
@@ -125,8 +137,44 @@ public sealed class AcademicQueryService(
             result.DateLabel,
             result.StudentName,
             result.ClassName,
-            result.Score,
-            result.Net);
+            Math.Clamp(result.Score, 0, 100),
+            decimal.Round(result.Net, 2),
+            Math.Clamp(result.Score, 0, 100),
+            classRank,
+            overallRank);
+    }
+
+    private static int? RankWithin(IEnumerable<ExamResult> rows, ExamResult result)
+    {
+        var comparable = rows.ToList();
+        if (comparable.All(item => item.Id != result.Id))
+        {
+            return null;
+        }
+
+        return 1 + comparable.Count(item =>
+            item.Score > result.Score
+            || (item.Score == result.Score && item.Net > result.Net));
+    }
+
+    private static (int ScorePercent, decimal Net) NormalizeExamScoring(
+        int requestedScore,
+        decimal requestedNet,
+        int? correctCount,
+        int? wrongCount,
+        int? totalQuestions)
+    {
+        if (correctCount.HasValue && totalQuestions.GetValueOrDefault() > 0)
+        {
+            var total = Math.Max(1, totalQuestions!.Value);
+            var correct = Math.Clamp(correctCount.Value, 0, total);
+            var wrong = Math.Clamp(wrongCount.GetValueOrDefault(), 0, total - correct);
+            var score = (int)Math.Round((decimal)correct / total * 100, MidpointRounding.AwayFromZero);
+            var net = correct - wrong / 4m;
+            return (Math.Clamp(score, 0, 100), decimal.Round(net, 2));
+        }
+
+        return (Math.Clamp(requestedScore, 0, 100), decimal.Round(requestedNet, 2));
     }
 
     public async Task<StudentCredentialsDto> CreateStudentAsync(CreateStudentRequest request, CancellationToken cancellationToken = default)
@@ -189,8 +237,8 @@ public sealed class AcademicQueryService(
             SchoolNumber = request.SchoolNumber,
             BirthDate = request.BirthDate,
             ProgramType = request.ProgramType,
-            ParentName = request.ParentName,
-            ParentPhone = request.ParentPhone,
+            ParentName = request.ParentName ?? string.Empty,
+            ParentPhone = request.ParentPhone ?? string.Empty,
             ParentEmail = request.ParentEmail,
             ParentUserId = parentUser?.Id,
             Address = request.Address,

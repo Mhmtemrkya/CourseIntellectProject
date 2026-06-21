@@ -447,19 +447,14 @@ class LiveNotificationBridge {
   Future<List<_LiveNotificationItem>> _loadParentExamResults(
     AuthSession session,
   ) async {
-    final studentName = await SchoolFeedApiService.resolveLinkedStudentName(
-      session,
-    );
-    final results = await SchoolFeedApiService.instance.fetchExamResults(
-      studentName: studentName,
-    );
+    final results = await SchoolFeedApiService.instance.fetchExamResults();
     return results
         .map(
           (item) => _LiveNotificationItem(
             id: 'parent-exam-result:${item.examTitle}:${item.date}:${item.subject}',
             title: '${item.examTitle} sonucu yayınlandı',
             body: _trim(
-              '${item.subject} • ${item.studentName} • Puan: ${item.score}',
+              '${item.subject} • ${item.studentName} • Puan: ${item.score} • Net: ${item.net.toStringAsFixed(item.net % 1 == 0 ? 0 : 2)}',
             ),
             category: 'exam-result',
           ),

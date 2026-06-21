@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/pages/teacher_duties_page.dart';
 import 'package:student/pages/teacher_home_page.dart';
 import 'package:student/pages/teacher_meeting_approvals_page.dart';
 import 'package:student/pages/teacher_messages_page.dart';
@@ -31,6 +32,12 @@ class TeacherBottomNav extends StatelessWidget {
           label: 'Onaylar',
           pageBuilder: (_) => const TeacherMeetingApprovalsPage(),
           sidebarColor: const Color(0xFF10B981),
+        ),
+        AdaptiveDestination(
+          icon: Icons.shield_outlined,
+          label: 'Nöbetlerim',
+          pageBuilder: (_) => const TeacherDutiesPage(),
+          sidebarColor: const Color(0xFFF97316),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

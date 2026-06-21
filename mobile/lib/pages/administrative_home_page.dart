@@ -15,6 +15,8 @@ import 'admin_schedule_list_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
+import 'duties_board_page.dart';
+import 'duty_create_page.dart';
 import 'admin_students_page.dart';
 import 'attendance_overview_page.dart';
 import 'administrative_documents_page.dart';
@@ -148,6 +150,28 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   value: 'Araç, rota, durak ve öğrenci atama',
                   color: const Color(0xFF0F766E),
                   onTap: () => _openPage(const ServiceRoutesPage()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.add_alarm_rounded,
+                  title: 'Nöbet Oluştur',
+                  value: 'Öğretmenlere nöbet ata',
+                  color: const Color(0xFFF97316),
+                  onTap: () => _openPage(const DutyCreatePage()),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _metricCard(
+                  context,
+                  icon: Icons.shield_outlined,
+                  title: 'Tüm Nöbetler',
+                  value: 'Çizelge, denge, boş günler',
+                  color: const Color(0xFFF59E0B),
+                  onTap: () => _openPage(const DutiesBoardPage()),
                 ),
               ),
             ],

@@ -200,15 +200,33 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
-        item.StudentName = request.Name.Trim();
-        item.Amount = ParseMoney(request.Amount);
-        item.Method = request.Method.Trim();
-        item.Note = request.Note.Trim();
+
+        var previousStudentName = item.StudentName;
+        var previousStudentUserId = item.StudentUserId;
+        var previousContractId = item.EnrollmentContractId;
+
+        item.StudentName = string.IsNullOrWhiteSpace(request.Name) ? item.StudentName : request.Name.Trim();
+        item.Amount = Math.Max(0m, ParseMoney(request.Amount));
+        item.Method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
+        item.Note = request.Note?.Trim() ?? string.Empty;
+        var targetContract = await dbContext.EnrollmentContracts
+            .AsNoTracking()
+            .Where(contract => contract.StudentName == item.StudentName)
+            .OrderByDescending(contract => contract.CreatedAtUtc)
+            .FirstOrDefaultAsync(cancellationToken);
+        item.EnrollmentContractId = targetContract?.Id;
+        item.StudentUserId = targetContract?.StudentUserId;
+        item.FinanceInstallmentId = null;
+
         await dbContext.SaveChangesAsync(cancellationToken);
+        await RecalculateInstallmentPaymentsAsync(previousStudentName, previousStudentUserId, previousContractId, cancellationToken);
+        await RecalculateInstallmentPaymentsAsync(item.StudentName, item.StudentUserId, item.EnrollmentContractId, cancellationToken);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
         return Ok(new AccountingCollectionDto(
             item.Id.ToString(),
             item.StudentName,
-            request.ClassName.Trim(),
+            request.ClassName?.Trim() ?? string.Empty,
             $"₺{item.Amount:N2}",
             item.Method,
             item.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm"),
@@ -221,7 +239,14 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
+
+        var studentName = item.StudentName;
+        var studentUserId = item.StudentUserId;
+        var contractId = item.EnrollmentContractId;
+
         dbContext.FinancePayments.Remove(item);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        await RecalculateInstallmentPaymentsAsync(studentName, studentUserId, contractId, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
     }
@@ -319,7 +344,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     private static decimal ParseMoney(string? value)
     {
-        var normalized = (value ?? "0").Replace("₺", string.Empty).Replace(".", string.Empty).Replace(',', '.').Trim();
+        var normalized = NormalizeMoneyNumber(value);
         return decimal.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amount)
             ? amount
             : 0m;
@@ -331,6 +356,109 @@ public sealed class AccountingController(IAccountingService accountingService, C
         return decimal.TryParse(normalized, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var amount)
             ? amount
             : 0m;
+    }
+
+    private static string NormalizeMoneyNumber(string? value)
+    {
+        var cleaned = new string((value ?? "0")
+            .Where(ch => char.IsDigit(ch) || ch == ',' || ch == '.' || ch == '-')
+            .ToArray());
+        var lastComma = cleaned.LastIndexOf(',');
+        var lastDot = cleaned.LastIndexOf('.');
+
+        if (lastComma >= 0 && lastDot >= 0)
+        {
+            return lastComma > lastDot
+                ? cleaned.Replace(".", string.Empty).Replace(',', '.')
+                : cleaned.Replace(",", string.Empty);
+        }
+
+        if (lastComma >= 0)
+        {
+            return cleaned.Replace(".", string.Empty).Replace(',', '.');
+        }
+
+        if (lastDot >= 0)
+        {
+            var decimals = cleaned.Length - lastDot - 1;
+            return decimals == 3 ? cleaned.Replace(".", string.Empty) : cleaned;
+        }
+
+        return cleaned;
+    }
+
+    private async Task RecalculateInstallmentPaymentsAsync(
+        string? studentName,
+        Guid? studentUserId,
+        Guid? contractId,
+        CancellationToken cancellationToken)
+    {
+        var normalizedName = studentName?.Trim() ?? string.Empty;
+        if (string.IsNullOrWhiteSpace(normalizedName) && studentUserId is null && contractId is null)
+        {
+            return;
+        }
+
+        var installments = await dbContext.FinanceInstallments
+            .Where(item =>
+                (contractId != null && item.EnrollmentContractId == contractId)
+                || (studentUserId != null && item.StudentUserId == studentUserId)
+                || (!string.IsNullOrWhiteSpace(normalizedName) && item.StudentName == normalizedName))
+            .OrderBy(item => item.DueDateUtc)
+            .ThenBy(item => item.SeqNo)
+            .ToListAsync(cancellationToken);
+
+        if (installments.Count == 0)
+        {
+            return;
+        }
+
+        foreach (var installment in installments)
+        {
+            installment.PaidAmount = 0m;
+            installment.Status = "Pending";
+        }
+
+        var payments = await dbContext.FinancePayments
+            .Where(item =>
+                item.Amount > 0
+                && ((contractId != null && item.EnrollmentContractId == contractId)
+                    || (studentUserId != null && item.StudentUserId == studentUserId)
+                    || (!string.IsNullOrWhiteSpace(normalizedName) && item.StudentName == normalizedName)))
+            .OrderBy(item => item.PaidAtUtc)
+            .ToListAsync(cancellationToken);
+
+        foreach (var payment in payments)
+        {
+            var remaining = payment.Amount;
+            var orderedInstallments = payment.FinanceInstallmentId is Guid installmentId
+                ? installments
+                    .Where(item => item.Id == installmentId)
+                    .Concat(installments.Where(item => item.Id != installmentId))
+                    .ToList()
+                : installments;
+
+            foreach (var installment in orderedInstallments)
+            {
+                if (remaining <= 0) break;
+
+                var due = installment.Amount - installment.PaidAmount;
+                if (due <= 0) continue;
+
+                var applied = Math.Min(due, remaining);
+                installment.PaidAmount += applied;
+                remaining -= applied;
+            }
+        }
+
+        foreach (var installment in installments)
+        {
+            installment.Status = installment.PaidAmount <= 0
+                ? "Pending"
+                : installment.PaidAmount >= installment.Amount
+                    ? "Paid"
+                    : "Partial";
+        }
     }
 
     private static object MapBenefit(AccountingBenefitSnapshot item)

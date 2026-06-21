@@ -23,6 +23,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchStaff, createSalary, fetchAccountingDashboard } from '../../lib/api/modules';
+import { parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -44,9 +45,7 @@ function formatCurrency(val) {
 }
 
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
 }
 
 function normalizeSalaryStatus(status = '') {

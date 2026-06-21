@@ -1179,8 +1179,11 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                                                 ) ??
                                                 0,
                                             net:
-                                                int.tryParse(
-                                                  netController.text,
+                                                double.tryParse(
+                                                  netController.text.replaceAll(
+                                                    ',',
+                                                    '.',
+                                                  ),
                                                 ) ??
                                                 0,
                                           );

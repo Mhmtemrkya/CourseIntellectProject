@@ -30,6 +30,7 @@ import {
   downloadCsvRows,
   downloadFinanceHtml,
   formatCurrency,
+  normalizeFinanceText,
   parseFinanceMoney,
   printFinanceHtml,
 } from '../../lib/financeDocuments';
@@ -45,8 +46,8 @@ const itemVariants = {
 };
 
 function statusFromInvoice(invoice) {
-  const status = String(invoice.status || '').toLowerCase();
-  if (status.includes('paid') || status.includes('oden')) return 'paid';
+  const status = normalizeFinanceText(invoice.status);
+  if (status.includes('paid') || status.includes('oden') || status.includes('odendi') || status.includes('onay')) return 'paid';
   if (status.includes('overdue') || status.includes('gec')) return 'overdue';
   return 'unpaid';
 }

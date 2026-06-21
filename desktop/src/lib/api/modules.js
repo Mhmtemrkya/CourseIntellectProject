@@ -1534,6 +1534,51 @@ export async function fetchTeacherPdfReports() {
   return Array.isArray(response) ? response : [];
 }
 
+// --- Öğretmen Nöbetleri ---
+export async function createDuty(payload) {
+  const response = await api.post('/api/duties', payload);
+  return response;
+}
+
+export async function fetchMyDuties(scope) {
+  const response = await api.get('/api/duties/mine', { params: scope ? { scope } : undefined });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchMyDutyStats() {
+  const response = await api.get('/api/duties/mine/stats');
+  return response;
+}
+
+export async function fetchDuties(params) {
+  const response = await api.get('/api/duties', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchDutyLoad(monthStart) {
+  const response = await api.get('/api/duties/load', { params: monthStart ? { monthStart } : undefined });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function updateDuty(id, payload) {
+  const response = await api.put(`/api/duties/${id}`, payload);
+  return response;
+}
+
+export async function setDutyStatus(id, status) {
+  const response = await api.post(`/api/duties/${id}/status`, { status });
+  return response;
+}
+
+export async function deleteDuty(id) {
+  await api.delete(`/api/duties/${id}`);
+}
+
+export async function cancelDutySeries(groupId) {
+  const response = await api.post(`/api/duties/group/${groupId}/cancel`);
+  return response;
+}
+
 // --- Question Studio ---
 
 export async function fetchQuestionStudioDrafts() {

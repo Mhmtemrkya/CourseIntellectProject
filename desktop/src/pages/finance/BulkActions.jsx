@@ -7,7 +7,7 @@ import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard, sendBulkAccountingReminders } from '../../lib/api/modules';
-import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
+import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 export default function BulkActions() {
   const { toast } = useToast();
@@ -33,7 +33,7 @@ export default function BulkActions() {
   }, [loadBulk]);
 
   const overdue = useMemo(() => (dashboard?.installments || []).filter((item) => {
-    const normalized = String(item.status || '').toLowerCase();
+    const normalized = normalizeFinanceText(item.status);
     return normalized.includes('gec') || normalized.includes('overdue') || normalized.includes('late');
   }), [dashboard]);
 

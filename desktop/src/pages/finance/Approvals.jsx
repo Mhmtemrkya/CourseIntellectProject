@@ -24,6 +24,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard, updateApprovalStatus } from '../../lib/api/modules';
+import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,19 +32,19 @@ const containerVariants = {
 };
 
 function parseMoneyFromTitle(title = '') {
-  const match = title.match(/(\d+[.,]?\d*)/);
-  return match ? Number(match[1].replace(',', '.')) : 0;
+  const match = title.match(/₺?\s*\d[\d.,]*/);
+  return match ? parseFinanceMoney(match[0]) : 0;
 }
 
 function approvalStatus(status = '') {
-  const normalized = String(status || '').toLowerCase();
+  const normalized = normalizeFinanceText(status);
   if (normalized.includes('approved') || normalized.includes('onay')) return 'approved';
   if (normalized.includes('rejected') || normalized.includes('red')) return 'rejected';
   return 'pending';
 }
 
 function approvalType(category = '') {
-  const normalized = String(category || '').toLowerCase();
+  const normalized = normalizeFinanceText(category);
   if (normalized.includes('iade')) return { key: 'refund', label: 'İade', className: 'bg-blue-100 text-blue-700' };
   if (normalized.includes('iptal')) return { key: 'cancel', label: 'İptal', className: 'bg-red-100 text-red-700' };
   return { key: 'discount', label: 'Düzeltme', className: 'bg-green-100 text-green-700' };

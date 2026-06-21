@@ -20,15 +20,14 @@ import { useToast } from '../../hooks/use-toast';
 import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
 import { PayrollCalculatorDialog, ReconciliationDialog, EInvoiceDialog } from '../../components/finance/FinanceToolsDialogs';
 import { fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
+import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 function tl(value) {
   return `${Number(value || 0).toLocaleString('tr-TR')} ₺`;
 }
 
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
 }
 
 function money(value) {
@@ -36,7 +35,12 @@ function money(value) {
 }
 
 function normalizeStatus(value = '') {
-  return String(value).toLowerCase();
+  return normalizeFinanceText(value);
+}
+
+function isPaidStatus(value = '') {
+  const status = normalizeStatus(value);
+  return status.includes('odendi') || status.includes('paid') || status.includes('completed');
 }
 
 export default function AdminFinance() {
@@ -110,7 +114,7 @@ export default function AdminFinance() {
       : collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
     const pending = hasFinance
       ? Number(enrollmentFinance.outstandingTotal) || 0
-      : installments.filter((item) => !normalizeStatus(item.status).includes('odendi')).reduce((sum, item) => sum + parseMoney(item.amount), 0);
+      : installments.filter((item) => !isPaidStatus(item.status)).reduce((sum, item) => sum + parseMoney(item.amount), 0);
     const overdueTotal = hasFinance
       ? Number(enrollmentFinance.overdueTotal) || 0
       : overdue.reduce((sum, item) => sum + parseMoney(item.amount), 0);

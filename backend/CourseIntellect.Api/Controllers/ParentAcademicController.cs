@@ -48,7 +48,7 @@ public sealed class ParentAcademicController(CourseIntellectDbContext dbContext)
             var avgNet = studentExams.Count > 0 ? Math.Round(studentExams.Average(item => item.Net), 1) : 0;
 
             // Trend: en son sınavın neti ile ondan önceki neti karşılaştır.
-            var trend = 0;
+            var trend = 0m;
             if (studentExams.Count >= 2)
             {
                 trend = studentExams[0].Net - studentExams[1].Net;
@@ -57,11 +57,14 @@ public sealed class ParentAcademicController(CourseIntellectDbContext dbContext)
             result.Add(new
             {
                 studentName = name,
+                className = studentExams.FirstOrDefault()?.ClassName
+                    ?? studentAttendance.FirstOrDefault()?.ClassName
+                    ?? string.Empty,
                 examCount = studentExams.Count,
                 averageScore = avgScore,
                 averageNet = avgNet,
                 attendanceRate = totalAtt > 0 ? (int)Math.Round((double)present / totalAtt * 100) : 0,
-                netTrend = trend,
+                netTrend = Math.Round(trend, 2),
                 recentExams = studentExams.Take(5).Select(item => new
                 {
                     title = item.ExamTitle,

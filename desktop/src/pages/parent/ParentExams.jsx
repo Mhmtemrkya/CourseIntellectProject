@@ -15,7 +15,7 @@ import {
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchExamResults, fetchStudents } from '../../lib/api/modules';
+import { fetchExamResults, fetchParentAcademic } from '../../lib/api/modules';
 import { useApp } from '../../context/AppContext';
 import {
   EmptyPanel,
@@ -35,21 +35,6 @@ import {
   safeNumber,
 } from './parentPremiumUi';
 
-function isLinkedParent(student, user) {
-  const parentName = normalizeText(student.parentName);
-  const parentEmail = normalizeText(student.parentEmail);
-  const userName = normalizeText(user?.name);
-  const username = normalizeText(user?.username);
-  const email = normalizeText(user?.email);
-  const emailLocal = email.split('@')[0] || '';
-  return (
-    (parentName && (parentName === userName || parentName.includes(userName) || userName.includes(parentName))) ||
-    (username && (parentEmail.includes(username) || parentName.includes(username))) ||
-    (email && parentEmail === email) ||
-    (emailLocal && parentEmail.includes(emailLocal))
-  );
-}
-
 function examTitle(exam) {
   return decodeText(exam.examTitle || exam.title || 'Sınav');
 }
@@ -66,6 +51,11 @@ function resultStatus(score) {
   if (score >= 70) return ['Başarılı', 'green'];
   if (score >= 55) return ['Geliştirilmeli', 'orange'];
   return ['Riskli', 'red'];
+}
+
+function formatNet(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? number.toLocaleString('tr-TR', { maximumFractionDigits: 2 }) : '0';
 }
 
 export default function ParentExams() {
@@ -90,12 +80,21 @@ export default function ParentExams() {
     try {
       setLoading(true);
       setError('');
-      const students = await fetchStudents();
-      const linkedChildren = (Array.isArray(students) ? students : []).filter((student) => isLinkedParent(student, user));
+      const academicChildren = await fetchParentAcademic().catch(() => []);
+      const linkedChildren = (Array.isArray(academicChildren) ? academicChildren : []).map((child) => ({
+        id: child.studentName,
+        fullName: child.studentName,
+        className: child.className || '',
+      }));
       setChildren(linkedChildren);
       const nextChild = selectedChild || linkedChildren[0]?.fullName || '';
       setSelectedChild(nextChild);
-      await loadForChild(nextChild);
+      if (nextChild) {
+        await loadForChild(nextChild);
+      } else {
+        const examList = await fetchExamResults();
+        setResults(Array.isArray(examList) ? examList : []);
+      }
     } catch (err) {
       setError(err.message || 'Sınav sonuçları alınamadı.');
       setResults([]);
@@ -129,6 +128,9 @@ export default function ParentExams() {
       _subject: subject,
       _date: examDate(exam),
       _score: score,
+      _net: Number(exam.net || 0),
+      _classRank: exam.classRank,
+      _overallRank: exam.overallRank,
       _className: decodeText(exam.className || selectedChildInfo?.className || '-'),
       _studentName: decodeText(exam.studentName || selectedChild || '-'),
     };
@@ -236,10 +238,11 @@ export default function ParentExams() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-black text-white">{exam._title}</p>
                       <p className="mt-1 truncate text-xs text-slate-400">{exam._date} • {exam._className}</p>
+                      <p className="mt-1 truncate text-xs text-slate-500">Net: {formatNet(exam._net)}{exam._classRank ? ` • Sınıf sırası: ${exam._classRank}` : ''}</p>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-black text-white">{exam._score}</p>
-                      <p className="text-xs text-slate-500">100</p>
+                      <p className="text-xs text-slate-500">Puan (%)</p>
                     </div>
                     <StatusPill tone={tone}>{label}</StatusPill>
                   </div>
@@ -273,6 +276,8 @@ export default function ParentExams() {
                     <th className="py-3 font-semibold">Ders</th>
                     <th className="py-3 font-semibold">Tarih</th>
                     <th className="py-3 font-semibold">Puan</th>
+                    <th className="py-3 font-semibold">Net</th>
+                    <th className="py-3 font-semibold">Sıralama</th>
                     <th className="py-3 font-semibold">Durum</th>
                     <th className="py-3 text-right font-semibold">Detay</th>
                   </tr>
@@ -286,6 +291,8 @@ export default function ParentExams() {
                         <td className="py-4">{exam._subject}</td>
                         <td className="py-4">{exam._date}</td>
                         <td className="py-4"><b className="text-white">{exam._score}</b> /100</td>
+                        <td className="py-4">{formatNet(exam._net)}</td>
+                        <td className="py-4">{exam._classRank ? `${exam._classRank}. sınıf` : '-'}{exam._overallRank ? ` / ${exam._overallRank}. genel` : ''}</td>
                         <td className="py-4"><StatusPill tone={tone}>{label}</StatusPill></td>
                         <td className="py-4 text-right">
                           <Button variant="ghost" size="icon" className="rounded-[10px] border border-foreground/[0.08] bg-foreground/[0.04] text-slate-200">

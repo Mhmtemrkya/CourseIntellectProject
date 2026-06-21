@@ -221,11 +221,14 @@ function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
     try {
       setSaving(true);
       const created = await createExamResult({
+        examTitle: form.title,
+        type: 'Yazılı',
         studentName: form.studentName,
         className: form.className,
         subject: form.subject,
-        title: form.title,
+        dateLabel: new Intl.DateTimeFormat('tr-TR').format(new Date()),
         score: Number(form.score),
+        net: 0,
       });
       onCreated(created);
       onOpenChange(false);

@@ -164,7 +164,7 @@ class PlannedExamSubmissionRecord {
   final String studentName;
   final String studentUsername;
   final int score;
-  final int net;
+  final double net;
   final int correct;
   final int wrong;
   final int blank;
@@ -196,7 +196,7 @@ class PlannedExamSubmissionRecord {
       studentName: map['studentName'] as String? ?? '',
       studentUsername: map['studentUsername'] as String? ?? '',
       score: map['score'] as int? ?? 0,
-      net: map['net'] as int? ?? 0,
+      net: (map['net'] as num?)?.toDouble() ?? 0,
       correct: map['correct'] as int? ?? 0,
       wrong: map['wrong'] as int? ?? 0,
       blank: map['blank'] as int? ?? 0,

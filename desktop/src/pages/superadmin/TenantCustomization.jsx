@@ -17,7 +17,12 @@ import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { GlowingOrb } from '../../components/animations/AnimatedBackground';
-import { fetchPlatformConfigurations, fetchPlatformTenants, upsertPlatformConfiguration } from '../../lib/api/modules';
+import {
+  fetchPlatformConfigurations,
+  fetchPlatformOverview,
+  fetchPlatformTenants,
+  upsertPlatformConfiguration,
+} from '../../lib/api/modules';
 import { applyBrandVariables, generateBrandCSSVariables } from '../../lib/colorPalette';
 
 // Seçilen primary/accent rengini tüm uygulamaya anında uygular: --brand-accent,
@@ -72,6 +77,14 @@ function buildDefaultCustomization(tenant) {
     bodyFont: 'Inter',
     themeId,
   };
+}
+
+function normalizeTenantList(value) {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.tenants)) return value.tenants;
+  if (Array.isArray(value?.recentTenants)) return value.recentTenants;
+  return [];
 }
 
 export default function TenantCustomization() {
@@ -148,13 +161,19 @@ export default function TenantCustomization() {
     try {
       setLoading(true);
       setError('');
-      const [tenants, savedConfigurations] = await Promise.all([
-        fetchPlatformTenants(),
+      const [tenantResponse, savedConfigurations] = await Promise.all([
+        fetchPlatformTenants().catch(async (tenantError) => {
+          const overview = await fetchPlatformOverview().catch(() => null);
+          const fallbackTenants = normalizeTenantList(overview);
+          if (fallbackTenants.length > 0) return fallbackTenants;
+          throw tenantError;
+        }),
         fetchPlatformConfigurations('tenant-customization').catch(() => []),
       ]);
+      const tenants = normalizeTenantList(tenantResponse);
       setPlatform({ tenants });
       const initialTenantId = tenants?.[0]?.id || '';
-      setSelectedTenantId((prev) => prev || initialTenantId);
+      setSelectedTenantId((prev) => tenants.some((tenant) => tenant.id === prev) ? prev : initialTenantId);
       setCustomizations((prev) => {
         const next = { ...prev };
         (tenants || []).forEach((tenant) => {
@@ -184,7 +203,10 @@ export default function TenantCustomization() {
         return next;
       });
     } catch (err) {
-      setError(err.message || 'Kurum özelleştirme verileri alınamadı.');
+      const message = err.message || 'Kurum özelleştirme verileri alınamadı.';
+      setError(message.includes('403') || message.includes('Forbidden')
+        ? 'Platform verileri alınamadı. Bu ekran için platform admin yetkisi gerekir; lütfen tenant bağlı olmayan geliştirici/platform admin hesabıyla giriş yapın.'
+        : message);
     } finally {
       setLoading(false);
     }
@@ -286,7 +308,46 @@ export default function TenantCustomization() {
   };
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
-  if (!selectedTenant || !customization) return null;
+
+  if (!selectedTenant || !customization) {
+    return (
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+        className="space-y-6"
+        data-testid="tenant-customization-page"
+      >
+        <motion.div variants={itemVariants}>
+          <div className="flex items-center gap-4">
+            <div className="p-4 rounded-2xl bg-brand-primary text-white shadow-lg">
+              <Palette className="h-8 w-8" />
+            </div>
+            <div>
+              <h1 className="text-3xl font-bold font-heading">Kurum Özelleştirme</h1>
+              <p className="text-muted-foreground">Canlı kurum verisi üstünde marka ve görünüm yönetimi</p>
+            </div>
+          </div>
+        </motion.div>
+
+        {error ? <ErrorBanner title="Kurum özelleştirme görünümü alınamadı" message={error} onRetry={loadCustomizationData} /> : null}
+
+        <Card className="border-dashed">
+          <CardContent className="p-8 text-center">
+            <Building2 className="mx-auto h-12 w-12 text-muted-foreground" />
+            <h2 className="mt-4 text-xl font-bold">Henüz kurum verisi bulunamadı</h2>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Kurumlar endpoint’i boş döndü. Kurum oluşturulduğunda marka özelleştirme kartları burada listelenecek.
+            </p>
+            <Button className="mt-5" onClick={loadCustomizationData}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Yeniden Dene
+            </Button>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -347,10 +408,10 @@ export default function TenantCustomization() {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-lg bg-brand-primary flex items-center justify-center text-white font-bold">
-                      {tenant.name.charAt(0)}
+                      {(tenant.name || tenant.displayName || 'K').charAt(0)}
                     </div>
                     <div className="flex-1">
-                      <p className="font-medium">{tenant.name}</p>
+                      <p className="font-medium">{tenant.name || tenant.displayName || 'Kurum'}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <Badge variant="outline" className="text-xs">{presetThemes.find((t) => t.id === customization?.themeId || buildThemeId(tenant))?.name}</Badge>
                         {tenant.plan !== 'Starter' && (

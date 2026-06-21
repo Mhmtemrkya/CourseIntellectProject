@@ -11,7 +11,12 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/platformops")]
 public sealed class PlatformOperationsController(IPlatformOperationsService platformOperationsService) : ControllerBase
 {
-    private bool HasTenantContext() => !string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id"));
+    private bool HasTenantContext()
+    {
+        var isPlatformAdmin = string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
+                              || User.IsInRole("Developer");
+        return !isPlatformAdmin && !string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id"));
+    }
 
     [HttpGet("overview")]
     [Authorize(Roles = "Admin")]

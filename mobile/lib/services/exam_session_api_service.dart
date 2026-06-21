@@ -99,7 +99,7 @@ class ExamSessionCompletionRecord {
   final String studentName;
   final String className;
   final int score;
-  final int net;
+  final double net;
   final int correct;
   final int wrong;
   final int blank;
@@ -188,7 +188,8 @@ class ExamSessionApiService {
       body: jsonEncode({
         'questionId': questionId,
         'selectedOptionIndex': selectedOptionIndex ?? -1,
-        if (openAnswer != null && openAnswer.isNotEmpty) 'openAnswer': openAnswer,
+        if (openAnswer != null && openAnswer.isNotEmpty)
+          'openAnswer': openAnswer,
       }),
     );
 
@@ -232,7 +233,7 @@ class ExamSessionApiService {
       studentName: map['studentName'] as String? ?? '',
       className: map['className'] as String? ?? '',
       score: map['score'] as int? ?? 0,
-      net: map['net'] as int? ?? 0,
+      net: (map['net'] as num?)?.toDouble() ?? 0,
       correct: map['correct'] as int? ?? 0,
       wrong: map['wrong'] as int? ?? 0,
       blank: map['blank'] as int? ?? 0,

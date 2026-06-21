@@ -9,5 +9,8 @@ public sealed record ExamResultDto(
     string StudentName,
     string ClassName,
     int Score,
-    int Net
+    decimal Net,
+    int ScorePercent,
+    int? ClassRank,
+    int? OverallRank
 );

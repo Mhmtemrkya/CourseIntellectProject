@@ -93,6 +93,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<PdfReport> PdfReports => Set<PdfReport>();
     public DbSet<TeacherReviewComment> TeacherReviewComments => Set<TeacherReviewComment>();
     public DbSet<ReportRecipient> ReportRecipients => Set<ReportRecipient>();
+    public DbSet<TeacherDuty> TeacherDuties => Set<TeacherDuty>();
     public DbSet<LiveExamState> LiveExamStates => Set<LiveExamState>();
 
     public override int SaveChanges()
@@ -183,6 +184,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Subject).HasMaxLength(80).IsRequired();
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.Net).HasPrecision(6, 2);
         });
 
         modelBuilder.Entity<MeetingRequest>(entity =>

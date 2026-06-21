@@ -28,6 +28,8 @@ import {
   downloadCsvRows,
   downloadFinanceHtml,
   formatCurrency,
+  normalizeFinanceText,
+  parseFinanceMoney,
 } from '../../lib/financeDocuments';
 
 const containerVariants = {
@@ -46,14 +48,66 @@ const paymentTypes = [
   { value: 'Havale/EFT', label: 'Havale/EFT', icon: Building2 },
 ];
 
+const monthOptions = [
+  { value: 'all', label: 'Tüm Aylar' },
+  ...Array.from({ length: 12 }, (_, index) => ({
+    value: String(index + 1),
+    label: new Date(2026, index, 1).toLocaleDateString('tr-TR', { month: 'long' }),
+  })),
+];
+
 function parseMoney(value) {
-  const normalized = String(value ?? '0').replace(/[^\d,.-]/g, '').replace(',', '.');
-  const amount = Number(normalized);
-  return Number.isFinite(amount) ? amount : 0;
+  return parseFinanceMoney(value);
+}
+
+function parseFinanceDate(value) {
+  if (!value) return null;
+  const raw = String(value);
+  const trMatch = raw.match(/(\d{1,2})\.(\d{1,2})\.(\d{4})(?:\s+(\d{1,2}):(\d{2}))?/);
+  if (trMatch) {
+    const [, day, month, year, hour = '0', minute = '0'] = trMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const isoMatch = raw.match(/(\d{4})-(\d{1,2})-(\d{1,2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const date = new Date(Number(year), Number(month) - 1, Number(day));
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+  const parsed = new Date(raw);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function monthMatches(value, monthFilter) {
+  if (monthFilter === 'all') return true;
+  const date = parseFinanceDate(value);
+  return date ? date.getMonth() + 1 === Number(monthFilter) : false;
+}
+
+function plannedCollectionAmount(plan) {
+  const remainingMatch = String(plan.note || '').match(/Kalan\s+(.+)$/i);
+  if (remainingMatch) {
+    return parseMoney(remainingMatch[1]);
+  }
+  const status = normalizeFinanceText(plan.status);
+  if (status.includes('odendi') || status.includes('paid') || status.includes('completed')) {
+    return 0;
+  }
+  return parseMoney(plan.amount);
+}
+
+function normalizePaymentMethod(value) {
+  const normalized = normalizeFinanceText(value);
+
+  if (normalized.includes('nakit') || normalized.includes('cash')) return 'Nakit';
+  if (normalized.includes('kart') || normalized.includes('card') || normalized.includes('pos')) return 'Kredi Karti';
+  if (normalized.includes('havale') || normalized.includes('eft') || normalized.includes('banka') || normalized.includes('transfer')) return 'Havale/EFT';
+  return value || 'Nakit';
 }
 
 function NewCollectionDialog({
-  open, onOpenChange, students, onCreated, initialCollection = null,
+  open, onOpenChange, students, onCreated, initialCollection = null, mode = 'create',
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -65,19 +119,21 @@ function NewCollectionDialog({
   });
 
   const selectedStudent = useMemo(
-    () => students.find((student) => student.fullName === form.studentKey),
-    [students, form.studentKey],
+    () => students.find((student) => student.fullName === form.studentKey)
+      || (initialCollection && form.studentKey === initialCollection.name
+        ? { fullName: initialCollection.name, className: initialCollection.className }
+        : null),
+    [students, form.studentKey, initialCollection],
   );
 
   useEffect(() => {
-    if (!open) {
-      setForm({
-        studentKey: initialCollection ? (initialCollection.name || '') : '',
-        paymentType: initialCollection?.method || 'Nakit',
-        amount: initialCollection ? String(parseMoney(initialCollection.amount)) : '',
-        note: initialCollection?.note || '',
-      });
-    }
+    if (!open) return;
+    setForm({
+      studentKey: initialCollection ? (initialCollection.name || '') : '',
+      paymentType: normalizePaymentMethod(initialCollection?.method || 'Nakit'),
+      amount: initialCollection ? String(parseMoney(initialCollection.amount)) : '',
+      note: initialCollection?.note || '',
+    });
   }, [open, initialCollection]);
 
   const handleSave = async () => {
@@ -99,13 +155,13 @@ function NewCollectionDialog({
         method: form.paymentType,
         note: form.note || 'Manuel tahsilat',
       };
-      const created = initialCollection
+      const created = mode === 'edit' && initialCollection?.id
         ? await updateCollection(initialCollection.id, payload)
         : await createCollection(payload);
       onCreated(created);
       toast({
-        title: initialCollection ? 'Tahsilat güncellendi' : 'Tahsilat kaydedildi',
-        description: initialCollection ? 'Tahsilat kaydı güncellendi.' : 'Tahsilat backend’e işlendi.',
+        title: mode === 'edit' ? 'Tahsilat güncellendi' : 'Tahsilat kaydedildi',
+        description: mode === 'edit' ? 'Tahsilat kaydı güncellendi.' : 'Tahsilat backend’e işlendi.',
       });
       onOpenChange(false);
     } catch (err) {
@@ -123,8 +179,8 @@ function NewCollectionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Yeni Tahsilat</DialogTitle>
-          <DialogDescription>{initialCollection ? 'Tahsilat kaydını güncelleyin' : 'Ödeme bilgilerini girin'}</DialogDescription>
+          <DialogTitle>{mode === 'edit' ? 'Tahsilatı Güncelle' : 'Yeni Tahsilat'}</DialogTitle>
+          <DialogDescription>{mode === 'edit' ? 'Tahsilat kaydını güncelleyin' : 'Ödeme bilgilerini girin'}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-4">
           <div className="space-y-2">
@@ -171,7 +227,7 @@ function NewCollectionDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
           <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleSave} disabled={saving}>
             <Receipt className="h-4 w-4 mr-2" />
-            {saving ? 'Kaydediliyor...' : initialCollection ? 'Güncelle' : 'Kaydet'}
+            {saving ? 'Kaydediliyor...' : mode === 'edit' ? 'Güncelle' : 'Kaydet'}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -183,8 +239,11 @@ export default function Collections() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState('all');
+  const [monthFilter, setMonthFilter] = useState('all');
+  const [viewMode, setViewMode] = useState('received');
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingCollection, setEditingCollection] = useState(null);
+  const [prefillCollection, setPrefillCollection] = useState(null);
   const [selectedCollection, setSelectedCollection] = useState(null);
   const [dashboard, setDashboard] = useState(null);
   const [students, setStudents] = useState([]);
@@ -213,19 +272,28 @@ export default function Collections() {
   }, [loadData]);
 
   const collections = useMemo(() => dashboard?.collections || [], [dashboard]);
+  const plannedCollections = useMemo(() => dashboard?.installments || [], [dashboard]);
+  const displayedRows = viewMode === 'planned' ? plannedCollections : collections;
 
-  const filteredCollections = useMemo(() => collections.filter((collection) => {
+  const filteredCollections = useMemo(() => displayedRows.filter((collection) => {
     const searchValue = search.toLowerCase();
-    const matchesSearch = `${collection.name} ${collection.id} ${collection.note || ''}`.toLowerCase().includes(searchValue);
-    const matchesType = typeFilter === 'all' || collection.method === typeFilter;
-    return matchesSearch && matchesType;
-  }), [collections, search, typeFilter]);
+    const rowName = collection.name || collection.student || '';
+    const rowId = collection.id || '';
+    const rowNote = collection.note || '';
+    const matchesSearch = `${rowName} ${rowId} ${rowNote}`.toLowerCase().includes(searchValue);
+    const matchesType = viewMode === 'planned' || typeFilter === 'all' || normalizePaymentMethod(collection.method) === typeFilter;
+    const matchesMonth = monthMatches(
+      viewMode === 'planned' ? (collection.dueDate || collection.due) : collection.time,
+      monthFilter,
+    );
+    return matchesSearch && matchesType && matchesMonth;
+  }), [displayedRows, monthFilter, search, typeFilter, viewMode]);
 
   const getTypeBadge = (type) => {
-    const normalized = String(type || '').toLowerCase();
-    const config = normalized.includes('nakit')
+    const normalized = normalizePaymentMethod(type);
+    const config = normalized === 'Nakit'
       ? { label: 'Nakit', className: 'bg-green-100 text-green-700' }
-      : normalized.includes('kart')
+      : normalized === 'Kredi Karti'
         ? { label: 'Kredi Kartı', className: 'bg-blue-100 text-blue-700' }
         : { label: 'Havale', className: 'bg-purple-100 text-purple-700' };
     return <Badge className={config.className}>{config.label}</Badge>;
@@ -234,9 +302,14 @@ export default function Collections() {
   const totalsByType = useMemo(() => paymentTypes.map((type) => ({
     ...type,
     total: collections
-      .filter((item) => item.method === type.value)
+      .filter((item) => normalizePaymentMethod(item.method) === type.value)
+      .filter((item) => monthMatches(item.time, monthFilter))
       .reduce((sum, item) => sum + parseMoney(item.amount), 0),
-  })), [collections]);
+  })), [collections, monthFilter]);
+
+  const plannedTotal = useMemo(() => plannedCollections
+    .filter((item) => monthMatches(item.dueDate || item.due, monthFilter))
+    .reduce((sum, item) => sum + plannedCollectionAmount(item), 0), [monthFilter, plannedCollections]);
 
   const totalToday = useMemo(() => {
     const today = new Date().toLocaleDateString('tr-TR');
@@ -271,16 +344,32 @@ export default function Collections() {
     }
   };
 
+  const openPlannedCollectionDialog = (plan) => {
+    setEditingCollection(null);
+    setPrefillCollection({
+      name: plan.student || '',
+      className: plan.className || '',
+      amount: plannedCollectionAmount(plan) || plan.amount || '',
+      method: 'Nakit',
+      note: plan.note || `Taksit tahsilatı • ${plan.due || 'Vade yok'}`,
+    });
+    setDialogOpen(true);
+  };
+
   const handleExport = () => {
+    const exportAmount = (collection) => (
+      viewMode === 'planned' ? plannedCollectionAmount(collection) : parseMoney(collection.amount)
+    );
+
     downloadCsvRows('tahsilatlar.csv', [
       ['Kayit No', 'Ogrenci', 'Sinif', 'Tutar', 'Tur', 'Zaman', 'Not'],
       ...filteredCollections.map((collection) => [
         collection.id,
-        collection.name,
+        collection.name || collection.student || '',
         collection.className,
-        parseMoney(collection.amount),
-        collection.method,
-        collection.time || '',
+        exportAmount(collection),
+        viewMode === 'planned' ? (collection.status || 'Planlanan') : collection.method,
+        viewMode === 'planned' ? (collection.due || '') : (collection.time || ''),
         collection.note || '',
       ]),
     ]);
@@ -292,7 +381,7 @@ export default function Collections() {
       badge: `${filteredCollections.length} kayıt`,
       summary: [
         { label: 'Kayıt Sayısı', value: String(filteredCollections.length) },
-        { label: 'Toplam Tutar', value: formatCurrency(filteredCollections.reduce((sum, item) => sum + parseMoney(item.amount), 0)) },
+        { label: 'Toplam Tutar', value: formatCurrency(filteredCollections.reduce((sum, item) => sum + exportAmount(item), 0)) },
         { label: 'Bugün', value: formatCurrency(totalToday) },
       ],
       sections: [{
@@ -301,10 +390,10 @@ export default function Collections() {
           headers: ['Kayıt', 'Öğrenci', 'Tür', 'Tutar', 'Zaman'],
           rows: filteredCollections.slice(0, 18).map((collection) => [
             collection.id,
-            collection.name,
-            collection.method,
-            formatCurrency(collection.amount),
-            collection.time || '-',
+            collection.name || collection.student || '',
+            viewMode === 'planned' ? (collection.status || 'Planlanan') : collection.method,
+            formatCurrency(exportAmount(collection)),
+            viewMode === 'planned' ? (collection.due || '-') : (collection.time || '-'),
           ]),
         },
       }],
@@ -336,7 +425,9 @@ export default function Collections() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading">Tahsilatlar</h1>
-          <p className="text-muted-foreground mt-1">Bugün: ₺{totalToday.toLocaleString('tr-TR')}</p>
+          <p className="text-muted-foreground mt-1">
+            Bugün: ₺{totalToday.toLocaleString('tr-TR')} • {filteredCollections.length} kayıt gösteriliyor
+          </p>
         </div>
         <Button
           className="bg-brand-primary hover:bg-brand-primary/90"
@@ -349,7 +440,7 @@ export default function Collections() {
 
       {error ? <ErrorBanner title="Tahsilatlar alınamadı" message={error} onRetry={loadData} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         {totalsByType.map((type) => {
           const Icon = type.icon;
           return (
@@ -366,6 +457,17 @@ export default function Collections() {
             </Card>
           );
         })}
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-muted">
+              <Receipt className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">₺{plannedTotal.toLocaleString('tr-TR')}</p>
+              <p className="text-xs text-muted-foreground">Planlanan</p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
@@ -380,8 +482,27 @@ export default function Collections() {
                 className="pl-10"
               />
             </div>
+            <Select value={viewMode} onValueChange={setViewMode}>
+              <SelectTrigger className="w-full md:w-52">
+                <SelectValue placeholder="Görünüm" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="received">Alınan Tahsilatlar</SelectItem>
+                <SelectItem value="planned">Planlanan Tahsilatlar</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={monthFilter} onValueChange={setMonthFilter}>
+              <SelectTrigger className="w-full md:w-44">
+                <SelectValue placeholder="Ay seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {monthOptions.map((month) => (
+                  <SelectItem key={month.value} value={month.value}>{month.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={typeFilter} onValueChange={setTypeFilter}>
-              <SelectTrigger className="w-full md:w-40">
+              <SelectTrigger className="w-full md:w-40" disabled={viewMode === 'planned'}>
                 <SelectValue placeholder="Ödeme Türü" />
               </SelectTrigger>
               <SelectContent>
@@ -408,7 +529,7 @@ export default function Collections() {
                 <TableHead>Öğrenci</TableHead>
                 <TableHead>Tutar</TableHead>
                 <TableHead>Tür</TableHead>
-                <TableHead>Zaman</TableHead>
+                <TableHead>{viewMode === 'planned' ? 'Vade' : 'Zaman'}</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
             </TableHeader>
@@ -421,25 +542,33 @@ export default function Collections() {
                   <TableCell className="font-mono text-sm">{collection.id}</TableCell>
                   <TableCell>
                     <div>
-                      <p className="font-medium">{collection.name}</p>
-                      <p className="text-xs text-muted-foreground">{collection.className} • {collection.note}</p>
+                      <p className="font-medium">{collection.name || collection.student}</p>
+                      <p className="text-xs text-muted-foreground">{collection.className || collection.status || 'Plan'} • {collection.note}</p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-bold text-green-600">₺{parseMoney(collection.amount).toLocaleString('tr-TR')}</TableCell>
-                  <TableCell>{getTypeBadge(collection.method)}</TableCell>
-                  <TableCell>{collection.time || 'Zaman yok'}</TableCell>
+                  <TableCell className="font-bold text-green-600">
+                    ₺{(viewMode === 'planned' ? plannedCollectionAmount(collection) : parseMoney(collection.amount)).toLocaleString('tr-TR')}
+                  </TableCell>
+                  <TableCell>{viewMode === 'planned' ? <Badge variant="outline">{collection.status || 'Bekleyen'}</Badge> : getTypeBadge(collection.method)}</TableCell>
+                  <TableCell>{viewMode === 'planned' ? (collection.due || 'Vade yok') : (collection.time || 'Zaman yok')}</TableCell>
                   <TableCell>
-                    <div className="flex items-center">
-                      <Button variant="ghost" size="icon" onClick={() => setSelectedCollection(collection)}>
-                        <Receipt className="h-4 w-4" />
+                    {viewMode === 'received' ? (
+                      <div className="flex items-center">
+                        <Button variant="ghost" size="icon" onClick={() => setSelectedCollection(collection)}>
+                          <Receipt className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection); setDialogOpen(true); }}>
+                          <Pencil className="h-4 w-4 text-blue-600" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(collection)}>
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button size="sm" variant="outline" onClick={() => openPlannedCollectionDialog(collection)}>
+                        Tahsilat Al
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection); setDialogOpen(true); }}>
-                        <Pencil className="h-4 w-4 text-blue-600" />
-                      </Button>
-                      <Button variant="ghost" size="icon" onClick={() => handleDelete(collection)}>
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </Button>
-                    </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -450,10 +579,17 @@ export default function Collections() {
 
       <NewCollectionDialog
         open={dialogOpen}
-        onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingCollection(null); }}
+        onOpenChange={(open) => {
+          setDialogOpen(open);
+          if (!open) {
+            setEditingCollection(null);
+            setPrefillCollection(null);
+          }
+        }}
         students={students}
         onCreated={handleCreated}
-        initialCollection={editingCollection}
+        initialCollection={editingCollection || prefillCollection}
+        mode={editingCollection ? 'edit' : 'create'}
       />
 
       <Dialog open={Boolean(selectedCollection)} onOpenChange={(open) => { if (!open) setSelectedCollection(null); }}>
