@@ -40,7 +40,7 @@ public sealed record DutyResponse(
     string TeacherBranch,
     DateTime CreatedAtUtc);
 
-public sealed record DutyConflictDto(string TeacherName, DateTime DutyDateUtc, string StartTime, string EndTime);
+public sealed record DutyConflictDto(string TeacherName, DateTime DutyDateUtc, string StartTime, string EndTime, string Reason);
 
 public sealed record CreateDutyResult(
     IReadOnlyList<DutyResponse> Created,

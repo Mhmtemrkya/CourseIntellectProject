@@ -19,7 +19,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
 import { PayrollCalculatorDialog, ReconciliationDialog, EInvoiceDialog } from '../../components/finance/FinanceToolsDialogs';
-import { fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
+import { backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 function tl(value) {
@@ -49,6 +49,7 @@ export default function AdminFinance() {
   const [dashboard, setDashboard] = useState(null);
   const [enrollmentFinance, setEnrollmentFinance] = useState(null);
   const [sendingReminders, setSendingReminders] = useState(false);
+  const [backfilling, setBackfilling] = useState(false);
   const [activeTool, setActiveTool] = useState(null);
   const [accountStudent, setAccountStudent] = useState(null);
   const [studentSearch, setStudentSearch] = useState('');
@@ -86,6 +87,22 @@ export default function AdminFinance() {
       setSendingReminders(false);
     }
   }, [toast]);
+
+  const handleBackfill = useCallback(async () => {
+    try {
+      setBackfilling(true);
+      const result = await backfillFinanceInstallments();
+      toast({
+        title: 'Takibe alındı',
+        description: `${result?.created || 0} eski/taksitsiz sözleşme vadeli takibe alındı.`,
+      });
+      await loadDashboard();
+    } catch (err) {
+      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+    } finally {
+      setBackfilling(false);
+    }
+  }, [toast, loadDashboard]);
 
   useEffect(() => {
     loadDashboard();
@@ -149,9 +166,14 @@ export default function AdminFinance() {
               Kurum yöneticisi için tahsilat, geciken ödeme ve onay akışlarını tek ekranda izle.
             </p>
           </div>
-          <Button onClick={() => navigate('/finance/dashboard')}>
-            Muhasebe Modülüne Geç
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={handleBackfill} disabled={backfilling}>
+              {backfilling ? 'İşleniyor...' : 'Eski Kayıtları Takibe Al'}
+            </Button>
+            <Button onClick={() => navigate('/finance/dashboard')}>
+              Muhasebe Modülüne Geç
+            </Button>
+          </div>
         </div>
       </section>
 

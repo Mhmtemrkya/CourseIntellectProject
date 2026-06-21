@@ -70,7 +70,30 @@ public sealed class StudentFinanceService(
                     Currency = currency,
                 });
             }
+        }
+        else if (remaining > 0)
+        {
+            // Taksitsiz sözleşme: kalan tutar tek bir vadeli kayıt olarak takibe alınır.
+            // Aksi halde vade tarihi olmadığından gecikme/yaşlandırma (aging) ve otomatik
+            // hatırlatma bu alacağı görmez ("kayıt yaptım, parası takipte" sanılır ama takip edilmez).
+            var due = (request.FirstInstallmentDate ?? FirstDayOfNextMonth(DateTime.UtcNow)).Date;
+            installments.Add(new FinanceInstallment
+            {
+                EnrollmentContractId = contract.Id,
+                StudentUserId = contract.StudentUserId,
+                StudentName = studentName,
+                SeqNo = 1,
+                Label = "Tek Ödeme",
+                DueDateUtc = DateTime.SpecifyKind(due, DateTimeKind.Utc),
+                Amount = remaining,
+                PaidAmount = 0,
+                Status = "Pending",
+                Currency = currency,
+            });
+        }
 
+        if (installments.Count > 0)
+        {
             await dbContext.FinanceInstallments.AddRangeAsync(installments, cancellationToken);
         }
 
@@ -94,6 +117,55 @@ public sealed class StudentFinanceService(
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return MapContract(contract, installments);
+    }
+
+    public async Task<int> BackfillMissingInstallmentsAsync(CancellationToken cancellationToken = default)
+    {
+        var contracts = await dbContext.EnrollmentContracts.AsNoTracking().ToListAsync(cancellationToken);
+        if (contracts.Count == 0) return 0;
+        var contractIds = contracts.Select(item => item.Id).ToHashSet();
+
+        var installmentContractIds = (await dbContext.FinanceInstallments.AsNoTracking()
+            .Where(item => contractIds.Contains(item.EnrollmentContractId))
+            .Select(item => item.EnrollmentContractId)
+            .Distinct()
+            .ToListAsync(cancellationToken)).ToHashSet();
+
+        var paidByContract = (await dbContext.FinancePayments.AsNoTracking()
+            .Where(item => item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
+            .GroupBy(item => item.EnrollmentContractId!.Value)
+            .Select(group => new { Id = group.Key, Paid = group.Sum(x => x.Amount) })
+            .ToListAsync(cancellationToken))
+            .ToDictionary(item => item.Id, item => item.Paid);
+
+        var due = FirstDayOfNextMonth(DateTime.UtcNow).Date;
+        var toAdd = new List<FinanceInstallment>();
+        foreach (var contract in contracts)
+        {
+            if (installmentContractIds.Contains(contract.Id)) continue; // zaten taksiti/vadeli kaydı var
+            var remaining = contract.NetAmount - paidByContract.GetValueOrDefault(contract.Id);
+            if (remaining <= 0) continue;
+            toAdd.Add(new FinanceInstallment
+            {
+                EnrollmentContractId = contract.Id,
+                StudentUserId = contract.StudentUserId,
+                StudentName = contract.StudentName,
+                SeqNo = 1,
+                Label = "Tek Ödeme",
+                DueDateUtc = DateTime.SpecifyKind(due, DateTimeKind.Utc),
+                Amount = remaining,
+                PaidAmount = 0,
+                Status = "Pending",
+                Currency = string.IsNullOrWhiteSpace(contract.Currency) ? "TRY" : contract.Currency,
+            });
+        }
+
+        if (toAdd.Count > 0)
+        {
+            await dbContext.FinanceInstallments.AddRangeAsync(toAdd, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        return toAdd.Count;
     }
 
     public async Task<StudentFinanceAccountDto> GetAccountAsync(

@@ -41,7 +41,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
     {
         try
         {
-            var result = await dutyService.UpdateAsync(id, request, cancellationToken);
+            var result = await dutyService.UpdateAsync(id, request, CurrentUserId(), CurrentUserName(), cancellationToken);
             return result is null ? NotFound() : Ok(result);
         }
         catch (InvalidOperationException ex)
@@ -54,7 +54,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
     [Authorize(Roles = "Admin,Administrative")]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] DutyStatusRequest request, CancellationToken cancellationToken)
     {
-        var result = await dutyService.SetStatusAsync(id, request.Status ?? string.Empty, cancellationToken);
+        var result = await dutyService.SetStatusAsync(id, request.Status ?? string.Empty, CurrentUserId(), CurrentUserName(), cancellationToken);
         return result is null ? NotFound() : Ok(result);
     }
 
@@ -62,7 +62,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
     [Authorize(Roles = "Admin,Administrative")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
-        var ok = await dutyService.DeleteAsync(id, cancellationToken);
+        var ok = await dutyService.DeleteAsync(id, CurrentUserId(), CurrentUserName(), cancellationToken);
         return ok ? Ok(new { deleted = true }) : NotFound();
     }
 
@@ -70,7 +70,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
     [Authorize(Roles = "Admin,Administrative")]
     public async Task<IActionResult> CancelSeries(Guid groupId, CancellationToken cancellationToken)
     {
-        var count = await dutyService.CancelSeriesAsync(groupId, cancellationToken);
+        var count = await dutyService.CancelSeriesAsync(groupId, CurrentUserId(), CurrentUserName(), cancellationToken);
         return Ok(new { cancelled = count });
     }
 

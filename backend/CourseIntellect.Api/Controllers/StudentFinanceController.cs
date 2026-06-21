@@ -84,6 +84,15 @@ public sealed class StudentFinanceController(
         return Ok(await studentFinanceService.SendDueRemindersAsync(upcomingWindowDays, cancellationToken));
     }
 
+    // Eski taksitsiz (vadesiz) sözleşmeleri tek seferde takibe alır.
+    [HttpPost("backfill-installments")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> BackfillInstallments(CancellationToken cancellationToken)
+    {
+        var count = await studentFinanceService.BackfillMissingInstallmentsAsync(cancellationToken);
+        return Ok(new { created = count, message = $"{count} sözleşme takibe alındı." });
+    }
+
     [HttpPost("payments/intent")]
     public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentIntentRequest request, CancellationToken cancellationToken)
     {

@@ -381,7 +381,7 @@ export default function ExamSolvingPage() {
         </div>
       ) : null}
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-h-[82vh] overflow-hidden rounded-[36px] border border-foreground/10 bg-[#06101f] text-white shadow-2xl shadow-slate-950/20">
-      <div className="grid min-h-[82vh] grid-cols-[86px_1fr_330px]">
+      <div className="grid min-h-[82vh] grid-cols-[86px_minmax(0,1fr)_300px]">
         <aside className="border-r border-foreground/10 bg-slate-950/80 p-4">
           <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-500/25">
             <Sparkles className="h-6 w-6" />
@@ -429,8 +429,8 @@ export default function ExamSolvingPage() {
             </div>
           </header>
 
-          <div className="grid gap-5 xl:grid-cols-[0.92fr_1.08fr]">
-            <section className="rounded-[32px] border border-foreground/10 bg-slate-950/55 p-6">
+          <div className="space-y-5">
+            <section className="rounded-[32px] border border-foreground/10 bg-slate-950/55 p-8">
               <div className="mb-5 flex flex-wrap items-center gap-3">
                 <span className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-black shadow-lg shadow-orange-500/25">Soru {currentIndex + 1}</span>
                 <span className="rounded-2xl bg-orange-500/10 px-4 py-2 text-sm font-semibold text-orange-200">{question?.difficulty || 'Orta'}</span>
@@ -440,12 +440,12 @@ export default function ExamSolvingPage() {
                 </button>
               </div>
 
-              <p className="text-lg font-semibold leading-8 text-slate-50">{question?.questionText}</p>
+              <p className="max-w-5xl text-xl font-semibold leading-9 text-slate-50">{question?.questionText}</p>
               {imageUrl ? (
-                <img src={imageUrl} alt="Soru görseli" className="mt-5 max-h-[360px] w-full rounded-3xl border border-foreground/10 object-contain" />
+                <img src={imageUrl} alt="Soru görseli" className="mt-5 max-h-[440px] w-full rounded-3xl border border-foreground/10 object-contain" />
               ) : (
-                <div className="mt-6 rounded-[28px] border border-foreground/10 bg-foreground/[0.03] p-8 text-center text-slate-400">
-                  Bu soruda görsel yok. Çözümünü sağdaki kağıda yazabilirsin.
+                <div className="mt-6 rounded-[28px] border border-foreground/10 bg-foreground/[0.03] p-10 text-center text-slate-400">
+                  Bu soruda görsel yok. Çözümünü aşağıdaki çözüm kağıdına yazabilirsin.
                 </div>
               )}
 

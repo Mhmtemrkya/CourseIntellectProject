@@ -14,11 +14,11 @@ public interface ITeacherDutyService
 
     Task<IReadOnlyList<TeacherDutyLoadDto>> GetLoadAsync(DateTime? monthStart, CancellationToken cancellationToken = default);
 
-    Task<DutyResponse?> UpdateAsync(Guid id, UpdateDutyRequest request, CancellationToken cancellationToken = default);
+    Task<DutyResponse?> UpdateAsync(Guid id, UpdateDutyRequest request, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default);
 
-    Task<DutyResponse?> SetStatusAsync(Guid id, string status, CancellationToken cancellationToken = default);
+    Task<DutyResponse?> SetStatusAsync(Guid id, string status, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default);
 
-    Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default);
+    Task<bool> DeleteAsync(Guid id, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default);
 
-    Task<int> CancelSeriesAsync(Guid groupId, CancellationToken cancellationToken = default);
+    Task<int> CancelSeriesAsync(Guid groupId, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default);
 }

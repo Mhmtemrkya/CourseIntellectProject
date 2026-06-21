@@ -3,10 +3,11 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class StaffProfile : ITenantScopedEntity
+public sealed class StaffProfile : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid UserId { get; set; }
     public string FullName { get; set; } = string.Empty;
     public string TcNo { get; set; } = string.Empty;

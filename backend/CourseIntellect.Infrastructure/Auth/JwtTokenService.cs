@@ -17,6 +17,7 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
     private const string NameClaim = "name";
     private const string NameIdClaim = "nameid";
     private const string TenantIdClaim = "tenant_id";
+    private const string BranchIdClaim = "branch_id";
     private const string PlatformAdminClaim = "platform_admin";
 
     // .NET 8+'da token OKUMA tarafında JsonWebTokenHandler kullanılır.
@@ -42,6 +43,11 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
         if (user.TenantId.HasValue)
         {
             claims[TenantIdClaim] = user.TenantId.Value.ToString();
+        }
+
+        if (user.BranchId.HasValue)
+        {
+            claims[BranchIdClaim] = user.BranchId.Value.ToString();
         }
 
         // Rol claim'leri — tek rol varsa string, birden fazla varsa array olarak ekle

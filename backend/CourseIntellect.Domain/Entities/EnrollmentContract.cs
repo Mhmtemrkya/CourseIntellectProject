@@ -4,10 +4,11 @@ namespace CourseIntellect.Domain.Entities;
 /// Öğrencinin kayıt/sözleşme finansalı: ne kadara kayıt oldu, indirim,
 /// net tutar, peşinat ve taksit sayısı. Taksit planı buradan üretilir.
 /// </summary>
-public sealed class EnrollmentContract : ITenantScopedEntity
+public sealed class EnrollmentContract : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid? StudentUserId { get; set; }
     public string StudentName { get; set; } = string.Empty;
     public string ClassName { get; set; } = string.Empty;

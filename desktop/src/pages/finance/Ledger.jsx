@@ -481,7 +481,7 @@ export default function Ledger() {
                 {enrollPreview.count > 0 ? <span>{enrollPreview.count} taksit × <b>{formatCurrency(enrollPreview.per)}</b></span> : <span>Taksit yok</span>}
               </div>
             ) : null}
-            <p className="text-xs text-muted-foreground">Taksit sayısı boş/0 bırakılırsa yalnızca toplam alacak (net) kaydedilir, taksit planı oluşturulmaz.</p>
+            <p className="text-xs text-muted-foreground">Taksit sayısı boş/0 bırakılırsa kalan tutar tek ödemeli (vadeli) olarak takibe alınır; gecikme ve hatırlatma akışına girer.</p>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEnrollOpen(false)}>İptal</Button>

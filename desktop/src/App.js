@@ -64,6 +64,7 @@ import TeacherReports from "./pages/teacher/TeacherReports";
 const TeacherDuties = lazyWithReload(() => import("./pages/teacher/TeacherDuties"));
 const DutyCreate = lazyWithReload(() => import("./pages/admin/DutyCreate"));
 const DutiesBoard = lazyWithReload(() => import("./pages/admin/DutiesBoard"));
+const TeacherTimetable = lazyWithReload(() => import("./pages/admin/TeacherTimetable"));
 import TeacherQuestionBank from "./pages/teacher/TeacherQuestionBank";
 import TeacherBulkQuestionUpload from "./pages/teacher/TeacherBulkQuestionUpload";
 import ExamSolvingPage from "./pages/solving/ExamSolvingPage";
@@ -239,6 +240,7 @@ function App() {
               <Route path="/admin/exam-papers" element={<TeacherReports />} />
               <Route path="/admin/duty-create" element={<DutyCreate />} />
               <Route path="/admin/duties" element={<DutiesBoard />} />
+              <Route path="/admin/timetable" element={<TeacherTimetable />} />
               <Route path="/admin/courses" element={<AdminCourses />} />
               <Route path="/admin/finance" element={<AdminFinance />} />
               <Route path="/admin/profile" element={<AdminProfile />} />

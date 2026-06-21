@@ -11,10 +11,10 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  fetchOrgUnits, createOrgUnit, updateOrgUnit, deleteOrgUnit,
+  fetchOrgUnits, createOrgUnit, updateOrgUnit, deleteOrgUnit, backfillBranch,
 } from '../../lib/api/modules';
 
-const UNIT_TYPES = ['Kampüs', 'Birim', 'Departman'];
+const UNIT_TYPES = ['Şube', 'Kampüs', 'Birim', 'Departman'];
 const emptyForm = { name: '', unitType: 'Birim', parentUnitId: '', managerName: '', note: '' };
 
 export default function AdminOrgUnits() {
@@ -83,6 +83,18 @@ export default function AdminOrgUnits() {
     } finally { setBusy(false); }
   };
 
+  const handleBackfill = async (u) => {
+    if (!window.confirm(`Şubesi atanmamış tüm kayıtlar (öğrenci, personel, finans, sınav, nöbet, devamsızlık) "${u.name}" şubesine taşınsın mı? Bu işlem geri alınamaz.`)) return;
+    try {
+      setBusy(true);
+      const result = await backfillBranch(u.id);
+      toast({ title: 'Şubeye taşındı', description: `${result?.updated || 0} kayıt "${u.name}" şubesine atandı.` });
+      await load();
+    } catch (err) {
+      toast({ title: 'İşlem başarısız', description: err?.response?.data?.message || err.message, variant: 'destructive' });
+    } finally { setBusy(false); }
+  };
+
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
   const renderUnit = (u, depth = 0) => (
@@ -95,6 +107,7 @@ export default function AdminOrgUnits() {
           {u.managerName ? <span className="text-sm text-muted-foreground">• {u.managerName}</span> : null}
         </div>
         <div className="flex gap-1">
+          <Button size="sm" variant="outline" disabled={busy} onClick={() => handleBackfill(u)} title="Şubesi atanmamış kayıtları bu şubeye taşı">Atanmamışları Taşı</Button>
           <Button size="icon" variant="ghost" onClick={() => startEdit(u)}><Pencil className="h-4 w-4" /></Button>
           <Button size="icon" variant="ghost" className="text-red-600" onClick={() => remove(u)}><Trash2 className="h-4 w-4" /></Button>
         </div>

@@ -9,7 +9,8 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class TeacherDutyService(
     CourseIntellectDbContext dbContext,
-    INotificationService notificationService) : ITeacherDutyService
+    INotificationService notificationService,
+    IAuditLogService auditLogService) : ITeacherDutyService
 {
     public async Task<CreateDutyResult> CreateAsync(
         CreateDutyRequest request,
@@ -53,8 +54,18 @@ public sealed class TeacherDutyService(
             .Select(d => new { d.TeacherUserId, d.TeacherName, d.DutyDateUtc, d.StartTime, d.EndTime })
             .ToListAsync(cancellationToken);
 
+        // Ders-saati çakışması için ilgili öğretmenlerin haftalık programını çek.
+        var timetable = await dbContext.TeacherTimetableSlots.AsNoTracking()
+            .Where(s => (s.TeacherUserId != null && teacherIds.Contains(s.TeacherUserId.Value))
+                || teacherNames.Contains(s.TeacherName))
+            .Select(s => new { s.TeacherUserId, s.TeacherName, s.DayOfWeek, s.StartTime, s.EndTime })
+            .ToListAsync(cancellationToken);
+
         bool SameTeacher(Guid? id, string name, Guid? oid, string oname) =>
             (id != null && oid != null && id == oid) || (string.Equals(name.Trim(), oname.Trim(), StringComparison.OrdinalIgnoreCase));
+
+        // C# DayOfWeek (Paz=0..Cmt=6) → 1=Pzt..7=Paz
+        static int IsoDayOfWeek(DateTime date) => ((int)date.DayOfWeek + 6) % 7 + 1;
 
         var groupId = Guid.NewGuid();
         var now = DateTime.UtcNow;
@@ -77,7 +88,18 @@ public sealed class TeacherDutyService(
 
                 if (dbConflict || batchConflict)
                 {
-                    conflicts.Add(new DutyConflictDto(name, date, request.StartTime, request.EndTime));
+                    conflicts.Add(new DutyConflictDto(name, date, request.StartTime, request.EndTime, "Başka nöbet"));
+                    continue;
+                }
+
+                // Ders-saati çakışması (öğretmenin o gün/saat dersi var mı)
+                var dow = IsoDayOfWeek(date);
+                var lessonConflict = timetable.Any(s => s.DayOfWeek == dow
+                    && SameTeacher(teacher.TeacherUserId, name, s.TeacherUserId, s.TeacherName)
+                    && Overlaps(startMin, endMin, ParseMinutes(s.StartTime), ParseMinutes(s.EndTime)));
+                if (lessonConflict)
+                {
+                    conflicts.Add(new DutyConflictDto(name, date, request.StartTime, request.EndTime, "Ders saati"));
                     continue;
                 }
 
@@ -108,6 +130,8 @@ public sealed class TeacherDutyService(
             await dbContext.TeacherDuties.AddRangeAsync(toCreate, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
             await NotifyTeachersAsync(toCreate, cancellationToken);
+            await SafeAuditAsync(actorUserId, actorName, "Nöbet oluşturuldu", groupId.ToString(),
+                $"{toCreate.Count} nöbet · {toCreate.Select(d => d.TeacherName).Distinct().Count()} öğretmen · {request.Location}", cancellationToken);
         }
 
         return new CreateDutyResult(toCreate.Select(Map).ToList(), conflicts);
@@ -240,7 +264,7 @@ public sealed class TeacherDutyService(
             .ToList();
     }
 
-    public async Task<DutyResponse?> UpdateAsync(Guid id, UpdateDutyRequest request, CancellationToken cancellationToken = default)
+    public async Task<DutyResponse?> UpdateAsync(Guid id, UpdateDutyRequest request, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default)
     {
         var duty = await dbContext.TeacherDuties.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (duty is null) return null;
@@ -260,29 +284,35 @@ public sealed class TeacherDutyService(
         duty.EndTime = request.EndTime?.Trim() ?? duty.EndTime;
         duty.Description = request.Description?.Trim() ?? string.Empty;
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SafeAuditAsync(actorUserId, actorName, "Nöbet güncellendi", duty.Id.ToString(),
+            $"{duty.TeacherName} · {duty.DutyType} · {duty.DutyDateUtc:dd.MM.yyyy}", cancellationToken);
         return Map(duty);
     }
 
-    public async Task<DutyResponse?> SetStatusAsync(Guid id, string status, CancellationToken cancellationToken = default)
+    public async Task<DutyResponse?> SetStatusAsync(Guid id, string status, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default)
     {
         var duty = await dbContext.TeacherDuties.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (duty is null) return null;
         var allowed = new[] { "Planlandı", "Tamamlandı", "İptal Edildi" };
         duty.Status = allowed.Contains(status) ? status : duty.Status;
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SafeAuditAsync(actorUserId, actorName, $"Nöbet durumu: {duty.Status}", duty.Id.ToString(),
+            $"{duty.TeacherName} · {duty.DutyDateUtc:dd.MM.yyyy}", cancellationToken);
         return Map(duty);
     }
 
-    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<bool> DeleteAsync(Guid id, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default)
     {
         var duty = await dbContext.TeacherDuties.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (duty is null) return false;
         dbContext.TeacherDuties.Remove(duty);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SafeAuditAsync(actorUserId, actorName, "Nöbet silindi", duty.Id.ToString(),
+            $"{duty.TeacherName} · {duty.DutyType} · {duty.DutyDateUtc:dd.MM.yyyy}", cancellationToken);
         return true;
     }
 
-    public async Task<int> CancelSeriesAsync(Guid groupId, CancellationToken cancellationToken = default)
+    public async Task<int> CancelSeriesAsync(Guid groupId, Guid? actorUserId, string actorName, CancellationToken cancellationToken = default)
     {
         var items = await dbContext.TeacherDuties.Where(item => item.GroupId == groupId).ToListAsync(cancellationToken);
         foreach (var item in items)
@@ -290,7 +320,22 @@ public sealed class TeacherDutyService(
             item.Status = "İptal Edildi";
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+        await SafeAuditAsync(actorUserId, actorName, "Nöbet serisi iptal edildi", groupId.ToString(),
+            $"{items.Count} nöbet iptal edildi", cancellationToken);
         return items.Count;
+    }
+
+    private async Task SafeAuditAsync(Guid? actorUserId, string actorName, string action, string entityId, string detail, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await auditLogService.LogAsync(actorUserId, string.IsNullOrWhiteSpace(actorName) ? "Bilinmiyor" : actorName,
+                action, "Duty", "TeacherDuty", entityId, detail, cancellationToken);
+        }
+        catch
+        {
+            // Audit hatası ana işlemi bozmaz.
+        }
     }
 
     private static int ParseMinutes(string? value)

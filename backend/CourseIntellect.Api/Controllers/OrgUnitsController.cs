@@ -1,19 +1,49 @@
 using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Domain.Entities;
+using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Api.Controllers;
 
 [ApiController]
 [Authorize(Roles = "Admin,Administrative")]
 [Route("api/org-units")]
-public sealed class OrgUnitsController(IOrgUnitService orgUnitService) : ControllerBase
+public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseIntellectDbContext dbContext) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
         Ok(await orgUnitService.GetAsync(cancellationToken));
+
+    // Şube atanmamış (BranchId=null) mevcut kayıtları seçilen şubeye taşır.
+    // Tenant-güvenli: yalnızca aktif tenant'ın satırları güncellenir.
+    [HttpPost("backfill-branch")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> BackfillBranch([FromQuery] Guid branchId, CancellationToken cancellationToken)
+    {
+        if (branchId == Guid.Empty) return BadRequest(new { message = "Şube (branchId) zorunludur." });
+        var tenantId = dbContext.CurrentTenantId;
+
+        async Task<int> Fill<T>(DbSet<T> set) where T : class, IBranchScopedEntity =>
+            await set.IgnoreQueryFilters()
+                .Where(x => x.BranchId == null && (tenantId == null || x.TenantId == tenantId))
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.BranchId, branchId), cancellationToken);
+
+        var updated = 0;
+        updated += await Fill(dbContext.Users);
+        updated += await Fill(dbContext.Students);
+        updated += await Fill(dbContext.Staff);
+        updated += await Fill(dbContext.EnrollmentContracts);
+        updated += await Fill(dbContext.FinanceInstallments);
+        updated += await Fill(dbContext.FinancePayments);
+        updated += await Fill(dbContext.ExamSessions);
+        updated += await Fill(dbContext.TeacherDuties);
+        updated += await Fill(dbContext.AttendanceEntries);
+        return Ok(new { updated, message = $"{updated} kayıt şubeye atandı." });
+    }
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateOrgUnitRequest request, CancellationToken cancellationToken)

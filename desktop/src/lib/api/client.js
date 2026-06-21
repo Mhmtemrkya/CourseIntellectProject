@@ -1,6 +1,19 @@
 import { clearDesktopSession, desktopApiBaseUrl, loadDesktopSession } from '../auth';
 import { desktopAppEnv } from '../appEnv';
 
+// Owner/admin tarafından seçilen şube filtresi (X-Branch-Filter header'ı).
+// null = "Tüm Şubeler" (header gönderilmez). BranchContext bunu set eder.
+let activeBranchFilter = (typeof localStorage !== 'undefined' && localStorage.getItem('ci-branch-filter')) || null;
+export function setActiveBranchFilter(branchId) {
+  activeBranchFilter = branchId || null;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (branchId) localStorage.setItem('ci-branch-filter', branchId);
+      else localStorage.removeItem('ci-branch-filter');
+    }
+  } catch { /* yoksa yoksay */ }
+}
+
 // Lazy singleton: Tauri HTTP plugin import'unu ilk kullanımda await eder
 let _tauriFetchPromise = null;
 async function getTauriFetch() {
@@ -35,6 +48,11 @@ async function request(method, url, data, config = {}) {
   const headers = { ...(config.headers || {}) };
   if (session?.accessToken) {
     headers['Authorization'] = `Bearer ${session.accessToken}`;
+  }
+  // Şube filtresi: yalnızca owner/admin seçtiğinde gönderilir; backend yetkiye
+  // göre dikkate alır (scoped kullanıcılarda yok sayılır).
+  if (activeBranchFilter && !headers['X-Branch-Filter']) {
+    headers['X-Branch-Filter'] = activeBranchFilter;
   }
 
   const isFormData = data instanceof FormData;

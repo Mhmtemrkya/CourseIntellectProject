@@ -4,10 +4,11 @@ namespace CourseIntellect.Domain.Entities;
 /// Sözleşmeden üretilen tek bir taksit. Ödeme alındıkça PaidAmount artar,
 /// Status güncellenir (Pending / Partial / Paid / Overdue).
 /// </summary>
-public sealed class FinanceInstallment : ITenantScopedEntity
+public sealed class FinanceInstallment : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid EnrollmentContractId { get; set; }
     public Guid? StudentUserId { get; set; }
     public string StudentName { get; set; } = string.Empty;

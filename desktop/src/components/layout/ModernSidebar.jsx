@@ -46,7 +46,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield, ShieldCheck, CalendarPlus } from "lucide-react";
+import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -148,6 +148,12 @@ export const menuConfigs = {
       icon: ShieldCheck,
       label: "Tüm Nöbetler",
       color: "#f59e0b",
+    },
+    {
+      path: "/admin/timetable",
+      icon: CalendarRange,
+      label: "Öğretmen Programı",
+      color: "#06b6d4",
     },
     {
       path: "/admin/task-center",
@@ -334,6 +340,12 @@ export const menuConfigs = {
       icon: ShieldCheck,
       label: "Tüm Nöbetler",
       color: "#f59e0b",
+    },
+    {
+      path: "/admin/timetable",
+      icon: CalendarRange,
+      label: "Öğretmen Programı",
+      color: "#06b6d4",
     },
     {
       path: "/admin/service-tracking",
@@ -1201,6 +1213,7 @@ function inferModuleKey(item) {
     "/t/duties": "duties",
     "/admin/duty-create": "duties",
     "/admin/duties": "duties",
+    "/admin/timetable": "duties",
     "/s/exam-results": "reports",
     "/s/wrong-answers": "reports",
     "/p/weekly-report": "reports",

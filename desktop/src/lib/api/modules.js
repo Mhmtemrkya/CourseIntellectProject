@@ -322,6 +322,11 @@ export async function sendFinanceReminders(upcomingWindowDays = 7) {
   return response;
 }
 
+export async function backfillFinanceInstallments() {
+  const response = await api.post('/api/student-finance/backfill-installments');
+  return response;
+}
+
 export async function createFinancePaymentIntent(payload) {
   const response = await api.post('/api/student-finance/payments/intent', payload);
   return response;
@@ -489,6 +494,11 @@ export async function createOrgUnit(payload) {
 
 export async function updateOrgUnit(id, payload) {
   const response = await api.put(`/api/org-units/${id}`, payload);
+  return response;
+}
+
+export async function backfillBranch(branchId) {
+  const response = await api.post('/api/org-units/backfill-branch', null, { params: { branchId } });
   return response;
 }
 
@@ -1577,6 +1587,21 @@ export async function deleteDuty(id) {
 export async function cancelDutySeries(groupId) {
   const response = await api.post(`/api/duties/group/${groupId}/cancel`);
   return response;
+}
+
+// --- Öğretmen Ders Programı (timetable) ---
+export async function fetchTeacherTimetable(params) {
+  const response = await api.get('/api/timetable', { params });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function setTeacherTimetable(payload) {
+  const response = await api.post('/api/timetable', payload);
+  return Array.isArray(response) ? response : [];
+}
+
+export async function deleteTimetableSlot(id) {
+  await api.delete(`/api/timetable/${id}`);
 }
 
 // --- Question Studio ---

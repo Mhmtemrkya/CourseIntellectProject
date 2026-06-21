@@ -4,10 +4,11 @@ namespace CourseIntellect.Domain.Entities;
 /// Öğrenciden alınan tahsilat. Bir taksite ve/veya sözleşmeye mahsup edilir.
 /// ReceiptNo sıralı makbuz numarasıdır.
 /// </summary>
-public sealed class FinancePayment : ITenantScopedEntity
+public sealed class FinancePayment : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid? EnrollmentContractId { get; set; }
     public Guid? FinanceInstallmentId { get; set; }
     public Guid? StudentUserId { get; set; }

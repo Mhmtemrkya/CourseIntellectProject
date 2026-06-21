@@ -18,7 +18,8 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
-import { fetchNotifications } from "../../lib/api/modules";
+import { fetchNotifications, fetchOrgUnits } from "../../lib/api/modules";
+import { setActiveBranchFilter } from "../../lib/api/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,7 +99,29 @@ export function Topbar() {
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const isOwner = (user?.role || "").toLowerCase() === "admin";
+  const [branches, setBranches] = useState([]);
+  const [selectedBranch, setSelectedBranch] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("ci-branch-filter") || "" : ""));
   const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    if (!isOwner) return;
+    fetchOrgUnits()
+      .then((list) => {
+        const all = Array.isArray(list) ? list : [];
+        // Şube filtresi yalnızca "Şube"/"Kampüs" türü birimleri kapsar (departman vb. hariç).
+        const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
+        setBranches(branchUnits.length > 0 ? branchUnits : all);
+      })
+      .catch(() => setBranches([]));
+  }, [isOwner]);
+
+  const handleBranchChange = (value) => {
+    setSelectedBranch(value);
+    setActiveBranchFilter(value || null);
+    // Tüm modüllerin yeni şube filtresiyle yeniden yüklenmesi için sayfayı tazele.
+    window.location.reload();
+  };
   const [notifications, setNotifications] = useState([]);
 
   const pathSegments = location.pathname.split("/").filter(Boolean);
@@ -193,6 +216,20 @@ export function Topbar() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Şube seçici (yalnızca kurum yöneticisi) */}
+        {isOwner && branches.length > 0 ? (
+          <select
+            value={selectedBranch}
+            onChange={(e) => handleBranchChange(e.target.value)}
+            title="Şube filtresi"
+            className="hidden h-8 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground md:block"
+          >
+            <option value="">Tüm Şubeler</option>
+            {branches.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        ) : null}
         {/* Search Button */}
         <Button
           data-testid="search-button"

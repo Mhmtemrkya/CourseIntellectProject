@@ -5,10 +5,11 @@ namespace CourseIntellect.Domain.Entities;
 /// ayrı bir satırdır (ortak <see cref="GroupId"/> ile bağlanır). "Nöbetlerim"
 /// görünümü <see cref="TeacherUserId"/>/<see cref="TeacherName"/> ile filtrelenir.
 /// </summary>
-public sealed class TeacherDuty : ITenantScopedEntity
+public sealed class TeacherDuty : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid GroupId { get; set; } = Guid.NewGuid();
     public string DutyType { get; set; } = "Sabah Nöbeti";
     public string Location { get; set; } = string.Empty;

@@ -26,6 +26,30 @@ public sealed class CourseIntellectDbContext : DbContext
         }
     }
 
+    // Şube (branch) izolasyonu: Admin/owner tüm şubeleri görür (override header ile
+    // tek şubeye odaklanabilir); diğer roller kendi şube claim'ine kilitlidir.
+    // null = filtre yok (tüm şubeler / kimlik yok / atanmamış).
+    public Guid? EffectiveBranchId
+    {
+        get
+        {
+            var ctx = httpContextAccessor?.HttpContext;
+            var user = ctx?.User;
+            if (user?.Identity?.IsAuthenticated != true) return null;
+
+            var unrestricted = user.IsInRole("Admin") || user.IsInRole("SuperAdmin") || user.IsInRole("Developer")
+                || string.Equals(user.FindFirstValue("role"), "admin", StringComparison.OrdinalIgnoreCase);
+            if (unrestricted)
+            {
+                var overrideRaw = ctx?.Request?.Headers["X-Branch-Filter"].ToString();
+                return Guid.TryParse(overrideRaw, out var picked) ? picked : null;
+            }
+
+            var branchRaw = user.FindFirstValue("branch_id");
+            return Guid.TryParse(branchRaw, out var branchId) ? branchId : null;
+        }
+    }
+
     public DbSet<AppUser> Users => Set<AppUser>();
     public DbSet<StudentProfile> Students => Set<StudentProfile>();
     public DbSet<StaffProfile> Staff => Set<StaffProfile>();
@@ -94,6 +118,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<TeacherReviewComment> TeacherReviewComments => Set<TeacherReviewComment>();
     public DbSet<ReportRecipient> ReportRecipients => Set<ReportRecipient>();
     public DbSet<TeacherDuty> TeacherDuties => Set<TeacherDuty>();
+    public DbSet<TeacherTimetableSlot> TeacherTimetableSlots => Set<TeacherTimetableSlot>();
     public DbSet<LiveExamState> LiveExamStates => Set<LiveExamState>();
 
     public override int SaveChanges()
@@ -126,7 +151,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("users");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Username).HasMaxLength(80).IsRequired();
             entity.HasIndex(x => x.Username).IsUnique();
@@ -142,7 +167,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("student_profiles");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.HasIndex(x => x.UserId).IsUnique();
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.TcNo).HasMaxLength(11).IsRequired();
@@ -156,7 +181,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("staff_profiles");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.HasIndex(x => x.UserId).IsUnique();
             entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.TcNo).HasMaxLength(11).IsRequired();
@@ -476,7 +501,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("enrollment_contracts");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(120);
             entity.Property(x => x.AcademicYear).HasMaxLength(40);
@@ -495,7 +520,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("finance_installments");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Label).HasMaxLength(80);
             entity.Property(x => x.Amount).HasPrecision(18, 2);
@@ -510,7 +535,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("finance_payments");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.Amount).HasPrecision(18, 2);
             entity.Property(x => x.Method).HasMaxLength(40).IsRequired();
@@ -557,7 +582,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.ToTable("attendance_entries");
             entity.HasKey(x => x.Id);
             entity.Property(x => x.Id).HasColumnName("id");
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.StudentName).HasColumnName("student_name").HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasColumnName("class_name").HasMaxLength(20).IsRequired();
             entity.Property(x => x.LessonDate).HasColumnName("lesson_date");
@@ -1098,7 +1123,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("exam_sessions");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.PlannedExamId).HasColumnName("planned_exam_id");
             entity.Property(x => x.StudentUserId).HasColumnName("student_user_id");
@@ -1271,6 +1296,18 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => x.ExamSessionId).IsUnique();
             entity.HasOne<ExamSession>().WithMany().HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
         });
+
+        modelBuilder.Entity<TeacherDuty>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+        });
+
+        modelBuilder.Entity<TeacherTimetableSlot>(entity =>
+        {
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+        });
     }
 
     private void ConfigureTenantScope<TEntity>(EntityTypeBuilder<TEntity> entity)
@@ -1285,19 +1322,48 @@ public sealed class CourseIntellectDbContext : DbContext
         entity.HasQueryFilter(x => CurrentTenantId == null || x.TenantId == CurrentTenantId);
     }
 
+    // Tenant + şube izolasyonu: çekirdek operasyonel entity'ler için. Tek query
+    // filter'da hem tenant hem şube koşulu birleştirilir (EF entity başına tek filtre).
+    private void ConfigureBranchScope<TEntity>(EntityTypeBuilder<TEntity> entity)
+        where TEntity : class, IBranchScopedEntity
+    {
+        entity.Property(x => x.TenantId).HasColumnName("tenant_id");
+        entity.HasIndex(x => x.TenantId);
+        entity.HasOne<TenantWorkspace>()
+            .WithMany()
+            .HasForeignKey(x => x.TenantId)
+            .OnDelete(DeleteBehavior.SetNull);
+        entity.Property(x => x.BranchId).HasColumnName("branch_id");
+        entity.HasIndex(x => x.BranchId);
+        entity.HasQueryFilter(x =>
+            (CurrentTenantId == null || x.TenantId == CurrentTenantId)
+            && (EffectiveBranchId == null || x.BranchId == EffectiveBranchId));
+    }
+
     private void ApplyTenantContext()
     {
         var tenantId = CurrentTenantId;
-        if (!tenantId.HasValue)
+        if (tenantId.HasValue)
         {
-            return;
+            foreach (var entry in ChangeTracker.Entries<ITenantScopedEntity>())
+            {
+                if (entry.State == EntityState.Added && entry.Entity.TenantId is null)
+                {
+                    entry.Entity.TenantId = tenantId;
+                }
+            }
         }
 
-        foreach (var entry in ChangeTracker.Entries<ITenantScopedEntity>())
+        // Şube stamp: kayıt akışları açıkça set etmediyse, aktörün etkin şubesine düş.
+        var branchId = EffectiveBranchId;
+        if (branchId.HasValue)
         {
-            if (entry.State == EntityState.Added && entry.Entity.TenantId is null)
+            foreach (var entry in ChangeTracker.Entries<IBranchScopedEntity>())
             {
-                entry.Entity.TenantId = tenantId;
+                if (entry.State == EntityState.Added && entry.Entity.BranchId is null)
+                {
+                    entry.Entity.BranchId = branchId;
+                }
             }
         }
     }

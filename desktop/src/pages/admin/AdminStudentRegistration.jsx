@@ -362,7 +362,7 @@ export default function AdminStudentRegistration() {
                   <div className="rounded-xl border p-4 space-y-4">
                     <div>
                       <p className="font-semibold">Kayıt Ücreti & Taksit Planı</p>
-                      <p className="text-xs text-muted-foreground">Tutar girilirse kayıtta otomatik sözleşme ve taksit planı oluşturulur. Boş bırakılırsa finans kaydı oluşturulmaz.</p>
+                      <p className="text-xs text-muted-foreground">Tutar girilirse kayıtta otomatik sözleşme oluşturulur. Taksit sayısı 0/boş ise kalan tutar tek ödemeli (vadeli) olarak takibe alınır. Tutar boş bırakılırsa finans kaydı oluşturulmaz.</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div>

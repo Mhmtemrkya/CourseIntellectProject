@@ -1,9 +1,10 @@
 namespace CourseIntellect.Domain.Entities;
 
-public sealed class ExamSession : ITenantScopedEntity
+public sealed class ExamSession : IBranchScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
     public Guid? PlannedExamId { get; set; }
     public Guid? StudentUserId { get; set; }
     public Guid? TeacherPreviewUserId { get; set; }
