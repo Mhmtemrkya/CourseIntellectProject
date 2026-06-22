@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlignCenter, AlignLeft, AlignRight, Bookmark, Check, Code2, Eye,
   GripVertical, Highlighter, Image, Italic, Link2, List, ListOrdered,
-  Loader2, Maximize2, Paperclip, Plus, RotateCw, Save, Table2, Trash2,
+  LibraryBig, Loader2, Maximize2, Paperclip, Plus, RotateCw, Save, Table2, Trash2,
   Upload, X,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
@@ -14,6 +14,11 @@ import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Checkbox } from '../../components/ui/checkbox';
+import { ScrollArea } from '../../components/ui/scroll-area';
+import {
+  Accordion, AccordionContent, AccordionItem, AccordionTrigger,
+} from '../../components/ui/accordion';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { DrawingCanvas } from '../../features/solving/canvas/DrawingCanvas';
@@ -21,6 +26,7 @@ import { desktopApiBaseUrl } from '../../lib/auth';
 import {
   createPlannedExam,
   createQuestionBankItem,
+  fetchQuestionBank,
   fetchTeacherWeeklyReportBootstrap,
   saveQuestionStudioDraft,
   uploadFile,
@@ -84,6 +90,31 @@ function createQuestionSetKey(prefix = 'set') {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function isExamOnlyQuestion(item) {
+  try {
+    return JSON.parse(item?.editorMetadataJson || '{}')?.visibility === 'ExamOnly';
+  } catch {
+    return false;
+  }
+}
+
+function groupQuestionSets(items) {
+  const groups = new Map();
+  items.forEach((item) => {
+    const key = item.questionSetKey || `${item.subject}|${item.topic}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+  return Array.from(groups.entries()).map(([key, questions]) => ({
+    key,
+    title: questions[0]?.questionSetTitle || questions[0]?.topic || 'Soru Seti',
+    subject: questions[0]?.subject || 'Genel',
+    questions: [...questions].sort(
+      (left, right) => (left.questionOrder ?? 9999) - (right.questionOrder ?? 9999),
+    ),
+  }));
+}
+
 export default function TeacherQuestionStudio() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -118,6 +149,10 @@ export default function TeacherQuestionStudio() {
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [savedQuestions, setSavedQuestions] = useState([]);
   const [examQuestions, setExamQuestions] = useState([]);
+  const [bankPickerOpen, setBankPickerOpen] = useState(false);
+  const [bankPickerLoading, setBankPickerLoading] = useState(false);
+  const [passiveQuestionSets, setPassiveQuestionSets] = useState([]);
+  const [stagedQuestionIds, setStagedQuestionIds] = useState(() => new Set());
   const [teacherClassOptions, setTeacherClassOptions] = useState([]);
   const [classOptionsLoading, setClassOptionsLoading] = useState(false);
   const [questionSetKey] = useState(() => createQuestionSetKey(isExamMode ? 'exam-set' : 'question-set'));
@@ -401,6 +436,7 @@ export default function TeacherQuestionStudio() {
       editorMetadataJson: JSON.stringify({
         settings,
         visual,
+        visibility: isExamMode ? 'ExamOnly' : 'QuestionBank',
         optionAssets: selectedOptions.map(({ id, imagePath, originalIndex }, index) => ({
           id,
           index,
@@ -452,6 +488,63 @@ export default function TeacherQuestionStudio() {
     }
   };
 
+  const openQuestionBankPicker = async () => {
+    try {
+      setBankPickerLoading(true);
+      setBankPickerOpen(true);
+      const payload = await fetchQuestionBank();
+      const passiveQuestions = (payload || []).filter(
+        (item) => item.publicationStatus === 'Passive' && !isExamOnlyQuestion(item),
+      );
+      setPassiveQuestionSets(groupQuestionSets(passiveQuestions));
+      setStagedQuestionIds(new Set(examQuestions.map((item) => item.id)));
+    } catch (error) {
+      toast({
+        title: 'Pasif testler alınamadı',
+        description: error.message,
+        variant: 'destructive',
+      });
+      setBankPickerOpen(false);
+    } finally {
+      setBankPickerLoading(false);
+    }
+  };
+
+  const toggleStagedQuestion = (questionId) => {
+    setStagedQuestionIds((current) => {
+      const next = new Set(current);
+      if (next.has(questionId)) next.delete(questionId);
+      else next.add(questionId);
+      return next;
+    });
+  };
+
+  const toggleStagedSet = (set) => {
+    setStagedQuestionIds((current) => {
+      const next = new Set(current);
+      const allSelected = set.questions.every((question) => next.has(question.id));
+      set.questions.forEach((question) => {
+        if (allSelected) next.delete(question.id);
+        else next.add(question.id);
+      });
+      return next;
+    });
+  };
+
+  const applyQuestionBankSelection = () => {
+    const bankQuestions = passiveQuestionSets.flatMap((set) => set.questions);
+    const bankQuestionIds = new Set(bankQuestions.map((item) => item.id));
+    const preservedQuestions = examQuestions.filter((item) => !bankQuestionIds.has(item.id));
+    const selectedQuestions = bankQuestions.filter((item) => stagedQuestionIds.has(item.id));
+    setExamQuestions([...preservedQuestions, ...selectedQuestions]);
+    setBankPickerOpen(false);
+    touch();
+    toast({
+      title: 'Soru seçimi güncellendi',
+      description: `${selectedQuestions.length} soru pasif testlerden sınava bağlandı.`,
+    });
+  };
+
   const publishExam = async () => {
     if (!examForm.title.trim() || !examForm.className.trim() || !examForm.dateLabel || examQuestions.length === 0) {
       toast({ title: `${examKindTitle} tamamlanmadı`, description: 'Başlık, sınıf, tarih ve en az bir kayıtlı soru zorunludur.', variant: 'destructive' });
@@ -496,6 +589,16 @@ export default function TeacherQuestionStudio() {
               <p className="mt-1 text-sm text-slate-400">{isExamMode ? 'Yeni sınavı soru oluşturma stüdyosu ile hazırla' : 'Yeni soru oluştur'}</p>
             </div>
             <div className="flex items-center gap-3">
+              {isExamMode ? (
+                <Button
+                  variant="outline"
+                  onClick={openQuestionBankPicker}
+                  className="border-orange-400/30 bg-orange-500/10 text-orange-100 hover:bg-orange-500/20 hover:text-white"
+                >
+                  <LibraryBig className="mr-2 h-4 w-4" />
+                  Soru Bankasından Seç
+                </Button>
+              ) : null}
               <Button variant="outline" onClick={() => setPreviewOpen(true)} className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white"><Eye className="mr-2 h-4 w-4" />Önizleme</Button>
               {!isExamMode && savedQuestions.length > 0 && (
                 <Button variant="outline" onClick={() => navigate('/t/question-bank')} className="border-foreground/10 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white">
@@ -577,8 +680,16 @@ export default function TeacherQuestionStudio() {
               {examQuestions.length > 0 && (
                 <div className="mt-4 flex flex-wrap gap-2">
                   {examQuestions.map((question, index) => (
-                    <span key={question.id} className="rounded-xl border border-orange-400/20 bg-black/20 px-3 py-2 text-xs text-orange-100">
+                    <span key={question.id} className="inline-flex items-center gap-2 rounded-xl border border-orange-400/20 bg-black/20 px-3 py-2 text-xs text-orange-100">
                       {index + 1}. {question.questionText.slice(0, 42)}
+                      <button
+                        type="button"
+                        aria-label="Soruyu sınavdan çıkar"
+                        onClick={() => setExamQuestions((current) => current.filter((item) => item.id !== question.id))}
+                        className="rounded-full p-0.5 text-orange-200 hover:bg-white/10 hover:text-white"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
                     </span>
                   ))}
                 </div>
@@ -733,6 +844,87 @@ export default function TeacherQuestionStudio() {
           </div>
         </aside>
       </div>
+
+      <Dialog open={bankPickerOpen} onOpenChange={setBankPickerOpen}>
+        <DialogContent className="max-w-4xl border-foreground/10 bg-[#09111f] text-white">
+          <DialogHeader>
+            <DialogTitle>Pasif Testlerden Soru Seç</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-slate-400">
+            Bir veya daha fazla testi açıp istediğin soruları seçebilirsin. Pasif testler öğrencinin soru bankasında görünmez.
+          </p>
+          {bankPickerLoading ? (
+            <div className="flex min-h-64 items-center justify-center">
+              <Loader2 className="h-7 w-7 animate-spin text-orange-400" />
+            </div>
+          ) : passiveQuestionSets.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-foreground/15 bg-foreground/[0.03] p-8 text-center text-slate-400">
+              Pasif soru seti bulunamadı. Soru bankasında kullanmak istediğin testi önce pasife alabilirsin.
+            </div>
+          ) : (
+            <ScrollArea className="h-[55vh] pr-3">
+              <Accordion type="multiple" className="space-y-3">
+                {passiveQuestionSets.map((set) => {
+                  const selectedCount = set.questions.filter((question) => stagedQuestionIds.has(question.id)).length;
+                  const allSelected = selectedCount === set.questions.length;
+                  return (
+                    <AccordionItem key={set.key} value={set.key} className="border-foreground/10 bg-foreground/[0.035]">
+                      <div className="flex items-center gap-3">
+                        <Checkbox
+                          checked={allSelected}
+                          onCheckedChange={() => toggleStagedSet(set)}
+                          className="ml-3 border-orange-300 data-[state=checked]:bg-orange-500"
+                        />
+                        <AccordionTrigger className="flex-1 text-left hover:no-underline">
+                          <span>
+                            <span className="block font-bold text-white">{set.title}</span>
+                            <span className="mt-1 block text-xs text-slate-400">
+                              {set.subject} • {set.questions.length} soru • {selectedCount} seçili
+                            </span>
+                          </span>
+                        </AccordionTrigger>
+                      </div>
+                      <AccordionContent>
+                        <div className="space-y-2 pt-2">
+                          {set.questions.map((question, index) => (
+                            <label
+                              key={question.id}
+                              className="flex cursor-pointer items-start gap-3 rounded-xl border border-foreground/10 bg-black/20 p-3 hover:border-orange-400/30"
+                            >
+                              <Checkbox
+                                checked={stagedQuestionIds.has(question.id)}
+                                onCheckedChange={() => toggleStagedQuestion(question.id)}
+                                className="mt-0.5 border-slate-500 data-[state=checked]:bg-orange-500"
+                              />
+                              <span className="min-w-0">
+                                <span className="block text-xs font-bold text-orange-200">Soru {index + 1} • {question.type}</span>
+                                <span className="mt-1 block text-sm leading-6 text-slate-200">{question.questionText}</span>
+                              </span>
+                            </label>
+                          ))}
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  );
+                })}
+              </Accordion>
+            </ScrollArea>
+          )}
+          <div className="flex items-center justify-between gap-3 border-t border-foreground/10 pt-4">
+            <span className="text-sm text-slate-400">{stagedQuestionIds.size} soru seçili</span>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setBankPickerOpen(false)}>Vazgeç</Button>
+              <Button
+                onClick={applyQuestionBankSelection}
+                disabled={bankPickerLoading}
+                className="bg-orange-500 text-white hover:bg-orange-600"
+              >
+                Seçimi Sınava Ekle
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[#08111f] text-white">

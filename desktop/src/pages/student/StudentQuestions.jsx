@@ -70,6 +70,15 @@ function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset })
   return { amount, bonuses };
 }
 
+function isExamOnlyQuestion(item) {
+  try {
+    const metadata = JSON.parse(item?.editorMetadataJson || '{}');
+    return metadata?.visibility === 'ExamOnly';
+  } catch {
+    return false;
+  }
+}
+
 function isMultipleChoice(type = '') {
   return /secmeli|çoktan|doğru\s*\/\s*yanlış|dogru\s*\/\s*yanlis/i.test(type);
 }
@@ -242,7 +251,7 @@ export default function StudentQuestions() {
         fetchQuestionBank(),
         fetchQuestionPracticeStats({ studentUsername: username }).catch(() => null),
       ]);
-      setQuestions(payload);
+      setQuestions((payload || []).filter((item) => !isExamOnlyQuestion(item)));
       setPracticeStats(statsPayload);
     } catch (err) {
       setError(err.message || 'Soru bankası alınamadı.');

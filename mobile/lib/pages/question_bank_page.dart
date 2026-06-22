@@ -296,6 +296,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     final query = _searchController.text.trim().toLowerCase();
     final studentClassKey = _normalizeFilterText(_studentClass);
     return _store.questions.where((item) {
+      if (item.isExamOnly) return false;
       final subjectMatch =
           selectedSubject == 'Tümü' || item.subject == selectedSubject;
       final text = '${item.topic} ${item.questionText} ${item.teacher}'
@@ -408,8 +409,6 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     );
   }
 
-
-
   Color _subjectAccent(String subject) {
     final normalized = _decodeSubject(subject).toLowerCase();
     if (normalized.contains('mat')) return const Color(0xFF2563EB);
@@ -422,7 +421,6 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     if (normalized.contains('ing')) return const Color(0xFF0891B2);
     return const Color(0xFF0F766E);
   }
-
 
   String _decodeSubject(String subject) {
     return subject

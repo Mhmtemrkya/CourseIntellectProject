@@ -980,7 +980,6 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
     ).then((_) => _load());
   }
 
-
   Color _subjectAccent(String subject) {
     final normalized = _decodeSubject(subject).toLowerCase();
     if (normalized.contains('mat')) return const Color(0xFF2563EB);
@@ -1074,6 +1073,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
   List<QuestionBankRecord> _filteredQuestions() {
     final query = _searchController.text.trim().toLowerCase();
     return _store.questions.where((item) {
+      if (item.isExamOnly) return false;
       final subjectMatch =
           _subjectFilter == 'Tümü' || item.subject == _subjectFilter;
       final classMatch =

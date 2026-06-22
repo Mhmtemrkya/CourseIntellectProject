@@ -24,6 +24,7 @@ import {
   deleteServiceVehicle,
   deleteStaffUser,
   fetchStaff,
+  fetchOrgUnits,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
@@ -109,14 +110,22 @@ export default function AdminStaffRegistration() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [recentStaff, setRecentStaff] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [branchId, setBranchId] = useState('');
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState(null);
 
   const loadRecent = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await fetchStaff().catch(() => []);
+      const [data, orgUnits] = await Promise.all([
+        fetchStaff().catch(() => []),
+        fetchOrgUnits().catch(() => []),
+      ]);
       setRecentStaff(Array.isArray(data) ? data.slice(-5).reverse() : []);
+      const all = Array.isArray(orgUnits) ? orgUnits : [];
+      const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
+      setBranches(branchUnits.length > 0 ? branchUnits : all);
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
@@ -189,7 +198,7 @@ export default function AdminStaffRegistration() {
         maritalStatus: form.maritalStatus,
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
-      });
+      }, branchId || undefined);
       createdStaffUserId = response?.userId || null;
       let serviceSummary = '';
       if (form.role === 'ServiceDriver') {
@@ -363,6 +372,17 @@ export default function AdminStaffRegistration() {
                     </SelectContent>
                   </Select>
                 </div>
+                {branches.length > 0 ? (
+                  <div>
+                    <Label>Şube</Label>
+                    <Select value={branchId} onValueChange={setBranchId}>
+                      <SelectTrigger><SelectValue placeholder="Şube seçin" /></SelectTrigger>
+                      <SelectContent>
+                        {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : null}
                 <div>
                   <Label>TC Kimlik No</Label>
                   <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" pattern="[0-9]{11}" placeholder="11 haneli kimlik no" />

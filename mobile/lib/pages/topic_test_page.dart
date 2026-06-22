@@ -47,7 +47,9 @@ class _TopicTestPageState extends State<TopicTestPage>
       final items = QuestionBankStore.instance.questions
           .where(
             (item) =>
-                item.options.isNotEmpty && item.correctOptionIndex != null,
+                !item.isExamOnly &&
+                item.options.isNotEmpty &&
+                item.correctOptionIndex != null,
           )
           .take(5)
           .toList();

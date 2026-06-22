@@ -90,6 +90,15 @@ function isTrueFalse(type = '') {
   return normalized.includes('dogru') || normalized.includes('yanlis');
 }
 
+function isExamOnlyQuestion(item) {
+  try {
+    const metadata = JSON.parse(item?.editorMetadataJson || '{}');
+    return metadata?.visibility === 'ExamOnly';
+  } catch {
+    return false;
+  }
+}
+
 function buildQuestionSetKey(item) {
   if (item.questionSetKey) return item.questionSetKey;
   const createdAt = item.createdAt ? new Date(item.createdAt) : null;
@@ -277,13 +286,14 @@ export default function TeacherQuestionBank() {
         fetchStudents().catch(() => []),
         fetchClasses().catch(() => []),
       ]);
-      setQuestions(payload);
+      const questionBankItems = (payload || []).filter((item) => !isExamOnlyQuestion(item));
+      setQuestions(questionBankItems);
       const classes = [...new Set([
         ...((apiClasses || []).map((item) => item?.trim()).filter((item) => item && item !== 'Tüm Sınıflar')),
         ...(students || [])
           .map((item) => item.className?.trim())
           .filter(Boolean),
-        ...(payload || [])
+        ...questionBankItems
           .flatMap((item) => item.classTargets || [])
           .map((item) => item?.trim())
           .filter((item) => item && item !== 'Tüm Sınıflar'),

@@ -91,13 +91,19 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     final allQuestionItems = QuestionBankStore.instance.questions
         .map(
           (item) => {
-            'title': '${item.topic} • ${item.difficulty}',
+            'title': item.questionText,
             'type': 'Soru Bankası',
             'subject': item.subject,
             'className': item.classTargets.join(','),
             'questionId': item.id,
             'imagePath': item.imagePath,
             'imagePlacement': 'Top',
+            'questionSetKey':
+                item.questionSetKey ?? '${item.subject}|${item.topic}',
+            'questionSetTitle': item.questionSetTitle ?? item.topic,
+            'questionOrder': item.questionOrder ?? 9999,
+            'publicationStatus': item.publicationStatus,
+            'isExamOnly': item.isExamOnly,
           },
         )
         .toList();
@@ -116,18 +122,15 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   }
 
   void _applyFilters() {
-    questionBankItems = _allQuestionBankItems
-        .where((item) {
-          final matchesSubject = (item['subject'] ?? '') == selectedSubject;
-          final classTargets = (item['className'] ?? '').split(',');
-          final matchesClass =
-              selectedClass.isEmpty ||
-              classTargets.contains('Tüm Sınıflar') ||
-              classTargets.contains(selectedClass);
-          return matchesSubject && matchesClass;
-        })
-        .take(20)
-        .toList();
+    questionBankItems = _allQuestionBankItems.where((item) {
+      final matchesSubject = (item['subject'] ?? '') == selectedSubject;
+      final classTargets = (item['className'] ?? '').split(',');
+      final matchesClass =
+          selectedClass.isEmpty ||
+          classTargets.contains('Tüm Sınıflar') ||
+          classTargets.contains(selectedClass);
+      return matchesSubject && matchesClass;
+    }).toList();
     mockExamItems = _allExamItems
         .where(
           (item) => (item['subject'] ?? selectedSubject) == selectedSubject,
@@ -156,7 +159,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   }
 
   void _addSourceItem(Map<String, dynamic> item) {
-    final exists = selectedItems.any((e) => e["title"] == item["title"]);
+    final exists = selectedItems.any(
+      (existing) =>
+          existing["questionId"] != null &&
+          existing["questionId"] == item["questionId"],
+    );
     if (exists) return;
 
     setState(() {
@@ -188,6 +195,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
   }
 
   void _openSourcePicker() {
+    if (selectedSource == "Soru Bankasından") {
+      _openPassiveTestPicker();
+      return;
+    }
+
     final items = selectedSource == "Denemelerden"
         ? mockExamItems
         : selectedSource == "Soru Bankasından"
@@ -237,6 +249,211 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
           ),
         );
       },
+    );
+  }
+
+  Future<void> _openPassiveTestPicker() async {
+    final passiveQuestions = questionBankItems
+        .where(
+          (item) =>
+              item['publicationStatus'] == 'Passive' &&
+              item['isExamOnly'] != true,
+        )
+        .toList();
+    final grouped = <String, List<Map<String, dynamic>>>{};
+    for (final item in passiveQuestions) {
+      final key = item['questionSetKey']?.toString() ?? 'set';
+      grouped.putIfAbsent(key, () => []).add(item);
+    }
+    for (final questions in grouped.values) {
+      questions.sort(
+        (left, right) => ((left['questionOrder'] as int?) ?? 9999).compareTo(
+          (right['questionOrder'] as int?) ?? 9999,
+        ),
+      );
+    }
+
+    final stagedIds = selectedItems
+        .map((item) => item['questionId']?.toString())
+        .whereType<String>()
+        .toSet();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) {
+          return SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.86,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Pasif Testlerden Soru Seç',
+                              style: TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            SizedBox(height: 4),
+                            Text(
+                              'Birden fazla testten istediğin soruları seçebilirsin.',
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        icon: const Icon(Icons.close_rounded),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: grouped.isEmpty
+                      ? const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(28),
+                            child: Text(
+                              'Bu ders ve sınıf için pasif test bulunamadı. '
+                              'Önce soru bankasından bir testi pasife alabilirsin.',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        )
+                      : ListView(
+                          padding: const EdgeInsets.all(16),
+                          children: grouped.entries.map((entry) {
+                            final questions = entry.value;
+                            final selectedCount = questions
+                                .where(
+                                  (item) => stagedIds.contains(
+                                    item['questionId']?.toString(),
+                                  ),
+                                )
+                                .length;
+                            final allSelected =
+                                selectedCount == questions.length;
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 12),
+                              child: ExpansionTile(
+                                leading: Checkbox(
+                                  value: allSelected,
+                                  onChanged: (_) {
+                                    setSheetState(() {
+                                      for (final question in questions) {
+                                        final id = question['questionId']
+                                            ?.toString();
+                                        if (id == null) continue;
+                                        if (allSelected) {
+                                          stagedIds.remove(id);
+                                        } else {
+                                          stagedIds.add(id);
+                                        }
+                                      }
+                                    });
+                                  },
+                                ),
+                                title: Text(
+                                  questions.first['questionSetTitle']
+                                          ?.toString() ??
+                                      'Soru Seti',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  '${questions.length} soru • $selectedCount seçili',
+                                ),
+                                children: [
+                                  for (
+                                    var index = 0;
+                                    index < questions.length;
+                                    index++
+                                  )
+                                    CheckboxListTile(
+                                      value: stagedIds.contains(
+                                        questions[index]['questionId']
+                                            ?.toString(),
+                                      ),
+                                      controlAffinity:
+                                          ListTileControlAffinity.leading,
+                                      title: Text(
+                                        'Soru ${index + 1} • ${questions[index]['title']}',
+                                        maxLines: 3,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      subtitle: Text(
+                                        questions[index]['type']?.toString() ??
+                                            'Soru',
+                                      ),
+                                      onChanged: (_) {
+                                        final id =
+                                            questions[index]['questionId']
+                                                ?.toString();
+                                        if (id == null) return;
+                                        setSheetState(() {
+                                          if (stagedIds.contains(id)) {
+                                            stagedIds.remove(id);
+                                          } else {
+                                            stagedIds.add(id);
+                                          }
+                                        });
+                                      },
+                                    ),
+                                ],
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: FilledButton.icon(
+                      onPressed: grouped.isEmpty
+                          ? null
+                          : () {
+                              final selected = passiveQuestions
+                                  .where(
+                                    (item) => stagedIds.contains(
+                                      item['questionId']?.toString(),
+                                    ),
+                                  )
+                                  .toList();
+                              setState(() {
+                                selectedItems
+                                  ..clear()
+                                  ..addAll(selected);
+                                questionCountController.text = selected.length
+                                    .toString();
+                              });
+                              Navigator.pop(sheetContext);
+                            },
+                      icon: const Icon(Icons.playlist_add_check_rounded),
+                      label: Text('${stagedIds.length} Soruyu Sınava Ekle'),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
@@ -571,7 +788,9 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                         ),
                         Row(
                           children: [
-                            const Expanded(child: Text("Geç giriş limiti (dk)")),
+                            const Expanded(
+                              child: Text("Geç giriş limiti (dk)"),
+                            ),
                             DropdownButton<int>(
                               value: _lateEntryLimitMinutes,
                               items: const [0, 5, 10, 15, 20, 30]
@@ -616,7 +835,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       child: OutlinedButton.icon(
                         onPressed: _openSourcePicker,
                         icon: const Icon(Icons.add_circle_outline_rounded),
-                        label: const Text("Kaynaktan İçerik Seç"),
+                        label: Text(
+                          selectedSource == "Soru Bankasından"
+                              ? "Pasif Testlerden Soru Seç"
+                              : "Kaynaktan İçerik Seç",
+                        ),
                       ),
                     ),
                   if (selectedSource == "Manuel Ekle")

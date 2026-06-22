@@ -23,6 +23,15 @@ function buildQuestionBankSolveReward({ isCorrect, hasImage, hasSolutionAsset })
   return amount;
 }
 
+function isExamOnlyQuestion(item) {
+  try {
+    const metadata = JSON.parse(item?.editorMetadataJson || '{}');
+    return metadata?.visibility === 'ExamOnly';
+  } catch {
+    return false;
+  }
+}
+
 export default function StudentQuestionPractice() {
   const { toast } = useToast();
   const { user } = useApp();
@@ -42,7 +51,7 @@ export default function StudentQuestionPractice() {
         fetchQuestionBank(),
         fetchQuestionPracticeAttempts(user?.username).catch(() => []),
       ]);
-      setQuestions(questionList);
+      setQuestions((questionList || []).filter((item) => !isExamOnlyQuestion(item)));
       setAttempts(attemptList);
     } catch (err) {
       setError(err.message || 'Soru pratik ekranı alınamadı.');

@@ -276,8 +276,9 @@ export async function closeAttendanceQrSession(id) {
   return response;
 }
 
-export async function createStudent(payload) {
-  const response = await api.post('/api/students', payload);
+export async function createStudent(payload, branchId) {
+  const config = branchId ? { headers: { 'X-Branch-Filter': branchId } } : undefined;
+  const response = await api.post('/api/students', payload, config);
   return response;
 }
 
@@ -364,8 +365,9 @@ export async function fetchStaff(role) {
   return response;
 }
 
-export async function createStaff(payload) {
-  const response = await api.post('/api/staff', payload);
+export async function createStaff(payload, branchId) {
+  const config = branchId ? { headers: { 'X-Branch-Filter': branchId } } : undefined;
+  const response = await api.post('/api/staff', payload, config);
   return response;
 }
 

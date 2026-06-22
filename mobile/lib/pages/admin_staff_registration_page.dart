@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../utils/input_formatters.dart';
 
+import '../services/admin_workflow_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
 import '../services/registration_api_service.dart';
@@ -63,6 +64,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   String _teacherHomeroomClass = 'Sınıf öğretmenliği yok';
   final Set<String> _teacherAssignedClasses = {};
   List<String> _classOptions = const [];
+  List<Map<String, dynamic>> _branches = const [];
+  String? _branchId;
   String _teacherMaritalStatus = 'Bekar';
   String _personnelMaritalStatus = 'Bekar';
   bool _saving = false;
@@ -72,6 +75,21 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _loadClassOptions();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    try {
+      final units = await AdminWorkflowApiService.instance.getOrgUnits();
+      final branchUnits = units.where((u) {
+        final t = (u['unitType'] as String? ?? '').toLowerCase();
+        return t == 'şube' || t == 'sube' || t == 'kampüs' || t == 'kampus';
+      }).toList();
+      if (!mounted) return;
+      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : units);
+    } catch (_) {
+      /* şube yoksa alan gizli kalır */
+    }
   }
 
   @override
@@ -251,6 +269,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ),
               ],
             ),
+            if (_branches.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _branchDropdown(),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -508,6 +530,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ),
               ],
             ),
+            if (_branches.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _branchDropdown(),
+            ],
             const SizedBox(height: 12),
             Row(
               children: [
@@ -817,6 +843,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         maritalStatus: _teacherMaritalStatus,
         childCount: int.tryParse(_teacherChildCountController.text.trim()) ?? 0,
         note: _teacherNoteController.text.trim(),
+        branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
       );
       if (!mounted) return;
       setState(() => _saving = false);
@@ -877,6 +904,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         childCount:
             int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
         note: _personnelNoteController.text.trim(),
+        branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
       );
       createdStaffUserId = credentials.userId;
       String serviceSummary = '';
@@ -1132,6 +1160,24 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           ),
         );
       },
+    );
+  }
+
+  Widget _branchDropdown() {
+    return DropdownButtonFormField<String>(
+      initialValue: _branchId,
+      decoration: const InputDecoration(
+        labelText: 'Şube',
+        border: OutlineInputBorder(),
+      ),
+      hint: const Text('Şube seçin'),
+      items: _branches
+          .map((b) => DropdownMenuItem(
+                value: b['id'] as String?,
+                child: Text((b['name'] as String?) ?? ''),
+              ))
+          .toList(),
+      onChanged: (value) => setState(() => _branchId = value),
     );
   }
 

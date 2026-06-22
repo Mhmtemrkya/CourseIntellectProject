@@ -54,9 +54,11 @@ class RegistrationApiService {
     double? enrollmentDownPayment,
     int? enrollmentInstallmentCount,
     String? academicYear,
+    String? branchId,
   }) async {
     final response = await _authorizedPost(
       '/api/students',
+      branchId: branchId,
       body: {
         'fullName': fullName,
         'tcNo': tcNo,
@@ -115,9 +117,11 @@ class RegistrationApiService {
     required String maritalStatus,
     required int childCount,
     required String note,
+    String? branchId,
   }) async {
     final response = await _authorizedPost(
       '/api/staff',
+      branchId: branchId,
       body: {
         'fullName': fullName,
         'role': role,
@@ -232,6 +236,7 @@ class RegistrationApiService {
   Future<http.Response> _authorizedPost(
     String path, {
     required Map<String, dynamic> body,
+    String? branchId,
   }) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null || session.accessToken.isEmpty) {
@@ -240,12 +245,18 @@ class RegistrationApiService {
       );
     }
 
+    final headers = {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${session.accessToken}',
+    };
+    // Seçilen şube: backend yetkiye göre dikkate alır (owner ise damgalar).
+    if (branchId != null && branchId.isNotEmpty) {
+      headers['X-Branch-Filter'] = branchId;
+    }
+
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}',
-      },
+      headers: headers,
       body: jsonEncode(body),
     );
 

@@ -118,6 +118,17 @@ class QuestionBankRecord {
     }
   }
 
+  bool get isExamOnly {
+    final raw = editorMetadataJson;
+    if (raw == null || raw.trim().isEmpty) return false;
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map && decoded['visibility'] == 'ExamOnly';
+    } catch (_) {
+      return false;
+    }
+  }
+
   QuestionBankRecord copyWith({
     String? subject,
     String? topic,

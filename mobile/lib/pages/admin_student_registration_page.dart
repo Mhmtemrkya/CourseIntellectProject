@@ -6,6 +6,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../services/administrative_notice_store.dart';
 import '../services/admin_directory_api_service.dart';
+import '../services/admin_workflow_api_service.dart';
 import '../services/announcement_store.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
@@ -44,6 +45,8 @@ class _AdminStudentRegistrationPageState
 
   String _programType = 'Lise';
   List<String> _classOptions = const [];
+  List<Map<String, dynamic>> _branches = const [];
+  String? _branchId;
   bool _saving = false;
 
   @override
@@ -51,6 +54,21 @@ class _AdminStudentRegistrationPageState
     super.initState();
     _loadClassOptions();
     _loadTenantName();
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    try {
+      final units = await AdminWorkflowApiService.instance.getOrgUnits();
+      final branchUnits = units.where((u) {
+        final t = (u['unitType'] as String? ?? '').toLowerCase();
+        return t == 'şube' || t == 'sube' || t == 'kampüs' || t == 'kampus';
+      }).toList();
+      if (!mounted) return;
+      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : units);
+    } catch (_) {
+      /* şube yoksa alan gizli kalır */
+    }
   }
 
   Future<void> _loadTenantName() async {
@@ -233,6 +251,24 @@ class _AdminStudentRegistrationPageState
                       ),
                     ],
                   ),
+                  if (_branches.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<String>(
+                      initialValue: _branchId,
+                      decoration: const InputDecoration(
+                        labelText: 'Şube',
+                        border: OutlineInputBorder(),
+                      ),
+                      hint: const Text('Şube seçin'),
+                      items: _branches
+                          .map((b) => DropdownMenuItem(
+                                value: b['id'] as String?,
+                                child: Text((b['name'] as String?) ?? ''),
+                              ))
+                          .toList(),
+                      onChanged: (value) => setState(() => _branchId = value),
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -494,6 +530,7 @@ class _AdminStudentRegistrationPageState
         enrollmentDownPayment: double.tryParse(_downPaymentController.text.trim()),
         enrollmentInstallmentCount:
             int.tryParse(_installmentCountController.text.trim()),
+        branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
       );
       await AnnouncementStore.instance.addAnnouncement(
         title: '${_fullNameController.text.trim()} kaydı tamamlandı',

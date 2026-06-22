@@ -16,7 +16,7 @@ import {
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { createStudent, fetchClasses, fetchStudents } from '../../lib/api/modules';
+import { createStudent, fetchClasses, fetchStudents, fetchOrgUnits } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
@@ -66,6 +66,8 @@ export default function AdminStudentRegistration() {
   const [saving, setSaving] = useState(false);
   const [classNames, setClassNames] = useState([]);
   const [recentStudents, setRecentStudents] = useState([]);
+  const [branches, setBranches] = useState([]);
+  const [branchId, setBranchId] = useState('');
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState(null);
   const [activeStep, setActiveStep] = useState('personal');
@@ -99,12 +101,16 @@ export default function AdminStudentRegistration() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [students, classList] = await Promise.all([
+      const [students, classList, orgUnits] = await Promise.all([
         fetchStudents().catch(() => []),
         fetchClasses().catch(() => []),
+        fetchOrgUnits().catch(() => []),
       ]);
       setRecentStudents(Array.isArray(students) ? students.slice(-5).reverse() : []);
       setClassNames(Array.isArray(classList) ? classList : []);
+      const all = Array.isArray(orgUnits) ? orgUnits : [];
+      const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
+      setBranches(branchUnits.length > 0 ? branchUnits : all);
     } finally {
       setLoading(false);
     }
@@ -158,7 +164,7 @@ export default function AdminStudentRegistration() {
         enrollmentDiscountReason: form.enrollmentDiscountReason.trim() || null,
         enrollmentDownPayment: form.enrollmentDownPayment ? Number(form.enrollmentDownPayment) : null,
         enrollmentInstallmentCount: form.enrollmentInstallmentCount ? Number(form.enrollmentInstallmentCount) : null,
-      });
+      }, branchId || undefined);
       const studentInfo = {
         fullName: created.fullName || form.fullName.trim(),
         username: created.username,
@@ -325,6 +331,17 @@ export default function AdminStudentRegistration() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {branches.length > 0 ? (
+                      <div>
+                        <Label>Şube</Label>
+                        <Select value={branchId} onValueChange={setBranchId}>
+                          <SelectTrigger><SelectValue placeholder="Şube seçin" /></SelectTrigger>
+                          <SelectContent>
+                            {branches.map((b) => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
                   </div>
                 </TabsContent>
 

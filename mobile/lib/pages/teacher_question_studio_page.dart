@@ -78,6 +78,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
   ) {
     return {
       'source': 'mobile-question-studio',
+      'visibility': widget.examMode ? 'ExamOnly' : 'QuestionBank',
       'tags': _tagController.text
           .split(',')
           .map((item) => item.trim())
@@ -411,6 +412,207 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
     }
   }
 
+  Future<void> _openPassiveQuestionPicker() async {
+    setState(() => _saving = true);
+    try {
+      await QuestionBankStore.instance.loadQuestions();
+    } catch (error) {
+      if (mounted) _snack(error.toString());
+      return;
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+    if (!mounted) return;
+
+    final passiveQuestions = QuestionBankStore.instance.questions
+        .where(
+          (item) =>
+              item.publicationStatus == 'Passive' &&
+              !item.isExamOnly &&
+              item.subject == _subject &&
+              (_classLevel == 'Tüm Sınıflar' ||
+                  item.classTargets.contains('Tüm Sınıflar') ||
+                  item.classTargets.contains(_classLevel)),
+        )
+        .toList();
+    final groups = <String, List<QuestionBankRecord>>{};
+    for (final question in passiveQuestions) {
+      final key =
+          question.questionSetKey ?? '${question.subject}|${question.topic}';
+      groups.putIfAbsent(key, () => []).add(question);
+    }
+    for (final questions in groups.values) {
+      questions.sort(
+        (left, right) =>
+            (left.questionOrder ?? 9999).compareTo(right.questionOrder ?? 9999),
+      );
+    }
+    final stagedIds = _examQuestions.map((item) => item.id).toSet();
+
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setSheetState) => SizedBox(
+          height: MediaQuery.sizeOf(context).height * 0.86,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Pasif Testlerden Soru Seç',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                          SizedBox(height: 4),
+                          Text(
+                            'Farklı testlerden birden fazla soru seçebilirsin.',
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(sheetContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: groups.isEmpty
+                    ? const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(28),
+                          child: Text(
+                            'Seçili ders ve sınıf için pasif test bulunamadı.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      )
+                    : ListView(
+                        padding: const EdgeInsets.all(16),
+                        children: groups.entries.map((entry) {
+                          final questions = entry.value;
+                          final selectedCount = questions
+                              .where((item) => stagedIds.contains(item.id))
+                              .length;
+                          final allSelected = selectedCount == questions.length;
+                          return Card(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ExpansionTile(
+                              leading: Checkbox(
+                                value: allSelected,
+                                onChanged: (_) {
+                                  setSheetState(() {
+                                    for (final question in questions) {
+                                      if (allSelected) {
+                                        stagedIds.remove(question.id);
+                                      } else {
+                                        stagedIds.add(question.id);
+                                      }
+                                    }
+                                  });
+                                },
+                              ),
+                              title: Text(
+                                questions.first.questionSetTitle ??
+                                    questions.first.topic,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              subtitle: Text(
+                                '${questions.length} soru • $selectedCount seçili',
+                              ),
+                              children: [
+                                for (
+                                  var index = 0;
+                                  index < questions.length;
+                                  index++
+                                )
+                                  CheckboxListTile(
+                                    value: stagedIds.contains(
+                                      questions[index].id,
+                                    ),
+                                    controlAffinity:
+                                        ListTileControlAffinity.leading,
+                                    title: Text(
+                                      'Soru ${index + 1} • ${questions[index].questionText}',
+                                      maxLines: 3,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    subtitle: Text(questions[index].type),
+                                    onChanged: (_) {
+                                      setSheetState(() {
+                                        final id = questions[index].id;
+                                        if (stagedIds.contains(id)) {
+                                          stagedIds.remove(id);
+                                        } else {
+                                          stagedIds.add(id);
+                                        }
+                                      });
+                                    },
+                                  ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: groups.isEmpty
+                        ? null
+                        : () {
+                            final bankIds = passiveQuestions
+                                .map((item) => item.id)
+                                .toSet();
+                            final preserved = _examQuestions
+                                .where((item) => !bankIds.contains(item.id))
+                                .toList();
+                            final selected = passiveQuestions
+                                .where((item) => stagedIds.contains(item.id))
+                                .toList();
+                            setState(() {
+                              _examQuestions
+                                ..clear()
+                                ..addAll(preserved)
+                                ..addAll(selected);
+                              _autosave =
+                                  '${_examQuestions.length} soru sınava eklendi';
+                            });
+                            _scheduleDraftSave();
+                            Navigator.pop(sheetContext);
+                          },
+                    icon: const Icon(Icons.playlist_add_check_rounded),
+                    label: Text('${stagedIds.length} Soruyu Sınava Ekle'),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _showPreview() {
     showDialog<void>(
       context: context,
@@ -654,6 +856,15 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                       label: const Text('Yayınla'),
                     ),
                   ],
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: _saving ? null : _openPassiveQuestionPicker,
+                    icon: const Icon(Icons.library_books_outlined),
+                    label: const Text('Pasif Testlerden Soru Seç'),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
