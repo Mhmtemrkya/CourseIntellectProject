@@ -33,6 +33,15 @@ const toneClass = {
   rose: "from-rose-400 to-red-600",
 };
 
+const chartTone = {
+  brand: { start: "#ff7a00", end: "#fb923c", glow: "#ff7a00" },
+  blue: { start: "#38bdf8", end: "#2563eb", glow: "#3b82f6" },
+  emerald: { start: "#34d399", end: "#0d9488", glow: "#10b981" },
+  violet: { start: "#a78bfa", end: "#d946ef", glow: "#a855f7" },
+  amber: { start: "#fbbf24", end: "#f97316", glow: "#f59e0b" },
+  rose: { start: "#fb7185", end: "#e11d48", glow: "#f43f5e" },
+};
+
 function coerceNumber(value) {
   if (typeof value === "number") return value;
   const parsed = Number(String(value ?? "0").replace(/[^\d.-]/g, ""));
@@ -84,6 +93,7 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
   const safeValues = values.map(coerceNumber).filter((value) => Number.isFinite(value));
   const gid = React.useId();
   if (!safeValues.length) return <EmptyChart className={className} />;
+  const palette = chartTone[tone] || chartTone.brand;
 
   const width = 180;
   const height = 54;
@@ -101,15 +111,16 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
   const last = points[points.length - 1];
 
   return (
-    <svg className={cn("h-14 w-full overflow-visible", className)} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
+    <svg className={cn("h-14 w-full overflow-visible rounded-xl", className)} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id={`ci-line-${gid}`} x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="hsl(var(--brand-accent))" />
-          <stop offset="100%" stopColor="hsl(var(--brand-primary-text))" />
+          <stop offset="0%" stopColor={palette.start} />
+          <stop offset="100%" stopColor={palette.end} />
         </linearGradient>
         <linearGradient id={`ci-area-${gid}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="hsl(var(--brand-accent))" stopOpacity="0.28" />
-          <stop offset="100%" stopColor="hsl(var(--brand-accent))" stopOpacity="0" />
+          <stop offset="0%" stopColor={palette.glow} stopOpacity="0.34" />
+          <stop offset="65%" stopColor={palette.glow} stopOpacity="0.09" />
+          <stop offset="100%" stopColor={palette.glow} stopOpacity="0" />
         </linearGradient>
         <filter id={`ci-glow-${gid}`} x="-30%" y="-30%" width="160%" height="160%">
           <feGaussianBlur stdDeviation="2.2" result="blur" />
@@ -119,6 +130,7 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
           </feMerge>
         </filter>
       </defs>
+      <rect x="0" y="0" width={width} height={height} rx="10" fill={palette.glow} fillOpacity="0.025" />
       {[0.25, 0.5, 0.75].map((ratio) => <line key={ratio} x1="0" x2={width} y1={height * ratio} y2={height * ratio} stroke="hsl(var(--foreground) / 0.07)" strokeDasharray="4 6" />)}
       {area ? <path d={area} fill={`url(#ci-area-${gid})`} /> : null}
       {linePath ? (
@@ -136,8 +148,11 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
           transition={{ duration: 0.9, ease: "easeOut" }}
         />
       ) : null}
-      {single ? <circle cx={single[0]} cy={single[1]} r="4" fill="hsl(var(--brand-accent))" /> : null}
-      {last ? <circle cx={last[0]} cy={last[1]} r="4.2" fill="hsl(var(--brand-accent))" stroke="hsl(var(--background))" strokeWidth="2" className="drop-shadow-[0_0_10px_hsl(var(--brand-accent)/0.75)]" /> : null}
+      {points.length > 2 ? points.slice(1, -1).map((point, index) => (
+        <circle key={index} cx={point[0]} cy={point[1]} r="1.65" fill={palette.end} fillOpacity="0.65" />
+      )) : null}
+      {single ? <circle cx={single[0]} cy={single[1]} r="4" fill={palette.end} /> : null}
+      {last ? <circle cx={last[0]} cy={last[1]} r="4.2" fill={palette.end} stroke="hsl(var(--background))" strokeWidth="2" style={{ filter: `drop-shadow(0 0 7px ${palette.glow})` }} /> : null}
     </svg>
   );
 }
@@ -298,6 +313,7 @@ export function PremiumMetricCard({
   chart = "line",
   chartValues,
   donutValue,
+  chartClassName,
   onClick,
   className,
 }) {
@@ -328,9 +344,9 @@ export function PremiumMetricCard({
           {chart === "donut" ? (
             <div className="mt-3 flex h-10 items-center justify-end"><CompactRing value={donutValue ?? value} /></div>
           ) : chart === "bars" ? (
-            <MiniBarChart values={sparkline} tone={tone} className="mt-3 h-10" />
+            <MiniBarChart values={sparkline} tone={tone} className={cn("mt-3 h-10", chartClassName)} />
           ) : (
-            <MiniLineChart values={sparkline} tone={tone} className="mt-3 h-10" />
+            <MiniLineChart values={sparkline} tone={tone} className={cn("mt-3 h-10", chartClassName)} />
           )}
         </CardContent>
       </Card>

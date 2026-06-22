@@ -154,6 +154,8 @@ function NewCollectionDialog({
         amount: form.amount,
         method: form.paymentType,
         note: form.note || 'Manuel tahsilat',
+        // Ödemenin doğru öğrencinin taksitlerine mahsubu için id (ad eşleşmesine düşmesin).
+        studentUserId: selectedStudent.userId || undefined,
       };
       const created = mode === 'edit' && initialCollection?.id
         ? await updateCollection(initialCollection.id, payload)

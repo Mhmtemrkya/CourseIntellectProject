@@ -2,6 +2,7 @@ namespace CourseIntellect.Application.DTOs.Students;
 
 public sealed record StudentSummaryDto(
     Guid Id,
+    Guid UserId,
     string FullName,
     string TcNo,
     string ClassName,

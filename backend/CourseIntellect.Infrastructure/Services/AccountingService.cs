@@ -118,7 +118,7 @@ public sealed class AccountingService(
         var amount = ParseAmount(request.Amount);
         var payment = await studentFinanceService.RecordPaymentAsync(
             new RecordPaymentRequest(
-                null,
+                request.StudentUserId,
                 request.Name.Trim(),
                 null,
                 null,

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  CalendarDays, CalendarRange, ChevronRight, Landmark, Wallet,
+  CalendarDays, CalendarRange, ChevronRight, ChevronLeft, Landmark, Wallet,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -12,6 +12,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { formatCurrency, normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { filterByPeriod, periodLabel, shiftAnchor } from '../../lib/financePeriod';
 
 function normalizeDate(value) {
   if (!value) return null;
@@ -43,6 +44,7 @@ export default function CollectionCalendar() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [view, setView] = useState('month');
+  const [anchor, setAnchor] = useState(() => new Date());
 
   const loadCalendar = useCallback(async () => {
     try {
@@ -86,18 +88,24 @@ export default function CollectionCalendar() {
     return [...collectionItems, ...installmentItems].sort((a, b) => (a.entryDate?.getTime() || 0) - (b.entryDate?.getTime() || 0));
   }, [dashboard]);
 
-  const grouped = useMemo(() => calendarEntries.reduce((acc, item) => {
+  // Seçili döneme (view + anchor) göre süz: takvim ve özet aynı dönemi gösterir.
+  const periodEntries = useMemo(
+    () => filterByPeriod(calendarEntries, (item) => item.entryDate, view, anchor),
+    [calendarEntries, view, anchor],
+  );
+
+  const grouped = useMemo(() => periodEntries.reduce((acc, item) => {
     const key = getPeriodKey(item.entryDate, view);
     if (!acc[key]) acc[key] = [];
     acc[key].push(item);
     return acc;
-  }, {}), [calendarEntries, view]);
+  }, {}), [periodEntries, view]);
 
   const summary = useMemo(() => ({
-    total: calendarEntries.reduce((sum, item) => sum + item.amountValue, 0),
-    count: calendarEntries.length,
-    overdue: calendarEntries.filter((item) => normalizeFinanceText(item.status).includes('gec')).length,
-  }), [calendarEntries]);
+    total: periodEntries.reduce((sum, item) => sum + item.amountValue, 0),
+    count: periodEntries.length,
+    overdue: periodEntries.filter((item) => normalizeFinanceText(item.status).includes('gec')).length,
+  }), [periodEntries]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
@@ -129,12 +137,19 @@ export default function CollectionCalendar() {
 
       {error ? <ErrorBanner title="Tahsilat takvimi alınamadı" message={error} onRetry={loadCalendar} /> : null}
 
-      <Tabs value={view} onValueChange={setView}>
-        <TabsList>
-          <TabsTrigger value="day">Günlük</TabsTrigger>
-          <TabsTrigger value="week">Haftalık</TabsTrigger>
-          <TabsTrigger value="month">Aylık</TabsTrigger>
-        </TabsList>
+      <Tabs value={view} onValueChange={(v) => { setView(v); setAnchor(new Date()); }}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <TabsList>
+            <TabsTrigger value="day">Günlük</TabsTrigger>
+            <TabsTrigger value="week">Haftalık</TabsTrigger>
+            <TabsTrigger value="month">Aylık</TabsTrigger>
+          </TabsList>
+          <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(view, a, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+            <span className="min-w-[140px] text-center text-sm font-semibold">{periodLabel(view, anchor)}</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(view, a, 1))}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+        </div>
 
         {['day', 'week', 'month'].map((mode) => (
           <TabsContent key={mode} value={mode} className="mt-6 space-y-4">

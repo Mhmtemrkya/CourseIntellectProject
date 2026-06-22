@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import {
   Wallet, TrendingUp, TrendingDown, CreditCard,
   AlertCircle, Calendar, Users, ArrowUpRight, Receipt, Landmark,
+  Banknote, Building2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -19,6 +20,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard, fetchFinanceDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor, parseTrDateTime } from '../../lib/financePeriod';
 import {
   MiniBarChart,
   MiniDonut,
@@ -62,6 +64,58 @@ function formatTry(amount) {
   return `₺${Math.round(amount).toLocaleString('tr-TR')}`;
 }
 
+function isPaidStatus(value) {
+  const normalized = normalizeStatus(value);
+  return normalized.includes('oden') || normalized.includes('paid') || normalized.includes('tahsil');
+}
+
+function createPeriodBuckets(period, anchor) {
+  const reference = new Date(anchor);
+  if (period === 'day') {
+    return Array.from({ length: 8 }, (_, index) => {
+      const start = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate(), index * 3);
+      return { start, end: new Date(start.getTime() + (3 * 60 * 60 * 1000)) };
+    });
+  }
+  if (period === 'week') {
+    const day = reference.getDay() || 7;
+    const monday = new Date(reference.getFullYear(), reference.getMonth(), reference.getDate() - day + 1);
+    return Array.from({ length: 7 }, (_, index) => {
+      const start = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + index);
+      return { start, end: new Date(start.getFullYear(), start.getMonth(), start.getDate() + 1) };
+    });
+  }
+  if (period === 'year') {
+    return Array.from({ length: 12 }, (_, index) => ({
+      start: new Date(reference.getFullYear(), index, 1),
+      end: new Date(reference.getFullYear(), index + 1, 1),
+    }));
+  }
+  const daysInMonth = new Date(reference.getFullYear(), reference.getMonth() + 1, 0).getDate();
+  return Array.from({ length: 8 }, (_, index) => {
+    const startDay = Math.floor((index * daysInMonth) / 8) + 1;
+    const endDay = Math.floor(((index + 1) * daysInMonth) / 8) + 1;
+    return {
+      start: new Date(reference.getFullYear(), reference.getMonth(), startDay),
+      end: new Date(reference.getFullYear(), reference.getMonth(), Math.min(endDay, daysInMonth + 1)),
+    };
+  });
+}
+
+function buildBucketSeries(items, dateSelector, valueSelector, period, anchor) {
+  const buckets = createPeriodBuckets(period, anchor);
+  return buckets.map(({ start, end }) => items.reduce((sum, item) => {
+    const date = parseTrDateTime(dateSelector(item));
+    if (!date || date < start || date >= end) return sum;
+    return sum + valueSelector(item);
+  }, 0));
+}
+
+function ensureMetricSeries(values, currentValue) {
+  const safe = values.map((value) => Number(value) || 0);
+  return safe.some((value) => value !== 0) ? safe : Array(Math.max(8, safe.length || 0)).fill(Number(currentValue) || 0);
+}
+
 export default function FinanceDashboard() {
   const [dashboard, setDashboard] = useState(null);
   const [finance, setFinance] = useState(null);
@@ -71,6 +125,9 @@ export default function FinanceDashboard() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   // 'all' = yillik, 0-11 = secili ay
   const [selectedMonth, setSelectedMonth] = useState('all');
+  // Dönem-bazlı dashboard: Günlük/Haftalık/Aylık/Yıllık + anchor (ileri/geri).
+  const [period, setPeriod] = useState('month');
+  const [anchor, setAnchor] = useState(() => new Date());
 
   const loadDashboard = useCallback(async () => {
     try {
@@ -138,6 +195,96 @@ export default function FinanceDashboard() {
     };
   }, [finance, dashboard]);
 
+  // Seçili döneme (period + anchor) göre tahsilat/taksit akış metrikleri.
+  const periodStats = useMemo(() => {
+    const collections = dashboard?.collections || [];
+    const installments = dashboard?.installments || [];
+    const periodCollections = filterByPeriod(collections, (c) => c.time || c.date, period, anchor);
+    const periodInstallments = filterByPeriod(installments, (i) => i.due || i.dueDate, period, anchor);
+    const sum = (list) => list.reduce((s, c) => s + parseMoney(c.amount), 0);
+    const byMethod = (list, ...keys) => list.filter((c) => {
+      const m = normalizeStatus(c.method || c.paymentMethod || c.type);
+      return keys.some((k) => m.includes(k));
+    });
+    const now = Date.now();
+    const overdueDue = periodInstallments.filter((i) => {
+      const due = parseTrDateTime(i.due || i.dueDate);
+      const st = normalizeStatus(i.status);
+      return (due && due.getTime() < now && !st.includes('öden') && !st.includes('paid')) || st.includes('gec');
+    });
+    const collectionSeries = buildBucketSeries(
+      collections,
+      (item) => item.time || item.date,
+      (item) => parseMoney(item.amount),
+      period,
+      anchor,
+    );
+    const cashSeries = buildBucketSeries(
+      collections.filter((item) => normalizeStatus(item.method || item.paymentMethod || item.type).includes('nakit')),
+      (item) => item.time || item.date,
+      (item) => parseMoney(item.amount),
+      period,
+      anchor,
+    );
+    const cardBankSeries = buildBucketSeries(
+      collections.filter((item) => {
+        const method = normalizeStatus(item.method || item.paymentMethod || item.type);
+        return ['kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer'].some((key) => method.includes(key));
+      }),
+      (item) => item.time || item.date,
+      (item) => parseMoney(item.amount),
+      period,
+      anchor,
+    );
+    const dueSeries = buildBucketSeries(
+      installments,
+      (item) => item.due || item.dueDate,
+      (item) => parseMoney(item.amount),
+      period,
+      anchor,
+    );
+    return {
+      collected: sum(periodCollections),
+      count: periodCollections.length,
+      cash: sum(byMethod(periodCollections, 'nakit')),
+      cardBank: sum(byMethod(periodCollections, 'kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer')),
+      dueTotal: sum(periodInstallments),
+      overdueTotal: sum(overdueDue),
+      recent: [...periodCollections].sort((a, b) => (parseTrDateTime(b.time) || 0) - (parseTrDateTime(a.time) || 0)).slice(0, 5),
+      collectionSeries,
+      cashSeries,
+      cardBankSeries,
+      dueSeries,
+    };
+  }, [dashboard, period, anchor]);
+
+  const cumulativeChartSeries = useMemo(() => {
+    const installments = dashboard?.installments || [];
+    const due = Array(12).fill(0);
+    const pending = Array(12).fill(0);
+    const overdue = Array(12).fill(0);
+    const now = Date.now();
+
+    installments.forEach((item) => {
+      const date = parseTrDate(item.due || item.dueDate);
+      if (!date || date.getFullYear() !== Number(selectedYear)) return;
+      const amount = parseMoney(item.amount);
+      const month = date.getMonth();
+      due[month] += amount;
+      if (!isPaidStatus(item.status)) pending[month] += amount;
+      if (!isPaidStatus(item.status) && (normalizeStatus(item.status).includes('gec') || date.getTime() < now)) {
+        overdue[month] += amount;
+      }
+    });
+
+    return {
+      receivable: ensureMetricSeries(due, stats.totalReceivable),
+      collected: ensureMetricSeries(monthlyCollected, stats.totalCollected),
+      pending: ensureMetricSeries(pending, stats.pendingPayments),
+      overdue: ensureMetricSeries(overdue, stats.overduePayments),
+    };
+  }, [dashboard, monthlyCollected, selectedYear, stats]);
+
   const yearlyCollected = useMemo(() => monthlyCollected.reduce((sum, value) => sum + value, 0), [monthlyCollected]);
   const maxMonthly = useMemo(() => Math.max(1, ...monthlyCollected), [monthlyCollected]);
   const selectedPeriodCollected = selectedMonth === 'all' ? yearlyCollected : monthlyCollected[selectedMonth] || 0;
@@ -167,10 +314,47 @@ export default function FinanceDashboard() {
 
       {error ? <ErrorBanner title="Finans verileri alınamadı" message={error} onRetry={loadDashboard} /> : null}
 
+      {/* Dönem seçici (Günlük/Haftalık/Aylık/Yıllık) + ileri-geri */}
+      <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
+          {[['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık'], ['year', 'Yıllık']].map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => { setPeriod(val); setAnchor(new Date()); setSelectedMonth('all'); }}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${period === val ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="min-w-[150px] text-center text-sm font-bold">{buildPeriodLabel(period, anchor)}</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, 1))}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </motion.div>
+
+      {/* Dönem kartları — seçili döneme göre akış */}
+      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <motion.div variants={itemVariants}>
+          <PremiumMetricCard title="Dönem Tahsilatı" value={formatTry(periodStats.collected)} caption={buildPeriodLabel(period, anchor)} icon={CreditCard} tone="emerald" trend={`${periodStats.count} işlem`} chartValues={ensureMetricSeries(periodStats.collectionSeries, periodStats.collected)} chartClassName="h-14" />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <PremiumMetricCard title="Nakit" value={formatTry(periodStats.cash)} caption="Dönem içi nakit tahsilat" icon={Banknote} tone="blue" trend="Nakit" chartValues={ensureMetricSeries(periodStats.cashSeries, periodStats.cash)} chartClassName="h-14" />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <PremiumMetricCard title="Kart / Havale" value={formatTry(periodStats.cardBank)} caption="Kart, POS, havale/EFT" icon={Building2} tone="violet" trend="Banka" chartValues={ensureMetricSeries(periodStats.cardBankSeries, periodStats.cardBank)} chartClassName="h-14" />
+        </motion.div>
+        <motion.div variants={itemVariants}>
+          <PremiumMetricCard title="Dönem Vadesi" value={formatTry(periodStats.dueTotal)} caption={`Vadesi geçen: ${formatTry(periodStats.overdueTotal)}`} icon={Calendar} tone="amber" trend="Vade" chartValues={ensureMetricSeries(periodStats.dueSeries, periodStats.dueTotal)} chartClassName="h-14" />
+        </motion.div>
+      </div>
+
       <motion.div variants={itemVariants}>
         <PremiumPanel
           title="Aylık Tahsilat"
-          description={`${periodLabel}: ${formatTry(selectedPeriodCollected)} tahsil edildi · hangi ay ne kadar`}
+          description={`${periodLabel}: ${formatTry(selectedPeriodCollected)} · aya tıkla → o ayın paneli açılır`}
           action={(
             <Select value={String(selectedYear)} onValueChange={(value) => setSelectedYear(Number(value))}>
               <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
@@ -183,7 +367,7 @@ export default function FinanceDashboard() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={() => setSelectedMonth('all')}
+              onClick={() => { setSelectedMonth('all'); setPeriod('year'); setAnchor(new Date(Number(selectedYear), 0, 1)); }}
               className={`flex min-w-[96px] flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors ${selectedMonth === 'all' ? 'border-[hsl(var(--brand-accent))] bg-[hsl(var(--brand-accent)/0.14)]' : 'border-foreground/10 bg-foreground/[0.035] hover:border-foreground/20'}`}
             >
               <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Yıllık</span>
@@ -196,7 +380,7 @@ export default function FinanceDashboard() {
                 <button
                   key={month}
                   type="button"
-                  onClick={() => setSelectedMonth(index)}
+                  onClick={() => { setSelectedMonth(index); setPeriod('month'); setAnchor(new Date(Number(selectedYear), index, 1)); }}
                   className={`flex min-w-[96px] flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors ${active ? 'border-[hsl(var(--brand-accent))] bg-[hsl(var(--brand-accent)/0.14)]' : 'border-foreground/10 bg-foreground/[0.035] hover:border-foreground/20'}`}
                 >
                   <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{month.slice(0, 3)}</span>
@@ -212,25 +396,25 @@ export default function FinanceDashboard() {
       </motion.div>
 
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Finansal Özet</h2>
-        <span className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-[hsl(var(--brand-accent))]">Tüm Sözleşmeler · Güncel</span>
+        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Finansal Özet (Kümülatif)</h2>
+        <span className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-[hsl(var(--brand-accent))]">Tüm Sözleşmeler · Dönemden bağımsız</span>
       </div>
 
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Toplam Alacak" value={`₺${stats.totalReceivable.toLocaleString('tr-TR')}`} caption="Tüm sözleşmelerin net tutarı" icon={Wallet} tone="blue" trend="Alacak" />
+          <PremiumMetricCard title="Toplam Alacak" value={`₺${stats.totalReceivable.toLocaleString('tr-TR')}`} caption={`${selectedYear} aylık vade dağılımı`} icon={Wallet} tone="blue" trend="Alacak" chartValues={cumulativeChartSeries.receivable} chartClassName="h-16" />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Tahsil Edilen" value={`₺${stats.totalCollected.toLocaleString('tr-TR')}`} caption="Toplam tahsil edilen" icon={CreditCard} tone="emerald" trend={`%${stats.collectionRate}`} />
+          <PremiumMetricCard title="Tahsil Edilen" value={`₺${stats.totalCollected.toLocaleString('tr-TR')}`} caption={`${selectedYear} aylık tahsilat akışı`} icon={CreditCard} tone="emerald" trend={`%${stats.collectionRate}`} chartValues={cumulativeChartSeries.collected} chartClassName="h-16" />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Bekleyen" value={`₺${stats.pendingPayments.toLocaleString('tr-TR')}`} caption="Kalan bakiye" icon={Calendar} tone="amber" trend="Bekleyen" />
+          <PremiumMetricCard title="Bekleyen" value={`₺${stats.pendingPayments.toLocaleString('tr-TR')}`} caption={`${selectedYear} bekleyen taksit dağılımı`} icon={Calendar} tone="amber" trend="Bekleyen" chartValues={cumulativeChartSeries.pending} chartClassName="h-16" />
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Gecikmiş" value={`₺${stats.overduePayments.toLocaleString('tr-TR')}`} caption="Vadesi geçmiş bakiye" icon={TrendingDown} tone="rose" trend={`${stats.overdueStudentCount} öğrenci`} />
+          <PremiumMetricCard title="Gecikmiş" value={`₺${stats.overduePayments.toLocaleString('tr-TR')}`} caption={`${selectedYear} gecikme dağılımı`} icon={TrendingDown} tone="rose" trend={`${stats.overdueStudentCount} öğrenci`} chartValues={cumulativeChartSeries.overdue} chartClassName="h-16" />
         </motion.div>
       </div>
 
@@ -265,7 +449,7 @@ export default function FinanceDashboard() {
         <motion.div variants={itemVariants}>
           <PremiumPanel
             title="Son Tahsilatlar"
-            description="Gerçek tahsilat kayıtları"
+            description={`${buildPeriodLabel(period, anchor)} · dönem tahsilatları`}
             action={(
               <Button asChild variant="outline" size="sm">
                 <Link to="/finance/collections">
@@ -276,7 +460,9 @@ export default function FinanceDashboard() {
             )}
           >
               <div className="space-y-4">
-                {stats.recentCollections.map((collection) => (
+                {periodStats.recent.length === 0 ? (
+                  <p className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Bu dönemde tahsilat yok.</p>
+                ) : periodStats.recent.map((collection) => (
                   <PremiumListRow key={collection.id} icon={CreditCard} title={collection.name} subtitle={`${collection.method} • ${collection.note || 'Tahsilat'}`} meta={`+₺${parseMoney(collection.amount).toLocaleString('tr-TR')}`} accent onClick={() => setSelectedCollection(collection)} />
                 ))}
               </div>

@@ -280,6 +280,12 @@ public sealed class StudentFinanceService(
             contractId ??= installment.EnrollmentContractId;
         }
 
+        // Borçtan fazla ödeme: artan tutar hiçbir taksite gitmez; "Avans" olarak işaretle.
+        var baseNote = request.Note?.Trim() ?? string.Empty;
+        var note = remainingToAllocate > 0
+            ? (string.IsNullOrEmpty(baseNote) ? $"Avans/Fazla: {remainingToAllocate:0.##}" : $"{baseNote} (Avans/Fazla: {remainingToAllocate:0.##})")
+            : baseNote;
+
         var payment = new FinancePayment
         {
             EnrollmentContractId = contractId,
@@ -291,7 +297,7 @@ public sealed class StudentFinanceService(
             Method = method,
             ReceiptNo = await NextReceiptNoAsync(cancellationToken),
             Currency = currency,
-            Note = request.Note?.Trim() ?? string.Empty,
+            Note = note,
             CreatedByUserId = createdByUserId,
             PaidAtUtc = DateTime.UtcNow,
         };
@@ -404,6 +410,32 @@ public sealed class StudentFinanceService(
         var amount = Math.Abs(request.Amount);
         var name = request.StudentName.Trim();
 
+        // İade tutarını öğrencinin ödenmiş taksitlerine TERS dağıt: en son ödenen
+        // (vadesi en geç) taksitten başlayarak PaidAmount'u düş, durumu geri al.
+        // Böylece "Bekleyen" ile taksit-detayı tutarlı kalır ve aging borcu tekrar görür.
+        var query = dbContext.FinanceInstallments.AsQueryable();
+        query = request.EnrollmentContractId is Guid rcid
+            ? query.Where(item => item.EnrollmentContractId == rcid)
+            : request.StudentUserId is Guid rsid
+                ? query.Where(item => item.StudentUserId == rsid)
+                : query.Where(item => item.StudentName == name);
+        var paidInstallments = await query
+            .Where(item => item.PaidAmount > 0)
+            .OrderByDescending(item => item.DueDateUtc)
+            .ToListAsync(cancellationToken);
+
+        var remainingToReverse = amount;
+        foreach (var installment in paidInstallments)
+        {
+            if (remainingToReverse <= 0) break;
+            var reversible = Math.Min(installment.PaidAmount, remainingToReverse);
+            installment.PaidAmount -= reversible;
+            remainingToReverse -= reversible;
+            installment.Status = installment.PaidAmount <= 0
+                ? "Pending"
+                : (installment.PaidAmount >= installment.Amount ? "Paid" : "Partial");
+        }
+
         // İade, negatif tutarlı bir tahsilat kaydı olarak işlenir (cari bakiyeyi artırır).
         var refund = new FinancePayment
         {
@@ -460,7 +492,8 @@ public sealed class StudentFinanceService(
         var now = DateTime.UtcNow;
         var net = contracts.Sum(item => item.NetAmount);
         var collected = payments.Sum(item => item.Amount);
-        var outstanding = net - collected;
+        // Fazla/avans tahsilatta net'ten büyük olabilir; "Bekleyen" negatif gösterilmesin.
+        var outstanding = Math.Max(0, net - collected);
 
         decimal BucketAmount(int minDays, int maxDays) => installments
             .Where(item =>

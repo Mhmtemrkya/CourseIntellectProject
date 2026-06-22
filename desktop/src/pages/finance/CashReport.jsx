@@ -19,6 +19,8 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { fetchAccountingDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
+import { filterByPeriod, periodLabel, shiftAnchor } from '../../lib/financePeriod';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -43,6 +45,7 @@ export default function CashReport() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [period, setPeriod] = useState('month');
+  const [anchor, setAnchor] = useState(() => new Date());
 
   const loadData = useCallback(async () => {
     try {
@@ -61,8 +64,10 @@ export default function CashReport() {
 
   const collections = useMemo(() => {
     const list = dashboard?.recentCollections || dashboard?.collections || [];
-    return Array.isArray(list) ? list : [];
-  }, [dashboard]);
+    const all = Array.isArray(list) ? list : [];
+    // Seçili döneme (Günlük/Haftalık/Aylık/Yıllık) göre süz; tarih = kalemin time alanı.
+    return filterByPeriod(all, (c) => c.time || c.date || c.createdAt, period, anchor);
+  }, [dashboard, period, anchor]);
 
   const cashTotal = useMemo(
     () => collections.filter((c) => normalizeFinanceText(c.method || c.paymentMethod || c.type).includes('nakit')).reduce((s, c) => s + parseAmount(c.amount), 0),
@@ -103,14 +108,19 @@ export default function CashReport() {
             <p className="text-sm text-muted-foreground">Nakit, kart ve havale akisi</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Select value={period} onValueChange={setPeriod}>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+            <span className="min-w-[120px] text-center text-sm font-semibold">{periodLabel(period, anchor)}</span>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, 1))}><ChevronRight className="h-4 w-4" /></Button>
+          </div>
+          <Select value={period} onValueChange={(v) => { setPeriod(v); setAnchor(new Date()); }}>
             <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="day">Gunluk</SelectItem>
-              <SelectItem value="week">Haftalik</SelectItem>
-              <SelectItem value="month">Aylik</SelectItem>
-              <SelectItem value="year">Yillik</SelectItem>
+              <SelectItem value="day">Günlük</SelectItem>
+              <SelectItem value="week">Haftalık</SelectItem>
+              <SelectItem value="month">Aylık</SelectItem>
+              <SelectItem value="year">Yıllık</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -43,6 +43,7 @@ public sealed class AcademicQueryService(
         return students
             .Select(student => new StudentSummaryDto(
                 student.Id,
+                student.UserId,
                 student.FullName,
                 student.TcNo,
                 student.ClassName,
@@ -297,6 +298,7 @@ public sealed class AcademicQueryService(
 
         return new StudentSummaryDto(
             student.Id,
+            student.UserId,
             student.FullName,
             student.TcNo,
             student.ClassName,
