@@ -109,7 +109,8 @@ export default function AdminStaffRegistration() {
   const tenantName = user?.tenant || '';
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [recentStaff, setRecentStaff] = useState([]);
+  const [allStaff, setAllStaff] = useState([]);
+  const [roleFilter, setRoleFilter] = useState('Teacher');
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -122,7 +123,7 @@ export default function AdminStaffRegistration() {
         fetchStaff().catch(() => []),
         fetchOrgUnits().catch(() => []),
       ]);
-      setRecentStaff(Array.isArray(data) ? data.slice(-5).reverse() : []);
+      setAllStaff(Array.isArray(data) ? data : []);
       const all = Array.isArray(orgUnits) ? orgUnits : [];
       const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
       setBranches(branchUnits.length > 0 ? branchUnits : all);
@@ -528,28 +529,51 @@ export default function AdminStaffRegistration() {
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Son Kayıtlar</CardTitle>
+              <CardTitle className="text-base">Role Göre Personel</CardTitle>
             </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-4"><LoadingDots /></div>
-              ) : recentStaff.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Henüz kayıt yok.</p>
-              ) : (
-                <div className="space-y-3">
-                  {recentStaff.map((s, i) => (
-                    <div key={s.id || i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                      <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">
-                        {(s.fullName || '?')[0]}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{s.fullName}</p>
-                        <p className="text-xs text-muted-foreground">{s.primaryRole || s.role || '-'}</p>
-                      </div>
+            <CardContent className="space-y-4">
+              <Select value={roleFilter} onValueChange={setRoleFilter}>
+                <SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger>
+                <SelectContent>
+                  {roles.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              {(() => {
+                const selectedRole = roles.find((r) => r.value === roleFilter);
+                const norm = (v) => String(v || '').trim().toLocaleLowerCase('tr');
+                const filtered = allStaff.filter((s) => {
+                  const role = norm(s.primaryRole || s.role);
+                  return role === norm(selectedRole?.value) || role === norm(selectedRole?.label);
+                });
+                return (
+                  <>
+                    <div className="rounded-xl border bg-muted/30 p-3">
+                      <p className="text-xs text-muted-foreground">{selectedRole?.label} Sayısı</p>
+                      <p className="mt-1 text-2xl font-bold">{filtered.length}</p>
                     </div>
-                  ))}
-                </div>
-              )}
+                    {loading ? (
+                      <div className="flex justify-center py-4"><LoadingDots /></div>
+                    ) : filtered.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Bu rolde kayıtlı personel yok.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[360px] overflow-y-auto">
+                        {filtered.map((s, i) => (
+                          <div key={s.id || i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
+                            <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">
+                              {(s.fullName || '?')[0]}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{s.fullName}</p>
+                              <p className="text-xs text-muted-foreground">{s.departmentOrBranch || selectedRole?.label}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </motion.div>

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../services/admin_workflow_api_service.dart';
+import '../services/school_feed_api_service.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import 'admin_announcements_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
-import 'admin_students_page.dart';
 
 class AdminAdministrativeUnitsPage extends StatefulWidget {
   const AdminAdministrativeUnitsPage({super.key});
@@ -21,11 +22,18 @@ class _AdminAdministrativeUnitsPageState
   final _store = StudentRegistryStore.instance;
   final _staffStore = StaffRegistryStore.instance;
 
+  List<Map<String, dynamic>> _documents = const [];
+  Map<String, dynamic> _overview = const {};
+  List<AnnouncementFeedItem> _announcements = const [];
+
   @override
   void initState() {
     super.initState();
     _store.addListener(_refresh);
     _staffStore.addListener(_refresh);
+    _store.ensureLoaded();
+    _staffStore.ensureLoaded();
+    _loadAdministrative();
   }
 
   @override
@@ -41,11 +49,22 @@ class _AdminAdministrativeUnitsPageState
     }
   }
 
+  Future<void> _loadAdministrative() async {
+    final results = await Future.wait([
+      AdminWorkflowApiService.instance.getDocuments().catchError((_) => <Map<String, dynamic>>[]),
+      AdminWorkflowApiService.instance.getOverview().catchError((_) => <String, dynamic>{}),
+      SchoolFeedApiService.instance.fetchAnnouncements(audience: 'Tüm Kurum', includeAll: true).catchError((_) => <AnnouncementFeedItem>[]),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _documents = results[0] as List<Map<String, dynamic>>;
+      _overview = results[1] as Map<String, dynamic>;
+      _announcements = results[2] as List<AnnouncementFeedItem>;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final latestStudents = _store.students.take(3).toList();
-    final latestStaff = _staffStore.staff.take(2).toList();
-
     return AdminScaffold(
       appBar: AppBar(
         title: const Text(
@@ -128,6 +147,17 @@ class _AdminAdministrativeUnitsPageState
                   ),
                 ),
               ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _actionCard(
+                  context,
+                  title: 'Şube Kaydı',
+                  subtitle: 'Yeni şube/kampüs oluştur',
+                  icon: Icons.apartment_outlined,
+                  color: const Color(0xFF0EA5E9),
+                  onTap: _openBranchDialog,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -135,20 +165,20 @@ class _AdminAdministrativeUnitsPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AdminSectionTitle(
-                  title: 'Son Kayıtlar',
-                  actionLabel: 'Tümünü Gör',
-                  onAction: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => const AdminStudentsPage(),
+                const AdminSectionTitle(title: 'Belgeler'),
+                const SizedBox(height: 12),
+                if (_documents.isEmpty)
+                  const Text('Kayıtlı belge bulunamadı.')
+                else
+                  ..._documents.take(5).map(
+                    (doc) => _infoRow(
+                      context,
+                      icon: Icons.description_outlined,
+                      title: (doc['title'] ?? 'Belge').toString(),
+                      detail: '${doc['category'] ?? 'Kategori yok'}${(doc['status'] ?? '').toString().isNotEmpty ? ' • ${doc['status']}' : ''}',
+                      color: const Color(0xFF14532D),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                ...latestStudents.map(
-                  (student) => _studentPreview(context, student),
-                ),
               ],
             ),
           ),
@@ -157,9 +187,11 @@ class _AdminAdministrativeUnitsPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Son Kadro Kayıtları'),
+                const AdminSectionTitle(title: 'İdari Özet'),
                 const SizedBox(height: 12),
-                ...latestStaff.map((person) => _staffPreview(context, person)),
+                _infoRow(context, icon: Icons.verified_user_outlined, title: 'Bekleyen Onay', detail: '${_overview['pendingApprovals'] ?? 0} kayıt', color: const Color(0xFF2563EB)),
+                _infoRow(context, icon: Icons.checklist_rtl_outlined, title: 'Açık Görev', detail: '${_overview['openTasks'] ?? 0} görev', color: const Color(0xFF7C3AED)),
+                _infoRow(context, icon: Icons.warning_amber_rounded, title: 'Süresi Dolan Evrak', detail: '${_overview['expiringDocuments'] ?? 0} belge', color: const Color(0xFFB45309)),
               ],
             ),
           ),
@@ -167,24 +199,120 @@ class _AdminAdministrativeUnitsPageState
           AdminPanel(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                AdminSectionTitle(title: 'İdari Kontrol Noktalari'),
-                SizedBox(height: 12),
-                _AdministrativeHint(
-                  title: 'Evrak Tamamlama',
-                  detail:
-                      'TC, okul bilgisi, veli iletişim ve program alanı kayıt anında tamamlanır.',
+              children: [
+                const AdminSectionTitle(title: 'Son Duyurular'),
+                const SizedBox(height: 12),
+                if (_announcements.isEmpty)
+                  const Text('Yayınlanmış duyuru bulunamadı.')
+                else
+                  ..._announcements.take(5).map(
+                    (item) => _infoRow(
+                      context,
+                      icon: Icons.campaign_outlined,
+                      title: item.title,
+                      detail: '${item.audience}${item.date.isNotEmpty ? ' • ${item.date}' : ''}',
+                      color: const Color(0xFFB45309),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _openBranchDialog() async {
+    final nameController = TextEditingController();
+    final managerController = TextEditingController();
+    String unitType = 'Şube';
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: const Text('Şube Kaydı'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameController,
+                  decoration: const InputDecoration(labelText: 'Şube Adı', hintText: 'Örn: Merkez Şube'),
                 ),
-                _AdministrativeHint(
-                  title: 'Giriş Bilgisi Üretimi',
-                  detail:
-                      'Kayıt sonrası öğrenciye otomatik kullanıcı adı ve şifre oluşturulur.',
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: unitType,
+                  decoration: const InputDecoration(labelText: 'Tür'),
+                  items: const [
+                    DropdownMenuItem(value: 'Şube', child: Text('Şube')),
+                    DropdownMenuItem(value: 'Kampüs', child: Text('Kampüs')),
+                  ],
+                  onChanged: (v) => setDialogState(() => unitType = v ?? 'Şube'),
                 ),
-                _AdministrativeHint(
-                  title: 'Kurumsal Duyuru Aksiyonu',
-                  detail:
-                      'Yeni kayıt sonrası öğrenci ve veliye yönelik hoş geldiniz duyurusu planlanabilir.',
+                const SizedBox(height: 10),
+                TextField(
+                  controller: managerController,
+                  decoration: const InputDecoration(labelText: 'Sorumlu (opsiyonel)'),
                 ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
+            FilledButton(
+              onPressed: () async {
+                if (nameController.text.trim().isEmpty) return;
+                try {
+                  await AdminWorkflowApiService.instance.createOrgUnit(
+                    name: nameController.text.trim(),
+                    unitType: unitType,
+                    managerName: managerController.text.trim().isEmpty ? null : managerController.text.trim(),
+                  );
+                  if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                } catch (error) {
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(content: Text('Şube oluşturulamadı: $error')),
+                    );
+                  }
+                }
+              },
+              child: const Text('Kaydet'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (created == true && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Şube oluşturuldu.')),
+      );
+    }
+  }
+
+  Widget _infoRow(
+    BuildContext context, {
+    required IconData icon,
+    required String title,
+    required String detail,
+    required Color color,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: color.withValues(alpha: 0.12),
+            child: Icon(icon, color: color, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(detail, style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
           ),
@@ -237,152 +365,4 @@ class _AdminAdministrativeUnitsPageState
     );
   }
 
-  Widget _studentPreview(BuildContext context, StudentRegistryRecord student) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).scaffoldBackgroundColor.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
-              child: Text(
-                student.fullName.characters.first,
-                style: const TextStyle(
-                  color: Color(0xFF2563EB),
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    student.fullName,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${student.className} • ${student.currentSchool}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            AdminAccentBadge(
-              label: student.status,
-              color: const Color(0xFF14532D),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _staffPreview(BuildContext context, StaffRegistryRecord person) {
-    final color = person.roleType == 'Öğretmen'
-        ? const Color(0xFF2563EB)
-        : const Color(0xFF7C3AED);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Theme.of(
-            context,
-          ).scaffoldBackgroundColor.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-        ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              backgroundColor: color.withValues(alpha: 0.12),
-              child: Text(
-                person.fullName.characters.first,
-                style: TextStyle(color: color, fontWeight: FontWeight.w900),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    person.fullName,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${person.roleType} • ${person.branchOrDepartment} • ${person.campus}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-            AdminAccentBadge(label: person.status, color: color),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AdministrativeHint extends StatelessWidget {
-  final String title;
-  final String detail;
-
-  const _AdministrativeHint({required this.title, required this.detail});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(
-              Icons.check_circle_outline_rounded,
-              size: 18,
-              color: Color(0xFF14532D),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  detail,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodySmall?.copyWith(height: 1.4),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 }

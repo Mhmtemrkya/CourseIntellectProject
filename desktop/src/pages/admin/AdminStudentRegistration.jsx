@@ -16,7 +16,7 @@ import {
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { createStudent, fetchClasses, fetchStudents, fetchOrgUnits } from '../../lib/api/modules';
+import { createStudent, fetchClasses, fetchStudents, fetchStaff, fetchOrgUnits } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
@@ -65,7 +65,9 @@ export default function AdminStudentRegistration() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [classNames, setClassNames] = useState([]);
-  const [recentStudents, setRecentStudents] = useState([]);
+  const [allStudents, setAllStudents] = useState([]);
+  const [staff, setStaff] = useState([]);
+  const [rosterClass, setRosterClass] = useState('');
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState('');
   const [loading, setLoading] = useState(true);
@@ -101,13 +103,18 @@ export default function AdminStudentRegistration() {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const [students, classList, orgUnits] = await Promise.all([
+      const [students, classList, staffList, orgUnits] = await Promise.all([
         fetchStudents().catch(() => []),
         fetchClasses().catch(() => []),
+        fetchStaff('Teacher').catch(() => []),
         fetchOrgUnits().catch(() => []),
       ]);
-      setRecentStudents(Array.isArray(students) ? students.slice(-5).reverse() : []);
-      setClassNames(Array.isArray(classList) ? classList : []);
+      const safeStudents = Array.isArray(students) ? students : [];
+      setAllStudents(safeStudents);
+      setStaff(Array.isArray(staffList) ? staffList : []);
+      const classes = Array.isArray(classList) ? classList : [];
+      setClassNames(classes);
+      setRosterClass((prev) => prev || classes[0] || safeStudents.find((s) => s.className)?.className || '');
       const all = Array.isArray(orgUnits) ? orgUnits : [];
       const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
       setBranches(branchUnits.length > 0 ? branchUnits : all);
@@ -462,28 +469,53 @@ export default function AdminStudentRegistration() {
         <motion.div variants={itemVariants}>
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Son Kayıtlar</CardTitle>
+              <CardTitle className="text-base">Sınıf Mevcudu</CardTitle>
             </CardHeader>
-            <CardContent>
-              {loading ? (
-                <div className="flex justify-center py-4"><LoadingDots /></div>
-              ) : recentStudents.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">Henüz kayıt yok.</p>
-              ) : (
-                <div className="space-y-3">
-                  {recentStudents.map((s, i) => (
-                    <div key={s.id || i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                      <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xs font-bold text-blue-600">
-                        {(s.fullName || '?')[0]}
+            <CardContent className="space-y-4">
+              <Select value={rosterClass} onValueChange={setRosterClass}>
+                <SelectTrigger><SelectValue placeholder="Sınıf seçin" /></SelectTrigger>
+                <SelectContent>
+                  {classNames.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                </SelectContent>
+              </Select>
+
+              {(() => {
+                const roster = allStudents.filter((s) => s.className === rosterClass);
+                const homeroom = staff.find((t) => t.homeroomClass === rosterClass);
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">Öğrenci Sayısı</p>
+                        <p className="mt-1 text-2xl font-bold">{roster.length}</p>
                       </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{s.fullName}</p>
-                        <p className="text-xs text-muted-foreground">{s.className || '-'}</p>
+                      <div className="rounded-xl border bg-muted/30 p-3">
+                        <p className="text-xs text-muted-foreground">Sınıf Öğretmeni</p>
+                        <p className="mt-1 text-sm font-semibold">{homeroom?.fullName || 'Atanmadı'}</p>
                       </div>
                     </div>
-                  ))}
-                </div>
-              )}
+                    {loading ? (
+                      <div className="flex justify-center py-4"><LoadingDots /></div>
+                    ) : roster.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-4">Bu sınıfta kayıtlı öğrenci yok.</p>
+                    ) : (
+                      <div className="space-y-2 max-h-[360px] overflow-y-auto">
+                        {roster.map((s, i) => (
+                          <div key={s.id || i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
+                            <div className="h-8 w-8 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-xs font-bold text-blue-600">
+                              {(s.fullName || '?')[0]}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{s.fullName}</p>
+                              <p className="text-xs text-muted-foreground">{s.schoolNumber ? `No: ${s.schoolNumber}` : (s.programType || '-')}</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </CardContent>
           </Card>
         </motion.div>

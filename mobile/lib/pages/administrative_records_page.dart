@@ -4,7 +4,6 @@ import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import 'administrative_documents_page.dart';
-import 'admin_parent_registration_page.dart';
 import 'admin_role_management_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
@@ -107,21 +106,6 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
                 ),
               ),
               const SizedBox(width: 12),
-              Expanded(
-                child: _actionCard(
-                  context,
-                  title: 'Veli Kaydı',
-                  subtitle: 'Veli odaklı kayıt ekranı',
-                  icon: Icons.family_restroom_outlined,
-                  color: const Color(0xFF7C3AED),
-                  onTap: () => _openPage(const AdminParentRegistrationPage()),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
               Expanded(
                 child: _actionCard(
                   context,

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3, BookOpen, School, Users, ShieldCheck, CalendarClock, ClipboardList, FileWarning } from 'lucide-react';
+import { BookOpen, School, Users, ShieldCheck, CalendarClock, ClipboardList, FileWarning } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
@@ -51,12 +51,11 @@ export default function AdminKpiDashboard() {
         <p className="text-muted-foreground mt-1">Canlı kurum metrikleri ve sınıf bazlı iletişim özeti</p>
       </div>
       {error ? <ErrorBanner title="Kurum özeti verisi alınamadı" message={error} onRetry={loadKpi} /> : null}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
           ['Öğrenci', stats.totalStudents || 0, Users, '/students'],
           ['Öğretmen', stats.totalTeachers || 0, School, '/teachers'],
           ['Sınıf', stats.totalClasses || 0, BookOpen, '/classes'],
-          ['Devam', `${stats.todayAttendanceRate || 0}%`, BarChart3, '/reports'],
         ].map(([label, value, Icon, route]) => (
           <Card key={label} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate(route)}><CardContent className="p-5 flex items-center gap-4"><Icon className="h-8 w-8 text-brand-primary" /><div><p className="text-2xl font-bold">{value}</p><p className="text-sm text-muted-foreground">{label}</p></div></CardContent></Card>
         ))}

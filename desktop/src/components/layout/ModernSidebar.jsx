@@ -284,12 +284,6 @@ export const menuConfigs = {
       color: "#06b6d4",
     },
     {
-      path: "/admin/parent-registration",
-      icon: UserCheck,
-      label: "Veli Kaydı",
-      color: "#7c3aed",
-    },
-    {
       path: "/admin/staff-registration",
       icon: UserCheck,
       label: "Personel Kaydı",
@@ -300,6 +294,12 @@ export const menuConfigs = {
       icon: Wallet,
       label: "Muhasebe Kaydı",
       color: "#16a34a",
+    },
+    {
+      path: "/admin/branch-registration",
+      icon: Building2,
+      label: "Şube Kaydı",
+      color: "#0ea5e9",
     },
     {
       path: "/admin/branch-comparison",
@@ -442,12 +442,6 @@ export const menuConfigs = {
       icon: Calendar,
       label: "Görüşme Akışı",
       color: "#ec4899",
-    },
-    {
-      path: "/admin/parent-registration",
-      icon: UserCheck,
-      label: "Veli Kaydı",
-      color: "#7c3aed",
     },
     { path: "/reports", icon: BarChart3, label: "Raporlar", color: "#22c55e" },
     {
@@ -1235,9 +1229,9 @@ function inferModuleKey(item) {
     "/t/meeting-approvals": "meetings",
     "/p/meetings": "meetings",
     "/admin/student-registration": "registrations",
-    "/admin/parent-registration": "registrations",
     "/admin/staff-registration": "registrations",
     "/admin/accounting-registration": "registrations",
+    "/admin/branch-registration": "registrations",
     "/admin/branch-comparison": "branch-comparison",
     "/admin/global-search": "global-search",
     "/admin/service-tracking": "service",

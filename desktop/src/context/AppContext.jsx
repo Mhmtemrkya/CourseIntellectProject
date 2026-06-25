@@ -100,6 +100,11 @@ export function AppProvider({ children }) {
 
   const logout = useCallback(() => {
     clearDesktopSession();
+    // Şube seçim bayrağı ve filtresi sıfırlanır; sonraki girişte tekrar şube seçilir.
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem('ci-branch-selected');
+      localStorage.removeItem('ci-branch-filter');
+    }
     setSession(null);
     setUser(null);
   }, []);

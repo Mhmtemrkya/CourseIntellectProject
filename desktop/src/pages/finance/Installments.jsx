@@ -20,7 +20,6 @@ import {
   DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
-import { Progress } from '../../components/ui/progress';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
@@ -74,6 +73,14 @@ function statusKey(status) {
   if (normalized.includes('gec')) return 'overdue';
   if (normalized.includes('odendi') || normalized.includes('paid') || normalized.includes('completed')) return 'completed';
   return 'current';
+}
+
+// Vade tarihi geçmiş ve ödenmemiş taksitleri de gecikmiş sayar.
+function effectiveStatus(plan) {
+  const key = statusKey(plan.status);
+  if (key === 'completed' || key === 'overdue') return key;
+  const due = parseFinanceDate(plan.dueDate || plan.due);
+  return due && due.getTime() < Date.now() ? 'overdue' : 'current';
 }
 
 function CreatePlanDialog({
@@ -186,6 +193,8 @@ function CreatePlanDialog({
 export default function Installments() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [classFilter, setClassFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [monthFilter, setMonthFilter] = useState('all');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -216,18 +225,32 @@ export default function Installments() {
   }, [loadData]);
 
   const plans = useMemo(() => dashboard?.installments || [], [dashboard]);
-  const filteredPlans = useMemo(() => plans.filter((plan) => {
-    const matchesSearch = String(plan.student || '').toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || statusKey(plan.status) === statusFilter;
-    const matchesMonth = monthMatches(plan.dueDate || plan.due, monthFilter);
-    return matchesSearch && matchesStatus && matchesMonth;
-  }), [monthFilter, plans, search, statusFilter]);
+  // Öğrenci adı → {sınıf, şube} eşlemesi (sınıf/şube filtreleri için).
+  const studentMeta = useMemo(() => {
+    const map = new Map();
+    students.forEach((s) => {
+      map.set(String(s.fullName || '').toLowerCase(), { className: s.className || '', branchName: s.branchName || s.branch || '' });
+    });
+    return map;
+  }, [students]);
+  const classes = useMemo(() => [...new Set(students.map((s) => s.className).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [students]);
+  const branches = useMemo(() => [...new Set(students.map((s) => s.branchName || s.branch).filter(Boolean))], [students]);
 
-  const getStatusBadge = (status) => {
-    const key = statusKey(status);
+  const filteredPlans = useMemo(() => plans.filter((plan) => {
+    const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || {};
+    const matchesSearch = String(plan.student || '').toLowerCase().includes(search.toLowerCase());
+    const matchesClass = classFilter === 'all' || meta.className === classFilter;
+    const matchesBranch = branchFilter === 'all' || meta.branchName === branchFilter;
+    const matchesStatus = statusFilter === 'all' || effectiveStatus(plan) === statusFilter;
+    const matchesMonth = monthMatches(plan.dueDate || plan.due, monthFilter);
+    return matchesSearch && matchesClass && matchesBranch && matchesStatus && matchesMonth;
+  }), [monthFilter, plans, search, classFilter, branchFilter, statusFilter, studentMeta]);
+
+  const getStatusBadge = (plan) => {
+    const key = effectiveStatus(plan);
     const config = {
       current: { label: 'Güncel', icon: Clock, className: 'bg-yellow-100 text-yellow-700' },
-      overdue: { label: 'Gecikmiş', icon: AlertCircle, className: 'bg-red-100 text-red-700' },
+      overdue: { label: 'Gecikti', icon: AlertCircle, className: 'bg-red-100 text-red-700' },
       completed: { label: 'Tamamlandı', icon: CheckCircle, className: 'bg-green-100 text-green-700' },
     };
     const { label, icon: Icon, className } = config[key];
@@ -240,9 +263,9 @@ export default function Installments() {
   };
 
   const stats = useMemo(() => ({
-    completed: filteredPlans.filter((item) => statusKey(item.status) === 'completed').length,
-    current: filteredPlans.filter((item) => statusKey(item.status) === 'current').length,
-    overdue: filteredPlans.filter((item) => statusKey(item.status) === 'overdue').length,
+    completed: filteredPlans.filter((item) => effectiveStatus(item) === 'completed').length,
+    current: filteredPlans.filter((item) => effectiveStatus(item) === 'current').length,
+    overdue: filteredPlans.filter((item) => effectiveStatus(item) === 'overdue').length,
   }), [filteredPlans]);
 
   const handleCreated = (created) => {
@@ -335,6 +358,26 @@ export default function Installments() {
                 className="pl-10"
               />
             </div>
+            <Select value={classFilter} onValueChange={setClassFilter}>
+              <SelectTrigger className="w-full md:w-36">
+                <SelectValue placeholder="Sınıf" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Sınıflar</SelectItem>
+                {classes.map((cls) => <SelectItem key={cls} value={cls}>{cls}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            {branches.length > 0 ? (
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-full md:w-36">
+                  <SelectValue placeholder="Şube" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Şubeler</SelectItem>
+                  {branches.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            ) : null}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-40">
                 <SelectValue placeholder="Durum" />
@@ -342,7 +385,7 @@ export default function Installments() {
               <SelectContent>
                 <SelectItem value="all">Tüm Durumlar</SelectItem>
                 <SelectItem value="current">Güncel</SelectItem>
-                <SelectItem value="overdue">Gecikmiş</SelectItem>
+                <SelectItem value="overdue">Gecikti</SelectItem>
                 <SelectItem value="completed">Tamamlanan</SelectItem>
               </SelectContent>
             </Select>
@@ -366,16 +409,15 @@ export default function Installments() {
             <TableHeader>
               <TableRow>
                 <TableHead>Öğrenci</TableHead>
+                <TableHead>Sınıf</TableHead>
                 <TableHead>Tutar</TableHead>
-                <TableHead>İlerleme</TableHead>
                 <TableHead>Vade</TableHead>
                 <TableHead>Durum</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredPlans.map((plan) => {
-                const status = statusKey(plan.status);
-                const progress = status === 'completed' ? 100 : status === 'overdue' ? 35 : 70;
+                const meta = studentMeta.get(String(plan.student || '').toLowerCase()) || {};
                 return (
                   <TableRow
                     key={plan.id}
@@ -388,15 +430,10 @@ export default function Installments() {
                         <p className="text-sm text-muted-foreground">{plan.note}</p>
                       </div>
                     </TableCell>
+                    <TableCell>{meta.className ? <Badge variant="outline">{meta.className}</Badge> : <span className="text-xs text-muted-foreground">—</span>}</TableCell>
                     <TableCell>₺{parseMoney(plan.amount).toLocaleString('tr-TR')}</TableCell>
-                    <TableCell>
-                      <div className="space-y-1">
-                        <Progress value={progress} className="w-24 h-2" />
-                        <span className="text-xs text-muted-foreground">%{progress}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{plan.due}</TableCell>
-                    <TableCell>{getStatusBadge(plan.status)}</TableCell>
+                    <TableCell>{plan.due || plan.dueDate}</TableCell>
+                    <TableCell>{getStatusBadge(plan)}</TableCell>
                   </TableRow>
                 );
               })}

@@ -66,6 +66,7 @@ class _AccountingInstallmentsPageState
   final AccountingFinanceStore _store = AccountingFinanceStore.instance;
   String _filter = 'Tümü';
   String _monthFilter = 'all';
+  String _studentSearch = '';
 
   @override
   void initState() {
@@ -98,6 +99,7 @@ class _AccountingInstallmentsPageState
     final filtered = _store.installments
         .where((plan) => _filter == 'Tümü' || plan.status == _filter)
         .where((plan) => _monthMatches(plan.due, _monthFilter))
+        .where((plan) => _studentSearch.isEmpty || plan.student.toLowerCase().contains(_studentSearch.toLowerCase()))
         .toList();
 
     return AccountingScaffold(
@@ -136,6 +138,15 @@ class _AccountingInstallmentsPageState
             ],
           ),
           const SizedBox(height: 16),
+          TextField(
+            decoration: const InputDecoration(
+              labelText: 'Öğrenci ara',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) => setState(() => _studentSearch = value),
+          ),
+          const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(

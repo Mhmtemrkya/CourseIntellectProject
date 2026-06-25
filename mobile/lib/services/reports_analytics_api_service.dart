@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class ReportsAnalyticsApiException implements Exception {
   final String message;
@@ -106,7 +107,7 @@ class ReportsAnalyticsApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/reports/exam-analytics',
       ).replace(queryParameters: {'studentName': studentName}),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -147,7 +148,7 @@ class ReportsAnalyticsApiService {
             ? null
             : {'className': className.trim()},
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

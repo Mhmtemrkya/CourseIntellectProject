@@ -9,4 +9,5 @@ public sealed class AccountingSalary : ITenantScopedEntity
     public string Amount { get; set; } = string.Empty;
     public string PayDate { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

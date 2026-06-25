@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
-  Wallet, TrendingUp, TrendingDown, CreditCard,
+  CreditCard,
   AlertCircle, Calendar, Users, ArrowUpRight, Receipt, Landmark,
   Banknote, Building2, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -13,18 +13,12 @@ import { Progress } from '../../components/ui/progress';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAccountingDashboard, fetchFinanceDashboard } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor, parseTrDateTime } from '../../lib/financePeriod';
 import {
-  MiniBarChart,
-  MiniDonut,
-  MiniLineChart,
   PremiumListRow,
   PremiumMetricCard,
   PremiumPanel,
@@ -40,6 +34,9 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 },
 };
 
+const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const WEEKDAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+
 function parseMoney(value) {
   return parseFinanceMoney(value);
 }
@@ -48,10 +45,8 @@ function normalizeStatus(value = '') {
   return normalizeFinanceText(value);
 }
 
-const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
-
-// Backend tahsilat "time" ("dd.MM.yyyy HH:mm") ve taksit "due" ("dd.MM.yyyy")
-// alanlarini Date'e cevirir; ay/yil filtreleri bu tarihler uzerinden yapilir.
+// Backend tahsilat "time"/fatura "subtitle"/maaş "payDate" alanlarındaki
+// "dd.MM.yyyy" tarihini Date'e çevirir.
 function parseTrDate(value) {
   const match = String(value || '').match(/(\d{2})\.(\d{2})\.(\d{4})/);
   if (!match) return null;
@@ -62,11 +57,6 @@ function parseTrDate(value) {
 
 function formatTry(amount) {
   return `₺${Math.round(amount).toLocaleString('tr-TR')}`;
-}
-
-function isPaidStatus(value) {
-  const normalized = normalizeStatus(value);
-  return normalized.includes('oden') || normalized.includes('paid') || normalized.includes('tahsil');
 }
 
 function createPeriodBuckets(period, anchor) {
@@ -92,28 +82,130 @@ function createPeriodBuckets(period, anchor) {
     }));
   }
   const daysInMonth = new Date(reference.getFullYear(), reference.getMonth() + 1, 0).getDate();
-  return Array.from({ length: 8 }, (_, index) => {
-    const startDay = Math.floor((index * daysInMonth) / 8) + 1;
-    const endDay = Math.floor(((index + 1) * daysInMonth) / 8) + 1;
-    return {
-      start: new Date(reference.getFullYear(), reference.getMonth(), startDay),
-      end: new Date(reference.getFullYear(), reference.getMonth(), Math.min(endDay, daysInMonth + 1)),
-    };
-  });
+  return Array.from({ length: daysInMonth }, (_, index) => ({
+    start: new Date(reference.getFullYear(), reference.getMonth(), index + 1),
+    end: new Date(reference.getFullYear(), reference.getMonth(), index + 2),
+  }));
 }
 
-function buildBucketSeries(items, dateSelector, valueSelector, period, anchor) {
-  const buckets = createPeriodBuckets(period, anchor);
-  return buckets.map(({ start, end }) => items.reduce((sum, item) => {
-    const date = parseTrDateTime(dateSelector(item));
-    if (!date || date < start || date >= end) return sum;
-    return sum + valueSelector(item);
-  }, 0));
+function bucketLabel(start, period) {
+  if (period === 'day') return `${String(start.getHours()).padStart(2, '0')}:00`;
+  if (period === 'week') return WEEKDAYS_TR[(start.getDay() + 6) % 7];
+  if (period === 'year') return MONTHS_TR[start.getMonth()].slice(0, 3);
+  return String(start.getDate());
 }
 
-function ensureMetricSeries(values, currentValue) {
-  const safe = values.map((value) => Number(value) || 0);
-  return safe.some((value) => value !== 0) ? safe : Array(Math.max(8, safe.length || 0)).fill(Number(currentValue) || 0);
+// Gelir (tahsilat) vs gider (maaş + fatura) detaylı dönem grafiği — hover'da
+// o dönemin ne geldi / ne gitti / net kartı açılır.
+function FlowChart({ buckets }) {
+  const [hover, setHover] = useState(null);
+  if (!buckets.length) {
+    return <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-foreground/10 text-sm text-muted-foreground">Bu dönem için veri yok.</div>;
+  }
+  const maxValue = Math.max(1, ...buckets.map((b) => Math.max(b.income, b.expense)));
+  const active = hover != null ? buckets[hover] : buckets[buckets.length - 1];
+
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Gelir (tahsilat)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-500" /> Gider (maaş + fatura)</span>
+      </div>
+
+      <div className="relative mt-5 h-64">
+        {active ? (
+          <div className="pointer-events-none absolute -top-1 right-0 z-10 w-56 rounded-2xl border border-foreground/10 bg-[#020B1F]/95 px-4 py-3 text-xs shadow-xl backdrop-blur">
+            <p className="mb-1.5 font-bold text-foreground">{active.label}</p>
+            <p className="flex items-center justify-between gap-4 text-emerald-400"><span>Ne geldi</span><span className="tabular-nums font-semibold">{formatTry(active.income)}</span></p>
+            <p className="flex items-center justify-between gap-4 text-rose-400"><span>Ne gitti</span><span className="tabular-nums font-semibold">{formatTry(active.expense)}</span></p>
+            <div className="mt-1.5 space-y-0.5 border-t border-foreground/10 pt-1.5 text-[11px] text-muted-foreground">
+              <p className="flex justify-between"><span>• Maaş gideri</span><span className="tabular-nums">{formatTry(active.salaryExp)}</span></p>
+              <p className="flex justify-between"><span>• Fatura gideri</span><span className="tabular-nums">{formatTry(active.invoiceExp)}</span></p>
+            </div>
+            <p className={`mt-1.5 flex items-center justify-between gap-4 border-t border-foreground/10 pt-1.5 font-bold ${active.net >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}><span>Net</span><span className="tabular-nums">{formatTry(active.net)}</span></p>
+          </div>
+        ) : null}
+
+        <div className="flex h-full items-end gap-1">
+          {buckets.map((bucket, index) => {
+            const incomeH = Math.max(2, (bucket.income / maxValue) * 100);
+            const expenseH = Math.max(2, (bucket.expense / maxValue) * 100);
+            const isActive = (hover != null ? hover : buckets.length - 1) === index;
+            return (
+              <button
+                type="button"
+                key={`${bucket.label}-${index}`}
+                onMouseEnter={() => setHover(index)}
+                onMouseLeave={() => setHover(null)}
+                onFocus={() => setHover(index)}
+                className="group relative flex h-full flex-1 items-end justify-center"
+              >
+                <div className={`flex h-full w-full items-end justify-center gap-[2px] rounded-md px-0.5 pt-3 transition-colors ${isActive ? 'bg-foreground/[0.06]' : ''}`}>
+                  <div className="w-1/2 max-w-[16px] rounded-t bg-gradient-to-t from-emerald-600/70 to-emerald-400" style={{ height: `${incomeH}%` }} />
+                  <div className="w-1/2 max-w-[16px] rounded-t bg-gradient-to-t from-rose-600/70 to-rose-400" style={{ height: `${expenseH}%` }} />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-2 flex gap-1 text-center text-[10px] text-muted-foreground">
+        {buckets.map((bucket, index) => (
+          <span key={`${bucket.label}-label-${index}`} className="flex-1 truncate">{bucket.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const DIST_COLORS = {
+  'Nakit': '#10b981',
+  'Kart / POS': '#6366f1',
+  'Havale / EFT': '#f59e0b',
+  'Diğer': '#94a3b8',
+};
+
+// Gelir dağılımı — ödeme yöntemine göre donut + lejant + yüzde.
+function IncomeDistribution({ groups, total }) {
+  const entries = Object.entries(groups).filter(([, value]) => value > 0);
+  if (total <= 0 || entries.length === 0) {
+    return <div className="flex h-full min-h-[160px] items-center justify-center text-center text-sm text-muted-foreground">Bu dönemde tahsilat yok.</div>;
+  }
+  let acc = 0;
+  const gradientStops = entries.map(([key, value]) => {
+    const from = (acc / total) * 360;
+    acc += value;
+    const to = (acc / total) * 360;
+    return `${DIST_COLORS[key]} ${from}deg ${to}deg`;
+  }).join(', ');
+
+  return (
+    <div className="flex flex-col items-center gap-4">
+      <div className="relative grid h-36 w-36 place-items-center rounded-full" style={{ background: `conic-gradient(${gradientStops})` }}>
+        <div className="grid h-24 w-24 place-items-center rounded-full bg-card text-center">
+          <div>
+            <p className="text-base font-black tabular-nums">{formatTry(total)}</p>
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Toplam Gelir</p>
+          </div>
+        </div>
+      </div>
+      <div className="w-full space-y-2">
+        {entries.map(([key, value]) => (
+          <div key={key} className="flex items-center justify-between gap-2 text-sm">
+            <span className="flex items-center gap-2">
+              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: DIST_COLORS[key] }} />
+              {key}
+            </span>
+            <span className="flex items-center gap-2 tabular-nums">
+              <span className="font-semibold">{formatTry(value)}</span>
+              <span className="w-10 text-right text-xs text-muted-foreground">%{Math.round((value / total) * 100)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function FinanceDashboard() {
@@ -122,10 +214,6 @@ export default function FinanceDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCollection, setSelectedCollection] = useState(null);
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  // 'all' = yillik, 0-11 = secili ay
-  const [selectedMonth, setSelectedMonth] = useState('all');
-  // Dönem-bazlı dashboard: Günlük/Haftalık/Aylık/Yıllık + anchor (ileri/geri).
   const [period, setPeriod] = useState('month');
   const [anchor, setAnchor] = useState(() => new Date());
 
@@ -133,9 +221,6 @@ export default function FinanceDashboard() {
     try {
       setLoading(true);
       setError('');
-      // Otoriter finans verisi sozlesmelerden hesaplanir (kayit ucreti taksitsiz
-      // de olsa net alacaga yansir); accounting dashboard ise tahsilat/taksit
-      // listeleri ve detay diyalogu icin kullanilir.
       const [fin, acc] = await Promise.all([
         fetchFinanceDashboard(),
         fetchAccountingDashboard().catch(() => null),
@@ -153,142 +238,77 @@ export default function FinanceDashboard() {
     loadDashboard();
   }, [loadDashboard]);
 
-  // Aylik tahsilat (otoriter): student-finance dashboard'un monthlyIncome'undan.
-  const availableYears = useMemo(() => {
-    const years = new Set([new Date().getFullYear()]);
-    (finance?.monthlyIncome || []).forEach((item) => {
-      const year = Number(String(item.month).split('-')[0]);
-      if (year) years.add(year);
-    });
-    return [...years].sort((a, b) => b - a);
-  }, [finance]);
+  // Genel (dönemden bağımsız) sözleşme-bazlı durum — sadece hedef çubuğu için.
+  const overall = useMemo(() => ({
+    totalReceivable: Number(finance?.netTotal) || 0,
+    totalCollected: Number(finance?.collectedTotal) || 0,
+    collectionRate: Number(finance?.collectionRatePercent) || 0,
+  }), [finance]);
 
-  // Secili yilin 12 aylik tahsilat dagilimi ("hangi ay ne kadar").
-  const monthlyCollected = useMemo(() => {
-    const buckets = Array(12).fill(0);
-    (finance?.monthlyIncome || []).forEach((item) => {
-      const [year, month] = String(item.month).split('-').map(Number);
-      if (year === Number(selectedYear) && month >= 1 && month <= 12) buckets[month - 1] += Number(item.amount) || 0;
-    });
-    return buckets;
-  }, [finance, selectedYear]);
-
-  // 4 ust kart: sozlesme bazli otoriter toplamlar (her zaman kayit ucretlerini icerir).
-  const stats = useMemo(() => {
-    const installments = dashboard?.installments || [];
-    const collections = dashboard?.collections || [];
-    const now = Date.now();
-    const overdueEntries = installments.filter((item) => {
-      const status = normalizeStatus(item.status);
-      const due = parseTrDate(item.due);
-      return status.includes('gec') || status.includes('late') || (due && due.getTime() < now);
-    });
-    return {
-      totalReceivable: Number(finance?.netTotal) || 0,
-      totalCollected: Number(finance?.collectedTotal) || 0,
-      pendingPayments: Number(finance?.outstandingTotal) || 0,
-      overduePayments: Number(finance?.overdueTotal) || 0,
-      overdueStudentCount: Number(finance?.overdueStudentCount) || 0,
-      collectionRate: Number(finance?.collectionRatePercent) || 0,
-      overdueEntries,
-      recentCollections: [...collections].slice(0, 5),
-    };
-  }, [finance, dashboard]);
-
-  // Seçili döneme (period + anchor) göre tahsilat/taksit akış metrikleri.
+  // Seçili döneme göre tahsilat akış metrikleri + geciken taksitler.
   const periodStats = useMemo(() => {
     const collections = dashboard?.collections || [];
     const installments = dashboard?.installments || [];
     const periodCollections = filterByPeriod(collections, (c) => c.time || c.date, period, anchor);
-    const periodInstallments = filterByPeriod(installments, (i) => i.due || i.dueDate, period, anchor);
     const sum = (list) => list.reduce((s, c) => s + parseMoney(c.amount), 0);
     const byMethod = (list, ...keys) => list.filter((c) => {
       const m = normalizeStatus(c.method || c.paymentMethod || c.type);
       return keys.some((k) => m.includes(k));
     });
     const now = Date.now();
-    const overdueDue = periodInstallments.filter((i) => {
-      const due = parseTrDateTime(i.due || i.dueDate);
-      const st = normalizeStatus(i.status);
-      return (due && due.getTime() < now && !st.includes('öden') && !st.includes('paid')) || st.includes('gec');
+    const overdueEntries = installments.filter((item) => {
+      const due = parseTrDate(item.due || item.dueDate);
+      const st = normalizeStatus(item.status);
+      return st.includes('gec') || st.includes('late') || (due && due.getTime() < now && !st.includes('öden') && !st.includes('paid'));
     });
-    const collectionSeries = buildBucketSeries(
-      collections,
-      (item) => item.time || item.date,
-      (item) => parseMoney(item.amount),
-      period,
-      anchor,
-    );
-    const cashSeries = buildBucketSeries(
-      collections.filter((item) => normalizeStatus(item.method || item.paymentMethod || item.type).includes('nakit')),
-      (item) => item.time || item.date,
-      (item) => parseMoney(item.amount),
-      period,
-      anchor,
-    );
-    const cardBankSeries = buildBucketSeries(
-      collections.filter((item) => {
-        const method = normalizeStatus(item.method || item.paymentMethod || item.type);
-        return ['kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer'].some((key) => method.includes(key));
-      }),
-      (item) => item.time || item.date,
-      (item) => parseMoney(item.amount),
-      period,
-      anchor,
-    );
-    const dueSeries = buildBucketSeries(
-      installments,
-      (item) => item.due || item.dueDate,
-      (item) => parseMoney(item.amount),
-      period,
-      anchor,
-    );
+    const periodInstallments = filterByPeriod(installments, (i) => i.due || i.dueDate, period, anchor);
     return {
       collected: sum(periodCollections),
       count: periodCollections.length,
       cash: sum(byMethod(periodCollections, 'nakit')),
       cardBank: sum(byMethod(periodCollections, 'kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer')),
       dueTotal: sum(periodInstallments),
-      overdueTotal: sum(overdueDue),
       recent: [...periodCollections].sort((a, b) => (parseTrDateTime(b.time) || 0) - (parseTrDateTime(a.time) || 0)).slice(0, 5),
-      collectionSeries,
-      cashSeries,
-      cardBankSeries,
-      dueSeries,
+      overdueEntries,
     };
   }, [dashboard, period, anchor]);
 
-  const cumulativeChartSeries = useMemo(() => {
-    const installments = dashboard?.installments || [];
-    const due = Array(12).fill(0);
-    const pending = Array(12).fill(0);
-    const overdue = Array(12).fill(0);
-    const now = Date.now();
-
-    installments.forEach((item) => {
-      const date = parseTrDate(item.due || item.dueDate);
-      if (!date || date.getFullYear() !== Number(selectedYear)) return;
-      const amount = parseMoney(item.amount);
-      const month = date.getMonth();
-      due[month] += amount;
-      if (!isPaidStatus(item.status)) pending[month] += amount;
-      if (!isPaidStatus(item.status) && (normalizeStatus(item.status).includes('gec') || date.getTime() < now)) {
-        overdue[month] += amount;
-      }
+  // Gelir-Gider akışı: dönem kovaları (gelir=tahsilat, gider=maaş+fatura).
+  const flowBuckets = useMemo(() => {
+    const collections = dashboard?.collections || [];
+    const salaries = dashboard?.salaries || [];
+    const invoices = dashboard?.invoices || [];
+    return createPeriodBuckets(period, anchor).map(({ start, end }) => {
+      const inBucket = (d) => d && d >= start && d < end;
+      const income = collections.reduce((s, c) => (inBucket(parseTrDateTime(c.time || c.date)) ? s + parseMoney(c.amount) : s), 0);
+      const salaryExp = salaries.reduce((s, x) => (inBucket(parseTrDate(x.payDate || x.date)) ? s + parseMoney(x.amount) : s), 0);
+      const invoiceExp = invoices.reduce((s, x) => (inBucket(parseTrDate(x.subtitle || x.date)) ? s + parseMoney(x.amount) : s), 0);
+      const expense = salaryExp + invoiceExp;
+      return { label: bucketLabel(start, period), income, expense, salaryExp, invoiceExp, net: income - expense };
     });
+  }, [dashboard, period, anchor]);
 
-    return {
-      receivable: ensureMetricSeries(due, stats.totalReceivable),
-      collected: ensureMetricSeries(monthlyCollected, stats.totalCollected),
-      pending: ensureMetricSeries(pending, stats.pendingPayments),
-      overdue: ensureMetricSeries(overdue, stats.overduePayments),
-    };
-  }, [dashboard, monthlyCollected, selectedYear, stats]);
+  const flowTotals = useMemo(() => {
+    const income = flowBuckets.reduce((s, b) => s + b.income, 0);
+    const expense = flowBuckets.reduce((s, b) => s + b.expense, 0);
+    return { income, expense, net: income - expense };
+  }, [flowBuckets]);
 
-  const yearlyCollected = useMemo(() => monthlyCollected.reduce((sum, value) => sum + value, 0), [monthlyCollected]);
-  const maxMonthly = useMemo(() => Math.max(1, ...monthlyCollected), [monthlyCollected]);
-  const selectedPeriodCollected = selectedMonth === 'all' ? yearlyCollected : monthlyCollected[selectedMonth] || 0;
-  const periodLabel = selectedMonth === 'all' ? `${selectedYear} · Yıllık` : `${MONTHS_TR[selectedMonth]} ${selectedYear}`;
+  // Gelir dağılımı: ödeme yöntemine göre (dönem içi).
+  const methodDist = useMemo(() => {
+    const periodCollections = filterByPeriod(dashboard?.collections || [], (c) => c.time || c.date, period, anchor);
+    const groups = { 'Nakit': 0, 'Kart / POS': 0, 'Havale / EFT': 0, 'Diğer': 0 };
+    periodCollections.forEach((c) => {
+      const m = normalizeStatus(c.method || c.paymentMethod || c.type);
+      const amount = parseMoney(c.amount);
+      if (m.includes('nakit')) groups['Nakit'] += amount;
+      else if (['kart', 'card', 'pos'].some((k) => m.includes(k))) groups['Kart / POS'] += amount;
+      else if (['havale', 'eft', 'bank', 'banka', 'transfer'].some((k) => m.includes(k))) groups['Havale / EFT'] += amount;
+      else groups['Diğer'] += amount;
+    });
+    const total = Object.values(groups).reduce((a, b) => a + b, 0);
+    return { groups, total };
+  }, [dashboard, period, anchor]);
 
   if (loading) {
     return (
@@ -309,19 +329,19 @@ export default function FinanceDashboard() {
     >
       <div>
         <h1 className="text-3xl font-bold font-heading">Muhasebe</h1>
-        <p className="text-muted-foreground mt-1">Gerçek backend verileriyle finansal genel bakış</p>
+        <p className="text-muted-foreground mt-1">Seçilen döneme göre canlı finansal genel bakış</p>
       </div>
 
       {error ? <ErrorBanner title="Finans verileri alınamadı" message={error} onRetry={loadDashboard} /> : null}
 
-      {/* Dönem seçici (Günlük/Haftalık/Aylık/Yıllık) + ileri-geri */}
+      {/* Dönem seçici — tüm sayfa bu döneme göre */}
       <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
           {[['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık'], ['year', 'Yıllık']].map(([val, label]) => (
             <button
               key={val}
               type="button"
-              onClick={() => { setPeriod(val); setAnchor(new Date()); setSelectedMonth('all'); }}
+              onClick={() => { setPeriod(val); setAnchor(new Date()); }}
               className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${period === val ? 'bg-[hsl(var(--brand-accent))] text-white' : 'text-muted-foreground hover:text-foreground'}`}
             >
               {label}
@@ -335,111 +355,48 @@ export default function FinanceDashboard() {
         </div>
       </motion.div>
 
-      {/* Dönem kartları — seçili döneme göre akış */}
+      {/* Dönem kartları */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Dönem Tahsilatı" value={formatTry(periodStats.collected)} caption={buildPeriodLabel(period, anchor)} icon={CreditCard} tone="emerald" trend={`${periodStats.count} işlem`} chartValues={ensureMetricSeries(periodStats.collectionSeries, periodStats.collected)} chartClassName="h-14" />
+          <PremiumMetricCard title="Dönem Tahsilatı" value={formatTry(periodStats.collected)} caption={buildPeriodLabel(period, anchor)} icon={CreditCard} tone="emerald" trend={`${periodStats.count} işlem`} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Nakit" value={formatTry(periodStats.cash)} caption="Dönem içi nakit tahsilat" icon={Banknote} tone="blue" trend="Nakit" chartValues={ensureMetricSeries(periodStats.cashSeries, periodStats.cash)} chartClassName="h-14" />
+          <PremiumMetricCard title="Nakit" value={formatTry(periodStats.cash)} caption="Dönem içi nakit tahsilat" icon={Banknote} tone="blue" trend="Nakit" />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Kart / Havale" value={formatTry(periodStats.cardBank)} caption="Kart, POS, havale/EFT" icon={Building2} tone="violet" trend="Banka" chartValues={ensureMetricSeries(periodStats.cardBankSeries, periodStats.cardBank)} chartClassName="h-14" />
+          <PremiumMetricCard title="Kart / Havale" value={formatTry(periodStats.cardBank)} caption="Kart, POS, havale/EFT" icon={Building2} tone="violet" trend="Banka" />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Dönem Vadesi" value={formatTry(periodStats.dueTotal)} caption={`Vadesi geçen: ${formatTry(periodStats.overdueTotal)}`} icon={Calendar} tone="amber" trend="Vade" chartValues={ensureMetricSeries(periodStats.dueSeries, periodStats.dueTotal)} chartClassName="h-14" />
+          <PremiumMetricCard title="Dönem Vadesi" value={formatTry(periodStats.dueTotal)} caption="Bu dönemde vadesi gelen taksit" icon={Calendar} tone="amber" trend="Vade" />
         </motion.div>
       </div>
 
+      {/* Gelir-Gider grafiği + Gelir dağılımı */}
       <motion.div variants={itemVariants}>
-        <PremiumPanel
-          title="Aylık Tahsilat"
-          description={`${periodLabel}: ${formatTry(selectedPeriodCollected)} · aya tıkla → o ayın paneli açılır`}
-          action={(
-            <Select value={String(selectedYear)} onValueChange={(value) => setSelectedYear(Number(value))}>
-              <SelectTrigger className="w-28"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {availableYears.map((year) => <SelectItem key={year} value={String(year)}>{year}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          )}
-        >
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => { setSelectedMonth('all'); setPeriod('year'); setAnchor(new Date(Number(selectedYear), 0, 1)); }}
-              className={`flex min-w-[96px] flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors ${selectedMonth === 'all' ? 'border-[hsl(var(--brand-accent))] bg-[hsl(var(--brand-accent)/0.14)]' : 'border-foreground/10 bg-foreground/[0.035] hover:border-foreground/20'}`}
-            >
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Yıllık</span>
-              <span className="text-sm font-black tabular-nums">{formatTry(yearlyCollected)}</span>
-            </button>
-            {MONTHS_TR.map((month, index) => {
-              const value = monthlyCollected[index];
-              const active = selectedMonth === index;
-              return (
-                <button
-                  key={month}
-                  type="button"
-                  onClick={() => { setSelectedMonth(index); setPeriod('month'); setAnchor(new Date(Number(selectedYear), index, 1)); }}
-                  className={`flex min-w-[96px] flex-col items-start rounded-xl border px-3 py-2 text-left transition-colors ${active ? 'border-[hsl(var(--brand-accent))] bg-[hsl(var(--brand-accent)/0.14)]' : 'border-foreground/10 bg-foreground/[0.035] hover:border-foreground/20'}`}
-                >
-                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">{month.slice(0, 3)}</span>
-                  <span className="text-sm font-black tabular-nums">{formatTry(value)}</span>
-                  <span className="mt-1.5 block h-1 w-full overflow-hidden rounded-full bg-foreground/10">
-                    <span className="block h-full rounded-full bg-[hsl(var(--brand-accent))]" style={{ width: `${Math.round((value / maxMonthly) * 100)}%` }} />
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </PremiumPanel>
-      </motion.div>
-
-      <div className="flex items-center justify-between">
-        <h2 className="text-sm font-bold uppercase tracking-wide text-muted-foreground">Finansal Özet (Kümülatif)</h2>
-        <span className="rounded-full border border-foreground/10 bg-foreground/[0.05] px-3 py-1 text-xs font-semibold text-[hsl(var(--brand-accent))]">Tüm Sözleşmeler · Dönemden bağımsız</span>
-      </div>
-
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Toplam Alacak" value={`₺${stats.totalReceivable.toLocaleString('tr-TR')}`} caption={`${selectedYear} aylık vade dağılımı`} icon={Wallet} tone="blue" trend="Alacak" chartValues={cumulativeChartSeries.receivable} chartClassName="h-16" />
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Tahsil Edilen" value={`₺${stats.totalCollected.toLocaleString('tr-TR')}`} caption={`${selectedYear} aylık tahsilat akışı`} icon={CreditCard} tone="emerald" trend={`%${stats.collectionRate}`} chartValues={cumulativeChartSeries.collected} chartClassName="h-16" />
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Bekleyen" value={`₺${stats.pendingPayments.toLocaleString('tr-TR')}`} caption={`${selectedYear} bekleyen taksit dağılımı`} icon={Calendar} tone="amber" trend="Bekleyen" chartValues={cumulativeChartSeries.pending} chartClassName="h-16" />
-        </motion.div>
-
-        <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Gecikmiş" value={`₺${stats.overduePayments.toLocaleString('tr-TR')}`} caption={`${selectedYear} gecikme dağılımı`} icon={TrendingDown} tone="rose" trend={`${stats.overdueStudentCount} öğrenci`} chartValues={cumulativeChartSeries.overdue} chartClassName="h-16" />
-        </motion.div>
-      </div>
-
-      <motion.div variants={itemVariants}>
-        <PremiumPanel title="Gelir - Gider Grafiği" description="Tahsilat, bekleyen ödeme ve gecikme dağılımı">
-          <div className="grid gap-5 xl:grid-cols-[1fr_180px_220px]">
-            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-5">
-              <div className="mb-4 flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Finansal akış</p>
-                  <p className="mt-1 text-2xl font-black">Muhasebe Paneli</p>
+        <PremiumPanel title="Gelir - Gider Grafiği" description={`${buildPeriodLabel(period, anchor)} · bir sütunun üstüne gelince ne geldi / ne gitti detayı açılır`}>
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.9fr)]">
+            <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/40 p-6">
+              <div className="mb-4 grid grid-cols-3 gap-3">
+                <div className="rounded-2xl border border-foreground/10 bg-emerald-500/10 p-3">
+                  <p className="text-xs text-muted-foreground">Toplam Gelir</p>
+                  <p className="mt-1 text-lg font-black text-emerald-400 tabular-nums">{formatTry(flowTotals.income)}</p>
                 </div>
-                <Badge variant="outline">Canlı</Badge>
+                <div className="rounded-2xl border border-foreground/10 bg-rose-500/10 p-3">
+                  <p className="text-xs text-muted-foreground">Toplam Gider</p>
+                  <p className="mt-1 text-lg font-black text-rose-400 tabular-nums">{formatTry(flowTotals.expense)}</p>
+                </div>
+                <div className={`rounded-2xl border border-foreground/10 p-3 ${flowTotals.net >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
+                  <p className="text-xs text-muted-foreground">Net</p>
+                  <p className={`mt-1 text-lg font-black tabular-nums ${flowTotals.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatTry(flowTotals.net)}</p>
+                </div>
               </div>
-              <MiniLineChart values={[stats.totalReceivable, stats.totalCollected, stats.pendingPayments, stats.overduePayments, stats.collectionRate]} className="h-40" />
+              <FlowChart buckets={flowBuckets} />
             </div>
-            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Tahsilat Oranı</p>
-              <div className="mt-5 flex justify-center">
-                <MiniDonut value={stats.collectionRate} label="Tahsilat" />
+            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gelir Dağılımı (Ödeme Yöntemi)</p>
+              <div className="mt-5">
+                <IncomeDistribution groups={methodDist.groups} total={methodDist.total} />
               </div>
-            </div>
-            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gelir Dağılımı</p>
-              <MiniBarChart values={[stats.totalCollected, stats.pendingPayments, stats.overduePayments, stats.totalReceivable]} className="mt-5" />
             </div>
           </div>
         </PremiumPanel>
@@ -479,11 +436,13 @@ export default function FinanceDashboard() {
                 </CardTitle>
                 <CardDescription>Takip gerektiren backend taksitleri</CardDescription>
               </div>
-              <Badge className="bg-red-100 text-red-700">{stats.overdueEntries.length} Kayıt</Badge>
+              <Badge className="bg-red-100 text-red-700">{periodStats.overdueEntries.length} Kayıt</Badge>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {stats.overdueEntries.map((student) => (
+                {periodStats.overdueEntries.length === 0 ? (
+                  <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">Geciken ödeme yok.</p>
+                ) : periodStats.overdueEntries.slice(0, 8).map((student) => (
                   <div key={student.id} className="flex items-center justify-between p-3 rounded-lg border border-red-200 dark:border-red-800 bg-red-50/50 dark:bg-red-900/10">
                     <div className="flex items-center gap-3">
                       <div className="p-2 rounded-lg bg-red-100 dark:bg-red-900/30">
@@ -511,19 +470,19 @@ export default function FinanceDashboard() {
       <motion.div variants={itemVariants}>
         <Card>
           <CardHeader>
-            <CardTitle>Tahsilat Hedefi</CardTitle>
-            <CardDescription>Fatura ve tahsilat kayıtlarına göre güncel durum</CardDescription>
+            <CardTitle>Tahsilat Hedefi (Genel)</CardTitle>
+            <CardDescription>Tüm sözleşmelere göre güncel tahsilat durumu</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="flex justify-between text-sm">
                 <span>Tahsil Edilen</span>
-                <span className="font-bold">₺{stats.totalCollected.toLocaleString('tr-TR')} / ₺{stats.totalReceivable.toLocaleString('tr-TR')}</span>
+                <span className="font-bold">₺{overall.totalCollected.toLocaleString('tr-TR')} / ₺{overall.totalReceivable.toLocaleString('tr-TR')}</span>
               </div>
-              <Progress value={stats.collectionRate} className="h-3" />
+              <Progress value={overall.collectionRate} className="h-3" />
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>%{stats.collectionRate} tamamlandı</span>
-                <span>Kalan: ₺{Math.max(0, stats.totalReceivable - stats.totalCollected).toLocaleString('tr-TR')}</span>
+                <span>%{overall.collectionRate} tamamlandı</span>
+                <span>Kalan: ₺{Math.max(0, overall.totalReceivable - overall.totalCollected).toLocaleString('tr-TR')}</span>
               </div>
             </div>
           </CardContent>
@@ -573,17 +532,6 @@ export default function FinanceDashboard() {
                   </Card>
                 ))}
               </div>
-
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-base">Muhasebe İşlem Notu</CardTitle>
-                  <CardDescription>Bu kart ödeme kaydının operasyonel açıklamasını gösterir</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm text-muted-foreground">
-                  <p>Bu tahsilat, öğrenci cari hesabına işlenmiş gerçek bir backend kaydıdır. İlgili öğrenci hesabı, makbuz arşivi ve tahsilat listesinde aynı belge numarasıyla izlenebilir.</p>
-                  <p><span className="font-medium text-foreground">Açıklama:</span> {selectedCollection.note || 'Ek açıklama yok.'}</p>
-                </CardContent>
-              </Card>
             </div>
           ) : null}
         </DialogContent>

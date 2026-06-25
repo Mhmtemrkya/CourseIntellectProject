@@ -34,6 +34,8 @@ import {
   parseFinanceMoney,
   printFinanceHtml,
 } from '../../lib/financeDocuments';
+import { filterByPeriod, periodLabel as buildPeriodLabel, shiftAnchor } from '../../lib/financePeriod';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -248,6 +250,8 @@ export default function InvoicesReceipts() {
   const [activeTab, setActiveTab] = useState('invoices');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [period, setPeriod] = useState('month');
+  const [anchor, setAnchor] = useState(() => new Date());
   const [dashboard, setDashboard] = useState(null);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -280,14 +284,17 @@ export default function InvoicesReceipts() {
   const invoices = useMemo(() => dashboard?.invoices || [], [dashboard]);
   const receipts = useMemo(() => dashboard?.collections || [], [dashboard]);
 
-  const filteredInvoices = useMemo(() => invoices.filter((inv) => {
+  const periodInvoices = useMemo(() => filterByPeriod(invoices, (inv) => inv.subtitle || inv.date, period, anchor), [invoices, period, anchor]);
+  const periodReceipts = useMemo(() => filterByPeriod(receipts, (rec) => rec.time || rec.date, period, anchor), [receipts, period, anchor]);
+
+  const filteredInvoices = useMemo(() => periodInvoices.filter((inv) => {
     const invoiceStatus = statusFromInvoice(inv);
     const matchesSearch = `${inv.title} ${inv.subtitle} ${inv.id}`.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || invoiceStatus === statusFilter;
     return matchesSearch && matchesStatus;
-  }), [invoices, search, statusFilter]);
+  }), [periodInvoices, search, statusFilter]);
 
-  const filteredReceipts = useMemo(() => receipts.filter((rec) => `${rec.name} ${rec.id} ${rec.note}`.toLowerCase().includes(search.toLowerCase())), [receipts, search]);
+  const filteredReceipts = useMemo(() => periodReceipts.filter((rec) => `${rec.name} ${rec.id} ${rec.note}`.toLowerCase().includes(search.toLowerCase())), [periodReceipts, search]);
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -512,6 +519,26 @@ export default function InvoicesReceipts() {
           ))}
         </div>
       )}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
+          {[['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık'], ['year', 'Yıllık']].map(([val, label]) => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => { setPeriod(val); setAnchor(new Date()); }}
+              className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors ${period === val ? 'bg-brand-primary text-white' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, -1))}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="min-w-[150px] text-center text-sm font-bold">{buildPeriodLabel(period, anchor)}</span>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, 1))}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+      </div>
 
       <Tabs defaultValue="invoices" onValueChange={setActiveTab}>
         <TabsList>

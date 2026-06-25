@@ -7,6 +7,7 @@ import 'admin_personnel_approvals_page.dart';
 import 'admin_staff_list_page.dart';
 import 'password_reset_requests_page.dart';
 import '../services/accounting_finance_store.dart';
+import '../services/admin_workflow_api_service.dart';
 import '../services/attendance_service.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
@@ -24,6 +25,15 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
   final _staff = StaffRegistryStore.instance;
   final _finance = AccountingFinanceStore.instance;
 
+  static const _periods = [
+    ('day', 'Günlük'),
+    ('week', 'Haftalık'),
+    ('month', 'Aylık'),
+    ('year', 'Yıllık'),
+  ];
+  String _period = 'day';
+  Map<String, dynamic> _totals = const {};
+
   @override
   void initState() {
     super.initState();
@@ -34,6 +44,18 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
     _staff.ensureLoaded();
     _finance.loadDashboard();
     AttendanceService.instance.refresh();
+    _loadAnalytics();
+  }
+
+  Future<void> _loadAnalytics() async {
+    try {
+      final result = await AdminWorkflowApiService.instance.getAnalytics(period: _period);
+      if (!mounted) return;
+      setState(() => _totals = Map<String, dynamic>.from(result['totals'] as Map? ?? const {}));
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _totals = const {});
+    }
   }
 
   @override
@@ -133,6 +155,42 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
                 value: '${pendingPersonnel + pendingStudents + overdueCount}',
               ),
             ],
+          ),
+          const SizedBox(height: 16),
+          AdminPanel(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Dönemsel Özet',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: _periods.map((p) {
+                    return ChoiceChip(
+                      label: Text(p.$2),
+                      selected: p.$1 == _period,
+                      onSelected: (_) {
+                        setState(() => _period = p.$1);
+                        _loadAnalytics();
+                      },
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _summaryChip('Kazanç', _finance.formatAmount(((_totals['revenue'] as num?) ?? 0).round()), const Color(0xFF16A34A)),
+                    const SizedBox(width: 8),
+                    _summaryChip('Gider', _finance.formatAmount(((_totals['expense'] as num?) ?? 0).round()), const Color(0xFFDC2626)),
+                    const SizedBox(width: 8),
+                    _summaryChip('Kayıt', '${_totals['registrations'] ?? 0}', const Color(0xFF2563EB)),
+                  ],
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           ...operations.map(
@@ -342,6 +400,26 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
                 context,
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w700),
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _summaryChip(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
+            const SizedBox(height: 2),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

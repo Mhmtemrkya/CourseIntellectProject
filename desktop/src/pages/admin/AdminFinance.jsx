@@ -18,7 +18,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
-import { PayrollCalculatorDialog, ReconciliationDialog, EInvoiceDialog } from '../../components/finance/FinanceToolsDialogs';
+import { PayrollCalculatorDialog, ReconciliationDialog } from '../../components/finance/FinanceToolsDialogs';
 import { backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
@@ -335,15 +335,12 @@ export default function AdminFinance() {
         <CardHeader>
           <CardTitle>Finans Araçları</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-3">
+        <CardContent className="grid gap-3 sm:grid-cols-2">
           <Button variant="outline" className="justify-start" onClick={() => setActiveTool('payroll')}>
             <CreditCard className="mr-2 h-4 w-4" /> Bordro Hesapla
           </Button>
           <Button variant="outline" className="justify-start" onClick={() => setActiveTool('reconcile')}>
             <Receipt className="mr-2 h-4 w-4" /> Banka/POS Mutabakatı
-          </Button>
-          <Button variant="outline" className="justify-start" onClick={() => setActiveTool('einvoice')}>
-            <Wallet className="mr-2 h-4 w-4" /> e-Fatura Kes
           </Button>
         </CardContent>
       </Card>
@@ -371,7 +368,6 @@ export default function AdminFinance() {
       ) : null}
       {activeTool === 'payroll' ? <PayrollCalculatorDialog onClose={() => setActiveTool(null)} /> : null}
       {activeTool === 'reconcile' ? <ReconciliationDialog onClose={() => setActiveTool(null)} /> : null}
-      {activeTool === 'einvoice' ? <EInvoiceDialog onClose={() => setActiveTool(null)} /> : null}
     </motion.div>
   );
 }

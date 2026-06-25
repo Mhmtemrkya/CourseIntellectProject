@@ -265,34 +265,26 @@ function AdministrativeReportOverview() {
   const attendanceRows = useMemo(() => (
     displayClasses.map((cls) => {
       const classStudents = filteredStudents.filter((student) => student.className === cls);
-      const presentNames = new Set(
-        attendance
-          .filter((item) => item.className === cls && String(item.status || '').toLowerCase().includes('katildi'))
-          .map((item) => item.studentName),
-      );
-
+      const classRecords = attendance.filter((item) => item.className === cls);
+      const presentRecords = classRecords.filter((item) => normalizeLookup(item.status).includes('katildi'));
+      const value = classRecords.length > 0
+        ? Math.round((presentRecords.length / classRecords.length) * 100)
+        : 0;
       return {
         name: cls,
-        value: classStudents.length > 0 ? Math.round((presentNames.size / classStudents.length) * 100) : 82,
-        count: classStudents.length || Math.max(14, filteredStudents.length || 18),
+        value,
+        count: classStudents.length,
       };
     })
   ), [attendance, displayClasses, filteredStudents]);
 
   const subjectPerformance = useMemo(() => {
     const subjects = [...new Set(filteredExams.map((item) => item.subject).filter(Boolean))];
-    const rows = subjects.map((subject) => {
+    return subjects.map((subject) => {
       const items = filteredExams.filter((exam) => exam.subject === subject);
       const average = items.length ? Math.round(items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length) : 0;
       return { subject, average };
     });
-    if (rows.length > 0) return rows;
-    return [
-      { subject: 'Matematik', average: 78 },
-      { subject: 'Fizik', average: 74 },
-      { subject: 'Kimya', average: 81 },
-      { subject: 'Biyoloji', average: 76 },
-    ];
   }, [filteredExams]);
 
   const teacherRows = useMemo(() => (
@@ -318,47 +310,36 @@ function AdministrativeReportOverview() {
     })
   ), [teachers, students, filteredExams]);
 
-  const displayTeacherRows = useMemo(() => {
-    if (teacherRows.length > 0) return teacherRows;
-    return [
-      { id: 't-1', name: 'Hasan Yildiz', branch: 'Matematik', classes: 3, studentCount: 54, averageScore: 79 },
-      { id: 't-2', name: 'Selin Kaya', branch: 'Fizik', classes: 2, studentCount: 38, averageScore: 74 },
-      { id: 't-3', name: 'Merve Demir', branch: 'Kimya', classes: 2, studentCount: 36, averageScore: 83 },
-    ];
-  }, [teacherRows]);
+  const displayTeacherRows = teacherRows;
 
-  const displayStudentRows = useMemo(() => {
-    if (filteredStudents.length > 0) {
-      return filteredStudents.slice(0, 8).map((student) => {
-        const examScores = filteredExams.filter((exam) => exam.studentName === student.fullName);
-        const averageScore = examScores.length
-          ? Math.round(examScores.reduce((sum, item) => sum + Number(item.score || 0), 0) / examScores.length)
-          : 75;
-        const missedLessons = attendance.filter((item) => item.studentName === student.fullName && String(item.status || '').toLowerCase().includes('katilmadi')).length;
-        return {
-          id: student.id,
-          name: student.fullName,
-          className: student.className || 'Hazirlik',
-          programType: student.programType || 'Sayisal',
-          averageScore,
-          attendanceRate: Math.max(65, 100 - missedLessons * 5),
-          enrollmentNet: Number(student.enrollmentNet || 0),
-          enrollmentPaid: Number(student.enrollmentPaid || 0),
-          enrollmentBalance: Number(student.enrollmentBalance || 0),
-          enrollmentCurrency: student.enrollmentCurrency || 'TRY',
-          enrollmentStatus: student.enrollmentStatus || 'Kayıt yok',
-          enrollmentOverdueCount: Number(student.enrollmentOverdueCount || 0),
-          raw: student,
-        };
-      });
-    }
-
-    return [
-      { id: 's-1', name: 'Ali Yilmaz', className: '10-A', programType: 'Sayisal', averageScore: 82, attendanceRate: 94 },
-      { id: 's-2', name: 'Zeynep Arslan', className: '11-B', programType: 'Esit Agirlik', averageScore: 77, attendanceRate: 91 },
-      { id: 's-3', name: 'Berat Kaya', className: '12-A', programType: 'Dil', averageScore: 85, attendanceRate: 96 },
-    ];
-  }, [filteredStudents, filteredExams, attendance]);
+  const displayStudentRows = useMemo(() => (
+    filteredStudents.slice(0, 8).map((student) => {
+      const examScores = filteredExams.filter((exam) => recordMatchesStudent(exam, student));
+      const averageScore = examScores.length
+        ? Math.round(examScores.reduce((sum, item) => sum + Number(item.score || 0), 0) / examScores.length)
+        : 0;
+      const studentAttendance = attendance.filter((item) => recordMatchesStudent(item, student));
+      const presentCount = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katildi')).length;
+      const attendanceRate = studentAttendance.length
+        ? Math.round((presentCount / studentAttendance.length) * 100)
+        : 0;
+      return {
+        id: student.id,
+        name: student.fullName,
+        className: student.className || 'Sınıf yok',
+        programType: student.programType || 'Belirtilmemiş',
+        averageScore,
+        attendanceRate,
+        enrollmentNet: Number(student.enrollmentNet || 0),
+        enrollmentPaid: Number(student.enrollmentPaid || 0),
+        enrollmentBalance: Number(student.enrollmentBalance || 0),
+        enrollmentCurrency: student.enrollmentCurrency || 'TRY',
+        enrollmentStatus: student.enrollmentStatus || 'Kayıt yok',
+        enrollmentOverdueCount: Number(student.enrollmentOverdueCount || 0),
+        raw: student,
+      };
+    })
+  ), [filteredStudents, filteredExams, attendance]);
 
   const stats = useMemo(() => ({
     totalStudents: filteredStudents.length,
@@ -382,7 +363,8 @@ function AdministrativeReportOverview() {
     const averageScore = studentExams.length
       ? Math.round(studentExams.reduce((sum, item) => sum + Number(item.score || item.point || 0), 0) / studentExams.length)
       : selectedStudent.averageScore || 0;
-    const missedLessons = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katilmadi') || normalizeLookup(item.status).includes('yok')).length;
+    const presentLessons = studentAttendance.filter((item) => normalizeLookup(item.status).includes('katildi')).length;
+    const attendanceRate = studentAttendance.length ? Math.round((presentLessons / studentAttendance.length) * 100) : 0;
     const paidInstallments = installments.filter((item) => isPaidStatus(item.status));
     const unpaidInstallments = installments.filter((item) => !isPaidStatus(item.status));
     const installmentTotal = installments.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
@@ -400,7 +382,7 @@ function AdministrativeReportOverview() {
       collections,
       invoices,
       averageScore,
-      attendanceRate: Math.max(0, Math.min(100, 100 - missedLessons * 5)),
+      attendanceRate,
       paidInstallments,
       unpaidInstallments,
       installmentTotal,

@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class NotificationApiException implements Exception {
   final String message;
@@ -116,7 +117,7 @@ class NotificationApiService {
 
     final request = http.Request(method, Uri.parse('${ApiConfig.baseUrl}$path'))
       ..headers.addAll({
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
         'Content-Type': 'application/json',
       });
     if (body != null) {

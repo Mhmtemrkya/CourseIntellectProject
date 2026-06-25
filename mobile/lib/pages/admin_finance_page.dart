@@ -121,52 +121,6 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
     );
   }
 
-  Future<void> _eInvoiceDialog() async {
-    final nameC = TextEditingController();
-    final amountC = TextEditingController();
-    final vatC = TextEditingController(text: '20');
-    Map<String, dynamic>? result;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) => AlertDialog(
-          title: const Text('e-Fatura Kes'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(controller: nameC, decoration: const InputDecoration(hintText: 'Müşteri / öğrenci')),
-              TextField(controller: amountC, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Tutar (KDV dahil)')),
-              TextField(controller: vatC, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'KDV %')),
-              if (result != null) ...[
-                const SizedBox(height: 12),
-                _kv('Net', _tl(result!['netAmount'])),
-                _kv('KDV', _tl(result!['vatAmount'])),
-                _kv('Toplam', _tl(result!['grossAmount'])),
-                _kv('ETTN', '${result!['ettn']}'),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Kapat')),
-            ElevatedButton(
-              onPressed: () async {
-                final amount = double.tryParse(amountC.text.trim());
-                if (amount == null || amount <= 0) return;
-                final r = await StudentFinanceApiService.instance.issueEInvoice(
-                  studentName: nameC.text.trim(),
-                  amount: amount,
-                  vatRate: double.tryParse(vatC.text.trim()) ?? 0,
-                );
-                setLocal(() => result = r);
-              },
-              child: const Text('Kes'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _dashMetric(String label, String value) => Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -379,7 +333,6 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                     runSpacing: 8,
                     children: [
                       OutlinedButton.icon(onPressed: _payrollDialog, icon: const Icon(Icons.calculate_outlined), label: const Text('Bordro Hesapla')),
-                      OutlinedButton.icon(onPressed: _eInvoiceDialog, icon: const Icon(Icons.receipt_long_outlined), label: const Text('e-Fatura Kes')),
                     ],
                   ),
                 ],

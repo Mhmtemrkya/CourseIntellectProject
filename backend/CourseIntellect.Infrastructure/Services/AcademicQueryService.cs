@@ -244,7 +244,8 @@ public sealed class AcademicQueryService(
             ParentEmail = request.ParentEmail,
             ParentUserId = parentUser?.Id,
             Address = request.Address,
-            Note = request.Note
+            Note = request.Note,
+            CreatedAtUtc = DateTime.UtcNow
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);

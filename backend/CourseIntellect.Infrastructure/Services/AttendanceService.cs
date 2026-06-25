@@ -94,6 +94,15 @@ public sealed class AttendanceService(
             .ToList();
     }
 
+    public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        var entry = await dbContext.Set<AttendanceEntry>().FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (entry is null) return false;
+        dbContext.Set<AttendanceEntry>().Remove(entry);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
     private static string MapStatus(string value) => value.Trim() switch
     {
         "present" => "Katildi",

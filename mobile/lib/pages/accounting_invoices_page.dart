@@ -220,22 +220,60 @@ class _InvoiceCategoryCard extends StatelessWidget {
   }
 }
 
-class _InvoiceListPage extends StatelessWidget {
+class _InvoiceListPage extends StatefulWidget {
   final String title;
   final Color color;
 
   const _InvoiceListPage({required this.title, required this.color});
 
   @override
+  State<_InvoiceListPage> createState() => _InvoiceListPageState();
+}
+
+class _InvoiceListPageState extends State<_InvoiceListPage> {
+  String _monthFilter = 'all';
+
+  static const Map<String, String> _monthOptions = {
+    'all': 'Tüm Aylar',
+    '01': 'Ocak', '02': 'Şubat', '03': 'Mart', '04': 'Nisan',
+    '05': 'Mayıs', '06': 'Haziran', '07': 'Temmuz', '08': 'Ağustos',
+    '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık',
+  };
+
+  bool _matchesMonth(String subtitle) {
+    if (_monthFilter == 'all') return true;
+    final match = RegExp(r'\d{1,2}\.(\d{2})\.\d{4}').firstMatch(subtitle);
+    return match != null && match.group(1) == _monthFilter;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final items = AccountingFinanceStore.instance.invoicesFor(title);
+    final title = widget.title;
+    final color = widget.color;
+    final items = AccountingFinanceStore.instance
+        .invoicesFor(title)
+        .where((item) => _matchesMonth(item.subtitle))
+        .toList();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppHeader(title: title),
       body: ListView(
         padding: const EdgeInsets.all(16),
-        children: items
+        children: [
+          DropdownButtonFormField<String>(
+            initialValue: _monthFilter,
+            decoration: const InputDecoration(
+              labelText: 'Dönem (ay) filtresi',
+              border: OutlineInputBorder(),
+            ),
+            items: _monthOptions.entries
+                .map((e) => DropdownMenuItem(value: e.key, child: Text(e.value)))
+                .toList(),
+            onChanged: (value) => setState(() => _monthFilter = value ?? 'all'),
+          ),
+          const SizedBox(height: 12),
+          ...items
             .map(
               (item) => InkWell(
                 borderRadius: BorderRadius.circular(24),
@@ -303,8 +341,8 @@ class _InvoiceListPage extends StatelessWidget {
                   ),
                 ),
               ),
-            )
-            .toList(),
+            ),
+        ],
       ),
     );
   }

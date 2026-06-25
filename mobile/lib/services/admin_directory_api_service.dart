@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class AdminDirectoryApiException implements Exception {
   final String message;
@@ -402,7 +403,10 @@ class AdminDirectoryApiService {
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}$path'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...BranchScopeStore.instance.headers,
+      },
     );
 
     if (response.statusCode == 401) {
@@ -436,6 +440,7 @@ class AdminDirectoryApiService {
       ..headers.addAll({
         'Authorization': 'Bearer ${session.accessToken}',
         'Content-Type': 'application/json',
+        ...BranchScopeStore.instance.headers,
       });
 
     if (body != null) {

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../navigation/accounting_bottom_nav.dart';
-import '../navigation/admin_bottom_nav.dart';
 import '../navigation/administrative_bottom_nav.dart';
 import '../navigation/bottom_nav.dart';
 import '../navigation/cafeteria_bottom_nav.dart';
 import '../navigation/teacher_bottom_nav.dart';
 import '../navigation/veli_bottom_nav.dart';
+import '../pages/branch_select_page.dart';
 import '../pages/driver_route_students_page.dart';
 import 'auth_session_store.dart';
 import 'service_tracking_api_service.dart';
@@ -55,7 +55,7 @@ class RoleRouter {
       case 'Accounting':
         return const AccountingBottomNav();
       case 'Admin':
-        return const AdminBottomNav();
+        return const BranchSelectPage();
       case 'Administrative':
         // Servis şoförleri Administrative rolüyle açılır; aktif şoför
         // kaydı olan kullanıcı yalnızca kendi şoför ekranını görür.

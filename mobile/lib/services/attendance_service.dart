@@ -65,6 +65,12 @@ class AttendanceService extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> deleteRecord(String id) async {
+    await AttendanceApiService.instance.deleteAttendance(id);
+    _records.removeWhere((item) => item.id == id);
+    notifyListeners();
+  }
+
   List<AttendanceRecord> forStudent(String studentName) =>
       all().where((item) => item.studentName == studentName).toList();
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/admin_directory_api_service.dart';
+import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 
 class AdminClassManagementPage extends StatefulWidget {
@@ -22,6 +23,48 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
   void initState() {
     super.initState();
     _loadClasses();
+    StudentRegistryStore.instance.ensureLoaded();
+  }
+
+  void _showClassDetails() {
+    final students = StudentRegistryStore.instance.students;
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (sheetContext) {
+        return SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(sheetContext).size.height * 0.8),
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              shrinkWrap: true,
+              children: [
+                Text(
+                  'Kayıtlı Sınıflar (${_classes.length})',
+                  style: Theme.of(sheetContext).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+                ),
+                const SizedBox(height: 12),
+                if (_classes.isEmpty)
+                  const Text('Henüz sınıf kaydı bulunmuyor.')
+                else
+                  ..._classes.map((className) {
+                    final count = students.where((s) => s.className == className).length;
+                    return Card(
+                      margin: const EdgeInsets.only(bottom: 8),
+                      child: ListTile(
+                        leading: const CircleAvatar(child: Icon(Icons.school_outlined)),
+                        title: Text(className, style: const TextStyle(fontWeight: FontWeight.w800)),
+                        subtitle: Text('$count öğrenci kayıtlı'),
+                      ),
+                    );
+                  }),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -160,6 +203,15 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
                         title: 'Kayıtlı Sınıflar',
                         actionLabel: 'Yenile',
                         onAction: _loadClasses,
+                      ),
+                      const SizedBox(height: 8),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: OutlinedButton.icon(
+                          onPressed: _classes.isEmpty ? null : _showClassDetails,
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          label: Text('Gör (${_classes.length})'),
+                        ),
                       ),
                       const SizedBox(height: 12),
                       if (_classes.isEmpty)

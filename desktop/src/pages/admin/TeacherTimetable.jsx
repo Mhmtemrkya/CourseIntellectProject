@@ -10,22 +10,37 @@ import {
 } from '../../components/ui/select';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchClasses, fetchStaff, fetchTeacherTimetable, setTeacherTimetable } from '../../lib/api/modules';
+import { fetchClasses, fetchStaff, fetchScheduleEntries, fetchTeacherTimetable, setTeacherTimetable } from '../../lib/api/modules';
 
 const DAYS = [
   { v: 1, label: 'Pazartesi' }, { v: 2, label: 'Salı' }, { v: 3, label: 'Çarşamba' },
   { v: 4, label: 'Perşembe' }, { v: 5, label: 'Cuma' }, { v: 6, label: 'Cumartesi' }, { v: 7, label: 'Pazar' },
 ];
 
+// Sistemdeki ders programı saati olmadığında kullanılacak makul varsayılan periyotlar.
+const DEFAULT_PERIODS = ['09:00-09:40', '09:50-10:30', '10:40-11:20', '11:30-12:10', '13:00-13:40', '13:50-14:30', '14:40-15:20', '15:30-16:10'];
+
 function teacherId(t) { return String(t.id || t.userId || ''); }
 function teacherName(t) { return t.fullName || t.name || ''; }
 function className(item) { return typeof item === 'string' ? item : (item.name || item.className || item.title || ''); }
 const GUID_RE = /^[0-9a-fA-F-]{36}$/;
 
+function toMinutes(time) {
+  const match = String(time || '').match(/(\d{1,2}):(\d{2})/);
+  return match ? Number(match[1]) * 60 + Number(match[2]) : null;
+}
+
+// "09:00-09:40" → { start: "09:00", end: "09:40" }
+function splitRange(range) {
+  const [start, end] = String(range || '').split(/[-–]/).map((part) => part.trim());
+  return { start, end };
+}
+
 export default function TeacherTimetable() {
   const { toast } = useToast();
   const [teachers, setTeachers] = useState([]);
   const [classes, setClasses] = useState([]);
+  const [timeOptions, setTimeOptions] = useState(DEFAULT_PERIODS);
   const [selectedId, setSelectedId] = useState('');
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,12 +50,19 @@ export default function TeacherTimetable() {
   useEffect(() => {
     (async () => {
       try {
-        const [list, classList] = await Promise.all([
+        const [list, classList, scheduleEntries] = await Promise.all([
           fetchStaff('Teacher').catch(() => []),
           fetchClasses().catch(() => []),
+          fetchScheduleEntries().catch(() => []),
         ]);
         setTeachers(Array.isArray(list) ? list : []);
         setClasses(Array.isArray(classList) ? classList.map(className).filter(Boolean) : []);
+        // Sistemdeki ders programında tanımlı saat aralıkları (tekilleştirilmiş, sıralı).
+        const fromSchedule = [...new Set((Array.isArray(scheduleEntries) ? scheduleEntries : [])
+          .map((entry) => String(entry.time || '').trim())
+          .filter((value) => /\d{1,2}:\d{2}/.test(value)))]
+          .sort((a, b) => (toMinutes(a) ?? 0) - (toMinutes(b) ?? 0));
+        setTimeOptions(fromSchedule.length > 0 ? fromSchedule : DEFAULT_PERIODS);
       } finally {
         setLoading(false);
       }
@@ -73,14 +95,41 @@ export default function TeacherTimetable() {
 
   useEffect(() => { if (selectedTeacher) loadSlots(selectedTeacher); }, [selectedTeacher, loadSlots]);
 
-  const addSlot = () => setSlots((prev) => [...prev, { dayOfWeek: 1, startTime: '09:00', endTime: '09:40', className: classOptions[0] || '', lesson: defaultLesson }]);
+  const addSlot = () => {
+    const firstRange = splitRange(timeOptions[0] || '09:00-09:40');
+    setSlots((prev) => [...prev, { dayOfWeek: 1, startTime: firstRange.start || '09:00', endTime: firstRange.end || '09:40', className: classOptions[0] || '', lesson: defaultLesson }]);
+  };
   const removeSlot = (idx) => setSlots((prev) => prev.filter((_, i) => i !== idx));
   const updateSlot = (idx, patch) => setSlots((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
+
+  // Aynı gün içinde saat çakışan slot çiftini bul (varsa).
+  const findConflict = (list) => {
+    for (let i = 0; i < list.length; i += 1) {
+      for (let j = i + 1; j < list.length; j += 1) {
+        if (list[i].dayOfWeek !== list[j].dayOfWeek) continue;
+        const startA = toMinutes(list[i].startTime);
+        const endA = toMinutes(list[i].endTime);
+        const startB = toMinutes(list[j].startTime);
+        const endB = toMinutes(list[j].endTime);
+        if (startA == null || endA == null || startB == null || endB == null) continue;
+        if (startA < endB && startB < endA) {
+          const dayLabel = DAYS.find((d) => d.v === list[i].dayOfWeek)?.label || '';
+          return `${dayLabel} günü ${list[i].startTime}-${list[i].endTime} ile ${list[j].startTime}-${list[j].endTime} dersleri çakışıyor.`;
+        }
+      }
+    }
+    return null;
+  };
 
   const handleSave = async () => {
     if (!selectedTeacher) { toast({ title: 'Öğretmen seçin', variant: 'destructive' }); return; }
     for (const s of slots) {
       if (s.endTime <= s.startTime) { toast({ title: 'Geçersiz saat', description: 'Bitiş başlangıçtan sonra olmalı.', variant: 'destructive' }); return; }
+    }
+    const conflict = findConflict(slots);
+    if (conflict) {
+      toast({ title: 'Çakışma var', description: `${conflict} Öğretmen aynı saatte birden fazla derse giremez.`, variant: 'destructive' });
+      return;
     }
     try {
       setSaving(true);
@@ -133,7 +182,7 @@ export default function TeacherTimetable() {
           ) : slots.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Ders saati yok. "Ders Ekle" ile başla.</div>
           ) : slots.map((s, idx) => (
-            <div key={idx} className="grid grid-cols-2 items-end gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_auto]">
+            <div key={idx} className="grid grid-cols-2 items-end gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 sm:grid-cols-[1.4fr_1.4fr_1fr_1fr_auto]">
               <div>
                 <Label className="text-xs">Gün</Label>
                 <Select value={String(s.dayOfWeek)} onValueChange={(v) => updateSlot(idx, { dayOfWeek: Number(v) })}>
@@ -141,8 +190,20 @@ export default function TeacherTimetable() {
                   <SelectContent>{DAYS.map((d) => <SelectItem key={d.v} value={String(d.v)}>{d.label}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
-              <div><Label className="text-xs">Başlangıç</Label><Input type="time" value={s.startTime} onChange={(e) => updateSlot(idx, { startTime: e.target.value })} /></div>
-              <div><Label className="text-xs">Bitiş</Label><Input type="time" value={s.endTime} onChange={(e) => updateSlot(idx, { endTime: e.target.value })} /></div>
+              <div>
+                <Label className="text-xs">Ders Saati</Label>
+                <Select
+                  value={`${s.startTime}-${s.endTime}`}
+                  onValueChange={(v) => { const r = splitRange(v); updateSlot(idx, { startTime: r.start, endTime: r.end }); }}
+                >
+                  <SelectTrigger><SelectValue placeholder="Saat seç" /></SelectTrigger>
+                  <SelectContent>
+                    {[...new Set([...timeOptions, `${s.startTime}-${s.endTime}`])].map((range) => (
+                      <SelectItem key={range} value={range}>{range}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <div>
                 <Label className="text-xs">Sınıf</Label>
                 {classOptions.length > 0 ? (

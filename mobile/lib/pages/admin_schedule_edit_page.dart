@@ -169,6 +169,17 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
     }
   }
 
+  // Sistemde tanımlı (mevcut ders programındaki) başlangıç saatleri — tekilleştirilmiş, sıralı.
+  List<String> _existingTimes() {
+    final times = <String>{
+      for (final entry in _store.entries)
+        if (RegExp(r'^\d{1,2}:\d{2}').hasMatch(entry.time.trim()))
+          _formatTime(_parseTime(entry.time)!),
+    }.toList()
+      ..sort();
+    return times;
+  }
+
   TimeOfDay? _parseTime(String value) {
     final match = RegExp(r'^(\d{1,2}):(\d{2})').firstMatch(value.trim());
     if (match == null) return null;
@@ -303,6 +314,25 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Lütfen başlangıç saatini seçin.')),
       );
+      return;
+    }
+
+    // Çakışma kontrolü: aynı öğretmen veya aynı sınıf, aynı gün/saatte iki derse giremez.
+    final newTime = _formatTime(_startTime!);
+    final conflict = _store.entries.where((e) {
+      if (widget.entry != null && e.id == widget.entry!.id) return false;
+      if (e.day != _day) return false;
+      if (e.time.trim() != newTime) return false;
+      final sameTeacher = _normalize(e.teacher) == _normalize(_teacher!);
+      final sameClass = _normalize(e.className) == _normalize(_selectedClass!);
+      return sameTeacher || sameClass;
+    }).firstOrNull;
+    if (conflict != null) {
+      final sameTeacher = _normalize(conflict.teacher) == _normalize(_teacher!);
+      final message = sameTeacher
+          ? '$_teacher öğretmeni $_day günü $newTime saatinde ${conflict.className} sınıfında. Aynı saatte birden fazla derse giremez.'
+          : '$_selectedClass sınıfı $_day günü $newTime saatinde ${conflict.teacher} ile dolu. Aynı saatte iki ders olamaz.';
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
       return;
     }
 
@@ -507,6 +537,26 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
                           ),
                         ),
                       ),
+                      if (_existingTimes().isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Text(
+                          'Sistemdeki ders saatleri',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 4,
+                          children: _existingTimes().map((time) {
+                            final selected = _startTime != null && _formatTime(_startTime!) == time;
+                            return ChoiceChip(
+                              label: Text(time),
+                              selected: selected,
+                              onSelected: (_) => setState(() => _startTime = _parseTime(time)),
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ],
                   ),
                   _section(

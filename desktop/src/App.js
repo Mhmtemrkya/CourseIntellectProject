@@ -137,8 +137,9 @@ import AdministrativeNotifications from "./pages/admin/AdministrativeNotificatio
 import AdministrativeDocuments from "./pages/admin/AdministrativeDocuments";
 import AdministrativeAnnouncements from "./pages/admin/AdministrativeAnnouncements";
 import AdminStudentRegistration from "./pages/admin/AdminStudentRegistration";
-import AdminParentRegistration from "./pages/admin/AdminParentRegistration";
 import AdminStaffRegistration from "./pages/admin/AdminStaffRegistration";
+import AdminBranchRegistration from "./pages/admin/AdminBranchRegistration";
+import SelectBranch from "./pages/SelectBranch";
 import AdminBranchComparison from "./pages/admin/AdminBranchComparison";
 import AdminMeetings from "./pages/admin/AdminMeetings";
 import AdminAdministrativeUnits from "./pages/admin/AdminAdministrativeUnits";
@@ -193,6 +194,19 @@ function RootRedirect() {
   return <Navigate to={getUserHomePath(user)} replace />;
 }
 
+// Kurum yöneticisi ilk girişte şube seçmeden ana ekranlara giremez. Tek/sıfır
+// şubeli kurumlarda SelectBranch otomatik devam eder. Seçim bayrağı
+// 'ci-branch-selected' ile bir kez işaretlenir (çıkışta temizlenir).
+function BranchGate() {
+  const { user } = useApp();
+  const isOwner = (user?.role || "").toLowerCase() === "admin";
+  const branchSelected = typeof localStorage !== "undefined" && localStorage.getItem("ci-branch-selected") === "1";
+  if (isOwner && !branchSelected && !user?.mustChangePassword) {
+    return <Navigate to="/select-branch" replace />;
+  }
+  return <DashboardLayout />;
+}
+
 function App() {
   const RouterComponent = typeof window !== "undefined" &&
     (window.location.protocol === "file:" || window.location.protocol.startsWith("tauri"))
@@ -217,9 +231,10 @@ function App() {
             <Route path="/login" element={<Login />} />
             <Route path="/driver" element={<DriverPanel />} />
             <Route path="/change-password-required" element={<ForcePasswordChange />} />
+            <Route path="/select-branch" element={<SelectBranch />} />
             
             {/* Main Dashboard Layout */}
-            <Route element={<DashboardLayout />}>
+            <Route element={<BranchGate />}>
               {/* Admin Dashboard */}
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/students" element={<Students />} />
@@ -261,7 +276,7 @@ function App() {
               <Route path="/admin/notifications" element={<AdministrativeNotifications />} />
               <Route path="/admin/documents" element={<AdministrativeDocuments />} />
               <Route path="/admin/student-registration" element={<AdminStudentRegistration />} />
-              <Route path="/admin/parent-registration" element={<AdminParentRegistration />} />
+              <Route path="/admin/branch-registration" element={<AdminBranchRegistration />} />
               <Route path="/admin/staff-registration" element={<AdminStaffRegistration />} />
               <Route path="/admin/accounting-registration" element={<AdminAccountingRegistration />} />
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />

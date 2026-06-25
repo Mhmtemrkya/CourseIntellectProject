@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../services/accounting_finance_store.dart';
-import '../services/attendance_service.dart';
 import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
 import '../services/student_registry_store.dart';
@@ -27,7 +26,6 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
     await Future.wait([
       StudentRegistryStore.instance.ensureLoaded(),
       AccountingFinanceStore.instance.loadDashboard(),
-      AttendanceService.instance.refresh(),
     ]);
     final records = await SchoolFeedApiService.instance.fetchExamResults();
     if (!mounted) return;
@@ -39,11 +37,6 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
   @override
   Widget build(BuildContext context) {
     final totalStudents = StudentRegistryStore.instance.students.length;
-    final absentCount = AttendanceService.instance
-        .all()
-        .where((item) => item.status == 'Devamsiz')
-        .length;
-    final attendanceTotal = AttendanceService.instance.all().length;
     final collectionRate = AccountingFinanceStore.instance.totalReceivables == 0
         ? 0.0
         : AccountingFinanceStore.instance.collectedTotal /
@@ -51,9 +44,6 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
     final occupancyRate = totalStudents == 0
         ? 0.0
         : (totalStudents / 1000).clamp(0.0, 1.0);
-    final absenteeRisk = attendanceTotal == 0
-        ? 0.0
-        : absentCount / attendanceTotal;
     final academicScore = _records.isEmpty
         ? 0.0
         : (_records.fold<int>(0, (sum, item) => sum + item.score) /
@@ -63,7 +53,6 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
     final kpis = [
       ('Doluluk Orani', occupancyRate, const Color(0xFF2563EB)),
       ('Tahsilat Performansi', collectionRate, const Color(0xFF14532D)),
-      ('Devamsızlık Riski', absenteeRisk, const Color(0xFFB45309)),
       ('Akademik Başarı', academicScore, const Color(0xFF7C3AED)),
     ];
 

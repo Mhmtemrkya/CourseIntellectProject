@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class AdminWorkflowApiException implements Exception {
   final String message;
@@ -28,7 +29,10 @@ class AdminWorkflowApiService {
   Future<dynamic> _get(String path, [Map<String, String>? query]) async {
     final session = await _session();
     final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(queryParameters: query);
-    final response = await http.get(uri, headers: {'Authorization': 'Bearer ${session.accessToken}'});
+    final response = await http.get(uri, headers: {
+      'Authorization': 'Bearer ${session.accessToken}',
+      ...BranchScopeStore.instance.headers,
+    });
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AdminWorkflowApiException('İstek başarısız (${response.statusCode}).');
     }
@@ -40,7 +44,11 @@ class AdminWorkflowApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(queryParameters: query);
     final response = await http.post(
       uri,
-      headers: {'Authorization': 'Bearer ${session.accessToken}', 'Content-Type': 'application/json'},
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        'Content-Type': 'application/json',
+        ...BranchScopeStore.instance.headers,
+      },
       body: jsonEncode(body),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -52,7 +60,10 @@ class AdminWorkflowApiService {
   Future<void> _delete(String path) async {
     final session = await _session();
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
-    final response = await http.delete(uri, headers: {'Authorization': 'Bearer ${session.accessToken}'});
+    final response = await http.delete(uri, headers: {
+      'Authorization': 'Bearer ${session.accessToken}',
+      ...BranchScopeStore.instance.headers,
+    });
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AdminWorkflowApiException('Silme başarısız (${response.statusCode}).');
     }
@@ -196,4 +207,17 @@ class AdminWorkflowApiService {
   // ---- Özet ----
   Future<Map<String, dynamic>> getOverview() async =>
       Map<String, dynamic>.from(await _get('/api/admin/overview') as Map);
+
+  // ---- Dönemsel analitik (kazanç / kayıt / gider) ----
+  // period: day | week | month | year. İsteğe bağlı özel aralık: from/to (yyyy-MM-dd).
+  Future<Map<String, dynamic>> getAnalytics({
+    String period = 'week',
+    String? from,
+    String? to,
+  }) async =>
+      Map<String, dynamic>.from(await _get('/api/admin/analytics', {
+        'period': period,
+        'from': ?from,
+        'to': ?to,
+      }) as Map);
 }

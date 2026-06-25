@@ -20,8 +20,8 @@ import 'teacher_reports_page.dart';
 import '../pages/accounting_home_page.dart';
 import '../pages/accounting_overdue_page.dart';
 import '../services/accounting_finance_store.dart';
+import '../services/admin_workflow_api_service.dart';
 import '../services/attendance_service.dart';
-import '../services/school_feed_api_service.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -38,7 +38,17 @@ class _AdminHomePageState extends State<AdminHomePage> {
   final _students = StudentRegistryStore.instance;
   final _staff = StaffRegistryStore.instance;
   final _finance = AccountingFinanceStore.instance;
-  List<AnnouncementFeedItem> _announcements = const [];
+
+  static const _periods = [
+    ('day', 'Günlük'),
+    ('week', 'Haftalık'),
+    ('month', 'Aylık'),
+    ('year', 'Yıllık'),
+  ];
+  String _period = 'week';
+  List<Map<String, dynamic>> _buckets = const [];
+  Map<String, dynamic> _totals = const {};
+  int? _selectedBucket;
 
   @override
   void initState() {
@@ -50,7 +60,27 @@ class _AdminHomePageState extends State<AdminHomePage> {
     _staff.ensureLoaded();
     _finance.loadDashboard();
     AttendanceService.instance.refresh();
-    _loadAnnouncements();
+    _loadAnalytics();
+  }
+
+  Future<void> _loadAnalytics() async {
+    try {
+      final result = await AdminWorkflowApiService.instance.getAnalytics(period: _period);
+      if (!mounted) return;
+      setState(() {
+        _buckets = (result['buckets'] as List<dynamic>? ?? const [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _totals = Map<String, dynamic>.from(result['totals'] as Map? ?? const {});
+        _selectedBucket = _buckets.isEmpty ? null : _buckets.length - 1;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _buckets = const [];
+        _totals = const {};
+      });
+    }
   }
 
   @override
@@ -63,19 +93,6 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   void _refresh() {
     if (mounted) setState(() {});
-  }
-
-  Future<void> _loadAnnouncements() async {
-    try {
-      final items = await SchoolFeedApiService.instance.fetchAnnouncements(
-        audience: 'Tüm Kurum',
-        includeAll: true,
-      );
-      if (!mounted) return;
-      setState(() {
-        _announcements = items;
-      });
-    } catch (_) {}
   }
 
   @override
@@ -122,19 +139,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
     final alerts = [
       (
-        '${AttendanceService.instance.all().where((item) => item.status == 'Devamsiz').length} devamsızlık kaydı izleniyor',
-        'Akademik risk',
-        const Color(0xFFB45309),
-      ),
-      (
         '$pendingApprovals finans onayi bekliyor',
         'Finans akışı',
         const Color(0xFF2563EB),
-      ),
-      (
-        '${_announcements.length} duyuru merkezde görünür',
-        'Duyuru akışı',
-        const Color(0xFF14532D),
       ),
     ];
 
@@ -185,6 +192,10 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     .map((metric) => _metricCard(context, metric))
                     .toList(),
               ),
+              const SizedBox(height: 18),
+              const AdminSectionTitle(title: 'Kazanç & Gider Eğrisi'),
+              const SizedBox(height: 12),
+              _analyticsCard(context),
               const SizedBox(height: 18),
               const AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'),
               const SizedBox(height: 12),
@@ -625,6 +636,165 @@ class _AdminHomePageState extends State<AdminHomePage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _analyticsCard(BuildContext context) {
+    final selected = (_selectedBucket != null && _selectedBucket! < _buckets.length)
+        ? _buckets[_selectedBucket!]
+        : (_buckets.isNotEmpty ? _buckets.last : null);
+    num maxMoney = 1;
+    for (final bucket in _buckets) {
+      final r = (bucket['revenue'] as num?) ?? 0;
+      final e = (bucket['expense'] as num?) ?? 0;
+      if (r > maxMoney) maxMoney = r;
+      if (e > maxMoney) maxMoney = e;
+    }
+
+    return AdminPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Wrap(
+            spacing: 8,
+            children: _periods.map((p) {
+              return ChoiceChip(
+                label: Text(p.$2),
+                selected: p.$1 == _period,
+                onSelected: (_) {
+                  setState(() => _period = p.$1);
+                  _loadAnalytics();
+                },
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          if (_buckets.isEmpty)
+            const Padding(
+              padding: EdgeInsets.symmetric(vertical: 28),
+              child: Center(child: Text('Seçilen dönem için veri bulunmuyor.')),
+            )
+          else ...[
+            if (selected != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A).withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${selected['label']}',
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 6),
+                    _legendRow(const Color(0xFF16A34A), 'Kazanç', _finance.formatAmount(((selected['revenue'] as num?) ?? 0).round())),
+                    _legendRow(const Color(0xFFDC2626), 'Gider', _finance.formatAmount(((selected['expense'] as num?) ?? 0).round())),
+                    _legendRow(const Color(0xFF0EA5E9), 'Kayıt', '${selected['registrations'] ?? 0} öğrenci'),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 150,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: List.generate(_buckets.length, (index) {
+                  final bucket = _buckets[index];
+                  final revenue = ((bucket['revenue'] as num?) ?? 0).toDouble();
+                  final expense = ((bucket['expense'] as num?) ?? 0).toDouble();
+                  final active = (_selectedBucket ?? _buckets.length - 1) == index;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () => setState(() => _selectedBucket = index),
+                      behavior: HitTestBehavior.opaque,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 1),
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Expanded(child: _bar(revenue / maxMoney, const Color(0xFF16A34A), active)),
+                                  const SizedBox(width: 2),
+                                  Expanded(child: _bar(expense / maxMoney, const Color(0xFFDC2626), active)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                _totalChip('Kazanç', _finance.formatAmount(((_totals['revenue'] as num?) ?? 0).round()), const Color(0xFF16A34A)),
+                const SizedBox(width: 8),
+                _totalChip('Gider', _finance.formatAmount(((_totals['expense'] as num?) ?? 0).round()), const Color(0xFFDC2626)),
+                const SizedBox(width: 8),
+                _totalChip('Kayıt', '${_totals['registrations'] ?? 0}', const Color(0xFF0EA5E9)),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _bar(double ratio, Color color, bool active) {
+    final clamped = ratio.isFinite ? ratio.clamp(0.02, 1.0) : 0.02;
+    return FractionallySizedBox(
+      heightFactor: clamped,
+      child: Container(
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: active ? 1 : 0.55),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+        ),
+      ),
+    );
+  }
+
+  Widget _legendRow(Color color, String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 2),
+      child: Row(
+        children: [
+          Container(width: 10, height: 10, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(2))),
+          const SizedBox(width: 8),
+          Text(label),
+          const Spacer(),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w700)),
+        ],
+      ),
+    );
+  }
+
+  Widget _totalChip(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 12)),
+            const SizedBox(height: 2),
+            Text(value, style: const TextStyle(fontWeight: FontWeight.w900), overflow: TextOverflow.ellipsis),
+          ],
         ),
       ),
     );

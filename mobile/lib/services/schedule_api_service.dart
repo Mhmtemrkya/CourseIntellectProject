@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class ScheduleApiException implements Exception {
   final String message;
@@ -64,7 +65,7 @@ class ScheduleApiService {
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/schedule'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -101,7 +102,7 @@ class ScheduleApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/schedule'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
       },
       body: jsonEncode({
         'className': className,
@@ -144,7 +145,7 @@ class ScheduleApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/schedule/$id'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
       },
       body: jsonEncode({
         'className': className,
@@ -177,7 +178,7 @@ class ScheduleApiService {
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/schedule/$id'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

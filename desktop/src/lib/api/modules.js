@@ -832,6 +832,18 @@ export async function saveAttendance(payload) {
   return response;
 }
 
+export async function deleteAttendanceRecord(id) {
+  await api.delete(`/api/attendance/${id}`);
+}
+
+export async function fetchAdminAnalytics({ period = 'week', from, to } = {}) {
+  const params = { period };
+  if (from) params.from = from;
+  if (to) params.to = to;
+  const response = await api.get('/api/admin/analytics', { params });
+  return response;
+}
+
 export async function fetchAccountingDashboard() {
   const response = await api.get('/api/accounting/dashboard');
   return response;

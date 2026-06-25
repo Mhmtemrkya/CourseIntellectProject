@@ -9,7 +9,7 @@ import {
   Phone,
   ChevronUp,
   ChevronDown,
-  HelpCircle,
+  School,
   Pencil,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -52,7 +52,7 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStaff, updateStaff, fetchQuestionBank, fetchStaff, fetchClasses } from '../lib/api/modules';
+import { createStaff, updateStaff, fetchStaff, fetchClasses } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
@@ -82,10 +82,6 @@ const ROLE_LABELS = {
   Administrative: 'İdari Personel',
   Admin: 'Yönetici',
 };
-
-function normalizeText(value = '') {
-  return String(value).trim().toLowerCase();
-}
 
 function TeacherDetailDrawer({ teacher }) {
   if (!teacher) return null;
@@ -141,15 +137,15 @@ function TeacherDetailDrawer({ teacher }) {
       </div>
 
       <div className="space-y-3">
-        <h4 className="font-medium">Bekleyen Sorular</h4>
+        <h4 className="font-medium">Sınıf Öğretmenliği</h4>
         <Card>
           <CardContent className="p-4 flex items-center gap-3">
             <div className="p-2 rounded-lg bg-brand-accent/10">
-              <HelpCircle className="h-5 w-5 text-brand-accent" />
+              <School className="h-5 w-5 text-brand-accent" />
             </div>
             <div>
-              <p className="text-2xl font-bold">{teacher.pendingQuestions}</p>
-              <p className="text-xs text-muted-foreground">Yanıt bekleyen soru</p>
+              <p className="text-lg font-bold">{teacher.homeroomClass || 'Atanmadı'}</p>
+              <p className="text-xs text-muted-foreground">{teacher.homeroomClass ? 'sınıfının sınıf öğretmeni' : 'Sınıf öğretmenliği görevi yok'}</p>
             </div>
           </CardContent>
         </Card>
@@ -492,7 +488,6 @@ export default function Teachers() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [staff, setStaff] = useState([]);
-  const [questionBank, setQuestionBank] = useState([]);
   const [classNames, setClassNames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -501,13 +496,11 @@ export default function Teachers() {
     try {
       setLoading(true);
       setError('');
-      const [staffList, questions, classList] = await Promise.all([
+      const [staffList, classList] = await Promise.all([
         fetchStaff('Teacher'),
-        fetchQuestionBank().catch(() => []),
         fetchClasses().catch(() => []),
       ]);
       setStaff(staffList);
-      setQuestionBank(questions);
       setClassNames(Array.isArray(classList) ? classList : []);
     } catch (err) {
       setError(err.message || 'Öğretmen listesi alınamadı.');
@@ -530,13 +523,8 @@ export default function Teachers() {
     [classNames],
   );
 
-  const enrichedTeachers = useMemo(() => staff.map((teacher) => ({
-    ...teacher,
-    pendingQuestions: questionBank.filter((item) => normalizeText(item.teacher) === normalizeText(teacher.fullName)).length,
-  })), [staff, questionBank]);
-
   const filteredTeachers = useMemo(() => {
-    return enrichedTeachers
+    return staff
       .filter((teacher) => {
         const matchesSearch = `${teacher.fullName} ${teacher.email}`.toLowerCase().includes(search.toLowerCase());
         const matchesBranch = branchFilter === 'all' || teacher.departmentOrBranch === branchFilter;
@@ -550,7 +538,7 @@ export default function Teachers() {
         }
         return aValue < bValue ? 1 : -1;
       });
-  }, [enrichedTeachers, search, branchFilter, sortField, sortDirection]);
+  }, [staff, search, branchFilter, sortField, sortDirection]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -640,7 +628,7 @@ export default function Teachers() {
                 </TableHead>
                 <TableHead>Branş</TableHead>
                 <TableHead>Sınıflar</TableHead>
-                <TableHead>Bekleyen Soru</TableHead>
+                <TableHead>Sınıf Öğretmeni</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -667,7 +655,11 @@ export default function Teachers() {
                       {(teacher.assignedClasses || []).length === 0 && <span className="text-xs text-muted-foreground">Atama yok</span>}
                     </div>
                   </TableCell>
-                  <TableCell>{teacher.pendingQuestions}</TableCell>
+                  <TableCell>
+                    {teacher.homeroomClass
+                      ? <Badge variant="outline" className="border-brand-accent/40 text-brand-accent">{teacher.homeroomClass}</Badge>
+                      : <span className="text-xs text-muted-foreground">—</span>}
+                  </TableCell>
                   <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>

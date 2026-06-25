@@ -304,6 +304,22 @@ class _StaffTile extends StatelessWidget {
                           ),
                         ),
                       ),
+                      if (record.homeroomClass.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(Icons.school_outlined, size: 14, color: theme.colorScheme.primary),
+                            const SizedBox(width: 4),
+                            Text(
+                              '${record.homeroomClass} sınıf öğretmeni',
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),

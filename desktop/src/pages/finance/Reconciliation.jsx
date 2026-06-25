@@ -1,139 +1,136 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShieldCheck, ArrowRightLeft, CircleDollarSign } from 'lucide-react';
+import { ShieldCheck, ArrowRightLeft, CircleDollarSign, Loader2, Info } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
-import { Progress } from '../../components/ui/progress';
+import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { ErrorBanner } from '../../components/ui/AlertBanner';
-import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchAccountingDashboard } from '../../lib/api/modules';
-import { formatCurrency, parseFinanceMoney } from '../../lib/financeDocuments';
+import { useToast } from '../../hooks/use-toast';
+import { reconcileFinance } from '../../lib/api/modules';
+import { formatCurrency } from '../../lib/financeDocuments';
+
+const PLACEHOLDER = 'HVL123, 5000, 2026-06-01\nPOS987, 2500, 2026-06-02\nEFT456, 1800, 2026-06-03';
 
 export default function Reconciliation() {
-  const [dashboard, setDashboard] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
+  const { toast } = useToast();
+  const [text, setText] = useState('');
+  const [tolerance, setTolerance] = useState(3);
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(false);
 
-  const loadData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError('');
-      setDashboard(await fetchAccountingDashboard());
-    } catch (err) {
-      setError(err.message || 'Mutabakat verisi alınamadı.');
-    } finally {
-      setLoading(false);
+  const run = async () => {
+    const rows = text.split('\n').map((line) => line.trim()).filter(Boolean).map((line) => {
+      const [reference, amount, date, ...rest] = line.split(/[;,\t]/).map((c) => c.trim());
+      return { reference: reference || '', amount: Number(amount) || 0, date: date || new Date().toISOString(), description: rest.join(' ') };
+    }).filter((r) => r.amount > 0);
+
+    if (rows.length === 0) {
+      toast({ title: 'Satır bulunamadı', description: 'Biçim: referans, tutar, tarih (YYYY-AA-GG).', variant: 'destructive' });
+      return;
     }
-  }, []);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  const summary = useMemo(() => {
-    const invoiceTotal = (dashboard?.invoices || []).reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
-    const collectionTotal = (dashboard?.collections || []).reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
-    const pendingTotal = Math.max(0, invoiceTotal - collectionTotal);
-    const ratio = invoiceTotal > 0 ? Math.min(100, Math.round((collectionTotal / invoiceTotal) * 100)) : 0;
-    const items = (dashboard?.invoices || []).slice(0, 8).map((invoice) => {
-      const candidate = (dashboard?.collections || []).find((collection) => String(collection.name || '').toLowerCase().includes(String(invoice.title || '').split('-')[0].trim().toLowerCase()));
-      return {
-        id: invoice.id,
-        title: invoice.title,
-        invoiceAmount: parseFinanceMoney(invoice.amount),
-        collectionAmount: candidate ? parseFinanceMoney(candidate.amount) : 0,
-        status: candidate ? 'matched' : 'pending',
-      };
-    });
-    return { invoiceTotal, collectionTotal, pendingTotal, ratio, items };
-  }, [dashboard]);
-
-  if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
+    try {
+      setBusy(true);
+      setResult(await reconcileFinance({ rows, dateToleranceDays: Number(tolerance) || 0 }));
+    } catch (err) {
+      toast({ title: 'Mutabakat yapılamadı', description: err.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="finance-reconciliation-page">
       <div>
         <h1 className="text-3xl font-bold font-heading">Mutabakat Merkezi</h1>
-        <p className="text-muted-foreground mt-1">Fatura ve tahsilat eşleşmelerini profesyonel görünümle takip edin</p>
+        <p className="text-muted-foreground mt-1">Banka/POS ekstresini sisteme girilmiş tahsilatlarla otomatik eşleştirin</p>
       </div>
-      {error ? <ErrorBanner title="Mutabakat verisi alınamadı" message={error} onRetry={loadData} /> : null}
 
-      <div className="grid gap-4 xl:grid-cols-3">
-        <Card className="xl:col-span-2 overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-slate-900 via-sky-900 to-cyan-900 text-white">
-            <CardTitle className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" />Mutabakat Oranı</CardTitle>
-            <CardDescription className="text-foreground/75">Tahsilatların faturaları karşılama oranı</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6 p-6">
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                ['Fatura Toplamı', formatCurrency(summary.invoiceTotal), CircleDollarSign],
-                ['Tahsilat Toplamı', formatCurrency(summary.collectionTotal), ShieldCheck],
-                ['Açık Fark', formatCurrency(summary.pendingTotal), ArrowRightLeft],
-              ].map(([label, value, Icon]) => (
-                <div key={label} className="rounded-2xl border bg-muted/20 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="rounded-xl bg-muted p-2"><Icon className="h-4 w-4 text-brand-primary" /></div>
-                    <div>
-                      <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
-                      <p className="mt-1 text-xl font-semibold">{value}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span>Tamamlanma</span>
-                <span className="font-semibold">%{summary.ratio}</span>
-              </div>
-              <Progress value={summary.ratio} className="h-3" />
-              <p className="text-sm text-muted-foreground">Bu oran, mevcut tahsilat kayıtlarının toplam fatura tutarını karşılama seviyesini gösterir.</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Durum Özeti</CardTitle>
-            <CardDescription>Mutabakat takibi için hızlı kontrol paneli</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="rounded-2xl bg-emerald-50 p-4 text-emerald-700">
-              <p className="text-xs uppercase tracking-wide">Eşleşen Kayıtlar</p>
-              <p className="mt-1 text-2xl font-semibold">{summary.items.filter((item) => item.status === 'matched').length}</p>
-            </div>
-            <div className="rounded-2xl bg-amber-50 p-4 text-amber-700">
-              <p className="text-xs uppercase tracking-wide">Bekleyen Kayıtlar</p>
-              <p className="mt-1 text-2xl font-semibold">{summary.items.filter((item) => item.status === 'pending').length}</p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+      <Card className="border-sky-200 bg-sky-50/50 dark:bg-sky-900/10">
+        <CardContent className="flex gap-3 p-4 text-sm">
+          <Info className="mt-0.5 h-5 w-5 shrink-0 text-sky-600" />
+          <div className="space-y-1 text-muted-foreground">
+            <p className="font-semibold text-foreground">Mutabakat nedir, ne işe yarar?</p>
+            <p>Bankadan veya POS cihazından gelen para hareketlerini (ekstre satırlarını) sistemdeki tahsilat kayıtlarıyla karşılaştırır. Böylece <b>"banka hesabıma giren para ile sistemdeki tahsilatlar tutuyor mu?"</b> sorusunu yanıtlar. Tutar ve tarih (±gün toleransı) eşleşen satırlar <b>Eşleşti</b>, sistemde karşılığı bulunamayanlar <b>Eşleşmedi</b> olarak işaretlenir; eşleşmeyenler kayıp/eksik tahsilat takibi için kullanılır.</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>Eşleşme Listesi</CardTitle>
-          <CardDescription>Fatura ve tahsilat arasındaki ilişki özeti</CardDescription>
+          <CardTitle className="flex items-center gap-2"><ArrowRightLeft className="h-5 w-5 text-brand-primary" /> Ekstre Satırları</CardTitle>
+          <CardDescription>Her satır: <code>referans, tutar, tarih(YYYY-AA-GG)</code></CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
-          {summary.items.map((item) => (
-            <div key={item.id} className="flex flex-col gap-4 rounded-2xl border p-4 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="font-semibold">{item.title}</p>
-                <p className="text-sm text-muted-foreground">Belge No: {item.id}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-xl bg-slate-50 px-3 py-2 text-sm font-medium text-slate-700">Fatura: {formatCurrency(item.invoiceAmount)}</div>
-                <div className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">Tahsilat: {formatCurrency(item.collectionAmount)}</div>
-                <Badge className={item.status === 'matched' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>
-                  {item.status === 'matched' ? 'Eşleşti' : 'Bekliyor'}
-                </Badge>
-              </div>
-            </div>
-          ))}
+          <textarea
+            className="min-h-[160px] w-full rounded-xl border bg-background p-3 text-sm font-mono"
+            placeholder={PLACEHOLDER}
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+          />
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="flex items-center gap-2 text-sm">
+              Tarih toleransı (gün)
+              <input
+                type="number"
+                min="0"
+                max="15"
+                value={tolerance}
+                onChange={(e) => setTolerance(e.target.value)}
+                className="h-9 w-20 rounded-lg border bg-background px-3 text-sm"
+              />
+            </label>
+            <Button onClick={run} disabled={busy}>
+              {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />} Eşleştir
+            </Button>
+          </div>
         </CardContent>
       </Card>
+
+      {result ? (
+        <>
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              ['Toplam Satır', String(result.total), CircleDollarSign, 'text-foreground'],
+              ['Eşleşen', `${result.matched} • ${formatCurrency(result.matchedAmount)}`, ShieldCheck, 'text-emerald-600'],
+              ['Eşleşmeyen', `${result.unmatched} • ${formatCurrency(result.unmatchedAmount)}`, ArrowRightLeft, 'text-red-600'],
+            ].map(([label, value, Icon, color]) => (
+              <Card key={label}>
+                <CardContent className="flex items-center gap-3 p-4">
+                  <div className="rounded-xl bg-muted p-2"><Icon className={`h-5 w-5 ${color}`} /></div>
+                  <div>
+                    <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
+                    <p className={`mt-1 text-lg font-semibold ${color}`}>{value}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Eşleşme Sonucu</CardTitle>
+              <CardDescription>Her ekstre satırının sistemdeki tahsilatla eşleşme durumu</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {result.items.map((item, idx) => (
+                <div key={`${item.reference}-${idx}`} className="flex flex-col gap-2 rounded-xl border p-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="font-semibold">{item.reference || 'Referans yok'}</p>
+                    <p className="text-sm text-muted-foreground">{new Date(item.date).toLocaleDateString('tr-TR')} • {formatCurrency(item.amount)}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    {item.matchStatus === 'Matched' ? (
+                      <span className="text-sm text-muted-foreground">Makbuz: {item.receiptNo || '—'}</span>
+                    ) : null}
+                    <Badge className={item.matchStatus === 'Matched' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}>
+                      {item.matchStatus === 'Matched' ? 'Eşleşti' : 'Eşleşmedi'}
+                    </Badge>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </>
+      ) : null}
     </motion.div>
   );
 }

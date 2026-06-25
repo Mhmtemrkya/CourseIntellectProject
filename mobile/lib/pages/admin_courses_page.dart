@@ -1,7 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../services/courses_api_service.dart';
+import '../services/notification_api_service.dart';
+import '../services/school_feed_api_service.dart';
+import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
+
+const _announceRoles = [
+  ('Ogrenci', 'Öğrenci', 'Student'),
+  ('Veli', 'Veli', 'Parent'),
+  ('Ogretmen', 'Öğretmen', 'Teacher'),
+];
 
 class AdminCoursesPage extends StatefulWidget {
   const AdminCoursesPage({super.key});
@@ -42,10 +51,44 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
     }
   }
 
+  Future<void> _publishAnnouncement(Map<String, dynamic> result) async {
+    final audiences = (result['audiences'] as List).cast<String>();
+    if (audiences.isEmpty) return;
+    final name = result['name'] as String;
+    final message = (result['announceMessage'] as String).trim();
+    final detail = message.isEmpty
+        ? '$name kursumuz açıldı. Detaylar için kurum yönetimi ile iletişime geçebilirsiniz.'
+        : message;
+    final title = '$name kursu açıldı';
+    final className = (result['announceClass'] as String?) ?? '';
+    for (final audience in audiences) {
+      final role = _announceRoles.firstWhere((r) => r.$1 == audience);
+      await SchoolFeedApiService.instance.createAnnouncement(
+        title: title,
+        detail: detail,
+        audience: audience,
+        targetClassName: audience == 'Ogrenci' ? className : null,
+      );
+      await NotificationApiService.instance.createNotification(
+        title: title,
+        message: detail,
+        timeLabel: 'Şimdi',
+        audience: audience,
+        targetRole: role.$3,
+        category: 'Course',
+      );
+    }
+  }
+
   Future<void> _openForm({CourseRecord? existing}) async {
+    final classNames = <String>{
+      for (final student in StudentRegistryStore.instance.students)
+        if (student.className.isNotEmpty) student.className,
+    }.toList()
+      ..sort();
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (ctx) => _CourseFormDialog(course: existing),
+      builder: (ctx) => _CourseFormDialog(course: existing, classNames: classNames),
     );
     if (result == null) return;
     try {
@@ -70,12 +113,19 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
           level: result['level'] as String,
           isActive: result['isActive'] as bool,
         );
+        if (result['announce'] == true) {
+          await _publishAnnouncement(result);
+        }
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            existing != null ? 'Kurs güncellendi.' : 'Kurs oluşturuldu.',
+            existing != null
+                ? 'Kurs güncellendi.'
+                : (result['announce'] == true
+                    ? 'Kurs oluşturuldu ve duyuru yayınlandı.'
+                    : 'Kurs oluşturuldu.'),
           ),
         ),
       );
@@ -252,8 +302,9 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
 
 class _CourseFormDialog extends StatefulWidget {
   final CourseRecord? course;
+  final List<String> classNames;
 
-  const _CourseFormDialog({this.course});
+  const _CourseFormDialog({this.course, this.classNames = const []});
 
   @override
   State<_CourseFormDialog> createState() => _CourseFormDialogState();
@@ -266,7 +317,12 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
   late final TextEditingController _price;
   late final TextEditingController _duration;
   late final TextEditingController _level;
+  late final TextEditingController _announceMessage;
   late bool _isActive;
+
+  bool _announce = false;
+  final Set<String> _audiences = {};
+  String? _announceClass;
 
   @override
   void initState() {
@@ -278,6 +334,7 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
     _price = TextEditingController(text: c?.price ?? '');
     _duration = TextEditingController(text: c?.duration ?? '');
     _level = TextEditingController(text: c?.level ?? '');
+    _announceMessage = TextEditingController();
     _isActive = c?.isActive ?? true;
   }
 
@@ -289,6 +346,7 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
     _price.dispose();
     _duration.dispose();
     _level.dispose();
+    _announceMessage.dispose();
     super.dispose();
   }
 
@@ -337,6 +395,58 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
               title: const Text('Aktif'),
               contentPadding: EdgeInsets.zero,
             ),
+            if (widget.course == null) ...[
+              const Divider(),
+              SwitchListTile(
+                value: _announce,
+                onChanged: (v) => setState(() => _announce = v),
+                title: const Text('Duyuru olarak yayınla'),
+                subtitle: const Text('Seçili rollerin duyurularında göster + mobil bildirim'),
+                contentPadding: EdgeInsets.zero,
+              ),
+              if (_announce) ...[
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('Hedef Roller', style: Theme.of(context).textTheme.bodySmall),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 8,
+                  children: _announceRoles.map((role) {
+                    final selected = _audiences.contains(role.$1);
+                    return FilterChip(
+                      label: Text(role.$2),
+                      selected: selected,
+                      onSelected: (_) => setState(() {
+                        if (selected) {
+                          _audiences.remove(role.$1);
+                        } else {
+                          _audiences.add(role.$1);
+                        }
+                      }),
+                    );
+                  }).toList(),
+                ),
+                if (_audiences.contains('Ogrenci') && widget.classNames.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  DropdownButtonFormField<String>(
+                    initialValue: _announceClass,
+                    decoration: const InputDecoration(labelText: 'Sınıf (opsiyonel)'),
+                    items: [
+                      const DropdownMenuItem(value: null, child: Text('Tüm öğrenciler')),
+                      ...widget.classNames.map((c) => DropdownMenuItem(value: c, child: Text(c))),
+                    ],
+                    onChanged: (v) => setState(() => _announceClass = v),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _announceMessage,
+                  maxLines: 2,
+                  decoration: const InputDecoration(labelText: 'Duyuru Metni (opsiyonel)'),
+                ),
+              ],
+            ],
           ],
         ),
       ),
@@ -348,6 +458,12 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
         FilledButton(
           onPressed: () {
             if (_name.text.trim().isEmpty) return;
+            if (_announce && _audiences.isEmpty) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Duyuru için en az bir rol seçin.')),
+              );
+              return;
+            }
             Navigator.pop(context, {
               'name': _name.text.trim(),
               'description': _description.text.trim(),
@@ -356,6 +472,10 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
               'duration': _duration.text.trim(),
               'level': _level.text.trim(),
               'isActive': _isActive,
+              'announce': _announce,
+              'audiences': _audiences.toList(),
+              'announceClass': _announceClass,
+              'announceMessage': _announceMessage.text.trim(),
             });
           },
           child: const Text('Kaydet'),

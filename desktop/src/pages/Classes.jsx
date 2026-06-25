@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ArrowLeft, BookOpen, Check, ChevronRight, GraduationCap, ImagePlus,
+  ArrowLeft, BookOpen, Check, ChevronRight, Eye, GraduationCap, ImagePlus,
   Lock, Palette, Plus, Save, Search, Settings, ShieldCheck, Sparkles,
   Trash2, UserCheck, Users,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '../components/ui/dialog';
+import { Badge } from '../components/ui/badge';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
@@ -152,6 +156,7 @@ export default function Classes() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(0);
+  const [viewOpen, setViewOpen] = useState(false);
   const [students, setStudents] = useState([]);
   const [teachers, setTeachers] = useState([]);
   const [courses, setCourses] = useState([]);
@@ -242,14 +247,24 @@ export default function Classes() {
     return matchesSearch && matchesFilter;
   }), [studentFilter, studentQuery, students]);
 
-  const existingSummary = useMemo(() => classConfigs.map((item) => ({
-    name: item.name,
-    code: item.code,
-    studentCount: item.studentIds?.length || students.filter((student) => student.className === item.name).length,
-    teacherCount: item.teachers?.length || 0,
-    courseCount: item.courses?.length || 0,
-    color: item.themeColor || '#2563EB',
-  })), [classConfigs, students]);
+  const existingSummary = useMemo(() => classConfigs.map((item) => {
+    const advisor = teachers.find((teacher) => teacher.id === item.advisorTeacherId);
+    return {
+      name: item.name,
+      code: item.code,
+      studentCount: item.studentIds?.length || students.filter((student) => student.className === item.name).length,
+      teacherCount: item.teachers?.length || 0,
+      courseCount: item.courses?.length || 0,
+      color: item.themeColor || '#2563EB',
+      institutionUnit: item.institutionUnit || '',
+      grade: item.grade || '',
+      section: item.section || '',
+      academicYear: item.academicYear || '',
+      advisorName: advisor?.fullName || '',
+      description: item.description || '',
+      courses: Array.isArray(item.courses) ? item.courses : [],
+    };
+  }), [classConfigs, students, teachers]);
 
   const updateForm = (key, value) => {
     setForm((prev) => ({
@@ -524,12 +539,71 @@ export default function Classes() {
             <div className="mt-4 space-y-2">{steps.map(([key, title, desc], index) => <div key={key} className={`flex items-center gap-3 rounded-xl border p-3 ${step >= index ? 'border-blue-400/40 bg-blue-500/10' : 'border-foreground/10 bg-foreground/5'}`}><div className={`flex h-8 w-8 items-center justify-center rounded-full ${step > index ? 'bg-teal-500' : step === index ? 'bg-blue-600' : 'bg-slate-700'}`}>{step > index ? <Check className="h-4 w-4" /> : <Lock className="h-4 w-4" />}</div><div><b className="text-sm">{title}</b><p className="text-xs text-slate-400">{desc}</p></div></div>)}</div>
           </div>
           <div className="rounded-2xl border border-foreground/10 bg-[#0D1B2A]/80 p-5 text-white">
-            <h3 className="font-black">Kayıtlı Sınıflar</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-black">Kayıtlı Sınıflar</h3>
+              <Button variant="outline" size="sm" className="border-foreground/15 bg-foreground/5 text-white hover:bg-foreground/10 hover:text-white" onClick={() => setViewOpen(true)} disabled={existingSummary.length === 0}>
+                <Eye className="mr-1.5 h-4 w-4" /> Gör ({existingSummary.length})
+              </Button>
+            </div>
             <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-foreground/10 p-3"><div className="flex items-center justify-between"><b>{item.name}</b><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
           </div>
         </aside>
       </div>
+
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Kayıtlı Sınıflar ({existingSummary.length})</DialogTitle>
+            <DialogDescription>Tüm kayıtlı sınıflar ve tüm detayları.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {existingSummary.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Henüz kayıtlı sınıf bulunmuyor.</p>
+            ) : existingSummary.map((item) => (
+              <div key={item.code || item.name} className="rounded-2xl border p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <span className="h-9 w-9 rounded-full" style={{ background: item.color }} />
+                    <div>
+                      <p className="text-base font-bold">{item.name}</p>
+                      <p className="text-xs text-muted-foreground">{item.code || 'Kod yok'} • {item.academicYear || 'Dönem yok'}</p>
+                    </div>
+                  </div>
+                  <Badge variant="outline">{item.institutionUnit || 'Birim yok'}</Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+                  <Detail label="Seviye" value={item.grade || '-'} />
+                  <Detail label="Şube" value={item.section || '-'} />
+                  <Detail label="Danışman" value={item.advisorName || 'Atanmadı'} />
+                  <Detail label="Öğrenci" value={`${item.studentCount}`} />
+                  <Detail label="Öğretmen" value={`${item.teacherCount}`} />
+                  <Detail label="Ders" value={`${item.courseCount}`} />
+                </div>
+                {item.courses.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {item.courses.map((course, index) => (
+                      <Badge key={`${course.courseName || course}-${index}`} variant="outline" className="text-xs">
+                        {course.courseName || course.name || 'Ders'}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : null}
+                {item.description ? <p className="mt-3 text-sm text-muted-foreground">{item.description}</p> : null}
+              </div>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
+  );
+}
+
+function Detail({ label, value }) {
+  return (
+    <div className="rounded-xl border bg-muted/30 p-2.5">
+      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">{label}</p>
+      <p className="mt-0.5 font-semibold">{value}</p>
+    </div>
   );
 }
 

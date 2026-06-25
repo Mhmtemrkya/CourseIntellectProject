@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class AttendanceApiException implements Exception {
   final String message;
@@ -40,7 +41,7 @@ class AttendanceApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/attendance',
       ).replace(queryParameters: query.isEmpty ? null : query),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -52,6 +53,21 @@ class AttendanceApiService {
     return (jsonDecode(response.body) as List<dynamic>)
         .map((item) => Map<String, dynamic>.from(item as Map))
         .toList();
+  }
+
+  /// Devamsızlık kaydını siler (Admin/Öğretmen/İdari).
+  Future<void> deleteAttendance(String id) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const AttendanceApiException('Oturum bulunamadı.');
+    }
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}/api/attendance/$id'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AttendanceApiException('Kayıt silinemedi (${response.statusCode}).');
+    }
   }
 
   /// Öğretmen için QR yoklama oturumu açar (desktop ile aynı uç).
@@ -100,7 +116,7 @@ class AttendanceApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/attendance-qr-sessions',
       ).replace(queryParameters: query.isEmpty ? null : query),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AttendanceApiException(
@@ -129,7 +145,7 @@ class AttendanceApiService {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
         'Content-Type': 'application/json',
       },
       body: body == null ? null : jsonEncode(body),
@@ -162,7 +178,7 @@ class AttendanceApiService {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/attendance'),
       headers: {
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
         'Content-Type': 'application/json',
       },
       body: jsonEncode({

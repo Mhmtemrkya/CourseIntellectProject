@@ -9,4 +9,5 @@ public sealed class AccountingInvoice : ITenantScopedEntity
     public string Subtitle { get; set; } = string.Empty;
     public string Amount { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

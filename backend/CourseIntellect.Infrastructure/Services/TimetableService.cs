@@ -59,6 +59,42 @@ public sealed class TimetableService(CourseIntellectDbContext dbContext) : ITime
             })
             .ToList();
 
+        // 1) Öğretmenin kendi içinde aynı gün saat çakışması olamaz.
+        for (var i = 0; i < slots.Count; i++)
+        {
+            for (var j = i + 1; j < slots.Count; j++)
+            {
+                if (slots[i].DayOfWeek == slots[j].DayOfWeek && Overlaps(slots[i], slots[j]))
+                {
+                    throw new InvalidOperationException(
+                        $"{DayName(slots[i].DayOfWeek)} günü {slots[i].StartTime}-{slots[i].EndTime} ile {slots[j].StartTime}-{slots[j].EndTime} dersleri çakışıyor. Öğretmen aynı saatte birden fazla derse giremez.");
+                }
+            }
+        }
+
+        // 2) Aynı sınıf, aynı gün/saatte başka bir öğretmene atanamaz.
+        var classNames = slots.Select(s => s.ClassName).Where(c => !string.IsNullOrWhiteSpace(c)).Distinct().ToList();
+        if (classNames.Count > 0)
+        {
+            var otherSlots = await dbContext.TeacherTimetableSlots.AsNoTracking()
+                .Where(item => classNames.Contains(item.ClassName)
+                    && !((request.TeacherUserId != null && item.TeacherUserId == request.TeacherUserId)
+                        || (name != string.Empty && item.TeacherName == name)))
+                .ToListAsync(cancellationToken);
+
+            foreach (var slot in slots)
+            {
+                if (string.IsNullOrWhiteSpace(slot.ClassName)) continue;
+                var clash = otherSlots.FirstOrDefault(other =>
+                    other.ClassName == slot.ClassName && other.DayOfWeek == slot.DayOfWeek && Overlaps(slot, other));
+                if (clash is not null)
+                {
+                    throw new InvalidOperationException(
+                        $"{slot.ClassName} sınıfı {DayName(slot.DayOfWeek)} günü {slot.StartTime}-{slot.EndTime} saatinde {clash.TeacherName} öğretmenine atanmış. Aynı sınıfa aynı saatte iki öğretmen atanamaz.");
+                }
+            }
+        }
+
         if (slots.Count > 0)
         {
             await dbContext.TeacherTimetableSlots.AddRangeAsync(slots, cancellationToken);
@@ -79,4 +115,38 @@ public sealed class TimetableService(CourseIntellectDbContext dbContext) : ITime
 
     private static TimetableSlotResponse Map(TeacherTimetableSlot slot) => new(
         slot.Id, slot.TeacherUserId, slot.TeacherName, slot.DayOfWeek, slot.StartTime, slot.EndTime, slot.ClassName, slot.Lesson);
+
+    private static bool Overlaps(TeacherTimetableSlot a, TeacherTimetableSlot b)
+    {
+        var startA = ToMinutes(a.StartTime);
+        var endA = ToMinutes(a.EndTime);
+        var startB = ToMinutes(b.StartTime);
+        var endB = ToMinutes(b.EndTime);
+        if (startA is null || endA is null || startB is null || endB is null) return false;
+        return startA < endB && startB < endA;
+    }
+
+    private static int? ToMinutes(string? time)
+    {
+        if (string.IsNullOrWhiteSpace(time)) return null;
+        var parts = time.Trim().Split(':');
+        if (parts.Length < 2) return null;
+        if (int.TryParse(parts[0], out var hh) && int.TryParse(parts[1], out var mm))
+        {
+            return hh * 60 + mm;
+        }
+        return null;
+    }
+
+    private static string DayName(int dayOfWeek) => dayOfWeek switch
+    {
+        1 => "Pazartesi",
+        2 => "Salı",
+        3 => "Çarşamba",
+        4 => "Perşembe",
+        5 => "Cuma",
+        6 => "Cumartesi",
+        7 => "Pazar",
+        _ => $"Gün {dayOfWeek}",
+    };
 }

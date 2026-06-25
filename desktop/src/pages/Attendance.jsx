@@ -2,17 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   AlertTriangle, Calendar, CalendarDays, CheckCircle2, ChevronLeft, ChevronRight,
-  Clock, Download, Eye, FileText, Filter, MoreVertical, Plus, RefreshCw, Save,
-  Search, Upload, Users, X, XCircle,
+  Clock, Eye, FileText, Filter, MoreVertical, Plus, RefreshCw, Save,
+  Search, Trash2, Upload, Users, X,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '../components/ui/sheet';
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from '../components/ui/dialog';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { fetchAttendance, fetchClasses, fetchStudents, saveAttendance } from '../lib/api/modules';
+import { deleteAttendanceRecord, fetchAttendance, fetchClasses, fetchStudents, saveAttendance } from '../lib/api/modules';
 
 const statusLabels = {
   Katildi: 'Devam Etti',
@@ -97,7 +100,8 @@ export default function Attendance() {
   const [dateFrom, setDateFrom] = useState(() => new Date(new Date().setDate(new Date().getDate() - 14)).toISOString().slice(0, 10));
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [selectedStudent, setSelectedStudent] = useState(null);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [manageStudent, setManageStudent] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -203,6 +207,26 @@ export default function Attendance() {
       ...studentRows.map((item) => [item.fullName, item.className, item.present, item.absent, `%${item.absenceRate}`, formatDate(item.latestAbsence?.lessonDate)]),
     ]);
     toast({ title: 'Devamsızlık raporu indirildi' });
+  };
+
+  const manageRecords = useMemo(() => {
+    if (!manageStudent) return [];
+    return records
+      .filter((item) => normalize(item.studentName) === normalize(manageStudent.fullName))
+      .sort((a, b) => new Date(b.lessonDate) - new Date(a.lessonDate));
+  }, [manageStudent, records]);
+
+  const handleDeleteRecord = async (record) => {
+    try {
+      setDeletingId(record.id);
+      await deleteAttendanceRecord(record.id);
+      setRecords((prev) => prev.filter((item) => item.id !== record.id));
+      toast({ title: 'Kayıt silindi', description: `${record.lesson || 'Ders'} • ${formatDate(record.lessonDate)}` });
+    } catch (err) {
+      toast({ title: 'Kayıt silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const saveSingleAbsence = async () => {
@@ -354,7 +378,7 @@ export default function Attendance() {
                 {studentRows.map((student, index) => (
                   <tr key={student.id || student.fullName} className={`border-b last:border-b-0 ${selectedDetail?.fullName === student.fullName ? 'bg-blue-500/10' : ''}`}>
                     <td className="px-5 py-4">{index + 1}</td>
-                    <td className="px-5 py-4">
+                    <td className="cursor-pointer px-5 py-4" onClick={() => setSelectedStudent(student)}>
                       <div className="flex items-center gap-3">
                         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-xs font-black text-white">{student.fullName?.slice(0, 2)?.toUpperCase()}</div>
                         <div><p className="font-bold">{student.fullName}</p><p className="text-xs text-muted-foreground">{student.className}</p></div>
@@ -366,9 +390,9 @@ export default function Attendance() {
                     <td className="px-5 py-4 text-center font-bold text-rose-500">{student.latestAbsence ? formatDate(student.latestAbsence.lessonDate) : '-'}</td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
-                        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => { setSelectedStudent(student); setDrawerOpen(true); }}><Eye className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setSelectedStudent(student)}><Eye className="h-4 w-4" /></Button>
                         <Button variant="outline" size="icon" className="rounded-xl" onClick={() => { setAddForm((prev) => ({ ...prev, studentName: student.fullName })); setAddOpen(true); }}><Calendar className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => toast({ title: student.fullName, description: `Devamsızlık oranı %${student.absenceRate}` })}><MoreVertical className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="icon" className="rounded-xl" onClick={() => setManageStudent(student)}><MoreVertical className="h-4 w-4" /></Button>
                       </div>
                     </td>
                   </tr>
@@ -427,21 +451,38 @@ export default function Attendance() {
         </aside>
       </div>
 
-      <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent side="right" className="w-full overflow-y-auto bg-background sm:max-w-xl">
-          <SheetHeader><SheetTitle>{selectedDetail?.fullName} Devamsızlık Detayı</SheetTitle></SheetHeader>
-          <div className="mt-6 space-y-3">
-            {(selectedDetail?.records || []).map((item) => (
-              <div key={item.id} className="rounded-2xl border p-4">
-                <div className="flex items-center justify-between">
-                  <div><p className="font-bold">{item.lesson}</p><p className="text-sm text-muted-foreground">{formatDate(item.lessonDate)}</p></div>
+      <Dialog open={!!manageStudent} onOpenChange={(open) => !open && setManageStudent(null)}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{manageStudent?.fullName} — Devamsızlık İşlemleri</DialogTitle>
+            <DialogDescription>Öğrencinin devamsızlık kayıtlarını görüntüleyin ve silin.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {manageRecords.length === 0 ? (
+              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Bu öğrenci için kayıt bulunmuyor.</p>
+            ) : manageRecords.map((item) => (
+              <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border p-4">
+                <div>
+                  <p className="font-bold">{item.lesson || 'Ders'}</p>
+                  <p className="text-sm text-muted-foreground">{formatDate(item.lessonDate)}</p>
+                </div>
+                <div className="flex items-center gap-2">
                   <span className="rounded-full bg-muted px-3 py-1 text-xs font-bold">{statusLabels[toStatus(item.status)]}</span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="rounded-xl border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => handleDeleteRecord(item)}
+                    disabled={deletingId === item.id}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
-        </SheetContent>
-      </Sheet>
+        </DialogContent>
+      </Dialog>
 
       <Sheet open={addOpen} onOpenChange={setAddOpen}>
         <SheetContent side="right" className="w-full bg-background sm:max-w-md">

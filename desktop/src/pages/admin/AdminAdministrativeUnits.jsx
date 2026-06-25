@@ -2,19 +2,20 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  Bell,
-  CheckCircle2,
   FileText,
   Megaphone,
   UserPlus,
   Users,
+  ShieldCheck,
+  ClipboardList,
+  FileWarning,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { fetchAnnouncements, fetchStaff, fetchStudents } from '../../lib/api/modules';
+import { fetchAnnouncements, fetchAdminDocuments, fetchAdminOverview } from '../../lib/api/modules';
 
 function latestByDate(items, dateFields = ['createdAtUtc', 'createdAt', 'date']) {
   return [...items].sort((a, b) => {
@@ -26,8 +27,8 @@ function latestByDate(items, dateFields = ['createdAtUtc', 'createdAt', 'date'])
 
 export default function AdminAdministrativeUnits() {
   const navigate = useNavigate();
-  const [students, setStudents] = useState([]);
-  const [staff, setStaff] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [overview, setOverview] = useState(null);
   const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -36,13 +37,13 @@ export default function AdminAdministrativeUnits() {
     try {
       setLoading(true);
       setError('');
-      const [studentPayload, staffPayload, announcementPayload] = await Promise.all([
-        fetchStudents().catch(() => []),
-        fetchStaff().catch(() => []),
+      const [documentPayload, overviewPayload, announcementPayload] = await Promise.all([
+        fetchAdminDocuments().catch(() => []),
+        fetchAdminOverview().catch(() => null),
         fetchAnnouncements({ includeAll: true }).catch(() => []),
       ]);
-      setStudents(Array.isArray(studentPayload) ? studentPayload : []);
-      setStaff(Array.isArray(staffPayload) ? staffPayload : []);
+      setDocuments(Array.isArray(documentPayload) ? documentPayload : []);
+      setOverview(overviewPayload);
       setAnnouncements(Array.isArray(announcementPayload) ? announcementPayload : []);
     } catch (err) {
       setError(err.message || 'İdari birim verileri alınamadı.');
@@ -55,10 +56,9 @@ export default function AdminAdministrativeUnits() {
     loadData();
   }, [loadData]);
 
-  const latestStudents = useMemo(() => latestByDate(students).slice(0, 4), [students]);
-  const latestStaff = useMemo(() => latestByDate(staff).slice(0, 4), [staff]);
+  const latestDocuments = useMemo(() => latestByDate(documents).slice(0, 5), [documents]);
   const activeAnnouncements = useMemo(
-    () => announcements.filter((item) => !String(item.detail || '').startsWith('LIVE_LESSON')).slice(0, 4),
+    () => announcements.filter((item) => !String(item.detail || '').startsWith('LIVE_LESSON')).slice(0, 5),
     [announcements],
   );
 
@@ -110,8 +110,8 @@ export default function AdminAdministrativeUnits() {
           </div>
           <div className="grid grid-cols-3 gap-3">
             {[
-              ['Öğrenci', students.length],
-              ['Kadro', staff.length],
+              ['Belge', documents.length],
+              ['Bekleyen Onay', overview?.pendingApprovals || 0],
               ['Duyuru', activeAnnouncements.length],
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border bg-muted/30 px-5 py-4">
@@ -141,51 +141,63 @@ export default function AdminAdministrativeUnits() {
       <div className="grid gap-5 xl:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Son Öğrenci Kayıtları</CardTitle>
+            <CardTitle className="flex items-center gap-2"><FileText className="h-5 w-5 text-emerald-600" />Belgeler</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {latestStudents.map((student) => (
-              <div key={student.id || student.username || student.fullName} className="rounded-xl border bg-muted/20 p-4">
-                <p className="font-semibold">{student.fullName}</p>
-                <p className="text-sm text-muted-foreground">{student.className || 'Sınıf yok'} - {student.currentSchool || student.programType || 'Kayıt'}</p>
+            {latestDocuments.map((doc) => (
+              <div key={doc.id || doc.title} className="rounded-xl border bg-muted/20 p-4">
+                <p className="font-semibold">{doc.title || 'Belge'}</p>
+                <p className="text-sm text-muted-foreground">{doc.category || 'Kategori yok'}{doc.documentNo ? ` • ${doc.documentNo}` : ''}{doc.status ? ` • ${doc.status}` : ''}</p>
               </div>
             ))}
-            {latestStudents.length === 0 ? <p className="text-sm text-muted-foreground">Kayıtlı öğrenci bulunamadı.</p> : null}
+            {latestDocuments.length === 0 ? <p className="text-sm text-muted-foreground">Kayıtlı belge bulunamadı.</p> : null}
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/documents')}>
+              <FileText className="mr-2 h-4 w-4" />
+              Belge Merkezi
+            </Button>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <CardTitle>Son Kadro Kayıtları</CardTitle>
+            <CardTitle>İdari Özet</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {latestStaff.map((person) => (
-              <div key={person.id || person.username || person.fullName} className="rounded-xl border bg-muted/20 p-4">
-                <p className="font-semibold">{person.fullName}</p>
-                <p className="text-sm text-muted-foreground">{person.primaryRole || person.role || 'Personel'} - {person.departmentOrBranch || 'Bölüm yok'}</p>
-              </div>
-            ))}
-            {latestStaff.length === 0 ? <p className="text-sm text-muted-foreground">Kayıtlı personel bulunamadı.</p> : null}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>İdari Kontrol Noktaları</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
             {[
-              'Kayıt evrakı, veli iletişim ve program bilgileri tamamlandı mı?',
-              'Personel rol, branş ve kampüs bilgileri doğru mu?',
-              'Yeni kayıt sonrası öğrenci ve veli duyurusu yayınlandı mı?',
-            ].map((item) => (
-              <div key={item} className="flex gap-3 rounded-xl border bg-muted/20 p-4">
-                <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-600" />
-                <p className="text-sm text-muted-foreground">{item}</p>
+              ['Bekleyen Onay', overview?.pendingApprovals || 0, ShieldCheck, '/admin/personnel-approvals'],
+              ['Açık Görev', overview?.openTasks || 0, ClipboardList, '/admin/task-center'],
+              ['Süresi Dolan Evrak', overview?.expiringDocuments || 0, FileWarning, '/admin/documents'],
+            ].map(([label, value, Icon, route]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => navigate(route)}
+                className="flex w-full items-center gap-3 rounded-xl border bg-muted/20 p-4 text-left transition-colors hover:bg-muted/40"
+              >
+                <Icon className="h-6 w-6 text-brand-primary" />
+                <div className="flex-1">
+                  <p className="text-2xl font-bold">{value}</p>
+                  <p className="text-sm text-muted-foreground">{label}</p>
+                </div>
+              </button>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Megaphone className="h-5 w-5 text-amber-600" />Son Duyurular</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {activeAnnouncements.map((item) => (
+              <div key={item.id || item.title} className="rounded-xl border bg-muted/20 p-4">
+                <p className="font-semibold">{item.title || 'Duyuru'}</p>
+                <p className="text-sm text-muted-foreground">{item.audience || 'Tüm kurum'}{item.dateLabel || item.date ? ` • ${item.dateLabel || item.date}` : ''}</p>
               </div>
             ))}
-            <Button variant="outline" onClick={() => navigate('/admin/announcements')}>
-              <Bell className="mr-2 h-4 w-4" />
+            {activeAnnouncements.length === 0 ? <p className="text-sm text-muted-foreground">Yayınlanmış duyuru bulunamadı.</p> : null}
+            <Button variant="outline" size="sm" onClick={() => navigate('/admin/announcements')}>
+              <Megaphone className="mr-2 h-4 w-4" />
               Duyurulara Git
             </Button>
           </CardContent>

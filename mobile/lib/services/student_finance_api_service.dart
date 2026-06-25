@@ -168,19 +168,4 @@ class StudentFinanceApiService {
     });
     return Map<String, dynamic>.from(result as Map);
   }
-
-  Future<Map<String, dynamic>> issueEInvoice({
-    required String studentName,
-    required double amount,
-    required double vatRate,
-    String? description,
-  }) async {
-    final result = await _post('/api/student-finance/e-invoice/issue', {
-      'studentName': studentName,
-      'amount': amount,
-      'vatRate': vatRate,
-      'description': ?description,
-    });
-    return Map<String, dynamic>.from(result as Map);
-  }
 }

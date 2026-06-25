@@ -199,8 +199,54 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
               style: TextStyle(color: color, fontWeight: FontWeight.w800),
             ),
           ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'delete') _confirmDelete(context, item);
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(Icons.delete_outline, color: Color(0xFFB42318)),
+                    SizedBox(width: 8),
+                    Text('Devamsızlık kaydını sil'),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context, AttendanceRecord item) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Kaydı sil'),
+        content: Text('${item.studentName} • ${item.lesson} (${item.date.day}.${item.date.month}.${item.date.year}) kaydı silinsin mi?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Sil')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await AttendanceService.instance.deleteRecord(item.id);
+      if (!mounted) return;
+      setState(() {});
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Devamsızlık kaydı silindi.'), behavior: SnackBarBehavior.floating),
+      );
+    } catch (error) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('Silinemedi: $error'), behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 }

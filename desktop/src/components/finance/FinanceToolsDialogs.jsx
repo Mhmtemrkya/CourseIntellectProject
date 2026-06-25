@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { Loader2, Calculator, FileCheck2, FileText } from 'lucide-react';
+import { Loader2, Calculator, FileCheck2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useToast } from '../../hooks/use-toast';
-import { calculatePayroll, reconcileFinance, issueFinanceEInvoice } from '../../lib/api/modules';
+import { calculatePayroll, reconcileFinance } from '../../lib/api/modules';
 
 function tl(value) {
   return `${Number(value || 0).toLocaleString('tr-TR')} ₺`;
@@ -139,63 +139,3 @@ export function ReconciliationDialog({ onClose }) {
   );
 }
 
-// ---- e-Fatura kes (KDV ayrıştırma) ----
-export function EInvoiceDialog({ onClose }) {
-  const { toast } = useToast();
-  const [studentName, setStudentName] = useState('');
-  const [amount, setAmount] = useState('');
-  const [vatRate, setVatRate] = useState('20');
-  const [result, setResult] = useState(null);
-  const [busy, setBusy] = useState(false);
-
-  const issue = async () => {
-    const value = Number(amount);
-    if (!value || value <= 0) {
-      toast({ title: 'Geçerli bir tutar girin.', variant: 'destructive' });
-      return;
-    }
-    try {
-      setBusy(true);
-      const res = await issueFinanceEInvoice({
-        studentName: studentName.trim(),
-        amount: value,
-        vatRate: Number(vatRate) || 0,
-        description: 'Eğitim hizmeti',
-      });
-      setResult(res);
-      toast({ title: res.configured ? 'e-Fatura kesildi' : 'Örnek (stub) belge üretildi', description: res.message || res.ettn });
-    } catch (err) {
-      toast({ title: 'e-Fatura kesilemedi', description: err.message, variant: 'destructive' });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="w-[min(96vw,560px)] max-w-[560px]">
-        <DialogHeader><DialogTitle className="flex items-center gap-2"><FileText className="h-5 w-5" /> e-Fatura / e-Arşiv</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <Input placeholder="Öğrenci / müşteri adı" value={studentName} onChange={(e) => setStudentName(e.target.value)} />
-          <div className="grid grid-cols-2 gap-3">
-            <Input type="number" min="0" placeholder="Tutar (KDV dahil)" value={amount} onChange={(e) => setAmount(e.target.value)} />
-            <Input type="number" min="0" placeholder="KDV %" value={vatRate} onChange={(e) => setVatRate(e.target.value)} />
-          </div>
-          <Button onClick={issue} disabled={busy} className="w-full">
-            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileText className="mr-2 h-4 w-4" />} Faturayı Kes
-          </Button>
-          {result ? (
-            <div className="rounded-xl border p-4 text-sm space-y-1">
-              <div className="flex justify-between"><span className="text-muted-foreground">Sağlayıcı</span><span>{result.provider} {result.configured ? '' : '(stub)'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">ETTN</span><span className="font-mono text-xs">{result.ettn}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Net</span><span>{tl(result.netAmount)}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">KDV</span><span>{tl(result.vatAmount)}</span></div>
-              <div className="flex justify-between font-bold border-t pt-1"><span>Genel Toplam</span><span>{tl(result.grossAmount)}</span></div>
-            </div>
-          ) : null}
-        </div>
-        <div className="mt-3 flex justify-end"><Button variant="outline" onClick={onClose}>Kapat</Button></div>
-      </DialogContent>
-    </Dialog>
-  );
-}

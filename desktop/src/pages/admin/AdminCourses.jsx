@@ -20,8 +20,11 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
+  createAnnouncement,
   createCourse,
+  createNotification,
   deleteCourse,
+  fetchClasses,
   fetchCourses,
   updateCourse,
 } from '../../lib/api/modules';
@@ -34,6 +37,20 @@ const emptyForm = {
   duration: '',
   level: '',
   isActive: true,
+};
+
+// Duyuru hedef rolleri: audience (duyuru) + targetRole (mobil bildirim) eşlemesi.
+const ANNOUNCE_ROLES = [
+  { key: 'Ogrenci', label: 'Öğrenci', targetRole: 'Student' },
+  { key: 'Veli', label: 'Veli', targetRole: 'Parent' },
+  { key: 'Ogretmen', label: 'Öğretmen', targetRole: 'Teacher' },
+];
+
+const emptyAnnounce = {
+  enabled: false,
+  audiences: [],
+  className: '',
+  message: '',
 };
 
 function moneyLabel(value) {
@@ -51,6 +68,8 @@ export default function AdminCourses() {
   const [formOpen, setFormOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState(null);
   const [form, setForm] = useState(emptyForm);
+  const [announce, setAnnounce] = useState(emptyAnnounce);
+  const [classes, setClasses] = useState([]);
 
   const loadCourses = useCallback(async () => {
     try {
@@ -69,6 +88,19 @@ export default function AdminCourses() {
     loadCourses();
   }, [loadCourses]);
 
+  useEffect(() => {
+    fetchClasses().then((list) => setClasses(Array.isArray(list) ? list : [])).catch(() => setClasses([]));
+  }, []);
+
+  const toggleAudience = (key) => {
+    setAnnounce((prev) => ({
+      ...prev,
+      audiences: prev.audiences.includes(key)
+        ? prev.audiences.filter((item) => item !== key)
+        : [...prev.audiences, key],
+    }));
+  };
+
   const stats = useMemo(() => ({
     total: courses.length,
     active: courses.filter((item) => item.isActive).length,
@@ -78,11 +110,13 @@ export default function AdminCourses() {
   const openCreate = () => {
     setEditingCourse(null);
     setForm(emptyForm);
+    setAnnounce(emptyAnnounce);
     setFormOpen(true);
   };
 
   const openEdit = (course) => {
     setEditingCourse(course);
+    setAnnounce(emptyAnnounce);
     setForm({
       name: course.name || '',
       description: course.description || '',
@@ -95,9 +129,39 @@ export default function AdminCourses() {
     setFormOpen(true);
   };
 
+  // Kurs duyurusunu seçilen rollerin duyurularına ekler ve mobil bildirim olarak düşer.
+  const publishCourseAnnouncement = async (courseName) => {
+    const title = `${courseName} kursu açıldı`;
+    const detail = announce.message.trim() || `${courseName} kursumuz açıldı. Detaylar için kurum yönetimi ile iletişime geçebilirsiniz.`;
+    try {
+      await Promise.all(announce.audiences.flatMap((audience) => {
+        const role = ANNOUNCE_ROLES.find((item) => item.key === audience);
+        const className = audience === 'Ogrenci' && announce.className ? announce.className : undefined;
+        return [
+          createAnnouncement({ title, detail, audience, className }),
+          createNotification({
+            title,
+            message: detail,
+            timeLabel: 'Şimdi',
+            audience,
+            targetRole: role?.targetRole || '',
+            category: 'Course',
+          }),
+        ];
+      }));
+      toast({ title: 'Duyuru yayınlandı', description: 'İlgili rollere duyuru ve bildirim gönderildi.' });
+    } catch (err) {
+      toast({ title: 'Duyuru gönderilemedi', description: err.message || 'Kurs kaydedildi ancak duyuru yayınlanamadı.', variant: 'destructive' });
+    }
+  };
+
   const handleSave = async () => {
     if (!form.name.trim()) {
       toast({ title: 'Kurs adı zorunludur.', variant: 'destructive' });
+      return;
+    }
+    if (!editingCourse && announce.enabled && announce.audiences.length === 0) {
+      toast({ title: 'Rol seçin', description: 'Duyuru için en az bir rol seçmelisiniz.', variant: 'destructive' });
       return;
     }
 
@@ -119,10 +183,14 @@ export default function AdminCourses() {
       } else {
         await createCourse(payload);
         toast({ title: 'Kurs oluşturuldu.' });
+        if (announce.enabled && announce.audiences.length > 0) {
+          await publishCourseAnnouncement(payload.name);
+        }
       }
       setFormOpen(false);
       setEditingCourse(null);
       setForm(emptyForm);
+      setAnnounce(emptyAnnounce);
       await loadCourses();
     } catch (err) {
       toast({ title: err.message || 'Kurs kaydedilemedi.', variant: 'destructive' });
@@ -282,6 +350,63 @@ export default function AdminCourses() {
               </div>
               <Switch checked={form.isActive} onCheckedChange={(value) => setForm((prev) => ({ ...prev, isActive: value }))} />
             </div>
+
+            {!editingCourse ? (
+              <div className="space-y-4 rounded-xl border p-4 md:col-span-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Duyuru olarak yayınla</Label>
+                    <p className="text-sm text-muted-foreground">Kurs açılışını seçili rollerin duyurularında göster ve mobil bildirim gönder.</p>
+                  </div>
+                  <Switch checked={announce.enabled} onCheckedChange={(value) => setAnnounce((prev) => ({ ...prev, enabled: value }))} />
+                </div>
+
+                {announce.enabled ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Hedef Roller</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {ANNOUNCE_ROLES.map((role) => (
+                          <Button
+                            key={role.key}
+                            type="button"
+                            variant={announce.audiences.includes(role.key) ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => toggleAudience(role.key)}
+                          >
+                            {role.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {announce.audiences.includes('Ogrenci') ? (
+                      <div className="space-y-2">
+                        <Label>Sınıf (opsiyonel)</Label>
+                        <select
+                          value={announce.className}
+                          onChange={(event) => setAnnounce((prev) => ({ ...prev, className: event.target.value }))}
+                          className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                        >
+                          <option value="">Tüm öğrenciler</option>
+                          {classes.map((item) => <option key={item} value={item}>{item}</option>)}
+                        </select>
+                      </div>
+                    ) : null}
+
+                    <div className="space-y-2">
+                      <Label>Duyuru Metni</Label>
+                      <Textarea
+                        rows={2}
+                        value={announce.message}
+                        onChange={(event) => setAnnounce((prev) => ({ ...prev, message: event.target.value }))}
+                        placeholder={`${form.name || 'Kurs'} kursumuz açıldı...`}
+                      />
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>Vazgeç</Button>

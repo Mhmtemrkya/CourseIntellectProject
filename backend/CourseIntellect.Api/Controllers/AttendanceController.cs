@@ -60,4 +60,12 @@ public sealed class AttendanceController(
         var items = await attendanceService.SaveLessonAttendanceAsync(request, cancellationToken);
         return Ok(items);
     }
+
+    [HttpDelete("{id:guid}")]
+    [Authorize(Roles = "Teacher,Admin,Administrative")]
+    public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
+    {
+        var deleted = await attendanceService.DeleteAsync(id, cancellationToken);
+        return deleted ? Ok(new { deleted = true }) : NotFound();
+    }
 }

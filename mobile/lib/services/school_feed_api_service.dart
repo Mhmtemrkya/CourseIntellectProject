@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 import 'exam_results_store.dart';
 import 'linked_children_service.dart';
 import 'live_room_api_service.dart';
@@ -152,7 +153,7 @@ class SchoolFeedApiService {
                 .join(','),
         },
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -211,7 +212,7 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/examresults').replace(
         queryParameters: queryParameters.isEmpty ? null : queryParameters,
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -267,7 +268,7 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/announcements'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
       },
       body: jsonEncode({
         'title': title.trim(),
@@ -319,7 +320,7 @@ class SchoolFeedApiService {
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/announcements/$id'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -414,7 +415,7 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/examresults'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}',
+        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
       },
       body: jsonEncode({
         'examTitle': examTitle.trim(),

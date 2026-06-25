@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../utils/input_formatters.dart';
 
+import '../services/admin_directory_api_service.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/credentials_pdf_service.dart';
@@ -65,6 +66,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final Set<String> _teacherAssignedClasses = {};
   List<String> _classOptions = const [];
   List<Map<String, dynamic>> _branches = const [];
+  List<AdminStaffRecord> _allStaff = const [];
+  String _staffRoleFilter = 'Teacher';
   String? _branchId;
   String _teacherMaritalStatus = 'Bekar';
   String _personnelMaritalStatus = 'Bekar';
@@ -76,6 +79,17 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _tabController = TabController(length: 2, vsync: this);
     _loadClassOptions();
     _loadBranches();
+    _loadStaff();
+  }
+
+  Future<void> _loadStaff() async {
+    try {
+      final staff = await AdminDirectoryApiService.instance.fetchStaff();
+      if (!mounted) return;
+      setState(() => _allStaff = staff);
+    } catch (_) {
+      /* personel listesi alınamadıysa panel boş kalır */
+    }
   }
 
   Future<void> _loadBranches() async {
@@ -170,6 +184,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               AdminHeroMetric(label: 'Personel', value: 'Hesap oluşur'),
             ],
           ),
+          const SizedBox(height: 16),
+          _staffByRolePanel(context),
           const SizedBox(height: 16),
           AdminPanel(
             padding: const EdgeInsets.fromLTRB(10, 10, 10, 16),
@@ -799,6 +815,76 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
 
   bool _isValidEmail(String value) {
     return RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(value);
+  }
+
+  Widget _staffByRolePanel(BuildContext context) {
+    const roles = [
+      ('Teacher', 'Öğretmen'),
+      ('Administrative', 'İdari Personel'),
+      ('Accounting', 'Muhasebe'),
+      ('ServiceDriver', 'Servis Şoförü'),
+      ('Cafeteria', 'Yemekhaneci'),
+    ];
+    final selected = roles.firstWhere((r) => r.$1 == _staffRoleFilter, orElse: () => roles.first);
+    String norm(String v) => v.trim().toLowerCase();
+    final filtered = _allStaff.where((s) {
+      final role = norm(s.role);
+      return role == norm(selected.$1) || role == norm(selected.$2);
+    }).toList();
+
+    return AdminPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AdminSectionTitle(title: 'Role Göre Personel'),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            children: roles.map((r) {
+              return ChoiceChip(
+                label: Text(r.$2),
+                selected: r.$1 == _staffRoleFilter,
+                onSelected: (_) => setState(() => _staffRoleFilter = r.$1),
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 12),
+          Text('${selected.$2} • ${filtered.length} kişi', style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 8),
+          if (filtered.isEmpty)
+            const Text('Bu rolde kayıtlı personel yok.')
+          else
+            ...filtered.map(
+              (s) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: const Color(0xFF7C3AED).withValues(alpha: 0.12),
+                      child: Text(
+                        s.fullName.isEmpty ? '?' : s.fullName.characters.first,
+                        style: const TextStyle(color: Color(0xFF7C3AED), fontWeight: FontWeight.w800, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(s.fullName, style: const TextStyle(fontWeight: FontWeight.w600)),
+                          if (s.departmentOrBranch.isNotEmpty)
+                            Text(s.departmentOrBranch, style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 
   Widget _submitButton({

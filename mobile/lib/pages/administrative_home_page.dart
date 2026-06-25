@@ -9,7 +9,6 @@ import 'admin_class_management_page.dart';
 import 'admin_announcements_page.dart';
 import 'admin_meeting_overview_page.dart';
 import 'admin_operations_page.dart';
-import 'admin_parent_registration_page.dart';
 import 'admin_personnel_approvals_page.dart';
 import 'admin_schedule_list_page.dart';
 import 'admin_role_management_page.dart';
@@ -172,21 +171,6 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   value: 'Çizelge, denge, boş günler',
                   color: const Color(0xFFF59E0B),
                   onTap: () => _openPage(const DutiesBoardPage()),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _metricCard(
-                  context,
-                  icon: Icons.family_restroom_outlined,
-                  title: 'Veli Kaydı',
-                  value: 'Veli odaklı kayıt oluştur',
-                  color: const Color(0xFF7C3AED),
-                  onTap: () => _openPage(const AdminParentRegistrationPage()),
                 ),
               ),
             ],

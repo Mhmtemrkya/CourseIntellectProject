@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   Plus,
-  FileQuestion,
   ClipboardList,
   BarChart3,
   Calendar,
@@ -33,15 +32,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../components/ui/select';
-import { Textarea } from '../components/ui/textarea';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import {
   createExamResult,
-  createQuestionBankItem,
   fetchExamResults,
-  fetchQuestionBank,
   fetchStudents,
 } from '../lib/api/modules';
 
@@ -52,148 +48,6 @@ const containerVariants = {
     transition: { staggerChildren: 0.1 },
   },
 };
-
-function AddQuestionDialog({ open, onOpenChange, classes, onCreated }) {
-  const { toast } = useToast();
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    subject: '',
-    topic: '',
-    difficulty: 'Orta',
-    questionText: '',
-    optionA: '',
-    optionB: '',
-    optionC: '',
-    optionD: '',
-    answer: 'A',
-    teacher: '',
-    classTargets: [],
-  });
-
-  const handleCreate = async () => {
-    if (!form.subject || !form.topic || !form.questionText) {
-      toast({
-        title: 'Eksik bilgi',
-        description: 'Ders, konu ve soru metni zorunlu.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      setSaving(true);
-      // Backend QuestionBank DTO 'answer' alanını desteklemiyor; çoktan
-      // seçmeli soru için 'correctOptionIndex' (0..3) bekleniyor. Eskiden
-      // gönderilen 'answer' silent-ignored idi → doğru cevap kaybediliyordu.
-      const letterToIndex = { A: 0, B: 1, C: 2, D: 3 };
-      const correctOptionIndex = letterToIndex[String(form.answer).toUpperCase()] ?? 0;
-      const created = await createQuestionBankItem({
-        subject: form.subject,
-        topic: form.topic,
-        difficulty: form.difficulty,
-        questionText: form.questionText,
-        type: 'MultipleChoice',
-        options: [form.optionA, form.optionB, form.optionC, form.optionD].filter(Boolean),
-        correctOptionIndex,
-        classTargets: form.classTargets,
-        teacher: form.teacher || 'Öğretmen',
-      });
-      onCreated(created);
-      onOpenChange(false);
-    } catch (err) {
-      toast({
-        title: 'Soru oluşturulamadı',
-        description: err.message || 'Tekrar deneyin.',
-        variant: 'destructive',
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const toggleClass = (value) => {
-    setForm((prev) => ({
-      ...prev,
-      classTargets: prev.classTargets.includes(value)
-        ? prev.classTargets.filter((item) => item !== value)
-        : [...prev.classTargets, value],
-    }));
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Yeni Soru Ekle</DialogTitle>
-          <DialogDescription>Soru bankasına yeni soru ekleyin</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Ders</Label>
-              <Input value={form.subject} onChange={(e) => setForm((prev) => ({ ...prev, subject: e.target.value }))} />
-            </div>
-            <div className="space-y-2">
-              <Label>Konu</Label>
-              <Input value={form.topic} onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))} />
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Zorluk</Label>
-              <Select value={form.difficulty} onValueChange={(value) => setForm((prev) => ({ ...prev, difficulty: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Kolay">Kolay</SelectItem>
-                  <SelectItem value="Orta">Orta</SelectItem>
-                  <SelectItem value="Zor">Zor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Doğru Cevap</Label>
-              <Select value={form.answer} onValueChange={(value) => setForm((prev) => ({ ...prev, answer: value }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {['A', 'B', 'C', 'D'].map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Soru</Label>
-            <Textarea value={form.questionText} onChange={(e) => setForm((prev) => ({ ...prev, questionText: e.target.value }))} />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            {['A', 'B', 'C', 'D'].map((option) => (
-              <div key={option} className="space-y-2">
-                <Label>{option} Şıkkı</Label>
-                <Input
-                  value={form[`option${option}`]}
-                  onChange={(e) => setForm((prev) => ({ ...prev, [`option${option}`]: e.target.value }))}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="space-y-2">
-            <Label>Hedef Sınıflar</Label>
-            <div className="flex flex-wrap gap-2">
-              {classes.map((cls) => (
-                <Button key={cls} type="button" size="sm" variant={form.classTargets.includes(cls) ? 'default' : 'outline'} onClick={() => toggleClass(cls)}>
-                  {cls}
-                </Button>
-              ))}
-            </div>
-          </div>
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
-          <Button onClick={handleCreate} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
   const { toast } = useToast();
@@ -298,11 +152,9 @@ function AddExamResultDialog({ open, onOpenChange, students, onCreated }) {
 }
 
 export default function Exams() {
-  const [questionDialogOpen, setQuestionDialogOpen] = useState(false);
   const [resultDialogOpen, setResultDialogOpen] = useState(false);
   const [selectedExam, setSelectedExam] = useState(null);
   const [search, setSearch] = useState('');
-  const [questions, setQuestions] = useState([]);
   const [results, setResults] = useState([]);
   const [students, setStudents] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -312,12 +164,10 @@ export default function Exams() {
     try {
       setLoading(true);
       setError('');
-      const [questionList, resultList, studentList] = await Promise.all([
-        fetchQuestionBank().catch(() => []),
+      const [resultList, studentList] = await Promise.all([
         fetchExamResults().catch(() => []),
         fetchStudents().catch(() => []),
       ]);
-      setQuestions(questionList);
       setResults(resultList);
       setStudents(studentList);
     } catch (err) {
@@ -331,7 +181,17 @@ export default function Exams() {
     loadData();
   }, [loadData]);
 
-  const classes = useMemo(() => [...new Set(students.map((student) => student.className).filter(Boolean))], [students]);
+  const classPerformance = useMemo(() => {
+    const names = [...new Set(results.map((item) => item.className).filter(Boolean))];
+    return names.map((className) => {
+      const items = results.filter((result) => result.className === className);
+      return {
+        className,
+        count: items.length,
+        average: items.length ? Math.round(items.reduce((sum, item) => sum + Number(item.score || 0), 0) / items.length) : 0,
+      };
+    }).sort((a, b) => b.average - a.average);
+  }, [results]);
   const subjectPerformance = useMemo(() => {
     const subjects = [...new Set(results.map((item) => item.subject).filter(Boolean))];
     return subjects.map((subject) => {
@@ -392,66 +252,47 @@ export default function Exams() {
 
       {error ? <ErrorBanner title="Sınav verileri alınamadı" message={error} onRetry={loadData} /> : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {[
-          [questions.length, 'Soru Bankası'],
-          [results.length, 'Toplam Sonuç'],
-          [examSummaries.length, 'Sınav Özeti'],
-          [classes.length, 'Aktif Sınıf'],
-        ].map(([value, label]) => (
-          <Card key={label}>
-            <CardContent className="p-5">
-              <p className="text-sm text-muted-foreground">{label}</p>
-              <p className="mt-1 text-2xl font-bold">{value}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Toplam Sonuç — Sınıf, Ders ve Şube Bazlı</CardTitle>
+          <CardDescription>Aktif şube için {results.length} sınav sonucu kaydı</CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-6 lg:grid-cols-3">
+          <div className="rounded-2xl border bg-muted/20 p-5 text-center">
+            <p className="text-sm text-muted-foreground">Toplam Sonuç</p>
+            <p className="mt-1 text-4xl font-black">{results.length}</p>
+            <p className="mt-2 text-xs text-muted-foreground">{classPerformance.length} sınıf • {subjectPerformance.length} ders</p>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Sınıf Bazlı</p>
+            <div className="space-y-2 max-h-56 overflow-y-auto">
+              {classPerformance.length === 0 ? <p className="text-sm text-muted-foreground">Kayıt yok.</p> : classPerformance.map((item) => (
+                <div key={item.className} className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                  <span>{item.className}</span>
+                  <span className="flex items-center gap-2 text-muted-foreground"><span>{item.count} sonuç</span><Badge variant="outline">Ort. {item.average}</Badge></span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Ders Bazlı</p>
+            <div className="space-y-2 max-h-56 overflow-y-auto">
+              {subjectPerformance.length === 0 ? <p className="text-sm text-muted-foreground">Kayıt yok.</p> : subjectPerformance.map((item) => (
+                <div key={item.subject} className="flex items-center justify-between rounded-lg border bg-muted/20 px-3 py-2 text-sm">
+                  <span>{item.subject}</span>
+                  <span className="flex items-center gap-2 text-muted-foreground"><span>{item.count} sonuç</span><Badge variant="outline">Ort. {item.average}</Badge></span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="exams" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3 lg:w-auto lg:inline-grid">
-          <TabsTrigger value="questions" className="flex items-center gap-2"><FileQuestion className="h-4 w-4" />Soru Bankası</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 lg:w-auto lg:inline-grid">
           <TabsTrigger value="exams" className="flex items-center gap-2"><ClipboardList className="h-4 w-4" />Sınavlar</TabsTrigger>
           <TabsTrigger value="results" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" />Sonuçlar</TabsTrigger>
         </TabsList>
-
-        <TabsContent value="questions" className="space-y-6">
-          <div className="flex justify-end">
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setQuestionDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Soru
-            </Button>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {questions.map((question) => (
-              <Card key={question.id} className="hover:shadow-card-hover transition-all">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex gap-2 flex-wrap">
-                      <Badge variant="outline">{question.subject}</Badge>
-                      <Badge variant="outline">{question.topic}</Badge>
-                      <Badge>{question.difficulty}</Badge>
-                    </div>
-                    <Badge variant="secondary">{question.usageCount || 0} kullanım</Badge>
-                  </div>
-                  <p className="text-sm mb-3">{question.questionText}</p>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {(question.options || []).map((option, index) => (
-                      <div key={`${question.id}-option-${index}`} className={`p-2 rounded-lg ${question.answer === String.fromCharCode(65 + index) ? 'bg-green-100 dark:bg-green-900/30 border border-green-300' : 'bg-muted'}`}>
-                        <span className="font-medium mr-2">{String.fromCharCode(65 + index)})</span>
-                        {option}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {(question.classTargets || []).map((item) => <Badge key={`${question.id}-${item}`} variant="outline">{item}</Badge>)}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
 
         <TabsContent value="exams" className="space-y-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -529,13 +370,6 @@ export default function Exams() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      <AddQuestionDialog
-        open={questionDialogOpen}
-        onOpenChange={setQuestionDialogOpen}
-        classes={classes}
-        onCreated={(created) => setQuestions((prev) => [created, ...prev])}
-      />
 
       <AddExamResultDialog
         open={resultDialogOpen}

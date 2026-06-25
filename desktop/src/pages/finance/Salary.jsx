@@ -22,7 +22,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
-import { fetchStaff, createSalary, fetchAccountingDashboard } from '../../lib/api/modules';
+import { fetchStaff, createSalary, fetchAccountingDashboard, calculatePayroll } from '../../lib/api/modules';
 import { parseFinanceMoney } from '../../lib/financeDocuments';
 
 const containerVariants = {
@@ -66,6 +66,8 @@ export default function Salary() {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filterMonth, setFilterMonth] = useState(String(new Date().getMonth()));
+  const [payroll, setPayroll] = useState(null);
+  const [calculating, setCalculating] = useState(false);
 
   const [form, setForm] = useState({
     staffName: '',
@@ -117,28 +119,53 @@ export default function Salary() {
     [filtered],
   );
 
+  const handleCalculate = async () => {
+    const gross = Number(form.amount);
+    if (!gross || gross <= 0) {
+      toast({ title: 'Geçerli bir brüt maaş girin.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setCalculating(true);
+      const result = await calculatePayroll({ grossSalary: gross, employee: form.staffName || null, year: Number(form.year) || null });
+      setPayroll(result);
+    } catch (err) {
+      toast({ title: 'Bordro hesaplanamadı', description: err.message, variant: 'destructive' });
+    } finally {
+      setCalculating(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({ staffName: '', amount: '', month: String(new Date().getMonth()), year: String(new Date().getFullYear()), notes: '' });
+    setPayroll(null);
+  };
+
   const handleCreate = async () => {
     if (!form.staffName || !form.amount) {
-      toast({ title: 'Personel ve tutar zorunludur.', variant: 'destructive' });
+      toast({ title: 'Personel ve brüt maaş zorunludur.', variant: 'destructive' });
       return;
     }
     try {
       setSaving(true);
       const selectedStaff = staff.find((item) => item.fullName === form.staffName);
       const payDate = `${form.year}-${String(Number(form.month) + 1).padStart(2, '0')}-01`;
+      const breakdownNote = payroll
+        ? `Brüt ${formatCurrency(payroll.gross)} → Net ${formatCurrency(payroll.net)} (SGK ${formatCurrency(payroll.sgkEmployee)}, Gelir V. ${formatCurrency(payroll.incomeTax)}, Damga ${formatCurrency(payroll.stampTax)})`
+        : '';
       await createSalary({
         employee: form.staffName,
         role: selectedStaff?.primaryRole || 'Personel',
         amount: form.amount,
         payDate,
-        reason: form.notes || `${months[Number(form.month)]} ${form.year} bordrosu`,
+        reason: form.notes || breakdownNote || `${months[Number(form.month)]} ${form.year} bordrosu`,
       });
-      toast({ title: 'Maas kaydi olusturuldu.' });
+      toast({ title: 'Maaş/bordro kaydı oluşturuldu.' });
       setOpen(false);
-      setForm({ staffName: '', amount: '', month: String(new Date().getMonth()), year: String(new Date().getFullYear()), notes: '' });
+      resetForm();
       loadData();
     } catch (err) {
-      toast({ title: err.message || 'Maas kaydi olusturulamadi.', variant: 'destructive' });
+      toast({ title: err.message || 'Maaş kaydı oluşturulamadı.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
@@ -160,11 +187,11 @@ export default function Salary() {
             <p className="text-sm text-muted-foreground">Personel maas takibi ve odemeler</p>
           </div>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-1" /> Maas Kaydi Ekle</Button>
           </DialogTrigger>
-          <DialogContent>
+          <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Yeni Maas Kaydi</DialogTitle>
             </DialogHeader>
@@ -202,14 +229,36 @@ export default function Salary() {
                 </div>
               </div>
               <div>
-                <Label>Tutar (TL) *</Label>
-                <Input
-                  type="number"
-                  placeholder="0.00"
-                  value={form.amount}
-                  onChange={(e) => setForm((p) => ({ ...p, amount: e.target.value }))}
-                />
+                <Label>Brüt Maaş (TL) *</Label>
+                <div className="flex gap-2">
+                  <Input
+                    type="number"
+                    placeholder="0.00"
+                    value={form.amount}
+                    onChange={(e) => { setForm((p) => ({ ...p, amount: e.target.value })); setPayroll(null); }}
+                  />
+                  <Button type="button" variant="outline" onClick={handleCalculate} disabled={calculating}>
+                    {calculating ? 'Hesaplanıyor...' : 'Bordro Hesapla'}
+                  </Button>
+                </div>
               </div>
+
+              {payroll ? (
+                <div className="rounded-xl border bg-muted/30 p-4 text-sm">
+                  <p className="mb-2 font-semibold">Bordro Kırılımı (TR 2025 yaklaşık)</p>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
+                    <span className="text-muted-foreground">Brüt Maaş</span><span className="text-right tabular-nums">{formatCurrency(payroll.gross)}</span>
+                    <span className="text-muted-foreground">SGK İşçi (%14)</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.sgkEmployee)}</span>
+                    <span className="text-muted-foreground">İşsizlik İşçi (%1)</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.unemploymentEmployee)}</span>
+                    <span className="text-muted-foreground">Gelir Vergisi</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.incomeTax)}</span>
+                    <span className="text-muted-foreground">Damga Vergisi</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.stampTax)}</span>
+                    <span className="font-bold border-t pt-1.5">Net Maaş (Ele Geçen)</span><span className="text-right font-bold tabular-nums text-emerald-600 border-t pt-1.5">{formatCurrency(payroll.net)}</span>
+                    <span className="text-muted-foreground">SGK İşveren</span><span className="text-right tabular-nums">{formatCurrency(payroll.sgkEmployer)}</span>
+                    <span className="font-semibold">Toplam İşveren Maliyeti</span><span className="text-right font-semibold tabular-nums">{formatCurrency(payroll.totalEmployerCost)}</span>
+                  </div>
+                </div>
+              ) : null}
+
               <div>
                 <Label>Notlar</Label>
                 <Input

@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'accounting_finance_store.dart';
 import 'api_config.dart';
 import 'auth_session_store.dart';
+import 'branch_scope_store.dart';
 
 class AccountingApiException implements Exception {
   final String message;
@@ -169,7 +170,7 @@ class AccountingApiService {
     }
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/accounting/salaries/$salaryId'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
@@ -236,7 +237,7 @@ class AccountingApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/accounting/collections/$collectionId',
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
@@ -353,7 +354,7 @@ class AccountingApiService {
     }
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}$path'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
@@ -378,7 +379,7 @@ class AccountingApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${session.accessToken}',
+      'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
     };
     final encoded = jsonEncode(body);
     switch (method) {

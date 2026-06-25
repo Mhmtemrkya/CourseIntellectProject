@@ -49,12 +49,29 @@ class _AdminStudentRegistrationPageState
   String? _branchId;
   bool _saving = false;
 
+  List<AdminStudentRecord> _allStudents = const [];
+  List<AdminStaffRecord> _allStaff = const [];
+  String? _rosterClass;
+
   @override
   void initState() {
     super.initState();
     _loadClassOptions();
     _loadTenantName();
     _loadBranches();
+    _loadRoster();
+  }
+
+  Future<void> _loadRoster() async {
+    final results = await Future.wait([
+      AdminDirectoryApiService.instance.fetchStudents().catchError((_) => <AdminStudentRecord>[]),
+      AdminDirectoryApiService.instance.fetchStaff().catchError((_) => <AdminStaffRecord>[]),
+    ]);
+    if (!mounted) return;
+    setState(() {
+      _allStudents = results[0] as List<AdminStudentRecord>;
+      _allStaff = results[1] as List<AdminStaffRecord>;
+    });
   }
 
   Future<void> _loadBranches() async {
@@ -409,6 +426,8 @@ class _AdminStudentRegistrationPageState
                 ],
               ),
             ),
+            const SizedBox(height: 16),
+            _classRosterPanel(context),
             const SizedBox(height: 18),
             Row(
               children: [
@@ -474,6 +493,88 @@ class _AdminStudentRegistrationPageState
         prefixText: prefixText,
         border: const OutlineInputBorder(),
         filled: readOnly,
+      ),
+    );
+  }
+
+  Widget _classRosterPanel(BuildContext context) {
+    final selectedClass = _rosterClass ?? (_classOptions.isNotEmpty ? _classOptions.first : null);
+    final roster = selectedClass == null
+        ? const <AdminStudentRecord>[]
+        : _allStudents.where((s) => s.className == selectedClass).toList();
+    final homeroom = selectedClass == null
+        ? null
+        : _allStaff.where((t) => t.homeroomClass == selectedClass).cast<AdminStaffRecord?>().firstWhere((_) => true, orElse: () => null);
+
+    return AdminPanel(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const AdminSectionTitle(title: 'Sınıf Mevcudu'),
+          const SizedBox(height: 12),
+          if (_classOptions.isEmpty)
+            const Text('Sınıf listesi yüklenemedi.')
+          else
+            DropdownButtonFormField<String>(
+              initialValue: selectedClass,
+              decoration: const InputDecoration(labelText: 'Sınıf', border: OutlineInputBorder()),
+              items: _classOptions.map((c) => DropdownMenuItem(value: c, child: Text(c))).toList(),
+              onChanged: (v) => setState(() => _rosterClass = v),
+            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _rosterStat('Öğrenci Sayısı', '${roster.length}'),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _rosterStat('Sınıf Öğretmeni', homeroom?.fullName ?? 'Atanmadı'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          if (roster.isEmpty)
+            const Text('Bu sınıfta kayıtlı öğrenci yok.')
+          else
+            ...roster.map(
+              (s) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 16,
+                      backgroundColor: const Color(0xFF2563EB).withValues(alpha: 0.12),
+                      child: Text(
+                        s.fullName.isEmpty ? '?' : s.fullName.characters.first,
+                        style: const TextStyle(color: Color(0xFF2563EB), fontWeight: FontWeight.w800, fontSize: 13),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(child: Text(s.fullName, style: const TextStyle(fontWeight: FontWeight.w600))),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _rosterStat(String label, String value) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: Theme.of(context).textTheme.bodySmall),
+          const SizedBox(height: 4),
+          Text(value, style: const TextStyle(fontWeight: FontWeight.w900)),
+        ],
       ),
     );
   }

@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Search, Plus, MoreHorizontal, Eye, CreditCard,
-  FileText, TrendingUp, TrendingDown,
+  Search, Plus, MoreHorizontal, Eye, CreditCard, FileText,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -24,7 +23,7 @@ import { useToast } from '../../hooks/use-toast';
 import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/sheet';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
-import { createAccountingNotification, createCollection, fetchAccountingDashboard, fetchStudents } from '../../lib/api/modules';
+import { createAccountingNotification, createCollection, fetchAccountingDashboard, fetchStudentFinanceAccount, fetchStudents } from '../../lib/api/modules';
 import {
   buildFinanceDocumentHtml,
   downloadFinanceHtml,
@@ -53,24 +52,40 @@ function buildAccount(student, dashboard) {
   const invoices = (dashboard?.invoices || []).filter((item) => String(item.title || '').toLowerCase().includes(String(student.fullName).toLowerCase()));
   const collections = (dashboard?.collections || []).filter((item) => String(item.name || '').toLowerCase() === String(student.fullName).toLowerCase());
   const installments = (dashboard?.installments || []).filter((item) => String(item.student || '').toLowerCase() === String(student.fullName).toLowerCase());
-  const totalFee = invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0) || installments.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+  const installmentTotal = installments.reduce((sum, item) => sum + parseMoney(item.amount), 0);
+  const totalFee = installmentTotal || invoices.reduce((sum, item) => sum + parseMoney(item.amount), 0);
   const paid = collections.reduce((sum, item) => sum + parseMoney(item.amount), 0);
-  const balance = paid - totalFee;
+  const remaining = Math.max(0, totalFee - paid);
   const overdue = installments.some((item) => normalizeFinanceText(item.status).includes('gec'));
   const status = totalFee > 0 && paid >= totalFee ? 'paid' : overdue ? 'overdue' : 'current';
   return {
     id: student.id,
     name: student.fullName,
+    username: student.username,
     className: student.className,
+    branchName: student.branchName || student.branch || '',
     parent: student.parentName,
     totalFee,
     paid,
-    balance,
+    remaining,
+    installmentCount: installments.length,
     status,
     collections,
     invoices,
     installments,
   };
+}
+
+function formatDateUtc(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return new Intl.DateTimeFormat('tr-TR', { day: '2-digit', month: 'long', year: 'numeric' }).format(date);
+}
+
+function isInstallmentPaid(item) {
+  const status = normalizeFinanceText(item.status);
+  return status.includes('oden') || status.includes('paid') || status.includes('tamam') || (Number(item.remaining) <= 0 && Number(item.paidAmount) > 0);
 }
 
 function StudentAccountDrawer({
@@ -80,30 +95,38 @@ function StudentAccountDrawer({
   onPrintStatement,
   creatingCollection,
 }) {
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    setDetailLoading(true);
+    fetchStudentFinanceAccount(account?.username ? { studentName: account.name } : { studentName: account?.name })
+      .then((data) => { if (active) setDetail(data); })
+      .catch(() => { if (active) setDetail(null); })
+      .finally(() => { if (active) setDetailLoading(false); });
+    return () => { active = false; };
+  }, [account?.name, account?.username]);
+
   if (!account) return null;
 
-  const transactions = [
-    ...account.invoices.map((item) => ({
-      id: `invoice-${item.id}`,
-      date: item.subtitle || item.status,
-      type: 'fee',
-      description: item.title,
-      amount: -parseMoney(item.amount),
-    })),
-    ...account.collections.map((item) => ({
-      id: `collection-${item.id}`,
-      date: item.time,
-      type: 'payment',
-      description: item.note || item.method,
-      amount: parseMoney(item.amount),
-    })),
-  ].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const now = Date.now();
+  const installments = detail?.installments || [];
+  const paidInstallments = installments
+    .filter(isInstallmentPaid)
+    .sort((a, b) => new Date(b.dueDateUtc) - new Date(a.dueDateUtc));
+  const upcomingInstallments = installments
+    .filter((item) => !isInstallmentPaid(item))
+    .sort((a, b) => new Date(a.dueDateUtc) - new Date(b.dueDateUtc));
+  const totalFee = Number(detail?.netTotal) || account.totalFee;
+  const paid = Number(detail?.paidTotal) || account.paid;
+  const remaining = Math.max(0, totalFee - paid);
 
   return (
     <div className="space-y-6">
       <SheetHeader>
         <SheetTitle>Öğrenci Cari Hesabı</SheetTitle>
-        <SheetDescription>Hesap hareketleri ve bakiye durumu</SheetDescription>
+        <SheetDescription>Taksit planı, ödenen ve gelecek taksitler</SheetDescription>
       </SheetHeader>
 
       <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
@@ -118,46 +141,67 @@ function StudentAccountDrawer({
         </div>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          [account.totalFee, 'Toplam Ücret', 'text-foreground'],
-          [account.paid, 'Ödenen', 'text-green-600'],
-          [Math.abs(account.balance), account.balance < 0 ? 'Borç' : 'Bakiye', account.balance < 0 ? 'text-red-600' : 'text-green-600'],
-        ].map(([value, label, color]) => (
+          [totalFee, 'Toplam Ücret', 'text-foreground'],
+          [paid, 'Ödenen', 'text-green-600'],
+          [remaining, 'Kalan Ücret', remaining > 0 ? 'text-red-600' : 'text-green-600'],
+          [installments.length, 'Taksit Sayısı', 'text-foreground', true],
+        ].map(([value, label, color, isCount]) => (
           <Card key={label}>
             <CardContent className="p-4 text-center">
-              <p className={`text-2xl font-bold ${color}`}>₺{Number(value).toLocaleString('tr-TR')}</p>
+              <p className={`text-2xl font-bold ${color}`}>{isCount ? value : `₺${Number(value).toLocaleString('tr-TR')}`}</p>
               <p className="text-xs text-muted-foreground">{label}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="space-y-3">
-        <h4 className="font-medium">Hesap Hareketleri</h4>
-        <div className="space-y-2 max-h-64 overflow-y-auto">
-          {transactions.map((tx) => (
-            <div key={tx.id} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${tx.type === 'payment' ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'}`}>
-                  {tx.type === 'payment' ? (
-                    <TrendingUp className="h-4 w-4 text-green-600" />
-                  ) : (
-                    <TrendingDown className="h-4 w-4 text-red-600" />
-                  )}
+      {detailLoading ? (
+        <div className="flex justify-center py-6"><LoadingDots /></div>
+      ) : (
+        <>
+          <div className="space-y-3">
+            <h4 className="font-medium text-green-700 dark:text-green-400">Ödenen Taksitler ({paidInstallments.length})</h4>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {paidInstallments.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Henüz ödenmiş taksit yok.</p>
+              ) : paidInstallments.map((item) => (
+                <div key={item.id} className="flex items-center justify-between rounded-lg border bg-green-50/50 dark:bg-green-900/10 p-3">
+                  <div>
+                    <p className="text-sm font-medium">{item.label || 'Taksit'}</p>
+                    <p className="text-xs text-muted-foreground">{formatDateUtc(item.dueDateUtc)}</p>
+                  </div>
+                  <span className="font-bold text-green-600">₺{Number(item.amount).toLocaleString('tr-TR')}</span>
                 </div>
-                <div>
-                  <p className="text-sm font-medium">{tx.description}</p>
-                  <p className="text-xs text-muted-foreground">{tx.date}</p>
-                </div>
-              </div>
-              <span className={`font-bold ${tx.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {tx.amount > 0 ? '+' : ''}₺{Math.abs(tx.amount).toLocaleString('tr-TR')}
-              </span>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
+
+          <div className="space-y-3">
+            <h4 className="font-medium text-amber-700 dark:text-amber-400">Ödenmeyen / Gelecek Taksitler ({upcomingInstallments.length})</h4>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {upcomingInstallments.length === 0 ? (
+                <p className="rounded-lg border border-dashed p-4 text-center text-sm text-muted-foreground">Bekleyen taksit yok.</p>
+              ) : upcomingInstallments.map((item) => {
+                const overdue = new Date(item.dueDateUtc).getTime() < now;
+                return (
+                  <div key={item.id} className={`flex items-center justify-between rounded-lg border p-3 ${overdue ? 'border-red-300 bg-red-50/50 dark:bg-red-900/10' : 'bg-muted/40'}`}>
+                    <div>
+                      <p className="text-sm font-medium flex items-center gap-2">
+                        {item.label || 'Taksit'}
+                        {overdue ? <Badge className="bg-red-100 text-red-700 text-[10px]">Gecikti</Badge> : null}
+                      </p>
+                      <p className="text-xs text-muted-foreground">{formatDateUtc(item.dueDateUtc)}</p>
+                    </div>
+                    <span className={`font-bold ${overdue ? 'text-red-600' : 'text-foreground'}`}>₺{Number(item.remaining ?? item.amount).toLocaleString('tr-TR')}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="flex gap-3 pt-4">
         <Button className="flex-1 bg-brand-primary hover:bg-brand-primary/90" onClick={() => onCreateCollection?.(account)} disabled={creatingCollection}>
@@ -182,6 +226,7 @@ export default function StudentAccounts() {
   const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [classFilter, setClassFilter] = useState('all');
+  const [branchFilter, setBranchFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [students, setStudents] = useState([]);
   const [dashboard, setDashboard] = useState(null);
@@ -216,6 +261,7 @@ export default function StudentAccounts() {
     ...accounts.map((item) => item.className).filter(Boolean),
     ...FALLBACK_CLASSES,
   ])], [accounts]);
+  const branches = useMemo(() => [...new Set(accounts.map((item) => item.branchName).filter(Boolean))], [accounts]);
 
   const buildStatementHtml = useCallback((account) => buildFinanceDocumentHtml({
     title: 'Öğrenci Cari Hesap Ekstresi',
@@ -376,9 +422,10 @@ export default function StudentAccounts() {
   const filteredAccounts = useMemo(() => accounts.filter((account) => {
     const matchesSearch = `${account.name} ${account.parent}`.toLowerCase().includes(search.toLowerCase());
     const matchesClass = classFilter === 'all' || account.className === classFilter;
+    const matchesBranch = branchFilter === 'all' || account.branchName === branchFilter;
     const matchesStatus = statusFilter === 'all' || account.status === statusFilter;
-    return matchesSearch && matchesClass && matchesStatus;
-  }), [accounts, search, classFilter, statusFilter]);
+    return matchesSearch && matchesClass && matchesBranch && matchesStatus;
+  }), [accounts, search, classFilter, branchFilter, statusFilter]);
 
   const getStatusBadge = (status) => {
     const styles = {
@@ -443,6 +490,19 @@ export default function StudentAccounts() {
                 ))}
               </SelectContent>
             </Select>
+            {branches.length > 0 ? (
+              <Select value={branchFilter} onValueChange={setBranchFilter}>
+                <SelectTrigger className="w-full md:w-32">
+                  <SelectValue placeholder="Şube" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tüm Şubeler</SelectItem>
+                  {branches.map((branch) => (
+                    <SelectItem key={branch} value={branch}>{branch}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-32">
                 <SelectValue placeholder="Durum" />
@@ -467,7 +527,8 @@ export default function StudentAccounts() {
                 <TableHead>Sınıf</TableHead>
                 <TableHead>Toplam Ücret</TableHead>
                 <TableHead>Ödenen</TableHead>
-                <TableHead>Bakiye</TableHead>
+                <TableHead>Kalan Ücret</TableHead>
+                <TableHead>Taksit Sayısı</TableHead>
                 <TableHead>Durum</TableHead>
                 <TableHead className="w-12"></TableHead>
               </TableRow>
@@ -506,9 +567,10 @@ export default function StudentAccounts() {
                   </TableCell>
                   <TableCell>₺{account.totalFee.toLocaleString('tr-TR')}</TableCell>
                   <TableCell className="text-green-600">₺{account.paid.toLocaleString('tr-TR')}</TableCell>
-                  <TableCell className={account.balance < 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
-                    {account.balance < 0 ? '-' : ''}₺{Math.abs(account.balance).toLocaleString('tr-TR')}
+                  <TableCell className={account.remaining > 0 ? 'text-red-600 font-bold' : 'text-green-600'}>
+                    ₺{account.remaining.toLocaleString('tr-TR')}
                   </TableCell>
+                  <TableCell className="text-center">{account.installmentCount}</TableCell>
                   <TableCell>{getStatusBadge(account.status)}</TableCell>
                   <TableCell>
                     <DropdownMenu>
