@@ -4,10 +4,14 @@ import {
   ShieldCheck, ChevronLeft, ChevronRight, CalendarDays, CheckCircle2, Clock, XCircle,
 } from 'lucide-react';
 import { PremiumPanel } from '../../components/ui/premium-dashboard';
+import { Button } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Textarea } from '../../components/ui/textarea';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { useApp } from '../../context/AppContext';
-import { fetchMyDuties, fetchMyDutyStats } from '../../lib/api/modules';
+import { fetchMyAdminTasks, fetchMyDuties, fetchMyDutyStats, updateAdminTaskStatus } from '../../lib/api/modules';
+import { useToast } from '../../hooks/use-toast';
 
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
 const PAGE_SIZE = 5;
@@ -167,9 +171,14 @@ function DutyTable({ duties, emptyText }) {
 }
 
 export default function TeacherDuties() {
+  const { toast } = useToast();
   useApp();
   const [tab, setTab] = useState('upcoming');
   const [all, setAll] = useState([]);
+  const [myTasks, setMyTasks] = useState([]);
+  const [rejectingTask, setRejectingTask] = useState(null);
+  const [rejectReason, setRejectReason] = useState('');
+  const [taskBusy, setTaskBusy] = useState(false);
   const [stats, setStats] = useState({ total: 0, completed: 0, planned: 0, cancelled: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -178,11 +187,13 @@ export default function TeacherDuties() {
     try {
       setLoading(true);
       setError('');
-      const [duties, statResp] = await Promise.all([
+      const [duties, statResp, taskResp] = await Promise.all([
         fetchMyDuties('all'),
         fetchMyDutyStats().catch(() => null),
+        fetchMyAdminTasks().catch(() => []),
       ]);
       setAll(Array.isArray(duties) ? duties : []);
+      setMyTasks(Array.isArray(taskResp) ? taskResp : []);
       if (statResp) setStats(statResp);
     } catch (err) {
       setError(err.message || 'Nöbetler alınamadı.');
@@ -196,6 +207,20 @@ export default function TeacherDuties() {
   const today = useMemo(() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; }, []);
   const upcoming = useMemo(() => all.filter((d) => { const x = parseDate(d.dutyDateUtc); return x && x >= today; }), [all, today]);
   const past = useMemo(() => all.filter((d) => { const x = parseDate(d.dutyDateUtc); return x && x < today; }), [all, today]);
+  const respondTask = async (task, status, reason = null) => {
+    try {
+      setTaskBusy(true);
+      const updated = await updateAdminTaskStatus(task.id, status, reason);
+      setMyTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, ...updated } : item)));
+      toast({ title: status === 'Accepted' ? 'Görev kabul edildi' : 'Görev kabul edilmedi' });
+      setRejectingTask(null);
+      setRejectReason('');
+    } catch (err) {
+      toast({ title: 'Görev güncellenemedi', description: err.message, variant: 'destructive' });
+    } finally {
+      setTaskBusy(false);
+    }
+  };
 
   if (loading) {
     return <div className="min-h-[60vh] flex flex-col items-center justify-center gap-4"><LoadingDots /><p className="text-muted-foreground">Nöbetler yükleniyor...</p></div>;
@@ -213,12 +238,44 @@ export default function TeacherDuties() {
       <div className="flex items-center gap-3">
         <div className="grid h-11 w-11 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><ShieldCheck className="h-6 w-6" /></div>
         <div>
-          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Nöbetlerim</h1>
-          <p className="text-sm text-muted-foreground">Atandığınız nöbetleri görüntüleyebilir, geçmiş nöbetlerinizi inceleyebilirsiniz.</p>
+          <h1 className="text-xl font-black tracking-tight text-[hsl(var(--brand-accent))]">Görevlerim</h1>
+          <p className="text-sm text-muted-foreground">Size atanan idari görevleri kabul edebilir, nöbetlerinizi görüntüleyebilirsiniz.</p>
         </div>
       </div>
 
       {error ? <ErrorBanner title="Nöbetler alınamadı" message={error} onRetry={load} /> : null}
+
+      <PremiumPanel title="Atanan Görevlerim" description="Görev merkezinden size atanan işler">
+        {myTasks.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Size atanmış görev bulunmuyor.</div>
+        ) : (
+          <div className="space-y-3">
+            {myTasks.map((task) => (
+              <div key={task.id} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-bold">{task.title}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{task.description || 'Açıklama yok'}</p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Başlangıç: {task.startDateUtc ? new Date(task.startDateUtc).toLocaleString('tr-TR') : '—'} · Bitiş: {task.endDateUtc ? new Date(task.endDateUtc).toLocaleString('tr-TR') : '—'}
+                    </p>
+                    {task.rejectionReason ? (
+                      <p className="mt-2 rounded-lg border border-rose-500/20 bg-rose-500/10 p-2 text-xs text-rose-300">Mazeret: {task.rejectionReason}</p>
+                    ) : null}
+                  </div>
+                  <span className="rounded-full border px-3 py-1 text-xs font-semibold">{task.status}</span>
+                </div>
+                {task.responseStatus === 'Pending' || task.status === 'PendingAcceptance' ? (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button size="sm" disabled={taskBusy} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => respondTask(task, 'Accepted')}>Kabul ediyorum</Button>
+                    <Button size="sm" variant="outline" disabled={taskBusy} className="border-rose-300 text-rose-500" onClick={() => setRejectingTask(task)}>Kabul etmiyorum</Button>
+                  </div>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </PremiumPanel>
 
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         <div className="xl:col-span-2 space-y-4">
@@ -266,6 +323,21 @@ export default function TeacherDuties() {
           </PremiumPanel>
         </div>
       </div>
+
+      <Dialog open={!!rejectingTask} onOpenChange={(open) => !open && setRejectingTask(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Görevi kabul etmeme nedeni</DialogTitle>
+          </DialogHeader>
+          <Textarea value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} placeholder="Mazeretinizi yazın..." />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectingTask(null)}>Vazgeç</Button>
+            <Button variant="destructive" disabled={taskBusy || !rejectReason.trim()} onClick={() => rejectingTask && respondTask(rejectingTask, 'Rejected', rejectReason)}>
+              Gönder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

@@ -24,10 +24,13 @@ public sealed class AdminTaskService(
             AssignedToUserId = request.AssignedToUserId,
             AssignedToName = request.AssignedToName?.Trim() ?? string.Empty,
             Priority = string.IsNullOrWhiteSpace(request.Priority) ? "Normal" : request.Priority.Trim(),
-            Status = "Open",
+            Status = "PendingAcceptance",
             CreatedByUserId = actorUserId,
             CreatedByName = string.IsNullOrWhiteSpace(actorName) ? "Bilinmiyor" : actorName.Trim(),
             DueDateUtc = request.DueDate.HasValue ? DateTime.SpecifyKind(request.DueDate.Value, DateTimeKind.Utc) : null,
+            StartDateUtc = request.StartDate.HasValue ? DateTime.SpecifyKind(request.StartDate.Value, DateTimeKind.Utc) : null,
+            EndDateUtc = request.EndDate.HasValue ? DateTime.SpecifyKind(request.EndDate.Value, DateTimeKind.Utc) : null,
+            ResponseStatus = "Pending",
             CreatedAtUtc = DateTime.UtcNow,
         };
         await dbContext.AdminTasks.AddAsync(task, cancellationToken);
@@ -64,28 +67,110 @@ public sealed class AdminTaskService(
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<AdminTaskDto>> GetMineAsync(
+        Guid? actorUserId,
+        string actorName,
+        CancellationToken cancellationToken = default)
+    {
+        var normalizedName = (actorName ?? string.Empty).Trim();
+        var query = dbContext.AdminTasks.AsNoTracking().AsQueryable();
+        if (actorUserId.HasValue)
+        {
+            query = query.Where(item => item.AssignedToUserId == actorUserId.Value
+                || (!string.IsNullOrWhiteSpace(normalizedName) && item.AssignedToName == normalizedName));
+        }
+        else if (!string.IsNullOrWhiteSpace(normalizedName))
+        {
+            query = query.Where(item => item.AssignedToName == normalizedName);
+        }
+        else
+        {
+            return [];
+        }
+
+        return await query
+            .OrderBy(item => item.Status == "Done" || item.Status == "Rejected")
+            .ThenBy(item => item.StartDateUtc ?? item.DueDateUtc ?? item.CreatedAtUtc)
+            .Select(item => Map(item))
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<AdminTaskDto?> UpdateStatusAsync(
         Guid id,
         TaskStatusRequest request,
         Guid? actorUserId,
         string actorName,
+        bool canManageAllTasks,
         CancellationToken cancellationToken = default)
     {
         var task = await dbContext.AdminTasks.FirstOrDefaultAsync(item => item.Id == id, cancellationToken);
         if (task is null) return null;
 
-        task.Status = request.Status.Trim() switch
+        var requestedStatus = request.Status.Trim();
+        var normalizedActorName = string.IsNullOrWhiteSpace(actorName) ? "Bilinmiyor" : actorName.Trim();
+        if (!canManageAllTasks)
+        {
+            var isAssignedUser = actorUserId.HasValue && task.AssignedToUserId == actorUserId.Value;
+            var isAssignedByName = !string.IsNullOrWhiteSpace(normalizedActorName)
+                && string.Equals(task.AssignedToName, normalizedActorName, StringComparison.OrdinalIgnoreCase);
+            if (!isAssignedUser && !isAssignedByName)
+            {
+                throw new UnauthorizedAccessException("Bu görev size atanmamış.");
+            }
+
+            if (requestedStatus is not ("Accepted" or "Kabul" or "Kabul Edildi"
+                or "Rejected" or "Reject" or "Reddedildi" or "Kabul Edilmedi"
+                or "InProgress" or "Devam" or "Done" or "Tamamlandı"))
+            {
+                throw new UnauthorizedAccessException("Bu görev durumu için yetkiniz yok.");
+            }
+            if (task.ResponseStatus == "Pending"
+                && requestedStatus is not ("Accepted" or "Kabul" or "Kabul Edildi"
+                    or "Rejected" or "Reject" or "Reddedildi" or "Kabul Edilmedi"))
+            {
+                throw new InvalidOperationException("Göreve başlamadan önce kabul veya red yanıtı verilmelidir.");
+            }
+        }
+
+        task.Status = requestedStatus switch
         {
             "Open" or "Açık" => "Open",
+            "PendingAcceptance" or "Beklemede" => "PendingAcceptance",
+            "Accepted" or "Kabul" or "Kabul Edildi" => "Accepted",
+            "Rejected" or "Reject" or "Reddedildi" or "Kabul Edilmedi" => "Rejected",
             "InProgress" or "Devam" => "InProgress",
             "Done" or "Tamamlandı" => "Done",
             "Cancelled" or "İptal" => "Cancelled",
             _ => task.Status,
         };
+        if (task.Status == "Accepted")
+        {
+            task.ResponseStatus = "Accepted";
+            task.RejectionReason = string.Empty;
+            task.RespondedAtUtc = DateTime.UtcNow;
+        }
+        else if (task.Status == "Rejected")
+        {
+            task.ResponseStatus = "Rejected";
+            task.RejectionReason = request.Reason?.Trim() ?? string.Empty;
+            task.RespondedAtUtc = DateTime.UtcNow;
+
+            await dbContext.Notifications.AddAsync(new NotificationItem
+            {
+                Title = "Görev kabul edilmedi",
+                Message = $"{task.AssignedToName} “{task.Title}” görevini kabul etmedi."
+                    + (string.IsNullOrWhiteSpace(task.RejectionReason) ? string.Empty : $" Mazeret: {task.RejectionReason}"),
+                TimeLabel = DateTime.UtcNow.ToString("dd.MM.yyyy HH:mm"),
+                Audience = task.CreatedByName,
+                TargetRole = "Admin",
+                Category = "Görev Merkezi",
+                IsRead = false,
+            }, cancellationToken);
+        }
         task.CompletedAtUtc = task.Status == "Done" ? DateTime.UtcNow : null;
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        await auditLogService.LogAsync(actorUserId, actorName, $"Görev {task.Status}",
+        await auditLogService.LogAsync(actorUserId, normalizedActorName, $"Görev {task.Status}",
             "Task", nameof(AdminTask), task.Id.ToString(), task.Title, cancellationToken);
 
         return Map(task);
@@ -101,6 +186,11 @@ public sealed class AdminTaskService(
         item.Status,
         item.CreatedByName,
         item.DueDateUtc,
+        item.StartDateUtc,
+        item.EndDateUtc,
+        item.ResponseStatus,
+        item.RejectionReason,
+        item.RespondedAtUtc,
         item.CreatedAtUtc,
         item.CompletedAtUtc);
 }

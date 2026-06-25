@@ -52,8 +52,10 @@ class TeacherDutiesPage extends StatefulWidget {
 class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
   final DutyApiService _api = DutyApiService();
   bool _loading = true;
+  bool _taskBusy = false;
   String? _error;
   List<DutyRecord> _all = [];
+  List<AdminTaskRecord> _tasks = [];
   DutyStats _stats = const DutyStats();
   int _tab = 0; // 0 = gelecek, 1 = geçmiş
 
@@ -70,6 +72,10 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
     });
     try {
       final duties = await _api.fetchMyDuties(scope: 'all');
+      List<AdminTaskRecord> tasks = const [];
+      try {
+        tasks = await _api.fetchMyAdminTasks();
+      } catch (_) {}
       DutyStats stats = const DutyStats();
       try {
         stats = await _api.fetchMyStats();
@@ -77,6 +83,7 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
       if (!mounted) return;
       setState(() {
         _all = duties;
+        _tasks = tasks;
         _stats = stats;
         _loading = false;
       });
@@ -101,7 +108,7 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
     final list = _tab == 0 ? upcoming : past;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nöbetlerim')),
+      appBar: AppBar(title: const Text('Görevlerim')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -120,6 +127,8 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
                       child: Text(_error!, style: const TextStyle(color: Color(0xFFEF4444))),
                     ),
                   _buildSummary(theme),
+                  const SizedBox(height: 16),
+                  _buildAdminTasks(theme),
                   const SizedBox(height: 16),
                   _buildTabs(theme),
                   const SizedBox(height: 12),
@@ -180,6 +189,143 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
         );
       }).toList(),
     );
+  }
+
+  Widget _buildAdminTasks(ThemeData theme) {
+    final muted = theme.colorScheme.onSurface.withValues(alpha: 0.6);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Atanan Görevlerim', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 10),
+        if (_tasks.isEmpty)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+            ),
+            child: Text('Size atanmış idari görev bulunmuyor.', style: TextStyle(color: muted)),
+          )
+        else
+          ..._tasks.map((task) => Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(child: Text(task.title, style: const TextStyle(fontWeight: FontWeight.w800))),
+                        _statusChip(theme, task.status),
+                      ],
+                    ),
+                    if (task.description.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(task.description, style: TextStyle(fontSize: 13, color: muted)),
+                    ],
+                    const SizedBox(height: 8),
+                    _row(Icons.schedule_rounded, 'Başlangıç: ${_formatDateTime(task.startDate)} · Bitiş: ${_formatDateTime(task.endDate)}', muted),
+                    if (task.rejectionReason.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEF4444).withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text('Mazeret: ${task.rejectionReason}', style: const TextStyle(color: Color(0xFFEF4444), fontSize: 12)),
+                      ),
+                    ],
+                    if (task.responseStatus == 'Pending' || task.status == 'PendingAcceptance') ...[
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: FilledButton(
+                              onPressed: _taskBusy ? null : () => _respondTask(task, 'Accepted'),
+                              child: const Text('Kabul ediyorum'),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: _taskBusy ? null : () => _showRejectDialog(task),
+                              child: const Text('Kabul etmiyorum'),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ],
+                ),
+              )),
+      ],
+    );
+  }
+
+  Widget _statusChip(ThemeData theme, String status) {
+    final rejected = status == 'Rejected';
+    final accepted = status == 'Accepted';
+    final color = rejected ? const Color(0xFFEF4444) : accepted ? const Color(0xFF22C55E) : theme.colorScheme.primary;
+    final label = rejected ? 'Kabul edilmedi' : accepted ? 'Kabul edildi' : 'Bekliyor';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(color: color.withValues(alpha: 0.14), borderRadius: BorderRadius.circular(999)),
+      child: Text(label, style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w800)),
+    );
+  }
+
+  String _formatDateTime(DateTime? date) {
+    if (date == null) return '—';
+    return '${_formatDate(date)} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _respondTask(AdminTaskRecord task, String status, {String? reason}) async {
+    setState(() => _taskBusy = true);
+    try {
+      final updated = await _api.updateAdminTaskStatus(task.id, status, reason: reason);
+      if (!mounted) return;
+      setState(() {
+        _tasks = _tasks.map((item) => item.id == task.id ? updated : item).toList();
+        _taskBusy = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _taskBusy = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    }
+  }
+
+  Future<void> _showRejectDialog(AdminTaskRecord task) async {
+    final controller = TextEditingController();
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Görevi kabul etmeme nedeni'),
+        content: TextField(
+          controller: controller,
+          minLines: 3,
+          maxLines: 5,
+          decoration: const InputDecoration(hintText: 'Mazeretinizi yazın'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Gönder')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (reason != null && reason.trim().isNotEmpty) {
+      await _respondTask(task, 'Rejected', reason: reason.trim());
+    }
   }
 
   Widget _buildTabs(ThemeData theme) {

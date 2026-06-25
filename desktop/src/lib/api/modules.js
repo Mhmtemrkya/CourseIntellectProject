@@ -518,13 +518,18 @@ export async function fetchAdminTasks(params) {
   return Array.isArray(response) ? response : [];
 }
 
+export async function fetchMyAdminTasks() {
+  const response = await api.get('/api/admin-tasks/mine');
+  return Array.isArray(response) ? response : [];
+}
+
 export async function createAdminTask(payload) {
   const response = await api.post('/api/admin-tasks', payload);
   return response;
 }
 
-export async function updateAdminTaskStatus(id, status) {
-  const response = await api.post(`/api/admin-tasks/${id}/status`, { status });
+export async function updateAdminTaskStatus(id, status, reason = null) {
+  const response = await api.post(`/api/admin-tasks/${id}/status`, { status, reason });
   return response;
 }
 

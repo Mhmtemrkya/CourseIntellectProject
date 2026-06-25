@@ -8,17 +8,19 @@ import {
   ClipboardCheck,
   GraduationCap,
   School,
+  UserMinus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import {
   fetchAttendance,
   fetchClasses,
-  fetchExamResults,
+  fetchLeaves,
   fetchScheduleEntries,
   fetchStaff,
   fetchStudents,
@@ -31,11 +33,6 @@ function asArray(value) {
 function normalizeClassName(item) {
   if (typeof item === 'string') return item;
   return item?.name || item?.className || item?.title || '';
-}
-
-function safeNumber(value) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function normalizeText(value = '') {
@@ -51,6 +48,29 @@ function attendanceRate(entries) {
   return Math.round((present / entries.length) * 100);
 }
 
+function dateKey(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function filterByPeriod(entries, period) {
+  if (period === 'term') return entries;
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (period === 'week') start.setDate(start.getDate() - 6);
+  if (period === 'month') start.setMonth(start.getMonth() - 1);
+  return entries.filter((item) => {
+    const date = new Date(item.lessonDate || item.date || item.createdAtUtc || '');
+    if (Number.isNaN(date.getTime())) return false;
+    if (period === 'day') return dateKey(date) === dateKey(now);
+    return date >= start && date <= now;
+  });
+}
+
+const DAY_NAMES = ['Pazar', 'Pazartesi', 'Salı', 'Çarşamba', 'Perşembe', 'Cuma', 'Cumartesi'];
+
 export default function AdminAcademics() {
   const navigate = useNavigate();
   const [payload, setPayload] = useState({
@@ -58,9 +78,12 @@ export default function AdminAcademics() {
     teachers: [],
     classes: [],
     attendance: [],
-    exams: [],
     schedule: [],
+    leaves: [],
   });
+  const [classPeriod, setClassPeriod] = useState('week');
+  const [teacherPeriod, setTeacherPeriod] = useState('week');
+  const [selectedTeacher, setSelectedTeacher] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -68,21 +91,21 @@ export default function AdminAcademics() {
     try {
       setLoading(true);
       setError('');
-      const [students, teachers, classes, attendance, exams, schedule] = await Promise.all([
+      const [students, teachers, classes, attendance, schedule, leaves] = await Promise.all([
         fetchStudents().catch(() => []),
         fetchStaff('Teacher').catch(() => []),
         fetchClasses().catch(() => []),
         fetchAttendance().catch(() => []),
-        fetchExamResults().catch(() => []),
         fetchScheduleEntries().catch(() => []),
+        fetchLeaves().catch(() => []),
       ]);
       setPayload({
         students: asArray(students),
         teachers: asArray(teachers),
         classes: asArray(classes),
         attendance: asArray(attendance),
-        exams: asArray(exams),
         schedule: asArray(schedule),
+        leaves: asArray(leaves),
       });
     } catch (err) {
       setError(err.message || 'Akademik veriler alınamadı.');
@@ -104,48 +127,57 @@ export default function AdminAcademics() {
 
     return [...names].sort((a, b) => a.localeCompare(b, 'tr')).map((name) => {
       const students = payload.students.filter((item) => item.className === name);
-      const attendance = payload.attendance.filter((item) => item.className === name);
-      const exams = payload.exams.filter((item) => item.className === name);
+      const attendance = filterByPeriod(payload.attendance.filter((item) => item.className === name), classPeriod);
       const schedule = payload.schedule.filter((item) => item.className === name);
-      const examAverage = exams.length > 0
-        ? Math.round(exams.reduce((sum, item) => sum + safeNumber(item.score), 0) / exams.length)
-        : 0;
 
       return {
         name,
         studentCount: students.length,
-        lessonCount: schedule.length,
+        weeklyLessonHours: schedule.length,
         attendanceRate: attendanceRate(attendance),
-        examAverage,
       };
     });
-  }, [payload]);
+  }, [classPeriod, payload]);
 
   const teacherModels = useMemo(() => payload.teachers.map((teacher) => {
     const branch = teacher.departmentOrBranch || teacher.branch || 'Branş yok';
+    const todayName = DAY_NAMES[new Date().getDay()];
     const teacherSchedule = payload.schedule.filter((item) => {
       const value = `${item.teacherName || item.teacher || ''}`.trim();
       return value && value === teacher.fullName;
     });
+    const periodSchedule = teacherPeriod === 'day'
+      ? teacherSchedule.filter((item) => normalizeText(item.day) === normalizeText(todayName))
+      : teacherSchedule;
+    const lessonCount = teacherPeriod === 'month' ? periodSchedule.length * 4 : periodSchedule.length;
     return {
       id: teacher.id || teacher.username || teacher.fullName,
       name: teacher.fullName,
       branch,
-      lessonCount: teacherSchedule.length,
-      assignedClasses: teacher.assignedClasses || [],
+      lessonCount,
+      lessons: periodSchedule,
       status: teacher.isActive === false ? 'Pasif' : 'Aktif',
     };
-  }), [payload.schedule, payload.teachers]);
+  }), [payload.schedule, payload.teachers, teacherPeriod]);
 
   const metrics = useMemo(() => {
-    const examAverage = payload.exams.length > 0
-      ? Math.round(payload.exams.reduce((sum, item) => sum + safeNumber(item.score), 0) / payload.exams.length)
-      : 0;
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+    const leaveCount = payload.leaves.filter((item) => {
+      const status = normalizeText(item.status);
+      const start = new Date(item.startDateUtc || item.startDate || '');
+      const end = new Date(item.endDateUtc || item.endDate || '');
+      return (status.includes('approved') || status.includes('onay'))
+        && !Number.isNaN(start.getTime())
+        && !Number.isNaN(end.getTime())
+        && start < todayEnd
+        && end >= todayStart;
+    }).length;
     return {
       classes: classModels.length,
       teachers: payload.teachers.length,
-      institutionAverage: examAverage,
-      attendance: attendanceRate(payload.attendance),
+      leaveCount,
     };
   }, [classModels.length, payload]);
 
@@ -161,15 +193,14 @@ export default function AdminAcademics() {
             <Badge variant="outline">Akademik yönetim</Badge>
             <h1 className="mt-3 text-3xl font-bold font-heading">Akademik Yönetim</h1>
             <p className="mt-2 max-w-3xl text-muted-foreground">
-              Sınıf durumu, öğretmen yükleri, sınav ortalamaları ve yoklama sinyallerini tek ekranda izle.
+              Sınıf devam oranları, ders saatleri ve öğretmen durumunu tek ekranda izle.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-4">
+          <div className="grid gap-3 sm:grid-cols-3">
             {[
               ['Sınıf', metrics.classes],
               ['Öğretmen', metrics.teachers],
-              ['Ortalama', metrics.institutionAverage],
-              ['Yoklama', `%${metrics.attendance}`],
+              ['İzinli Öğretmen', metrics.leaveCount, UserMinus],
             ].map(([label, value]) => (
               <div key={label} className="rounded-2xl border bg-muted/30 px-5 py-4">
                 <p className="text-sm text-muted-foreground">{label}</p>
@@ -207,6 +238,12 @@ export default function AdminAcademics() {
               <School className="h-5 w-5 text-brand-primary" />
               Sınıf Durumu
             </CardTitle>
+            <select className="rounded-md border bg-background px-3 py-2 text-sm" value={classPeriod} onChange={(event) => setClassPeriod(event.target.value)}>
+              <option value="day">Günlük</option>
+              <option value="week">Haftalık</option>
+              <option value="month">Aylık</option>
+              <option value="term">Dönemlik</option>
+            </select>
           </CardHeader>
           <CardContent className="space-y-3">
             {classModels.map((item) => (
@@ -215,14 +252,14 @@ export default function AdminAcademics() {
                   <div>
                     <p className="font-semibold">{item.name}</p>
                     <p className="text-sm text-muted-foreground">
-                      {item.studentCount} öğrenci - {item.lessonCount} program slotu
+                      {item.studentCount} öğrenci - {item.weeklyLessonHours} haftalık ders saati
                     </p>
                   </div>
-                  <Badge variant="outline">Ortalama {item.examAverage || '-'}</Badge>
+                  <Badge variant="outline">{item.weeklyLessonHours} saat</Badge>
                 </div>
                 <div className="mt-4">
                   <div className="mb-2 flex justify-between text-sm">
-                    <span>Yoklama oranı</span>
+                    <span>Devam oranı</span>
                     <span>%{item.attendanceRate}</span>
                   </div>
                   <Progress value={item.attendanceRate} />
@@ -237,12 +274,17 @@ export default function AdminAcademics() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <GraduationCap className="h-5 w-5 text-brand-primary" />
-              Öğretmen Sağlığı
+              Öğretmen Durumu
             </CardTitle>
+            <select className="rounded-md border bg-background px-3 py-2 text-sm" value={teacherPeriod} onChange={(event) => setTeacherPeriod(event.target.value)}>
+              <option value="day">Günlük</option>
+              <option value="week">Haftalık</option>
+              <option value="month">Aylık</option>
+            </select>
           </CardHeader>
           <CardContent className="space-y-3">
             {teacherModels.slice(0, 8).map((item) => (
-              <div key={item.id} className="rounded-xl border bg-muted/20 p-4">
+              <button type="button" key={item.id} className="w-full rounded-xl border bg-muted/20 p-4 text-left transition-colors hover:bg-muted/40" onClick={() => setSelectedTeacher(item)}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">{item.name}</p>
@@ -251,14 +293,35 @@ export default function AdminAcademics() {
                   <Badge variant="outline">{item.status}</Badge>
                 </div>
                 <p className="mt-3 text-sm text-muted-foreground">
-                  {item.lessonCount} program slotu - {item.assignedClasses.length || 0} atanmış sınıf
+                  {item.lessonCount} ders saati · Detay için tıklayın
                 </p>
-              </div>
+              </button>
             ))}
             {teacherModels.length === 0 ? <p className="text-sm text-muted-foreground">Kayıtlı öğretmen bulunamadı.</p> : null}
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!selectedTeacher} onOpenChange={(open) => !open && setSelectedTeacher(null)}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{selectedTeacher?.name || 'Öğretmen'} · Ders Detayı</DialogTitle>
+            <DialogDescription>
+              {teacherPeriod === 'day' ? 'Bugünkü dersleri' : teacherPeriod === 'month' ? 'Aylık tahmini ders yükü haftalık programdan hesaplanır.' : 'Haftalık ders programı'}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            {(selectedTeacher?.lessons || []).length > 0 ? selectedTeacher.lessons.map((lesson, index) => (
+              <div key={`${lesson.day}-${lesson.time}-${index}`} className="rounded-xl border p-4">
+                <p className="font-semibold">{lesson.subject || lesson.lesson || 'Ders'} · {lesson.className || 'Sınıf belirtilmemiş'}</p>
+                <p className="text-sm text-muted-foreground">{lesson.day || 'Gün'} · {lesson.time || `${lesson.startTime || ''}-${lesson.endTime || ''}`}</p>
+              </div>
+            )) : (
+              <p className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">Bu dönem filtresinde ders bulunmuyor.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

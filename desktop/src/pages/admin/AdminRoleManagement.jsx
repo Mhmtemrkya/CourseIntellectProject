@@ -57,7 +57,7 @@ const MODULE_GROUPS = [
     title: 'Akademik',
     items: [
       { key: 'dashboard', label: 'Dashboard' },
-      { key: 'kpi', label: 'KPI Paneli' },
+      { key: 'kpi', label: 'Kurum Özeti' },
       { key: 'academics', label: 'Akademik Yönetim' },
       { key: 'students', label: 'Öğrenciler' },
       { key: 'parents', label: 'Veliler' },
@@ -86,7 +86,7 @@ const MODULE_GROUPS = [
       { key: 'meetings', label: 'Görüşme Akışı' },
       { key: 'registrations', label: 'Kayıt İşlemleri' },
       { key: 'branch-comparison', label: 'Şube Karşılaştırma' },
-      { key: 'global-search', label: 'Global Arama' },
+      { key: 'global-search', label: 'Kurum İçi Arama' },
       { key: 'chat', label: 'Mesajlar' },
     ],
   },

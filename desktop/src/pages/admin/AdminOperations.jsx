@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAdminDashboardData } from '../../lib/api/dashboardData';
@@ -18,6 +19,7 @@ export default function AdminOperations() {
   const [dashboard, setDashboard] = useState(null);
   const [finance, setFinance] = useState(null);
   const [selectedItem, setSelectedItem] = useState(null);
+  const [engagementPeriod, setEngagementPeriod] = useState('day');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -42,8 +44,16 @@ export default function AdminOperations() {
     loadOperations();
   }, [loadOperations]);
 
+  const activeStudents = dashboard?.activeStudentStats?.[engagementPeriod] || { uniqueCount: 0, totalStudents: dashboard?.stats?.totalStudents || 0 };
+  const engagementLabel = {
+    day: 'Bugün uygulamaya giren öğrenci',
+    week: 'Son 7 günde giren öğrenci',
+    month: 'Son 30 günde giren öğrenci',
+    year: 'Son 1 yılda giren öğrenci',
+  }[engagementPeriod];
+
   const items = [
-    { title: 'Bekleyen etkileşimler', count: dashboard?.pendingItems?.length || 0, icon: MessageSquare, detail: 'Öğrenci ve veli geri dönüşleri', onClick: () => navigate('/chat') },
+    { title: engagementLabel, count: activeStudents.uniqueCount, icon: MessageSquare, detail: `Benzersiz öğrenci · ${activeStudents.totalStudents} toplam`, onClick: null },
     { title: 'Duyuru merkezi', count: dashboard?.activities?.length || 0, icon: Megaphone, detail: 'Kurum genelindeki tüm duyurular', onClick: () => navigate('/admin/announcements') },
     { title: 'Açık finans hareketi', count: finance?.approvals?.length || 0, icon: Receipt, detail: 'Onay ve işlem bekleyen kayıtlar', onClick: () => navigate('/admin/finance-approvals') },
     { title: 'Görüşme akışı', count: dashboard?.activities?.length || 0, icon: CalendarDays, detail: 'Veli talepleri ve öğretmen onayları', onClick: () => navigate('/admin/meetings') },
@@ -94,11 +104,24 @@ export default function AdminOperations() {
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
         {items.map((item) => (
-          <Card key={item.title} className="cursor-pointer transition-colors hover:bg-muted/30" onClick={item.onClick}>
+          <Card key={item.title} className={`${item.onClick ? 'cursor-pointer hover:bg-muted/30' : ''} transition-colors`} onClick={item.onClick || undefined}>
             <CardContent className="p-5 flex items-center gap-4">
               <item.icon className="h-8 w-8 text-brand-primary" />
-              <div>
-                <p className="text-2xl font-bold">{item.count}</p>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-2xl font-bold">{item.count}</p>
+                  {item.title === engagementLabel ? (
+                    <Select value={engagementPeriod} onValueChange={setEngagementPeriod}>
+                      <SelectTrigger className="h-8 w-28 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="day">Günlük</SelectItem>
+                        <SelectItem value="week">Haftalık</SelectItem>
+                        <SelectItem value="month">Aylık</SelectItem>
+                        <SelectItem value="year">Yıllık</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                </div>
                 <p className="text-sm">{item.title}</p>
                 <p className="text-xs text-muted-foreground">{item.detail}</p>
               </div>

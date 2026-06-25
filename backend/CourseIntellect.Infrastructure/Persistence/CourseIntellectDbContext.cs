@@ -448,7 +448,10 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Priority).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.CreatedByName).HasMaxLength(150);
+            entity.Property(x => x.ResponseStatus).HasMaxLength(40).IsRequired();
+            entity.Property(x => x.RejectionReason).HasMaxLength(1200);
             entity.HasIndex(x => new { x.TenantId, x.Status });
+            entity.HasIndex(x => new { x.TenantId, x.AssignedToUserId });
         });
 
         modelBuilder.Entity<AdminDocument>(entity =>

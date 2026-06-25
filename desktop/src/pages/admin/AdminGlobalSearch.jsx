@@ -36,7 +36,7 @@ export default function AdminGlobalSearch() {
       setStaff(staffItems);
       setAnnouncements(announcementItems);
     } catch (err) {
-      setError(err.message || 'Global arama verisi alınamadı.');
+      setError(err.message || 'Kurum içi arama verisi alınamadı.');
     } finally {
       setLoading(false);
     }
@@ -60,10 +60,10 @@ export default function AdminGlobalSearch() {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="admin-global-search-page">
       <div>
-        <h1 className="text-3xl font-bold font-heading">Global Arama</h1>
+        <h1 className="text-3xl font-bold font-heading">Kurum İçi Arama</h1>
         <p className="text-muted-foreground mt-1">Öğrenci, personel ve duyuru kayıtlarında arama</p>
       </div>
-      {error ? <ErrorBanner title="Global arama verisi alınamadı" message={error} onRetry={loadSearch} /> : null}
+      {error ? <ErrorBanner title="Kurum içi arama verisi alınamadı" message={error} onRetry={loadSearch} /> : null}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {[
           [students.length, 'Öğrenci Havuzu', Users],
@@ -115,7 +115,7 @@ export default function AdminGlobalSearch() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{selectedResult?.title || 'Kayıt detayı'}</DialogTitle>
-            <DialogDescription>Global arama sonucu için detay görünümü.</DialogDescription>
+            <DialogDescription>Kurum içi arama sonucu için detay görünümü.</DialogDescription>
           </DialogHeader>
           {selectedResult ? (
             <div className="space-y-4">

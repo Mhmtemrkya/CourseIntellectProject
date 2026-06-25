@@ -15,10 +15,16 @@ public interface IAdminTaskService
         string? assignee,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<AdminTaskDto>> GetMineAsync(
+        Guid? actorUserId,
+        string actorName,
+        CancellationToken cancellationToken = default);
+
     Task<AdminTaskDto?> UpdateStatusAsync(
         Guid id,
         TaskStatusRequest request,
         Guid? actorUserId,
         string actorName,
+        bool canManageAllTasks,
         CancellationToken cancellationToken = default);
 }

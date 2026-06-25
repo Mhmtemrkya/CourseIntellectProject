@@ -419,7 +419,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Global Arama',
+                      title: 'Kurum İçi Arama',
                       subtitle: 'Öğrenci, veli ve kadro arama',
                       color: const Color(0xFF2563EB),
                       icon: Icons.manage_search_rounded,
@@ -488,7 +488,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               const SizedBox(height: 12),
               _quickCard(
                 context,
-                title: 'KPI Dashboard',
+                title: 'Kurum Özeti',
                 subtitle:
                     'Doluluk, tahsilat, devamsızlık ve başarı göstergeleri',
                 color: const Color(0xFF0F766E),

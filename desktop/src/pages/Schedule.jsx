@@ -681,7 +681,7 @@ export default function Schedule() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>{selectedLesson?.subject || 'Ders detayı'}</DialogTitle>
-            <DialogDescription>Seçilen program slotunun tüm bilgileri.</DialogDescription>
+            <DialogDescription>Seçilen ders programı kaydının tüm bilgileri.</DialogDescription>
           </DialogHeader>
           {selectedLesson ? (
             <div className="space-y-4">

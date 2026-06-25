@@ -35,7 +35,7 @@ class TeacherBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.shield_outlined,
-          label: 'Nöbetlerim',
+          label: 'Görevlerim',
           pageBuilder: (_) => const TeacherDutiesPage(),
           sidebarColor: const Color(0xFFF97316),
         ),

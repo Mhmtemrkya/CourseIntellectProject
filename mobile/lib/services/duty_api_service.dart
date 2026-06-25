@@ -54,6 +54,45 @@ class DutyRecord {
   }
 }
 
+class AdminTaskRecord {
+  final String id;
+  final String title;
+  final String description;
+  final String category;
+  final String priority;
+  final String status;
+  final String responseStatus;
+  final String rejectionReason;
+  final DateTime? startDate;
+  final DateTime? endDate;
+
+  const AdminTaskRecord({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.priority,
+    required this.status,
+    required this.responseStatus,
+    required this.rejectionReason,
+    required this.startDate,
+    required this.endDate,
+  });
+
+  factory AdminTaskRecord.fromMap(Map<String, dynamic> map) => AdminTaskRecord(
+        id: map['id'] as String? ?? '',
+        title: map['title'] as String? ?? '',
+        description: map['description'] as String? ?? '',
+        category: map['category'] as String? ?? '',
+        priority: map['priority'] as String? ?? '',
+        status: map['status'] as String? ?? '',
+        responseStatus: map['responseStatus'] as String? ?? 'Pending',
+        rejectionReason: map['rejectionReason'] as String? ?? '',
+        startDate: DateTime.tryParse(map['startDateUtc'] as String? ?? ''),
+        endDate: DateTime.tryParse(map['endDateUtc'] as String? ?? ''),
+      );
+}
+
 class DutyStats {
   final int total;
   final int completed;
@@ -107,6 +146,22 @@ class TeacherDutyLoad {
 }
 
 class DutyApiService {
+  Future<List<AdminTaskRecord>> fetchMyAdminTasks() async {
+    final response = await _get('/api/admin-tasks/mine');
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list
+        .map((item) => AdminTaskRecord.fromMap(Map<String, dynamic>.from(item as Map)))
+        .toList();
+  }
+
+  Future<AdminTaskRecord> updateAdminTaskStatus(String id, String status, {String? reason}) async {
+    final response = await _send('POST', '/api/admin-tasks/$id/status', body: {
+      'status': status,
+      'reason': ?reason,
+    });
+    return AdminTaskRecord.fromMap(Map<String, dynamic>.from(jsonDecode(response.body) as Map));
+  }
+
   Future<List<DutyRecord>> fetchMyDuties({String scope = 'all'}) async {
     final response = await _get('/api/duties/mine?scope=$scope');
     final list = jsonDecode(response.body) as List<dynamic>;

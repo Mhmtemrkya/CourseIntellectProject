@@ -58,6 +58,7 @@ public sealed class AcademicQueryService(
                 student.Note,
                 users[student.UserId].Username,
                 users[student.UserId].Status.ToString(),
+                users[student.UserId].LastLoginAtUtc,
                 users[student.UserId].ExtraRoles.Select(r => r.ToString()).ToList()))
             .ToList();
     }
@@ -313,6 +314,7 @@ public sealed class AcademicQueryService(
             student.Note,
             user.Username,
             user.Status.ToString(),
+            user.LastLoginAtUtc,
             user.ExtraRoles.Select(r => r.ToString()).ToList());
     }
 

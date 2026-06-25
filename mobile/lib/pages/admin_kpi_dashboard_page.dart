@@ -70,7 +70,7 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
     return AdminScaffold(
       appBar: AppBar(
         title: const Text(
-          'Kurum KPI Grafikleri',
+          'Kurum Özeti',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

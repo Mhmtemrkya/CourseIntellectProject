@@ -10,7 +10,7 @@ import {
 } from '../../components/ui/select';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchStaff, fetchTeacherTimetable, setTeacherTimetable } from '../../lib/api/modules';
+import { fetchClasses, fetchStaff, fetchTeacherTimetable, setTeacherTimetable } from '../../lib/api/modules';
 
 const DAYS = [
   { v: 1, label: 'Pazartesi' }, { v: 2, label: 'Salı' }, { v: 3, label: 'Çarşamba' },
@@ -19,11 +19,13 @@ const DAYS = [
 
 function teacherId(t) { return String(t.id || t.userId || ''); }
 function teacherName(t) { return t.fullName || t.name || ''; }
+function className(item) { return typeof item === 'string' ? item : (item.name || item.className || item.title || ''); }
 const GUID_RE = /^[0-9a-fA-F-]{36}$/;
 
 export default function TeacherTimetable() {
   const { toast } = useToast();
   const [teachers, setTeachers] = useState([]);
+  const [classes, setClasses] = useState([]);
   const [selectedId, setSelectedId] = useState('');
   const [slots, setSlots] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -33,8 +35,12 @@ export default function TeacherTimetable() {
   useEffect(() => {
     (async () => {
       try {
-        const list = await fetchStaff('Teacher').catch(() => []);
+        const [list, classList] = await Promise.all([
+          fetchStaff('Teacher').catch(() => []),
+          fetchClasses().catch(() => []),
+        ]);
         setTeachers(Array.isArray(list) ? list : []);
+        setClasses(Array.isArray(classList) ? classList.map(className).filter(Boolean) : []);
       } finally {
         setLoading(false);
       }
@@ -42,6 +48,13 @@ export default function TeacherTimetable() {
   }, []);
 
   const selectedTeacher = useMemo(() => teachers.find((t) => teacherId(t) === selectedId), [teachers, selectedId]);
+  const lessonOptions = useMemo(() => {
+    const branch = selectedTeacher?.departmentOrBranch || selectedTeacher?.branch || '';
+    const options = [branch, selectedTeacher?.homeroomClass ? 'Rehberlik' : ''].filter(Boolean);
+    return [...new Set(options)];
+  }, [selectedTeacher]);
+  const classOptions = useMemo(() => [...new Set([...classes, ...slots.map((slot) => slot.className).filter(Boolean)])], [classes, slots]);
+  const defaultLesson = lessonOptions[0] || '';
 
   const loadSlots = useCallback(async (teacher) => {
     if (!teacher) { setSlots([]); return; }
@@ -60,7 +73,7 @@ export default function TeacherTimetable() {
 
   useEffect(() => { if (selectedTeacher) loadSlots(selectedTeacher); }, [selectedTeacher, loadSlots]);
 
-  const addSlot = () => setSlots((prev) => [...prev, { dayOfWeek: 1, startTime: '09:00', endTime: '09:40', className: '', lesson: '' }]);
+  const addSlot = () => setSlots((prev) => [...prev, { dayOfWeek: 1, startTime: '09:00', endTime: '09:40', className: classOptions[0] || '', lesson: defaultLesson }]);
   const removeSlot = (idx) => setSlots((prev) => prev.filter((_, i) => i !== idx));
   const updateSlot = (idx, patch) => setSlots((prev) => prev.map((s, i) => (i === idx ? { ...s, ...patch } : s)));
 
@@ -112,13 +125,13 @@ export default function TeacherTimetable() {
         <PremiumPanel
           title="Haftalık Program"
           description={`${teacherName(selectedTeacher)} · ${slots.length} ders saati`}
-          action={<Button variant="outline" size="sm" onClick={addSlot}><Plus className="h-4 w-4 mr-1" /> Slot Ekle</Button>}
+          action={<Button variant="outline" size="sm" onClick={addSlot}><Plus className="h-4 w-4 mr-1" /> Ders Ekle</Button>}
           contentClassName="space-y-3"
         >
           {slotsLoading ? (
             <div className="flex justify-center py-6"><LoadingDots /></div>
           ) : slots.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Ders saati yok. "Slot Ekle" ile başla.</div>
+            <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Ders saati yok. "Ders Ekle" ile başla.</div>
           ) : slots.map((s, idx) => (
             <div key={idx} className="grid grid-cols-2 items-end gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 sm:grid-cols-[1.4fr_1fr_1fr_1fr_1fr_auto]">
               <div>
@@ -130,8 +143,28 @@ export default function TeacherTimetable() {
               </div>
               <div><Label className="text-xs">Başlangıç</Label><Input type="time" value={s.startTime} onChange={(e) => updateSlot(idx, { startTime: e.target.value })} /></div>
               <div><Label className="text-xs">Bitiş</Label><Input type="time" value={s.endTime} onChange={(e) => updateSlot(idx, { endTime: e.target.value })} /></div>
-              <div><Label className="text-xs">Sınıf</Label><Input value={s.className} onChange={(e) => updateSlot(idx, { className: e.target.value })} placeholder="9/A" /></div>
-              <div><Label className="text-xs">Ders</Label><Input value={s.lesson} onChange={(e) => updateSlot(idx, { lesson: e.target.value })} placeholder="Matematik" /></div>
+              <div>
+                <Label className="text-xs">Sınıf</Label>
+                {classOptions.length > 0 ? (
+                  <Select value={s.className || classOptions[0]} onValueChange={(v) => updateSlot(idx, { className: v })}>
+                    <SelectTrigger><SelectValue placeholder="Sınıf seç" /></SelectTrigger>
+                    <SelectContent>{classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={s.className} onChange={(e) => updateSlot(idx, { className: e.target.value })} placeholder="9/A" />
+                )}
+              </div>
+              <div>
+                <Label className="text-xs">Ders</Label>
+                {lessonOptions.length > 0 ? (
+                  <Select value={s.lesson || defaultLesson} onValueChange={(v) => updateSlot(idx, { lesson: v })}>
+                    <SelectTrigger><SelectValue placeholder="Ders seç" /></SelectTrigger>
+                    <SelectContent>{lessonOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                  </Select>
+                ) : (
+                  <Input value={s.lesson} onChange={(e) => updateSlot(idx, { lesson: e.target.value })} placeholder="Matematik" />
+                )}
+              </div>
               <button onClick={() => removeSlot(idx)} className="grid h-10 w-10 place-items-center rounded-lg border border-foreground/10 text-rose-400 hover:bg-rose-500/10"><Trash2 className="h-4 w-4" /></button>
             </div>
           ))}

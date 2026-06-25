@@ -176,6 +176,8 @@ class AdminWorkflowApiService {
     String? assignedToName,
     String? priority,
     String? dueDate,
+    String? startDate,
+    String? endDate,
   }) async =>
       Map<String, dynamic>.from(await _post('/api/admin-tasks', {
         'title': title,
@@ -184,10 +186,12 @@ class AdminWorkflowApiService {
         'assignedToName': ?assignedToName,
         'priority': ?priority,
         'dueDate': ?dueDate,
+        'startDate': ?startDate,
+        'endDate': ?endDate,
       }) as Map);
 
-  Future<Map<String, dynamic>> updateTaskStatus(String id, String status) async =>
-      Map<String, dynamic>.from(await _post('/api/admin-tasks/$id/status', {'status': status}) as Map);
+  Future<Map<String, dynamic>> updateTaskStatus(String id, String status, {String? reason}) async =>
+      Map<String, dynamic>.from(await _post('/api/admin-tasks/$id/status', {'status': status, 'reason': ?reason}) as Map);
 
   // ---- Özet ----
   Future<Map<String, dynamic>> getOverview() async =>

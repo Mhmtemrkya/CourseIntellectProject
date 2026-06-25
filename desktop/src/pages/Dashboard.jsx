@@ -7,23 +7,18 @@ import {
   School,
   ClipboardCheck,
   HelpCircle,
-  FileQuestion,
-  TrendingUp,
-  CheckCircle2,
-  AlertCircle,
   Calendar,
+  Megaphone,
+  MessageCircle,
+  UserMinus,
 } from 'lucide-react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Progress } from '../components/ui/progress';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import {
-  MiniBarChart,
-  MiniDonut,
   MiniLineChart,
   PremiumListRow,
   PremiumMetricCard,
@@ -93,15 +88,15 @@ function LessonCard({ lesson }) {
   );
 }
 
-function ActivityItem({ activity }) {
-  const iconMap = {
-    check: CheckCircle2,
-    file: FileQuestion,
-  };
-  const Icon = iconMap[activity.icon] || AlertCircle;
-
+function AnnouncementItem({ announcement }) {
   return (
-    <PremiumListRow icon={Icon} title={activity.message} subtitle={activity.time} accent={activity.icon === 'check'} />
+    <PremiumListRow
+      icon={Megaphone}
+      title={announcement.title}
+      subtitle={`${announcement.audience || 'Tüm kurum'}${announcement.date ? ` • ${announcement.date}` : ''}`}
+      meta={announcement.detail ? announcement.detail.slice(0, 42) : ''}
+      accent
+    />
   );
 }
 
@@ -110,6 +105,7 @@ export default function Dashboard() {
   const [data, setData] = useState(null);
   const [todayLessons, setTodayLessons] = useState([]);
   const [selectedInteraction, setSelectedInteraction] = useState(null);
+  const [selectedClass, setSelectedClass] = useState('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const statRoutes = useMemo(() => ({
@@ -166,16 +162,15 @@ export default function Dashboard() {
   const stats = data?.stats || {};
   const lessons = todayLessons;
   const pendingItems = data?.pendingItems || [];
-  const activities = data?.activities || [];
+  const announcements = data?.announcements || [];
   const quickStats = data?.quickStats || {};
-  const operationalChart = [
-    stats.totalStudents || 0,
-    stats.totalTeachers || 0,
-    stats.totalClasses || 0,
-    quickStats.attendanceRate || stats.todayAttendanceRate || 0,
-    quickStats.answeredMessagesRate || 0,
-    quickStats.examRate || 0,
-  ];
+  const classOptions = data?.classOptions || [];
+  const attendanceSeries = data?.attendanceSeries || [];
+  const attendanceValues = attendanceSeries.map((item) => item.value);
+  const selectedLessons = selectedClass === 'all'
+    ? lessons
+    : lessons.filter((lesson) => lesson.class === selectedClass);
+  const latestAttendance = attendanceSeries.at(-1) || { value: 0, present: 0, total: 0 };
 
   return (
     <motion.div
@@ -205,74 +200,78 @@ export default function Dashboard() {
         <StatCard title="Bugünkü Devam" value={`${stats.todayAttendanceRate || 0}%`} icon={ClipboardCheck} trend="Oran" tone="violet" onClick={() => navigate(statRoutes['Bugünkü Devam'])} />
       </div>
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
-        <motion.div variants={itemVariants} className="xl:col-span-8">
-          <PremiumPanel title="Finansal Performans" description="Operasyon sinyalleri ve canlı özet eğrisi">
-            <div className="grid gap-5 lg:grid-cols-[1fr_210px]">
-              <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/35 p-5">
-                <div className="mb-4 flex items-center justify-between">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">Genel operasyon grafiği</p>
-                    <p className="mt-1 text-2xl font-black tracking-tight">Canlı Dashboard</p>
+      <motion.div variants={itemVariants}>
+        <PremiumPanel title="Canlı Kurum Operasyonu" description="Son 7 günlük gerçek katılım ve bugünün yönetim özeti">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(330px,0.8fr)]">
+            <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/40 p-6">
+              <div className="flex flex-wrap items-start justify-between gap-4">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Öğrenci katılım eğrisi</p>
+                  <div className="mt-2 flex items-end gap-3">
+                    <p className="text-4xl font-black tracking-tight">%{latestAttendance.value}</p>
+                    <p className="pb-1 text-sm text-muted-foreground">{latestAttendance.present}/{latestAttendance.total} öğrenci bugün kayıtlı</p>
                   </div>
-                  <Badge variant="outline">Bugün</Badge>
                 </div>
-                <MiniLineChart values={operationalChart} className="h-40" />
-                <div className="mt-4 grid grid-cols-3 gap-3 text-xs text-muted-foreground">
-                  <span>1 May</span>
-                  <span className="text-center">15 May</span>
-                  <span className="text-right">Bugün</span>
-                </div>
+                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-400">Canlı veri</Badge>
               </div>
-              <div className="grid gap-4">
-                <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Haftalık Devam</p>
-                  <div className="mt-4 flex justify-center">
-                    <MiniDonut value={quickStats.attendanceRate || stats.todayAttendanceRate || 0} label="Devam" />
+              <MiniLineChart values={attendanceValues} tone="emerald" className="mt-6 h-56" />
+              <div className="mt-4 grid grid-cols-7 gap-2 text-center text-xs text-muted-foreground">
+                {attendanceSeries.map((item) => (
+                  <div key={item.label}>
+                    <p className="font-semibold">{item.label}</p>
+                    <p className="mt-1 tabular-nums text-foreground">%{item.value}</p>
                   </div>
-                </div>
-                <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Kanal Yoğunluğu</p>
-                  <MiniBarChart values={[quickStats.answeredMessagesRate || 0, quickStats.contentRate || 0, quickStats.examRate || 0, stats.totalClasses || 0, stats.totalTeachers || 0]} className="mt-4" />
-                </div>
+                ))}
               </div>
             </div>
-          </PremiumPanel>
-        </motion.div>
-        <motion.div variants={itemVariants} className="xl:col-span-4">
-          <PremiumPanel title="Sistem Özeti" description="Referans dashboard tarzı yoğun özet">
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
               {[
-                ['Ders akışı', lessons.length, Calendar],
-                ['Bekleyen etkileşim', pendingItems.length, HelpCircle],
-                ['Aktivite', activities.length, TrendingUp],
-                ['Performans', `${quickStats.examRate || 0}%`, FileQuestion],
-              ].map(([label, value, Icon]) => (
-                <PremiumListRow key={label} icon={Icon} title={label} subtitle="Canlı backend verisi" meta={value} accent />
+                ['Bugünkü ders', lessons.length, Calendar, 'Programlanan ders sayısı'],
+                ['Bugün izinli', quickStats.todayLeaveCount || 0, UserMinus, 'Onaylı izin kaydı'],
+                ['Yayınlanan duyuru', quickStats.publishedAnnouncements || 0, Megaphone, 'Toplam canlı duyuru'],
+                ['Bekleyen mesaj', quickStats.unansweredMessages || 0, MessageCircle, 'Yanıt bekleyen ileti'],
+              ].map(([label, value, Icon, detail]) => (
+                <div key={label} className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-4">
+                  <div className="grid h-10 w-10 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <p className="mt-4 text-3xl font-black tabular-nums">{value}</p>
+                  <p className="mt-1 text-sm font-bold">{label}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
+                </div>
               ))}
             </div>
-          </PremiumPanel>
-        </motion.div>
-      </div>
+          </div>
+        </PremiumPanel>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <motion.div variants={itemVariants} className="lg:col-span-2">
           <PremiumPanel
             title="Bugünkü Dersler"
-            description="Bugünün sınıf programındaki ders akışı"
+            description={selectedClass === 'all' ? 'Tüm sınıfların bugünkü ders akışı' : `${selectedClass} sınıfının bugünkü ders akışı`}
             action={(
-              <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
-                <Calendar className="h-4 w-4 mr-2" />
-                Program Yönetimi
-              </Button>
+              <div className="flex items-center gap-2">
+                <Select value={selectedClass} onValueChange={setSelectedClass}>
+                  <SelectTrigger className="h-9 w-40"><SelectValue placeholder="Sınıf seç" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tüm Sınıflar</SelectItem>
+                    {classOptions.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                <Button variant="outline" size="sm" onClick={() => navigate('/schedule')}>
+                  <Calendar className="h-4 w-4 mr-2" />
+                  Program
+                </Button>
+              </div>
             )}
             contentClassName="space-y-3"
           >
-              {lessons.length > 0 ? lessons.map((lesson, index) => (
+              {selectedLessons.length > 0 ? selectedLessons.map((lesson, index) => (
                 <LessonCard key={`${lesson.subject}-${lesson.class}-${index}`} lesson={lesson} />
               )) : (
                 <div className="rounded-xl border border-dashed p-8 text-center text-muted-foreground">
-                  Bugün için kayıtlı ders akışı bulunmuyor.
+                  {selectedClass === 'all' ? 'Bugün için kayıtlı ders akışı bulunmuyor.' : `${selectedClass} için bugün kayıtlı ders bulunmuyor.`}
                 </div>
               )}
           </PremiumPanel>
@@ -305,30 +304,37 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>
-          <PremiumPanel title="Son Aktiviteler" description="Duyuru ve bildirim akışından derlendi">
-              {activities.length > 0 ? activities.map((activity) => (
-                <ActivityItem key={activity.id} activity={activity} />
+          <PremiumPanel title="Duyurular" description={`${announcements.length} güncel duyuru gösteriliyor`}>
+              {announcements.length > 0 ? announcements.map((announcement) => (
+                <AnnouncementItem key={announcement.id || announcement.title} announcement={announcement} />
               )) : (
-                <p className="text-sm text-muted-foreground">Henüz aktivite kaydı yok.</p>
+                <p className="text-sm text-muted-foreground">Henüz yayınlanmış duyuru bulunmuyor.</p>
               )}
           </PremiumPanel>
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PremiumPanel title="Hızlı İstatistikler" description="Canlı özet göstergeleri" contentClassName="space-y-6">
+          <PremiumPanel title="Hızlı İstatistikler" description="Yönetim kararı için canlı ve anlamlı göstergeler" contentClassName="grid gap-3 sm:grid-cols-2">
               {[
-                ['Haftalık Devam Oranı', quickStats.attendanceRate || 0],
-                ['Yanıtlanan Mesajlar', quickStats.answeredMessagesRate || 0],
-                ['Duyuru / İçerik Yoğunluğu', quickStats.contentRate || 0],
-                ['Sınav Performansı', quickStats.examRate || 0],
-              ].map(([label, value]) => (
-                <div key={label}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm">{label}</span>
-                    <span className="text-sm font-bold">{value}%</span>
+                ['Bugün İzinli Personel', quickStats.todayLeaveCount || 0, UserMinus, data?.todayLeaves?.length ? data.todayLeaves.map((item) => item.staffName).join(', ') : 'Bugün izinli personel yok', null],
+                ['Yayınlanan Duyuru', quickStats.publishedAnnouncements || 0, Megaphone, 'Yayındaki toplam duyuru sayısı', '/admin/announcements'],
+                ['Yanıt Bekleyen Mesaj', quickStats.unansweredMessages || 0, MessageCircle, 'Geri dönüş bekleyen mesajlar', '/chat'],
+              ].map(([label, value, Icon, detail, action]) => (
+                <button
+                  type="button"
+                  key={label}
+                  onClick={() => (action ? navigate(action) : undefined)}
+                  className={`rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all ${action ? 'hover:border-[hsl(var(--brand-accent)/0.35)] hover:bg-[hsl(var(--brand-accent)/0.07)]' : 'cursor-default'}`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]">
+                      <Icon className="h-5 w-5" />
+                    </div>
+                    <span className="text-2xl font-black tabular-nums">{value}</span>
                   </div>
-                  <Progress value={value} className="h-2" />
-                </div>
+                  <p className="mt-3 text-sm font-bold">{label}</p>
+                  <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{detail}</p>
+                </button>
               ))}
           </PremiumPanel>
         </motion.div>
@@ -356,6 +362,7 @@ export default function Dashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
     </motion.div>
   );
 }

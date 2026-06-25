@@ -39,7 +39,7 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
     return AdminScaffold(
       appBar: AppBar(
         title: const Text(
-          'Global Arama Merkezi',
+          'Kurum İçi Arama',
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

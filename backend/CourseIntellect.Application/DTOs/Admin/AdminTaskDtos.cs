@@ -7,9 +7,11 @@ public sealed record CreateTaskRequest(
     Guid? AssignedToUserId,
     string? AssignedToName,
     string? Priority,
-    DateTime? DueDate);
+    DateTime? DueDate,
+    DateTime? StartDate,
+    DateTime? EndDate);
 
-public sealed record TaskStatusRequest(string Status);
+public sealed record TaskStatusRequest(string Status, string? Reason = null);
 
 public sealed record AdminTaskDto(
     Guid Id,
@@ -21,5 +23,10 @@ public sealed record AdminTaskDto(
     string Status,
     string CreatedByName,
     DateTime? DueDateUtc,
+    DateTime? StartDateUtc,
+    DateTime? EndDateUtc,
+    string ResponseStatus,
+    string RejectionReason,
+    DateTime? RespondedAtUtc,
     DateTime CreatedAtUtc,
     DateTime? CompletedAtUtc);

@@ -17,5 +17,6 @@ public sealed record StudentSummaryDto(
     string Note,
     string Username,
     string Status,
+    DateTime? LastLoginAtUtc,
     IReadOnlyList<string> ExtraRoles
 );

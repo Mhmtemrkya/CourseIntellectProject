@@ -96,7 +96,7 @@ export const menuConfigs = {
     {
       path: "/admin/kpi",
       icon: BarChart3,
-      label: "KPI Paneli",
+      label: "Kurum Özeti",
       color: "#22c55e",
     },
     {
@@ -244,7 +244,7 @@ export const menuConfigs = {
     {
       path: "/admin/global-search",
       icon: HelpCircle,
-      label: "Global Arama",
+      label: "Kurum İçi Arama",
       color: "#0ea5e9",
     },
     {
@@ -693,7 +693,7 @@ export const menuConfigs = {
     {
       path: "/t/duties",
       icon: ShieldCheck,
-      label: "Nöbetlerim",
+      label: "Görevlerim",
       color: "#f97316",
     },
     {
@@ -1030,7 +1030,7 @@ const MODULE_MENU_REGISTRY = {
     student: { path: "/s/dashboard", icon: LayoutDashboard, label: "Ana Sayfa", color: "#3b82f6", special: true },
     parent: { path: "/p/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
   },
-  kpi: { default: { path: "/admin/kpi", icon: BarChart3, label: "KPI Paneli", color: "#22c55e" } },
+  kpi: { default: { path: "/admin/kpi", icon: BarChart3, label: "Kurum Özeti", color: "#22c55e" } },
   academics: { default: { path: "/admin/academics", icon: GraduationCap, label: "Akademik Yönetim", color: "#2563eb" } },
   students: { default: { path: "/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6" } },
   parents: { default: { path: "/parents", icon: UserCheck, label: "Veliler", color: "#ec4899" }, parent: { path: "/p/children", icon: Users, label: "Çocuklarım", color: "#8b5cf6" } },
@@ -1111,7 +1111,7 @@ const MODULE_MENU_REGISTRY = {
   },
   registrations: { default: { path: "/admin/student-registration", icon: Users, label: "Kayıt İşlemleri", color: "#06b6d4" } },
   "branch-comparison": { default: { path: "/admin/branch-comparison", icon: BarChart3, label: "Şube Karşılaştırma", color: "#f97316" } },
-  "global-search": { default: { path: "/admin/global-search", icon: HelpCircle, label: "Global Arama", color: "#0ea5e9" } },
+  "global-search": { default: { path: "/admin/global-search", icon: HelpCircle, label: "Kurum İçi Arama", color: "#0ea5e9" } },
   chat: {
     default: { path: "/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
     teacher: { path: "/t/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },

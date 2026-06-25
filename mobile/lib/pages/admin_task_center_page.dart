@@ -5,6 +5,7 @@ import 'admin_staff_registration_page.dart';
 import 'accounting_approvals_page.dart';
 import 'teacher_meeting_approvals_page.dart';
 import '../services/accounting_finance_store.dart';
+import '../services/admin_workflow_api_service.dart';
 import '../services/meeting_request_store.dart';
 import '../services/staff_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -17,12 +18,30 @@ class AdminTaskCenterPage extends StatefulWidget {
 }
 
 class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
+  bool _loadingTasks = true;
+  List<Map<String, dynamic>> _backendTasks = const [];
+
   @override
   void initState() {
     super.initState();
     StaffRegistryStore.instance.ensureLoaded();
     AccountingFinanceStore.instance.loadDashboard();
     MeetingRequestStore.instance.ensureLoaded();
+    _loadBackendTasks();
+  }
+
+  Future<void> _loadBackendTasks() async {
+    try {
+      final tasks = await AdminWorkflowApiService.instance.getTasks();
+      if (!mounted) return;
+      setState(() {
+        _backendTasks = tasks;
+        _loadingTasks = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loadingTasks = false);
+    }
   }
 
   @override
@@ -81,9 +100,9 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
-        children: tasks
-            .map(
-              (task) => InkWell(
+        children: <Widget>[
+          ...tasks.map(
+            (task) => InkWell(
                 borderRadius: BorderRadius.circular(22),
                 onTap: () => Navigator.push(
                   context,
@@ -112,10 +131,69 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
                   ),
                 ),
               ),
-            )
-            .toList(),
+          ),
+          const SizedBox(height: 12),
+          const AdminSectionTitle(title: 'Oluşturulan Görevler'),
+          const SizedBox(height: 12),
+          if (_loadingTasks)
+            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+          else if (_backendTasks.isEmpty)
+            const AdminPanel(child: Text('Henüz oluşturulmuş idari görev yok.'))
+          else
+            ..._backendTasks.map((task) => AdminPanel(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${task['title'] ?? 'Görev'}',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          Text(_statusLabel('${task['status'] ?? ''}'), style: Theme.of(context).textTheme.bodySmall),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Text('${task['assignedToName'] ?? 'Atanmamış'} • ${task['category'] ?? 'Genel'}'),
+                      const SizedBox(height: 4),
+                      Text('Başlangıç: ${_fmt(task['startDateUtc'])} • Bitiş: ${_fmt(task['endDateUtc'])}'),
+                      if ('${task['rejectionReason'] ?? ''}'.trim().isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444).withValues(alpha: 0.10),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text('Mazeret: ${task['rejectionReason']}'),
+                        ),
+                      ],
+                    ],
+                  ),
+                )),
+        ],
       ),
     );
+  }
+
+  String _statusLabel(String status) {
+    return switch (status) {
+      'PendingAcceptance' => 'Kabul bekliyor',
+      'Accepted' => 'Kabul edildi',
+      'Rejected' => 'Kabul edilmedi',
+      'Done' => 'Tamamlandı',
+      _ => status.isEmpty ? '—' : status,
+    };
+  }
+
+  String _fmt(dynamic value) {
+    final date = DateTime.tryParse('$value');
+    if (date == null) return '—';
+    return '${date.day}.${date.month}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }
 

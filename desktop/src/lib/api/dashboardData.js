@@ -189,19 +189,21 @@ export async function fetchAdminDashboardData() {
     api.get('/api/students'),
     api.get('/api/staff'),
     api.get('/api/attendance'),
-    api.get('/api/examresults'),
     api.get('/api/announcements'),
     api.get('/api/messages/threads'),
     api.get('/api/notifications', { params: { targetRole: 'Admin' } }),
+    api.get('/api/staff-hr/leaves'),
+    api.get('/api/questionthreads'),
   ]);
 
   const students = safeData(results[0], []);
   const staff = safeData(results[1], []);
   const attendance = safeData(results[2], []);
-  const exams = safeData(results[3], []);
-  const announcements = safeData(results[4], []);
-  const threads = safeData(results[5], []);
-  const notifications = safeData(results[6], []);
+  const announcements = safeData(results[3], []);
+  const threads = safeData(results[4], []);
+  const notifications = safeData(results[5], []);
+  const leaves = safeData(results[6], []);
+  const questionThreads = safeData(results[7], []);
 
   const teachers = staff.filter((item) => normalizeText(item.role) === 'teacher');
   const classes = new Set(students.map((item) => item.className).filter(Boolean));
@@ -211,6 +213,118 @@ export async function fetchAdminDashboardData() {
       .filter((item) => normalizeText(item.status) === 'katildi')
       .map((item) => item.studentName)
   ).size;
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayEnd = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 1);
+  const approvedLeave = (item) => {
+    const status = normalizeText(item.status);
+    return status.includes('onay') || status.includes('approved');
+  };
+  const todayLeaves = leaves
+    .filter((item) => {
+      const start = new Date(item.startDateUtc || item.startDate);
+      const end = new Date(item.endDateUtc || item.endDate);
+      return approvedLeave(item)
+        && !Number.isNaN(start.getTime())
+        && !Number.isNaN(end.getTime())
+        && start < todayEnd
+        && end >= todayStart;
+    })
+    .map((item) => ({
+      id: item.id,
+      staffName: item.staffName || 'Personel',
+      leaveType: item.leaveType || 'İzin',
+      endDate: item.endDateUtc || item.endDate,
+    }));
+
+  const dateKey = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const attendanceSeries = Array.from({ length: 7 }, (_, index) => {
+    const day = new Date(todayStart);
+    day.setDate(todayStart.getDate() - (6 - index));
+    const key = dateKey(day);
+    const dayRows = attendance.filter((item) => dateKey(item.lessonDate) === key);
+    const uniqueRows = new Map();
+    dayRows.forEach((item) => {
+      const studentKey = normalizeText(item.studentName || item.studentUsername);
+      if (studentKey) uniqueRows.set(studentKey, item);
+    });
+    const rows = [...uniqueRows.values()];
+    const present = rows.filter((item) => {
+      const status = normalizeText(item.status);
+      return status.includes('katildi') || status.includes('present') || status.includes('geldi');
+    }).length;
+    return {
+      label: new Intl.DateTimeFormat('tr-TR', { weekday: 'short' }).format(day),
+      value: rows.length > 0 ? Math.round((present / rows.length) * 100) : 0,
+      present,
+      total: rows.length,
+    };
+  });
+
+  const studentClassByKey = new Map();
+  students.forEach((student) => {
+    const keys = [student.fullName, student.studentName, student.username, student.userName].map(normalizeText).filter(Boolean);
+    keys.forEach((key) => studentClassByKey.set(key, student.className || 'Sınıf belirtilmemiş'));
+  });
+  const responseByClassMap = new Map();
+  questionThreads.forEach((thread) => {
+    const studentKey = normalizeText(thread.studentUsername || thread.studentName || thread.contactName);
+    const className = studentClassByKey.get(studentKey) || thread.className || 'Sınıf belirtilmemiş';
+    const teacherName = thread.teacherName || 'Öğretmen belirtilmemiş';
+    if (!responseByClassMap.has(className)) responseByClassMap.set(className, new Map());
+    const teacherMap = responseByClassMap.get(className);
+    if (!teacherMap.has(teacherName)) {
+      teacherMap.set(teacherName, { teacherName, askedCount: 0, answeredCount: 0, questions: [] });
+    }
+    const row = teacherMap.get(teacherName);
+    const teacherAnswered = Array.isArray(thread.replies)
+      ? thread.replies.some((reply) => ['teacher', 'admin', 'administrative'].includes(normalizeText(reply.senderRole)))
+      : false;
+    const statusAnswered = ['cevaplandi', 'yanitlandi', 'answered', 'closed', 'cozuldu'].some((token) => normalizeText(thread.status).includes(token));
+    row.askedCount += 1;
+    if (teacherAnswered || statusAnswered) row.answeredCount += 1;
+    row.questions.push({
+      id: thread.id,
+      studentName: thread.studentName || thread.contactName || 'Öğrenci',
+      title: thread.title || thread.questionText || 'Soru',
+      status: thread.status || (teacherAnswered ? 'Cevaplandı' : 'Bekliyor'),
+    });
+  });
+  const questionResponseByClass = [...responseByClassMap.entries()]
+    .map(([className, teacherMap]) => {
+      const teachers = [...teacherMap.values()].sort((a, b) => b.askedCount - a.askedCount || a.teacherName.localeCompare(b.teacherName, 'tr'));
+      const askedCount = teachers.reduce((sum, item) => sum + item.askedCount, 0);
+      const answeredCount = teachers.reduce((sum, item) => sum + item.answeredCount, 0);
+      return {
+        className,
+        askedCount,
+        answeredCount,
+        responseRate: askedCount > 0 ? Math.round((answeredCount / askedCount) * 100) : 0,
+        teachers,
+      };
+    })
+    .sort((left, right) => left.className.localeCompare(right.className, 'tr'));
+
+  const activeStudentStats = ['day', 'week', 'month', 'year'].reduce((acc, period) => {
+    const start = new Date(todayStart);
+    if (period === 'week') start.setDate(start.getDate() - 6);
+    if (period === 'month') start.setMonth(start.getMonth() - 1);
+    if (period === 'year') start.setFullYear(start.getFullYear() - 1);
+    const active = students.filter((student) => {
+      const lastLogin = new Date(student.lastLoginAtUtc || student.lastLogin || student.lastSeenAtUtc || '');
+      return !Number.isNaN(lastLogin.getTime()) && lastLogin >= start && lastLogin < todayEnd;
+    });
+    acc[period] = {
+      uniqueCount: new Set(active.map((student) => student.userId || student.id || student.username || student.fullName)).size,
+      totalStudents: students.length,
+    };
+    return acc;
+  }, {});
 
   return {
     stats: {
@@ -230,11 +344,24 @@ export async function fetchAdminDashboardData() {
         subject: item.contactRole,
       })),
     activities: mapActivities(announcements, notifications),
+    announcements: announcements.slice(0, 8).map((item) => ({
+      id: item.id,
+      title: item.title || 'Duyuru',
+      detail: item.detail || item.body || item.message || '',
+      date: item.dateLabel || item.date || item.createdAtUtc || item.createdAt || '',
+      audience: item.audience || 'Tüm kurum',
+    })),
+    classOptions: [...classes].sort((left, right) => left.localeCompare(right, 'tr')),
+    todayLeaves,
+    attendanceSeries,
+    questionResponseByClass,
+    activeStudentStats,
     quickStats: {
       attendanceRate: students.length > 0 ? Math.round((uniquePresentStudents / students.length) * 100) : 0,
       answeredMessagesRate: threads.length > 0 ? Math.round((threads.filter((item) => safeNumber(item.unreadCount) === 0).length / threads.length) * 100) : 0,
-      contentRate: announcements.length > 0 ? Math.min(100, announcements.length * 12) : 0,
-      examRate: exams.length > 0 ? Math.round(exams.reduce((sum, item) => sum + safeNumber(item.score), 0) / exams.length) : 0,
+      publishedAnnouncements: announcements.length,
+      unansweredMessages: threads.reduce((sum, item) => sum + safeNumber(item.unreadCount), 0),
+      todayLeaveCount: todayLeaves.length,
     },
   };
 }
