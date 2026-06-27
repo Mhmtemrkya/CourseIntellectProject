@@ -732,6 +732,23 @@ function StudentReportMode({
   const [classFilter, setClassFilter] = useState('Tüm Sınıflar');
 
   const classesFromStudents = useMemo(() => ['Tüm Sınıflar', ...new Set(studentsData.map((item) => item.className).filter(Boolean))], [studentsData]);
+  // Üst metrik kartları sınıf filtresine göre daralsın (Genel Ortalama = seçili sınıfın ortalaması).
+  const scopedStudents = useMemo(
+    () => (classFilter === 'Tüm Sınıflar' ? studentsData : studentsData.filter((item) => item.className === classFilter)),
+    [classFilter, studentsData],
+  );
+  const scopedAverage = useMemo(
+    () => (scopedStudents.length
+      ? formatScore(scopedStudents.reduce((sum, item) => sum + Number(item.averageScore || 0), 0) / scopedStudents.length)
+      : '-'),
+    [scopedStudents],
+  );
+  const scopedAttendance = useMemo(
+    () => (scopedStudents.length
+      ? `%${Math.round(scopedStudents.reduce((sum, item) => sum + Number(item.attendanceRate || 0), 0) / scopedStudents.length)}`
+      : '-'),
+    [scopedStudents],
+  );
   const filteredStudents = useMemo(() => studentsData.filter((item) => {
     const matchesClass = classFilter === 'Tüm Sınıflar' || item.className === classFilter;
     const haystack = `${item.fullName || ''} ${item.username || ''} ${item.className || ''}`.toLowerCase();
@@ -771,9 +788,9 @@ function StudentReportMode({
       </div>
 
       <div className="mt-7 grid gap-4 md:grid-cols-4">
-        <StudentMetric icon={Users} label="Toplam Öğrenci" value={loading ? '...' : studentsData.length} color="#4DA3FF" />
-        <StudentMetric icon={BarChart3} label="Genel Ortalama" value={studentsData.length ? formatScore(studentsData.reduce((sum, item) => sum + Number(item.averageScore || 0), 0) / studentsData.length) : '-'} color="#FF9D2E" />
-        <StudentMetric icon={Calendar} label="Ortalama Katılım" value={studentsData.length ? `%${Math.round(studentsData.reduce((sum, item) => sum + Number(item.attendanceRate || 0), 0) / studentsData.length)}` : '-'} color="#30D158" />
+        <StudentMetric icon={Users} label="Toplam Öğrenci" value={loading ? '...' : scopedStudents.length} detail={classFilter === 'Tüm Sınıflar' ? 'Tüm sınıflar' : classFilter} color="#4DA3FF" />
+        <StudentMetric icon={BarChart3} label="Genel Ortalama" value={loading ? '...' : scopedAverage} detail={classFilter === 'Tüm Sınıflar' ? 'Tüm sınıfların ortalaması' : `${classFilter} ortalaması`} color="#FF9D2E" />
+        <StudentMetric icon={Calendar} label="Ortalama Katılım" value={loading ? '...' : scopedAttendance} detail={classFilter === 'Tüm Sınıflar' ? 'Tüm sınıflar' : classFilter} color="#30D158" />
         <StudentMetric icon={FileText} label="PDF Modu" value="Hazır" detail="Detay modalından açılır" color="#7B61FF" />
       </div>
 

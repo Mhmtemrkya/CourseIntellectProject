@@ -87,6 +87,8 @@ import StudentStudyPlan from "./pages/student/StudentStudyPlan";
 import StudentAttendanceScan from "./pages/student/StudentAttendanceScan";
 import StudentWrongAnswers from "./pages/student/StudentWrongAnswers";
 import StudentContentDetail from "./pages/student/StudentContentDetail";
+import StudentFavorites from "./pages/student/StudentFavorites";
+import StudentNotes from "./pages/student/StudentNotes";
 import StudentQuestionPractice from "./pages/student/StudentQuestionPractice";
 import StudentAttendance from "./pages/student/StudentAttendance";
 import StudentExamResults from "./pages/student/StudentExamResults";
@@ -363,6 +365,8 @@ function App() {
               <Route path="/s/exam-results" element={<StudentExamResults />} />
               <Route path="/s/wrong-answers" element={<StudentWrongAnswers />} />
               <Route path="/s/content-detail" element={<StudentContentDetail />} />
+              <Route path="/s/favorites" element={<StudentFavorites />} />
+              <Route path="/s/notes" element={<StudentNotes />} />
               <Route path="/s/question-practice" element={<StudentQuestionPractice />} />
               <Route path="/s/question-box" element={<StudentQuestionBox />} />
               <Route path="/s/badges" element={<StudentBadges />} />

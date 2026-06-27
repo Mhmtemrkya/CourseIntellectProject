@@ -18,8 +18,10 @@ import ExamEntryGate from '../../components/student/ExamEntryGate';
 import { useApp } from '../../context/AppContext';
 import {
   checkinPlannedExam,
+  classMatchesMine,
   completeExamSession,
   fetchPlannedExams,
+  getMyClassName,
   submitExamSessionAnswer,
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
@@ -86,14 +88,19 @@ export default function StudentExams({ mockOnly = false }) {
     try {
       setLoading(true);
       setError('');
-      const exams = await fetchPlannedExams({ studentName: user?.name || '', studentUsername: user?.username || '' });
-      setPlannedExams(exams);
+      const [exams, myClass] = await Promise.all([
+        fetchPlannedExams({ studentName: user?.name || '', studentUsername: user?.username || '' }),
+        getMyClassName(user),
+      ]);
+      const list = Array.isArray(exams) ? exams : [];
+      // Yalnızca öğrencinin kendi sınıfına atanmış (veya genel) sınav/denemeler görünür.
+      setPlannedExams(list.filter((item) => classMatchesMine(item.className, myClass)));
     } catch (err) {
       setError(err.message || 'Sınav verileri alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, [user?.name, user?.username]);
+  }, [user]);
 
   useEffect(() => {
     loadExams();
@@ -206,8 +213,15 @@ export default function StudentExams({ mockOnly = false }) {
 
   const overallStats = {
     totalExams: upcomingExams.length,
-    bestSubject: upcomingExams[0]?.subject || 'Henüz yok',
   };
+  // İşe yarar sayaçlar: bugün, bu hafta ve çözülmeye hazır oturum sayısı.
+  const nowRef = new Date();
+  const startToday = new Date(nowRef.getFullYear(), nowRef.getMonth(), nowRef.getDate());
+  const endToday = new Date(startToday); endToday.setDate(startToday.getDate() + 1);
+  const weekEnd = new Date(startToday); weekEnd.setDate(startToday.getDate() + 7);
+  const examsToday = upcomingExams.filter((item) => item.date >= startToday && item.date < endToday).length;
+  const examsThisWeek = upcomingExams.filter((item) => item.date >= startToday && item.date < weekEnd).length;
+  const readySessions = upcomingExams.filter((item) => item.questionCount > 0).length;
   const pageCopy = mockOnly
     ? {
         title: 'Deneme Sınavları',
@@ -252,9 +266,9 @@ export default function StudentExams({ mockOnly = false }) {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
           [overallStats.totalExams, pageCopy.totalLabel, FileQuestion, 'from-sky-400 to-blue-600'],
-          [upcomingExams.length, 'Planlanan', Target, 'from-emerald-400 to-teal-600'],
-          [overallStats.bestSubject, 'Odak Ders', Calendar, 'from-amber-400 to-orange-600'],
-          [upcomingExams.filter((item) => item.questionCount > 0).length, 'Hazır Oturum', Layers3, 'from-violet-400 to-fuchsia-600'],
+          [examsThisWeek, 'Bu Hafta', Calendar, 'from-emerald-400 to-teal-600'],
+          [examsToday, 'Bugün', Clock3, 'from-amber-400 to-orange-600'],
+          [readySessions, 'Hazır Oturum', Layers3, 'from-violet-400 to-fuchsia-600'],
         ].map(([value, label, Icon, gradient]) => (
           <div key={label} className="ci-metric-card flex items-center gap-4 rounded-2xl border border-foreground/10 p-4">
             <div className={`grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-white shadow-[0_12px_28px_hsl(var(--brand-accent)/0.22)] ${gradient}`}>

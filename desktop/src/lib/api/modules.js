@@ -78,6 +78,52 @@ export async function fetchStudents() {
   return response;
 }
 
+function normalizeForMatch(value = '') {
+  return String(value)
+    .trim()
+    .toLowerCase()
+    .replaceAll('ç', 'c')
+    .replaceAll('ğ', 'g')
+    .replaceAll('ı', 'i')
+    .replaceAll('ö', 'o')
+    .replaceAll('ş', 's')
+    .replaceAll('ü', 'u');
+}
+
+// Geçerli öğrencinin kendi sınıfını çözer. Sınıf bazlı sayfalarda (soru bankası,
+// sınav, deneme, ödev) yalnızca kendi sınıfının içeriğini göstermek için kullanılır.
+let cachedMyClassName;
+export async function getMyClassName(user) {
+  if (cachedMyClassName !== undefined) return cachedMyClassName;
+  try {
+    const students = await fetchStudents();
+    const list = Array.isArray(students) ? students : [];
+    const username = normalizeForMatch(user?.username);
+    const fullName = normalizeForMatch(user?.name);
+    const me = (username && list.find((item) => normalizeForMatch(item.username) === username))
+      || (fullName && list.find((item) => normalizeForMatch(item.fullName) === fullName))
+      || null;
+    cachedMyClassName = me?.className || '';
+  } catch {
+    cachedMyClassName = '';
+  }
+  return cachedMyClassName;
+}
+
+// Bir içeriğin sınıf hedefi öğrencinin sınıfıyla eşleşiyor mu? Sınıfsız/genel
+// içerikler herkese görünür; öğrencinin sınıfı çözülemediyse yalnızca genel
+// içerikler görünür.
+export function classMatchesMine(itemClassName, myClassName) {
+  const mine = normalizeForMatch(myClassName);
+  const target = normalizeForMatch(itemClassName);
+  if (!target || target === 'tum siniflar' || target === 'tumu' || target === 'genel' || target === 'tum') return true;
+  if (!mine) return false;
+  return target
+    .split(/[,;/]+/)
+    .map((part) => part.trim())
+    .some((part) => part === mine);
+}
+
 export async function changePassword({ currentPassword, newPassword }) {
   const payload = {
     currentPassword: currentPassword || null,
@@ -770,6 +816,10 @@ export async function deleteContent(id) {
 export async function updateContentStatus(id, publishStatus) {
   const response = await api.put(`/api/contents/${id}/status`, { publishStatus });
   return response;
+}
+
+export async function fetchMyContentEngagement() {
+  return await api.get('/api/contents/my-engagement');
 }
 
 export async function fetchContentEngagement(contentId) {

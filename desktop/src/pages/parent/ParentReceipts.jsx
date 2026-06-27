@@ -72,9 +72,11 @@ export default function ParentReceipts() {
   const { toast } = useToast();
   const [accounts, setAccounts] = useState([]);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
+  const [periodFilter, setPeriodFilter] = useState('all');
   const [yearFilter, setYearFilter] = useState('all');
   const [childFilter, setChildFilter] = useState('all');
   const [methodFilter, setMethodFilter] = useState('all');
+  const [rangeFilter, setRangeFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -101,6 +103,7 @@ export default function ParentReceipts() {
       return (account.payments || []).map((payment, index) => {
         const installment = (account.installments || []).find((item) => item.id === payment.financeInstallmentId);
         const paidAt = payment.paidAtUtc || payment.date || payment.createdAt;
+        const calendarYear = paidAt ? String(new Date(paidAt).getFullYear()) : '';
         return {
           ...payment,
           key: payment.id || `${account.studentName}-${index}`,
@@ -109,42 +112,55 @@ export default function ParentReceipts() {
           academicYear: contract.academicYear || '',
           currency: payment.currency || account.currency || 'TRY',
           paidAtUtc: paidAt,
-          year: paidAt ? String(new Date(paidAt).getFullYear()) : contract.academicYear || '',
+          year: calendarYear || contract.academicYear || '',
+          // Dönem = akademik yıl (varsa), yoksa takvim yılı. Sayfanın genel filtresi.
+          period: contract.academicYear || calendarYear || '',
           paymentType: installment?.label || (payment.amount < 0 ? 'İade' : 'Taksit Ödemesi'),
         };
       });
     }).sort((a, b) => new Date(b.paidAtUtc || 0) - new Date(a.paidAtUtc || 0));
   }, [accounts]);
 
-  const years = useMemo(() => Array.from(new Set(receipts.map((item) => item.year).filter(Boolean))).sort().reverse(), [receipts]);
+  // Dönem (akademik yıl/takvim yılı) listesi — sayfanın genel kapsam filtresi.
+  const periods = useMemo(() => Array.from(new Set(receipts.map((item) => item.period).filter(Boolean))).sort().reverse(), [receipts]);
+
+  // Seçili döneme göre kapsanan makbuzlar; tüm özet/grafik/tablo bunun üzerinden hesaplanır.
+  const scopedReceipts = useMemo(() => (
+    periodFilter === 'all' ? receipts : receipts.filter((item) => item.period === periodFilter)
+  ), [periodFilter, receipts]);
+
+  const years = useMemo(() => Array.from(new Set(scopedReceipts.map((item) => item.year).filter(Boolean))).sort().reverse(), [scopedReceipts]);
   const children = useMemo(() => Array.from(new Set(accounts.map((account) => account.studentName).filter(Boolean))), [accounts]);
-  const methods = useMemo(() => Array.from(new Set(receipts.map((item) => item.method || 'Diğer').filter(Boolean))), [receipts]);
+  const methods = useMemo(() => Array.from(new Set(scopedReceipts.map((item) => item.method || 'Diğer').filter(Boolean))), [scopedReceipts]);
 
   const filteredReceipts = useMemo(() => {
-    return receipts.filter((item) => {
+    const now = Date.now();
+    const rangeDays = { '30': 30, '90': 90, '180': 180, '365': 365 }[rangeFilter];
+    const rangeFromMs = rangeDays ? now - rangeDays * 24 * 60 * 60 * 1000 : null;
+    return scopedReceipts.filter((item) => {
       const yearOk = yearFilter === 'all' || item.year === yearFilter || item.academicYear === yearFilter;
       const childOk = childFilter === 'all' || item.studentName === childFilter;
       const methodOk = methodFilter === 'all' || (item.method || 'Diğer') === methodFilter;
-      return yearOk && childOk && methodOk;
+      const paidMs = item.paidAtUtc ? new Date(item.paidAtUtc).getTime() : null;
+      const rangeOk = rangeFromMs == null || (paidMs != null && paidMs >= rangeFromMs);
+      return yearOk && childOk && methodOk && rangeOk;
     });
-  }, [childFilter, methodFilter, receipts, yearFilter]);
+  }, [childFilter, methodFilter, rangeFilter, scopedReceipts, yearFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filteredReceipts.length / 7));
   const pageItems = filteredReceipts.slice((page - 1) * 7, page * 7);
 
   const summary = useMemo(() => {
-    const currency = accounts[0]?.currency || receipts[0]?.currency || 'TRY';
-    const total = receipts.reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0);
-    const currentYear = String(new Date().getFullYear());
-    const thisYear = receipts.filter((item) => item.year === currentYear).reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0);
-    const latest = receipts[0]?.paidAtUtc;
+    const currency = accounts[0]?.currency || scopedReceipts[0]?.currency || 'TRY';
+    const total = scopedReceipts.reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0);
+    const latest = scopedReceipts[0]?.paidAtUtc;
     const byYear = years.slice().reverse().map((year) => ({
       label: year,
-      value: receipts.filter((item) => item.year === year).reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0),
-      display: formatMoney(receipts.filter((item) => item.year === year).reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0), currency).replace(',00', ''),
+      value: scopedReceipts.filter((item) => item.year === year).reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0),
+      display: formatMoney(scopedReceipts.filter((item) => item.year === year).reduce((sum, item) => sum + Math.max(0, safeNumber(item.amount)), 0), currency).replace(',00', ''),
     }));
-    return { currency, total, thisYear, latest, byYear };
-  }, [accounts, receipts, years]);
+    return { currency, total, latest, byYear };
+  }, [accounts, scopedReceipts, years]);
 
   const exportFiltered = () => {
     const rows = [
@@ -176,18 +192,31 @@ export default function ParentReceipts() {
 
       {error ? <ErrorBanner title="Makbuz arşivi alınamadı" message={error} onRetry={loadReceipts} /> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1fr_1.05fr_1fr_0.85fr_1.45fr]">
-        <StatCard icon={FileArchive} tone="purple" label="Toplam Makbuz" value={receipts.length} sub="Tüm zamanlar" />
-        <StatCard icon={ReceiptText} tone="green" label="Toplam Ödenen Tutar" value={formatMoney(summary.total, summary.currency)} sub="Tüm zamanlar" />
-        <StatCard icon={ReceiptText} tone="blue" label="Bu Yıl Ödenen Tutar" value={formatMoney(summary.thisYear, summary.currency)} sub={String(new Date().getFullYear())} />
+      <div className="grid gap-4 xl:grid-cols-[1fr_1.05fr_1.1fr_0.85fr_1.45fr]">
+        <StatCard icon={FileArchive} tone="purple" label="Toplam Makbuz" value={scopedReceipts.length} sub={periodFilter === 'all' ? 'Tüm dönemler' : `${periodFilter} dönemi`} />
+        <StatCard icon={ReceiptText} tone="green" label="Toplam Ödenen Tutar" value={formatMoney(summary.total, summary.currency)} sub={periodFilter === 'all' ? 'Tüm dönemler' : `${periodFilter} dönemi`} />
+        <div className="flex flex-col justify-center gap-2 rounded-[14px] border border-foreground/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.84),rgba(5,23,43,0.78))] p-4 shadow-[0_18px_50px_rgba(0,0,0,0.24)]">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+            <IconTile icon={CalendarDays} tone="blue" className="h-8 w-8" />
+            Dönem
+          </div>
+          <select
+            className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm font-bold text-white outline-none"
+            value={periodFilter}
+            onChange={(event) => { setPeriodFilter(event.target.value); setYearFilter('all'); setPage(1); }}
+          >
+            <option value="all">Tüm Dönemler</option>
+            {periods.map((period) => <option key={period} value={period}>{period}</option>)}
+          </select>
+        </div>
         <StatCard icon={CalendarDays} tone="orange" label="Son Makbuz" value={formatDate(summary.latest, '-')} sub="En son ödeme" />
         <Panel title="Ödeme Özeti" className="row-span-2">
           <div className="grid gap-5 md:grid-cols-[170px_1fr] xl:grid-cols-1 2xl:grid-cols-[170px_1fr]">
             <DonutChart
               items={[
-                { label: 'Taksit Ödemeleri', value: receipts.filter((item) => normalizeText(item.paymentType).includes('taksit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), color: '#8b5cf6' },
-                { label: 'Kayıt Ücreti', value: receipts.filter((item) => normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), color: '#22c55e' },
-                { label: 'Diğer', value: receipts.filter((item) => !normalizeText(item.paymentType).includes('taksit') && !normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), color: '#f97316' },
+                { label: 'Taksit Ödemeleri', value: scopedReceipts.filter((item) => normalizeText(item.paymentType).includes('taksit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), color: '#8b5cf6' },
+                { label: 'Kayıt Ücreti', value: scopedReceipts.filter((item) => normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), color: '#22c55e' },
+                { label: 'Diğer', value: scopedReceipts.filter((item) => !normalizeText(item.paymentType).includes('taksit') && !normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), color: '#f97316' },
               ]}
               center={(
                 <div className="text-center">
@@ -198,9 +227,9 @@ export default function ParentReceipts() {
             />
             <div className="space-y-4 text-sm">
               {[
-                ['Taksit Ödemeleri', receipts.filter((item) => normalizeText(item.paymentType).includes('taksit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), '#8b5cf6'],
-                ['Kayıt Ücreti', receipts.filter((item) => normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), '#22c55e'],
-                ['Diğer', receipts.filter((item) => !normalizeText(item.paymentType).includes('taksit') && !normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), '#f97316'],
+                ['Taksit Ödemeleri', scopedReceipts.filter((item) => normalizeText(item.paymentType).includes('taksit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), '#8b5cf6'],
+                ['Kayıt Ücreti', scopedReceipts.filter((item) => normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), '#22c55e'],
+                ['Diğer', scopedReceipts.filter((item) => !normalizeText(item.paymentType).includes('taksit') && !normalizeText(item.paymentType).includes('kayit')).reduce((sum, item) => sum + safeNumber(item.amount), 0), '#f97316'],
               ].map(([label, value, color]) => (
                 <div key={label} className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2 text-slate-300"><span className="h-3 w-3 rounded-full" style={{ background: color }} />{label}</span>
@@ -234,13 +263,16 @@ export default function ParentReceipts() {
                   {methods.map((method) => <option key={method} value={method}>{decodeText(method)}</option>)}
                 </select>
               </label>
-              <div className="space-y-2 text-xs font-semibold text-slate-400">Tarih Aralığı
-                <div className="flex h-11 items-center gap-2 rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white">
-                  <CalendarDays className="h-4 w-4 text-slate-400" />
-                  Canlı ödeme tarihleri
-                </div>
-              </div>
-              <SmallButton className="mt-6" onClick={() => { setYearFilter('all'); setChildFilter('all'); setMethodFilter('all'); setPage(1); }}>
+              <label className="space-y-2 text-xs font-semibold text-slate-400">Tarih Aralığı
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={rangeFilter} onChange={(event) => { setRangeFilter(event.target.value); setPage(1); }}>
+                  <option value="all">Tüm Tarihler</option>
+                  <option value="30">Son 30 Gün</option>
+                  <option value="90">Son 3 Ay</option>
+                  <option value="180">Son 6 Ay</option>
+                  <option value="365">Son 1 Yıl</option>
+                </select>
+              </label>
+              <SmallButton className="mt-6" onClick={() => { setYearFilter('all'); setChildFilter('all'); setMethodFilter('all'); setRangeFilter('all'); setPage(1); }}>
                 <Search className="mr-2 h-4 w-4" />Filtreleri Temizle
               </SmallButton>
               <Button className="mt-6 h-11 rounded-[10px] bg-purple-600 px-7 font-black text-white hover:bg-purple-500" onClick={exportFiltered}>

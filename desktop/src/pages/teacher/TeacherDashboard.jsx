@@ -2,8 +2,8 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Users, CalendarDays, FileText, Award, ArrowRight, TrendingUp, TrendingDown,
-  Activity, FilePlus2, ClipboardList, Upload, Megaphone, PlayCircle, ChevronRight,
+  BookOpen, Users, CalendarDays, FileText, ArrowRight, TrendingUp, TrendingDown,
+  FilePlus2, ClipboardList, Upload, Megaphone, PlayCircle, ChevronRight,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -61,7 +61,6 @@ export default function TeacherDashboard() {
   const stats = data?.stats || {};
   const classOverview = data?.classOverview || [];
   const todaySchedule = data?.todaySchedule || [];
-  const recentActivities = data?.recentActivities || [];
   const examStats = data?.examStats || {};
   const hwDist = data?.homeworkDistribution || {};
   const pendingGrading = data?.pendingGrading || [];
@@ -75,7 +74,6 @@ export default function TeacherDashboard() {
     [Users, 'Toplam Öğrenci', stats.totalStudents || 0, 'Tüm sınıflarınız', 'from-sky-400 to-blue-600'],
     [CalendarDays, 'Bugünkü Ders', stats.todayLessons || 0, `${stats.completedToday || 0} tamamlandı`, 'from-emerald-400 to-teal-600'],
     [FileText, 'Bekleyen Ödev', stats.pendingGradingCount || 0, 'Değerlendirmeyi bekliyor', 'from-amber-400 to-orange-600'],
-    [Award, 'Ortalama Başarı', `%${stats.avgSuccess || 0}`, 'Tüm sınıflarınız', 'from-rose-400 to-red-600'],
   ];
 
   const examTotal = (examStats.completed || 0) + (examStats.ongoing || 0) + (examStats.planned || 0);
@@ -101,8 +99,8 @@ export default function TeacherDashboard() {
 
       {error ? <ErrorBanner title="Öğretmen paneli yüklenemedi" message={error} onRetry={loadDashboard} /> : null}
 
-      {/* 5 stat kartı */}
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
+      {/* Stat kartları */}
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {statCards.map(([Icon, label, value, sub, gradient]) => (
           <motion.div key={label} variants={itemVariants} className="ci-metric-card flex flex-col gap-3 rounded-2xl border border-foreground/10 p-4">
             <div className="flex items-center justify-between">
@@ -120,41 +118,24 @@ export default function TeacherDashboard() {
       <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
         {/* Sol 2/3 */}
         <div className="space-y-5 xl:col-span-2">
-          {/* Sınıflarıma Genel Bakış + Son Aktiviteler */}
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <motion.div variants={itemVariants}>
-              <PremiumPanel title="Sınıflarıma Genel Bakış" description="Sınıf ortalamaları" contentClassName="space-y-3">
-                {classOverview.length ? classOverview.map((cls) => (
-                  <div key={cls.className} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold">{cls.className}</span>
-                      <span className="text-xs text-muted-foreground">{cls.studentCount} Öğrenci</span>
-                      <span className="font-black tabular-nums">%{cls.average}</span>
-                      <span className={`flex items-center gap-0.5 text-xs font-semibold ${cls.trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                        {cls.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{Math.abs(cls.trend)}
-                      </span>
-                    </div>
-                    <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className="ci-bar-fill h-full rounded-full bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]" style={{ width: `${cls.average}%` }} /></div>
+          {/* Sınıflarıma Genel Bakış */}
+          <motion.div variants={itemVariants}>
+            <PremiumPanel title="Sınıflarıma Genel Bakış" description="Sınıf ortalamaları" contentClassName="space-y-3">
+              {classOverview.length ? classOverview.map((cls) => (
+                <div key={cls.className} className="space-y-1.5">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="font-semibold">{cls.className}</span>
+                    <span className="text-xs text-muted-foreground">{cls.studentCount} Öğrenci</span>
+                    <span className="font-black tabular-nums">%{cls.average}</span>
+                    <span className={`flex items-center gap-0.5 text-xs font-semibold ${cls.trend >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      {cls.trend >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}{Math.abs(cls.trend)}
+                    </span>
                   </div>
-                )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Sınıf verisi yok.</div>}
-              </PremiumPanel>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <PremiumPanel title="Son Aktiviteler" description="Sınıf hareketleri" contentClassName="space-y-2.5">
-                {recentActivities.length ? recentActivities.map((act, index) => (
-                  <div key={index} className="flex items-start gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
-                    <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent))]"><Activity className="h-4 w-4" /></span>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{act.title}</p>
-                      {act.detail ? <p className="truncate text-xs text-muted-foreground">{act.detail}</p> : null}
-                    </div>
-                    <span className="shrink-0 text-[11px] text-muted-foreground">{act.time}</span>
-                  </div>
-                )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Aktivite yok.</div>}
-              </PremiumPanel>
-            </motion.div>
-          </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-foreground/[0.07]"><div className="ci-bar-fill h-full rounded-full bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-primary-text))]" style={{ width: `${cls.average}%` }} /></div>
+                </div>
+              )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Sınıf verisi yok.</div>}
+            </PremiumPanel>
+          </motion.div>
 
           {/* Donutlar + İçerik Kullanımı */}
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">

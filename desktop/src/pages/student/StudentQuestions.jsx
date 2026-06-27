@@ -21,8 +21,10 @@ import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import {
   addStudyPlanXp,
+  classMatchesMine,
   fetchQuestionBank,
   fetchQuestionPracticeStats,
+  getMyClassName,
   incrementQuestionUsage,
   submitQuestionPracticeAttempt,
 } from '../../lib/api/modules';
@@ -247,11 +249,15 @@ export default function StudentQuestions() {
       setLoading(true);
       setError('');
       const username = user?.username || user?.email || (user?.name || 'ogrenci').toLowerCase().replaceAll(' ', '');
+      const myClass = await getMyClassName(user);
       const [payload, statsPayload] = await Promise.all([
-        fetchQuestionBank(),
+        fetchQuestionBank(myClass || undefined),
         fetchQuestionPracticeStats({ studentUsername: username }).catch(() => null),
       ]);
-      setQuestions((payload || []).filter((item) => !isExamOnlyQuestion(item)));
+      // Sunucu sınıf filtresine ek olarak istemcide de kendi sınıfına göre süz.
+      setQuestions((payload || [])
+        .filter((item) => !isExamOnlyQuestion(item))
+        .filter((item) => classMatchesMine(item.className, myClass)));
       setPracticeStats(statsPayload);
     } catch (err) {
       setError(err.message || 'Soru bankası alınamadı.');

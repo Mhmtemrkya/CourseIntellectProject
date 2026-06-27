@@ -366,97 +366,6 @@ export async function fetchAdminDashboardData() {
   };
 }
 
-function buildStudyStats({ exams = [], homework = [], studentName = '', studentAttendance = [], contents = [], practiceAttempts = [] }) {
-  const startOfDay = (value) => {
-    const date = new Date(value);
-    date.setHours(0, 0, 0, 0);
-    return date;
-  };
-  const parseDate = (raw) => {
-    if (!raw) return null;
-    const parsed = parseHumanDateLabel(raw) || new Date(raw);
-    return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
-  };
-
-  const events = [];
-  const pushEvent = (raw, type) => {
-    const parsed = parseDate(raw);
-    if (parsed) events.push({ date: parsed, type });
-  };
-
-  exams.forEach((item) => pushEvent(item.dateLabel || item.date || item.createdAt, 'exam'));
-  homework.forEach((item) => (item.submissions || []).forEach((submission) => {
-    if (normalizeText(submission.studentName) === normalizeText(studentName)) {
-      pushEvent(submission.submittedAtUtc || submission.submittedAt || submission.createdAt, 'homework');
-    }
-  }));
-  studentAttendance.forEach((item) => {
-    if (normalizeText(item.status).includes('katildi')) pushEvent(item.lessonDate || item.date, 'attendance');
-  });
-  contents.forEach((item) => pushEvent(item.createdAtUtc || item.createdAt || item.publishedAtUtc || item.publishedAt, 'content'));
-  practiceAttempts.forEach((item) => pushEvent(item.attemptedAtUtc || item.createdAtUtc || item.createdAt || item.date, 'question'));
-
-  const today = startOfDay(new Date());
-  const monthShort = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
-
-  const dayBuckets = [];
-  for (let i = 13; i >= 0; i -= 1) {
-    const start = new Date(today); start.setDate(today.getDate() - i);
-    const end = new Date(start); end.setDate(start.getDate() + 1);
-    dayBuckets.push({ start, end, label: String(start.getDate()) });
-  }
-  const weekBuckets = [];
-  for (let i = 7; i >= 0; i -= 1) {
-    const start = new Date(today); start.setDate(today.getDate() - (i * 7) - 6);
-    const end = new Date(today); end.setDate(today.getDate() - (i * 7) + 1);
-    weekBuckets.push({ start, end, label: `${start.getDate()}.${start.getMonth() + 1}` });
-  }
-  const monthBuckets = [];
-  for (let i = 11; i >= 0; i -= 1) {
-    const start = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const end = new Date(today.getFullYear(), today.getMonth() - i + 1, 1);
-    monthBuckets.push({ start, end, label: monthShort[start.getMonth()] });
-  }
-  const yearBuckets = [];
-  for (let i = 4; i >= 0; i -= 1) {
-    const start = new Date(today.getFullYear() - i, 0, 1);
-    const end = new Date(today.getFullYear() - i + 1, 0, 1);
-    yearBuckets.push({ start, end, label: String(start.getFullYear()) });
-  }
-
-  const build = (buckets) => {
-    const values = buckets.map(() => 0);
-    const summary = { questions: 0, contents: 0, exams: 0, homework: 0, attendance: 0 };
-    const windowStart = buckets[0]?.start;
-    const windowEnd = buckets[buckets.length - 1]?.end;
-    events.forEach((event) => {
-      if (windowStart && event.date < windowStart) return;
-      if (windowEnd && event.date >= windowEnd) return;
-      const index = buckets.findIndex((bucket) => event.date >= bucket.start && event.date < bucket.end);
-      if (index < 0) return;
-      values[index] += 1;
-      if (event.type === 'question') summary.questions += 1;
-      else if (event.type === 'content') summary.contents += 1;
-      else if (event.type === 'exam') summary.exams += 1;
-      else if (event.type === 'homework') summary.homework += 1;
-      else if (event.type === 'attendance') summary.attendance += 1;
-    });
-    return {
-      labels: buckets.map((bucket) => bucket.label),
-      values,
-      total: values.reduce((sum, value) => sum + value, 0),
-      summary,
-    };
-  };
-
-  return {
-    day: build(dayBuckets),
-    week: build(weekBuckets),
-    month: build(monthBuckets),
-    year: build(yearBuckets),
-  };
-}
-
 export async function fetchStudentDashboardData(user) {
   const results = await Promise.allSettled([
     api.get('/api/students'),
@@ -873,7 +782,6 @@ export async function fetchParentDashboardData(user) {
     api.get('/api/schedule'),
     api.get('/api/plannedexams'),
     api.get('/api/notifications', { params: { targetRole: 'Parent' } }),
-    api.get('/api/parent/finance/children'),
   ]);
 
   const students = safeData(results[0], []);
@@ -885,7 +793,6 @@ export async function fetchParentDashboardData(user) {
   const scheduleEntries = safeData(results[6], []);
   const plannedExams = safeData(results[7], []);
   const notifications = safeData(results[8], []);
-  const financeAccounts = safeData(results[9], []);
 
   const selectedChild = children[0] || null;
 
@@ -991,32 +898,11 @@ export async function fetchParentDashboardData(user) {
     })),
   ].slice(0, 6);
 
-  // Finansal özet (veli paneli finans odaklı kartları için).
-  const financeList = Array.isArray(financeAccounts) ? financeAccounts : [];
-  const financeInstallments = financeList.flatMap((account) => account.installments || []);
-  const remainingInstallments = financeInstallments.filter(
-    (item) => normalizeText(item.status) !== 'paid' && safeNumber(item.remaining ?? item.amount) > 0
-  );
-  const finance = {
-    totalDebt: financeList.reduce((sum, account) => sum + safeNumber(account.balance), 0),
-    paidTotal: financeList.reduce((sum, account) => sum + safeNumber(account.paidTotal), 0),
-    netTotal: financeList.reduce((sum, account) => sum + safeNumber(account.netTotal), 0),
-    remainingInstallments: remainingInstallments.length,
-    totalInstallments: financeInstallments.length,
-    overdueCount: financeList.reduce((sum, account) => sum + safeNumber(account.overdueCount), 0),
-    currency: financeList[0]?.currency || 'TRY',
-    nextDue: financeList
-      .map((account) => account.nextDueDateUtc)
-      .filter(Boolean)
-      .sort((a, b) => new Date(a) - new Date(b))[0] || null,
-  };
-
   return {
     children,
     selectedChild,
     childSummaries,
     selectedChildSummary: selectedSummary,
-    finance,
     announcements: announcements.slice(0, 4),
     unreadMessages: threads.reduce((sum, item) => sum + safeNumber(item.unreadCount), 0),
     attendanceBreakdown: {

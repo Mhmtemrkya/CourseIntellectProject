@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  BookOpen, Video, FileText, Play, Pause, Clock, CheckCircle, Search, Download, Eye, Maximize2, Rewind, FastForward,
+  BookOpen, Video, FileText, Play, Pause, Clock, CheckCircle, Download, Eye, Maximize2, Rewind, FastForward,
   Star, Share2, NotebookPen, ThumbsUp, MessageCircle, ListChecks,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
@@ -23,6 +23,7 @@ import {
   addContentComment,
   fetchContentEngagement,
   fetchContents,
+  fetchExamResults,
   saveContentUserState,
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
@@ -84,6 +85,7 @@ function buildContentFileUrl(contentFile) {
 export default function StudentContent() {
   const navigate = useNavigate();
   const [content, setContent] = useState([]);
+  const [examResults, setExamResults] = useState([]);
   const [search, setSearch] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('Tümü');
   const [activeTab, setActiveTab] = useState('all');
@@ -122,6 +124,12 @@ export default function StudentContent() {
   useEffect(() => {
     loadContent();
   }, [loadContent]);
+
+  useEffect(() => {
+    fetchExamResults()
+      .then((rows) => setExamResults(Array.isArray(rows) ? rows : []))
+      .catch(() => setExamResults([]));
+  }, []);
 
   const openFile = async (contentFile, download = false) => {
     const fileUrl = buildContentFileUrl(contentFile);
@@ -355,8 +363,40 @@ export default function StudentContent() {
     return { subject, items, total: items.length, done, avg };
   });
   const inProgressItems = content.filter((item) => Number(item.progress) > 0 && Number(item.progress) < 100).slice(0, 4);
-  const suggestedItems = content.filter((item) => !(Number(item.progress) > 0)).slice(0, 4);
-  const popularItems = content.slice(0, 5);
+
+  // Çözülen testlerden konu analizi: en zayıf derslere göre içerik öner.
+  const weakSubjects = useMemo(() => {
+    const map = new Map();
+    examResults.forEach((item) => {
+      const subject = (item.subject || '').trim();
+      const score = Number(item.score);
+      if (!subject || !Number.isFinite(score) || score <= 0) return;
+      if (!map.has(subject)) map.set(subject, []);
+      map.get(subject).push(score);
+    });
+    return Array.from(map.entries())
+      .map(([subject, scores]) => ({ subject, average: scores.reduce((sum, value) => sum + value, 0) / scores.length }))
+      .sort((a, b) => a.average - b.average);
+  }, [examResults]);
+
+  const suggestedItems = useMemo(() => {
+    const notStarted = content.filter((item) => !(Number(item.progress) >= 100));
+    if (weakSubjects.length === 0) {
+      return notStarted.filter((item) => !(Number(item.progress) > 0)).slice(0, 5);
+    }
+    const order = new Map(weakSubjects.map((entry, index) => [entry.subject, index]));
+    const ranked = notStarted
+      .filter((item) => order.has(item.subject))
+      .sort((a, b) => {
+        const subjectDiff = (order.get(a.subject) ?? 99) - (order.get(b.subject) ?? 99);
+        if (subjectDiff !== 0) return subjectDiff;
+        return (Number(a.progress) || 0) - (Number(b.progress) || 0);
+      });
+    const fallback = notStarted.filter((item) => !order.has(item.subject));
+    return [...ranked, ...fallback].slice(0, 5);
+  }, [content, weakSubjects]);
+
+  const weakestSubjectLabel = weakSubjects[0]?.subject || '';
   const openItem = (item) => {
     if (!item) return;
     const type = normalizeType(item.fileType);
@@ -471,38 +511,36 @@ export default function StudentContent() {
           }) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Devam eden konu yok.</div>}
         </PremiumPanel>
 
-        <PremiumPanel title="Önerilen Konular" description="Sana özel öneriler" contentClassName="space-y-2.5">
+        <PremiumPanel
+          title="Önerilen Konular"
+          description={weakestSubjectLabel ? `Çözdüğün testlere göre: ${weakestSubjectLabel} önceliklendirildi` : 'Sana özel öneriler'}
+          contentClassName="space-y-2.5"
+        >
           {suggestedItems.length ? suggestedItems.map((item) => (
-            <PremiumListRow key={item.id || item.title} icon={Star} title={item.title} subtitle={item.subject} meta={<Play className="h-4 w-4 text-[hsl(var(--brand-accent))]" />} onClick={() => openItem(item)} />
+            <PremiumListRow
+              key={item.id || item.title}
+              icon={Star}
+              title={item.title}
+              subtitle={item.subject}
+              meta={<Play className="h-4 w-4 text-[hsl(var(--brand-accent))]" />}
+              onClick={() => openItem(item)}
+            />
           )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Öneri bulunamadı.</div>}
         </PremiumPanel>
       </div>
 
-      {/* Popüler Konular + Hızlı işlemler */}
-      <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-        <PremiumPanel title="Popüler Konular" description="En çok izlenen konular" contentClassName="space-y-2.5">
-          {popularItems.length ? popularItems.map((item, index) => (
-            <button key={item.id || item.title} onClick={() => openItem(item)} className="flex w-full items-center gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 text-left transition-colors hover:bg-[hsl(var(--brand-accent)/0.06)]">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-[hsl(var(--brand-accent)/0.14)] text-xs font-black text-[hsl(var(--brand-accent))]">{index + 1}</span>
-              <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{item.title}</p><p className="truncate text-xs text-muted-foreground">{item.subject}</p></div>
-              <Play className="h-4 w-4 shrink-0 text-[hsl(var(--brand-accent))]" />
-            </button>
-          )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">Henüz içerik yok.</div>}
-        </PremiumPanel>
-
-        <div className="grid grid-cols-2 gap-3 lg:col-span-2">
-          {[
-            ['Konu Video Arama', 'İstediğin konuyu hemen bul', Search, '/s/content'],
-            ['Çalışma Planı Oluştur', 'Kişisel planın ile daha verimli', NotebookPen, '/s/study-plan'],
-            ['Notlarını Senkronize Et', 'Tüm notların her yerde seninle', ListChecks, '/s/content'],
-            ['Favori Konuların', 'Favori konularına hızlıca ulaş', Star, '/s/content'],
-          ].map(([title, sub, Icon, href]) => (
-            <button key={title} onClick={() => navigate(href)} className="flex flex-col gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
-              <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
-              <div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{sub}</p></div>
-            </button>
-          ))}
-        </div>
+      {/* Hızlı işlemler */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {[
+          ['Çalışma Planı Oluştur', 'Kişisel planın ile daha verimli', NotebookPen, '/s/study-plan'],
+          ['Notlarını Senkronize Et', 'Tüm notların her yerde seninle', ListChecks, '/s/notes'],
+          ['Favori Konuların', 'Favori konularına hızlıca ulaş', Star, '/s/favorites'],
+        ].map(([title, sub, Icon, href]) => (
+          <button key={title} onClick={() => navigate(href)} className="flex flex-col gap-2 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition-all hover:-translate-y-0.5 hover:border-[hsl(var(--brand-accent)/0.28)] hover:bg-[hsl(var(--brand-accent)/0.08)]">
+            <span className="grid h-10 w-10 place-items-center rounded-xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]"><Icon className="h-5 w-5" /></span>
+            <div><p className="text-sm font-semibold">{title}</p><p className="text-xs text-muted-foreground">{sub}</p></div>
+          </button>
+        ))}
       </div>
 
       <Dialog open={!!selectedItem} onOpenChange={() => { setSelectedItem(null); setVideoImmersiveMode(false); }}>

@@ -9,11 +9,12 @@ import {
   Medal,
   ClipboardList,
   CalendarClock,
-  PlayCircle,
   ArrowRight,
   Flame,
   Trophy,
   ChevronRight,
+  TrendingUp,
+  Activity,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -24,13 +25,12 @@ import { useApp } from '../../context/AppContext';
 import { fetchStudentDashboardData } from '../../lib/api/dashboardData';
 import { BADGE_TOTAL, collectNewBadges, getAllBadges, unlockedBadgeCount } from '../../lib/badges';
 import {
-  MiniBarChart,
+  PremiumAreaChart,
   PremiumListRow,
   PremiumMetricCard,
   PremiumPanel,
   PremiumProgressRow,
   PremiumScheduleRow,
-  PremiumScoreCard,
   PremiumStatusPill,
 } from '../../components/ui/premium-dashboard';
 
@@ -74,6 +74,82 @@ function DayMeta({ days }) {
       <span className="text-base font-black text-[hsl(var(--brand-accent))]">{days}</span>
       <span className="block text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Gün</span>
     </div>
+  );
+}
+
+const STUDY_RANGES = [
+  ['day', 'Gün'],
+  ['week', 'Hafta'],
+  ['month', 'Ay'],
+  ['year', 'Yıl'],
+];
+
+function StudyStatsPanel({ studyStats }) {
+  const [range, setRange] = useState('week');
+  const active = (studyStats && studyStats[range]) || { labels: [], values: [], total: 0, summary: {} };
+  const labels = Array.isArray(active.labels) ? active.labels : [];
+  const values = Array.isArray(active.values) ? active.values : [];
+  const summary = active.summary || {};
+  const peak = values.length ? Math.max(...values) : 0;
+  const total = Number(active.total || values.reduce((sum, value) => sum + Number(value || 0), 0));
+
+  const metricTiles = [
+    ['Çözülen Soru', summary.questions ?? 0, Target],
+    ['İzlenen İçerik', summary.contents ?? 0, BookOpen],
+    ['Sınav', summary.exams ?? 0, GraduationCap],
+    ['Toplam Aktivite', total, Activity],
+  ];
+
+  return (
+    <PremiumPanel
+      title="Çalışma İstatistiklerim"
+      description="Gerçek çalışma hareketlerin — gün, hafta, ay ve yıl bazında"
+      action={(
+        <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
+          {STUDY_RANGES.map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setRange(key)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-bold transition ${range === key ? 'bg-[hsl(var(--brand-accent))] text-white shadow' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+    >
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        {metricTiles.map(([label, value, Icon]) => (
+          <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+              <Icon className="h-4 w-4 text-[hsl(var(--brand-accent))]" />
+            </div>
+            <p className="mt-2 text-3xl font-black tracking-tight">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-5 rounded-2xl border border-foreground/10 bg-foreground/[0.025] p-4">
+        <div className="mb-2 flex items-center justify-between text-xs">
+          <span className="flex items-center gap-1.5 font-semibold text-muted-foreground"><TrendingUp className="h-3.5 w-3.5 text-emerald-400" /> Aktivite eğrisi</span>
+          <span className="text-muted-foreground">En yüksek: <b className="text-foreground">{peak}</b></span>
+        </div>
+        {values.some((value) => Number(value) > 0) ? (
+          <>
+            <PremiumAreaChart values={values} height={170} />
+            <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+              {labels.map((label, index) => <span key={`${label}-${index}`} className="flex-1 text-center">{label}</span>)}
+            </div>
+          </>
+        ) : (
+          <div className="flex h-[170px] items-center justify-center rounded-xl border border-dashed border-foreground/10 text-sm text-muted-foreground">
+            Bu aralıkta çalışma hareketi bulunamadı.
+          </div>
+        )}
+      </div>
+    </PremiumPanel>
   );
 }
 
@@ -122,8 +198,7 @@ export default function StudentDashboard() {
   const todayLessons = data?.todayLessons || [];
   const upcomingEvents = data?.upcomingEvents || [];
   const announcementList = data?.announcementList || [];
-  const suggestedContents = data?.suggestedContents || [];
-  const weekly = data?.weekly || {};
+  const studyStats = data?.studyStats || {};
   const badges = getAllBadges();
 
   const performanceTrend = subjectPerformance.map((item) => item.average);
@@ -131,7 +206,7 @@ export default function StudentDashboard() {
   const summaryCards = [
     { title: 'Genel Not Ortalaması', value: stats.averageScore || 0, caption: scoreLabel(stats.averageScore || 0), icon: GraduationCap, tone: 'brand', chart: 'line', chartValues: performanceTrend },
     { title: 'Devam Durumu', value: `${stats.attendanceRate || 0}%`, caption: scoreLabel(stats.attendanceRate || 0), icon: CalendarCheck, tone: 'blue', chart: 'bars', chartValues: [stats.attendanceRate || 0] },
-    { title: 'Başarı Sıralaması', value: `${stats.rank || 1} / ${stats.totalStudents || 1}`, caption: 'Sınıf sıralaması', icon: Target, tone: 'violet', chart: 'line', chartValues: resultTrend },
+    { title: 'Başarı Sıralaması', value: stats.rank ? `${stats.rank} / ${stats.totalStudents || '-'}` : '—', caption: data?.className ? `${data.className} • not ortalaması` : 'Sınıf sıralaması', icon: Target, tone: 'violet', chart: 'line', chartValues: resultTrend },
     { title: 'Toplam Rozet', value: unlockedBadges, caption: `${BADGE_TOTAL} rozetten`, icon: Medal, tone: 'amber', chart: 'bars', chartValues: [unlockedBadges, Math.max(0, BADGE_TOTAL - unlockedBadges)] },
     { title: 'İçerik Tamamlama', value: `${stats.completedContent || 0}%`, caption: 'Genel ilerleme', icon: Trophy, tone: 'emerald', chart: 'donut', donutValue: stats.completedContent || 0 },
   ];
@@ -226,32 +301,9 @@ export default function StudentDashboard() {
             </motion.div>
           </div>
 
+          {/* Çalışma istatistikleri - geniş, belirgin grafik */}
           <motion.div variants={itemVariants}>
-            <PremiumPanel
-              title="Son Sınav Sonuçlarım"
-              description="En güncel sınav performansın"
-              action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/exam-results')}>Tüm Sonuçlar <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
-            >
-              {recentResults.length ? (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-                  {recentResults.map((result, index) => (
-                    <PremiumScoreCard
-                      key={`${result.subject}-${index}`}
-                      subject={`${result.subject} • ${result.type}`}
-                      score={result.score}
-                      grade={letterGrade(result.score)}
-                      date={new Date(result.date).toLocaleDateString('tr-TR')}
-                      values={recentResults.slice(Math.max(0, index - 3), index + 1).map((item) => item.score)}
-                      tone={tones[index % tones.length]}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
-                  Henüz sınav sonucu yok.
-                </div>
-              )}
-            </PremiumPanel>
+            <StudyStatsPanel studyStats={studyStats} />
           </motion.div>
 
           <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
@@ -273,29 +325,6 @@ export default function StudentDashboard() {
             </motion.div>
 
             <motion.div variants={itemVariants}>
-              <PremiumPanel title="Haftalık Çalışma İstatistiklerim" description="Bu haftaki çalışma sinyallerin">
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[
-                    ['Çözülen Soru', weekly.solvedQuestions || 0],
-                    ['İzlenen İçerik', weekly.watchedVideos || 0],
-                    ['Toplam İçerik', weekly.contentCount || 0],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3">
-                      <p className="text-2xl font-black tracking-tight">{value}</p>
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">{label}</p>
-                    </div>
-                  ))}
-                </div>
-                <MiniBarChart values={weekly.series || []} className="mt-4" />
-                <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
-                  {['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'].map((day) => <span key={day}>{day}</span>)}
-                </div>
-              </PremiumPanel>
-            </motion.div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-            <motion.div variants={itemVariants}>
               <PremiumPanel
                 title="Duyurular"
                 description="Okul ve sınıf duyuruları"
@@ -313,30 +342,6 @@ export default function StudentDashboard() {
                 )) : (
                   <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
                     Yeni duyuru yok.
-                  </div>
-                )}
-              </PremiumPanel>
-            </motion.div>
-
-            <motion.div variants={itemVariants}>
-              <PremiumPanel
-                title="Önerilen İçerikler"
-                description="Sana özel çalışma materyalleri"
-                action={<Button size="sm" variant="ghost" className="text-xs" onClick={() => navigate('/s/content')}>Tümü <ArrowRight className="ml-1 h-3.5 w-3.5" /></Button>}
-                contentClassName="space-y-2.5"
-              >
-                {suggestedContents.length ? suggestedContents.map((item, index) => (
-                  <PremiumListRow
-                    key={`${item.title}-${index}`}
-                    icon={PlayCircle}
-                    title={item.title}
-                    subtitle={[item.subject, item.type].filter(Boolean).join(' • ')}
-                    meta={item.meta || null}
-                    onClick={() => navigate('/s/content')}
-                  />
-                )) : (
-                  <div className="rounded-2xl border border-dashed border-foreground/10 p-8 text-center text-sm text-muted-foreground">
-                    Önerilen içerik bulunamadı.
                   </div>
                 )}
               </PremiumPanel>

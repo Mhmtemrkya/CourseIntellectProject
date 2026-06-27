@@ -30,21 +30,45 @@ public static class StudentScope
 
         if (user.IsInRole("Parent"))
         {
-            var userRaw = user.FindFirstValue("user_id") ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (!Guid.TryParse(userRaw, out var parentUserId))
-            {
-                return [];
-            }
+            // JWT, kimliği "sub"/"nameid" claim'i ile taşır ve inbound claim
+            // map kapalı olduğundan ClaimTypes.NameIdentifier'a eşlenmez. Bu
+            // yüzden olası tüm claim adlarını sırayla dene.
+            var userRaw = user.FindFirstValue("user_id")
+                ?? user.FindFirstValue("sub")
+                ?? user.FindFirstValue("nameid")
+                ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+            Guid.TryParse(userRaw, out var parentUserId);
 
-            return await dbContext.Students
+            var parentName = Normalize(user.FindFirstValue("name") ?? user.FindFirstValue(ClaimTypes.Name));
+            var username = Normalize(user.FindFirstValue("unique_name")
+                ?? user.FindFirstValue("preferred_username")
+                ?? user.FindFirstValue(ClaimTypes.GivenName));
+
+            var students = await dbContext.Students
                 .AsNoTracking()
-                .Where(x => x.ParentUserId == parentUserId)
-                .Select(x => x.FullName)
+                .Select(x => new { x.FullName, x.ParentUserId, x.ParentName, x.ParentEmail })
                 .ToListAsync(cancellationToken);
+
+            // Öncelik ParentUserId eşleşmesinde; bağ kurulmamış (sadece veli adı/
+            // e-postası girilmiş) kayıtlar için isim/e-posta eşleşmesine düşülür.
+            var matched = students
+                .Where(x =>
+                    (parentUserId != Guid.Empty && x.ParentUserId == parentUserId)
+                    || (parentName.Length > 0 && Normalize(x.ParentName) == parentName)
+                    || (username.Length > 0 && Normalize(x.ParentEmail).Contains(username)))
+                .Select(x => x.FullName)
+                .Where(name => !string.IsNullOrWhiteSpace(name))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            return matched;
         }
 
         return null;
     }
+
+    private static string Normalize(string? value)
+        => (value ?? string.Empty).Trim().ToLowerInvariant();
 
     /// <summary>
     /// Kapsamlı isim listesine göre kayıtları süzer (büyük/küçük harf duyarsız).

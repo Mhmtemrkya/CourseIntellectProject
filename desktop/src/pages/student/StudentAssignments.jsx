@@ -14,7 +14,7 @@ import { PremiumPanel, PremiumStatusPill } from '../../components/ui/premium-das
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { getDesktopApiBaseUrl } from '../../lib/appEnv';
-import { fetchHomework, submitHomework, uploadFile } from '../../lib/api/modules';
+import { classMatchesMine, fetchHomework, getMyClassName, submitHomework, uploadFile } from '../../lib/api/modules';
 
 const PAGE_SIZE = 8;
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -149,14 +149,16 @@ export default function StudentAssignments() {
     try {
       setLoading(true);
       setError('');
-      const payload = await fetchHomework();
-      setAssignments(payload);
+      const [payload, myClass] = await Promise.all([fetchHomework(), getMyClassName(user)]);
+      const list = Array.isArray(payload) ? payload : [];
+      // Yalnızca öğrencinin kendi sınıfına ait (veya genel) ödevler görünür.
+      setAssignments(list.filter((item) => classMatchesMine(item.className, myClass)));
     } catch (err) {
       setError(err.message || 'Ödevler alınamadı.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadAssignments();

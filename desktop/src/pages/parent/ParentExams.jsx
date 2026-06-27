@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart3,
   CalendarDays,
   Eye,
   FileQuestion,
@@ -196,7 +195,7 @@ export default function ParentExams() {
 
       {error ? <ErrorBanner title="Sonuçlar alınamadı" message={error} onRetry={loadExams} /> : null}
 
-      <div className="grid gap-4 xl:grid-cols-[1.45fr_1fr_1fr_1fr_1fr]">
+      <div className="grid gap-4 xl:grid-cols-[1.45fr_1fr_1fr_1fr]">
         <motion.div variants={itemMotion} className="rounded-[14px] border border-foreground/[0.08] bg-foreground/[0.035] p-5">
           <div className="flex items-center gap-4">
             <div className="grid h-16 w-16 place-items-center rounded-full bg-[hsl(var(--brand-accent))] text-xl font-black text-white">
@@ -208,50 +207,22 @@ export default function ParentExams() {
             </div>
           </div>
         </motion.div>
-        <StatCard icon={BarChart3} tone="purple" label="Toplam Sınav" value={stats.examCount} sub="Bu dönemde" />
         <StatCard icon={CalendarDays} tone="green" label="Ortalama Puan" value={stats.avgScore} sub="Genel ortalama" />
         <StatCard icon={Trophy} tone="blue" label="En Yüksek Puan" value={stats.topScore} sub={normalizedResults.find((item) => item._score === stats.topScore)?._subject || '-'} />
         <StatCard icon={FileQuestion} tone="orange" label="En Düşük Puan" value={stats.lowScore} sub={normalizedResults.find((item) => item._score === stats.lowScore)?._subject || '-'} />
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[1.25fr_1fr]">
-        <Panel title="Derslere Göre Başarı Dağılımı">
-          {subjectStats.length ? (
-            <>
-              <div className="mb-3 flex justify-end gap-5 text-xs text-slate-400">
-                <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 bg-purple-400" />Ortalama Puan</span>
-                <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 border-t border-dashed border-slate-400" />Genel Ortalama</span>
-              </div>
-              <RadarChart items={subjectStats} />
-            </>
-          ) : <EmptyPanel title="Sınav sonucu yok" description="Bu öğrenci için henüz sınav sonucu girilmemiş." />}
-        </Panel>
-
-        <Panel title="Son Sınavlar" action={<SmallButton>Tümünü Gör</SmallButton>}>
-          {normalizedResults.length ? (
-            <div className="space-y-2">
-              {normalizedResults.slice(0, 5).map((exam) => {
-                const [label, tone] = resultStatus(exam._score);
-                return (
-                  <div key={exam._key} className="grid grid-cols-[48px_1fr_auto_auto] items-center gap-4 rounded-[12px] border border-foreground/[0.06] bg-foreground/[0.03] p-3">
-                    <IconTile icon={FileQuestion} tone={tone === 'red' ? 'orange' : tone} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-black text-white">{exam._title}</p>
-                      <p className="mt-1 truncate text-xs text-slate-400">{exam._date} • {exam._className}</p>
-                      <p className="mt-1 truncate text-xs text-slate-500">Net: {formatNet(exam._net)}{exam._classRank ? ` • Sınıf sırası: ${exam._classRank}` : ''}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-black text-white">{exam._score}</p>
-                      <p className="text-xs text-slate-500">Puan (%)</p>
-                    </div>
-                    <StatusPill tone={tone}>{label}</StatusPill>
-                  </div>
-                );
-              })}
+      <Panel title="Derslere Göre Başarı Dağılımı">
+        {subjectStats.length ? (
+          <>
+            <div className="mb-3 flex justify-end gap-5 text-xs text-slate-400">
+              <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 bg-purple-400" />Ortalama Puan</span>
+              <span className="inline-flex items-center gap-2"><span className="h-0.5 w-5 border-t border-dashed border-slate-400" />Genel Ortalama</span>
             </div>
-          ) : <EmptyPanel />}
-        </Panel>
-      </div>
+            <RadarChart items={subjectStats} />
+          </>
+        ) : <EmptyPanel title="Sınav sonucu yok" description="Bu öğrenci için henüz sınav sonucu girilmemiş." />}
+      </Panel>
 
       <div className="grid gap-4 xl:grid-cols-[1.8fr_1fr]">
         <Panel title="Sınav Geçmişi">

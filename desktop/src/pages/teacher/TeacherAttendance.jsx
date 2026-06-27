@@ -438,13 +438,13 @@ export default function TeacherAttendance() {
           </div>
 
           <div className="overflow-hidden rounded-2xl border">
-            <div className="hidden grid-cols-[56px_minmax(190px,1fr)_360px_48px] border-b bg-muted/40 px-4 py-3 text-xs font-bold text-muted-foreground lg:grid">
+            <div className="hidden grid-cols-[48px_minmax(0,1fr)_minmax(0,360px)_44px] border-b bg-muted/40 px-4 py-3 text-xs font-bold text-muted-foreground lg:grid">
               <span>No</span><span>Öğrenci Adı Soyadı</span><span>Durum</span><span>İşlem</span>
             </div>
             {filteredStudents.map((student, index) => {
               const active = studentStatuses[student.id || student.fullName] || 'present';
               return (
-                <div key={student.id || student.fullName} className="grid gap-3 border-b px-4 py-3 last:border-b-0 lg:grid-cols-[56px_minmax(190px,1fr)_360px_48px] lg:items-center">
+                <div key={student.id || student.fullName} className="grid gap-3 border-b px-4 py-3 last:border-b-0 lg:grid-cols-[48px_minmax(0,1fr)_minmax(0,360px)_44px] lg:items-center">
                   <span className="text-sm text-muted-foreground">{index + 1}</span>
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">{student.fullName?.slice(0, 2)?.toUpperCase()}</div>

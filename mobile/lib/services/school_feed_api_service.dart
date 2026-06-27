@@ -116,6 +116,20 @@ class LiveLessonRecord {
   static String _twoDigit(int value) => value.toString().padLeft(2, '0');
 }
 
+class ClassRankingRecord {
+  final int rank;
+  final int totalStudents;
+  final double average;
+  final String className;
+
+  const ClassRankingRecord({
+    required this.rank,
+    required this.totalStudents,
+    required this.average,
+    required this.className,
+  });
+}
+
 class SchoolFeedApiService {
   SchoolFeedApiService._();
 
@@ -243,6 +257,31 @@ class SchoolFeedApiService {
 
     ExamResultsStore.instance.replaceRecords(records);
     return records;
+  }
+
+  // Öğrencinin kendi sınıfı içindeki başarı sıralaması (not ortalamasına göre).
+  // Sunucu, başka öğrencilerin notlarını sızdırmadan {sıra, toplam, ortalama}
+  // döndürür.
+  Future<ClassRankingRecord?> fetchClassRanking() async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) return null;
+
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/examresults/class-ranking'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      return null;
+    }
+
+    final map = Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    return ClassRankingRecord(
+      rank: (map['rank'] as num?)?.round() ?? 0,
+      totalStudents: (map['totalStudents'] as num?)?.round() ?? 0,
+      average: (map['average'] as num?)?.toDouble() ?? 0,
+      className: map['className'] as String? ?? '',
+    );
   }
 
   Future<AnnouncementFeedItem> createAnnouncement({

@@ -4,6 +4,7 @@ import '../widgets/header_widget.dart';
 import '../widgets/summary_cards.dart';
 import '../widgets/achievements_widget.dart';
 import '../widgets/quick_actions.dart';
+import '../widgets/student_progress_section.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/stylus_drawing_canvas.dart';
 
@@ -235,6 +236,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                                 onResultsTap: goToExamResults,
                               ),
                               const SizedBox(height: 20),
+                              const StudentProgressSection(),
+                              const SizedBox(height: 20),
                               AchievementsWidget(
                                 refreshKey: achievementRefreshKey,
                               ),
@@ -269,6 +272,8 @@ class _StudentHomePageState extends State<StudentHomePage>
                           onHomeworkTap: goToHomework,
                           onResultsTap: goToExamResults,
                         ),
+                        const SizedBox(height: 20),
+                        const StudentProgressSection(),
                         const SizedBox(height: 20),
                         AchievementsWidget(refreshKey: achievementRefreshKey),
                         const SizedBox(height: 20),

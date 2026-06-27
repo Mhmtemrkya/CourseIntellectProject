@@ -272,6 +272,36 @@ class ContentApiService {
     'publishStatus': record.publishStatus,
   };
 
+  // Geçerli öğrencinin tüm içerik etkileşimleri (favori, not, ilerleme).
+  // Favoriler ve "Notlarım" merkezini besler.
+  Future<List<MyContentStateRecord>> fetchMyEngagement() async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) {
+      throw const ContentApiException(
+        'Oturum bulunamadı. Lütfen tekrar giriş yapın.',
+      );
+    }
+
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}/api/contents/my-engagement'),
+      headers: {'Authorization': 'Bearer ${session.accessToken}'},
+    );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ContentApiException(
+        'Etkileşimler alınamadı (${response.statusCode}).',
+      );
+    }
+
+    return (jsonDecode(response.body) as List<dynamic>)
+        .map(
+          (item) => MyContentStateRecord.fromMap(
+            Map<String, dynamic>.from(item as Map),
+          ),
+        )
+        .toList();
+  }
+
   Future<ContentEngagementRecord> fetchEngagement(String contentId) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) {
@@ -364,6 +394,35 @@ class ContentApiService {
           ),
         )
         .toList();
+  }
+}
+
+class MyContentStateRecord {
+  final String contentId;
+  final double progress;
+  final bool liked;
+  final bool favorite;
+  final String note;
+  final DateTime? updatedAtUtc;
+
+  const MyContentStateRecord({
+    required this.contentId,
+    required this.progress,
+    required this.liked,
+    required this.favorite,
+    required this.note,
+    required this.updatedAtUtc,
+  });
+
+  factory MyContentStateRecord.fromMap(Map<String, dynamic> map) {
+    return MyContentStateRecord(
+      contentId: map['contentId'] as String? ?? '',
+      progress: (map['progress'] as num?)?.toDouble() ?? 0,
+      liked: map['liked'] as bool? ?? false,
+      favorite: map['favorite'] as bool? ?? false,
+      note: map['note'] as String? ?? '',
+      updatedAtUtc: DateTime.tryParse(map['updatedAtUtc'] as String? ?? ''),
+    );
   }
 }
 

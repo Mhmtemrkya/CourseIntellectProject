@@ -4,16 +4,18 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell,
   BookOpen,
-  CalendarDays,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  CreditCard,
+  Coins,
   FileText,
   GraduationCap,
   Mail,
   Megaphone,
   NotebookTabs,
   Users,
+  Wallet,
 } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Progress } from '../../components/ui/progress';
@@ -54,14 +56,6 @@ function initials(name = '') {
     .join('')
     .slice(0, 2)
     .toUpperCase() || 'Ö';
-}
-
-function scoreLetter(score) {
-  if (score >= 90) return 'A';
-  if (score >= 80) return 'B+';
-  if (score >= 70) return 'B';
-  if (score >= 60) return 'C';
-  return 'D';
 }
 
 function IconBox({ icon: Icon, tone = 'blue' }) {
@@ -155,6 +149,15 @@ function ChildCard({ child, summary, upcomingExamCount = 0 }) {
   );
 }
 
+function formatMoney(value, currency = 'TRY') {
+  const amount = Number(value || 0);
+  try {
+    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: currency || 'TRY', maximumFractionDigits: 0 }).format(amount);
+  } catch {
+    return `${Math.round(amount).toLocaleString('tr-TR')} ₺`;
+  }
+}
+
 function formatDateLabel(value) {
   if (!value) return '';
   const parsed = new Date(value);
@@ -222,13 +225,11 @@ export default function ParentDashboard() {
     const base = children.length ? children.slice(0, 2) : (firstChild ? [firstChild] : []);
     return base;
   }, [children, firstChild]);
-  const exams = data?.exams || [];
   const announcements = data?.announcements || [];
-  const attendance = data?.attendanceBreakdown || {};
   const todayLessons = data?.todayLessons || [];
   const pendingHomework = data?.pendingHomework || [];
   const upcomingExams = data?.upcomingExams || [];
-  const activities = data?.activities || [];
+  const finance = data?.finance || {};
   const examScores = Array.isArray(firstSummary?.examTrend) ? firstSummary.examTrend : [];
   const averageScore = examScores.length
     ? Math.round((examScores.reduce((sum, value) => sum + Number(value || 0), 0) / examScores.length) * 10) / 10
@@ -262,9 +263,9 @@ export default function ParentDashboard() {
 
       <div className="grid gap-3 xl:grid-cols-5">
         <StatCard icon={Users} tone="blue" label="Toplam Çocuğum" value={children.length} sub="Canlı öğrenci bağlantısı" />
-        <StatCard icon={CalendarDays} tone="green" label="Bugünkü Ders" value={todayLessons.length} sub="Ders programından" />
+        <StatCard icon={Wallet} tone="green" label="Kalan Borç" value={formatMoney(finance.totalDebt, finance.currency)} sub={finance.overdueCount ? `${finance.overdueCount} geciken taksit` : 'Güncel bakiye'} />
         <StatCard icon={FileText} tone="orange" label="Bekleyen Ödev" value={pendingHomework.length} sub="Teslim edilmemiş ödev" />
-        <StatCard icon={ClipboardList} tone="purple" label="Yaklaşan Sınav" value={upcomingExams.length} sub="Planlanan sınav" />
+        <StatCard icon={CreditCard} tone="purple" label="Kalan Taksitlerim" value={finance.remainingInstallments || 0} sub={finance.nextDue ? `Sıradaki: ${formatDateLabel(finance.nextDue)}` : 'Ödenecek taksit'} />
         <StatCard label="Ortalama Başarı" value={averageScore} sub="Sınav sonuçlarından" donut />
       </div>
 
@@ -281,34 +282,21 @@ export default function ParentDashboard() {
             </div>
           </Section>
 
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Section title="Son Sınav Sonuçları" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/exams')}>Tüm Sonuçlar</Button>}>
-              <div className="space-y-2">
-                {exams.length ? exams.slice(0, 3).map((exam, index) => {
-                  const score = Number(exam.score || 0);
-                  return (
-                    <ListRow key={exam.id || `${exam.subject}-${index}`} icon={NotebookTabs} tone={index === 0 ? 'purple' : index === 1 ? 'orange' : 'cyan'} title={exam.examTitle || exam.title || exam.subject || 'Sınav'} sub={`${exam.subject || ''}${exam.className || firstChild?.className ? ` • ${exam.className || firstChild?.className}` : ''}`} meta={`${score} ${scoreLetter(score)}`} metaClass={score >= 85 ? 'text-blue-300' : 'text-emerald-300'} />
-                  );
-                }) : <EmptyBlock title="Sınav sonucu yok" description="Bu öğrenci için canlı sınav sonucu bulunamadı." />}
-              </div>
-            </Section>
-
-            <Section title="Son Ödevler" action={<Button variant="ghost" size="sm">Tüm Ödevler</Button>}>
-              <div className="space-y-2">
-                {pendingHomework.length ? pendingHomework.map((item, index) => (
-                  <ListRow
-                    key={item.id || `${item.subject}-${item.title}`}
-                    icon={ClipboardList}
-                    tone={index % 2 === 0 ? 'blue' : 'orange'}
-                    title={`${item.subject || 'Ödev'} - ${item.title || 'Başlıksız'}`}
-                    sub={item.className || firstChild?.className || 'Sınıf bilgisi yok'}
-                    meta={item.deadline ? formatDateLabel(item.deadline) : item.status}
-                    metaClass="text-orange-300"
-                  />
-                )) : <EmptyBlock title="Bekleyen ödev yok" description="Canlı ödev kayıtlarında bekleyen ödev bulunamadı." />}
-              </div>
-            </Section>
-          </div>
+          <Section title="Ödevlerim" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/children')}>Tüm Ödevler</Button>}>
+            <div className="space-y-2">
+              {pendingHomework.length ? pendingHomework.map((item, index) => (
+                <ListRow
+                  key={item.id || `${item.subject}-${item.title}`}
+                  icon={ClipboardList}
+                  tone={index % 2 === 0 ? 'blue' : 'orange'}
+                  title={`${item.subject || 'Ödev'} - ${item.title || 'Başlıksız'}`}
+                  sub={item.className || firstChild?.className || 'Sınıf bilgisi yok'}
+                  meta={item.deadline ? formatDateLabel(item.deadline) : item.status}
+                  metaClass="text-orange-300"
+                />
+              )) : <EmptyBlock title="Bekleyen ödev yok" description="Canlı ödev kayıtlarında bekleyen ödev bulunamadı." />}
+            </div>
+          </Section>
         </div>
 
         <div className="space-y-3">
@@ -344,22 +332,6 @@ export default function ParentDashboard() {
         </div>
 
         <aside className="space-y-3">
-          <Section title="Yaklaşan Etkinlikler" action={<Button variant="ghost" size="sm">Tümünü Gör</Button>}>
-            <div className="space-y-2">
-              {upcomingExams.length ? upcomingExams.map((item, index) => (
-                <ListRow
-                  key={item.id || `${item.title}-${index}`}
-                  icon={GraduationCap}
-                  tone={index % 2 === 0 ? 'purple' : 'orange'}
-                  title={item.title}
-                  sub={`${item.subject || 'Sınav'}${item.date ? ` • ${formatDateLabel(item.date)}` : ''}`}
-                  meta={item.status}
-                  metaClass="text-emerald-300"
-                />
-              )) : <EmptyBlock title="Yaklaşan sınav yok" description="Planlanan sınav kayıtlarında veri bulunamadı." />}
-            </div>
-          </Section>
-
           <Section title="Okul Duyuruları" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/announcements')}>Tümünü Gör</Button>}>
             <div className="space-y-2">
               {announcements.length ? announcements.slice(0, 3).map((item, index) => (
@@ -388,14 +360,55 @@ export default function ParentDashboard() {
         </aside>
       </div>
 
-      <Section title="Son Aktiviteler" action={<Button variant="ghost" size="sm">Tüm Aktiviteler</Button>}>
-        <div className="grid gap-3 xl:grid-cols-4">
-          {activities.length ? activities.map((activity, index) => {
-            const Icon = activity.icon === 'exam' ? NotebookTabs : activity.icon === 'homework' ? ClipboardList : activity.icon === 'check' ? CheckCircle2 : FileText;
-            const tone = ['purple', 'orange', 'green', 'blue'][index % 4];
-            return <ListRow key={activity.id || `${activity.message}-${index}`} icon={Icon} tone={tone} title={activity.message} sub={activity.time || 'Zaman bilgisi yok'} />;
-          }) : <EmptyBlock title="Aktivite yok" description="Canlı duyuru, bildirim, sınav veya ödev aktivitesi bulunamadı." />}
-        </div>
+      <Section title="Finansal Özet" action={<Button variant="ghost" size="sm" onClick={() => navigate('/p/payments')}>Ödeme Merkezi <ChevronRight className="h-4 w-4" /></Button>}>
+        {(finance.netTotal || finance.paidTotal || finance.totalDebt) ? (
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="flex items-center gap-3 rounded-[10px] border border-foreground/[0.06] bg-foreground/[0.025] p-4">
+                <IconBox icon={Wallet} tone="green" />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">Kalan Borç</p>
+                  <p className="mt-1 text-xl font-black text-white">{formatMoney(finance.totalDebt, finance.currency)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-[10px] border border-foreground/[0.06] bg-foreground/[0.025] p-4">
+                <IconBox icon={CheckCircle2} tone="blue" />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">Ödenen Tutar</p>
+                  <p className="mt-1 text-xl font-black text-white">{formatMoney(finance.paidTotal, finance.currency)}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-[10px] border border-foreground/[0.06] bg-foreground/[0.025] p-4">
+                <IconBox icon={CreditCard} tone="purple" />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">Kalan Taksit</p>
+                  <p className="mt-1 text-xl font-black text-white">{finance.remainingInstallments || 0} <span className="text-sm font-bold text-slate-400">/ {finance.totalInstallments || 0}</span></p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 rounded-[10px] border border-foreground/[0.06] bg-foreground/[0.025] p-4">
+                <IconBox icon={Coins} tone={finance.overdueCount ? 'orange' : 'cyan'} />
+                <div className="min-w-0">
+                  <p className="text-xs text-slate-400">Geciken Taksit</p>
+                  <p className="mt-1 text-xl font-black text-white">{finance.overdueCount || 0}</p>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between text-xs">
+                <span className="text-slate-400">Ödeme İlerlemesi</span>
+                <span className="font-black text-white">
+                  {finance.netTotal ? Math.round((Number(finance.paidTotal || 0) / Number(finance.netTotal)) * 100) : 0}%
+                </span>
+              </div>
+              <Progress value={finance.netTotal ? Math.min(100, Math.round((Number(finance.paidTotal || 0) / Number(finance.netTotal)) * 100)) : 0} className="h-2" />
+              <p className="mt-2 text-xs text-slate-400">
+                Toplam tutar {formatMoney(finance.netTotal, finance.currency)}{finance.nextDue ? ` • Sıradaki ödeme: ${formatDateLabel(finance.nextDue)}` : ''}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <EmptyBlock title="Finansal kayıt yok" description="Çocuğunuza ait kayıt ücreti veya taksit planı bulunamadı." />
+        )}
       </Section>
     </motion.div>
   );

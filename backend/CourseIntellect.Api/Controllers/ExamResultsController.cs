@@ -52,6 +52,71 @@ public sealed class ExamResultsController(
         return Ok(results);
     }
 
+    // Öğrencinin kendi sınıfı içindeki başarı sıralamasını, başka öğrencilerin
+    // notlarını sızdırmadan döndürür. Sıralama, sınıftaki öğrencilerin genel
+    // not (sınav puanı) ortalamasına göre hesaplanır.
+    [HttpGet("class-ranking")]
+    public async Task<IActionResult> GetClassRanking(CancellationToken cancellationToken)
+    {
+        var userRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        CourseIntellect.Domain.Entities.StudentProfile? me = null;
+        if (Guid.TryParse(userRaw, out var userId))
+        {
+            me = await dbContext.Students.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+        }
+        if (me is null)
+        {
+            var fullName = (User.FindFirstValue("name") ?? User.FindFirstValue(ClaimTypes.Name) ?? string.Empty).Trim();
+            if (!string.IsNullOrWhiteSpace(fullName))
+            {
+                me = await dbContext.Students.AsNoTracking()
+                    .FirstOrDefaultAsync(x => x.FullName == fullName, cancellationToken);
+            }
+        }
+
+        if (me is null || string.IsNullOrWhiteSpace(me.ClassName))
+        {
+            return Ok(new ClassRankingDto(0, 0, 0, me?.ClassName ?? string.Empty));
+        }
+
+        var className = me.ClassName;
+        var classmates = await dbContext.Students.AsNoTracking()
+            .Where(x => x.ClassName == className)
+            .Select(x => x.FullName)
+            .ToListAsync(cancellationToken);
+
+        var results = await dbContext.ExamResults.AsNoTracking()
+            .Where(x => x.ClassName == className && x.Score > 0)
+            .Select(x => new { x.StudentName, x.Score })
+            .ToListAsync(cancellationToken);
+
+        var averages = results
+            .GroupBy(r => r.StudentName.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.Average(x => x.Score));
+
+        var ranked = classmates
+            .Select(name => new
+            {
+                Key = name.Trim().ToLowerInvariant(),
+                Avg = averages.TryGetValue(name.Trim().ToLowerInvariant(), out var value) ? value : 0d,
+            })
+            .OrderByDescending(x => x.Avg)
+            .ToList();
+
+        var total = ranked.Count;
+        var myKey = me.FullName.Trim().ToLowerInvariant();
+        var myAverage = averages.TryGetValue(myKey, out var mine) ? mine : 0d;
+        var rank = ranked.FindIndex(x => x.Key == myKey) + 1;
+        if (rank <= 0)
+        {
+            rank = total > 0 ? total : 1;
+            total = Math.Max(total, 1);
+        }
+
+        return Ok(new ClassRankingDto(rank, total, Math.Round(myAverage, 1), className));
+    }
+
     [HttpPost]
     [Authorize(Roles = "Admin,Teacher")]
     public async Task<IActionResult> Create([FromBody] CreateExamResultRequest request, CancellationToken cancellationToken)
@@ -81,6 +146,8 @@ public sealed class ExamResultsController(
         var result = await academicQueryService.CreateExamResultAsync(request, cancellationToken);
         return Ok(result);
     }
+
+    public sealed record ClassRankingDto(int Rank, int TotalStudents, double Average, string ClassName);
 
     private static bool IsGuidanceBranch(string? branch)
     {

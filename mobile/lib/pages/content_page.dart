@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'content_detail_page.dart';
+import 'student_favorites_page.dart';
+import 'student_notes_page.dart';
 
 import '../services/auth_session_store.dart';
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
+import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/adaptive_scaffold.dart';
 import '../widgets/premium_resource_card.dart';
@@ -28,6 +31,7 @@ class _ContentPageState extends State<ContentPage>
   String _selectedType = 'all';
   String _selectedSubject = 'Tümü';
   String _studentGrade = '';
+  List<String> _weakSubjects = const [];
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -61,6 +65,49 @@ class _ContentPageState extends State<ContentPage>
       });
     }
     await _loadContents();
+    await _loadRecommendations();
+  }
+
+  // Çözülen sınavlardan konu analizi: en zayıf dersleri çıkarır, içerik
+  // önerileri bu derslere göre önceliklenir.
+  Future<void> _loadRecommendations() async {
+    try {
+      final results = await SchoolFeedApiService.instance.fetchExamResults();
+      final bySubject = <String, List<int>>{};
+      for (final ExamScoreRecord item in results) {
+        if (item.subject.trim().isEmpty || item.score <= 0) continue;
+        bySubject.putIfAbsent(item.subject.trim(), () => []).add(item.score);
+      }
+      final ranked = bySubject.entries
+          .map((entry) => MapEntry(entry.key, entry.value.reduce((a, b) => a + b) / entry.value.length))
+          .toList()
+        ..sort((a, b) => a.value.compareTo(b.value));
+      if (!mounted) return;
+      setState(() {
+        _weakSubjects = ranked.map((entry) => entry.key).toList();
+      });
+    } catch (_) {
+      // öneriler isteğe bağlı; hata sessizce yutulur.
+    }
+  }
+
+  List<ContentRecord> get _recommended {
+    final pool = _contents.where((item) {
+      if (!item.isVisibleToStudents) return false;
+      final contentGrade = _extractGrade(item.grade);
+      if (_studentGrade.isNotEmpty && contentGrade.isNotEmpty && contentGrade != _studentGrade) {
+        return false;
+      }
+      return item.progress < 1;
+    }).toList();
+    if (_weakSubjects.isEmpty) {
+      return pool.where((item) => item.progress == 0).take(8).toList();
+    }
+    final order = {for (var i = 0; i < _weakSubjects.length; i++) _weakSubjects[i]: i};
+    final ranked = pool.where((item) => order.containsKey(item.subject)).toList()
+      ..sort((a, b) => (order[a.subject] ?? 99).compareTo(order[b.subject] ?? 99));
+    final fallback = pool.where((item) => !order.containsKey(item.subject)).toList();
+    return [...ranked, ...fallback].take(8).toList();
   }
 
   static String _extractGrade(String className) {
@@ -128,6 +175,12 @@ class _ContentPageState extends State<ContentPage>
                 : Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _quickAccessRow(),
+                      const SizedBox(height: 14),
+                      if (_recommended.isNotEmpty) ...[
+                        _recommendedSection(),
+                        const SizedBox(height: 16),
+                      ],
                       _filters(),
                       const SizedBox(height: 16),
                       Expanded(
@@ -184,6 +237,189 @@ class _ContentPageState extends State<ContentPage>
               item.progress < 1);
       return matchesQuery && matchesSubject && matchesType;
     }).toList();
+  }
+
+  Widget _quickAccessRow() {
+    return Row(
+      children: [
+        Expanded(
+          child: _quickAccessButton(
+            icon: Icons.star_rounded,
+            label: 'Favori Konularım',
+            color: const Color(0xFFFF9D2E),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentFavoritesPage()),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _quickAccessButton(
+            icon: Icons.sticky_note_2_rounded,
+            label: 'Notlarım',
+            color: const Color(0xFF7C3AED),
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const StudentNotesPage()),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _quickAccessButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    final theme = Theme.of(context);
+    return InkWell(
+      borderRadius: BorderRadius.circular(16),
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: theme.cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _recommendedSection() {
+    final theme = Theme.of(context);
+    final items = _recommended;
+    final reason = _weakSubjects.isNotEmpty
+        ? 'Çözdüğün testlere göre: ${_weakSubjects.first}'
+        : 'Sana özel öneriler';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.auto_awesome_rounded, size: 18, color: Color(0xFFFF9D2E)),
+            const SizedBox(width: 6),
+            Text('Önerilen Konular', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(reason, style: theme.textTheme.bodySmall),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 96,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: items.length,
+            separatorBuilder: (_, _) => const SizedBox(width: 10),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final accent = resourceTheme(item.subject).hue;
+              return GestureDetector(
+                onTap: () => _openContent(item),
+                child: Container(
+                  width: 200,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: accent.withValues(alpha: 0.14),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              item.isVideo ? Icons.play_circle_fill_rounded : Icons.description_rounded,
+                              color: accent,
+                              size: 18,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              item.subject,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(color: accent, fontWeight: FontWeight.w800, fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Expanded(
+                        child: Text(
+                          item.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700, height: 1.25, fontSize: 13),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _openContent(ContentRecord item) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ContentDetailPage(
+          title: item.title,
+          subject: item.subject,
+          teacher: item.teacher,
+          info: item.info,
+          isVideo: item.isVideo,
+          fileType: item.fileType,
+          description: item.description,
+          fileName: item.fileName,
+          fileUrl: item.fileUrl,
+          size: item.size,
+          grade: item.grade,
+          id: item.id,
+          playlist: const [],
+        ),
+      ),
+    );
   }
 
   Widget _filters() {

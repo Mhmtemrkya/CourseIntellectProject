@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart3, Trophy, TrendingUp,
+  BarChart3, TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -48,8 +48,7 @@ export default function StudentExamResults() {
 
   const stats = useMemo(() => {
     const average = records.length ? Math.round(records.reduce((sum, item) => sum + Number(item.score || 0), 0) / records.length) : 0;
-    const best = [...records].sort((a, b) => Number(b.score || 0) - Number(a.score || 0))[0];
-    return { average, best };
+    return { average };
   }, [records]);
 
   if (loading) {
@@ -65,11 +64,10 @@ export default function StudentExamResults() {
 
       {error ? <ErrorBanner title="Sınav sonuçları alınamadı" message={error} onRetry={loadResults} /> : null}
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[
           [stats.average, 'Genel Ortalama', BarChart3, 'from-amber-400 to-orange-600'],
           [records.length, 'Toplam Kayıt', TrendingUp, 'from-sky-400 to-blue-600'],
-          [stats.best?.subject || 'Kayıt yok', 'En İyi Ders', Trophy, 'from-emerald-400 to-teal-600'],
         ].map(([value, label, Icon, gradient]) => (
           <Card key={label} className="ci-metric-card border-foreground/10">
             <CardContent className="flex items-center gap-4 p-4">
