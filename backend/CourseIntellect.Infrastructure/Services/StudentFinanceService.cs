@@ -1,3 +1,4 @@
+using System.Globalization;
 using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
@@ -97,9 +98,13 @@ public sealed class StudentFinanceService(
             await dbContext.FinanceInstallments.AddRangeAsync(installments, cancellationToken);
         }
 
-        // Peşinat varsa tahsilat olarak kaydedilir (cari bakiyeye yansır).
+        // Peşinat varsa makbuzlu tahsilat olarak kaydedilir (cari bakiyeye yansır)
+        // ve manuel tahsilatla parite olması için muhasebe bildirim + audit kaydı düşülür;
+        // böylece kayıt peşinatı tahsilat listesinde, makbuzda, özet toplamlarında ve
+        // muhasebe aktivite akışında eksiksiz görünür.
         if (downPayment > 0)
         {
+            var receiptNo = await NextReceiptNoAsync(cancellationToken);
             await dbContext.FinancePayments.AddAsync(new FinancePayment
             {
                 EnrollmentContractId = contract.Id,
@@ -107,11 +112,26 @@ public sealed class StudentFinanceService(
                 StudentName = studentName,
                 Amount = downPayment,
                 Method = "Peşinat",
-                ReceiptNo = await NextReceiptNoAsync(cancellationToken),
+                ReceiptNo = receiptNo,
                 Currency = currency,
                 Note = "Kayıt peşinatı",
                 CreatedByUserId = createdByUserId,
                 PaidAtUtc = DateTime.UtcNow,
+            }, cancellationToken);
+
+            var amountLabel = $"₺{downPayment.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+            await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
+            {
+                Title = "Kayıt peşinatı tahsil edildi",
+                Message = $"{studentName} için {amountLabel} tutarında kayıt peşinatı alındı (Makbuz {receiptNo}).",
+                Time = "Bugün",
+                Unread = true,
+            }, cancellationToken);
+            await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
+            {
+                Title = "Peşinat tahsilatı işlendi",
+                Detail = $"{studentName} için kayıt sırasında {amountLabel} peşinat tahsilatı kaydedildi (Makbuz {receiptNo}).",
+                Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
             }, cancellationToken);
         }
 
@@ -174,9 +194,10 @@ public sealed class StudentFinanceService(
         CancellationToken cancellationToken = default)
     {
         var name = studentName?.Trim() ?? string.Empty;
+        var nameLower = name.ToLowerInvariant();
         var contractQuery = studentUserId is Guid sid
             ? dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentUserId == sid)
-            : dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentName == name);
+            : dbContext.EnrollmentContracts.AsNoTracking().Where(item => item.StudentName.Trim().ToLower() == nameLower);
         var contracts = await contractQuery
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(cancellationToken);
@@ -186,14 +207,14 @@ public sealed class StudentFinanceService(
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId)
                 || (studentUserId != null && item.StudentUserId == studentUserId)
-                || (name != string.Empty && item.StudentName == name))
+                || (nameLower != string.Empty && item.StudentName.Trim().ToLower() == nameLower))
             .OrderBy(item => item.DueDateUtc)
             .ToListAsync(cancellationToken);
 
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .Where(item => (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
                 || (studentUserId != null && item.StudentUserId == studentUserId)
-                || (name != string.Empty && item.StudentName == name))
+                || (nameLower != string.Empty && item.StudentName.Trim().ToLower() == nameLower))
             .OrderByDescending(item => item.PaidAtUtc)
             .ToListAsync(cancellationToken);
 
@@ -235,6 +256,7 @@ public sealed class StudentFinanceService(
     {
         var amount = Math.Max(0, request.Amount);
         var name = request.StudentName.Trim();
+        var nameLower = name.ToLowerInvariant();
         var method = string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim();
 
         Guid? contractId = request.EnrollmentContractId;
@@ -260,7 +282,7 @@ public sealed class StudentFinanceService(
                 ? query.Where(item => item.EnrollmentContractId == cid)
                 : request.StudentUserId is Guid sid
                     ? query.Where(item => item.StudentUserId == sid)
-                    : query.Where(item => item.StudentName == name);
+                    : query.Where(item => item.StudentName.Trim().ToLower() == nameLower);
             targetInstallments = await query
                 .Where(item => item.Amount - item.PaidAmount > 0)
                 .OrderBy(item => item.DueDateUtc)
@@ -348,22 +370,22 @@ public sealed class StudentFinanceService(
             .Where(item => item.StudentUserId != null)
             .Select(item => item.StudentUserId!.Value)
             .ToHashSet();
-        var studentNames = contracts
+        var studentNamesLower = contracts
             .Where(item => !string.IsNullOrWhiteSpace(item.StudentName))
-            .Select(item => item.StudentName)
+            .Select(item => NormalizeStudentName(item.StudentName))
             .ToHashSet();
 
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId))
             .ToListAsync(cancellationToken);
         // Ödemeler, hesap görünümüyle (GetAccountAsync) tutarlı olacak şekilde
-        // contract / öğrenci kullanıcı / öğrenci adı üzerinden eşleştirilir;
+        // contract / öğrenci kullanıcı / öğrenci adı (harf duyarsız) üzerinden eşleştirilir;
         // aksi halde sözleşmeye bağlanmamış (peşin/manuel/iade) tahsilatlar rapora düşmez.
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .Where(item =>
                 (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
                 || (item.StudentUserId != null && studentUserIds.Contains(item.StudentUserId.Value))
-                || (item.StudentName != string.Empty && studentNames.Contains(item.StudentName)))
+                || (item.StudentName != string.Empty && studentNamesLower.Contains(item.StudentName.Trim().ToLower())))
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -409,6 +431,7 @@ public sealed class StudentFinanceService(
     {
         var amount = Math.Abs(request.Amount);
         var name = request.StudentName.Trim();
+        var nameLower = name.ToLowerInvariant();
 
         // İade tutarını öğrencinin ödenmiş taksitlerine TERS dağıt: en son ödenen
         // (vadesi en geç) taksitten başlayarak PaidAmount'u düş, durumu geri al.
@@ -418,7 +441,7 @@ public sealed class StudentFinanceService(
             ? query.Where(item => item.EnrollmentContractId == rcid)
             : request.StudentUserId is Guid rsid
                 ? query.Where(item => item.StudentUserId == rsid)
-                : query.Where(item => item.StudentName == name);
+                : query.Where(item => item.StudentName.Trim().ToLower() == nameLower);
         var paidInstallments = await query
             .Where(item => item.PaidAmount > 0)
             .OrderByDescending(item => item.DueDateUtc)
@@ -472,21 +495,21 @@ public sealed class StudentFinanceService(
             .Where(item => item.StudentUserId != null)
             .Select(item => item.StudentUserId!.Value)
             .ToHashSet();
-        var studentNames = contracts
+        var studentNamesLower = contracts
             .Where(item => !string.IsNullOrWhiteSpace(item.StudentName))
-            .Select(item => item.StudentName)
+            .Select(item => NormalizeStudentName(item.StudentName))
             .ToHashSet();
 
         var installments = await dbContext.FinanceInstallments.AsNoTracking()
             .Where(item => contractIds.Contains(item.EnrollmentContractId))
             .ToListAsync(cancellationToken);
         // Tahsilatlar sözleşmeye bağlanmamış (peşin/manuel/iade) olabilir; hesap görünümüyle
-        // tutarlı kalmak için contract / öğrenci kullanıcı / öğrenci adı üzerinden toplanır.
+        // tutarlı kalmak için contract / öğrenci kullanıcı / öğrenci adı (harf duyarsız) üzerinden toplanır.
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .Where(item =>
                 (item.EnrollmentContractId != null && contractIds.Contains(item.EnrollmentContractId.Value))
                 || (item.StudentUserId != null && studentUserIds.Contains(item.StudentUserId.Value))
-                || (item.StudentName != string.Empty && studentNames.Contains(item.StudentName)))
+                || (item.StudentName != string.Empty && studentNamesLower.Contains(item.StudentName.Trim().ToLower())))
             .ToListAsync(cancellationToken);
 
         var now = DateTime.UtcNow;
@@ -615,8 +638,16 @@ public sealed class StudentFinanceService(
         return firstOfThisMonth.AddMonths(1);
     }
 
+    // Öğrenci adını eşleştirme/gruplama için normalize eder (trim + küçük harf),
+    // böylece "Aras Arslan" ile "ARAS ARSLAN" / fazladan boşluklu yazımlar aynı
+    // öğrenci sayılır ve manuel tahsilatlar doğru toplama/cariye düşer.
+    private static string NormalizeStudentName(string? value) =>
+        (value ?? string.Empty).Trim().ToLowerInvariant();
+
     private static string ResolveStudentKey(EnrollmentContract contract) =>
-        string.IsNullOrWhiteSpace(contract.StudentName) ? contract.Id.ToString() : contract.StudentName;
+        string.IsNullOrWhiteSpace(contract.StudentName)
+            ? contract.Id.ToString()
+            : NormalizeStudentName(contract.StudentName);
 
     // Tahsilatları öğrenci grubuna (ResolveStudentKey) toplar. Bir ödeme tek bir
     // gruba atanır: önce bağlı olduğu sözleşme, yoksa öğrenci adı, yoksa öğrenci
@@ -638,7 +669,7 @@ public sealed class StudentFinanceService(
                 Key = payment.EnrollmentContractId is Guid cid && studentKeyByContractId.TryGetValue(cid, out var byContract)
                     ? byContract
                     : !string.IsNullOrWhiteSpace(payment.StudentName)
-                        ? payment.StudentName
+                        ? NormalizeStudentName(payment.StudentName)
                         : payment.StudentUserId is Guid uid && studentKeyByUserId.TryGetValue(uid, out var byUser)
                             ? byUser
                             : null,
