@@ -4,12 +4,11 @@ import { motion } from 'framer-motion';
 import {
   CreditCard,
   AlertCircle, Calendar, Users, ArrowUpRight, Receipt, Landmark,
-  Banknote, Building2, ChevronLeft, ChevronRight,
+  Banknote, TrendingUp, TrendingDown, ChevronLeft, ChevronRight, Target,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
-import { Progress } from '../../components/ui/progress';
 import {
   Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
 } from '../../components/ui/dialog';
@@ -36,6 +35,7 @@ const itemVariants = {
 
 const MONTHS_TR = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 const WEEKDAYS_TR = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
+const PERIOD_NOUN = { day: 'gün', week: 'hafta', month: 'ay', year: 'yıl' };
 
 function parseMoney(value) {
   return parseFinanceMoney(value);
@@ -57,6 +57,14 @@ function parseTrDate(value) {
 
 function formatTry(amount) {
   return `₺${Math.round(amount).toLocaleString('tr-TR')}`;
+}
+
+// Eksen etiketleri için kısaltılmış para biçimi (₺12B / ₺1,2M).
+function formatTryShort(amount) {
+  const abs = Math.abs(amount);
+  if (abs >= 1_000_000) return `₺${(amount / 1_000_000).toFixed(abs >= 10_000_000 ? 0 : 1).replace('.', ',')}M`;
+  if (abs >= 1_000) return `₺${(amount / 1_000).toFixed(abs >= 10_000 ? 0 : 1).replace('.', ',')}B`;
+  return `₺${Math.round(amount)}`;
 }
 
 function createPeriodBuckets(period, anchor) {
@@ -95,114 +103,178 @@ function bucketLabel(start, period) {
   return String(start.getDate());
 }
 
-// Gelir (tahsilat) vs gider (maaş + fatura) detaylı dönem grafiği — hover'da
-// o dönemin ne geldi / ne gitti / net kartı açılır.
-function FlowChart({ buckets }) {
+function bucketFullLabel(start, period) {
+  if (period === 'day') return `${String(start.getHours()).padStart(2, '0')}:00 – ${String((start.getHours() + 3) % 24).padStart(2, '0')}:00`;
+  if (period === 'week') return `${WEEKDAYS_TR[(start.getDay() + 6) % 7]} · ${start.getDate()} ${MONTHS_TR[start.getMonth()].slice(0, 3)}`;
+  if (period === 'year') return `${MONTHS_TR[start.getMonth()]} ${start.getFullYear()}`;
+  return `${start.getDate()} ${MONTHS_TR[start.getMonth()].slice(0, 3)}`;
+}
+
+// Profesyonel Gelir / Gider akış grafiği — SVG tabanlı, ızgaralı, çift alan +
+// hover'da o dönemin "ne geldi / ne gitti / maaş / fatura / net" detay kartı.
+function FlowChart({ buckets, period }) {
   const [hover, setHover] = useState(null);
+
   if (!buckets.length) {
-    return <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-foreground/10 text-sm text-muted-foreground">Bu dönem için veri yok.</div>;
+    return <div className="flex h-72 items-center justify-center rounded-2xl border border-dashed border-foreground/10 text-sm text-muted-foreground">Bu dönem için veri yok.</div>;
   }
-  const maxValue = Math.max(1, ...buckets.map((b) => Math.max(b.income, b.expense)));
-  const active = hover != null ? buckets[hover] : buckets[buckets.length - 1];
+
+  const W = 760;
+  const H = 260;
+  const padL = 56;
+  const padR = 16;
+  const padT = 18;
+  const padB = 30;
+  const plotW = W - padL - padR;
+  const plotH = H - padT - padB;
+
+  const rawMax = Math.max(1, ...buckets.map((b) => Math.max(b.income, b.expense)));
+  // Izgara için "güzel" tavan değeri.
+  const niceStep = (() => {
+    const rough = rawMax / 4;
+    const pow = Math.pow(10, Math.floor(Math.log10(rough)));
+    const candidates = [1, 2, 2.5, 5, 10].map((m) => m * pow);
+    return candidates.find((c) => c >= rough) || candidates[candidates.length - 1];
+  })();
+  const maxValue = niceStep * 4;
+  const gridLines = Array.from({ length: 5 }, (_, i) => niceStep * i);
+
+  const n = buckets.length;
+  const x = (i) => padL + (n === 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  const y = (v) => padT + plotH - (v / maxValue) * plotH;
+
+  const linePath = (key) => buckets.map((b, i) => `${i === 0 ? 'M' : 'L'} ${x(i).toFixed(1)},${y(b[key]).toFixed(1)}`).join(' ');
+  const areaPath = (key) => `${linePath(key)} L ${x(n - 1).toFixed(1)},${(padT + plotH).toFixed(1)} L ${x(0).toFixed(1)},${(padT + plotH).toFixed(1)} Z`;
+
+  const activeIndex = hover != null ? hover : null;
+  const active = activeIndex != null ? buckets[activeIndex] : null;
+  // Tooltip yatay konumu (% — sağ kenara taşmasın diye kıstırılır).
+  const tipLeft = active ? Math.min(82, Math.max(2, ((x(activeIndex) - padL) / plotW) * 100)) : 0;
+  const labelEvery = Math.ceil(n / 12);
 
   return (
     <div>
-      <div className="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-emerald-500" /> Gelir (tahsilat)</span>
-        <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-sm bg-rose-500" /> Gider (maaş + fatura)</span>
+      <div className="mb-3 flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-sm bg-emerald-400" /> Gelir (tahsilat)</span>
+        <span className="flex items-center gap-1.5"><span className="h-2.5 w-3 rounded-sm bg-rose-400" /> Gider (maaş + fatura)</span>
       </div>
 
-      <div className="relative mt-5 h-64">
-        {active ? (
-          <div className="pointer-events-none absolute -top-1 right-0 z-10 w-56 rounded-2xl border border-foreground/10 bg-[#020B1F]/95 px-4 py-3 text-xs shadow-xl backdrop-blur">
-            <p className="mb-1.5 font-bold text-foreground">{active.label}</p>
-            <p className="flex items-center justify-between gap-4 text-emerald-400"><span>Ne geldi</span><span className="tabular-nums font-semibold">{formatTry(active.income)}</span></p>
-            <p className="flex items-center justify-between gap-4 text-rose-400"><span>Ne gitti</span><span className="tabular-nums font-semibold">{formatTry(active.expense)}</span></p>
-            <div className="mt-1.5 space-y-0.5 border-t border-foreground/10 pt-1.5 text-[11px] text-muted-foreground">
-              <p className="flex justify-between"><span>• Maaş gideri</span><span className="tabular-nums">{formatTry(active.salaryExp)}</span></p>
-              <p className="flex justify-between"><span>• Fatura gideri</span><span className="tabular-nums">{formatTry(active.invoiceExp)}</span></p>
-            </div>
-            <p className={`mt-1.5 flex items-center justify-between gap-4 border-t border-foreground/10 pt-1.5 font-bold ${active.net >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}><span>Net</span><span className="tabular-nums">{formatTry(active.net)}</span></p>
-          </div>
-        ) : null}
+      <div className="relative w-full">
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 'auto' }} role="img" aria-label="Gelir gider grafiği">
+          <defs>
+            <linearGradient id="fin-income-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#10b981" stopOpacity="0" />
+            </linearGradient>
+            <linearGradient id="fin-expense-fill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.28" />
+              <stop offset="100%" stopColor="#f43f5e" stopOpacity="0" />
+            </linearGradient>
+          </defs>
 
-        <div className="flex h-full items-end gap-1">
-          {buckets.map((bucket, index) => {
-            const incomeH = Math.max(2, (bucket.income / maxValue) * 100);
-            const expenseH = Math.max(2, (bucket.expense / maxValue) * 100);
-            const isActive = (hover != null ? hover : buckets.length - 1) === index;
+          {/* Izgara çizgileri + eksen değerleri */}
+          {gridLines.map((value, i) => {
+            const gy = y(value);
             return (
-              <button
-                type="button"
-                key={`${bucket.label}-${index}`}
-                onMouseEnter={() => setHover(index)}
-                onMouseLeave={() => setHover(null)}
-                onFocus={() => setHover(index)}
-                className="group relative flex h-full flex-1 items-end justify-center"
-              >
-                <div className={`flex h-full w-full items-end justify-center gap-[2px] rounded-md px-0.5 pt-3 transition-colors ${isActive ? 'bg-foreground/[0.06]' : ''}`}>
-                  <div className="w-1/2 max-w-[16px] rounded-t bg-gradient-to-t from-emerald-600/70 to-emerald-400" style={{ height: `${incomeH}%` }} />
-                  <div className="w-1/2 max-w-[16px] rounded-t bg-gradient-to-t from-rose-600/70 to-rose-400" style={{ height: `${expenseH}%` }} />
-                </div>
-              </button>
+              <g key={value}>
+                <line x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="hsl(var(--foreground) / 0.08)" strokeDasharray={i === 0 ? '0' : '4 6'} />
+                <text x={padL - 8} y={gy + 3} textAnchor="end" className="fill-muted-foreground" style={{ fontSize: 10 }}>{formatTryShort(value)}</text>
+              </g>
             );
           })}
-        </div>
-      </div>
 
-      <div className="mt-2 flex gap-1 text-center text-[10px] text-muted-foreground">
-        {buckets.map((bucket, index) => (
-          <span key={`${bucket.label}-label-${index}`} className="flex-1 truncate">{bucket.label}</span>
-        ))}
+          {/* Alan dolguları */}
+          <path d={areaPath('expense')} fill="url(#fin-expense-fill)" />
+          <path d={areaPath('income')} fill="url(#fin-income-fill)" />
+
+          {/* Çizgiler */}
+          <path d={linePath('expense')} fill="none" stroke="#f43f5e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d={linePath('income')} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+          {/* Aktif dikey kılavuz */}
+          {active ? <line x1={x(activeIndex)} x2={x(activeIndex)} y1={padT} y2={padT + plotH} stroke="hsl(var(--brand-accent))" strokeWidth="1" strokeDasharray="3 3" opacity="0.6" /> : null}
+
+          {/* Noktalar */}
+          {buckets.map((b, i) => (
+            <g key={`pt-${i}`}>
+              <circle cx={x(i)} cy={y(b.income)} r={activeIndex === i ? 4.5 : 2.6} fill="#10b981" stroke="#020B1F" strokeWidth={activeIndex === i ? 2 : 0} />
+              <circle cx={x(i)} cy={y(b.expense)} r={activeIndex === i ? 4.5 : 2.6} fill="#f43f5e" stroke="#020B1F" strokeWidth={activeIndex === i ? 2 : 0} />
+            </g>
+          ))}
+
+          {/* X ekseni etiketleri */}
+          {buckets.map((b, i) => (
+            (i % labelEvery === 0 || i === n - 1) ? (
+              <text key={`xl-${i}`} x={x(i)} y={H - 10} textAnchor="middle" className="fill-muted-foreground" style={{ fontSize: 10 }}>{b.label}</text>
+            ) : null
+          ))}
+
+          {/* Hover yakalama bantları */}
+          {buckets.map((b, i) => (
+            <rect
+              key={`hit-${i}`}
+              x={n === 1 ? padL : x(i) - plotW / (2 * (n - 1))}
+              y={padT}
+              width={n === 1 ? plotW : plotW / (n - 1)}
+              height={plotH}
+              fill="transparent"
+              onMouseEnter={() => setHover(i)}
+              onMouseLeave={() => setHover(null)}
+            />
+          ))}
+        </svg>
+
+        {/* Detay kartı */}
+        {active ? (
+          <div
+            className="pointer-events-none absolute top-1 z-10 w-60 rounded-2xl border border-foreground/10 bg-[#020B1F]/95 px-4 py-3 text-xs shadow-2xl backdrop-blur"
+            style={{ left: `${tipLeft}%` }}
+          >
+            <p className="mb-2 flex items-center justify-between font-bold text-foreground">
+              <span>{active.fullLabel}</span>
+              <span className="text-[10px] font-medium text-muted-foreground">{PERIOD_NOUN[period]}</span>
+            </p>
+            <p className="flex items-center justify-between gap-4 text-emerald-400"><span className="flex items-center gap-1.5"><TrendingUp className="h-3.5 w-3.5" /> Ne geldi</span><span className="tabular-nums font-semibold">{formatTry(active.income)}</span></p>
+            <p className="mt-1 flex items-center justify-between gap-4 text-rose-400"><span className="flex items-center gap-1.5"><TrendingDown className="h-3.5 w-3.5" /> Ne gitti</span><span className="tabular-nums font-semibold">{formatTry(active.expense)}</span></p>
+            <div className="mt-2 space-y-0.5 border-t border-foreground/10 pt-2 text-[11px] text-muted-foreground">
+              <p className="flex justify-between"><span>• Maaş gideri</span><span className="tabular-nums">{formatTry(active.salaryExp)}</span></p>
+              <p className="flex justify-between"><span>• Fatura gideri</span><span className="tabular-nums">{formatTry(active.invoiceExp)}</span></p>
+              <p className="flex justify-between"><span>• Tahsilat adedi</span><span className="tabular-nums">{active.count} işlem</span></p>
+            </div>
+            <p className={`mt-2 flex items-center justify-between gap-4 border-t border-foreground/10 pt-2 font-bold ${active.net >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}><span>Net</span><span className="tabular-nums">{active.net >= 0 ? '+' : ''}{formatTry(active.net)}</span></p>
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
 
-const DIST_COLORS = {
-  'Nakit': '#10b981',
-  'Kart / POS': '#6366f1',
-  'Havale / EFT': '#f59e0b',
-  'Diğer': '#94a3b8',
-};
-
-// Gelir dağılımı — ödeme yöntemine göre donut + lejant + yüzde.
-function IncomeDistribution({ groups, total }) {
-  const entries = Object.entries(groups).filter(([, value]) => value > 0);
-  if (total <= 0 || entries.length === 0) {
-    return <div className="flex h-full min-h-[160px] items-center justify-center text-center text-sm text-muted-foreground">Bu dönemde tahsilat yok.</div>;
-  }
-  let acc = 0;
-  const gradientStops = entries.map(([key, value]) => {
-    const from = (acc / total) * 360;
-    acc += value;
-    const to = (acc / total) * 360;
-    return `${DIST_COLORS[key]} ${from}deg ${to}deg`;
-  }).join(', ');
+// Dönem tahsilat oranı — yarım daire (gauge) göstergesi.
+function RateGauge({ rate }) {
+  const value = Math.max(0, Math.min(100, rate));
+  const R = 70;
+  const cx = 90;
+  const cy = 90;
+  const circumference = Math.PI * R; // yarım daire
+  const dash = (value / 100) * circumference;
+  const tone = value >= 80 ? '#10b981' : value >= 50 ? '#f59e0b' : '#f43f5e';
 
   return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative grid h-36 w-36 place-items-center rounded-full" style={{ background: `conic-gradient(${gradientStops})` }}>
-        <div className="grid h-24 w-24 place-items-center rounded-full bg-card text-center">
-          <div>
-            <p className="text-base font-black tabular-nums">{formatTry(total)}</p>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Toplam Gelir</p>
-          </div>
-        </div>
-      </div>
-      <div className="w-full space-y-2">
-        {entries.map(([key, value]) => (
-          <div key={key} className="flex items-center justify-between gap-2 text-sm">
-            <span className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-sm" style={{ background: DIST_COLORS[key] }} />
-              {key}
-            </span>
-            <span className="flex items-center gap-2 tabular-nums">
-              <span className="font-semibold">{formatTry(value)}</span>
-              <span className="w-10 text-right text-xs text-muted-foreground">%{Math.round((value / total) * 100)}</span>
-            </span>
-          </div>
-        ))}
+    <div className="relative mx-auto h-[108px] w-[180px]">
+      <svg viewBox="0 0 180 100" className="w-full">
+        <path d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`} fill="none" stroke="hsl(var(--foreground) / 0.1)" strokeWidth="14" strokeLinecap="round" />
+        <path
+          d={`M ${cx - R} ${cy} A ${R} ${R} 0 0 1 ${cx + R} ${cy}`}
+          fill="none"
+          stroke={tone}
+          strokeWidth="14"
+          strokeLinecap="round"
+          strokeDasharray={`${dash} ${circumference}`}
+        />
+      </svg>
+      <div className="absolute inset-x-0 bottom-1 text-center">
+        <div className="text-3xl font-black tabular-nums" style={{ color: tone }}>%{Math.round(value)}</div>
+        <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Tahsilat Oranı</div>
       </div>
     </div>
   );
@@ -238,40 +310,73 @@ export default function FinanceDashboard() {
     loadDashboard();
   }, [loadDashboard]);
 
-  // Genel (dönemden bağımsız) sözleşme-bazlı durum — sadece hedef çubuğu için.
-  const overall = useMemo(() => ({
-    totalReceivable: Number(finance?.netTotal) || 0,
-    totalCollected: Number(finance?.collectedTotal) || 0,
-    collectionRate: Number(finance?.collectionRatePercent) || 0,
-  }), [finance]);
+  const isPaid = (status) => {
+    const st = normalizeStatus(status);
+    return st.includes('öden') || st.includes('oden') || st.includes('paid') || st.includes('tahsil');
+  };
 
   // Seçili döneme göre tahsilat akış metrikleri + geciken taksitler.
   const periodStats = useMemo(() => {
     const collections = dashboard?.collections || [];
     const installments = dashboard?.installments || [];
+    const salaries = dashboard?.salaries || [];
+    const invoices = dashboard?.invoices || [];
+
     const periodCollections = filterByPeriod(collections, (c) => c.time || c.date, period, anchor);
+    const periodSalaries = filterByPeriod(salaries, (s) => s.payDate || s.date, period, anchor);
+    const periodInvoices = filterByPeriod(invoices, (i) => i.subtitle || i.date, period, anchor);
+    const periodInstallments = filterByPeriod(installments, (i) => i.due || i.dueDate, period, anchor);
+
     const sum = (list) => list.reduce((s, c) => s + parseMoney(c.amount), 0);
     const byMethod = (list, ...keys) => list.filter((c) => {
       const m = normalizeStatus(c.method || c.paymentMethod || c.type);
       return keys.some((k) => m.includes(k));
     });
+
     const now = Date.now();
-    const overdueEntries = installments.filter((item) => {
+    // Geciken kayıtlar da seçili döneme göre (vadesi bu döneme düşen + gecikmiş).
+    const overdueEntries = periodInstallments.filter((item) => {
       const due = parseTrDate(item.due || item.dueDate);
       const st = normalizeStatus(item.status);
-      return st.includes('gec') || st.includes('late') || (due && due.getTime() < now && !st.includes('öden') && !st.includes('paid'));
+      return st.includes('gec') || st.includes('late') || (due && due.getTime() < now && !isPaid(item.status));
     });
-    const periodInstallments = filterByPeriod(installments, (i) => i.due || i.dueDate, period, anchor);
+
+    const collected = sum(periodCollections);
+    const expense = sum(periodSalaries) + sum(periodInvoices);
+    const unpaidDue = sum(periodInstallments.filter((i) => !isPaid(i.status)));
+    const target = collected + unpaidDue; // bu dönemde beklenen toplam
+    const rate = target > 0 ? Math.min(100, Math.round((collected / target) * 100)) : (collected > 0 ? 100 : 0);
+
     return {
-      collected: sum(periodCollections),
+      collected,
       count: periodCollections.length,
       cash: sum(byMethod(periodCollections, 'nakit')),
       cardBank: sum(byMethod(periodCollections, 'kart', 'card', 'pos', 'havale', 'eft', 'bank', 'banka', 'transfer')),
+      expense,
+      net: collected - expense,
       dueTotal: sum(periodInstallments),
-      recent: [...periodCollections].sort((a, b) => (parseTrDateTime(b.time) || 0) - (parseTrDateTime(a.time) || 0)).slice(0, 5),
+      unpaidDue,
+      target,
+      remaining: Math.max(0, target - collected),
+      rate,
+      paidInstallments: periodInstallments.filter((i) => isPaid(i.status)).length,
+      totalInstallments: periodInstallments.length,
+      recent: [...periodCollections].sort((a, b) => (parseTrDateTime(b.time) || 0) - (parseTrDateTime(a.time) || 0)),
       overdueEntries,
     };
   }, [dashboard, period, anchor]);
+
+  // Önceki dönem tahsilatı (hedef kartındaki trend için).
+  const prevCollected = useMemo(() => {
+    const collections = dashboard?.collections || [];
+    const prevAnchor = shiftAnchor(period, anchor, -1);
+    return filterByPeriod(collections, (c) => c.time || c.date, period, prevAnchor)
+      .reduce((s, c) => s + parseMoney(c.amount), 0);
+  }, [dashboard, period, anchor]);
+
+  const trendPct = prevCollected > 0
+    ? Math.round(((periodStats.collected - prevCollected) / prevCollected) * 100)
+    : null;
 
   // Gelir-Gider akışı: dönem kovaları (gelir=tahsilat, gider=maaş+fatura).
   const flowBuckets = useMemo(() => {
@@ -280,34 +385,16 @@ export default function FinanceDashboard() {
     const invoices = dashboard?.invoices || [];
     return createPeriodBuckets(period, anchor).map(({ start, end }) => {
       const inBucket = (d) => d && d >= start && d < end;
-      const income = collections.reduce((s, c) => (inBucket(parseTrDateTime(c.time || c.date)) ? s + parseMoney(c.amount) : s), 0);
+      let count = 0;
+      const income = collections.reduce((s, c) => {
+        if (inBucket(parseTrDateTime(c.time || c.date))) { count += 1; return s + parseMoney(c.amount); }
+        return s;
+      }, 0);
       const salaryExp = salaries.reduce((s, x) => (inBucket(parseTrDate(x.payDate || x.date)) ? s + parseMoney(x.amount) : s), 0);
       const invoiceExp = invoices.reduce((s, x) => (inBucket(parseTrDate(x.subtitle || x.date)) ? s + parseMoney(x.amount) : s), 0);
       const expense = salaryExp + invoiceExp;
-      return { label: bucketLabel(start, period), income, expense, salaryExp, invoiceExp, net: income - expense };
+      return { label: bucketLabel(start, period), fullLabel: bucketFullLabel(start, period), income, expense, salaryExp, invoiceExp, count, net: income - expense };
     });
-  }, [dashboard, period, anchor]);
-
-  const flowTotals = useMemo(() => {
-    const income = flowBuckets.reduce((s, b) => s + b.income, 0);
-    const expense = flowBuckets.reduce((s, b) => s + b.expense, 0);
-    return { income, expense, net: income - expense };
-  }, [flowBuckets]);
-
-  // Gelir dağılımı: ödeme yöntemine göre (dönem içi).
-  const methodDist = useMemo(() => {
-    const periodCollections = filterByPeriod(dashboard?.collections || [], (c) => c.time || c.date, period, anchor);
-    const groups = { 'Nakit': 0, 'Kart / POS': 0, 'Havale / EFT': 0, 'Diğer': 0 };
-    periodCollections.forEach((c) => {
-      const m = normalizeStatus(c.method || c.paymentMethod || c.type);
-      const amount = parseMoney(c.amount);
-      if (m.includes('nakit')) groups['Nakit'] += amount;
-      else if (['kart', 'card', 'pos'].some((k) => m.includes(k))) groups['Kart / POS'] += amount;
-      else if (['havale', 'eft', 'bank', 'banka', 'transfer'].some((k) => m.includes(k))) groups['Havale / EFT'] += amount;
-      else groups['Diğer'] += amount;
-    });
-    const total = Object.values(groups).reduce((a, b) => a + b, 0);
-    return { groups, total };
   }, [dashboard, period, anchor]);
 
   if (loading) {
@@ -318,6 +405,8 @@ export default function FinanceDashboard() {
       </div>
     );
   }
+
+  const periodText = buildPeriodLabel(period, anchor);
 
   return (
     <motion.div
@@ -334,7 +423,7 @@ export default function FinanceDashboard() {
 
       {error ? <ErrorBanner title="Finans verileri alınamadı" message={error} onRetry={loadDashboard} /> : null}
 
-      {/* Dönem seçici — tüm sayfa bu döneme göre */}
+      {/* Dönem seçici — tüm sayfa (kartlar, grafik, oran, hedef, listeler) bu döneme göre */}
       <motion.div variants={itemVariants} className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-1 rounded-xl border border-foreground/10 bg-foreground/[0.04] p-1">
           {[['day', 'Günlük'], ['week', 'Haftalık'], ['month', 'Aylık'], ['year', 'Yıllık']].map(([val, label]) => (
@@ -350,63 +439,132 @@ export default function FinanceDashboard() {
         </div>
         <div className="flex items-center gap-1 rounded-lg border border-foreground/10 bg-foreground/[0.04] px-1">
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, -1))}><ChevronLeft className="h-4 w-4" /></Button>
-          <span className="min-w-[150px] text-center text-sm font-bold">{buildPeriodLabel(period, anchor)}</span>
+          <span className="min-w-[150px] text-center text-sm font-bold">{periodText}</span>
           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setAnchor((a) => shiftAnchor(period, a, 1))}><ChevronRight className="h-4 w-4" /></Button>
         </div>
       </motion.div>
 
-      {/* Dönem kartları */}
+      {/* Finansal özet kartları — tümü seçili döneme göre */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Dönem Tahsilatı" value={formatTry(periodStats.collected)} caption={buildPeriodLabel(period, anchor)} icon={CreditCard} tone="emerald" trend={`${periodStats.count} işlem`} />
+          <PremiumMetricCard title="Dönem Tahsilatı" value={formatTry(periodStats.collected)} caption={`${periodStats.count} işlem · ${periodText}`} icon={CreditCard} tone="emerald" chart="bars" chartValues={flowBuckets.map((b) => b.income)} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Nakit" value={formatTry(periodStats.cash)} caption="Dönem içi nakit tahsilat" icon={Banknote} tone="blue" trend="Nakit" />
+          <PremiumMetricCard title="Dönem Gideri" value={formatTry(periodStats.expense)} caption="Maaş + fatura gideri" icon={Landmark} tone="rose" chart="bars" chartValues={flowBuckets.map((b) => b.expense)} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Kart / Havale" value={formatTry(periodStats.cardBank)} caption="Kart, POS, havale/EFT" icon={Building2} tone="violet" trend="Banka" />
+          <PremiumMetricCard title="Net Akış" value={`${periodStats.net >= 0 ? '+' : ''}${formatTry(periodStats.net)}`} caption={periodStats.net >= 0 ? 'Dönem pozitif' : 'Dönem negatif'} icon={periodStats.net >= 0 ? TrendingUp : TrendingDown} tone={periodStats.net >= 0 ? 'blue' : 'amber'} chart="line" chartValues={flowBuckets.map((b) => b.net)} />
         </motion.div>
         <motion.div variants={itemVariants}>
-          <PremiumMetricCard title="Dönem Vadesi" value={formatTry(periodStats.dueTotal)} caption="Bu dönemde vadesi gelen taksit" icon={Calendar} tone="amber" trend="Vade" />
+          <PremiumMetricCard title="Geciken" value={formatTry(periodStats.overdueEntries.reduce((s, e) => s + parseMoney(e.amount), 0))} caption={`${periodStats.overdueEntries.length} kayıt takipte`} icon={AlertCircle} tone="amber" chart="line" chartValues={flowBuckets.map((b) => b.expense)} />
         </motion.div>
       </div>
 
-      {/* Gelir-Gider grafiği + Gelir dağılımı */}
+      {/* Gelir-Gider grafiği (profesyonel) */}
       <motion.div variants={itemVariants}>
-        <PremiumPanel title="Gelir - Gider Grafiği" description={`${buildPeriodLabel(period, anchor)} · bir sütunun üstüne gelince ne geldi / ne gitti detayı açılır`}>
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1.6fr)_minmax(260px,0.9fr)]">
-            <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/40 p-6">
-              <div className="mb-4 grid grid-cols-3 gap-3">
-                <div className="rounded-2xl border border-foreground/10 bg-emerald-500/10 p-3">
-                  <p className="text-xs text-muted-foreground">Toplam Gelir</p>
-                  <p className="mt-1 text-lg font-black text-emerald-400 tabular-nums">{formatTry(flowTotals.income)}</p>
-                </div>
-                <div className="rounded-2xl border border-foreground/10 bg-rose-500/10 p-3">
-                  <p className="text-xs text-muted-foreground">Toplam Gider</p>
-                  <p className="mt-1 text-lg font-black text-rose-400 tabular-nums">{formatTry(flowTotals.expense)}</p>
-                </div>
-                <div className={`rounded-2xl border border-foreground/10 p-3 ${flowTotals.net >= 0 ? 'bg-emerald-500/10' : 'bg-rose-500/10'}`}>
-                  <p className="text-xs text-muted-foreground">Net</p>
-                  <p className={`mt-1 text-lg font-black tabular-nums ${flowTotals.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{formatTry(flowTotals.net)}</p>
-                </div>
+        <PremiumPanel title="Gelir - Gider Grafiği" description={`${periodText} · bir noktanın üstüne gelince ne geldi / ne gitti detayı açılır`}>
+          <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/40 p-5 sm:p-6">
+            <div className="mb-5 grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                <p className="text-xs text-muted-foreground">Toplam Gelir</p>
+                <p className="mt-1 text-lg font-black text-emerald-400 tabular-nums">{formatTry(periodStats.collected)}</p>
               </div>
-              <FlowChart buckets={flowBuckets} />
-            </div>
-            <div className="rounded-3xl border border-foreground/10 bg-foreground/[0.035] p-5">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">Gelir Dağılımı (Ödeme Yöntemi)</p>
-              <div className="mt-5">
-                <IncomeDistribution groups={methodDist.groups} total={methodDist.total} />
+              <div className="rounded-2xl border border-rose-500/20 bg-rose-500/10 p-3">
+                <p className="text-xs text-muted-foreground">Toplam Gider</p>
+                <p className="mt-1 text-lg font-black text-rose-400 tabular-nums">{formatTry(periodStats.expense)}</p>
+              </div>
+              <div className={`rounded-2xl border p-3 ${periodStats.net >= 0 ? 'border-emerald-500/20 bg-emerald-500/10' : 'border-rose-500/20 bg-rose-500/10'}`}>
+                <p className="text-xs text-muted-foreground">Net</p>
+                <p className={`mt-1 text-lg font-black tabular-nums ${periodStats.net >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{periodStats.net >= 0 ? '+' : ''}{formatTry(periodStats.net)}</p>
               </div>
             </div>
+            <FlowChart buckets={flowBuckets} period={period} />
           </div>
         </PremiumPanel>
       </motion.div>
 
+      {/* Tahsilat oranı + Tahsilat hedefi (dönem bazlı) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <motion.div variants={itemVariants}>
+          <PremiumPanel title="Tahsilat Oranı" description={`${periodText} · bu dönemde beklenenin tahsil edilen oranı`}>
+            <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-8">
+              <RateGauge rate={periodStats.rate} />
+              <div className="w-full flex-1 space-y-3">
+                <div className="flex items-center justify-between rounded-xl border border-foreground/10 bg-emerald-500/10 px-3 py-2.5">
+                  <span className="flex items-center gap-2 text-sm"><Banknote className="h-4 w-4 text-emerald-400" /> Tahsil edilen</span>
+                  <span className="font-bold tabular-nums text-emerald-400">{formatTry(periodStats.collected)}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-xl border border-foreground/10 bg-amber-500/10 px-3 py-2.5">
+                  <span className="flex items-center gap-2 text-sm"><Calendar className="h-4 w-4 text-amber-400" /> Bekleyen (vade)</span>
+                  <span className="font-bold tabular-nums text-amber-400">{formatTry(periodStats.unpaidDue)}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <div className="rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Nakit</p>
+                    <p className="mt-0.5 font-bold tabular-nums">{formatTry(periodStats.cash)}</p>
+                  </div>
+                  <div className="rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Kart / Havale</p>
+                    <p className="mt-0.5 font-bold tabular-nums">{formatTry(periodStats.cardBank)}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </PremiumPanel>
+        </motion.div>
+
+        <motion.div variants={itemVariants}>
+          <PremiumPanel title="Tahsilat Hedefi" description={`${periodText} · bu dönem için beklenen tahsilat hedefi`}>
+            <div className="space-y-5">
+              <div className="flex items-end justify-between gap-4">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-muted-foreground">Tahsil Edilen</p>
+                  <p className="mt-1 text-3xl font-black tabular-nums text-[hsl(var(--brand-accent))]">{formatTry(periodStats.collected)}</p>
+                  <p className="mt-1 text-xs text-muted-foreground">Hedef: {formatTry(periodStats.target)}</p>
+                </div>
+                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.14)] text-[hsl(var(--brand-accent))]">
+                  <Target className="h-6 w-6" />
+                </div>
+              </div>
+
+              <div>
+                <div className="h-3 w-full overflow-hidden rounded-full bg-foreground/[0.08]">
+                  <div className="h-full rounded-full bg-gradient-to-r from-[hsl(var(--brand-accent))] to-amber-400 transition-all" style={{ width: `${periodStats.rate}%` }} />
+                </div>
+                <div className="mt-2 flex justify-between text-sm">
+                  <span className="text-muted-foreground">%{periodStats.rate} tamamlandı</span>
+                  <span className="text-muted-foreground">Kalan: {formatTry(periodStats.remaining)}</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 border-t border-foreground/10 pt-4">
+                <div className="rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2.5">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Önceki {PERIOD_NOUN[period]}</p>
+                  <p className="mt-0.5 font-bold tabular-nums">{formatTry(prevCollected)}</p>
+                </div>
+                <div className="rounded-xl border border-foreground/10 bg-foreground/[0.04] px-3 py-2.5">
+                  <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Değişim</p>
+                  <p className={`mt-0.5 flex items-center gap-1 font-bold tabular-nums ${trendPct == null ? 'text-muted-foreground' : trendPct >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {trendPct == null ? '—' : (
+                      <>
+                        {trendPct >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                        %{Math.abs(trendPct)}
+                      </>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </PremiumPanel>
+        </motion.div>
+      </div>
+
+      {/* Tahsilatlar + Geciken ödemeler (dönem bazlı) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <motion.div variants={itemVariants}>
           <PremiumPanel
-            title="Son Tahsilatlar"
-            description={`${buildPeriodLabel(period, anchor)} · dönem tahsilatları`}
+            title="Tahsilatlar"
+            description={`${periodText} · ${periodStats.count} tahsilat`}
             action={(
               <Button asChild variant="outline" size="sm">
                 <Link to="/finance/collections">
@@ -416,13 +574,13 @@ export default function FinanceDashboard() {
               </Button>
             )}
           >
-              <div className="space-y-4">
-                {periodStats.recent.length === 0 ? (
-                  <p className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Bu dönemde tahsilat yok.</p>
-                ) : periodStats.recent.map((collection) => (
-                  <PremiumListRow key={collection.id} icon={CreditCard} title={collection.name} subtitle={`${collection.method} • ${collection.note || 'Tahsilat'}`} meta={`+₺${parseMoney(collection.amount).toLocaleString('tr-TR')}`} accent onClick={() => setSelectedCollection(collection)} />
-                ))}
-              </div>
+            <div className="space-y-3">
+              {periodStats.recent.length === 0 ? (
+                <p className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Bu dönemde tahsilat yok.</p>
+              ) : periodStats.recent.slice(0, 6).map((collection) => (
+                <PremiumListRow key={collection.id} icon={CreditCard} title={collection.name} subtitle={`${collection.method} • ${collection.time || collection.note || 'Tahsilat'}`} meta={`+₺${parseMoney(collection.amount).toLocaleString('tr-TR')}`} accent onClick={() => setSelectedCollection(collection)} />
+              ))}
+            </div>
           </PremiumPanel>
         </motion.div>
 
@@ -467,32 +625,10 @@ export default function FinanceDashboard() {
         </motion.div>
       </div>
 
-      <motion.div variants={itemVariants}>
-        <Card>
-          <CardHeader>
-            <CardTitle>Tahsilat Hedefi (Genel)</CardTitle>
-            <CardDescription>Tüm sözleşmelere göre güncel tahsilat durumu</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="flex justify-between text-sm">
-                <span>Tahsil Edilen</span>
-                <span className="font-bold">₺{overall.totalCollected.toLocaleString('tr-TR')} / ₺{overall.totalReceivable.toLocaleString('tr-TR')}</span>
-              </div>
-              <Progress value={overall.collectionRate} className="h-3" />
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <span>%{overall.collectionRate} tamamlandı</span>
-                <span>Kalan: ₺{Math.max(0, overall.totalReceivable - overall.totalCollected).toLocaleString('tr-TR')}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
-
       <Dialog open={Boolean(selectedCollection)} onOpenChange={(open) => { if (!open) setSelectedCollection(null); }}>
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
-            <DialogTitle>Son Tahsilat Detayı</DialogTitle>
+            <DialogTitle>Tahsilat Detayı</DialogTitle>
             <DialogDescription>Seçilen tahsilatın profesyonel özet görünümü</DialogDescription>
           </DialogHeader>
           {selectedCollection ? (
