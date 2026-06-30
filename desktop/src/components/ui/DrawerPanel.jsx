@@ -49,7 +49,7 @@ export function DrawerPanel({
             animate="visible"
             exit="hidden"
             onClick={onClose}
-            className="fixed inset-0 z-40 bg-[#020817]/72 backdrop-blur-md"
+            className="fixed inset-0 z-40 bg-[hsl(var(--ci-overlay)/0.72)] backdrop-blur-md"
           />
 
           {/* Drawer */}

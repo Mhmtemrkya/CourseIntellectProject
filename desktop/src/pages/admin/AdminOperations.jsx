@@ -12,6 +12,8 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchAdminDashboardData } from '../../lib/api/dashboardData';
 import { fetchAccountingDashboard, fetchAdminAnalytics } from '../../lib/api/modules';
+import { useApp } from '../../context/AppContext';
+import { getUserRoles } from '../../lib/permissions';
 
 const PERIOD_OPTIONS = [
   ['day', 'Günlük'],
@@ -27,6 +29,13 @@ function formatMoney(value) {
 
 export default function AdminOperations() {
   const navigate = useNavigate();
+  const { user } = useApp();
+  // İdari personel (yalnızca administrative rolü) finans/ziyaretçi metriklerini görmez;
+  // bu metrikler kurum yöneticisine (admin) özeldir.
+  const isAdministrativeOnly = useMemo(() => {
+    const roles = getUserRoles(user);
+    return roles.includes('administrative') && !roles.includes('admin') && !roles.includes('superadmin');
+  }, [user]);
   const [dashboard, setDashboard] = useState(null);
   const [finance, setFinance] = useState(null);
   const [analytics, setAnalytics] = useState(null);
@@ -79,17 +88,17 @@ export default function AdminOperations() {
   const totals = analytics?.totals || { revenue: 0, registrations: 0, expense: 0, net: 0 };
 
   const periodCards = [
-    { title: engagementLabel, value: activeStudents.uniqueCount, icon: MessageSquare, detail: `Benzersiz öğrenci · ${activeStudents.totalStudents} toplam` },
+    { title: engagementLabel, value: activeStudents.uniqueCount, icon: MessageSquare, detail: `Benzersiz öğrenci · ${activeStudents.totalStudents} toplam`, financeScoped: true },
     { title: 'Kayıt olan öğrenci', value: totals.registrations || 0, icon: CalendarDays, detail: 'Seçilen dönemde kaydedilen' },
-    { title: 'Dönem kazancı', value: formatMoney(totals.revenue), icon: Receipt, detail: 'Tahsilat toplamı' },
-    { title: 'Dönem gideri', value: formatMoney(totals.expense), icon: Receipt, detail: 'Maaş + fatura gideri' },
-  ];
+    { title: 'Dönem kazancı', value: formatMoney(totals.revenue), icon: Receipt, detail: 'Tahsilat toplamı', financeScoped: true },
+    { title: 'Dönem gideri', value: formatMoney(totals.expense), icon: Receipt, detail: 'Maaş + fatura gideri', financeScoped: true },
+  ].filter((card) => !(isAdministrativeOnly && card.financeScoped));
 
   const items = [
     { title: 'Duyuru merkezi', count: dashboard?.activities?.length || 0, icon: Megaphone, detail: 'Kurum genelindeki tüm duyurular', onClick: () => navigate('/admin/announcements') },
-    { title: 'Açık finans hareketi', count: finance?.approvals?.length || 0, icon: Receipt, detail: 'Onay ve işlem bekleyen kayıtlar', onClick: () => navigate('/admin/finance-approvals') },
+    { title: 'Açık finans hareketi', count: finance?.approvals?.length || 0, icon: Receipt, detail: 'Onay ve işlem bekleyen kayıtlar', onClick: () => navigate('/admin/finance-approvals'), financeScoped: true },
     { title: 'Görüşme akışı', count: dashboard?.activities?.length || 0, icon: CalendarDays, detail: 'Veli talepleri ve öğretmen onayları', onClick: () => navigate('/admin/meetings') },
-  ];
+  ].filter((item) => !(isAdministrativeOnly && item.financeScoped));
 
   const operationalFeed = useMemo(() => (
     [
@@ -100,7 +109,7 @@ export default function AdminOperations() {
         subject: item.subject,
         route: '/admin/task-center',
       })),
-      ...((finance?.approvals || []).slice(0, 4).map((item) => ({
+      ...(isAdministrativeOnly ? [] : (finance?.approvals || []).slice(0, 4).map((item) => ({
         id: `finance-${item.id}`,
         title: item.referenceNumber || 'Finans onayı',
         detail: `${item.status || 'Bekliyor'} • ${item.type || 'Islem'}`,
@@ -108,7 +117,7 @@ export default function AdminOperations() {
         route: '/admin/finance-approvals',
       }))),
     ].slice(0, 8)
-  ), [dashboard, finance]);
+  ), [dashboard, finance, isAdministrativeOnly]);
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 

@@ -175,6 +175,7 @@ const Ledger = lazyWithReload(() => import("./pages/finance/Ledger"));
 
 import { useApp } from "./context/AppContext";
 import { getUserHomePath } from "./lib/auth";
+import { getUserRoles } from "./lib/permissions";
 import { MaintenanceGate } from "./components/system/MaintenanceGate";
 import { LegalConsentGate } from "./components/legal/LegalConsentGate";
 
@@ -207,6 +208,18 @@ function BranchGate() {
     return <Navigate to="/select-branch" replace />;
   }
   return <DashboardLayout />;
+}
+
+// Personel onayları, finans onayları, rol yönetimi, denetim kayıtları ve yetki
+// matrisi yalnız kurum yöneticisine (admin) ve platform admine açıktır; idari
+// personel doğrudan URL ile de erişemez.
+function AdminOnlyRoute({ children }) {
+  const { user } = useApp();
+  const roles = getUserRoles(user);
+  if (!roles.includes("admin") && !roles.includes("superadmin")) {
+    return <Navigate to={getUserHomePath(user)} replace />;
+  }
+  return children;
 }
 
 function App() {
@@ -265,13 +278,13 @@ function App() {
               <Route path="/admin/task-center" element={<AdminTaskCenter />} />
               <Route path="/admin/kpi" element={<AdminKpiDashboard />} />
               <Route path="/admin/global-search" element={<AdminGlobalSearch />} />
-              <Route path="/admin/personnel-approvals" element={<AdminPersonnelApprovals />} />
+              <Route path="/admin/personnel-approvals" element={<AdminOnlyRoute><AdminPersonnelApprovals /></AdminOnlyRoute>} />
               <Route path="/admin/staff-hr" element={<AdminStaffHr />} />
-              <Route path="/admin/audit-log" element={<AdminAuditLog />} />
+              <Route path="/admin/audit-log" element={<AdminOnlyRoute><AdminAuditLog /></AdminOnlyRoute>} />
               <Route path="/admin/org-units" element={<AdminOrgUnits />} />
-              <Route path="/admin/rbac" element={<AdminRbacMatrix />} />
-              <Route path="/admin/finance-approvals" element={<Approvals />} />
-              <Route path="/admin/role-management" element={<AdminRoleManagement />} />
+              <Route path="/admin/rbac" element={<AdminOnlyRoute><AdminRbacMatrix /></AdminOnlyRoute>} />
+              <Route path="/admin/finance-approvals" element={<AdminOnlyRoute><Approvals /></AdminOnlyRoute>} />
+              <Route path="/admin/role-management" element={<AdminOnlyRoute><AdminRoleManagement /></AdminOnlyRoute>} />
               <Route path="/admin/records" element={<AdministrativeRecords />} />
               <Route path="/admin/administrative-units" element={<AdminAdministrativeUnits />} />
               <Route path="/admin/announcements" element={<AdministrativeAnnouncements />} />

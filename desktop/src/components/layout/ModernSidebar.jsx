@@ -390,22 +390,10 @@ export const menuConfigs = {
       color: "#ec4899",
     },
     {
-      path: "/admin/personnel-approvals",
-      icon: CheckSquare,
-      label: "Personel Onayları",
-      color: "#a855f7",
-    },
-    {
       path: "/admin/staff-hr",
       icon: CheckSquare,
       label: "Personel / İK",
       color: "#0ea5e9",
-    },
-    {
-      path: "/admin/audit-log",
-      icon: CheckSquare,
-      label: "Denetim Kayıtları",
-      color: "#64748b",
     },
     {
       path: "/admin/org-units",
@@ -414,28 +402,10 @@ export const menuConfigs = {
       color: "#0d9488",
     },
     {
-      path: "/admin/rbac",
-      icon: CheckSquare,
-      label: "Yetki Matrisi",
-      color: "#9333ea",
-    },
-    {
       path: "/admin/password-reset-requests",
       icon: KeyRound,
       label: "Şifre Talepleri",
       color: "#f97316",
-    },
-    {
-      path: "/admin/finance-approvals",
-      icon: CheckSquare,
-      label: "Finans Onayları",
-      color: "#a855f7",
-    },
-    {
-      path: "/admin/role-management",
-      icon: Shield,
-      label: "Rol Yönetimi",
-      color: "#6366f1",
     },
     {
       path: "/admin/meetings",
@@ -964,7 +934,7 @@ const ROLE_MENU_GROUPS = {
   ],
   administrative: [
     { id: "main", title: "Ana Panel", modules: ["operations", "tasks", "schedule", "duties"] },
-    { id: "records", title: "İdari İşler", modules: ["records", "documents", "approvals", "password-reset", "registrations", "role-management"] },
+    { id: "records", title: "İdari İşler", modules: ["records", "documents", "password-reset", "registrations"] },
     { id: "reports", title: "Raporlar", modules: ["reports"] },
     { id: "communication", title: "İletişim", modules: ["notifications", "meetings", "chat"] },
     { id: "services", title: "Servis & Yemekhane", modules: ["service", "cafeteria"] },

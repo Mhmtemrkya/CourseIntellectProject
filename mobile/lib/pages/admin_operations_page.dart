@@ -14,7 +14,11 @@ import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 
 class AdminOperationsPage extends StatefulWidget {
-  const AdminOperationsPage({super.key});
+  // İdari personel finans (kazanç/gider) metriklerini görmez; yalnızca kurum
+  // yöneticisinde true geçilir.
+  const AdminOperationsPage({super.key, this.showFinance = true});
+
+  final bool showFinance;
 
   @override
   State<AdminOperationsPage> createState() => _AdminOperationsPageState();
@@ -182,10 +186,12 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    _summaryChip('Kazanç', _finance.formatAmount(((_totals['revenue'] as num?) ?? 0).round()), const Color(0xFF16A34A)),
-                    const SizedBox(width: 8),
-                    _summaryChip('Gider', _finance.formatAmount(((_totals['expense'] as num?) ?? 0).round()), const Color(0xFFDC2626)),
-                    const SizedBox(width: 8),
+                    if (widget.showFinance) ...[
+                      _summaryChip('Kazanç', _finance.formatAmount(((_totals['revenue'] as num?) ?? 0).round()), const Color(0xFF16A34A)),
+                      const SizedBox(width: 8),
+                      _summaryChip('Gider', _finance.formatAmount(((_totals['expense'] as num?) ?? 0).round()), const Color(0xFFDC2626)),
+                      const SizedBox(width: 8),
+                    ],
                     _summaryChip('Kayıt', '${_totals['registrations'] ?? 0}', const Color(0xFF2563EB)),
                   ],
                 ),

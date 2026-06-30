@@ -17,7 +17,7 @@ import {
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
-import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
+import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
 import { FloatingParticles, GlowingOrb } from "../animations/AnimatedBackground";
 import {
@@ -185,12 +185,15 @@ export function PremiumSidebar() {
       primaryRole,
       Boolean(user?.hasRoleManagementPolicy),
     );
+    const roleFilteredItems = moduleItems.filter((item) =>
+      isPathVisibleForRoles(item.path, roles),
+    );
     const visibleItems =
       disabledFeatures?.size > 0
-        ? moduleItems.filter(
+        ? roleFilteredItems.filter(
             (item) => !isPathDisabled(item.path, disabledFeatures),
           )
-        : moduleItems;
+        : roleFilteredItems;
     return buildGroupedMenuItems(visibleItems, primaryRole);
   }, [
     disabledFeatures,

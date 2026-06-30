@@ -238,7 +238,7 @@ function FlowChart({ buckets, period }) {
         {/* Detay kartı */}
         {active ? (
           <div
-            className="pointer-events-none absolute top-1 z-10 w-60 rounded-2xl border border-foreground/10 bg-[#020B1F]/95 px-4 py-3 text-xs shadow-2xl backdrop-blur"
+            className="pointer-events-none absolute top-1 z-10 w-60 rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.97)] px-4 py-3 text-xs shadow-2xl backdrop-blur"
             style={{ left: `${tipLeft}%` }}
           >
             <p className="mb-2 flex items-center justify-between font-bold text-foreground">
@@ -474,7 +474,7 @@ export default function FinanceDashboard() {
       {/* Gelir-Gider grafiği (profesyonel) */}
       <motion.div variants={itemVariants}>
         <PremiumPanel title="Gelir - Gider Grafiği" description={`${periodText} · bir noktanın üstüne gelince ne geldi / ne gitti detayı açılır`}>
-          <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/40 p-5 sm:p-6">
+          <div className="rounded-3xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.5)] p-5 sm:p-6">
             <div className="mb-5 grid grid-cols-3 gap-3">
               <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-3">
                 <p className="text-xs text-muted-foreground">Toplam Gelir</p>

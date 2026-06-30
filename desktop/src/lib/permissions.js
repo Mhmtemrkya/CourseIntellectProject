@@ -71,6 +71,27 @@ export function getUserRoles(user) {
   return Array.from(collected).filter(Boolean);
 }
 
+// Sadece kurum yöneticisinde (admin) / platform admininde görünmesi gereken,
+// İdari personelde gizlenen sayfalar. Menü/registry/policy ne enjekte ederse etsin
+// bu yollar idari personel için sidebar'dan ve komut paletinden filtrelenir.
+export const ADMIN_ONLY_PATHS = new Set([
+  '/admin/personnel-approvals',
+  '/admin/finance-approvals',
+  '/admin/role-management',
+  '/admin/audit-log',
+  '/admin/rbac',
+]);
+
+/**
+ * Verilen yol, kullanıcının rolleri için sidebar'da görünebilir mi?
+ * ADMIN_ONLY_PATHS yalnız admin/superadmin için görünür.
+ */
+export function isPathVisibleForRoles(path, roles) {
+  if (!path || !ADMIN_ONLY_PATHS.has(path)) return true;
+  const roleList = Array.isArray(roles) ? roles : [];
+  return roleList.includes('admin') || roleList.includes('superadmin');
+}
+
 export function getUserPermissions(user) {
   if (!user) return [];
   const list = Array.isArray(user.permissions) ? user.permissions : [];

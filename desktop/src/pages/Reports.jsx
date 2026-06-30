@@ -372,6 +372,38 @@ function AdministrativeReportOverview() {
     const collectionTotal = collections.reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
     const remainingBalance = Math.max(0, installmentTotal + invoiceTotal - collectionTotal);
 
+    // Tahsilat dağılımı — gerçek ödeme verisinden hesaplanır (sıfır sabit değil).
+    // Peşinat: kayıt peşinatı olarak işaretlenen tahsilatlar (not/yöntem "peşinat").
+    // Diğer: nakit/kart/havale dışında kalan yöntemler (çek, senet, belirtilmemiş vb.).
+    const isDownPayment = (item) =>
+      normalizeLookup(item.note).includes('pesinat') || normalizeLookup(item.method).includes('pesinat');
+    const isKnownMethod = (item) => {
+      const method = normalizeLookup(item.method);
+      return (
+        method.includes('nakit') ||
+        method.includes('kart') || method.includes('card') || method.includes('pos') || method.includes('kredi') ||
+        method.includes('havale') || method.includes('eft') || method.includes('banka') || method.includes('transfer')
+      );
+    };
+    const downPaymentTotal = collections
+      .filter(isDownPayment)
+      .reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+    const cashTotal = collections
+      .filter((item) => normalizeLookup(item.method).includes('nakit'))
+      .reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+    const cardBankTotal = collections
+      .filter((item) => {
+        const method = normalizeLookup(item.method);
+        return (
+          method.includes('kart') || method.includes('card') || method.includes('pos') || method.includes('kredi') ||
+          method.includes('havale') || method.includes('eft') || method.includes('banka') || method.includes('transfer')
+        );
+      })
+      .reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+    const otherMethodTotal = collections
+      .filter((item) => !isKnownMethod(item))
+      .reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0);
+
     return {
       student,
       name: getStudentName(student),
@@ -389,6 +421,10 @@ function AdministrativeReportOverview() {
       invoiceTotal,
       collectionTotal,
       remainingBalance,
+      downPaymentTotal,
+      cashTotal,
+      cardBankTotal,
+      otherMethodTotal,
     };
   }, [accountingDashboard, attendance, exams, selectedStudent]);
 
@@ -864,6 +900,24 @@ function AdministrativeReportOverview() {
                         <p className="mt-1 text-lg font-bold">{value}</p>
                       </div>
                     ))}
+                  </div>
+
+                  {/* Tahsilat dağılımı — peşinat ve diğer dahil, gerçek değerler */}
+                  <div>
+                    <p className="mb-2 text-sm font-semibold text-muted-foreground">Tahsilat dağılımı</p>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                      {[
+                        [formatCurrency(selectedStudentDetail.cashTotal), 'Nakit'],
+                        [formatCurrency(selectedStudentDetail.cardBankTotal), 'Kart / Havale'],
+                        [formatCurrency(selectedStudentDetail.downPaymentTotal), 'Peşinat'],
+                        [formatCurrency(selectedStudentDetail.otherMethodTotal), 'Diğer'],
+                      ].map(([value, label]) => (
+                        <div key={label} className="rounded-2xl border border-border bg-muted/30 p-4">
+                          <p className="text-sm text-muted-foreground">{label}</p>
+                          <p className="mt-1 text-lg font-bold tabular-nums">{value}</p>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-3">

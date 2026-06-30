@@ -5,7 +5,10 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
-export const CHART_COLORS = ["#FF7A00", "#3B82F6", "#10B981", "#A855F7", "#F43F5E", "#06B6D4"];
+// İlk seri seçilen marka vurgu rengini (tenant paleti) takip eder; geri kalanı
+// anlamsal sabit renkler. Böylece geliştirici/admin paletinde seçilen renk
+// grafiklere de yansır.
+export const CHART_COLORS = ["hsl(var(--brand-accent))", "#3B82F6", "#10B981", "#A855F7", "#F43F5E", "#06B6D4"];
 
 function buildSmoothPath(points) {
   if (points.length < 2) return "";
@@ -34,7 +37,7 @@ const toneClass = {
 };
 
 const chartTone = {
-  brand: { start: "#ff7a00", end: "#fb923c", glow: "#ff7a00" },
+  brand: { start: "hsl(var(--brand-accent))", end: "hsl(var(--brand-accent-hover))", glow: "hsl(var(--brand-accent))" },
   blue: { start: "#38bdf8", end: "#2563eb", glow: "#3b82f6" },
   emerald: { start: "#34d399", end: "#0d9488", glow: "#10b981" },
   violet: { start: "#a78bfa", end: "#d946ef", glow: "#a855f7" },

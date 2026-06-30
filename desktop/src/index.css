@@ -100,6 +100,12 @@ code {
         --radius: 0.875rem;
         --shell-shadow: 0 24px 80px hsl(200 100% 8% / 0.38);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+
+        /* Tema-duyarlı yüzeyler — sabit koyu hex yerine kullanılır, böylece
+           açık temada da okunur kalır. */
+        --ci-field: 213 67% 11%;      /* form alanları (input/select) */
+        --ci-surface-1: 213 64% 12%;  /* yükseltilmiş panel/ikincil yüzey */
+        --ci-overlay: 222 60% 4%;     /* modal arka plan karartması */
     }
 
     /* Gerçek açık tema: yalnızca ci- token'larını override eder; shadcn
@@ -135,6 +141,11 @@ code {
         --primary-foreground: 0 0% 100%;
         --shell-shadow: 0 24px 80px hsl(214 40% 60% / 0.20);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.7);
+
+        /* Açık tema yüzeyleri */
+        --ci-field: 0 0% 100%;
+        --ci-surface-1: 210 40% 98%;
+        --ci-overlay: 222 47% 22%;
     }
 
     .dark {
@@ -188,6 +199,11 @@ code {
         --chart-5: 262 80% 55%;
         --shell-shadow: 0 26px 96px hsl(200 100% 2% / 0.55);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.06);
+
+        /* Koyu tema yüzeyleri */
+        --ci-field: 213 67% 11%;
+        --ci-surface-1: 213 64% 12%;
+        --ci-overlay: 222 60% 4%;
         color-scheme: dark;
     }
 }

@@ -145,7 +145,7 @@ function FinancialChart({ buckets = [], loading = false }) {
 
       <div className="relative mt-5 h-64">
         {active ? (
-          <div className="pointer-events-none absolute -top-1 right-0 z-10 rounded-2xl border border-foreground/10 bg-[#020B1F]/95 px-4 py-3 text-xs shadow-xl backdrop-blur">
+          <div className="pointer-events-none absolute -top-1 right-0 z-10 rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.97)] px-4 py-3 text-xs shadow-xl backdrop-blur">
             <p className="mb-1 font-bold text-foreground">{active.label}</p>
             <p className="flex items-center justify-between gap-4 text-emerald-400"><span>Kazanç</span><span className="tabular-nums font-semibold">{formatMoney(active.revenue)}</span></p>
             <p className="flex items-center justify-between gap-4 text-rose-400"><span>Gider</span><span className="tabular-nums font-semibold">{formatMoney(active.expense)}</span></p>
@@ -341,7 +341,7 @@ export default function Dashboard() {
       <motion.div variants={itemVariants}>
         <PremiumPanel title="Kazanç & Gider Eğrisi" description={`${periodLabel} kırılım — bir sütunun üstüne gelince o dönemin kazanç, gider ve kayıt detayı görünür`}>
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.8fr)]">
-            <div className="rounded-3xl border border-foreground/10 bg-[#020B1F]/40 p-6">
+            <div className="rounded-3xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.5)] p-6">
               <FinancialChart buckets={buckets} loading={analyticsLoading} />
             </div>
             <div className="grid grid-cols-2 gap-3">

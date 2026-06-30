@@ -4,14 +4,11 @@ import '../services/accounting_finance_store.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
-import 'accounting_approvals_page.dart';
 import 'admin_class_management_page.dart';
 import 'admin_announcements_page.dart';
 import 'admin_meeting_overview_page.dart';
 import 'admin_operations_page.dart';
-import 'admin_personnel_approvals_page.dart';
 import 'admin_schedule_list_page.dart';
-import 'admin_role_management_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'admin_student_registration_page.dart';
 import 'duties_board_page.dart';
@@ -188,17 +185,6 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   onTap: () => _openPage(const AdminAnnouncementsPage()),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  icon: Icons.admin_panel_settings_outlined,
-                  title: 'Rol Yönetimi',
-                  value: 'Yetki akışlarını yönet',
-                  color: const Color(0xFF4F46E5),
-                  onTap: () => _openPage(const AdminRoleManagementPage()),
-                ),
-              ),
             ],
           ),
           const SizedBox(height: 12),
@@ -253,7 +239,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   title: 'Operasyon',
                   value: 'Görev ve canlı akışı aç',
                   color: const Color(0xFF0F766E),
-                  onTap: () => _openPage(const AdminOperationsPage()),
+                  onTap: () => _openPage(const AdminOperationsPage(showFinance: false)),
                 ),
               ),
             ],
@@ -269,37 +255,6 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                   value: 'Yeni sınıf tanımı oluştur',
                   color: const Color(0xFF1D4ED8),
                   onTap: () => _openPage(const AdminClassManagementPage()),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _metricCard(
-                  context,
-                  icon: Icons.verified_user_outlined,
-                  title: 'Personel Onayları',
-                  value: 'Bekleyen kadro talepleri',
-                  color: const Color(0xFF7C3AED),
-                  onTap: () => _openPage(const AdminPersonnelApprovalsPage()),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _metricCard(
-                  context,
-                  icon: Icons.payments_outlined,
-                  title: 'Finans Onayları',
-                  value: 'Muhasebe onay akışı',
-                  color: const Color(0xFFB45309),
-                  onTap: () => _openPage(
-                    const AccountingApprovalsPage(
-                      canApprove: true,
-                      pageTitle: 'Finans Onayları',
-                    ),
-                  ),
                 ),
               ),
             ],
