@@ -104,6 +104,12 @@ public sealed class StudentFinanceService(
         // muhasebe aktivite akışında eksiksiz görünür.
         if (downPayment > 0)
         {
+            // Peşinatın gerçek ödeme kanalı (Nakit/Kart/Havale) — kasa/nakit-kart
+            // dağılımına doğru düşmesi için. Boşsa "Nakit" varsayılır. Kaydın "kayıt
+            // peşinatı" olduğu Note ve makbuz numarasından anlaşılır.
+            var downPaymentMethod = string.IsNullOrWhiteSpace(request.DownPaymentMethod)
+                ? "Nakit"
+                : request.DownPaymentMethod.Trim();
             var receiptNo = await NextReceiptNoAsync(cancellationToken);
             await dbContext.FinancePayments.AddAsync(new FinancePayment
             {
@@ -111,7 +117,7 @@ public sealed class StudentFinanceService(
                 StudentUserId = contract.StudentUserId,
                 StudentName = studentName,
                 Amount = downPayment,
-                Method = "Peşinat",
+                Method = downPaymentMethod,
                 ReceiptNo = receiptNo,
                 Currency = currency,
                 Note = "Kayıt peşinatı",
@@ -123,14 +129,14 @@ public sealed class StudentFinanceService(
             await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
             {
                 Title = "Kayıt peşinatı tahsil edildi",
-                Message = $"{studentName} için {amountLabel} tutarında kayıt peşinatı alındı (Makbuz {receiptNo}).",
+                Message = $"{studentName} için {amountLabel} tutarında kayıt peşinatı alındı ({downPaymentMethod} • Makbuz {receiptNo}).",
                 Time = "Bugün",
                 Unread = true,
             }, cancellationToken);
             await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
             {
                 Title = "Peşinat tahsilatı işlendi",
-                Detail = $"{studentName} için kayıt sırasında {amountLabel} peşinat tahsilatı kaydedildi (Makbuz {receiptNo}).",
+                Detail = $"{studentName} için kayıt sırasında {amountLabel} peşinat tahsilatı {downPaymentMethod} ile kaydedildi (Makbuz {receiptNo}).",
                 Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
             }, cancellationToken);
         }

@@ -55,6 +55,7 @@ const emptyForm = {
   enrollmentDiscountAmount: '',
   enrollmentDiscountReason: '',
   enrollmentDownPayment: '',
+  enrollmentDownPaymentMethod: 'Nakit',
   enrollmentInstallmentCount: '',
 };
 
@@ -170,6 +171,7 @@ export default function AdminStudentRegistration() {
         enrollmentDiscountAmount: form.enrollmentDiscountAmount ? Number(form.enrollmentDiscountAmount) : null,
         enrollmentDiscountReason: form.enrollmentDiscountReason.trim() || null,
         enrollmentDownPayment: form.enrollmentDownPayment ? Number(form.enrollmentDownPayment) : null,
+        enrollmentDownPaymentMethod: form.enrollmentDownPayment ? (form.enrollmentDownPaymentMethod || 'Nakit') : null,
         enrollmentInstallmentCount: form.enrollmentInstallmentCount ? Number(form.enrollmentInstallmentCount) : null,
       }, branchId || undefined);
       const studentInfo = {
@@ -408,6 +410,19 @@ export default function AdminStudentRegistration() {
                       <div>
                         <Label>Peşinat (₺)</Label>
                         <Input type="number" min="0" value={form.enrollmentDownPayment} onChange={(e) => handleChange('enrollmentDownPayment', e.target.value)} placeholder="Örn: 10000" />
+                      </div>
+                      <div>
+                        <Label>Peşinat Ödeme Yöntemi</Label>
+                        <select
+                          value={form.enrollmentDownPaymentMethod}
+                          onChange={(e) => handleChange('enrollmentDownPaymentMethod', e.target.value)}
+                          disabled={!form.enrollmentDownPayment}
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          <option value="Nakit">Nakit</option>
+                          <option value="Kart">Kart / POS</option>
+                          <option value="Havale">Havale / EFT</option>
+                        </select>
                       </div>
                       <div>
                         <Label>Taksit Sayısı</Label>

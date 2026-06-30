@@ -44,6 +44,7 @@ class _AdminStudentRegistrationPageState
   final _installmentCountController = TextEditingController();
 
   String _programType = 'Lise';
+  String _downPaymentMethod = 'Nakit';
   List<String> _classOptions = const [];
   List<Map<String, dynamic>> _branches = const [];
   String? _branchId;
@@ -399,6 +400,24 @@ class _AdminStudentRegistrationPageState
                     ],
                   ),
                   const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    initialValue: _downPaymentMethod,
+                    decoration: const InputDecoration(
+                      labelText: 'Peşinat Ödeme Yöntemi',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Nakit', child: Text('Nakit')),
+                      DropdownMenuItem(value: 'Kart', child: Text('Kart / POS')),
+                      DropdownMenuItem(
+                        value: 'Havale',
+                        child: Text('Havale / EFT'),
+                      ),
+                    ],
+                    onChanged: (value) =>
+                        setState(() => _downPaymentMethod = value ?? 'Nakit'),
+                  ),
+                  const SizedBox(height: 12),
                   _buildField(
                     controller: _academicYearController,
                     label: 'Akademik Yıl (örn: 2025-2026)',
@@ -629,6 +648,8 @@ class _AdminStudentRegistrationPageState
             ? null
             : _discountReasonController.text.trim(),
         enrollmentDownPayment: double.tryParse(_downPaymentController.text.trim()),
+        enrollmentDownPaymentMethod:
+            _downPaymentController.text.trim().isEmpty ? null : _downPaymentMethod,
         enrollmentInstallmentCount:
             int.tryParse(_installmentCountController.text.trim()),
         branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,

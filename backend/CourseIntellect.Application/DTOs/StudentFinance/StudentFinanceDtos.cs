@@ -12,7 +12,9 @@ public sealed record CreateEnrollmentRequest(
     int InstallmentCount,
     DateTime? FirstInstallmentDate,
     string? Currency,
-    string? Note);
+    string? Note,
+    // Peşinatın ödeme yöntemi (Nakit/Kart/Havale); boşsa "Nakit" varsayılır.
+    string? DownPaymentMethod = null);
 
 public sealed record RecordPaymentRequest(
     Guid? StudentUserId,

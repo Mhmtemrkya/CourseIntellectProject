@@ -44,7 +44,8 @@ public sealed class StudentsController(
                     request.EnrollmentInstallmentCount ?? 0,
                     null,
                     "TRY",
-                    "Kayıt sırasında oluşturuldu"),
+                    "Kayıt sırasında oluşturuldu",
+                    request.EnrollmentDownPaymentMethod),
                 CurrentUserId(),
                 cancellationToken);
         }

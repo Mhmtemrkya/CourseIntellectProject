@@ -19,5 +19,7 @@ public sealed record CreateStudentRequest(
     string? EnrollmentDiscountReason = null,
     decimal? EnrollmentDownPayment = null,
     int? EnrollmentInstallmentCount = null,
-    string? AcademicYear = null
+    string? AcademicYear = null,
+    // Peşinatın tahsil edildiği ödeme yöntemi (Nakit/Kart/Havale) — kasa dağılımına doğru düşmesi için.
+    string? EnrollmentDownPaymentMethod = null
 );
