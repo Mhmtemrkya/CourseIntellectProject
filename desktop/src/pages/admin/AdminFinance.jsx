@@ -19,7 +19,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import StudentFinanceAccountDialog from '../../components/finance/StudentFinanceAccountDialog';
 import { PayrollCalculatorDialog, ReconciliationDialog } from '../../components/finance/FinanceToolsDialogs';
-import { backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
+import { backfillDownPaymentMethod, backfillFinanceInstallments, fetchAccountingDashboard, fetchFinanceDashboard, sendFinanceReminders } from '../../lib/api/modules';
 import { normalizeFinanceText, parseFinanceMoney } from '../../lib/financeDocuments';
 
 function tl(value) {
@@ -50,6 +50,7 @@ export default function AdminFinance() {
   const [enrollmentFinance, setEnrollmentFinance] = useState(null);
   const [sendingReminders, setSendingReminders] = useState(false);
   const [backfilling, setBackfilling] = useState(false);
+  const [convertingDownPayments, setConvertingDownPayments] = useState(false);
   const [activeTool, setActiveTool] = useState(null);
   const [accountStudent, setAccountStudent] = useState(null);
   const [studentSearch, setStudentSearch] = useState('');
@@ -101,6 +102,22 @@ export default function AdminFinance() {
       toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
     } finally {
       setBackfilling(false);
+    }
+  }, [toast, loadDashboard]);
+
+  const handleConvertDownPayments = useCallback(async () => {
+    try {
+      setConvertingDownPayments(true);
+      const result = await backfillDownPaymentMethod();
+      toast({
+        title: 'Peşinatlar güncellendi',
+        description: `${result?.updated || 0} geçmiş peşinat Nakit ödeme yöntemine çevrildi.`,
+      });
+      await loadDashboard();
+    } catch (err) {
+      toast({ title: 'İşlem başarısız', description: err.message, variant: 'destructive' });
+    } finally {
+      setConvertingDownPayments(false);
     }
   }, [toast, loadDashboard]);
 
@@ -169,6 +186,9 @@ export default function AdminFinance() {
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" onClick={handleBackfill} disabled={backfilling}>
               {backfilling ? 'İşleniyor...' : 'Eski Kayıtları Takibe Al'}
+            </Button>
+            <Button variant="outline" onClick={handleConvertDownPayments} disabled={convertingDownPayments}>
+              {convertingDownPayments ? 'İşleniyor...' : 'Peşinatları Nakit\'e Çevir'}
             </Button>
             <Button onClick={() => navigate('/finance/dashboard')}>
               Muhasebe Modülüne Geç

@@ -44,4 +44,8 @@ public interface IStudentFinanceService
     // Taksitsiz/taksit kaydı eksik (vade tarihi olmayan) eski sözleşmeleri tek bir
     // vadeli kayıtla takibe alır. Kalan tahsilat sayısını döndürür.
     Task<int> BackfillMissingInstallmentsAsync(CancellationToken cancellationToken = default);
+
+    // Geçmiş kayıt peşinatlarını (Method="Peşinat") "Nakit" ödeme yöntemine çevirir,
+    // böylece kasa/nakit-kart dağılımına doğru düşerler. Güncellenen kayıt sayısını döndürür.
+    Task<int> BackfillDownPaymentMethodAsync(CancellationToken cancellationToken = default);
 }

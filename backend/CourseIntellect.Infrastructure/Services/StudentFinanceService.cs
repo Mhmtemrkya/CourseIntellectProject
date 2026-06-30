@@ -145,6 +145,25 @@ public sealed class StudentFinanceService(
         return MapContract(contract, installments);
     }
 
+    // Geçmiş kayıt peşinatları "Peşinat" yöntemiyle kaydedilmişti; bu yöntem
+    // gerçek ödeme kanalı olmadığından kasa/nakit-kart dağılımına düşmüyordu.
+    // Tek seferde "Nakit"e çevirir (idempotent: tekrar çalıştırınca etkisi olmaz).
+    public async Task<int> BackfillDownPaymentMethodAsync(CancellationToken cancellationToken = default)
+    {
+        var payments = await dbContext.FinancePayments
+            .Where(item => item.Method == "Peşinat")
+            .ToListAsync(cancellationToken);
+        foreach (var payment in payments)
+        {
+            payment.Method = "Nakit";
+        }
+        if (payments.Count > 0)
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        return payments.Count;
+    }
+
     public async Task<int> BackfillMissingInstallmentsAsync(CancellationToken cancellationToken = default)
     {
         var contracts = await dbContext.EnrollmentContracts.AsNoTracking().ToListAsync(cancellationToken);

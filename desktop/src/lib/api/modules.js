@@ -374,6 +374,12 @@ export async function backfillFinanceInstallments() {
   return response;
 }
 
+// Geçmiş "Peşinat" yöntemli kayıt peşinatlarını tek seferde "Nakit"e çevirir.
+export async function backfillDownPaymentMethod() {
+  const response = await api.post('/api/student-finance/backfill-downpayment-method');
+  return response;
+}
+
 export async function createFinancePaymentIntent(payload) {
   const response = await api.post('/api/student-finance/payments/intent', payload);
   return response;

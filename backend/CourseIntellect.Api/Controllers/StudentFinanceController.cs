@@ -93,6 +93,15 @@ public sealed class StudentFinanceController(
         return Ok(new { created = count, message = $"{count} sözleşme takibe alındı." });
     }
 
+    // Geçmiş "Peşinat" yöntemli kayıt peşinatlarını tek seferde "Nakit"e çevirir.
+    [HttpPost("backfill-downpayment-method")]
+    [Authorize(Roles = "Accounting,Admin")]
+    public async Task<IActionResult> BackfillDownPaymentMethod(CancellationToken cancellationToken)
+    {
+        var count = await studentFinanceService.BackfillDownPaymentMethodAsync(cancellationToken);
+        return Ok(new { updated = count, message = $"{count} peşinat Nakit'e çevrildi." });
+    }
+
     [HttpPost("payments/intent")]
     public async Task<IActionResult> CreatePaymentIntent([FromBody] PaymentIntentRequest request, CancellationToken cancellationToken)
     {
