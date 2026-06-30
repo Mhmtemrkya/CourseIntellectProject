@@ -242,11 +242,15 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   int _sumAmount(Iterable<String> amounts) =>
       amounts.fold<int>(0, (sum, a) => sum + _store.parseAmount(a));
 
-  // Öğrenci/kurs ücreti faturaları gelir belgesidir; "Gider" toplamına katılmaz.
+  // "Gider" toplamına katılmayan faturalar: öğrenci/kurs ücreti (gelir belgesi) ve
+  // maaş/bordro (maaş gideri zaten ayrı "Maaş" listesinden sayılıyor → çift sayım önlenir).
   bool _isExpenseInvoice(InvoiceRecord invoice) {
     final c = invoice.category.toLowerCase();
-    const incomeMarkers = ['öğrenci', 'ogrenci', 'kurs', 'ücret', 'ucret', 'tahsil', 'gelir'];
-    return !incomeMarkers.any(c.contains);
+    const excludedMarkers = [
+      'öğrenci', 'ogrenci', 'kurs', 'ücret', 'ucret', 'tahsil', 'gelir',
+      'maaş', 'maas', 'bordro', 'personel', 'payroll',
+    ];
+    return !excludedMarkers.any(c.contains);
   }
 
   // --- Seçili döneme göre türetilmiş veriler ---

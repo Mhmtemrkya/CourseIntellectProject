@@ -36,20 +36,31 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
   @override
   Widget build(BuildContext context) {
     final collections = _store.collections;
+    bool isCash(String m) => m.contains('nakit');
+    bool isCard(String m) =>
+        m.contains('kart') || m.contains('card') || m.contains('pos');
+    bool isBank(String m) =>
+        m.contains('havale') ||
+        m.contains('eft') ||
+        m.contains('bank') ||
+        m.contains('banka') ||
+        m.contains('transfer');
     final cashTotal = collections
-        .where((item) => item.method.toLowerCase().contains('nakit'))
+        .where((item) => isCash(item.method.toLowerCase()))
         .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
     final cardTotal = collections
-        .where((item) => item.method.toLowerCase().contains('kart'))
+        .where((item) => isCard(item.method.toLowerCase()))
         .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
     final bankTotal = collections
-        .where(
-          (item) =>
-              item.method.toLowerCase().contains('havale') ||
-              item.method.toLowerCase().contains('eft'),
-        )
+        .where((item) => isBank(item.method.toLowerCase()))
         .fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
-    final grandTotal = cashTotal + cardTotal + bankTotal;
+    // Nakit/Kart/Havale dışı yöntemler (çek, senet, diğer, belirtilmemiş) —
+    // aksi halde Toplam eksik çıkar ve yüzdeler gerçek toplamı yansıtmaz.
+    final otherTotal = collections.where((item) {
+      final m = item.method.toLowerCase();
+      return !isCash(m) && !isCard(m) && !isBank(m);
+    }).fold<int>(0, (sum, item) => sum + _store.parseAmount(item.amount));
+    final grandTotal = cashTotal + cardTotal + bankTotal + otherTotal;
 
     return AccountingScaffold(
       appBar: AppBar(
@@ -103,6 +114,15 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
                   grandTotal,
                   const Color(0xFF7C3AED),
                 ),
+                if (otherTotal > 0) ...[
+                  const SizedBox(height: 12),
+                  _metricRow(
+                    'Diğer',
+                    otherTotal,
+                    grandTotal,
+                    const Color(0xFF64748B),
+                  ),
+                ],
               ],
             ),
           ),

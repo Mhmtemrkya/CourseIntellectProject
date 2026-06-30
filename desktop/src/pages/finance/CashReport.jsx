@@ -90,7 +90,20 @@ export default function CashReport() {
     [collections],
   );
 
-  const grandTotal = cashTotal + cardTotal + bankTotal;
+  // Nakit/Kart/Havale dışı kalan yöntemler (çek, senet, diğer, belirtilmemiş) —
+  // aksi halde Toplam Tahsilat eksik çıkar ve yüzdeler gerçek toplamı yansıtmaz.
+  const otherTotal = useMemo(
+    () => collections.filter((c) => {
+      const method = normalizeFinanceText(c.method || c.paymentMethod || c.type);
+      const isCash = method.includes('nakit');
+      const isCard = method.includes('kart') || method.includes('card') || method.includes('credit') || method.includes('pos');
+      const isBank = method.includes('havale') || method.includes('eft') || method.includes('bank') || method.includes('banka') || method.includes('transfer');
+      return !isCash && !isCard && !isBank;
+    }).reduce((s, c) => s + parseAmount(c.amount), 0),
+    [collections],
+  );
+
+  const grandTotal = cashTotal + cardTotal + bankTotal + otherTotal;
 
   if (loading) return <div className="flex justify-center py-20"><LoadingDots /></div>;
   if (error) return <ErrorBanner message={error} onRetry={loadData} />;
@@ -127,7 +140,7 @@ export default function CashReport() {
       </motion.div>
 
       {/* Summary Cards */}
-      <motion.div variants={itemVariants} className="grid grid-cols-4 gap-4">
+      <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-5">
         <Card>
           <CardContent className="flex items-center gap-3 py-4">
             <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
@@ -172,6 +185,17 @@ export default function CashReport() {
             </div>
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="flex items-center gap-3 py-4">
+            <div className="p-2 bg-slate-100 dark:bg-slate-800/60 rounded-lg">
+              <Receipt className="h-6 w-6 text-slate-500" />
+            </div>
+            <div>
+              <p className="text-xl font-bold">{formatCurrency(otherTotal)}</p>
+              <p className="text-xs text-muted-foreground">Diğer</p>
+            </div>
+          </CardContent>
+        </Card>
       </motion.div>
 
       {/* Payment Breakdown Bar */}
@@ -187,13 +211,15 @@ export default function CashReport() {
                   <div className="bg-emerald-500 transition-all" style={{ width: `${(cashTotal / grandTotal) * 100}%` }} title={`Nakit: ${formatCurrency(cashTotal)}`} />
                   <div className="bg-blue-500 transition-all" style={{ width: `${(cardTotal / grandTotal) * 100}%` }} title={`Kart: ${formatCurrency(cardTotal)}`} />
                   <div className="bg-purple-500 transition-all" style={{ width: `${(bankTotal / grandTotal) * 100}%` }} title={`Havale: ${formatCurrency(bankTotal)}`} />
+                  <div className="bg-slate-400 transition-all" style={{ width: `${(otherTotal / grandTotal) * 100}%` }} title={`Diğer: ${formatCurrency(otherTotal)}`} />
                 </>
               )}
             </div>
-            <div className="flex gap-6 mt-3 text-sm">
+            <div className="flex flex-wrap gap-x-6 gap-y-2 mt-3 text-sm">
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-emerald-500" /><span>Nakit ({grandTotal ? Math.round((cashTotal / grandTotal) * 100) : 0}%)</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-500" /><span>Kart ({grandTotal ? Math.round((cardTotal / grandTotal) * 100) : 0}%)</span></div>
               <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-purple-500" /><span>Havale ({grandTotal ? Math.round((bankTotal / grandTotal) * 100) : 0}%)</span></div>
+              {otherTotal > 0 ? <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-slate-400" /><span>Diğer ({grandTotal ? Math.round((otherTotal / grandTotal) * 100) : 0}%)</span></div> : null}
             </div>
           </CardContent>
         </Card>

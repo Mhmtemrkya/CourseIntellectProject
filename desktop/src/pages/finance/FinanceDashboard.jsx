@@ -45,12 +45,15 @@ function normalizeStatus(value = '') {
   return normalizeFinanceText(value);
 }
 
-// Öğrenci/kurs ücreti faturaları gelir belgesidir; "Gider" toplamına katılmamalı.
-// Yalnızca maaş/mekân/diğer gider faturaları gider sayılır.
+// "Gider" toplamına dahil EDİLMEYEN faturalar:
+//  - Öğrenci/kurs ücreti faturaları → gelir belgesidir.
+//  - Maaş/bordro faturaları → maaş gideri zaten ayrı "Maaş" listesinden sayıldığı
+//    için çift sayımı önlemek üzere hariç tutulur.
+// Yani gidere yalnızca mekân/kira/fatura/diğer gider kalemleri girer.
 function isExpenseInvoice(invoice) {
   const cat = normalizeStatus(invoice?.category || invoice?.type || '');
-  const incomeMarkers = ['ogrenci', 'öğrenci', 'kurs', 'ucret', 'ücret', 'tahsil', 'gelir'];
-  return !incomeMarkers.some((marker) => cat.includes(marker));
+  const excludedMarkers = ['ogrenci', 'öğrenci', 'kurs', 'ucret', 'ücret', 'tahsil', 'gelir', 'maas', 'maaş', 'bordro', 'personel', 'payroll'];
+  return !excludedMarkers.some((marker) => cat.includes(marker));
 }
 
 // Backend tahsilat "time"/fatura "subtitle"/maaş "payDate" alanlarındaki
