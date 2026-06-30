@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
-  FileQuestion, Plus, BarChart3, CheckCircle, Calendar, Trophy, Users, Target,
+  FileQuestion, Plus, BarChart3, CheckCircle, Calendar, Trophy, Users, Target, Camera,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -16,6 +16,7 @@ import { useApp } from '../../context/AppContext';
 import { deletePlannedExam, fetchExamResults, fetchPlannedExams } from '../../lib/api/modules';
 import { getResourceTheme } from '../../components/ui/PremiumResourceCard';
 import ExamAttendanceDialog from '../../components/teacher/ExamAttendanceDialog';
+import ExamLiveCameraDialog from '../../components/teacher/ExamLiveCameraDialog';
 
 
 const containerVariants = {
@@ -81,6 +82,7 @@ export default function TeacherExams() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [attendanceExam, setAttendanceExam] = useState(null);
+  const [liveCameraExam, setLiveCameraExam] = useState(null);
 
   const loadExams = useCallback(async () => {
     try {
@@ -259,6 +261,7 @@ export default function TeacherExams() {
                         ))}
                       </div>
                       <div className="flex justify-end gap-2">
+                        <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:border-sky-400/40 hover:bg-sky-500/10 hover:text-sky-300" onClick={() => setLiveCameraExam(exam)}><Camera className="mr-1.5 h-4 w-4" />Canlı Kamera</Button>
                         <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-300" onClick={() => setAttendanceExam(exam)}>Yoklama</Button>
                         <Button variant="outline" className="rounded-xl border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:border-red-400/40 hover:bg-red-500/10 hover:text-red-300" onClick={() => deletePlannedExam(exam.id).then(() => setPlannedExams((prev) => prev.filter((item) => item.id !== exam.id)))}>Sil</Button>
                       </div>
@@ -382,6 +385,10 @@ export default function TeacherExams() {
 
       {attendanceExam ? (
         <ExamAttendanceDialog exam={attendanceExam} onClose={() => setAttendanceExam(null)} />
+      ) : null}
+
+      {liveCameraExam ? (
+        <ExamLiveCameraDialog exam={liveCameraExam} onClose={() => setLiveCameraExam(null)} />
       ) : null}
     </motion.div>
   );

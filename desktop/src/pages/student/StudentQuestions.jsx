@@ -297,13 +297,16 @@ export default function StudentQuestions() {
     successRate: questions.length ? Math.round((questions.filter((item) => Number(item.usageCount || 0) > 0).length / questions.length) * 100) : 0,
     xp: questions.reduce((sum, item) => sum + Math.min(10, Number(item.usageCount || 0)), 0),
   };
-  const remaining = Math.max(0, stats.totalQuestions - stats.solved);
-  // Gerçek çözüm kırılımı (backend /attempts/stats). Veri yoksa güvenli varsayılan.
-  const totalCount = practiceStats?.total ?? stats.totalQuestions;
-  const solvedCount = practiceStats?.solved ?? stats.solved;
+  // "Toplam Soru" ve "Boş", sadece bu öğrencinin sayfasında görünen sorulara göre
+  // hesaplanır (backend'in genel toplamı değil). Doğru/yanlış/net gerçek çözüm
+  // verisinden (backend /attempts/stats) gelir.
+  const totalCount = stats.totalQuestions;
   const correctCount = practiceStats?.correct ?? 0;
   const wrongCount = practiceStats?.wrong ?? 0;
-  const blankCount = practiceStats?.blank ?? remaining;
+  // Bu öğrencinin sayfasında çözülmüş soru sayısı (sayfadaki soru sayısını aşamaz).
+  const solvedCount = Math.min(totalCount, practiceStats?.solved ?? stats.solved);
+  // Boş = sayfadaki sorulardan henüz çözülmemiş olanlar.
+  const blankCount = Math.max(0, totalCount - solvedCount);
   const netScore = practiceStats?.net ?? 0;
   const difficultyBreakdown = [
     ['Kolay', 'bg-emerald-400'],

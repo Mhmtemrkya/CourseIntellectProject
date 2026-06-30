@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../widgets/premium_resource_card.dart';
 import 'package:student/pages/teacher_exam_edit_page.dart';
+import 'package:student/pages/teacher_exam_live_camera_page.dart';
 import 'package:student/pages/teacher_exam_results_page.dart';
 import 'package:student/pages/teacher_exam_score_entry_page.dart';
 import 'package:student/pages/teacher_create_exam_page.dart';
@@ -829,6 +830,32 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                       icon: const Icon(Icons.bar_chart_rounded),
                       label: const Text("Öğrenci Sonuçları"),
                       style: OutlinedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => TeacherExamLiveCameraPage(
+                              examId: (item["id"] as String?) ?? '',
+                              examTitle: _decodeText(item["title"] as String?),
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.videocam_rounded),
+                      label: const Text("Canlı Kamera"),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFF2563EB),
+                        side: const BorderSide(color: Color(0x552563EB)),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),

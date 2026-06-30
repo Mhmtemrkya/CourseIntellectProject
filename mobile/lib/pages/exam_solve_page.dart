@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:student/services/api_config.dart';
 import 'package:student/services/solution_session_api_service.dart';
+import 'package:student/widgets/exam_camera_monitor.dart';
 import 'package:student/widgets/solution_drawing_canvas.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -65,6 +66,7 @@ class ExamSolvePage extends StatefulWidget {
   final List<String>? questionIds;
   final int questionCount;
   final bool isTeacherPreview;
+  final bool requireCamera;
 
   const ExamSolvePage({
     super.key,
@@ -74,6 +76,7 @@ class ExamSolvePage extends StatefulWidget {
     this.questionIds,
     this.questionCount = 10,
     this.isTeacherPreview = false,
+    this.requireCamera = false,
   });
 
   @override
@@ -546,21 +549,36 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
         }
       },
       child: Scaffold(
-        body: DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [colors.backgroundDeep, colors.background],
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
+        body: Stack(
+          children: [
+            DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [colors.backgroundDeep, colors.background],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                ),
+              ),
+              child: SafeArea(
+                child: _loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                    ? _ErrorState(message: _error!, onRetry: _startSession)
+                    : _buildContent(context),
+              ),
             ),
-          ),
-          child: SafeArea(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : _error != null
-                ? _ErrorState(message: _error!, onRetry: _startSession)
-                : _buildContent(context),
-          ),
+            if (widget.requireCamera && _summary == null && _session != null)
+              Positioned(
+                right: 14,
+                bottom: 14,
+                child: SafeArea(
+                  child: ExamCameraMonitor(
+                    examId: widget.plannedExamId ?? '',
+                    active: true,
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

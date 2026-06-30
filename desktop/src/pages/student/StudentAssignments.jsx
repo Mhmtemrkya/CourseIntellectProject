@@ -425,7 +425,11 @@ export default function StudentAssignments() {
         </div>
 
         {/* Sağ ray */}
-        <div className="space-y-5">
+        <div className="space-y-5 xl:sticky xl:top-4 xl:self-start">
+          <PremiumPanel title="Ödev Takvimi" description="Teslim tarihleri">
+            <AssignmentCalendar marks={calendarMarks} />
+          </PremiumPanel>
+
           <PremiumPanel title="Yaklaşan Teslimler" description="Süresi yaklaşan ödevler" contentClassName="space-y-2.5">
             {upcoming.length ? upcoming.map((item) => {
               const date = parseDate(item.deadline);
@@ -460,10 +464,6 @@ export default function StudentAssignments() {
                 </div>
               </button>
             )) : <div className="rounded-2xl border border-dashed border-foreground/10 p-6 text-center text-sm text-muted-foreground">Henüz sonuçlanan ödev yok.</div>}
-          </PremiumPanel>
-
-          <PremiumPanel title="Ödev Takvimi" description="Teslim tarihleri">
-            <AssignmentCalendar marks={calendarMarks} />
           </PremiumPanel>
         </div>
       </div>

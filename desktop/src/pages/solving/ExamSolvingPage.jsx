@@ -351,7 +351,13 @@ export default function ExamSolvingPage() {
         />
       ) : null}
 
-      <CameraMonitor active={requireCamera && examActive} />
+      <CameraMonitor
+        active={requireCamera && examActive}
+        publish
+        examId={searchParams.get('plannedExamId') || session?.plannedExamId || ''}
+        studentUsername={searchParams.get('studentUsername') || user?.username || user?.email || ''}
+        studentName={searchParams.get('studentName') || user?.name || 'Öğrenci'}
+      />
 
       {requireFullscreen && !isFullscreen && examActive ? (
         <div className="fixed left-1/2 top-4 z-50 flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-amber-300/30 bg-amber-500/15 px-4 py-2 text-sm text-amber-100 backdrop-blur">

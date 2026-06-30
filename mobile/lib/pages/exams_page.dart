@@ -223,6 +223,7 @@ class _ExamsPageState extends State<ExamsPage> {
           examTitle: item["title"] as String?,
           subject: item["subject"] as String?,
           questionCount: item["questionCount"] as int? ?? 10,
+          requireCamera: item["requireCamera"] as bool? ?? false,
         ),
       ),
     );

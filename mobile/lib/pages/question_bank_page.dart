@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../services/auth_session_store.dart';
 import '../services/question_bank_store.dart';
+import '../services/school_feed_api_service.dart';
 import '../widgets/premium_resource_card.dart';
 import '../widgets/responsive_layout.dart';
 import '../widgets/student_empty_state_panel.dart';
@@ -61,8 +63,15 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       _errorMessage = null;
     });
     try {
-      _studentClass = '';
-      await _store.loadQuestions();
+      // Sadece bu öğrencinin sınıfına ait soruları getir; "Toplam Soru" da
+      // o öğrencinin sayfasındaki gerçek soru sayısını yansıtsın.
+      final session = await AuthSessionStore.instance.load();
+      _studentClass = session == null
+          ? ''
+          : await SchoolFeedApiService.resolveLinkedStudentClassName(session);
+      await _store.loadQuestions(
+        className: _studentClass.isEmpty ? null : _studentClass,
+      );
       final subjects =
           _store.questions
               .map((item) => item.subject.trim())

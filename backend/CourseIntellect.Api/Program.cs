@@ -52,7 +52,12 @@ builder.Services.Configure<FormOptions>(options =>
 
 builder.Services.AddControllers();
 builder.Services.AddInfrastructure(builder.Configuration);
-builder.Services.AddSignalR();
+builder.Services.AddSignalR(options =>
+{
+    // Sınav canlı kamera kareleri (küçük JPEG data URL) varsayılan 32 KB sınırını
+    // aşabildiği için izin verilen mesaj boyutunu yükseltiyoruz.
+    options.MaximumReceiveMessageSize = 512 * 1024;
+});
 builder.Services.AddSingleton<IMessageRealtimeNotifier, SignalRMessageRealtimeNotifier>();
 builder.Services.AddSingleton<IServiceTrackingRealtimeNotifier, SignalRServiceTrackingRealtimeNotifier>();
 builder.Services.AddSingleton<IExamSolvingRealtimeNotifier, SignalRExamSolvingRealtimeNotifier>();
