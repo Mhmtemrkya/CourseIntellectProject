@@ -6,6 +6,8 @@
     "desktop:start": "npm --prefix desktop run start",
     "desktop:dev": "npm --prefix desktop run desktop:dev",
     "desktop:build": "npm --prefix desktop run build",
+    "desktop:app": "npm --prefix desktop run desktop:build:app",
+    "desktop:dmg": "npm --prefix desktop run desktop:build",
     "dev:web": "zsh -lc 'npm run backend:dev & npm run desktop:start'",
     "dev:all": "zsh -lc 'npm run backend:dev & npm run desktop:dev'",
     "mobile:analyze": "flutter analyze",

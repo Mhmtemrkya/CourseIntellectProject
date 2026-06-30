@@ -1,9 +1,13 @@
+# Cargo ayarları — `desktop/` altındaki tüm cargo/tauri build'lerine uygulanır
+# (npm script veya doğrudan `npx tauri build` fark etmez).
 [registries.crates-io]
-protocol = "sparse"
+protocol = "sparse"   # crates.io seyrek index (modern cargo'da zaten varsayılan)
 
 [net]
-retry = 10
+retry = 10            # geçici ağ hatalarında yeniden dene
 
 [http]
 timeout = 600
-multiplexing = false
+# multiplexing'i KAPATMA: false olması HTTP/2 çoklamayı devre dışı bırakıp
+# crate indirmelerini serileştirerek build'i belirgin yavaşlatıyordu. Varsayılan
+# (true) ile crate'ler paralel iner.
