@@ -45,6 +45,14 @@ function normalizeStatus(value = '') {
   return normalizeFinanceText(value);
 }
 
+// Öğrenci/kurs ücreti faturaları gelir belgesidir; "Gider" toplamına katılmamalı.
+// Yalnızca maaş/mekân/diğer gider faturaları gider sayılır.
+function isExpenseInvoice(invoice) {
+  const cat = normalizeStatus(invoice?.category || invoice?.type || '');
+  const incomeMarkers = ['ogrenci', 'öğrenci', 'kurs', 'ucret', 'ücret', 'tahsil', 'gelir'];
+  return !incomeMarkers.some((marker) => cat.includes(marker));
+}
+
 // Backend tahsilat "time"/fatura "subtitle"/maaş "payDate" alanlarındaki
 // "dd.MM.yyyy" tarihini Date'e çevirir.
 function parseTrDate(value) {
@@ -342,7 +350,7 @@ export default function FinanceDashboard() {
     });
 
     const collected = sum(periodCollections);
-    const expense = sum(periodSalaries) + sum(periodInvoices);
+    const expense = sum(periodSalaries) + sum(periodInvoices.filter(isExpenseInvoice));
     const unpaidDue = sum(periodInstallments.filter((i) => !isPaid(i.status)));
     const target = collected + unpaidDue; // bu dönemde beklenen toplam
     const rate = target > 0 ? Math.min(100, Math.round((collected / target) * 100)) : (collected > 0 ? 100 : 0);
@@ -391,7 +399,7 @@ export default function FinanceDashboard() {
         return s;
       }, 0);
       const salaryExp = salaries.reduce((s, x) => (inBucket(parseTrDate(x.payDate || x.date)) ? s + parseMoney(x.amount) : s), 0);
-      const invoiceExp = invoices.reduce((s, x) => (inBucket(parseTrDate(x.subtitle || x.date)) ? s + parseMoney(x.amount) : s), 0);
+      const invoiceExp = invoices.reduce((s, x) => ((inBucket(parseTrDate(x.subtitle || x.date)) && isExpenseInvoice(x)) ? s + parseMoney(x.amount) : s), 0);
       const expense = salaryExp + invoiceExp;
       return { label: bucketLabel(start, period), fullLabel: bucketFullLabel(start, period), income, expense, salaryExp, invoiceExp, count, net: income - expense };
     });

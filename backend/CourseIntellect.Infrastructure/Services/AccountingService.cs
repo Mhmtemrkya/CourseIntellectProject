@@ -23,20 +23,24 @@ public sealed class AccountingService(
         var notifications = await dbContext.AccountingNotifications.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
         var auditLogs = await dbContext.AccountingAuditLogs.OrderByDescending(x => x.Id).Select(x => ToDto(x)).ToListAsync(cancellationToken);
 
-        // Sınıf bilgisini öğrenci adından sözleşmeye bakarak tamamla.
-        var classByStudent = await dbContext.EnrollmentContracts.AsNoTracking()
-            .GroupBy(x => x.StudentName)
-            .Select(g => new { Name = g.Key, ClassName = g.Max(x => x.ClassName) })
-            .ToDictionaryAsync(x => x.Name, x => x.ClassName, cancellationToken);
+        // Sınıf bilgisini öğrenci adından sözleşmeye bakarak (harf duyarsız) tamamla.
+        var contractClassRows = await dbContext.EnrollmentContracts.AsNoTracking()
+            .Select(x => new { x.StudentName, x.ClassName })
+            .ToListAsync(cancellationToken);
+        var classByStudent = contractClassRows
+            .Where(x => !string.IsNullOrWhiteSpace(x.StudentName))
+            .GroupBy(x => x.StudentName.Trim().ToLowerInvariant())
+            .ToDictionary(g => g.Key, g => g.Max(x => x.ClassName) ?? string.Empty);
 
+        // Tahsilat listesi/dönem analizleri için tüm ödemeler döner (sabit 500 cap'i
+        // kaldırıldı; aksi halde eski dönemler eksik/sıfır görünüyordu).
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .OrderByDescending(x => x.PaidAtUtc)
-            .Take(500)
             .ToListAsync(cancellationToken);
         var collections = payments.Select(payment => new AccountingCollectionDto(
             payment.Id.ToString(),
             payment.StudentName,
-            classByStudent.GetValueOrDefault(payment.StudentName) ?? string.Empty,
+            classByStudent.GetValueOrDefault(payment.StudentName.Trim().ToLowerInvariant()) ?? string.Empty,
             FormatAmount(payment.Amount),
             payment.Method,
             payment.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),

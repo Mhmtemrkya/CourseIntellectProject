@@ -242,6 +242,13 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
   int _sumAmount(Iterable<String> amounts) =>
       amounts.fold<int>(0, (sum, a) => sum + _store.parseAmount(a));
 
+  // Öğrenci/kurs ücreti faturaları gelir belgesidir; "Gider" toplamına katılmaz.
+  bool _isExpenseInvoice(InvoiceRecord invoice) {
+    final c = invoice.category.toLowerCase();
+    const incomeMarkers = ['öğrenci', 'ogrenci', 'kurs', 'ücret', 'ucret', 'tahsil', 'gelir'];
+    return !incomeMarkers.any(c.contains);
+  }
+
   // --- Seçili döneme göre türetilmiş veriler ---
   List<CollectionRecord> get _periodCollections {
     final range = _periodRange(_period, _anchor);
@@ -281,7 +288,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     );
     final invoice = _sumAmount(
       _store.invoices
-          .where((i) => range.contains(_parseTrDate(i.subtitle)))
+          .where((i) => range.contains(_parseTrDate(i.subtitle)) && _isExpenseInvoice(i))
           .map((i) => i.amount),
     );
     return salary + invoice;
@@ -342,7 +349,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
       );
       final invoice = _sumAmount(
         _store.invoices
-            .where((i) => range.contains(_parseTrDate(i.subtitle)))
+            .where((i) => range.contains(_parseTrDate(i.subtitle)) && _isExpenseInvoice(i))
             .map((i) => i.amount),
       );
       return _Bucket(
