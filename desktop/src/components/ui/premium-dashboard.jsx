@@ -83,11 +83,52 @@ export function AnimatedValue({ value }) {
   return <>{match[1]}{formatted}{match[3]}</>;
 }
 
-function EmptyChart({ className, label = "Veri yok" }) {
+// Veri (zaman serisi) yokken gösterilen premium boş durum: tona uyumlu, dekoratif
+// bir dalga + kayan parıltı. Dalga kesikli çizilir ve köşede küçük bir etiketle
+// bunun gerçek trend değil görsel amaçlı olduğu belli olur.
+function EmptyChart({ className, tone = "brand", label = "Geçmiş veri yok" }) {
+  const gid = React.useId();
+  const palette = chartTone[tone] || chartTone.brand;
+  const width = 180;
+  const height = 54;
+  const decoValues = [8, 12, 9, 15, 11, 17, 13, 19];
+  const max = Math.max(...decoValues);
+  const min = Math.min(...decoValues);
+  const range = Math.max(max - min, 1);
+  const points = decoValues.map((value, index) => {
+    const x = (index / (decoValues.length - 1)) * width;
+    const y = height - ((value - min) / range) * (height - 14) - 7;
+    return [x, y];
+  });
+  const linePath = buildSmoothPath(points);
+  const area = `${linePath} L ${width},${height} L 0,${height} Z`;
+
   return (
-    <div className={cn("relative h-14 w-full overflow-hidden rounded-xl border border-dashed border-foreground/10 bg-foreground/[0.025]", className)} aria-hidden="true">
-      <div className="absolute inset-x-3 top-1/2 border-t border-dashed border-foreground/15" />
-      <div className="absolute inset-0 grid place-items-center text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">{label}</div>
+    <div className={cn("relative h-14 w-full overflow-hidden rounded-xl border border-foreground/[0.07] bg-foreground/[0.02]", className)} aria-hidden="true">
+      <svg className="h-full w-full overflow-visible" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={`ci-empty-line-${gid}`} x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor={palette.start} stopOpacity="0.5" />
+            <stop offset="100%" stopColor={palette.end} stopOpacity="0.5" />
+          </linearGradient>
+          <linearGradient id={`ci-empty-area-${gid}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={palette.glow} stopOpacity="0.16" />
+            <stop offset="100%" stopColor={palette.glow} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {[0.34, 0.68].map((ratio) => (
+          <line key={ratio} x1="0" x2={width} y1={height * ratio} y2={height * ratio} stroke="hsl(var(--foreground) / 0.06)" strokeDasharray="4 6" />
+        ))}
+        <path d={area} fill={`url(#ci-empty-area-${gid})`} />
+        <path d={linePath} fill="none" stroke={`url(#ci-empty-line-${gid})`} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" strokeDasharray="3 5" />
+      </svg>
+      <motion.div
+        className="pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-foreground/[0.06] to-transparent"
+        initial={{ x: "-130%" }}
+        animate={{ x: "330%" }}
+        transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", repeatDelay: 0.7 }}
+      />
+      <span className="absolute bottom-1 right-2 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/45">{label}</span>
     </div>
   );
 }
@@ -95,7 +136,7 @@ function EmptyChart({ className, label = "Veri yok" }) {
 export function MiniLineChart({ values = [], tone = "brand", className }) {
   const safeValues = values.map(coerceNumber).filter((value) => Number.isFinite(value));
   const gid = React.useId();
-  if (!safeValues.length) return <EmptyChart className={className} />;
+  if (!safeValues.length) return <EmptyChart className={className} tone={tone} />;
   const palette = chartTone[tone] || chartTone.brand;
 
   const width = 180;
@@ -162,7 +203,7 @@ export function MiniLineChart({ values = [], tone = "brand", className }) {
 
 export function MiniBarChart({ values = [], tone = "brand", className }) {
   const safeValues = values.map(coerceNumber).filter((value) => Number.isFinite(value));
-  if (!safeValues.length) return <EmptyChart className={className} />;
+  if (!safeValues.length) return <EmptyChart className={className} tone={tone} />;
 
   const max = Math.max(...safeValues, 1);
   return (
