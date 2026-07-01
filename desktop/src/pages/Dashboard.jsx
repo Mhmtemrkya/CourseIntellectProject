@@ -172,9 +172,9 @@ function FinancialChart({ buckets = [], loading = false }) {
                     {bucket.registrations}
                   </span>
                 ) : null}
-                <div className={`flex w-full items-end justify-center gap-[2px] rounded-md px-0.5 pt-3 transition-colors ${isActive ? 'bg-foreground/[0.06]' : ''}`} style={{ height: '100%' }}>
-                  <div className="w-1/2 max-w-[14px] rounded-t bg-gradient-to-t from-emerald-600/70 to-emerald-400 transition-all" style={{ height: `${revenueH}%` }} />
-                  <div className="w-1/2 max-w-[14px] rounded-t bg-gradient-to-t from-rose-600/70 to-rose-400 transition-all" style={{ height: `${expenseH}%` }} />
+                <div className={`flex w-full items-end justify-center gap-[3px] rounded-md px-0.5 pt-3 transition-colors ${isActive ? 'bg-foreground/[0.06]' : ''}`} style={{ height: '100%' }}>
+                  <div className="w-1/2 max-w-[18px] rounded-t bg-gradient-to-t from-emerald-500 to-emerald-300 shadow-[0_0_10px_hsl(152_76%_50%/0.45)] ring-1 ring-emerald-300/50 transition-all" style={{ height: `${revenueH}%` }} />
+                  <div className="w-1/2 max-w-[18px] rounded-t bg-gradient-to-t from-rose-500 to-rose-300 shadow-[0_0_10px_hsl(350_89%_60%/0.45)] ring-1 ring-rose-300/50 transition-all" style={{ height: `${expenseH}%` }} />
                 </div>
               </button>
             );
@@ -339,7 +339,7 @@ export default function Dashboard() {
       </div>
 
       <motion.div variants={itemVariants}>
-        <PremiumPanel title="Kazanç & Gider Eğrisi" description={`${periodLabel} kırılım — bir sütunun üstüne gelince o dönemin kazanç, gider ve kayıt detayı görünür`}>
+        <PremiumPanel title="Kazanç & Gider Grafiği" description={`${periodLabel} kırılım — bir sütunun üstüne gelince o dönemin kazanç, gider ve kayıt detayı görünür`}>
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1.7fr)_minmax(280px,0.8fr)]">
             <div className="rounded-3xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.5)] p-6">
               <FinancialChart buckets={buckets} loading={analyticsLoading} />
