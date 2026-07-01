@@ -27,6 +27,22 @@ function formatMoney(value) {
   return moneyFormatter.format(Number(value) || 0);
 }
 
+// Kart metrikleri (kayıt/kazanç/gider) seçilen dönemin kayan penceresine göre
+// gelsin — giriş kartıyla ("bugün / son 7 gün / son 30 gün / son 1 yıl") aynı
+// mantık. Aksi halde analytics.totals tüm grafik penceresini toplar ve dönemler
+// arası değişmez. UTC gün başlangıcı kullanılır (backend DateTime.UtcNow.Date ile hizalı).
+function periodRange(period) {
+  const now = new Date();
+  const to = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const from = new Date(to);
+  if (period === 'week') from.setUTCDate(from.getUTCDate() - 6);
+  else if (period === 'month') from.setUTCDate(from.getUTCDate() - 29);
+  else if (period === 'year') from.setUTCDate(from.getUTCDate() - 364);
+  // 'day' → from === to (yalnızca bugün)
+  const fmt = (d) => d.toISOString().slice(0, 10);
+  return { from: fmt(from), to: fmt(to) };
+}
+
 export default function AdminOperations() {
   const navigate = useNavigate();
   const { user } = useApp();
@@ -63,7 +79,8 @@ export default function AdminOperations() {
 
   const loadAnalytics = useCallback(async () => {
     try {
-      const result = await fetchAdminAnalytics({ period });
+      const { from, to } = periodRange(period);
+      const result = await fetchAdminAnalytics({ period, from, to });
       setAnalytics(result);
     } catch {
       setAnalytics(null);
