@@ -23,6 +23,7 @@ import {
   openAttendanceQrSession,
   saveAttendance,
 } from '../../lib/api/modules';
+import { downloadQrPng, useQrDataUrl } from '../../lib/qr';
 
 const statuses = [
   { value: 'present', api: 'present', label: 'Katıldı', color: 'emerald', icon: CheckCircle2 },
@@ -188,6 +189,11 @@ export default function TeacherAttendance() {
       && new Date(item.expiresAtUtc) > new Date())
     .sort((a, b) => new Date(b.openedAtUtc) - new Date(a.openedAtUtc))[0] || null, [qrSessions, selectedClass, selectedLesson]);
 
+  const qrPayload = useMemo(() => (selectedQrSession
+    ? JSON.stringify({ token: selectedQrSession.token, className: selectedClass, lesson: selectedLesson })
+    : ''), [selectedQrSession, selectedClass, selectedLesson]);
+  const qrImageUrl = useQrDataUrl(qrPayload, 320);
+
   const counts = useMemo(() => classStudents.reduce((acc, student) => {
     const key = student.id || student.fullName;
     const status = studentStatuses[key] || 'present';
@@ -295,7 +301,9 @@ export default function TeacherAttendance() {
   const downloadQr = () => {
     if (!selectedQrSession) return;
     const payload = JSON.stringify({ token: selectedQrSession.token, className: selectedClass, lesson: selectedLesson });
-    window.open(`https://api.qrserver.com/v1/create-qr-code/?size=768x768&data=${encodeURIComponent(payload)}`, '_blank', 'noopener,noreferrer');
+    downloadQrPng(payload, `yoklama-qr-${selectedClass || 'sinif'}.png`).catch(() => {
+      toast({ title: 'QR indirilemedi', variant: 'destructive' });
+    });
   };
 
   const downloadHistory = () => {
@@ -368,7 +376,8 @@ export default function TeacherAttendance() {
         </div>
       </div>
 
-      <div className="grid gap-5 xl:grid-cols-[330px_minmax(0,1fr)_330px]">
+      {/* Özet kartları altta yatay şerit — manuel yoklama listesi her genişlikte tam alan kullanır */}
+      <div className="grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
         <div className="space-y-4">
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <h2 className="font-black">{method === 'qr' ? 'QR Kod ile Yoklama' : 'Hızlı İşlemler'}</h2>
@@ -376,11 +385,11 @@ export default function TeacherAttendance() {
               <div className="mt-4 text-center">
                 {selectedQrSession ? (
                   <>
-                    <img
-                      alt="Yoklama QR"
-                      className="mx-auto h-56 w-56 rounded-2xl border bg-white p-3"
-                      src={`https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(JSON.stringify({ token: selectedQrSession.token, className: selectedClass, lesson: selectedLesson }))}`}
-                    />
+                    {qrImageUrl ? (
+                      <img alt="Yoklama QR" className="mx-auto h-56 w-56 rounded-2xl border bg-white p-3" src={qrImageUrl} />
+                    ) : (
+                      <div className="mx-auto flex h-56 w-56 items-center justify-center rounded-2xl border bg-white text-xs text-muted-foreground">QR hazırlanıyor...</div>
+                    )}
                     <p className="mt-4 text-sm text-muted-foreground">Bu QR kod {formatTime(selectedQrSession.expiresAtUtc)} saatine kadar geçerlidir.</p>
                     <div className="mt-4 grid grid-cols-2 gap-2">
                       <Button variant="outline" className="rounded-xl" onClick={downloadQr}><Download className="mr-2 h-4 w-4" /> İndir</Button>
@@ -446,11 +455,11 @@ export default function TeacherAttendance() {
               return (
                 <div key={student.id || student.fullName} className="grid gap-3 border-b px-4 py-3 last:border-b-0 lg:grid-cols-[48px_minmax(0,1fr)_minmax(0,360px)_44px] lg:items-center">
                   <span className="text-sm text-muted-foreground">{index + 1}</span>
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">{student.fullName?.slice(0, 2)?.toUpperCase()}</div>
-                    <div>
-                      <p className="font-bold">{student.fullName}</p>
-                      <p className="text-xs text-muted-foreground">{student.className} • {student.schoolNumber || student.username}</p>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-sm font-black text-white">{student.fullName?.slice(0, 2)?.toUpperCase()}</div>
+                    <div className="min-w-0">
+                      <p className="truncate font-bold">{student.fullName}</p>
+                      <p className="truncate text-xs text-muted-foreground">{student.className} • {student.schoolNumber || student.username}</p>
                     </div>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3">
@@ -483,7 +492,7 @@ export default function TeacherAttendance() {
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-3 xl:col-span-2">
           <div className="rounded-2xl border bg-card p-5 shadow-sm">
             <h2 className="font-black">Günlük Devamsızlık Özeti</h2>
             <div className="mt-5 flex items-center gap-5">
