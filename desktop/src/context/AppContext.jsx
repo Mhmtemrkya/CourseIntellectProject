@@ -3,6 +3,7 @@ import {
   clearDesktopSession,
   createDesktopUser,
   desktopApiBaseUrl,
+  initDesktopSessionStore,
   loadDesktopSession,
   loginWithBackend,
   persistDesktopSession,
@@ -53,12 +54,20 @@ export function AppProvider({ children }) {
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   useEffect(() => {
-    const savedSession = loadDesktopSession();
-    if (savedSession?.user) {
-      setSession(savedSession);
-      setUser(savedSession.user);
-    }
-    setIsAuthLoading(false);
+    let active = true;
+    // Şifreli oturum deposu (keychain anahtarı + AES-GCM) async açılır;
+    // isAuthLoading kapısı init bitene kadar UI'ı bekletir.
+    (async () => {
+      await initDesktopSessionStore();
+      if (!active) return;
+      const savedSession = loadDesktopSession();
+      if (savedSession?.user) {
+        setSession(savedSession);
+        setUser(savedSession.user);
+      }
+      setIsAuthLoading(false);
+    })();
+    return () => { active = false; };
   }, []);
 
   const login = useCallback(async ({ username, password }) => {

@@ -137,13 +137,38 @@ if (config.enableVisualEdits && babelMetadataPlugin) {
 webpackConfig.devServer = (devServerConfig) => {
   devServerConfig.host = process.env.HOST || "0.0.0.0";
   devServerConfig.allowedHosts = ["127.0.0.1", "localhost"];
-  devServerConfig.proxy = {
-    "/api": {
+  // webpack-dev-server 5 dizi tabanlı proxy şeması ister (obje şeması kalktı).
+  devServerConfig.proxy = [
+    {
+      context: ["/api"],
       target: "http://127.0.0.1:5199",
       changeOrigin: true,
       secure: false,
     },
-  };
+  ];
+
+  // webpack-dev-server 5 adaptörü: react-scripts 5 config'i wds4 şemasıyla
+  // üretir; kaldırılan seçenekler v5 karşılıklarına çevrilir.
+  const httpsConfig = devServerConfig.https;
+  delete devServerConfig.https;
+  if (httpsConfig) {
+    devServerConfig.server = httpsConfig === true
+      ? "https"
+      : { type: "https", options: httpsConfig };
+  }
+  const onBefore = devServerConfig.onBeforeSetupMiddleware;
+  const onAfter = devServerConfig.onAfterSetupMiddleware;
+  delete devServerConfig.onBeforeSetupMiddleware;
+  delete devServerConfig.onAfterSetupMiddleware;
+  if (onBefore || onAfter) {
+    const previousSetup = devServerConfig.setupMiddlewares;
+    devServerConfig.setupMiddlewares = (middlewares, devServer) => {
+      if (onBefore) onBefore(devServer);
+      if (previousSetup) middlewares = previousSetup(middlewares, devServer);
+      if (onAfter) onAfter(devServer);
+      return middlewares;
+    };
+  }
 
   // Apply visual edits dev server setup only if enabled
   if (config.enableVisualEdits && setupDevServer) {

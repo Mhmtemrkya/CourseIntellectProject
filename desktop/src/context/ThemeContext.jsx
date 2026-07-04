@@ -6,7 +6,7 @@ import {
   DEFAULT_PRIMARY,
   DEFAULT_ACCENT,
 } from '../lib/colorPalette';
-import { loadDesktopSession } from '../lib/auth';
+import { initDesktopSessionStore, loadDesktopSession } from '../lib/auth';
 
 const ThemeContext = createContext({
   // Dark / Light mode
@@ -80,6 +80,8 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   const fetchBranding = useCallback(async () => {
     try {
       const { fetchTenantBranding } = await import('../lib/api/modules');
+      // Oturum deposu async açıldığından tenantId okumadan önce init beklenir.
+      await initDesktopSessionStore();
       const tenantId = loadDesktopSession()?.user?.tenantId || undefined;
       const config = await fetchTenantBranding(tenantId);
       if (config) {

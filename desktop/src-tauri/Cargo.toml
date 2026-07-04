@@ -26,6 +26,10 @@ tauri-plugin-log = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-shell = "2"
 tauri-plugin-http = "2"
+# Oturum şifreleme anahtarı OS keychain'inde saklanır (macOS Keychain /
+# Windows Credential Manager). Linux'ta backend yoktur; JS katmanı keychain
+# hatasında eski localStorage davranışına düşer.
+keyring = { version = "3", features = ["apple-native", "windows-native"] }
 
 # Release derlemesini hızlandıran ayarlar.
 # Bu masaüstü uygulamasında ağır iş webview tarafında olduğu için Rust

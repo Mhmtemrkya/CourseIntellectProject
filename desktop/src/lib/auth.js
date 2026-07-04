@@ -1,7 +1,5 @@
 import { desktopAppEnv, getDesktopApiBaseUrl } from "./appEnv";
 
-const STORAGE_KEY = "courseintellect-desktop-session";
-
 export const desktopApiBaseUrl = getDesktopApiBaseUrl();
 
 function getDesktopApiCandidates() {
@@ -211,25 +209,14 @@ export function createDesktopUser(payload) {
   };
 }
 
-export function persistDesktopSession(session) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
-}
-
-export function loadDesktopSession() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    return JSON.parse(raw);
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-    return null;
-  }
-}
-
-export function clearDesktopSession() {
-  localStorage.removeItem(STORAGE_KEY);
-}
+// Oturum deposu secureSession'a taşındı: token'lar AES-GCM ile şifreli,
+// anahtar OS keychain'inde. Mevcut import yolları bozulmasın diye re-export.
+export {
+  initDesktopSessionStore,
+  persistDesktopSession,
+  loadDesktopSession,
+  clearDesktopSession,
+} from './secureSession';
 
 // Lazy singleton: import'u ilk kullanımda await eder, sonraki çağrılarda cache'den döner
 let _tauriFetchPromise = null;
