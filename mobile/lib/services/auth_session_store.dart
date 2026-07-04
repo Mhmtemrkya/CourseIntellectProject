@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthSession {
@@ -79,21 +81,55 @@ class AuthSessionStore {
   static const _storageKey = 'course_intellect_auth_session_v1';
   static final AuthSessionStore instance = AuthSessionStore._();
 
+  // Token'lar Keychain (iOS/macOS) / Keystore-şifreli depo (Android) içinde
+  // tutulur; web'de secure storage olmadığından SharedPreferences'a düşülür.
+  static const _secure = FlutterSecureStorage(
+    aOptions: AndroidOptions(encryptedSharedPreferences: true),
+  );
+
   Future<void> save(AuthSession session) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_storageKey, jsonEncode(session.toMap()));
+    final payload = jsonEncode(session.toMap());
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey, payload);
+      return;
+    }
+    await _secure.write(key: _storageKey, value: payload);
   }
 
   Future<AuthSession?> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_storageKey);
+    String? raw;
+    if (kIsWeb) {
+      final prefs = await SharedPreferences.getInstance();
+      raw = prefs.getString(_storageKey);
+    } else {
+      raw = await _secure.read(key: _storageKey);
+      if (raw == null || raw.isEmpty) {
+        // Eski sürüm migrasyonu: düz SharedPreferences'taki oturumu güvenli
+        // depoya taşı ve düz kopyayı sil.
+        final prefs = await SharedPreferences.getInstance();
+        final legacy = prefs.getString(_storageKey);
+        if (legacy != null && legacy.isNotEmpty) {
+          await _secure.write(key: _storageKey, value: legacy);
+          await prefs.remove(_storageKey);
+          raw = legacy;
+        }
+      }
+    }
     if (raw == null || raw.isEmpty) return null;
-    return AuthSession.fromMap(
-      Map<String, dynamic>.from(jsonDecode(raw) as Map),
-    );
+    try {
+      return AuthSession.fromMap(
+        Map<String, dynamic>.from(jsonDecode(raw) as Map),
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> clear() async {
+    if (!kIsWeb) {
+      await _secure.delete(key: _storageKey);
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_storageKey);
   }
