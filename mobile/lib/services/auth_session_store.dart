@@ -83,8 +83,16 @@ class AuthSessionStore {
 
   // Token'lar Keychain (iOS/macOS) / Keystore-şifreli depo (Android) içinde
   // tutulur; web'de secure storage olmadığından SharedPreferences'a düşülür.
+  // iOS/macOS'ta kayıt cihaza özeldir (this_device): şifreli yedekten başka
+  // cihaza geri yüklemede token taşınmaz, kullanıcı yeniden giriş yapar.
   static const _secure = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
+    iOptions: IOSOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
+    mOptions: MacOsOptions(
+      accessibility: KeychainAccessibility.first_unlock_this_device,
+    ),
   );
 
   Future<void> save(AuthSession session) async {

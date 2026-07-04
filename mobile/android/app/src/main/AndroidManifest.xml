@@ -14,12 +14,16 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
     <uses-feature android:name="android.hardware.microphone" android:required="false"/>
+    <!-- allowBackup kapalı: yedek/cihaz aktarımı uygulama verisini (oturum,
+         önbellek) dışarı taşıyamaz. Token'lar zaten Keystore-şifreli depoda
+         ve anahtar aktarılamadığından geri yüklemede işe yaramazdı. -->
     <application
         android:label="CourseIntellect"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:networkSecurityConfig="@xml/network_security_config"
-        android:usesCleartextTraffic="${usesCleartextTraffic}">
+        android:usesCleartextTraffic="${usesCleartextTraffic}"
+        android:allowBackup="false">
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
             android:value="course_intellect_general" />
