@@ -50,16 +50,28 @@ export function downloadCsvRows(filename, rows) {
   downloadBlob(filename, csv, 'text/csv;charset=utf-8');
 }
 
+/**
+ * Uygulamada aktif tenant marka accent rengini döndürür (hex).
+ * ThemeContext bunu root'a --brand-accent-hex olarak yazar; PDF/yazdırma
+ * çıktıları da böylece geliştirici panelinden seçilen renkle üretilir.
+ */
+export function getBrandAccentHex(fallback = '#0f4c81') {
+  if (typeof document === 'undefined') return fallback;
+  const value = document.documentElement.style.getPropertyValue('--brand-accent-hex').trim();
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
 export function buildFinanceDocumentHtml({
   title,
   subtitle,
   code,
-  accent = '#0f4c81',
+  accent,
   badge,
   summary = [],
   sections = [],
   footerNote,
 }) {
+  accent = accent || getBrandAccentHex();
   const summaryHtml = summary.map((item) => `
     <div class="summary-card">
       <div class="summary-label">${escapeHtml(item.label)}</div>

@@ -126,7 +126,7 @@ export default function ParentAnnouncements() {
             {unreadCount > 0 ? `${unreadCount} kritik duyuru var` : 'Yeni veli duyurusu yok'}
           </p>
         </div>
-        {unreadCount > 0 ? <Badge className="bg-brand-accent">{unreadCount} Önemli</Badge> : null}
+        {unreadCount > 0 ? <Badge className="bg-brand-accent text-white">{unreadCount} Önemli</Badge> : null}
       </div>
 
       {error ? <ErrorBanner title="Duyurular alınamadı" message={error} onRetry={loadAnnouncements} /> : null}

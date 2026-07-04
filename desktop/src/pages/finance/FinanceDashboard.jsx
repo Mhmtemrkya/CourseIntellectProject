@@ -208,8 +208,8 @@ function FlowChart({ buckets, period }) {
           {/* Noktalar */}
           {buckets.map((b, i) => (
             <g key={`pt-${i}`}>
-              <circle cx={x(i)} cy={y(b.income)} r={activeIndex === i ? 4.5 : 2.6} fill="#10b981" stroke="#020B1F" strokeWidth={activeIndex === i ? 2 : 0} />
-              <circle cx={x(i)} cy={y(b.expense)} r={activeIndex === i ? 4.5 : 2.6} fill="#f43f5e" stroke="#020B1F" strokeWidth={activeIndex === i ? 2 : 0} />
+              <circle cx={x(i)} cy={y(b.income)} r={activeIndex === i ? 4.5 : 2.6} fill="#10b981" stroke="hsl(var(--ci-card))" strokeWidth={activeIndex === i ? 2 : 0} />
+              <circle cx={x(i)} cy={y(b.expense)} r={activeIndex === i ? 4.5 : 2.6} fill="#f43f5e" stroke="hsl(var(--ci-card))" strokeWidth={activeIndex === i ? 2 : 0} />
             </g>
           ))}
 

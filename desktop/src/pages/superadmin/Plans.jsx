@@ -400,7 +400,7 @@ export default function Plans() {
               <Card className={`relative overflow-hidden hover:shadow-card-hover transition-all ${plan.isPopular ? 'ring-2 ring-brand-accent' : ''}`}>
                 {plan.isPopular ? (
                   <div className="absolute top-4 right-4">
-                    <Badge className="bg-brand-accent">
+                    <Badge className="bg-brand-accent text-white">
                       <Star className="h-3 w-3 mr-1" />
                       Popüler
                     </Badge>

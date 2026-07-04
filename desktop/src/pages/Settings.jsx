@@ -111,7 +111,7 @@ export default function Settings() {
                 <h3 className="text-xl font-semibold">{user?.name || 'Kullanıcı'}</h3>
                 <p className="text-muted-foreground">{user?.email || 'email@example.com'}</p>
                 <div className="flex gap-2 mt-2">
-                  <Badge className="bg-brand-primary">{user?.role === 'admin' ? 'Yönetici' : user?.role}</Badge>
+                  <Badge className="bg-brand-primary text-white">{user?.role === 'admin' ? 'Yönetici' : user?.role}</Badge>
                   <Badge variant="outline">{user?.tenant || 'Kurum'}</Badge>
                 </div>
               </div>

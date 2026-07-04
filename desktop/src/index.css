@@ -51,6 +51,7 @@ code {
         /* Brand Colors */
         --brand-primary: 219 74% 10%; /* #07152E */
         --brand-accent: 29 100% 50%; /* #FF7A00 */
+        --brand-accent-text: 29 100% 50%; /* metin olarak kullanılan accent tonu */
         --brand-primary-hover: 218 68% 17%;
         --brand-primary-soft: 219 74% 10% / 0.12;
         --brand-primary-glow: 219 74% 10% / 0.28;
@@ -137,6 +138,7 @@ code {
         --ci-panel-shadow: 0 16px 40px hsl(220 40% 45% / 0.12);
 
         --brand-primary-text: 219 74% 32%;
+        --brand-accent-text: 26 100% 40%; /* beyaz zeminde okunur accent */
         --muted-foreground: 215 16% 42%;
         --primary-foreground: 0 0% 100%;
         --shell-shadow: 0 24px 80px hsl(214 40% 60% / 0.20);
@@ -393,7 +395,7 @@ code {
 }
 
 .ci-page h1 {
-    color: hsl(var(--brand-accent));
+    color: hsl(var(--brand-accent-text, var(--brand-accent)));
     font-size: 13px !important;
     line-height: 1.2 !important;
     font-weight: 900 !important;
@@ -490,6 +492,14 @@ code {
         0 0 30px hsl(var(--brand-accent) / 0.16);
 }
 
+.light .ci-metric-card:hover {
+    box-shadow:
+        inset 0 1px 0 hsl(0 0% 100% / 0.9),
+        0 22px 48px hsl(220 40% 45% / 0.16),
+        0 0 0 1px hsl(var(--brand-accent) / 0.12),
+        0 0 26px hsl(var(--brand-accent) / 0.10);
+}
+
 .ci-rise {
     transition: transform 0.22s cubic-bezier(.2,.8,.2,1), box-shadow 0.22s ease, border-color 0.22s ease, background-color 0.22s ease;
 }
@@ -536,8 +546,11 @@ code {
 
 .light .ci-card {
     background: var(--ci-panel-background) !important;
-    color: hsl(210 40% 98%);
-    box-shadow: var(--ci-panel-shadow);
+    color: hsl(var(--ci-foreground));
+    border-color: hsl(214 26% 86% / 0.9) !important;
+    box-shadow:
+        inset 0 1px 0 hsl(0 0% 100% / 0.9),
+        0 16px 40px hsl(220 40% 45% / 0.10) !important;
 }
 
 .ci-dialog::before,
@@ -784,6 +797,16 @@ code {
     color: hsl(210 40% 98%) !important;
 }
 
+.light .ci-page .ci-card [class*="bg-gradient"],
+.light .ci-page .ci-card [class*="from-"],
+.light .ci-page .ci-card [class*="to-"],
+.light .ci-page .ci-card [class*="via-"] {
+    background-image:
+        radial-gradient(circle at 14% 0%, hsl(var(--brand-accent) / 0.06), transparent 25%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 253, 0.94)) !important;
+    color: hsl(var(--ci-foreground)) !important;
+}
+
 .ci-page .ci-card .bg-muted,
 .ci-page .ci-card .bg-muted\/40,
 .ci-page .ci-card .bg-muted\/50,
@@ -791,9 +814,21 @@ code {
     background-color: rgba(9, 37, 69, 0.72) !important;
 }
 
+.light .ci-page .ci-card .bg-muted,
+.light .ci-page .ci-card .bg-muted\/40,
+.light .ci-page .ci-card .bg-muted\/50,
+.light .ci-page .ci-card .bg-muted\/70 {
+    background-color: hsl(214 38% 95% / 0.85) !important;
+}
+
 .ci-page .ci-card .border,
 .ci-page .ci-dashboard-panel .border {
     border-color: rgba(76, 122, 166, 0.18) !important;
+}
+
+.light .ci-page .ci-card .border,
+.light .ci-page .ci-dashboard-panel .border {
+    border-color: hsl(214 26% 86%) !important;
 }
 
 .ci-page [class*="grid"] > .ci-card,
@@ -830,9 +865,27 @@ code {
     min-height: 92px;
 }
 
+/* Açık temada form alanları beyaz zemin + koyu metin kullanır. */
+.light .ci-page input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.light .ci-page textarea,
+.light .ci-page select,
+.light .ci-dialog input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.light .ci-dialog textarea,
+.light .ci-dialog select {
+    border-color: hsl(214 26% 82%) !important;
+    background: hsl(0 0% 100% / 0.94) !important;
+    color: hsl(var(--ci-foreground)) !important;
+    box-shadow: inset 0 1px 2px hsl(220 30% 60% / 0.06);
+}
+
 .ci-page table:not(.ci-table),
 .ci-table {
     color: hsl(210 40% 98%);
+}
+
+.light .ci-page table:not(.ci-table),
+.light .ci-table {
+    color: hsl(var(--ci-foreground));
 }
 
 .ci-page table:not(.ci-table) thead,
@@ -840,10 +893,15 @@ code {
     background: rgba(7, 31, 57, 0.96) !important;
 }
 
+.light .ci-page table:not(.ci-table) thead,
+.light .ci-table-wrap thead {
+    background: hsl(214 38% 96% / 0.97) !important;
+}
+
 .ci-page table:not(.ci-table) th,
 .ci-table th {
     height: 34px;
-    color: hsl(var(--brand-accent)) !important;
+    color: hsl(var(--brand-accent-text, var(--brand-accent))) !important;
     font-size: 10px !important;
     font-weight: 900 !important;
     letter-spacing: 0.065em !important;
@@ -856,6 +914,11 @@ code {
     font-size: 12px;
 }
 
+.light .ci-page table:not(.ci-table) td,
+.light .ci-table td {
+    border-color: hsl(214 26% 88%) !important;
+}
+
 .ci-dialog,
 .ci-drawer,
 [role="dialog"].ci-dialog {
@@ -866,10 +929,20 @@ code {
         linear-gradient(180deg, rgba(7, 31, 57, 0.98), rgba(4, 18, 35, 0.98)) !important;
 }
 
+.light .ci-dialog,
+.light .ci-drawer,
+.light [role="dialog"].ci-dialog {
+    border-color: hsl(214 26% 84%) !important;
+    background:
+        radial-gradient(circle at 8% 0%, hsl(var(--brand-accent) / 0.05), transparent 26%),
+        linear-gradient(180deg, rgba(255, 255, 255, 0.99), rgba(246, 249, 253, 0.99)) !important;
+    color: hsl(var(--ci-foreground));
+}
+
 .ci-dialog h2,
 .ci-dialog [data-radix-dialog-title],
 .ci-drawer h2 {
-    color: hsl(var(--brand-accent)) !important;
+    color: hsl(var(--brand-accent-text, var(--brand-accent))) !important;
     font-size: 14px !important;
     font-weight: 900 !important;
     letter-spacing: 0.04em;
@@ -885,6 +958,14 @@ code {
         linear-gradient(180deg, rgba(7,31,57,0.82), rgba(5,24,45,0.78)) !important;
 }
 
+.light .ci-table-wrap,
+.light .ci-page [class*="overflow-auto"]:has(table) {
+    border-color: hsl(214 26% 86%) !important;
+    background:
+        radial-gradient(circle at 10% 0%, hsl(var(--brand-accent) / 0.04), transparent 22%),
+        linear-gradient(180deg, rgba(255,255,255,0.96), rgba(247,250,253,0.94)) !important;
+}
+
 .ci-page .recharts-wrapper,
 .ci-page svg {
     filter: drop-shadow(0 0 10px hsl(var(--brand-accent) / 0.08));
@@ -895,13 +976,18 @@ code {
     color: hsl(215 18% 68%) !important;
 }
 
+.light .ci-page .text-muted-foreground,
+.light .ci-dialog .text-muted-foreground {
+    color: hsl(215 16% 42%) !important;
+}
+
 .ci-page .text-brand-primary,
 .ci-page .text-blue-600,
 .ci-page .text-purple-600,
 .ci-page .text-green-600,
 .ci-page .text-yellow-600,
 .ci-page .text-red-600 {
-    color: hsl(var(--brand-accent)) !important;
+    color: hsl(var(--brand-accent-text, var(--brand-accent))) !important;
 }
 
 .light .border-slate-800,
@@ -910,15 +996,81 @@ code {
     border-color: hsl(var(--border)) !important;
 }
 
+/* Açık temada koyu zemine göre seçilmiş açık ton (-300/-400) renkli metinleri
+   beyaz zeminde okunur koyu (600) tonlara indirger. Sidebar hariç yalnızca
+   sayfa/dialog kapsamında uygulanır; renk kimliği (yeşil=pozitif vb.) korunur. */
+.light .ci-page .text-emerald-300, .light .ci-page .text-emerald-400,
+.light .ci-dialog .text-emerald-300, .light .ci-dialog .text-emerald-400 { color: #059669 !important; }
+.light .ci-page .text-green-300, .light .ci-page .text-green-400,
+.light .ci-dialog .text-green-300, .light .ci-dialog .text-green-400 { color: #16a34a !important; }
+.light .ci-page .text-teal-300, .light .ci-page .text-teal-400,
+.light .ci-dialog .text-teal-300, .light .ci-dialog .text-teal-400 { color: #0d9488 !important; }
+.light .ci-page .text-rose-300, .light .ci-page .text-rose-400,
+.light .ci-dialog .text-rose-300, .light .ci-dialog .text-rose-400 { color: #e11d48 !important; }
+.light .ci-page .text-red-300, .light .ci-page .text-red-400,
+.light .ci-dialog .text-red-300, .light .ci-dialog .text-red-400 { color: #dc2626 !important; }
+.light .ci-page .text-sky-300, .light .ci-page .text-sky-400,
+.light .ci-dialog .text-sky-300, .light .ci-dialog .text-sky-400 { color: #0284c7 !important; }
+.light .ci-page .text-blue-300, .light .ci-page .text-blue-400,
+.light .ci-dialog .text-blue-300, .light .ci-dialog .text-blue-400 { color: #2563eb !important; }
+.light .ci-page .text-cyan-300, .light .ci-page .text-cyan-400,
+.light .ci-dialog .text-cyan-300, .light .ci-dialog .text-cyan-400 { color: #0891b2 !important; }
+.light .ci-page .text-indigo-300, .light .ci-page .text-indigo-400,
+.light .ci-dialog .text-indigo-300, .light .ci-dialog .text-indigo-400 { color: #4f46e5 !important; }
+.light .ci-page .text-violet-300, .light .ci-page .text-violet-400,
+.light .ci-dialog .text-violet-300, .light .ci-dialog .text-violet-400 { color: #7c3aed !important; }
+.light .ci-page .text-purple-300, .light .ci-page .text-purple-400,
+.light .ci-dialog .text-purple-300, .light .ci-dialog .text-purple-400 { color: #9333ea !important; }
+.light .ci-page .text-fuchsia-300, .light .ci-page .text-fuchsia-400,
+.light .ci-dialog .text-fuchsia-300, .light .ci-dialog .text-fuchsia-400 { color: #c026d3 !important; }
+.light .ci-page .text-amber-300, .light .ci-page .text-amber-400,
+.light .ci-dialog .text-amber-300, .light .ci-dialog .text-amber-400 { color: #d97706 !important; }
+.light .ci-page .text-yellow-300, .light .ci-page .text-yellow-400,
+.light .ci-dialog .text-yellow-300, .light .ci-dialog .text-yellow-400 { color: #ca8a04 !important; }
+.light .ci-page .text-orange-300, .light .ci-page .text-orange-400,
+.light .ci-dialog .text-orange-300, .light .ci-dialog .text-orange-400 { color: #ea580c !important; }
+.light .ci-page .text-slate-300, .light .ci-page .text-slate-400,
+.light .ci-page .text-slate-200,
+.light .ci-dialog .text-slate-300, .light .ci-dialog .text-slate-400 { color: hsl(215 16% 42%) !important; }
+.light .ci-page .text-white,
+.light .ci-dialog .text-white {
+    color: hsl(var(--ci-foreground)) !important;
+}
+
+/* Beyaz metin, doygun renkli/koyu zeminli öğelerde beyaz kalmalı —
+   hem öğenin kendisi hem de üst öğe renkli zemin taşıyorsa. */
+.light :is(.ci-page, .ci-dialog, .ci-drawer) .text-white:is([class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-red-"], [class*="bg-sky-"], [class*="bg-blue-"], [class*="bg-cyan-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"], [class*="bg-fuchsia-"], [class*="bg-amber-"], [class*="bg-orange-"], [class*="bg-yellow-"], [class*="bg-brand-"], [class*="bg-[hsl(var(--brand-"], [class*="bg-gradient-to"]),
+.light :is(.ci-page, .ci-dialog, .ci-drawer) :is([class*="bg-emerald-"], [class*="bg-green-"], [class*="bg-teal-"], [class*="bg-rose-"], [class*="bg-red-"], [class*="bg-sky-"], [class*="bg-blue-"], [class*="bg-cyan-"], [class*="bg-indigo-"], [class*="bg-violet-"], [class*="bg-purple-"], [class*="bg-fuchsia-"], [class*="bg-amber-"], [class*="bg-orange-"], [class*="bg-yellow-"], [class*="bg-brand-"], [class*="bg-[hsl(var(--brand-"], [class*="bg-gradient-to"]) .text-white {
+    color: #fff !important;
+}
+
+.light [data-ci-sidebar] .text-fuchsia-200 {
+    color: #a21caf !important;
+}
+
+/* Accent renkli metinler açık temada aynı hue'nun okunur (koyu) tonunu
+   kullanır — parlak accent seçildiğinde de beyaz zeminde net kalır. */
+.light :is(.ci-page, .ci-dialog, .ci-drawer, [data-ci-sidebar]) .text-brand-accent,
+.light :is(.ci-page, .ci-dialog, .ci-drawer, [data-ci-sidebar]) [class~="text-[hsl(var(--brand-accent))]"] {
+    color: hsl(var(--brand-accent-text, var(--brand-accent))) !important;
+}
+
+/* Force-layer ci-card içindeki gradyanları açık panele çevirdiği için
+   içlerindeki beyaz metin de koyuya döner (yukarıdaki istisnayı ezer). */
+.light .ci-page .ci-card [class*="bg-gradient"] .text-white,
+.light .ci-page .ci-card [class*="from-"] .text-white,
+.light .ci-page .ci-card [class*="to-"] .text-white {
+    color: hsl(var(--ci-foreground)) !important;
+}
+
 .light .text-slate-400,
 .light .text-slate-300 {
     color: hsl(var(--muted-foreground)) !important;
 }
 
-/* Sidebar her iki temada da koyudur: içindeki foreground/border/card/muted
-   tabanlı yardımcı sınıflar (text-foreground, border-foreground/x,
-   bg-foreground/x...) koyu zeminde okunur kalsın diye token'lar açık
-   değerlere sabitlenir. Böylece tema açık olsa da sidebar metni görünür. */
+/* Koyu temada sidebar koyudur: içindeki foreground/border/card/muted
+   tabanlı yardımcı sınıflar koyu zeminde okunur kalsın diye token'lar
+   açık değerlere sabitlenir. */
 [data-ci-sidebar] {
     --foreground: 210 40% 98%;
     --muted-foreground: 215 20% 72%;
@@ -927,14 +1079,22 @@ code {
     --card-muted: 214 55% 13%;
 }
 
+/* Açık temada sidebar da açıktır: token'lar koyu metin / açık yüzey
+   değerlerine döner, böylece text-foreground/x, bg-foreground/x
+   yardımcıları otomatik olarak doğru kontrastı verir. */
 .light [data-ci-sidebar] {
-    border-right-color: hsl(209 40% 32% / 0.85) !important;
-    box-shadow: 18px 0 60px hsl(220 35% 20% / 0.10);
+    --foreground: 222 47% 13%;
+    --muted-foreground: 215 16% 42%;
+    --border: 214 26% 85%;
+    --card: 0 0% 100%;
+    --card-muted: 214 38% 95%;
+    border-right-color: hsl(214 26% 85%) !important;
+    box-shadow: 18px 0 48px hsl(220 35% 20% / 0.08);
 }
 
 .light [data-ci-sidebar] .border-white\/10,
 .light [data-ci-sidebar] .border-white\/20 {
-    border-color: hsl(var(--border) / 0.72) !important;
+    border-color: hsl(var(--border) / 0.9) !important;
 }
 
 .light [data-ci-sidebar] .bg-white\/5,
@@ -942,7 +1102,7 @@ code {
 .light [data-ci-sidebar] .bg-white\/20,
 .light [data-ci-sidebar] .bg-white\/\[0\.025\],
 .light [data-ci-sidebar] .bg-white\/\[0\.045\] {
-    background-color: hsl(var(--card) / 0.72) !important;
+    background-color: hsl(222 47% 20% / 0.05) !important;
 }
 
 .light [data-ci-sidebar] .text-white\/90,
@@ -957,6 +1117,8 @@ code {
     color: hsl(var(--muted-foreground)) !important;
 }
 
+/* Aktif menü öğesi açık temada tam doygun marka gradient'i üstünde
+   beyaz metin kullanır. */
 .light [data-ci-sidebar] a[aria-current="page"],
 .light [data-ci-sidebar] a[aria-current="page"] *,
 .light [data-ci-sidebar] [data-active="true"],

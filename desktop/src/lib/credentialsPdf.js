@@ -3,6 +3,32 @@ import logoUrl from '../assets/brand/logo.png';
 
 let cachedFontBase64 = null;
 
+// Tenant marka renkleri ThemeContext tarafından root'a hex olarak yazılır;
+// PDF çıktısı da seçilen paletle üretilsin diye buradan okunur.
+function readBrandHex(varName, fallback) {
+  if (typeof document === 'undefined') return fallback;
+  const value = document.documentElement.style.getPropertyValue(varName).trim();
+  return /^#[0-9a-fA-F]{6}$/.test(value) ? value : fallback;
+}
+
+function hexToRgb(hex) {
+  const clean = hex.replace('#', '');
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
+  ];
+}
+
+// Koyu bant üzerinde okunur kalması için rengi beyaza doğru açar.
+function tintTowardWhite([r, g, b], ratio) {
+  return [
+    Math.round(r + (255 - r) * ratio),
+    Math.round(g + (255 - g) * ratio),
+    Math.round(b + (255 - b) * ratio),
+  ];
+}
+
 async function loadLogoDataUrl() {
   try {
     const response = await fetch(logoUrl);
@@ -62,8 +88,10 @@ export async function downloadCredentialsPdf({
   const hasUnicodeFont = await ensureUnicodeFont(doc);
   const fontFamily = hasUnicodeFont ? 'Roboto' : 'helvetica';
 
-  // Brand band
-  doc.setFillColor(15, 23, 42);
+  // Brand band — tenant ana rengi
+  const brandPrimary = hexToRgb(readBrandHex('--brand-primary-hex', '#0F172A'));
+  const brandAccent = hexToRgb(readBrandHex('--brand-accent-hex', '#C7D2FE'));
+  doc.setFillColor(...brandPrimary);
   doc.rect(0, 0, pageWidth, 110, 'F');
 
   const logoData = await loadLogoDataUrl();
@@ -82,7 +110,7 @@ export async function downloadCredentialsPdf({
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(11);
-  doc.setTextColor(199, 210, 254);
+  doc.setTextColor(...tintTowardWhite(brandAccent, 0.55));
   doc.text('Hesap Bilgileriniz', 100, 78);
 
   // Subhead

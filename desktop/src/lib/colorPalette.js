@@ -89,13 +89,17 @@ export function hexToHSLString(hex) {
 
 /**
  * Ana renk + accent renkten tüm CSS custom property'leri üretir.
+ * Inline root değişkenleri .light/.dark sınıf kurallarını ezdiği için
+ * tema burada, üretim anında hesaba katılır.
  * @param {string} primaryHex - Ana marka rengi
  * @param {string} accentHex  - Vurgu rengi
+ * @param {string} theme      - 'dark' | 'light' (çözülmüş tema)
  * @returns {Object} CSS variable adı → değer eşleşmeleri
  */
-export function generateBrandCSSVariables(primaryHex, accentHex) {
+export function generateBrandCSSVariables(primaryHex, accentHex, theme = 'dark') {
   const primaryPalette = generatePalette(primaryHex);
   const accentPalette = generatePalette(accentHex);
+  const light = theme === 'light';
   const vars = {};
 
   // Ana renk paleti
@@ -107,10 +111,11 @@ export function generateBrandCSSVariables(primaryHex, accentHex) {
   vars['--brand-primary'] = hexToHSLString(primaryHex);
   vars['--ci-primary'] = hexToHSLString(primaryHex);
   vars['--brand-primary-hover'] = hexToHSLString(primaryPalette[600]);
-  vars['--brand-primary-soft'] = `${hexToHSLString(primaryHex)} / 0.14`;
-  vars['--brand-primary-glow'] = `${hexToHSLString(primaryHex)} / 0.32`;
-  vars['--brand-primary-border'] = `${hexToHSLString(primaryHex)} / 0.38`;
-  vars['--brand-primary-text'] = hexToHSLString(primaryPalette[400]);
+  vars['--brand-primary-soft'] = `${hexToHSLString(primaryHex)} / ${light ? '0.10' : '0.14'}`;
+  vars['--brand-primary-glow'] = `${hexToHSLString(primaryHex)} / ${light ? '0.22' : '0.32'}`;
+  vars['--brand-primary-border'] = `${hexToHSLString(primaryHex)} / ${light ? '0.30' : '0.38'}`;
+  // Metin olarak kullanılan ton: koyu zeminde açık shade, açık zeminde koyu shade
+  vars['--brand-primary-text'] = hexToHSLString(light ? primaryPalette[600] : primaryPalette[400]);
 
   // Accent renk paleti
   for (const [shade, hex] of Object.entries(accentPalette)) {
@@ -121,26 +126,40 @@ export function generateBrandCSSVariables(primaryHex, accentHex) {
   vars['--brand-accent'] = hexToHSLString(accentHex);
   vars['--ci-accent'] = hexToHSLString(accentHex);
   vars['--brand-accent-hover'] = hexToHSLString(accentPalette[600]);
-  vars['--brand-accent-soft'] = `${hexToHSLString(accentHex)} / 0.14`;
-  vars['--brand-accent-glow'] = `${hexToHSLString(accentHex)} / 0.35`;
-  vars['--brand-accent-border'] = `${hexToHSLString(accentHex)} / 0.42`;
+  vars['--brand-accent-soft'] = `${hexToHSLString(accentHex)} / ${light ? '0.12' : '0.14'}`;
+  vars['--brand-accent-glow'] = `${hexToHSLString(accentHex)} / ${light ? '0.24' : '0.35'}`;
+  vars['--brand-accent-border'] = `${hexToHSLString(accentHex)} / ${light ? '0.34' : '0.42'}`;
+  // Metin olarak kullanılan accent tonu (başlıklar, tablo başlıkları, linkler)
+  vars['--brand-accent-text'] = hexToHSLString(light ? accentPalette[600] : accentPalette[500]);
   vars['--brand-gradient-start'] = hexToHSLString(accentPalette[500]);
   vars['--brand-gradient-end'] = hexToHSLString(primaryPalette[600]);
 
-  // Sidebar gradient
-  vars['--sidebar-from'] = primaryPalette[900];
-  vars['--sidebar-via'] = primaryPalette[800];
-  vars['--sidebar-to'] = primaryPalette[950];
-  vars['--ci-sidebar-gradient-start'] = hexToHSLString(primaryPalette[900]);
-  vars['--ci-sidebar-gradient-end'] = hexToHSLString(primaryPalette[950]);
-
-  // Aktif menü item rengi
-  vars['--sidebar-active-bg'] = primaryPalette[700];
-  vars['--sidebar-hover-bg'] = primaryPalette[800];
+  // Sidebar gradient — açık temada beyaza yakın marka tintleri, koyuda derin tonlar
+  if (light) {
+    vars['--sidebar-from'] = '#ffffff';
+    vars['--sidebar-via'] = primaryPalette[50];
+    vars['--sidebar-to'] = primaryPalette[100];
+    vars['--ci-sidebar-gradient-start'] = hexToHSLString('#ffffff');
+    vars['--ci-sidebar-gradient-end'] = hexToHSLString(primaryPalette[100]);
+    vars['--sidebar-active-bg'] = primaryPalette[600];
+    vars['--sidebar-hover-bg'] = primaryPalette[100];
+  } else {
+    vars['--sidebar-from'] = primaryPalette[900];
+    vars['--sidebar-via'] = primaryPalette[800];
+    vars['--sidebar-to'] = primaryPalette[950];
+    vars['--ci-sidebar-gradient-start'] = hexToHSLString(primaryPalette[900]);
+    vars['--ci-sidebar-gradient-end'] = hexToHSLString(primaryPalette[950]);
+    vars['--sidebar-active-bg'] = primaryPalette[700];
+    vars['--sidebar-hover-bg'] = primaryPalette[800];
+  }
 
   // Accent tonu (butonlar, badge'ler)
   vars['--accent-from'] = accentPalette[500];
   vars['--accent-to'] = accentPalette[400];
+
+  // Grafik serileri marka renklerini takip eder (1: primary, 2: accent)
+  vars['--chart-1'] = hexToHSLString(light ? primaryPalette[600] : primaryPalette[400]);
+  vars['--chart-2'] = hexToHSLString(light ? accentPalette[600] : accentPalette[500]);
 
   return vars;
 }

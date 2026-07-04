@@ -30,6 +30,7 @@ import {
   downloadCsvRows,
   downloadFinanceHtml,
   formatCurrency,
+  getBrandAccentHex,
   normalizeFinanceText,
   parseFinanceMoney,
   printFinanceHtml,
@@ -317,7 +318,7 @@ export default function InvoicesReceipts() {
     title: type === 'invoice' ? 'Fatura Belgesi' : 'Tahsilat Makbuzu',
     subtitle: type === 'invoice' ? 'Finans ekibi tarafından üretilen fatura belgesi' : 'Tahsilat işlemi için düzenlenen makbuz',
     code: record.id,
-    accent: type === 'invoice' ? '#0f4c81' : '#0b8f6f',
+    accent: type === 'invoice' ? getBrandAccentHex() : '#0b8f6f',
     badge: type === 'invoice' ? statusFromInvoice(record) : record.method,
     summary: type === 'invoice'
       ? [
@@ -372,7 +373,7 @@ export default function InvoicesReceipts() {
       title: activeTab === 'invoices' ? 'Toplu Fatura Dökümü' : 'Toplu Makbuz Dökümü',
       subtitle: 'Yazdırma için hazır toplu belge görünümü',
       code: `BATCH-${activeTab === 'invoices' ? 'INV' : 'REC'}-${new Date().toISOString().slice(0, 10)}`,
-      accent: activeTab === 'invoices' ? '#0f4c81' : '#0b8f6f',
+      accent: activeTab === 'invoices' ? getBrandAccentHex() : '#0b8f6f',
       summary: [
         { label: 'Belge Sayısı', value: String(activeTab === 'invoices' ? filteredInvoices.length : filteredReceipts.length) },
         { label: 'Toplam Tutar', value: formatCurrency((activeTab === 'invoices' ? filteredInvoices : filteredReceipts).reduce((sum, item) => sum + parseFinanceMoney(item.amount), 0)) },

@@ -648,7 +648,7 @@ export default function Teachers() {
                       </div>
                     </div>
                   </TableCell>
-                  <TableCell><Badge className="bg-brand-accent">{teacher.departmentOrBranch || (ROLE_LABELS[teacher.role] || teacher.role)}</Badge></TableCell>
+                  <TableCell><Badge className="bg-brand-accent text-white">{teacher.departmentOrBranch || (ROLE_LABELS[teacher.role] || teacher.role)}</Badge></TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                       {(teacher.assignedClasses || []).slice(0, 3).map((cls) => <Badge key={cls} variant="outline" className="text-xs">{cls}</Badge>)}

@@ -102,10 +102,11 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
     fetchBranding();
   }, [fetchBranding]);
 
-  // Renk değiştiğinde CSS variable'ları uygula
+  // Renk veya tema değiştiğinde CSS variable'ları uygula — inline root
+  // stilleri .light/.dark sınıflarını ezdiği için palet temaya göre üretilir
   const cssVars = useMemo(
-    () => generateBrandCSSVariables(branding.primaryColor, branding.accentColor),
-    [branding.primaryColor, branding.accentColor]
+    () => generateBrandCSSVariables(branding.primaryColor, branding.accentColor, resolvedTheme),
+    [branding.primaryColor, branding.accentColor, resolvedTheme]
   );
 
   useEffect(() => {

@@ -267,7 +267,6 @@ export default function StudentAccounts() {
     title: 'Öğrenci Cari Hesap Ekstresi',
     subtitle: `${account.name} için tahsilat, fatura ve bakiye özeti`,
     code: `EXT-${account.id}`,
-    accent: '#0f4c81',
     badge: `${account.className || 'Sınıf yok'} • ${account.parent || 'Veli bilgisi yok'}`,
     summary: [
       { label: 'Toplam Ücret', value: formatCurrency(account.totalFee) },

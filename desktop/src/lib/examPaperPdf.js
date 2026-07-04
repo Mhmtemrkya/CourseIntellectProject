@@ -19,6 +19,26 @@ const C = {
   cardBorder: '#E2E8F0',
 };
 
+function mixHex(hex, target, ratio) {
+  const parse = (h) => h.replace('#', '').match(/.{2}/g).map((c) => parseInt(c, 16));
+  const [r1, g1, b1] = parse(hex);
+  const [r2, g2, b2] = parse(target);
+  const mix = (a, b) => Math.round(a + (b - a) * ratio).toString(16).padStart(2, '0');
+  return `#${mix(r1, r2)}${mix(g1, g2)}${mix(b1, b2)}`;
+}
+
+// Tema/vurgu rengi geliştirici panelinden değiştirildiyse PDF de onu kullanır;
+// ana ton + açık tint/border türevleri accent'ten hesaplanır.
+function applyBrandColors() {
+  if (typeof document === 'undefined') return;
+  const accent = document.documentElement.style.getPropertyValue('--brand-accent-hex').trim();
+  if (!/^#[0-9a-fA-F]{6}$/.test(accent)) return;
+  C.violet = mixHex(accent, '#000000', 0.12);
+  C.violetSoft = accent;
+  C.violetTint = mixHex(accent, '#ffffff', 0.94);
+  C.violetBorder = mixHex(accent, '#ffffff', 0.82);
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -249,6 +269,7 @@ function buildPages(session, stats, host) {
 }
 
 export async function generateExamPaperBlob(session) {
+  applyBrandColors();
   const stats = computeStats(session);
   const host = document.createElement('div');
   host.style.cssText = 'position:fixed;left:-10000px;top:0;z-index:-1;background:#fff;';

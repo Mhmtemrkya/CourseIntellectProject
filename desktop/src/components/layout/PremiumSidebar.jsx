@@ -39,6 +39,8 @@ function pathIsActive(pathname, path) {
 
 function SidebarLink({ item, compact, mobile, onNavigate }) {
   const location = useLocation();
+  const { resolvedTheme } = useTheme();
+  const light = resolvedTheme === "light";
   const active = pathIsActive(location.pathname, item.path);
   const Icon = item.icon;
 
@@ -52,13 +54,14 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
         compact ? "mx-auto h-10 w-10 justify-center" : "gap-2.5 px-2.5 py-2",
         active
           ? "border-[hsl(var(--brand-accent)/0.34)] text-white shadow-[0_8px_24px_hsl(var(--brand-accent)/0.12)]"
-          : "border-transparent text-foreground/60 hover:border-foreground/10 hover:bg-foreground/[0.055] hover:text-white",
+          : "border-transparent text-foreground/60 hover:border-foreground/10 hover:bg-foreground/[0.055] hover:text-foreground",
       )}
       style={
         active
           ? {
-              background:
-                "linear-gradient(100deg, hsl(var(--brand-primary) / 0.42), hsl(var(--brand-accent) / 0.2))",
+              background: light
+                ? "linear-gradient(100deg, hsl(var(--brand-primary)), hsl(var(--brand-accent) / 0.88))"
+                : "linear-gradient(100deg, hsl(var(--brand-primary) / 0.42), hsl(var(--brand-accent) / 0.2))",
             }
           : undefined
       }
@@ -84,7 +87,7 @@ function SidebarLink({ item, compact, mobile, onNavigate }) {
           }}
         />
         {item.pulse && (
-          <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-400 ring-2 ring-[#071120]" />
+          <span className="absolute right-0 top-0 h-2 w-2 rounded-full bg-red-400 ring-2 ring-background" />
         )}
       </span>
       {!compact && (
@@ -123,16 +126,14 @@ export function PremiumSidebar() {
   const {
     accentColor,
     primaryColor,
+    resolvedTheme,
     setTheme,
     tenantLogo,
     tenantName,
   } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
-  // Sidebar her iki temada da koyu kalır (premium görünüm + metin okunaklılığı).
-  // Arka plan gradient'i zaten her iki temada özdeş koyu; metin/üst-katman
-  // sınıfları index.css'te [data-ci-sidebar] altında açık token'lara sabitlenir.
-  const light = false;
+  const light = resolvedTheme === "light";
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
   const [disabledFeatures, setDisabledFeatures] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
@@ -285,14 +286,19 @@ export function PremiumSidebar() {
         variants={variants}
         initial={false}
         animate={sidebarCollapsed ? "collapsed" : "expanded"}
-        className="fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-foreground/[0.08] text-white shadow-[18px_0_48px_rgba(0,0,0,0.28)] lg:relative"
+        className={cn(
+          "fixed z-40 flex h-screen flex-shrink-0 flex-col overflow-hidden border-r border-foreground/[0.08] lg:relative",
+          light
+            ? "text-foreground shadow-[18px_0_48px_hsl(220_35%_20%/0.08)]"
+            : "text-white shadow-[18px_0_48px_rgba(0,0,0,0.28)]",
+        )}
         style={{
           background: light
-            ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), radial-gradient(circle at 88% 20%, rgba(0,91,160,0.18), transparent 30%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)"
-            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), radial-gradient(circle at 88% 20%, rgba(0,91,160,0.18), transparent 30%), linear-gradient(180deg, #07152e 0%, #041026 46%, #020b1f 100%)",
+            ? "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.05), transparent 28%), linear-gradient(180deg, var(--sidebar-from, #ffffff) 0%, var(--sidebar-via, #f6f8fb) 52%, var(--sidebar-to, #eef2f8) 100%)"
+            : "radial-gradient(circle at 15% 0%, hsl(var(--brand-accent) / 0.08), transparent 28%), radial-gradient(circle at 88% 20%, rgba(0,91,160,0.18), transparent 30%), linear-gradient(180deg, var(--sidebar-from, #07152e) 0%, var(--sidebar-via, #041026) 46%, var(--sidebar-to, #020b1f) 100%)",
         }}
       >
-        <div className="pointer-events-none absolute inset-0 overflow-hidden opacity-40">
+        <div className={cn("pointer-events-none absolute inset-0 overflow-hidden", light ? "opacity-[0.14]" : "opacity-40")}>
           <GlowingOrb color={accentColor} size={180} className="-right-24 -top-24" />
           <GlowingOrb color={primaryColor} size={140} className="-bottom-20 -left-24" />
           <FloatingParticles count={mobile ? 4 : 8} colors={[accentColor, primaryColor]} />
@@ -355,7 +361,7 @@ export function PremiumSidebar() {
             className={cn(
               "relative mx-auto mt-2.5 flex h-9 w-9 items-center justify-center rounded-[10px] border transition",
               light
-                ? "border-slate-200 bg-foreground/70 text-slate-600 hover:bg-white"
+                ? "border-slate-200 bg-white/70 text-slate-600 hover:bg-white"
                 : "border-foreground/10 bg-foreground/[0.05] text-foreground/65 hover:bg-foreground/10 hover:text-white",
             )}
             aria-label="Menüyü genişlet"
@@ -395,7 +401,7 @@ export function PremiumSidebar() {
               className={cn(
                 "relative mx-3 mt-2.5 flex h-9 items-center gap-2.5 rounded-[9px] border px-3 text-left transition",
                 light
-                  ? "border-foreground/[0.10] bg-[#061A31]/70 text-foreground/45 hover:bg-foreground/[0.07]"
+                  ? "border-slate-200 bg-white/80 text-slate-500 hover:bg-white hover:text-slate-700"
                   : "border-foreground/10 bg-foreground/[0.035] text-foreground/45 hover:bg-foreground/[0.07] hover:text-foreground/70",
               )}
             >
@@ -463,7 +469,7 @@ export function PremiumSidebar() {
                           className={cn(
                     "overflow-hidden rounded-[9px] border p-0.5",
                             light
-                              ? "border-slate-200/90 bg-foreground/55"
+                              ? "border-slate-200/90 bg-white/55"
                               : "border-foreground/[0.08] bg-foreground/[0.025]",
                             active &&
                               (light
@@ -565,7 +571,10 @@ export function PremiumSidebar() {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex h-9 w-9 items-center justify-center rounded-[10px] text-foreground/55 transition hover:bg-red-500/10 hover:text-red-300"
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-[10px] text-foreground/55 transition hover:bg-red-500/10",
+                    light ? "hover:text-red-600" : "hover:text-red-300",
+                  )}
                   aria-label="Çıkış yap"
                 >
                   <LogOut className="h-[18px] w-[18px]" />

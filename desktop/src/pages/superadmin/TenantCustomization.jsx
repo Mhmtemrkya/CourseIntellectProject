@@ -30,7 +30,8 @@ import { applyBrandVariables, generateBrandCSSVariables } from '../../lib/colorP
 // hsl(var(--brand-accent)) kullandığından arayüz tek seferde o renge döner.
 function applyBrandColorsGlobally(primaryColor, accentColor) {
   if (!primaryColor || !accentColor) return;
-  applyBrandVariables(generateBrandCSSVariables(primaryColor, accentColor));
+  const theme = document.documentElement.classList.contains('light') ? 'light' : 'dark';
+  applyBrandVariables(generateBrandCSSVariables(primaryColor, accentColor, theme));
 }
 
 const containerVariants = {

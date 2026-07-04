@@ -268,7 +268,7 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
         ) : null}
         {points.map((point, index) => (
           <g key={`${point.x}-${point.y}`}>
-            <circle cx={point.x} cy={point.y} r="6" fill={color} stroke="#091a31" strokeWidth="3" />
+            <circle cx={point.x} cy={point.y} r="6" fill={color} stroke="hsl(var(--ci-card))" strokeWidth="3" />
             <text x={point.x} y={point.y - 14} textAnchor="middle" className="fill-slate-200 text-[13px] font-bold">{point.value}</text>
             {labels[index] ? <text x={point.x} y={height - 2} textAnchor="middle" className="fill-slate-500 text-[11px]">{labels[index]}</text> : null}
           </g>
@@ -333,7 +333,7 @@ export function RadarChart({ items, className = 'h-[330px]' }) {
         {polygon ? <polygon points={polygon} fill="rgba(124,58,237,0.34)" stroke="#a855f7" strokeWidth="3" /> : null}
         {values.map((item, index) => {
           const [x, y] = toPoint(item.value, index);
-          return <circle key={item.label} cx={x} cy={y} r="5" fill="#a855f7" stroke="#091a31" strokeWidth="2" />;
+          return <circle key={item.label} cx={x} cy={y} r="5" fill="#a855f7" stroke="hsl(var(--ci-card))" strokeWidth="2" />;
         })}
       </svg>
       {values.map((item, index) => {

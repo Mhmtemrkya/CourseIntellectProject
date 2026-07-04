@@ -730,7 +730,7 @@ export default function Chat() {
                       </div>
                     </div>
                     {thread.unreadCount > 0 ? (
-                      <Badge className="bg-brand-accent">{thread.unreadCount}</Badge>
+                      <Badge className="bg-brand-accent text-white">{thread.unreadCount}</Badge>
                     ) : null}
                   </motion.div>
                 ))}
