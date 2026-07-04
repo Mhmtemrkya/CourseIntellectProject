@@ -37,7 +37,7 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         title: Text(
-          "CourseIntellect",
+          "SchoolAsist",
           style: TextStyle(
             color: isDark ? Colors.white : Colors.black,
             fontWeight: FontWeight.bold,

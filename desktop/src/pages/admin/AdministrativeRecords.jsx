@@ -54,7 +54,7 @@ function buildRecordSummary(record) {
   ];
 
   return [
-    'CourseIntellect İdari Kayıt Özeti',
+    'SchoolAsist İdari Kayıt Özeti',
     '',
     ...rows.map(([label, value]) => `${label}: ${value}`),
     '',

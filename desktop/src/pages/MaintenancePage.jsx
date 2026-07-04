@@ -26,7 +26,7 @@ export default function MaintenancePage({ message, since, onRetry, onLogout }) {
             Sistem şu anda bakımda
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-foreground/65">
-            {message || 'CourseIntellect platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak.'}
+            {message || 'SchoolAsist platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak.'}
           </p>
 
           {sinceDate && (

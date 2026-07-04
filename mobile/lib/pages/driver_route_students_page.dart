@@ -992,7 +992,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
     if (permission == LocationPermission.deniedForever) {
       setState(() {
         _locationStatus =
-            'Konum izni kalıcı olarak kapalı. Ayarlardan CourseIntellect için konum izni verilmeli.';
+            'Konum izni kalıcı olarak kapalı. Ayarlardan SchoolAsist için konum izni verilmeli.';
       });
       _showMessage('Konum izni ayarlardan açılmalı.');
       return false;

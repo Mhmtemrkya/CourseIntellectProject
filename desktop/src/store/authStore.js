@@ -1,4 +1,4 @@
-// CourseIntellect Auth Store - Zustand with Tauri persistence
+// SchoolAsist Auth Store - Zustand with Tauri persistence
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 

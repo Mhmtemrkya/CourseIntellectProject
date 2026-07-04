@@ -1,4 +1,4 @@
-// CourseIntellect Stat Card Component
+// SchoolAsist Stat Card Component
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, TrendingDown } from 'lucide-react';

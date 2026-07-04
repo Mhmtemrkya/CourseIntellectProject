@@ -184,7 +184,7 @@ export function createDesktopUser(payload) {
   const role = mapBackendRoleToDesktopRole(backendRole);
   const tenantId = data?.user?.tenantId || null;
   const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin) || ((backendRole || "").toLowerCase() === "developer" && tenantId == null);
-  const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "CourseIntellect Desktop");
+  const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "SchoolAsist Desktop");
 
   return {
     id: data?.user?.id || "",

@@ -52,7 +52,7 @@ export default function StudentAI() {
   const [messages, setMessages] = useState([{
     id: 1,
     role: 'assistant',
-    content: 'Merhaba. Ben CourseIntellect akıllı çalışma merkeziyim. Gerçek sınav ve profil verilerinize göre yönlendirme yapabilirim, istersen sorunu öğretmenine de iletebilirim.',
+    content: 'Merhaba. Ben SchoolAsist akıllı çalışma merkeziyim. Gerçek sınav ve profil verilerinize göre yönlendirme yapabilirim, istersen sorunu öğretmenine de iletebilirim.',
     timestamp: new Date(),
   }]);
   const [input, setInput] = useState('');
@@ -199,7 +199,7 @@ export default function StudentAI() {
             <Sparkles className="h-8 w-8 text-white" />
           </motion.div>
           <div>
-            <h1 className="text-3xl font-bold font-heading bg-gradient-to-r from-[#D9790B] to-[#f59e0b] bg-clip-text text-transparent">CourseIntellect AI</h1>
+            <h1 className="text-3xl font-bold font-heading bg-gradient-to-r from-[#D9790B] to-[#f59e0b] bg-clip-text text-transparent">SchoolAsist AI</h1>
             <p className="text-muted-foreground">Gerçek verilerinle çalışan akıllı çalışma merkezi</p>
           </div>
           <Badge className="ml-auto bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 px-3 py-1">

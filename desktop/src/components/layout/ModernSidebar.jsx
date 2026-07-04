@@ -777,7 +777,7 @@ export const menuConfigs = {
     {
       path: "/s/ai",
       icon: Sparkles,
-      label: "CourseIntellect AI",
+      label: "SchoolAsist AI",
       color: "#D9790B",
       special: true,
       new: true,
@@ -1512,7 +1512,7 @@ export function ModernSidebar() {
       ? rawTenantName
       : user?.tenant && !isUserTenantBad
         ? user.tenant
-        : ROLE_TITLES[userRole] || "CourseIntellect";
+        : ROLE_TITLES[userRole] || "SchoolAsist";
 
   // Sidebar variants for animation
   const sidebarVariants = {
@@ -1876,7 +1876,7 @@ export function ModernSidebar() {
           >
             <img
               src={logoImage}
-              alt="CourseIntellect Logo"
+              alt="SchoolAsist Logo"
               className="h-12 w-auto object-contain opacity-90 hover:opacity-100 transition-opacity"
             />
           </motion.div>
@@ -1886,7 +1886,7 @@ export function ModernSidebar() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            © 2026 CourseIntellect
+            © 2026 SchoolAsist
           </motion.p>
         </div>
       </motion.aside>

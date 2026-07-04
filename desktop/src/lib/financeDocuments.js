@@ -288,7 +288,7 @@ export function buildFinanceDocumentHtml({
           <header class="hero">
             <div class="hero-top">
               <div>
-                <div class="eyebrow">CourseIntellect Finance</div>
+                <div class="eyebrow">SchoolAsist Finance</div>
                 <h1>${escapeHtml(title)}</h1>
                 <p class="subtitle">${escapeHtml(subtitle || '')}</p>
                 ${badge ? `<div class="badge">${escapeHtml(badge)}</div>` : ''}
@@ -303,7 +303,7 @@ export function buildFinanceDocumentHtml({
             <div class="summary-grid">${summaryHtml}</div>
             ${sectionHtml}
             <div class="footer">
-              <span>${escapeHtml(footerNote || 'Bu belge CourseIntellect masaüstü panelinden oluşturuldu.')}</span>
+              <span>${escapeHtml(footerNote || 'Bu belge SchoolAsist masaüstü panelinden oluşturuldu.')}</span>
               <span>${escapeHtml(new Date().toLocaleString('tr-TR'))}</span>
             </div>
           </main>

@@ -63,8 +63,8 @@ export default function KioskQR() {
         animate={{ opacity: 1, y: 0 }}
         className="absolute top-8 left-8 flex items-center gap-3"
       >
-        <img src={logo} alt="CourseIntellect" className="h-12 w-12" />
-        <span className="text-2xl font-heading font-bold text-white">CourseIntellect</span>
+        <img src={logo} alt="SchoolAsist" className="h-12 w-12" />
+        <span className="text-2xl font-heading font-bold text-white">SchoolAsist</span>
       </motion.div>
 
       {/* Controls */}
@@ -154,7 +154,7 @@ export default function KioskQR() {
         className="mt-12 text-center text-white"
       >
         <h2 className="text-3xl font-heading font-bold mb-4">Yoklama için QR Kodu Taratın</h2>
-        <p className="text-lg text-foreground/80">Telefonunuzdaki CourseIntellect uygulamasını açın</p>
+        <p className="text-lg text-foreground/80">Telefonunuzdaki SchoolAsist uygulamasını açın</p>
         <p className="text-lg text-foreground/80">ve QR kodu tarayarak yoklamanızı onaylayın.</p>
       </motion.div>
 
@@ -183,7 +183,7 @@ export default function KioskQR() {
         transition={{ delay: 0.5 }}
         className="absolute bottom-8 text-foreground/50 text-sm"
       >
-        © 2025 CourseIntellect - Kiosk Modu
+        © 2025 SchoolAsist - Kiosk Modu
       </motion.p>
     </div>
   );

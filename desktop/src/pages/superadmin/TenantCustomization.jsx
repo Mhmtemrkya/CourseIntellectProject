@@ -71,7 +71,7 @@ function buildDefaultCustomization(tenant) {
     accentColor: preset.accent,
     logoUrl: '',
     faviconUrl: '',
-    appName: tenant.name || tenant.displayName || tenant.schoolName || 'CourseIntellect',
+    appName: tenant.name || tenant.displayName || tenant.schoolName || 'SchoolAsist',
     darkModeDefault: tenant.plan === 'Enterprise',
     customFonts: tenant.plan !== 'Starter',
     headerFont: tenant.plan === 'Enterprise' ? 'Montserrat' : 'Poppins',
@@ -549,7 +549,7 @@ export default function TenantCustomization() {
                             style={{ background: `linear-gradient(135deg, ${customization.accentColor}, ${customization.accentColor}aa)` }}>
                             C
                           </div>
-                          <span className="text-white text-xs font-medium truncate">{customization.appName || 'CourseIntellect'}</span>
+                          <span className="text-white text-xs font-medium truncate">{customization.appName || 'SchoolAsist'}</span>
                         </div>
                         <div className="p-2 space-y-1">
                           <div className="flex items-center gap-2 px-2 py-1.5 rounded-md text-foreground/70">

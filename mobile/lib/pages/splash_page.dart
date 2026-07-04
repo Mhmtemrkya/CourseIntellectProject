@@ -90,7 +90,7 @@ class _SplashPageState extends State<SplashPage>
                   opacity: _fadeAnimation,
                   child: SlideTransition(
                     position: _slideAnimation,
-                    child: const CourseIntellectLogo(scale: 1.15),
+                    child: const SchoolAsistLogo(scale: 1.15),
                   ),
                 ),
                 const SizedBox(height: 24),

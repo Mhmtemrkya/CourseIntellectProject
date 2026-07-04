@@ -1,4 +1,4 @@
-// CourseIntellect Empty State Component
+// SchoolAsist Empty State Component
 import { motion } from 'framer-motion';
 import { Button } from './button';
 import { cn } from '../../lib/utils';

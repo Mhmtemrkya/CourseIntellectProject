@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "CourseIntellect",
+  "productName": "SchoolAsist",
   "version": "0.1.0",
   "identifier": "com.courseintellect.desktop",
   "build": {
@@ -19,7 +19,7 @@
   "app": {
     "windows": [
       {
-        "title": "CourseIntellect",
+        "title": "SchoolAsist",
         "center": true,
         "decorations": false,
         "resizable": true,
@@ -36,9 +36,9 @@
   "bundle": {
     "active": true,
     "targets": "nsis",
-    "publisher": "CourseIntellect",
-    "shortDescription": "CourseIntellect masaüstü uygulaması",
-    "longDescription": "CourseIntellect, kurumlar için eğitim süreçlerini yönetmeye yardımcı olan bir masaüstü uygulamasıdır.",
+    "publisher": "SchoolAsist",
+    "shortDescription": "SchoolAsist masaüstü uygulaması",
+    "longDescription": "SchoolAsist, kurumlar için eğitim süreçlerini yönetmeye yardımcı olan bir masaüstü uygulamasıdır.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -51,7 +51,7 @@
         "installerIcon": "icons/icon.ico",
         "headerImage": "installer/header.bmp",
         "sidebarImage": "installer/sidebar.bmp",
-        "startMenuFolder": "CourseIntellect"
+        "startMenuFolder": "SchoolAsist"
       }
     }
   }

@@ -1,4 +1,4 @@
-// CourseIntellect App Store - Global UI State
+// SchoolAsist App Store - Global UI State
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 

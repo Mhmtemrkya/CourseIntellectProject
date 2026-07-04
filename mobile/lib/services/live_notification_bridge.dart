@@ -47,7 +47,7 @@ class LiveNotificationBridge {
     );
     const iosSettings = DarwinInitializationSettings();
     const windowsSettings = WindowsInitializationSettings(
-      appName: 'CourseIntellect',
+      appName: 'SchoolAsist',
       appUserModelId: 'com.courseintellect.student',
       guid: 'd3b0a5e2-7c1f-4b8e-9a6d-2f5e8c3b1a04',
     );

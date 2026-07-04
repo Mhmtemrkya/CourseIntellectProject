@@ -562,7 +562,7 @@ export function PremiumSidebar() {
                   {displayEmail}
                 </p>
                 <p className={cn("mt-1 text-[9px]", light ? "text-slate-400" : "text-foreground/25")}>
-                  © 2026 CourseIntellect
+                  © 2026 SchoolAsist
                 </p>
               </div>
             )}

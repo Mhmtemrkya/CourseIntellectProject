@@ -101,7 +101,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
 
   static const Map<String, String> _videoHttpHeaders = {
     'Accept': 'video/mp4, video/webm, video/quicktime, */*',
-    'User-Agent': 'CourseIntellect-Mobile',
+    'User-Agent': 'SchoolAsist-Mobile',
   };
 
   ContentRecord? _resolveCurrentRecord() {

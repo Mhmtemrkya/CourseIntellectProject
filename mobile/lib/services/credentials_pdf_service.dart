@@ -87,7 +87,7 @@ class CredentialsPdfService {
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
                         pw.Text(
-                          'CourseIntellect',
+                          'SchoolAsist',
                           style: pw.TextStyle(
                             color: PdfColors.white,
                             fontSize: 22,
@@ -214,7 +214,7 @@ class CredentialsPdfService {
               pw.Padding(
                 padding: const pw.EdgeInsets.all(24),
                 child: pw.Text(
-                  'CourseIntellect • Eğitim Yönetim Platformu',
+                  'SchoolAsist • Eğitim Yönetim Platformu',
                   style: const pw.TextStyle(
                     fontSize: 9,
                     color: PdfColors.grey400,
@@ -237,7 +237,7 @@ class CredentialsPdfService {
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
-        text: '$fullName için CourseIntellect hesap bilgileri',
+        text: '$fullName için SchoolAsist hesap bilgileri',
       ),
     );
     return file;

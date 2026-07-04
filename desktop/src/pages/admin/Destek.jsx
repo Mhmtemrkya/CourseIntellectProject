@@ -211,7 +211,7 @@ export default function Destek() {
       <div>
         <h1 className="text-3xl font-bold font-heading">Destek</h1>
         <p className="text-muted-foreground mt-1">
-          Bir sorun ya da talebiniz mi var? CourseIntellect ekibine ulaşın.
+          Bir sorun ya da talebiniz mi var? SchoolAsist ekibine ulaşın.
         </p>
       </div>
 
@@ -360,7 +360,7 @@ export default function Destek() {
                           <div className="mt-3 rounded-lg border border-brand-accent/25 bg-brand-accent/[0.06] p-3">
                             <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-brand-accent font-mono">
                               <ShieldCheck className="h-3 w-3" />
-                              CourseIntellect Yanıtı
+                              SchoolAsist Yanıtı
                             </div>
                             <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90 line-clamp-3">
                               {t.lastMessage}

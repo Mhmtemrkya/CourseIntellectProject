@@ -18,7 +18,7 @@ export const legalDocuments = [
       {
         title: "Veri sorumlusu",
         bullets: [
-          "CourseIntellect platformunu kullanan eğitim kurumu veri sorumlusudur. Uygulama geliştiricisi ve teknik hizmet sağlayıcılar, kurumun talimatları doğrultusunda veri işleyen olarak görev alabilir.",
+          "SchoolAsist platformunu kullanan eğitim kurumu veri sorumlusudur. Uygulama geliştiricisi ve teknik hizmet sağlayıcılar, kurumun talimatları doğrultusunda veri işleyen olarak görev alabilir.",
           "Kurum adı, adresi, iletişim kanalı ve varsa temsilci bilgileri kurum tarafından tamamlanmalıdır.",
         ],
       },

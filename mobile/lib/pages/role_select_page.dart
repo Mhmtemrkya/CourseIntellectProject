@@ -30,7 +30,7 @@ class RoleSelectPage extends StatelessWidget {
               child: Column(
                 children: [
                   const SizedBox(height: 8),
-                  const CourseIntellectLogo(scale: 0.8, compact: true),
+                  const SchoolAsistLogo(scale: 0.8, compact: true),
                   const SizedBox(height: 16),
                   const Text(
                     "Hoş Geldiniz",

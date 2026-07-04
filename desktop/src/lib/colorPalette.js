@@ -184,6 +184,6 @@ export function removeBrandVariables(vars) {
   }
 }
 
-// Varsayılan CourseIntellect renkleri
+// Varsayılan SchoolAsist renkleri
 export const DEFAULT_PRIMARY = '#07152E';
 export const DEFAULT_ACCENT = '#FF7A00';

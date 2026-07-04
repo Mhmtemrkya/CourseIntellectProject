@@ -202,7 +202,7 @@ function footerHtml(pageNo, totalPages) {
   return `
     <div style="position:absolute;left:0;right:0;bottom:24px;display:flex;align-items:center;justify-content:center;padding:0 40px;">
       <div style="text-align:center;">
-        <div style="font-size:13px;font-weight:700;color:${C.violet};">CourseIntellecte</div>
+        <div style="font-size:13px;font-weight:700;color:${C.violet};">SchoolAsist</div>
         <div style="font-size:11px;color:${C.slateSoft};">courseintellect.com</div>
       </div>
       <div style="position:absolute;right:40px;background:${C.violet};color:#fff;border-radius:14px;padding:7px 16px;font-size:12px;font-weight:700;">Sayfa ${pageNo} / ${totalPages}</div>

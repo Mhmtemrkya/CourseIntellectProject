@@ -45,7 +45,7 @@ class MaterialDownloadService {
     }
 
     final directory = await getApplicationDocumentsDirectory();
-    final downloadsDir = Directory('${directory.path}/CourseIntellect');
+    final downloadsDir = Directory('${directory.path}/SchoolAsist');
     if (!await downloadsDir.exists()) {
       await downloadsDir.create(recursive: true);
     }

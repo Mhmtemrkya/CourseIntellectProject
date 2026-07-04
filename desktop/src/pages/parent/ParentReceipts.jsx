@@ -55,7 +55,7 @@ function paymentMethodIcon(method = '') {
 
 function buildReceiptText(receipt) {
   return [
-    'CourseIntellect Makbuz',
+    'SchoolAsist Makbuz',
     `Makbuz No: ${receipt.receiptNo || receipt.id}`,
     `Öğrenci: ${receipt.studentName}`,
     `Sınıf: ${receipt.className || '-'}`,

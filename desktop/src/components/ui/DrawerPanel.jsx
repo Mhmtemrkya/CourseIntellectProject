@@ -1,4 +1,4 @@
-// CourseIntellect Drawer Panel Component
+// SchoolAsist Drawer Panel Component
 import { motion, AnimatePresence } from 'framer-motion';
 import { X } from 'lucide-react';
 import { Button } from './button';

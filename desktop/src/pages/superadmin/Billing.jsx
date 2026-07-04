@@ -262,7 +262,7 @@ export default function Billing() {
           <Card>
             <CardHeader>
               <CardTitle>Kurum Abonelik Faturaları</CardTitle>
-              <CardDescription>Kurumların CourseIntellect paket aboneliği için kestiğimiz faturalar</CardDescription>
+              <CardDescription>Kurumların SchoolAsist paket aboneliği için kestiğimiz faturalar</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <Table>

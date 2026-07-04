@@ -141,7 +141,7 @@ class _MaintenanceScreen extends StatelessWidget {
                   Text(
                     message?.isNotEmpty == true
                         ? message!
-                        : 'CourseIntellect platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak.',
+                        : 'SchoolAsist platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak.',
                     style: TextStyle(
                       color: Colors.white.withOpacity(0.65),
                       fontSize: 15,

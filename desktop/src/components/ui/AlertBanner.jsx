@@ -1,4 +1,4 @@
-// CourseIntellect Alert Banner Component
+// SchoolAsist Alert Banner Component
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   AlertCircle, 

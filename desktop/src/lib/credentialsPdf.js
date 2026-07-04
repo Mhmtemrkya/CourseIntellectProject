@@ -106,7 +106,7 @@ export async function downloadCredentialsPdf({
   doc.setFont(fontFamily, 'bold');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
-  doc.text('CourseIntellect', 100, 55);
+  doc.text('SchoolAsist', 100, 55);
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(11);
@@ -182,7 +182,7 @@ export async function downloadCredentialsPdf({
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(9);
   doc.setTextColor(148, 163, 184);
-  doc.text('CourseIntellect • Eğitim Yönetim Platformu', 36, doc.internal.pageSize.getHeight() - 30);
+  doc.text('SchoolAsist • Eğitim Yönetim Platformu', 36, doc.internal.pageSize.getHeight() - 30);
 
   const safeName = (fullName || 'kullanici').toLowerCase().replace(/[^a-z0-9]+/g, '-');
   doc.save(`courseintellect-${safeName}-bilgileri.pdf`);

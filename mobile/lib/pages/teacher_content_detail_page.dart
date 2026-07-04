@@ -32,7 +32,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
 
   static const Map<String, String> _videoHttpHeaders = {
     'Accept': 'video/mp4, video/webm, video/quicktime, */*',
-    'User-Agent': 'CourseIntellect-Mobile',
+    'User-Agent': 'SchoolAsist-Mobile',
   };
 
   @override

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class CourseIntellectLogo extends StatelessWidget {
+class SchoolAsistLogo extends StatelessWidget {
   final double scale;
   final bool showWordmark;
   final bool compact;
 
-  const CourseIntellectLogo({
+  const SchoolAsistLogo({
     super.key,
     this.scale = 1,
     this.showWordmark = true,

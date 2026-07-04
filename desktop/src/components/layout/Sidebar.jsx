@@ -178,7 +178,7 @@ export function Sidebar() {
                 transition={{ duration: 0.2 }}
                 className="font-heading font-bold text-lg whitespace-nowrap overflow-hidden"
               >
-                CourseIntellect
+                SchoolAsist
               </motion.span>
             )}
           </AnimatePresence>

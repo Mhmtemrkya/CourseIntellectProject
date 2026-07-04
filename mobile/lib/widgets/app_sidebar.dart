@@ -151,7 +151,7 @@ class _LogoSection extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              tenantName.isNotEmpty ? tenantName : 'CourseIntellect',
+              tenantName.isNotEmpty ? tenantName : 'SchoolAsist',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -351,10 +351,10 @@ class _FooterLogo extends StatelessWidget {
       ),
       child: Column(
         children: [
-          const CourseIntellectLogo(scale: 0.22, compact: true),
+          const SchoolAsistLogo(scale: 0.22, compact: true),
           const SizedBox(height: 4),
           Text(
-            'CourseIntellect',
+            'SchoolAsist',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.35),
               fontSize: 10,

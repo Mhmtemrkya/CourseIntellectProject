@@ -48,6 +48,9 @@ flutter:
   uses-material-design: true
   assets:
     - assets/logo/course_intellect2.png
+    - assets/logo/school_asist_icon.png
+    - assets/logo/school_asist_adaptive_fg.png
+    - assets/logo/school_asist_emblem.png
     - assets/fonts/ArialUnicode.ttf
     - assets/fonts/Roboto-Regular.ttf
     - assets/fonts/Roboto-Bold.ttf
@@ -55,16 +58,16 @@ flutter:
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/logo/course_intellect2.png
-  adaptive_icon_background: "#F7F7F5"
-  adaptive_icon_foreground: assets/logo/course_intellect2.png
+  image_path: assets/logo/school_asist_icon.png
+  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_foreground: assets/logo/school_asist_adaptive_fg.png
   remove_alpha_ios: true
 
 flutter_native_splash:
-  color: "#F7F7F5"
+  color: "#F4F6FA"
   image: assets/logo/course_intellect2.png
   android: true
   ios: true
   android_12:
-    color: "#F7F7F5"
-    image: assets/logo/course_intellect2.png
+    color: "#F4F6FA"
+    image: assets/logo/school_asist_icon.png

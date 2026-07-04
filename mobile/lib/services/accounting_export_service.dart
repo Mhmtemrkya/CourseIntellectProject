@@ -95,7 +95,7 @@ class AccountingExportService {
         theme: pw.ThemeData.withFont(base: regularFont, bold: regularFont),
         build: (context) => [
           pw.Text(
-            'CourseIntellect Finans Özeti',
+            'SchoolAsist Finans Özeti',
             style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 12),
@@ -201,7 +201,7 @@ class AccountingExportService {
 
     final downloads = await getDownloadsDirectory();
     if (downloads != null) {
-      final exportDir = Directory('${downloads.path}/CourseIntellect Exports');
+      final exportDir = Directory('${downloads.path}/SchoolAsist Exports');
       if (!await exportDir.exists()) {
         await exportDir.create(recursive: true);
       }

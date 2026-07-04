@@ -4,12 +4,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   Eye,
   EyeOff,
-  CheckCircle2,
   Lock,
   Mail,
-  User,
-  Star,
   ArrowRight,
+  ShieldCheck,
+  Timer,
+  BarChart3,
+  Users,
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
@@ -27,146 +28,68 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../components/ui/dialog";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "../components/ui/card";
 import { useToast } from "../hooks/use-toast";
-import logo from "../assets/brand/logo.png";
+import emblem from "../assets/brand/emblem.png";
 
-const features = [
-  "Öğrenci ve veli yönetimi",
-  "Akıllı ders programı",
-  "Online yoklama sistemi",
-  "Soru-cevap platformu",
-  "Sınav oluşturma ve analiz",
-  "Detaylı raporlama",
+// SchoolAsist marka renkleri — giriş ekranı kurum temasından bağımsız,
+// sabit marka paletiyle çizilir (mockup: lacivert + turuncu).
+const NAVY = "#15294B";
+const NAVY_SOFT = "#1E3A66";
+const ORANGE = "#F7941D";
+const LIGHT_BG = "#F4F6FA";
+
+const FEATURES = [
+  {
+    icon: ShieldCheck,
+    title: "Güvenli",
+    text: "Verileriniz en üst düzey güvenlik ile korunur.",
+  },
+  {
+    icon: Timer,
+    title: "Zaman Tasarrufu",
+    text: "Tüm süreçleri otomatikleştirin, verimliliği artırın.",
+  },
+  {
+    icon: BarChart3,
+    title: "Analitik Raporlar",
+    text: "Gerçek zamanlı verilerle doğru kararlar alın.",
+  },
+  {
+    icon: Users,
+    title: "Kolay Kullanım",
+    text: "Basit ve anlaşılır arayüz ile hızla adapte olun.",
+  },
 ];
 
-const containerVariants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.1,
-    },
-  },
-};
-
-const itemVariants = {
-  hidden: { opacity: 0, x: -20 },
-  visible: { opacity: 1, x: 0 },
-};
-
-// Floating particles component
-function FloatingParticles() {
+// Amblem + iki renkli yazı: School (lacivert) + Asist (turuncu)
+function BrandMark({ size = "md", light = false }) {
+  const imgClass = size === "lg" ? "h-14 w-14" : "h-10 w-10";
+  const textClass = size === "lg" ? "text-3xl" : "text-2xl";
   return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-      {[...Array(20)].map((_, i) => (
-        <motion.div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            width: Math.random() * 10 + 5,
-            height: Math.random() * 10 + 5,
-            backgroundColor: i % 2 === 0 ? "#D9790B" : "#ffffff",
-            left: `${Math.random() * 100}%`,
-            top: `${Math.random() * 100}%`,
-          }}
-          animate={{
-            y: [0, -30, 0],
-            x: [0, Math.random() * 20 - 10, 0],
-            opacity: [0.2, 0.6, 0.2],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: Math.random() * 5 + 5,
-            repeat: Infinity,
-            delay: Math.random() * 3,
-          }}
-        />
-      ))}
+    <div className="flex items-center gap-3">
+      <img src={emblem} alt="SchoolAsist" className={`${imgClass} object-contain`} />
+      <span className={`font-heading font-extrabold tracking-tight ${textClass}`}>
+        <span style={{ color: light ? "#FFFFFF" : NAVY }}>School</span>
+        <span style={{ color: ORANGE }}>Asist</span>
+      </span>
     </div>
   );
 }
 
-// Animated background gradient
-function AnimatedGradient() {
+// Köşelere serpiştirilen nokta ızgarası (mockup dekoru)
+function DotGrid({ className, color = NAVY, opacity = 0.35 }) {
   return (
-    <motion.div
-      className="absolute inset-0"
-      animate={{
-        background: [
-          "linear-gradient(45deg, #00354F 0%, #004a6e 50%, #00354F 100%)",
-          "linear-gradient(90deg, #00354F 0%, #003d5a 50%, #004a6e 100%)",
-          "linear-gradient(135deg, #004a6e 0%, #00354F 50%, #003d5a 100%)",
-          "linear-gradient(180deg, #003d5a 0%, #004a6e 50%, #00354F 100%)",
-          "linear-gradient(45deg, #00354F 0%, #004a6e 50%, #00354F 100%)",
-        ],
-      }}
-      transition={{
-        duration: 10,
-        repeat: Infinity,
-        ease: "linear",
+    <div
+      aria-hidden
+      className={`pointer-events-none absolute ${className}`}
+      style={{
+        width: 110,
+        height: 90,
+        opacity,
+        backgroundImage: `radial-gradient(${color} 2.2px, transparent 2.2px)`,
+        backgroundSize: "22px 22px",
       }}
     />
-  );
-}
-
-// Animated Logo Component
-function AnimatedLogo() {
-  return (
-    <motion.div
-      className="relative"
-      initial={{ scale: 0, rotate: -180 }}
-      animate={{ scale: 1, rotate: 0 }}
-      transition={{ type: "spring", stiffness: 200, damping: 15 }}
-    >
-      <motion.div
-        className="absolute inset-0 rounded-full"
-        animate={{
-          boxShadow: [
-            "0 0 20px rgba(217, 121, 11, 0.3)",
-            "0 0 40px rgba(217, 121, 11, 0.6)",
-            "0 0 20px rgba(217, 121, 11, 0.3)",
-          ],
-        }}
-        transition={{ duration: 2, repeat: Infinity }}
-      />
-      <motion.img
-        src={logo}
-        alt="CourseIntellect"
-        className="h-16 w-16 relative z-10"
-        animate={{ rotate: [0, 5, -5, 0] }}
-        transition={{ duration: 4, repeat: Infinity }}
-      />
-    </motion.div>
-  );
-}
-
-// Animated text reveal
-function AnimatedText({ text, className, delay = 0 }) {
-  return (
-    <motion.span
-      className={className}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay, duration: 0.5 }}
-    >
-      {text.split("").map((char, index) => (
-        <motion.span
-          key={index}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: delay + index * 0.03, duration: 0.3 }}
-        >
-          {char}
-        </motion.span>
-      ))}
-    </motion.span>
   );
 }
 
@@ -249,423 +172,324 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex" data-testid="login-page">
-      {/* Left Panel - Brand */}
-      <motion.div
-        initial={{ opacity: 0, x: -100 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="hidden lg:flex lg:w-1/2 relative overflow-hidden"
+    <div
+      className="relative min-h-screen overflow-hidden"
+      style={{ backgroundColor: LIGHT_BG }}
+      data-testid="login-page"
+    >
+      {/* Sağdaki büyük lacivert daire + arkasındaki turuncu kontur yayı */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute hidden lg:block"
+        style={{
+          top: "50%",
+          right: "-46vw",
+          width: "100vw",
+          height: "175vh",
+          transform: "translateY(-50%)",
+          borderRadius: "50%",
+          border: `4px solid ${ORANGE}`,
+        }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute hidden lg:block"
+        style={{
+          top: "50%",
+          right: "-48vw",
+          width: "100vw",
+          height: "175vh",
+          transform: "translateY(-50%)",
+          borderRadius: "50%",
+          background: `radial-gradient(circle at 30% 40%, ${NAVY_SOFT} 0%, ${NAVY} 55%, #0E1D38 100%)`,
+        }}
+      />
+
+      {/* Sol altta turuncu kıvrımlı şerit */}
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute bottom-0 left-0 hidden lg:block"
+        width="520"
+        height="190"
+        viewBox="0 0 520 190"
+        fill="none"
       >
-        <AnimatedGradient />
-        <FloatingParticles />
-
-        {/* Animated circles */}
-        <motion.div
-          className="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-foreground/5"
-          animate={{
-            scale: [1, 1.2, 1],
-            rotate: [0, 90, 180, 270, 360],
-          }}
-          transition={{ duration: 20, repeat: Infinity }}
+        <path
+          d="M0 190 L0 120 C90 60 220 40 340 92 C420 126 480 170 520 190 Z"
+          fill={NAVY}
         />
-        <motion.div
-          className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full bg-[#D9790B]/20"
-          animate={{
-            scale: [1, 1.3, 1],
-            rotate: [360, 270, 180, 90, 0],
-          }}
-          transition={{ duration: 25, repeat: Infinity }}
+        <path
+          d="M0 132 C90 66 220 44 340 96"
+          stroke={ORANGE}
+          strokeWidth="14"
+          strokeLinecap="round"
         />
+      </svg>
 
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white">
-          {/* Logo */}
-          <motion.div
-            initial={{ opacity: 0, y: -30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.6 }}
-            className="flex items-center gap-4 mb-12"
-          >
-            <AnimatedLogo />
-            <motion.span
-              className="font-heading text-3xl font-bold"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.5, duration: 0.5 }}
-            >
-              CourseIntellect
-            </motion.span>
-          </motion.div>
+      <DotGrid className="left-[38%] top-10 hidden lg:block" />
+      <DotGrid className="right-8 top-24 hidden lg:block" color={ORANGE} opacity={0.8} />
+      <DotGrid className="right-24 bottom-16 hidden xl:block" color={ORANGE} opacity={0.5} />
 
-          {/* Tagline */}
-          <motion.h1
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="font-heading text-4xl xl:text-5xl font-bold leading-tight mb-6"
+      {/* Uygulamayı Kapat */}
+      <button
+        onClick={() => import("../lib/tauri").then((m) => m.closeApp())}
+        className="absolute right-4 top-4 z-30 rounded-full bg-black/25 px-3 py-1 text-xs text-white shadow backdrop-blur hover:bg-black/40 transition-all"
+        type="button"
+      >
+        Uygulamayı Kapat
+      </button>
+
+      <div className="relative z-10 mx-auto grid min-h-screen w-full max-w-[1400px] items-center gap-10 px-8 py-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] xl:px-16">
+        {/* Sol panel — tanıtım */}
+        <motion.div
+          initial={{ opacity: 0, x: -60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut" }}
+          className="hidden max-w-xl lg:block"
+        >
+          <BrandMark />
+
+          <h1
+            className="font-heading mt-12 text-5xl font-extrabold leading-[1.12] xl:text-6xl"
+            style={{ color: NAVY }}
           >
-            Eğitimde Yeni Nesil
+            Eğitimi
             <br />
-            <motion.span
-              className="text-[#D9790B]"
-              animate={{
-                textShadow: [
-                  "0 0 10px rgba(217, 121, 11, 0.5)",
-                  "0 0 20px rgba(217, 121, 11, 0.8)",
-                  "0 0 10px rgba(217, 121, 11, 0.5)",
-                ],
-              }}
-              transition={{ duration: 2, repeat: Infinity }}
-            >
-              Yönetim Sistemi
-            </motion.span>
-          </motion.h1>
+            <span style={{ color: ORANGE }}>Kolaylaştıran</span>
+            <br />
+            Akıllı Çözümler
+          </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5, duration: 0.6 }}
-            className="text-lg text-foreground/80 mb-10 max-w-md"
-          >
-            Kurumunuzun tüm eğitim süreçlerini tek bir platformda yönetin.
-          </motion.p>
+          <p className="mt-6 max-w-md text-lg" style={{ color: "#4B5B75" }}>
+            Okulunuzun tüm süreçlerini tek platformda yönetin, zamandan
+            tasarruf edin.
+          </p>
 
-          {/* Features */}
-          <motion.ul
-            variants={containerVariants}
-            initial="hidden"
-            animate="visible"
-            className="space-y-4"
-          >
-            {features.map((feature, index) => (
+          <ul className="mt-10 space-y-6">
+            {FEATURES.map((feature, index) => (
               <motion.li
-                key={index}
-                variants={itemVariants}
-                className="flex items-center gap-3 text-foreground/90"
-                whileHover={{ x: 10, color: "#D9790B" }}
-                transition={{ duration: 0.2 }}
+                key={feature.title}
+                initial={{ opacity: 0, x: -24 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.25 + index * 0.12, duration: 0.45 }}
+                className="flex items-start gap-4"
               >
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.6 + index * 0.1, type: "spring" }}
+                <span
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-md"
+                  style={{ color: NAVY }}
                 >
-                  <CheckCircle2 className="h-5 w-5 text-[#D9790B] flex-shrink-0" />
-                </motion.div>
-                <span>{feature}</span>
+                  <feature.icon className="h-5 w-5" />
+                </span>
+                <span>
+                  <span className="block font-bold" style={{ color: NAVY }}>
+                    {feature.title}
+                  </span>
+                  <span className="block text-sm" style={{ color: "#5B6B84" }}>
+                    {feature.text}
+                  </span>
+                </span>
               </motion.li>
             ))}
-          </motion.ul>
+          </ul>
+        </motion.div>
 
-          {/* Stats */}
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.2, duration: 0.6 }}
-            className="flex gap-8 mt-12"
-          >
-            {[
-              { value: "50+", label: "Kurum" },
-              { value: "10K+", label: "Kullanıcı" },
-              { value: "%99", label: "Memnuniyet" },
-            ].map((stat, index) => (
-              <motion.div
-                key={index}
-                className="text-center"
-                whileHover={{ scale: 1.1 }}
-              >
-                <motion.p
-                  className="text-3xl font-bold text-[#D9790B]"
-                  initial={{ opacity: 0, scale: 0 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: 1.4 + index * 0.2, type: "spring" }}
-                >
-                  {stat.value}
-                </motion.p>
-                <p className="text-sm text-foreground/70">{stat.label}</p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </motion.div>
-
-      {/* Right Panel - Login Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-background overflow-y-auto">
+        {/* Sağ panel — giriş kartı */}
         <motion.div
-          initial={{ opacity: 0, x: 100 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-          className="w-full max-w-md"
+          initial={{ opacity: 0, y: 40 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
+          className="mx-auto w-full max-w-md"
         >
-          {/* Mobile Logo */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="lg:hidden flex items-center justify-center gap-3 mb-8"
-          >
-            <img src={logo} alt="CourseIntellect" className="h-12 w-12" />
-            <span className="font-heading text-2xl font-bold text-brand-primary">
-              CourseIntellect
-            </span>
-          </motion.div>
-
-          <Card className="border-0 shadow-2xl overflow-hidden">
-            {/* Uygulamayı Kapat Butonu */}
-            <button
-              onClick={() => import("../lib/tauri").then((m) => m.closeApp())}
-              style={{ position: "absolute", top: 12, right: 12, zIndex: 10 }}
-              className="bg-destructive text-white rounded-full px-3 py-1 text-xs shadow hover:bg-destructive/80 transition-all"
-              type="button"
-            >
-              Uygulamayı Kapat
-            </button>
-            <motion.div
-              className="h-1 bg-gradient-to-r from-brand-primary via-[#D9790B] to-brand-primary"
-              animate={{
-                backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"],
-              }}
-              style={{ backgroundSize: "200% 100%" }}
-              transition={{ duration: 3, repeat: Infinity }}
-            />
-            <CardHeader className="space-y-1 pb-4">
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
+          <div className="rounded-3xl bg-white p-8 shadow-2xl sm:p-10">
+            <div className="flex flex-col items-center text-center">
+              <BrandMark />
+              <h2
+                className="font-heading mt-6 text-2xl font-extrabold"
+                style={{ color: NAVY }}
               >
-                <CardTitle className="font-heading text-2xl flex items-center gap-2">
-                  Hoş Geldiniz
-                  <motion.span
-                    animate={{ rotate: [0, 20, 0] }}
-                    transition={{
-                      duration: 0.5,
-                      repeat: Infinity,
-                      repeatDelay: 2,
-                    }}
+                Giriş Yapın
+              </h2>
+              <p className="mt-2 text-sm" style={{ color: "#6B7A93" }}>
+                Hesabınıza giriş yapmak için bilgilerinizi girin.
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+              <AnimatePresence>
+                {error && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-600"
                   >
-                    👋
-                  </motion.span>
-                </CardTitle>
-                <CardDescription>Hesabınıza giriş yapın</CardDescription>
-              </motion.div>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Error Message */}
-                <AnimatePresence>
-                  {error && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, height: "auto", scale: 1 }}
-                      exit={{ opacity: 0, height: 0, scale: 0.8 }}
-                      className="bg-destructive/10 border border-destructive/20 text-destructive text-sm p-3 rounded-lg"
-                    >
-                      {error}
-                    </motion.div>
+                    {error}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="relative">
+                <Mail
+                  className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2"
+                  style={{ color: "#8A97AC" }}
+                />
+                <Input
+                  id="username"
+                  type="text"
+                  placeholder="Kullanıcı adı veya e-posta"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  className="h-12 rounded-xl border-slate-200 bg-white pl-11 text-slate-900 placeholder:text-slate-400"
+                  data-testid="username-input"
+                  required
+                />
+              </div>
+
+              <div className="relative">
+                <Lock
+                  className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2"
+                  style={{ color: "#8A97AC" }}
+                />
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Şifreniz"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 rounded-xl border-slate-200 bg-white pl-11 pr-11 text-slate-900 placeholder:text-slate-400"
+                  data-testid="password-input"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
                   )}
-                </AnimatePresence>
+                </button>
+              </div>
 
-                {/* Username */}
-                <motion.div
-                  className="space-y-2"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.4 }}
-                >
-                  <Label htmlFor="username">Kullanıcı Adı veya E-posta</Label>
-                  <div className="relative group">
-                    <motion.div
-                      className="absolute inset-0 rounded-md bg-gradient-to-r from-brand-primary to-[#D9790B] opacity-0 group-focus-within:opacity-100 -m-0.5"
-                      initial={false}
-                      animate={{ opacity: username ? 0.2 : 0 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                    <Input
-                      id="username"
-                      type="text"
-                      placeholder="kullaniciadi veya e-posta"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="pl-10 relative bg-background"
-                      data-testid="username-input"
-                      required
-                    />
-                  </div>
-                </motion.div>
-
-                {/* Password */}
-                <motion.div
-                  className="space-y-2"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Label htmlFor="password">Şifre</Label>
-                  <div className="relative group">
-                    <motion.div
-                      className="absolute inset-0 rounded-md bg-gradient-to-r from-brand-primary to-[#D9790B] opacity-0 group-focus-within:opacity-100 -m-0.5"
-                      initial={false}
-                      animate={{ opacity: password ? 0.2 : 0 }}
-                      transition={{ duration: 0.3 }}
-                    />
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
-                    <Input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-10 pr-10 relative bg-background"
-                      data-testid="password-input"
-                      required
-                    />
-                    <motion.button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground z-10"
-                      whileHover={{ scale: 1.1 }}
-                      whileTap={{ scale: 0.9 }}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-4 w-4" />
-                      ) : (
-                        <Eye className="h-4 w-4" />
-                      )}
-                    </motion.button>
-                  </div>
-                </motion.div>
-
-                {/* Remember & Forgot */}
-                <motion.div
-                  className="flex items-center justify-between"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.6 }}
-                >
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="remember"
-                      checked={remember}
-                      onCheckedChange={setRemember}
-                    />
-                    <Label
-                      htmlFor="remember"
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      Beni hatırla
-                    </Label>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="link"
-                    className="px-0 text-[#D9790B] hover:text-[#D9790B]/80"
-                    onClick={openForgotDialog}
-                  >
-                    Şifremi unuttum
-                  </Button>
-                </motion.div>
-
-                {/* Submit */}
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
-                >
-                  <Button
-                    type="submit"
-                    className="w-full bg-gradient-to-r from-brand-primary to-[#00456a] hover:from-[#00456a] hover:to-brand-primary text-white shadow-lg"
-                    disabled={loading}
-                    data-testid="login-button"
-                  >
-                    {loading ? (
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{
-                          duration: 1,
-                          repeat: Infinity,
-                          ease: "linear",
-                        }}
-                        className="h-5 w-5 border-2 border-foreground/30 border-t-white rounded-full"
-                      />
-                    ) : (
-                      <span className="flex items-center gap-2">
-                        Giriş Yap
-                        <motion.span
-                          animate={{ x: [0, 5, 0] }}
-                          transition={{ duration: 1, repeat: Infinity }}
-                        >
-                          <ArrowRight className="h-4 w-4" />
-                        </motion.span>
-                      </span>
-                    )}
-                  </Button>
-                </motion.div>
-
-              </form>
-            </CardContent>
-          </Card>
-
-          <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#D9790B]/15 text-[#D9790B]">
-                    <Mail className="h-4 w-4" />
-                  </span>
-                  Şifremi Unuttum
-                </DialogTitle>
-                <DialogDescription>
-                  Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari
-                  yetkili ekranına düşer; onaylanınca size tek kullanımlık
-                  geçici şifre verilir.
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleForgotPassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="forgot-email">Kayıtlı E-posta</Label>
-                  <Input
-                    id="forgot-email"
-                    type="email"
-                    placeholder="ornek@kurum.com"
-                    value={forgotEmail}
-                    onChange={(event) => setForgotEmail(event.target.value)}
-                    autoFocus
+              <div className="flex items-center justify-between pt-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="remember"
+                    checked={remember}
+                    onCheckedChange={setRemember}
+                    className="border-slate-300"
                   />
-                </div>
-                {forgotSuccess ? (
-                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
-                    {forgotSuccess}
-                  </div>
-                ) : null}
-                <DialogFooter>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setForgotOpen(false)}
-                    disabled={forgotLoading}
+                  <Label
+                    htmlFor="remember"
+                    className="cursor-pointer text-sm font-semibold"
+                    style={{ color: NAVY }}
                   >
-                    Kapat
-                  </Button>
-                  <Button type="submit" disabled={forgotLoading}>
-                    {forgotLoading ? "Gönderiliyor..." : "Talebi Gönder"}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </DialogContent>
-          </Dialog>
+                    Beni hatırla
+                  </Label>
+                </div>
+                <button
+                  type="button"
+                  className="text-sm font-semibold hover:underline"
+                  style={{ color: ORANGE }}
+                  onClick={openForgotDialog}
+                >
+                  Şifremi unuttum?
+                </button>
+              </div>
 
-          {/* Footer */}
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5 }}
-            className="text-center text-sm text-muted-foreground mt-6"
-          >
-            © 2025 CourseIntellect. Tüm hakları saklıdır.
-          </motion.p>
+              <Button
+                type="submit"
+                className="relative h-12 w-full rounded-xl text-base font-bold text-white shadow-lg transition-all hover:brightness-105"
+                style={{ backgroundColor: ORANGE }}
+                disabled={loading}
+                data-testid="login-button"
+              >
+                {loading ? (
+                  <motion.div
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                    className="h-5 w-5 rounded-full border-2 border-white/40 border-t-white"
+                  />
+                ) : (
+                  <>
+                    <span>Giriş Yap</span>
+                    <ArrowRight className="absolute right-5 top-1/2 h-5 w-5 -translate-y-1/2" />
+                  </>
+                )}
+              </Button>
+            </form>
+
+            <p className="mt-8 text-center text-sm" style={{ color: "#6B7A93" }}>
+              Hesabınız yok mu?{" "}
+              <a
+                href="mailto:destek@schoolasist.com"
+                className="font-semibold hover:underline"
+                style={{ color: ORANGE }}
+              >
+                İletişime geçin
+              </a>
+            </p>
+          </div>
+
+          <p className="mt-6 text-center text-xs text-slate-500 lg:text-slate-300">
+            © 2026 SchoolAsist. Tüm hakları saklıdır.
+          </p>
         </motion.div>
       </div>
+
+      <Dialog open={forgotOpen} onOpenChange={setForgotOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-full"
+                style={{ backgroundColor: "rgba(247, 148, 29, 0.15)", color: ORANGE }}
+              >
+                <Mail className="h-4 w-4" />
+              </span>
+              Şifremi Unuttum
+            </DialogTitle>
+            <DialogDescription>
+              Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari
+              yetkili ekranına düşer; onaylanınca size tek kullanımlık
+              geçici şifre verilir.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleForgotPassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Kayıtlı E-posta</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="ornek@kurum.com"
+                value={forgotEmail}
+                onChange={(event) => setForgotEmail(event.target.value)}
+                autoFocus
+              />
+            </div>
+            {forgotSuccess ? (
+              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3 text-sm text-emerald-700 dark:text-emerald-300">
+                {forgotSuccess}
+              </div>
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setForgotOpen(false)}
+                disabled={forgotLoading}
+              >
+                Kapat
+              </Button>
+              <Button type="submit" disabled={forgotLoading}>
+                {forgotLoading ? "Gönderiliyor..." : "Talebi Gönder"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

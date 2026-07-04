@@ -1,4 +1,4 @@
-// CourseIntellect SignalR Real-time Service
+// SchoolAsist SignalR Real-time Service
 import * as signalR from '@microsoft/signalr';
 import { getDesktopApiBaseUrl } from '../appEnv';
 

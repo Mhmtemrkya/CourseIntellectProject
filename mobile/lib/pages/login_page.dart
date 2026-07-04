@@ -142,161 +142,353 @@ class _LoginPageState extends State<LoginPage> {
     super.dispose();
   }
 
+  bool _obscurePassword = true;
+  bool _rememberMe = true;
+
+  static const _navy = Color(0xFF15294B);
+  static const _orange = Color(0xFFF7941D);
+
+  InputDecoration _fieldDecoration({
+    required BuildContext context,
+    required String hint,
+    required IconData icon,
+    Widget? suffix,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final borderColor = isDark ? const Color(0xFF2A3B5C) : const Color(0xFFE2E8F0);
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(
+        icon,
+        size: 20,
+        color: isDark ? const Color(0xFF8FA0BC) : const Color(0xFF64748B),
+      ),
+      suffixIcon: suffix,
+      filled: true,
+      fillColor: isDark ? const Color(0xFF16223C) : Colors.white,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 18),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(16),
+        borderSide: const BorderSide(color: _orange, width: 1.6),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final subtleText = isDark ? const Color(0xFF9DACC4) : const Color(0xFF5B6B84);
+    final headingColor = isDark ? Colors.white : _navy;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: isDark
-                ? const [Color(0xFF0A1017), Color(0xFF0F172A)]
-                : const [Color(0xFFF7FBFF), Color(0xFFEAF3FA)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16),
-                const Center(
-                  child: CourseIntellectLogo(scale: 0.86, compact: true),
-                ),
-                const SizedBox(height: 24),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(22),
-                  decoration: BoxDecoration(
-                    color: theme.cardColor,
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(
-                          alpha: isDark ? 0.22 : 0.06,
-                        ),
-                        blurRadius: 22,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Giriş Yap",
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'CourseIntellect hesabınla giriş yap; panelin rolüne göre otomatik açılır.',
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.textTheme.bodyMedium?.color?.withValues(
-                            alpha: 0.72,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 22),
-                      const Text("Kullanıcı Adı veya E-posta"),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: usernameController,
-                        keyboardType: TextInputType.visiblePassword,
-                        textCapitalization: TextCapitalization.none,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        smartDashesType: SmartDashesType.disabled,
-                        smartQuotesType: SmartQuotesType.disabled,
-                        autofillHints: const [AutofillHints.username],
-                        decoration: InputDecoration(
-                          hintText: "Kullanıcı adınızı veya e-postanızı girin",
-                          filled: true,
-                          fillColor: theme.scaffoldBackgroundColor.withValues(
-                            alpha: 0.65,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      const Text("Şifre"),
-                      const SizedBox(height: 8),
-                      TextField(
-                        controller: passwordController,
-                        obscureText: true,
-                        textCapitalization: TextCapitalization.none,
-                        autocorrect: false,
-                        enableSuggestions: false,
-                        smartDashesType: SmartDashesType.disabled,
-                        smartQuotesType: SmartQuotesType.disabled,
-                        autofillHints: const [AutofillHints.password],
-                        onSubmitted: (_) => login(),
-                        decoration: InputDecoration(
-                          hintText: "Şifrenizi girin",
-                          filled: true,
-                          fillColor: theme.scaffoldBackgroundColor.withValues(
-                            alpha: 0.65,
-                          ),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(16),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: TextButton(
-                          onPressed: isLoading
-                              ? null
-                              : _openForgotPasswordSheet,
-                          child: const Text('Şifremi unuttum'),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-                      SizedBox(
-                        width: double.infinity,
-                        height: 54,
-                        child: ElevatedButton(
-                          onPressed: isLoading ? null : login,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0B4768),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(18),
-                            ),
-                          ),
-                          child: isLoading
-                              ? const SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(
-                                    color: Colors.white,
-                                    strokeWidth: 2.2,
-                                  ),
-                                )
-                              : const Text("Giriş Yap"),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 20),
-              ],
+      backgroundColor: isDark ? const Color(0xFF0B1428) : const Color(0xFFF4F6FA),
+      body: Stack(
+        children: [
+          // Alt lacivert dalga + turuncu kontur (mockup dekoru)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: IgnorePointer(
+              child: CustomPaint(
+                size: const Size(double.infinity, 130),
+                painter: _BottomWavePainter(),
+              ),
             ),
           ),
-        ),
+          // Nokta ızgarası dekorları
+          const Positioned(
+            top: 48,
+            left: 24,
+            child: IgnorePointer(child: _DotGrid(color: _navy)),
+          ),
+          Positioned(
+            bottom: 150,
+            right: 24,
+            child: IgnorePointer(
+              child: _DotGrid(color: _navy.withValues(alpha: 0.5)),
+            ),
+          ),
+          SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: 36),
+                  const Center(
+                    child: SchoolAsistLogo(scale: 1.05, compact: true),
+                  ),
+                  const SizedBox(height: 30),
+                  Text(
+                    'Giriş Yapın',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: headingColor,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'SchoolAsist hesabınıza giriş yaparak\neğitim süreçlerinizi kolayca yönetin.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(color: subtleText),
+                  ),
+                  const SizedBox(height: 30),
+                  TextField(
+                    controller: usernameController,
+                    keyboardType: TextInputType.visiblePassword,
+                    textCapitalization: TextCapitalization.none,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
+                    autofillHints: const [AutofillHints.username],
+                    decoration: _fieldDecoration(
+                      context: context,
+                      hint: 'Kullanıcı adı veya e-posta',
+                      icon: Icons.mail_outline,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passwordController,
+                    obscureText: _obscurePassword,
+                    textCapitalization: TextCapitalization.none,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    smartDashesType: SmartDashesType.disabled,
+                    smartQuotesType: SmartQuotesType.disabled,
+                    autofillHints: const [AutofillHints.password],
+                    onSubmitted: (_) => login(),
+                    decoration: _fieldDecoration(
+                      context: context,
+                      hint: 'Şifreniz',
+                      icon: Icons.lock_outline,
+                      suffix: IconButton(
+                        onPressed: () => setState(
+                          () => _obscurePassword = !_obscurePassword,
+                        ),
+                        icon: Icon(
+                          _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          size: 20,
+                          color: isDark
+                              ? const Color(0xFF8FA0BC)
+                              : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: InkWell(
+                          onTap: () =>
+                              setState(() => _rememberMe = !_rememberMe),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _rememberMe,
+                                  activeColor: _orange,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  onChanged: (value) => setState(
+                                    () => _rememberMe = value ?? true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                'Beni hatırla',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  color: headingColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: isLoading ? null : _openForgotPasswordSheet,
+                        style: TextButton.styleFrom(
+                          foregroundColor: _orange,
+                          padding: EdgeInsets.zero,
+                        ),
+                        child: const Text(
+                          'Şifremi unuttum?',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 22),
+                  SizedBox(
+                    height: 56,
+                    child: ElevatedButton(
+                      onPressed: isLoading ? null : login,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _orange,
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: _orange.withValues(alpha: 0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2.2,
+                              ),
+                            )
+                          : Stack(
+                              alignment: Alignment.center,
+                              children: const [
+                                Text(
+                                  'Giriş Yap',
+                                  style: TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Align(
+                                  alignment: Alignment.centerRight,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(right: 6),
+                                    child: Icon(Icons.arrow_forward, size: 22),
+                                  ),
+                                ),
+                              ],
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 26),
+                  Text(
+                    'Hesabınız yok mu?',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyLarge?.copyWith(color: subtleText),
+                  ),
+                  Center(
+                    child: TextButton(
+                      onPressed: () {},
+                      style: TextButton.styleFrom(foregroundColor: _orange),
+                      child: const Text(
+                        'İletişime geçin',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 150),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
+}
+
+// Mockup'taki köşe nokta ızgarası
+class _DotGrid extends StatelessWidget {
+  const _DotGrid({required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(88, 72),
+      painter: _DotGridPainter(color: color.withValues(alpha: 0.35)),
+    );
+  }
+}
+
+class _DotGridPainter extends CustomPainter {
+  _DotGridPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    const step = 18.0;
+    for (double x = 0; x <= size.width; x += step) {
+      for (double y = 0; y <= size.height; y += step) {
+        canvas.drawCircle(Offset(x, y), 2.2, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DotGridPainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
+// Alt lacivert dalga ve üzerindeki turuncu kontur
+class _BottomWavePainter extends CustomPainter {
+  static const _navy = Color(0xFF15294B);
+  static const _orange = Color(0xFFF7941D);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final navyPath = Path()
+      ..moveTo(0, size.height * 0.42)
+      ..cubicTo(
+        size.width * 0.28,
+        size.height * -0.12,
+        size.width * 0.55,
+        size.height * 0.95,
+        size.width,
+        size.height * 0.38,
+      )
+      ..lineTo(size.width, size.height)
+      ..lineTo(0, size.height)
+      ..close();
+    canvas.drawPath(navyPath, Paint()..color = _navy);
+
+    final orangePath = Path()
+      ..moveTo(0, size.height * 0.30)
+      ..cubicTo(
+        size.width * 0.28,
+        size.height * -0.24,
+        size.width * 0.55,
+        size.height * 0.83,
+        size.width,
+        size.height * 0.26,
+      );
+    canvas.drawPath(
+      orangePath,
+      Paint()
+        ..color = _orange
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 10
+        ..strokeCap = StrokeCap.round,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _ForgotPasswordSheet extends StatefulWidget {
