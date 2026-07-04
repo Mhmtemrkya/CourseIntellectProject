@@ -26,6 +26,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { openHttpUrl } from '../../lib/safeOpen';
 import { messageRealtimeClient } from '../../lib/messages/messageRealtime';
 import {
   createThread,
@@ -564,10 +565,9 @@ export default function Chat() {
   };
 
   const handleOpenAttachment = (attachment) => {
-    const href = attachment.fileUrl?.startsWith('http')
-      ? attachment.fileUrl
-      : `${desktopApiBaseUrl}${attachment.fileUrl || ''}`;
-    window.open(href, '_blank', 'noopener,noreferrer');
+    const raw = attachment.fileUrl || '';
+    const href = /^https?:\/\//i.test(raw) ? raw : `${desktopApiBaseUrl}${raw.startsWith('/') ? raw : `/${raw}`}`;
+    openHttpUrl(href);
   };
 
   const removeAttachmentDraft = (fileName) => {

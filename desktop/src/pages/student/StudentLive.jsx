@@ -12,6 +12,7 @@ import { PremiumPanel, PremiumStatusPill } from '../../components/ui/premium-das
 import { useApp } from '../../context/AppContext';
 import { fetchLiveRoomSessions, fetchStudents } from '../../lib/api/modules';
 import { resolveCurrentStudent } from '../../lib/userMatching';
+import { openHttpUrl } from '../../lib/safeOpen';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -180,7 +181,7 @@ export default function StudentLive() {
   const joinable = ongoingLessons[0] || upcomingLessons[0] || null;
 
   const handleJoin = (lesson) => {
-    if (lesson?.meetLink) window.open(lesson.meetLink, '_blank', 'noopener,noreferrer');
+    if (lesson?.meetLink) openHttpUrl(lesson.meetLink);
   };
 
   if (loading) {

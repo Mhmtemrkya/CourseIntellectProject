@@ -8,6 +8,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { fetchContents } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { openHttpUrl } from '../../lib/safeOpen';
 
 function buildContentFileUrl(contentFile) {
   const fileUrl = typeof contentFile === 'object' ? String(contentFile?.fileUrl || '').trim() : '';
@@ -76,7 +77,7 @@ export default function StudentContentDetail() {
       window.URL.revokeObjectURL(objectUrl);
       return;
     }
-    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    openHttpUrl(fileUrl);
   };
 
   const toggleVideo = (item) => {

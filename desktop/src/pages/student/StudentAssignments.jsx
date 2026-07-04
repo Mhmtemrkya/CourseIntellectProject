@@ -15,6 +15,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useApp } from '../../context/AppContext';
 import { getDesktopApiBaseUrl } from '../../lib/appEnv';
 import { classMatchesMine, fetchHomework, getMyClassName, submitHomework, uploadFile } from '../../lib/api/modules';
+import { openHttpUrl } from '../../lib/safeOpen';
 
 const PAGE_SIZE = 8;
 const WEEKDAYS = ['Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt', 'Paz'];
@@ -231,7 +232,7 @@ export default function StudentAssignments() {
 
   const openAttachment = (attachment) => {
     const url = resolveAssetUrl(attachment?.url);
-    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+    if (url) openHttpUrl(url);
   };
 
   const downloadAttachment = async (attachment) => {

@@ -28,6 +28,7 @@ import {
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { setAppFullscreen } from '../../lib/tauri';
+import { openHttpUrl } from '../../lib/safeOpen';
 
 const SUBJECT_TONES = ['from-sky-400 to-blue-600', 'from-violet-400 to-fuchsia-600', 'from-emerald-400 to-teal-600', 'from-amber-400 to-orange-600', 'from-rose-400 to-red-600', 'from-cyan-400 to-blue-500'];
 
@@ -150,7 +151,7 @@ export default function StudentContent() {
       window.URL.revokeObjectURL(objectUrl);
       return;
     }
-    window.open(fileUrl, '_blank', 'noopener,noreferrer');
+    openHttpUrl(fileUrl);
   };
 
   const openVideoFullscreen = async () => {

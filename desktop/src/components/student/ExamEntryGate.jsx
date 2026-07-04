@@ -4,6 +4,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent } from '../ui/dialog';
 import { Button } from '../ui/button';
+import { openHttpUrl } from '../../lib/safeOpen';
 
 function parseStart(dateLabel, startTime) {
   const raw = String(dateLabel || '').trim();
@@ -87,7 +88,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
 
   const openLiveLink = () => {
     if (liveLinkUrl) {
-      window.open(liveLinkUrl, '_blank', 'noopener,noreferrer');
+      openHttpUrl(liveLinkUrl);
     }
     setJoinedLive(true);
   };

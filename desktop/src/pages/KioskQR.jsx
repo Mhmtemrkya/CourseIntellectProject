@@ -6,6 +6,7 @@ import { Button } from '../components/ui/button';
 import logo from '../assets/brand/logo.png';
 import { useApp } from '../context/AppContext';
 import { openAttendanceQrSession } from '../lib/api/modules';
+import { useQrDataUrl } from '../lib/qr';
 
 export default function KioskQR() {
   const navigate = useNavigate();
@@ -45,6 +46,7 @@ export default function KioskQR() {
   }, [countdown, generateQR]);
 
   const qrPayload = session?.token ? `courseintellect://attendance/${session.token}` : '';
+  const qrImageUrl = useQrDataUrl(qrPayload, 256);
 
   const toggleLock = () => {
     setIsLocked(!isLocked);
@@ -124,11 +126,11 @@ export default function KioskQR() {
         {/* QR Container */}
         <div className="relative bg-white p-8 rounded-3xl shadow-2xl">
           <div className="w-64 h-64 bg-white flex items-center justify-center">
-            {qrPayload ? (
+            {qrPayload && qrImageUrl ? (
               <img
                 alt="QR Yoklama"
                 className="w-64 h-64"
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=256x256&data=${encodeURIComponent(qrPayload)}`}
+                src={qrImageUrl}
               />
             ) : (
               <div className="text-xs text-muted-foreground text-center">QR oturumu hazırlanıyor...</div>

@@ -16,6 +16,7 @@ import { Switch } from '../../components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Checkbox } from '../../components/ui/checkbox';
 import { ScrollArea } from '../../components/ui/scroll-area';
+import DOMPurify from 'dompurify';
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from '../../components/ui/accordion';
@@ -931,7 +932,7 @@ export default function TeacherQuestionStudio() {
           <DialogHeader><DialogTitle>Soru Önizleme</DialogTitle></DialogHeader>
           <div className="rounded-3xl border border-foreground/10 bg-slate-950/60 p-6">
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-orange-300">{settings.subject} / {settings.topic || 'Konu seçilmedi'} / {settings.difficulty}</p>
-            <div className="leading-8" dangerouslySetInnerHTML={{ __html: questionHtml || '<p class=\"text-slate-500\">Soru metni henüz yazılmadı.</p>' }} />
+            <div className="leading-8" dangerouslySetInnerHTML={{ __html: questionHtml ? DOMPurify.sanitize(questionHtml) : '<p class=\"text-slate-500\">Soru metni henüz yazılmadı.</p>' }} />
             {assetPath && <img src={assetUrl(assetPath)} alt={visual.caption || 'Soru görseli'} className="mx-auto my-5 rounded-2xl object-contain" style={{ width: `${visual.width}%`, transform: `rotate(${visual.rotation}deg)` }} />}
             {choiceType && <div className="mt-5 grid gap-3 sm:grid-cols-2">{options.filter((item) => item.text.trim()).map((option, index) => <div key={option.id} className={`rounded-2xl border p-3 ${option.correct ? 'border-emerald-500/45 bg-emerald-500/10' : 'border-foreground/10'}`}><div><b className="mr-3 text-orange-300">{optionLetter(index)}</b>{option.text}</div>{option.imagePath && <img src={assetUrl(option.imagePath)} alt="" className="mt-3 h-24 w-full rounded-xl object-contain" />}</div>)}</div>}
             {!choiceType && expectedAnswer.trim() && (
@@ -940,7 +941,7 @@ export default function TeacherQuestionStudio() {
                 <p className="text-emerald-50">{expectedAnswer}</p>
               </div>
             )}
-            {solutionHtml && <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4"><p className="mb-2 font-bold text-purple-200">Çözüm</p><div dangerouslySetInnerHTML={{ __html: solutionHtml }} /></div>}
+            {solutionHtml && <div className="mt-6 rounded-2xl border border-purple-400/30 bg-purple-500/10 p-4"><p className="mb-2 font-bold text-purple-200">Çözüm</p><div dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(solutionHtml) }} /></div>}
           </div>
         </DialogContent>
       </Dialog>
