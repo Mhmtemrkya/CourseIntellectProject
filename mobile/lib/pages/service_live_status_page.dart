@@ -795,7 +795,7 @@ class _OpenStreetServiceMap extends StatelessWidget {
       children: [
         TileLayer(
           urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-          userAgentPackageName: 'com.courseintellect.student',
+          userAgentPackageName: 'com.schoolasist.app',
         ),
         if (vehiclePoint != null)
           PolylineLayer(
