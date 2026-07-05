@@ -74,7 +74,7 @@ public sealed class PlatformConfigurationsController(
                     primaryColor = "#00354F",
                     accentColor = "#D9790B",
                     logoUrl = (string?)null,
-                    appName = "CourseIntellect"
+                    appName = "SchoolAsist"
                 }),
                 UpdatedAtUtc = DateTime.UtcNow
             });

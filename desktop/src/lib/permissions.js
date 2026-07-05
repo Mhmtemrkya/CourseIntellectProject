@@ -61,8 +61,14 @@ export function getUserRoles(user) {
   const collected = new Set();
   // Desktop'a önceden mapped primary key
   if (user.role) collected.add(aliasRole(user.role));
-  // Backend orijinal primary
-  if (user.backendRole) collected.add(aliasRole(user.backendRole));
+  // Backend orijinal primary. Rehberlik, teacher rolünün özelleşmiş halidir;
+  // öğretmen menüsü rehber menüsüne karışmasın diye teacher alias'ı atlanır.
+  if (user.backendRole) {
+    const backendAlias = aliasRole(user.backendRole);
+    if (!(user.role === 'counselor' && backendAlias === 'teacher')) {
+      collected.add(backendAlias);
+    }
+  }
   // Admin tarafından atanan ek roller
   const extras = Array.isArray(user.extraRoles) ? user.extraRoles : [];
   for (const extra of extras) collected.add(aliasRole(extra));

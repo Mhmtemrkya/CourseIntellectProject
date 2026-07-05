@@ -1021,10 +1021,10 @@ const ROLE_MENU_GROUPS = {
     { id: "support", title: "Destek", modules: ["support"] },
   ],
   counselor: [
-    { id: "main", title: "Rehberlik", modules: ["dashboard"] },
-    { id: "students", title: "Öğrenci Takibi", modules: [] },
-    { id: "communication", title: "İletişim", modules: ["chat"] },
-    { id: "system", title: "Sistem", modules: ["profile", "system"] },
+    { id: "main", title: "Rehberlik", modules: [], paths: ["/g/dashboard"] },
+    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports"] },
+    { id: "communication", title: "İletişim", modules: ["chat"], paths: ["/chat"] },
+    { id: "system", title: "Sistem", modules: ["profile", "system"], paths: ["/settings"] },
   ],
   teacher: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons", "duties"] },
@@ -1333,6 +1333,9 @@ function inferModuleKey(item) {
 
 export function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole = "", hasRoleManagementPolicy = false) {
   if (!hasRoleManagementPolicy) return baseItems;
+  // Rehberlik kendi sabit menüsünü kullanır; tenant modül yönetimi öğretmen
+  // öğelerini (ders programı, yoklama...) bu menüye karıştırmasın.
+  if (primaryRole === "counselor") return baseItems;
 
   const merged = [];
   const seenPaths = new Set();
@@ -1371,7 +1374,8 @@ export function buildGroupedMenuItems(items, primaryRole) {
 
   for (const item of items) {
     const moduleKey = inferModuleKey(item);
-    const targetGroup = groups.find((group) => group.modules.includes(moduleKey)) || fallback;
+    const targetGroup = groups.find((group) => group.modules.includes(moduleKey)
+      || (group.paths || []).includes(item.path)) || fallback;
     targetGroup.items.push({ ...item, moduleKey });
   }
 

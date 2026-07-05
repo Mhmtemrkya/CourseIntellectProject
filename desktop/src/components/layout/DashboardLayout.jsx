@@ -22,7 +22,7 @@ const pageTransition = {
 };
 
 export function DashboardLayout() {
-  const { isAuthenticated, user, drawerOpen, drawerContent, closeDrawer, sidebarCollapsed } = useApp();
+  const { isAuthenticated, isAuthLoading, user, drawerOpen, drawerContent, closeDrawer, sidebarCollapsed } = useApp();
   const location = useLocation();
   const pageRef = useRef(null);
   const [isServiceDriver, setIsServiceDriver] = useState(false);
@@ -57,6 +57,16 @@ export function DashboardLayout() {
     }, pageRef);
     return () => context.revert();
   }, [location.pathname]);
+
+  // Oturum deposu async açılır; yüklenme bitmeden login'e atmak derin
+  // bağlantıyı (örn. /g/student/...) kaybettirir — bekle.
+  if (isAuthLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Yükleniyor...
+      </div>
+    );
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
