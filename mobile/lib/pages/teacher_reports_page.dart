@@ -398,7 +398,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
           ),
           pw.SizedBox(height: 16),
           pw.Text(
-            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.'.tr,
+            'Bu rapor SchoolAsist mobil rapor merkezinden oluşturulmuştur.'.tr,
             style: const pw.TextStyle(fontSize: 10),
           ),
         ],
@@ -427,7 +427,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          subject: 'Course Intellect Raporu',
+          subject: 'SchoolAsist Raporu',
         ),
       );
     } catch (error) {
@@ -499,7 +499,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
       return;
     }
     final text = [
-      'Course Intellect Rapor Özeti',
+      'SchoolAsist Rapor Özeti',
       'Sınıf: ${report['className'] ?? '-'}',
       if ((report['studentName']?.toString() ?? '').isNotEmpty)
         'Öğrenci: ${report['studentName']}',
@@ -3147,7 +3147,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
           ),
           pw.SizedBox(height: 16),
           pw.Text(
-            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.'.tr,
+            'Bu rapor SchoolAsist mobil rapor merkezinden oluşturulmuştur.'.tr,
             style: const pw.TextStyle(fontSize: 10),
           ),
         ],
@@ -3167,7 +3167,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
       await SharePlus.instance.share(
         ShareParams(
           files: [XFile(file.path)],
-          subject: 'Course Intellect Raporu',
+          subject: 'SchoolAsist Raporu',
         ),
       );
     } catch (error) {

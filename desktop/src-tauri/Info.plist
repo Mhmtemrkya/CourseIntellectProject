@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- macOS, kamera/mikrofona erişen uygulamalarda kullanıcıya gösterilecek
+         bu açıklamaları zorunlu tutar; eksikse erişim reddedilir/çöker. Tauri
+         v2 bu dosyayı uygulama paketinin Info.plist'ine birleştirir. -->
+    <key>NSCameraUsageDescription</key>
+    <string>Sınav gözetimi sırasında kimlik doğrulama ve güvenlik için kamera kullanılır.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Canlı ders ve sesli özellikler için mikrofon kullanılabilir.</string>
+</dict>
+</plist>

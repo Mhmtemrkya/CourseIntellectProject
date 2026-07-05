@@ -23,7 +23,7 @@ class AppSidebar extends StatelessWidget {
 
   static const double width = 280;
 
-  // Course Intellect mobil ve desktop ile uyumlu dark navy gradient.
+  // SchoolAsist mobil ve desktop ile uyumlu dark navy gradient.
   static const _gradientColors = [
     Color(0xFF08111F),
     Color(0xFF0B1628),

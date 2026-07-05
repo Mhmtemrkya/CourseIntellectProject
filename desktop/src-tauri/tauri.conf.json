@@ -12,7 +12,11 @@
   "plugins": {
     "deep-link": {
       "desktop": [
-        { "schemes": ["courseintellect"] }
+        {
+          "schemes": [
+            "courseintellect"
+          ]
+        }
       ]
     }
   },
@@ -53,6 +57,10 @@
         "sidebarImage": "installer/sidebar.bmp",
         "startMenuFolder": "SchoolAsist"
       }
+    },
+    "macOS": {
+      "entitlements": "Entitlements.plist",
+      "minimumSystemVersion": "10.15"
     }
   }
 }

@@ -75,7 +75,7 @@ class CafeteriaPdfService {
             mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
             children: [
               pw.Text(
-                'Course Intellect Yemekhane Sistemi',
+                'SchoolAsist Yemekhane Sistemi',
                 style: const pw.TextStyle(
                   fontSize: 9,
                   color: PdfColors.grey600,
@@ -153,7 +153,7 @@ class CafeteriaPdfService {
     await SharePlus.instance.share(
       ShareParams(
         files: [XFile(file.path)],
-        text: 'Course Intellect haftalık yemek programı',
+        text: 'SchoolAsist haftalık yemek programı',
       ),
     );
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-/// Course Intellect premium kart dili (desktop ile ortak):
+/// SchoolAsist premium kart dili (desktop ile ortak):
 /// koyu lacivert zemin / açık temada beyaz, ders bazlı vurgu rengi,
 /// filigran işaret ve turuncu marka parıltısı.
 class ResourceTheme {

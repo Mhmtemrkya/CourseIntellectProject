@@ -15,9 +15,9 @@ class RemotePushService {
   static final RemotePushService instance = RemotePushService._();
 
   static const _androidChannelId = 'course_intellect_general';
-  static const _androidChannelName = 'Course Intellect';
+  static const _androidChannelName = 'SchoolAsist';
   static const _androidChannelDescription =
-      'Course Intellect servis ve sistem bildirimleri';
+      'SchoolAsist servis ve sistem bildirimleri';
 
   final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();

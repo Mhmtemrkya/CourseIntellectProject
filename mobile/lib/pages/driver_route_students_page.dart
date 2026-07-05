@@ -1023,10 +1023,10 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
         distanceFilter: 10,
         intervalDuration: const Duration(seconds: 20),
         foregroundNotificationConfig: const ForegroundNotificationConfig(
-          notificationTitle: 'Course Intellect servis takibi açık',
+          notificationTitle: 'SchoolAsist servis takibi açık',
           notificationText:
               'Servis rotası boyunca şoför konumu veli ve okul ile paylaşılıyor.',
-          notificationChannelName: 'Course Intellect Servis Konumu',
+          notificationChannelName: 'SchoolAsist Servis Konumu',
           enableWakeLock: true,
           setOngoing: true,
         ),
