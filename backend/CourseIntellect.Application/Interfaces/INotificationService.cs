@@ -17,4 +17,22 @@ public interface IPushNotificationService
         string body,
         IReadOnlyDictionary<string, string>? data = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Adı verilen kullanıcının kayıtlı cihazlarına push gönderir
+    /// (PushDeviceRegistration.FullName eşleşmesi; UserId bilinmeyen akışlar için).</summary>
+    Task SendToUserByNameAsync(
+        string fullName,
+        string title,
+        string body,
+        IReadOnlyDictionary<string, string>? data = null,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Belirtilen roldeki (Student/Parent/Teacher/Admin...) tüm kayıtlı
+    /// cihazlara push gönderir. Tenant filtresi otomatik uygulanır.</summary>
+    Task SendToRoleAsync(
+        string role,
+        string title,
+        string body,
+        IReadOnlyDictionary<string, string>? data = null,
+        CancellationToken cancellationToken = default);
 }

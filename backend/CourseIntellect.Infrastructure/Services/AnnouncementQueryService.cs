@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class AnnouncementQueryService(CourseIntellectDbContext dbContext) : IAnnouncementQueryService
+public sealed class AnnouncementQueryService(
+    CourseIntellectDbContext dbContext,
+    IPushNotificationService pushNotificationService) : IAnnouncementQueryService
 {
     public async Task<IReadOnlyList<AnnouncementDto>> GetAnnouncementsAsync(
         string? audience,
@@ -55,6 +57,21 @@ public sealed class AnnouncementQueryService(CourseIntellectDbContext dbContext)
 
         await dbContext.Announcements.AddAsync(item, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Hedef kitleye telefon push'u. "Tüm Kurum" için başlıca roller ayrı ayrı.
+        var data = new Dictionary<string, string> { ["category"] = "announcement" };
+        var body = item.Detail.Length > 120 ? item.Detail[..120] + "…" : item.Detail;
+        var roles = item.Audience switch
+        {
+            "Ogrenci" => new[] { "Student" },
+            "Veli" => new[] { "Parent" },
+            "Ogretmen" => new[] { "Teacher" },
+            _ => new[] { "Student", "Parent", "Teacher" },
+        };
+        foreach (var role in roles)
+        {
+            await pushNotificationService.SendToRoleAsync(role, item.Title, body, data, cancellationToken);
+        }
 
         return new AnnouncementDto(item.Id, item.Title, item.Detail, item.Audience, item.DateLabel, item.ClassName, item.TeacherName);
     }

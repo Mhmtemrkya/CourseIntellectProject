@@ -21,7 +21,8 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/guidance")]
 public sealed class GuidanceController(
     CourseIntellectDbContext dbContext,
-    IStudyPlanService studyPlanService) : ControllerBase
+    IStudyPlanService studyPlanService,
+    IPushNotificationService pushNotificationService) : ControllerBase
 {
     private static string Normalize(string? value)
         => (value ?? string.Empty).Trim().ToLowerInvariant()
@@ -506,6 +507,15 @@ public sealed class GuidanceController(
         });
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Talep sahibine telefon push'u.
+        await pushNotificationService.SendToUserByNameAsync(
+            appointment.RequesterName,
+            request.Approved ? "Rehberlik randevunuz onaylandı" : "Rehberlik randevunuz reddedildi",
+            $"{appointment.CounselorName} • {appointment.Slot}",
+            new Dictionary<string, string> { ["category"] = "guidance" },
+            cancellationToken);
+
         return Ok(appointment);
     }
 

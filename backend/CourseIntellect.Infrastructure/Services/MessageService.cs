@@ -9,7 +9,8 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class MessageService(
     CourseIntellectDbContext dbContext,
-    IMessageRealtimeNotifier realtimeNotifier) : IMessageService
+    IMessageRealtimeNotifier realtimeNotifier,
+    IPushNotificationService pushNotificationService) : IMessageService
 {
     public async Task<IReadOnlyList<MessageThreadDto>> GetThreadsAsync(Guid currentUserId, string currentUserName, CancellationToken cancellationToken = default)
     {
@@ -210,6 +211,22 @@ public sealed class MessageService(
             participantKeys,
             BuildThreadDto(thread, thread.ParticipantTwoName, 0, item),
             cancellationToken);
+
+        // Alıcıya (thread'in diğer katılımcısı) telefon push'u — uygulama kapalıyken
+        // de mesajı görsün. Gönderenin kendisine gönderilmez.
+        var recipientName = Normalize(currentUserName) == thread.ParticipantOneName
+            ? thread.ParticipantTwoName
+            : thread.ParticipantOneName;
+        if (!string.IsNullOrWhiteSpace(recipientName))
+        {
+            var pushBody = previewText.Length > 120 ? previewText[..120] + "…" : previewText;
+            await pushNotificationService.SendToUserByNameAsync(
+                recipientName,
+                currentUserName,
+                pushBody,
+                new Dictionary<string, string> { ["category"] = "message", ["threadId"] = thread.Id.ToString() },
+                cancellationToken);
+        }
 
         return messageDto;
     }

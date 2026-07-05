@@ -10,7 +10,8 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class StudentFinanceService(
     CourseIntellectDbContext dbContext,
-    INotificationService notificationService) : IStudentFinanceService
+    INotificationService notificationService,
+    IParentNotifier parentNotifier) : IStudentFinanceService
 {
     public async Task<EnrollmentContractDto> CreateEnrollmentAsync(
         CreateEnrollmentRequest request,
@@ -638,13 +639,14 @@ public sealed class StudentFinanceService(
             if (string.IsNullOrWhiteSpace(group.Key)) continue;
             var totalDue = group.Sum(item => item.Amount - item.PaidAmount);
             var isOverdue = group.Any(item => item.DueDateUtc < now);
-            await notificationService.CreateNotificationAsync(new CreateNotificationRequest(
+            // Veliye hem uygulama içi bildirim hem de telefona push (ParentNotifier
+            // öğrencinin velisini çözer ve iki kanaldan bildirir).
+            await parentNotifier.NotifyStudentParentAsync(
+                group.Key,
                 isOverdue ? "Geciken ödeme hatırlatması" : "Yaklaşan ödeme hatırlatması",
                 $"{group.Key} için {(isOverdue ? "vadesi geçen" : "yaklaşan")} {totalDue.ToString("N2")} ₺ taksit bulunuyor.",
-                "Şimdi",
-                group.Key,
-                "Parent",
-                "FinanceReminder"), cancellationToken);
+                "FinanceReminder",
+                cancellationToken);
             notified++;
         }
 

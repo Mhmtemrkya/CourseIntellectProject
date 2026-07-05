@@ -63,6 +63,65 @@ public sealed class FcmPushNotificationService(
         }
     }
 
+    private static string NormalizeName(string? value)
+        => (value ?? string.Empty).Trim().ToLowerInvariant()
+            .Replace("ı", "i").Replace("ğ", "g").Replace("ü", "u")
+            .Replace("ş", "s").Replace("ö", "o").Replace("ç", "c");
+
+    public async Task SendToUserByNameAsync(
+        string fullName,
+        string title,
+        string body,
+        IReadOnlyDictionary<string, string>? data = null,
+        CancellationToken cancellationToken = default)
+        => await SendToDevicesAsync(
+            d => d.IsActive && d.FullName != string.Empty,
+            registrations => registrations.Where(d => NormalizeName(d.FullName) == NormalizeName(fullName)),
+            title, body, data, cancellationToken);
+
+    public async Task SendToRoleAsync(
+        string role,
+        string title,
+        string body,
+        IReadOnlyDictionary<string, string>? data = null,
+        CancellationToken cancellationToken = default)
+        => await SendToDevicesAsync(
+            d => d.IsActive && d.Role != string.Empty,
+            registrations => registrations.Where(d => NormalizeName(d.Role) == NormalizeName(role)),
+            title, body, data, cancellationToken);
+
+    /// <summary>Ortak push gönderim akışı: DB'den aktif cihazları çeker, verilen
+    /// filtreyle daraltır ve her cihaza gönderir. Hatalar ana işlemi bloklamaz.</summary>
+    private async Task SendToDevicesAsync(
+        System.Linq.Expressions.Expression<Func<PushDeviceRegistration, bool>> dbFilter,
+        Func<List<PushDeviceRegistration>, IEnumerable<PushDeviceRegistration>> refine,
+        string title,
+        string body,
+        IReadOnlyDictionary<string, string>? data,
+        CancellationToken cancellationToken)
+    {
+        if (!options.Value.IsConfigured) return;
+        try
+        {
+            var candidates = await dbContext.PushDeviceRegistrations
+                .Where(dbFilter)
+                .OrderByDescending(x => x.LastSeenAtUtc)
+                .ToListAsync(cancellationToken);
+            var devices = refine(candidates).ToList();
+            if (devices.Count == 0) return;
+
+            var bearer = await GetAccessTokenAsync(cancellationToken);
+            foreach (var device in devices)
+            {
+                await SendToDeviceAsync(device, title, body, data, bearer, cancellationToken);
+            }
+        }
+        catch (Exception ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            logger.LogWarning(ex, "FCM push (by name/role) failed. The main workflow will continue.");
+        }
+    }
+
     private async Task SendToDeviceAsync(
         PushDeviceRegistration device,
         string title,

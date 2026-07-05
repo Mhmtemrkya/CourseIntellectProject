@@ -1,5 +1,6 @@
 using System.Text.Json;
 using CourseIntellect.Application.DTOs.Homework;
+using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
@@ -7,7 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class HomeworkService(CourseIntellectDbContext dbContext) : IHomeworkService
+public sealed class HomeworkService(
+    CourseIntellectDbContext dbContext,
+    INotificationService notificationService,
+    IPushNotificationService pushNotificationService,
+    IParentNotifier parentNotifier) : IHomeworkService
 {
     public async Task<IReadOnlyList<HomeworkAssignmentDto>> GetAssignmentsAsync(CancellationToken cancellationToken = default)
     {
@@ -42,6 +47,30 @@ public sealed class HomeworkService(CourseIntellectDbContext dbContext) : IHomew
 
         await dbContext.Set<HomeworkAssignment>().AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Sınıftaki öğrencilere ve velilerine yeni ödev bildirimi (uygulama içi + push).
+        try
+        {
+            var normalizedClass = entity.ClassName.Trim().ToLowerInvariant();
+            var students = (await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken))
+                .Where(s => s.ClassName.Trim().ToLowerInvariant() == normalizedClass)
+                .ToList();
+            var title = "Yeni ödev";
+            var message = $"{entity.Subject} — {entity.Title} (son teslim: {entity.DeadlineLabel})";
+            var data = new Dictionary<string, string> { ["category"] = "homework" };
+            foreach (var student in students)
+            {
+                await notificationService.CreateNotificationAsync(new CreateNotificationRequest(
+                    title, message, "Şimdi", student.FullName, "Student", "homework"), cancellationToken);
+                await pushNotificationService.SendToUserByNameAsync(student.FullName, title, message, data, cancellationToken);
+                await parentNotifier.NotifyStudentParentAsync(student.FullName, title, $"{student.FullName}: {message}", "homework", cancellationToken);
+            }
+        }
+        catch
+        {
+            // Bildirim ödev oluşturmayı bloklamamalı.
+        }
+
         return ToDto(entity, []);
     }
 

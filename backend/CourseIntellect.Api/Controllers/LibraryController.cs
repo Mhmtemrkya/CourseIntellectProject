@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Text.Json;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,9 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/library")]
 public sealed class LibraryController(
     CourseIntellectDbContext dbContext,
-    IHttpClientFactory httpClientFactory) : ControllerBase
+    IHttpClientFactory httpClientFactory,
+    IPushNotificationService pushNotificationService,
+    IParentNotifier parentNotifier) : ControllerBase
 {
     private static string Normalize(string? value)
         => (value ?? string.Empty).Trim().ToLowerInvariant()
@@ -394,20 +397,28 @@ public sealed class LibraryController(
             var overdue = loan.DueAtUtc < now;
             var title = overdue ? "Kitap iade süresi geçti" : "Kitap iade süresi yaklaşıyor";
             var message = $"{loan.BookTitle} — iade tarihi {loan.DueAtUtc:dd.MM.yyyy}";
+            // Öğrenci: uygulama içi bildirim
             dbContext.Notifications.Add(new NotificationItem
             {
                 Title = title, Message = message,
                 TimeLabel = now.ToString("dd.MM.yyyy HH:mm"),
                 Audience = loan.StudentName, TargetRole = "Student", Category = "library",
             });
-            dbContext.Notifications.Add(new NotificationItem
-            {
-                Title = title, Message = $"{loan.StudentName}: {message}",
-                TimeLabel = now.ToString("dd.MM.yyyy HH:mm"),
-                Audience = loan.StudentName, TargetRole = "Parent", Category = "library",
-            });
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Öğrenciye telefon push + veliye (ParentNotifier: uygulama içi + push).
+        foreach (var loan in loans)
+        {
+            var overdue = loan.DueAtUtc < now;
+            var title = overdue ? "Kitap iade süresi geçti" : "Kitap iade süresi yaklaşıyor";
+            var message = $"{loan.BookTitle} — iade tarihi {loan.DueAtUtc:dd.MM.yyyy}";
+            await pushNotificationService.SendToUserByNameAsync(
+                loan.StudentName, title, message,
+                new Dictionary<string, string> { ["category"] = "library" }, cancellationToken);
+            await parentNotifier.NotifyStudentParentAsync(
+                loan.StudentName, title, $"{loan.StudentName}: {message}", "library", cancellationToken);
+        }
         return Ok(new { notified = loans.Count });
     }
 
