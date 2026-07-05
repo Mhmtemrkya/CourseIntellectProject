@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   Clock,
   HeartHandshake,
+  Library,
   Users,
   UserCheck,
   GraduationCap,
@@ -190,6 +191,12 @@ export const menuConfigs = {
       color: "#84cc16",
     },
     {
+      path: "/library",
+      icon: Library,
+      label: "Kütüphane",
+      color: "#0ea5e9",
+    },
+    {
       path: "/admin/finance-approvals",
       icon: CheckSquare,
       label: "Finans Onayları",
@@ -372,6 +379,12 @@ export const menuConfigs = {
       icon: Calendar,
       label: "Ders Programı",
       color: "#06b6d4",
+    },
+    {
+      path: "/library",
+      icon: Library,
+      label: "Kütüphane",
+      color: "#0ea5e9",
     },
     {
       path: "/admin/records",
@@ -601,6 +614,12 @@ export const menuConfigs = {
       color: "#22c55e",
     },
     {
+      path: "/g/library",
+      icon: Library,
+      label: "Kütüphane",
+      color: "#0ea5e9",
+    },
+    {
       path: "/chat",
       icon: MessageSquare,
       label: "Mesajlar",
@@ -723,6 +742,12 @@ export const menuConfigs = {
       icon: Calendar,
       label: "Görüşme Onayları",
       color: "#ec4899",
+    },
+    {
+      path: "/t/library",
+      icon: Library,
+      label: "Kütüphane",
+      color: "#0ea5e9",
     },
     { path: "/t/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     {
@@ -852,6 +877,12 @@ export const menuConfigs = {
       label: "Rehberlik",
       color: "#f97316",
     },
+    {
+      path: "/s/library",
+      icon: Library,
+      label: "Kütüphane",
+      color: "#0ea5e9",
+    },
     { path: "/s/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/s/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -959,6 +990,12 @@ export const menuConfigs = {
       label: "Rehberlik",
       color: "#f97316",
     },
+    {
+      path: "/p/library",
+      icon: Library,
+      label: "Kütüphane",
+      color: "#0ea5e9",
+    },
     { path: "/p/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -1022,7 +1059,7 @@ const ROLE_MENU_GROUPS = {
   ],
   counselor: [
     { id: "main", title: "Rehberlik", modules: [], paths: ["/g/dashboard"] },
-    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports"] },
+    { id: "students", title: "Öğrenci Takibi", modules: [], paths: ["/g/sessions", "/g/planner", "/g/appointments", "/g/inventories", "/g/reports", "/g/library"] },
     { id: "communication", title: "İletişim", modules: ["chat"], paths: ["/chat"] },
     { id: "system", title: "Sistem", modules: ["profile", "system"], paths: ["/settings"] },
   ],

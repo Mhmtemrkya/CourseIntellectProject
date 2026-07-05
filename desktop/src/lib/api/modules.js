@@ -1803,3 +1803,98 @@ export async function fetchGuidanceClassReport(className) {
     params: className ? { className } : undefined,
   });
 }
+
+// --- Kütüphane (Library) ---
+
+export async function fetchLibraryBooks(params = {}) {
+  const response = await api.get('/api/library/books', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchLibraryCategories() {
+  const response = await api.get('/api/library/categories');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createLibraryBook(payload) {
+  return api.post('/api/library/books', payload);
+}
+
+export async function createLibraryBooksBulk(books) {
+  return api.post('/api/library/books/bulk', { books });
+}
+
+export async function updateLibraryBook(id, payload) {
+  return api.put(`/api/library/books/${id}`, payload);
+}
+
+export async function deleteLibraryBook(id) {
+  return api.delete(`/api/library/books/${id}`);
+}
+
+export async function lookupIsbn(isbn) {
+  return api.get('/api/library/isbn-lookup', { params: { isbn } });
+}
+
+export async function fetchLibraryLoans(params = {}) {
+  const response = await api.get('/api/library/loans', {
+    params: Object.keys(params).length > 0 ? params : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function checkoutLibraryBook(payload) {
+  return api.post('/api/library/loans', payload);
+}
+
+export async function returnLibraryLoan(id) {
+  return api.patch(`/api/library/loans/${id}/return`, {});
+}
+
+export async function extendLibraryLoan(id) {
+  return api.patch(`/api/library/loans/${id}/extend`, {});
+}
+
+export async function sendLibraryReminders() {
+  return api.post('/api/library/reminders', {});
+}
+
+export async function reserveLibraryBook(bookId) {
+  return api.post('/api/library/reservations', { bookId });
+}
+
+export async function cancelLibraryReservation(id) {
+  return api.delete(`/api/library/reservations/${id}`);
+}
+
+export async function createLibraryRecommendation(payload) {
+  return api.post('/api/library/recommendations', payload);
+}
+
+export async function fetchLibraryRecommendations() {
+  const response = await api.get('/api/library/recommendations');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchMyLibrary() {
+  return api.get('/api/library/my');
+}
+
+export async function fetchParentLibrary() {
+  const response = await api.get('/api/library/parent/children');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchLibraryStats() {
+  return api.get('/api/library/stats');
+}
+
+export async function fetchLibrarySettings() {
+  return api.get('/api/library/settings');
+}
+
+export async function saveLibrarySettings(payload) {
+  return api.put('/api/library/settings', payload);
+}

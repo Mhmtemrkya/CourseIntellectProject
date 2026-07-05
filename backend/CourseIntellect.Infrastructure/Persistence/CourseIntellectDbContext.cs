@@ -62,6 +62,11 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<GuidanceGoal> GuidanceGoals => Set<GuidanceGoal>();
     public DbSet<GuidanceRiskReview> GuidanceRiskReviews => Set<GuidanceRiskReview>();
     public DbSet<GuidanceInventoryAssignment> GuidanceInventories => Set<GuidanceInventoryAssignment>();
+    public DbSet<LibraryBook> LibraryBooks => Set<LibraryBook>();
+    public DbSet<LibraryLoan> LibraryLoans => Set<LibraryLoan>();
+    public DbSet<LibraryReservation> LibraryReservations => Set<LibraryReservation>();
+    public DbSet<LibraryRecommendation> LibraryRecommendations => Set<LibraryRecommendation>();
+    public DbSet<LibrarySettings> LibrarySettings => Set<LibrarySettings>();
     public DbSet<MessageThread> MessageThreads => Set<MessageThread>();
     public DbSet<MessageItem> MessageItems => Set<MessageItem>();
     public DbSet<ContentItem> ContentItems => Set<ContentItem>();
@@ -216,6 +221,66 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Net).HasPrecision(6, 2);
+        });
+
+        modelBuilder.Entity<LibraryBook>(entity =>
+        {
+            entity.ToTable("library_books");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(300).IsRequired();
+            entity.Property(x => x.Author).HasMaxLength(200);
+            entity.Property(x => x.Publisher).HasMaxLength(200);
+            entity.Property(x => x.Isbn).HasMaxLength(20);
+            entity.Property(x => x.Category).HasMaxLength(100);
+            entity.Property(x => x.Shelf).HasMaxLength(50);
+            entity.HasIndex(x => x.Isbn);
+            entity.HasIndex(x => x.Title);
+        });
+
+        modelBuilder.Entity<LibraryLoan>(entity =>
+        {
+            entity.ToTable("library_loans");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.BookTitle).HasMaxLength(300);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ClassName).HasMaxLength(100);
+            entity.Property(x => x.IssuedBy).HasMaxLength(150);
+            entity.Property(x => x.FineAmount).HasPrecision(10, 2);
+            entity.HasIndex(x => x.BookId);
+            entity.HasIndex(x => x.StudentName);
+        });
+
+        modelBuilder.Entity<LibraryReservation>(entity =>
+        {
+            entity.ToTable("library_reservations");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.BookTitle).HasMaxLength(300);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(20);
+            entity.HasIndex(x => x.BookId);
+        });
+
+        modelBuilder.Entity<LibraryRecommendation>(entity =>
+        {
+            entity.ToTable("library_recommendations");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.BookTitle).HasMaxLength(300);
+            entity.Property(x => x.TeacherName).HasMaxLength(150);
+            entity.Property(x => x.StudentName).HasMaxLength(150);
+            entity.Property(x => x.ClassName).HasMaxLength(100);
+            entity.Property(x => x.Note).HasMaxLength(500);
+        });
+
+        modelBuilder.Entity<LibrarySettings>(entity =>
+        {
+            entity.ToTable("library_settings");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.FinePerDay).HasPrecision(10, 2);
         });
 
         modelBuilder.Entity<GuidanceSessionRecord>(entity =>

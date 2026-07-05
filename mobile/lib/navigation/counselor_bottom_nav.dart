@@ -6,6 +6,7 @@ import 'package:student/pages/counselor_reports_page.dart';
 import 'package:student/pages/teacher_messages_page.dart';
 import 'package:student/pages/teacher_profile_page.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
+import 'package:student/pages/teacher_library_page.dart';
 
 class CounselorBottomNav extends StatelessWidget {
   const CounselorBottomNav({super.key});
@@ -38,6 +39,12 @@ class CounselorBottomNav extends StatelessWidget {
           label: 'Rapor',
           pageBuilder: (_) => const CounselorReportsPage(),
           sidebarColor: const Color(0xFF22C55E),
+        ),
+        AdaptiveDestination(
+          icon: Icons.local_library_rounded,
+          label: 'Kütüphane',
+          pageBuilder: (_) => const TeacherLibraryPage(),
+          sidebarColor: const Color(0xFF0EA5E9),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

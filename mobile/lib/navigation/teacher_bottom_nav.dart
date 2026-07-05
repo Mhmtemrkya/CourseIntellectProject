@@ -6,6 +6,7 @@ import 'package:student/pages/teacher_messages_page.dart';
 import 'package:student/pages/teacher_profile_page.dart';
 import 'package:student/pages/teacher_schedule_page.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
+import 'package:student/pages/teacher_library_page.dart';
 
 class TeacherBottomNav extends StatelessWidget {
   const TeacherBottomNav({super.key});
@@ -38,6 +39,12 @@ class TeacherBottomNav extends StatelessWidget {
           label: 'Görevlerim',
           pageBuilder: (_) => const TeacherDutiesPage(),
           sidebarColor: const Color(0xFFF97316),
+        ),
+        AdaptiveDestination(
+          icon: Icons.local_library_rounded,
+          label: 'Kütüphane',
+          pageBuilder: (_) => const TeacherLibraryPage(),
+          sidebarColor: const Color(0xFF0EA5E9),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

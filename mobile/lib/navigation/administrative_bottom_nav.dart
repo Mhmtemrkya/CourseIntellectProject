@@ -6,6 +6,7 @@ import '../pages/administrative_profile_page.dart';
 import '../pages/administrative_records_page.dart';
 import '../pages/teacher_reports_page.dart';
 import '../widgets/adaptive_scaffold.dart';
+import '../pages/library_manage_page.dart';
 
 class AdministrativeBottomNav extends StatelessWidget {
   const AdministrativeBottomNav({super.key});
@@ -38,6 +39,12 @@ class AdministrativeBottomNav extends StatelessWidget {
           label: 'Mesajlar',
           pageBuilder: (_) => const AdministrativeMessagesPage(),
           sidebarColor: const Color(0xFF2563EB),
+        ),
+        AdaptiveDestination(
+          icon: Icons.local_library_rounded,
+          label: 'Kütüphane',
+          pageBuilder: (_) => const LibraryManagePage(),
+          sidebarColor: const Color(0xFF0EA5E9),
         ),
         AdaptiveDestination(
           icon: Icons.bar_chart_rounded,

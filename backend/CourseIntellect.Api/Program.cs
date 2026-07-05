@@ -51,6 +51,8 @@ builder.Services.Configure<FormOptions>(options =>
 });
 
 builder.Services.AddControllers();
+// Kütüphane ISBN sorgusu (Open Library) sunucu tarafında yapılır.
+builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSignalR(options =>
 {

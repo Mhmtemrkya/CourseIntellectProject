@@ -7,6 +7,7 @@ import '../pages/veli_mesajlar_page.dart';
 import '../pages/veli_odeme_page.dart';
 import '../pages/veli_profile_page.dart';
 import '../widgets/adaptive_scaffold.dart';
+import '../pages/veli_library_page.dart';
 
 class VeliBottomNav extends StatelessWidget {
   const VeliBottomNav({super.key});
@@ -45,6 +46,12 @@ class VeliBottomNav extends StatelessWidget {
           label: 'Rehberlik',
           pageBuilder: (_) => const VeliGuidancePage(),
           sidebarColor: const Color(0xFFF7941D),
+        ),
+        AdaptiveDestination(
+          icon: Icons.local_library_rounded,
+          label: 'Kütüphane',
+          pageBuilder: (_) => const VeliLibraryPage(),
+          sidebarColor: const Color(0xFF0EA5E9),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

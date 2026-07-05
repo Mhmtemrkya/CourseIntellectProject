@@ -6,6 +6,7 @@ import 'package:student/pages/student_guidance_page.dart';
 import 'package:student/pages/student_home_page.dart';
 import 'package:student/pages/profile_page.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
+import 'package:student/pages/student_library_page.dart';
 
 class BottomNav extends StatelessWidget {
   const BottomNav({super.key});
@@ -44,6 +45,12 @@ class BottomNav extends StatelessWidget {
           label: 'Rehberlik',
           pageBuilder: (_) => const StudentGuidancePage(),
           sidebarColor: const Color(0xFFF7941D),
+        ),
+        AdaptiveDestination(
+          icon: Icons.local_library_rounded,
+          label: 'Kütüphane',
+          pageBuilder: (_) => const StudentLibraryPage(),
+          sidebarColor: const Color(0xFF0EA5E9),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

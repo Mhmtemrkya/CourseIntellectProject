@@ -60,6 +60,8 @@ import GuidanceAppointments from "./pages/guidance/GuidanceAppointments";
 import GuidanceInventories from "./pages/guidance/GuidanceInventories";
 import GuidanceReports from "./pages/guidance/GuidanceReports";
 import GuidanceRequest from "./pages/guidance/GuidanceRequest";
+import LibraryPage from "./pages/library/LibraryPage";
+import LibraryUserPage from "./pages/library/LibraryUserPage";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherSchedule from "./pages/teacher/TeacherSchedule";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
@@ -350,6 +352,13 @@ function App() {
               <Route path="/g/reports" element={<GuidanceReports />} />
               <Route path="/s/guidance" element={<GuidanceRequest />} />
               <Route path="/p/guidance" element={<GuidanceRequest />} />
+
+              {/* Kütüphane */}
+              <Route path="/library" element={<LibraryPage />} />
+              <Route path="/s/library" element={<LibraryUserPage />} />
+              <Route path="/p/library" element={<LibraryUserPage />} />
+              <Route path="/t/library" element={<LibraryUserPage />} />
+              <Route path="/g/library" element={<LibraryUserPage />} />
 
               {/* Teacher Routes */}
               <Route path="/t/dashboard" element={<TeacherDashboard />} />
