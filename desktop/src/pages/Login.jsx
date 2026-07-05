@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { useTheme } from "../context/ThemeContext";
+import { useLanguage } from "../lib/i18n/LanguageContext";
 import { getUserHomePath } from "../lib/auth";
 import { requestPasswordReset } from "../lib/api/modules";
 import { Button } from "../components/ui/button";
@@ -97,6 +98,7 @@ export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated, user } = useApp();
   const { refreshBranding } = useTheme();
+  const { language, setLanguage } = useLanguage();
   const { toast } = useToast();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -229,6 +231,15 @@ export default function Login() {
       <DotGrid className="left-[38%] top-10 hidden lg:block" />
       <DotGrid className="right-8 top-24 hidden lg:block" color={ORANGE} opacity={0.8} />
       <DotGrid className="right-24 bottom-16 hidden xl:block" color={ORANGE} opacity={0.5} />
+
+      {/* Dil değiştirici */}
+      <button
+        onClick={() => setLanguage(language === "tr" ? "en" : "tr")}
+        className="absolute right-40 top-4 z-30 rounded-full bg-black/25 px-3 py-1 text-xs font-bold text-white shadow backdrop-blur hover:bg-black/40 transition-all"
+        type="button"
+      >
+        {language === "tr" ? "EN" : "TR"}
+      </button>
 
       {/* Uygulamayı Kapat */}
       <button

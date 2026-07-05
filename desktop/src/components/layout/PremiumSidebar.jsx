@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
+import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
@@ -133,6 +134,7 @@ export function PremiumSidebar() {
   } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
+  const { language, setLanguage } = useLanguage();
   const light = resolvedTheme === "light";
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
   const [disabledFeatures, setDisabledFeatures] = useState(null);
@@ -555,6 +557,19 @@ export function PremiumSidebar() {
                 </button>
               </TooltipTrigger>
               <TooltipContent side="right">{light ? "Koyu tema" : "Açık tema"}</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={() => setLanguage(language === "tr" ? "en" : "tr")}
+                  className={cn("flex h-9 w-9 items-center justify-center rounded-[10px] text-[11px] font-black tracking-wide transition hover:bg-foreground/10", light ? "text-slate-500 hover:text-slate-950" : "text-foreground/55 hover:text-white")}
+                  aria-label={language === "tr" ? "Switch to English" : "Türkçeye geç"}
+                >
+                  {language === "tr" ? "EN" : "TR"}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right">{language === "tr" ? "English" : "Türkçe"}</TooltipContent>
             </Tooltip>
             {!compact && (
               <div className="min-w-0 px-2 text-center">

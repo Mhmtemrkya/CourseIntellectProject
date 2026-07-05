@@ -4,6 +4,7 @@ import { lazyWithReload } from "./lib/lazyWithReload";
 import { BrowserRouter, HashRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AppProvider } from "./context/AppContext";
 import { ThemeProvider } from "./context/ThemeContext";
+import { LanguageProvider } from "./lib/i18n/LanguageContext";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Toaster } from "./components/ui/toaster";
 
@@ -239,6 +240,7 @@ function App() {
     : BrowserRouter;
 
   return (
+    <LanguageProvider>
     <ThemeProvider defaultTheme="system" storageKey="courseintellect-theme">
       <AppProvider>
         <MaintenanceGate>
@@ -451,6 +453,7 @@ function App() {
         </MaintenanceGate>
       </AppProvider>
     </ThemeProvider>
+    </LanguageProvider>
   );
 }
 
