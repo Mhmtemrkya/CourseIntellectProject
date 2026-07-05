@@ -9,41 +9,47 @@ import { SmoothScrollProvider } from "@/components/layout/smooth-scroll-provider
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CourseIntellect - Eğitimde Yeni Nesil Deneyim",
-  description:
-    "Öğretmen, öğrenci ve veliler için tasarlanmış akıllı eğitim platformu. Ders takibi, anlık bildirimler ve detaylı raporlarla eğitimi kolaylaştırın.",
-  keywords: [
-    "eğitim",
-    "öğretmen",
-    "öğrenci",
-    "veli",
-    "okul yönetimi",
-    "ders takibi",
-    "eğitim platformu",
-  ],
-  authors: [{ name: "CourseIntellect" }],
-  generator: "Next.js",
-  icons: {
-    icon: [
-      { url: "/icon-light-32x32.png", media: "(prefers-color-scheme: light)" },
-      { url: "/icon-dark-32x32.png", media: "(prefers-color-scheme: dark)" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
-    apple: "/apple-icon.png",
+  metadataBase: new URL("https://www.courseintellect.com"),
+  title: {
+    default: "SchoolAsist — Eğitimi Kolaylaştıran Akıllı Çözümler",
+    template: "%s | SchoolAsist",
   },
+  description:
+    "Okulunuzun ve kurumunuzun tüm süreçleri tek platformda: yoklama, sınav, finans, rehberlik, kütüphane, veli iletişimi. Masaüstü + mobil, KVKK uyumlu.",
+  keywords: [
+    "okul yönetim sistemi",
+    "kurs yönetim programı",
+    "dershane otomasyonu",
+    "öğrenci takip sistemi",
+    "veli bilgilendirme",
+    "rehberlik modülü",
+    "eğitim platformu",
+    "SchoolAsist",
+  ],
+  authors: [{ name: "SchoolAsist" }],
+  generator: "Next.js",
   openGraph: {
-    title: "CourseIntellect - Eğitimde Yeni Nesil Deneyim",
-    description:
-      "Öğretmen, öğrenci ve veliler için tasarlanmış akıllı eğitim platformu.",
     type: "website",
     locale: "tr_TR",
+    alternateLocale: "en_US",
+    siteName: "SchoolAsist",
+    title: "SchoolAsist — Eğitimi Kolaylaştıran Akıllı Çözümler",
+    description:
+      "Yoklama, sınav, finans, rehberlik ve kütüphane tek platformda. Masaüstü + mobil, KVKK uyumlu.",
+    images: [{ url: "/images/logo.png", width: 512, height: 512, alt: "SchoolAsist" }],
   },
+  twitter: {
+    card: "summary",
+    title: "SchoolAsist — Eğitimi Kolaylaştıran Akıllı Çözümler",
+    description: "Kurumunuzun tüm süreçleri tek platformda.",
+  },
+  robots: { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#00354F",
+  themeColor: "#15294B",
 };
 
 export default function RootLayout({

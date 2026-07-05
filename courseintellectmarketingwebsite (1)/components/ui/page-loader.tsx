@@ -144,7 +144,7 @@ export function PageLoader({ variant = "home", title, subtitle, className }: Pag
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={64}
                 height={64}
                 className="object-contain"
@@ -335,9 +335,9 @@ export function LoginLoader() {
             className="relative w-32 h-32 rounded-full bg-background/80 backdrop-blur-sm shadow-2xl border border-border/30 flex items-center justify-center"
             animate={{
               boxShadow: [
-                "0 25px 50px -12px rgba(0,53,79,0.15)",
-                "0 25px 50px -12px rgba(217,121,11,0.15)",
-                "0 25px 50px -12px rgba(0,53,79,0.15)",
+                "0 25px 50px -12px rgba(21,41,75,0.15)",
+                "0 25px 50px -12px rgba(247,148,29,0.15)",
+                "0 25px 50px -12px rgba(21,41,75,0.15)",
               ],
             }}
             transition={{ duration: 4, repeat: Number.POSITIVE_INFINITY, ease: "easeInOut" }}
@@ -348,7 +348,7 @@ export function LoginLoader() {
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={90}
                 height={90}
                 className="object-contain"
@@ -546,7 +546,7 @@ export function FeaturesLoader() {
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={72}
                 height={72}
                 className="object-contain"
@@ -667,7 +667,7 @@ export function PricingLoader() {
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={72}
                 height={72}
                 className="object-contain"
@@ -780,7 +780,7 @@ export function DownloadLoader() {
             <motion.div animate={{ y: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Number.POSITIVE_INFINITY }}>
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={72}
                 height={72}
                 className="object-contain"
@@ -926,7 +926,7 @@ export function ContactLoader() {
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={72}
                 height={72}
                 className="object-contain"
@@ -1042,7 +1042,7 @@ export function LegalLoader({ title = "Sayfa yükleniyor..." }: { title?: string
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={64}
                 height={64}
                 className="object-contain"
@@ -1180,7 +1180,7 @@ export function AdminLoader({ title = "Panel yükleniyor..." }: { title?: string
             >
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect"
+                alt="SchoolAsist"
                 width={72}
                 height={72}
                 className="object-contain"

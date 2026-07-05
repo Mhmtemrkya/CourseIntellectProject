@@ -31,10 +31,10 @@ function makeScreenTexture(kind: "desktop" | "mobile") {
   ctx.fillStyle = bg
   ctx.fillRect(0, 0, w, h)
 
-  const orange = "#D9790B"
+  const orange = "#F7941D"
   const orangeWarm = "#FBB971"
-  const orangeSoft = "rgba(217, 121, 11, 0.18)"
-  const orangeMid = "rgba(217, 121, 11, 0.45)"
+  const orangeSoft = "rgba(247, 148, 29, 0.18)"
+  const orangeMid = "rgba(247, 148, 29, 0.45)"
   const ink = "rgba(255, 255, 255, 0.92)"
   const inkMid = "rgba(255, 255, 255, 0.5)"
   const inkDim = "rgba(255, 255, 255, 0.2)"
@@ -154,7 +154,7 @@ function makeScreenTexture(kind: "desktop" | "mobile") {
       const grd = ctx.createLinearGradient(0, by, 0, by + bh)
       const isHi = i === 9
       grd.addColorStop(0, isHi ? "rgba(251,185,113,0.95)" : "rgba(251,185,113,0.7)")
-      grd.addColorStop(1, isHi ? "rgba(217,121,11,0.65)" : "rgba(217,121,11,0.35)")
+      grd.addColorStop(1, isHi ? "rgba(247,148,29,0.65)" : "rgba(247,148,29,0.35)")
       ctx.fillStyle = grd
       roundRect(bx, by, barW - 8, bh, 5)
       ctx.fill()
@@ -238,7 +238,7 @@ function makeScreenTexture(kind: "desktop" | "mobile") {
 
     // Background subtle radial accent
     const radial = ctx.createRadialGradient(w / 2, h * 0.3, 0, w / 2, h * 0.3, w * 0.95)
-    radial.addColorStop(0, "rgba(217,121,11,0.07)")
+    radial.addColorStop(0, "rgba(247,148,29,0.07)")
     radial.addColorStop(1, "transparent")
     ctx.fillStyle = radial
     ctx.fillRect(0, 0, w, h)
@@ -308,12 +308,12 @@ function makeScreenTexture(kind: "desktop" | "mobile") {
     const heroT = 270
     const heroH = 220
     const heroGrad = ctx.createLinearGradient(pad, heroT, pad + (w - pad * 2), heroT + heroH)
-    heroGrad.addColorStop(0, "rgba(217,121,11,0.32)")
-    heroGrad.addColorStop(0.55, "rgba(217,121,11,0.18)")
-    heroGrad.addColorStop(1, "rgba(217,121,11,0.05)")
+    heroGrad.addColorStop(0, "rgba(247,148,29,0.32)")
+    heroGrad.addColorStop(0.55, "rgba(247,148,29,0.18)")
+    heroGrad.addColorStop(1, "rgba(247,148,29,0.05)")
     ctx.fillStyle = heroGrad
     roundRect(pad, heroT, w - pad * 2, heroH, 32); ctx.fill()
-    ctx.strokeStyle = "rgba(217,121,11,0.45)"
+    ctx.strokeStyle = "rgba(247,148,29,0.45)"
     ctx.lineWidth = 1.5
     ctx.stroke()
 
@@ -636,7 +636,7 @@ function Laptop({ progress }: { progress: number }) {
         <mesh position={[0, 0.02, 0.003]}>
           <planeGeometry args={[lidW * 0.95, lidH * 0.88]} />
           <meshBasicMaterial
-            color="#D9790B"
+            color="#F7941D"
             transparent
             opacity={0.07}
             blending={THREE.AdditiveBlending}
@@ -747,7 +747,7 @@ function Phone({ progress }: { progress: number }) {
       <mesh position={[0, 0, D / 2 + 0.008]}>
         <planeGeometry args={[W * 0.96, H * 0.96]} />
         <meshBasicMaterial
-          color="#D9790B"
+          color="#F7941D"
           transparent
           opacity={0.04}
           blending={THREE.AdditiveBlending}
@@ -807,7 +807,7 @@ function Phone({ progress }: { progress: number }) {
         {/* LED flash */}
         <mesh position={[0.07, 0.07, -0.016]}>
           <cylinderGeometry args={[0.024, 0.024, 0.004, 24]} />
-          <meshStandardMaterial color="#FBB971" emissive="#D9790B" emissiveIntensity={0.5} />
+          <meshStandardMaterial color="#FBB971" emissive="#F7941D" emissiveIntensity={0.5} />
         </mesh>
         {/* Lidar */}
         <mesh position={[-0.07, -0.07, -0.016]}>
@@ -820,7 +820,7 @@ function Phone({ progress }: { progress: number }) {
       <mesh position={[0, 0, -D]}>
         <planeGeometry args={[W * 1.7, H * 1.4]} />
         <meshBasicMaterial
-          color="#D9790B"
+          color="#F7941D"
           transparent
           opacity={0.06}
           blending={THREE.AdditiveBlending}
@@ -858,7 +858,7 @@ function Orbs() {
           position={[-4 + i * 1.4, 0, -3.5]}
         >
           <sphereGeometry args={[0.045, 16, 16]} />
-          <meshBasicMaterial color="#D9790B" toneMapped={false} />
+          <meshBasicMaterial color="#F7941D" toneMapped={false} />
         </mesh>
       ))}
     </>
@@ -890,7 +890,7 @@ export default function ThreeDPlatformScene({ progress }: { progress: number }) 
         shadow-mapSize-height={2048}
       />
       <directionalLight position={[-5, 2, 3]} intensity={0.7} color="#5499c7" />
-      <pointLight position={[0, 1.5, 4]} intensity={0.7} color="#D9790B" distance={9} />
+      <pointLight position={[0, 1.5, 4]} intensity={0.7} color="#F7941D" distance={9} />
       <pointLight position={[2, -1, 3]} intensity={0.4} color="#FBB971" distance={6} />
 
       <Float speed={1.2} rotationIntensity={0.12} floatIntensity={0.4}>

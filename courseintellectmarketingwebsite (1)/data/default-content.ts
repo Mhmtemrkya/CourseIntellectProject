@@ -2,7 +2,7 @@ import type { SiteContent } from "@/types/content"
 
 export const defaultContent: SiteContent = {
   navbar: {
-    logoText: "CourseIntellect",
+    logoText: "SchoolAsist",
     links: [
       { id: "1", label: "Anasayfa", href: "/" },
       { id: "2", label: "Özellikler", href: "/ozellikler" },
@@ -147,7 +147,7 @@ export const defaultContent: SiteContent = {
           role: "Matematik Öğretmeni",
           company: "Ankara Koleji",
           quote:
-            "CourseIntellect sayesinde öğrenci takibi çok kolaylaştı. Artık her öğrencinin gelişimini anlık olarak izleyebiliyorum.",
+            "SchoolAsist sayesinde öğrenci takibi çok kolaylaştı. Artık her öğrencinin gelişimini anlık olarak izleyebiliyorum.",
         },
         {
           id: "2",
@@ -172,7 +172,7 @@ export const defaultContent: SiteContent = {
       items: [
         {
           id: "1",
-          question: "CourseIntellect ücretsiz mi?",
+          question: "SchoolAsist ücretsiz mi?",
           answer:
             "Temel özelliklerimizi ücretsiz olarak kullanabilirsiniz. Gelişmiş özellikler için uygun fiyatlı paketlerimize göz atabilirsiniz.",
         },
@@ -213,7 +213,7 @@ export const defaultContent: SiteContent = {
   features: {
     hero: {
       title: "Tüm Özellikler",
-      subtitle: "CourseIntellect'in sunduğu kapsamlı özelliklerle eğitimi dönüştürün.",
+      subtitle: "SchoolAsist'in sunduğu kapsamlı özelliklerle eğitimi dönüştürün.",
     },
     categories: [
       { id: "all", name: "Tümü" },
@@ -277,7 +277,7 @@ export const defaultContent: SiteContent = {
 
   download: {
     hero: {
-      title: "CourseIntellect'i İndirin",
+      title: "SchoolAsist'i İndirin",
       subtitle: "Tüm platformlarda mükemmel deneyim",
     },
     platforms: [
@@ -393,7 +393,7 @@ export const defaultContent: SiteContent = {
       { id: "3", platform: "Instagram", url: "https://instagram.com/courseintellect", icon: "Instagram" },
       { id: "4", platform: "YouTube", url: "https://youtube.com/@courseintellect", icon: "Youtube" },
     ],
-    copyright: "© 2026 CourseIntellect. Tüm hakları saklıdır.",
+    copyright: "© 2026 SchoolAsist. Tüm hakları saklıdır.",
     legalLinks: [
       { id: "1", label: "Gizlilik Politikası", href: "/kvkk" },
       { id: "2", label: "Kullanım Şartları", href: "/kullanim-sartlari" },
@@ -401,7 +401,7 @@ export const defaultContent: SiteContent = {
   },
 
   general: {
-    siteName: "CourseIntellect",
+    siteName: "SchoolAsist",
     siteDescription: "Öğretmen, öğrenci ve veliler için tasarlanmış akıllı eğitim platformu.",
     siteKeywords: ["eğitim", "öğretmen", "öğrenci", "veli", "okul yönetimi", "ders takibi"],
   },

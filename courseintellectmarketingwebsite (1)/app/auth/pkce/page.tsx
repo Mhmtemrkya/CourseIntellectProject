@@ -113,7 +113,7 @@ function PkcePageInner() {
       <div className="w-full max-w-md">
         <div className="flex justify-center mb-6">
           <div className="flex items-center gap-2">
-            <Image src="/images/logo.png" alt="CourseIntellect" width={40} height={40} />
+            <Image src="/images/logo.png" alt="SchoolAsist" width={40} height={40} />
             <span className="text-xl font-bold">
               Course<span className="text-accent">Intellect</span>
             </span>
@@ -127,7 +127,7 @@ function PkcePageInner() {
               <CardTitle>Uygulama Girişi</CardTitle>
             </div>
             <CardDescription>
-              CourseIntellect uygulaması adına güvenli giriş yapmak için hesap bilgilerini gir.
+              SchoolAsist uygulaması adına güvenli giriş yapmak için hesap bilgilerini gir.
             </CardDescription>
           </CardHeader>
           <CardContent>

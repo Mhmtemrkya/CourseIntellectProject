@@ -361,7 +361,7 @@ function TicketCard({ ticket }: { ticket: SupportTicket }) {
           <div className="mt-3 rounded-lg border border-accent/25 bg-accent/[0.06] p-3">
             <div className="flex items-center gap-1.5 text-[10px] font-mono uppercase tracking-[0.18em] text-accent">
               <ShieldCheck className="h-3 w-3" />
-              CourseIntellect Yanıtı
+              SchoolAsist Yanıtı
             </div>
             <p className="mt-1.5 text-[13px] leading-relaxed text-foreground/90 line-clamp-3">
               {ticket.lastMessage}

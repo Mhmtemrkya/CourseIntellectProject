@@ -140,7 +140,7 @@ export default function LoginPage() {
           <Link href="/" className="flex items-center gap-3">
             <Image
               src="/images/logo.png"
-              alt="CourseIntellect"
+              alt="SchoolAsist"
               width={48}
               height={48}
               className="brightness-0 invert"
@@ -178,7 +178,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/images/logo.png" alt="CourseIntellect" width={40} height={40} />
+              <Image src="/images/logo.png" alt="SchoolAsist" width={40} height={40} />
               <span className="text-xl font-bold">
                 Course<span className="text-accent">Intellect</span>
               </span>

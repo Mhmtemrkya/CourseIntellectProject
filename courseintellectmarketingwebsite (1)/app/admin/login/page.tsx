@@ -101,7 +101,7 @@ export default function AdminLoginPage() {
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
             <Image
               src="/images/logo.png"
-              alt="CourseIntellect"
+              alt="SchoolAsist"
               width={80}
               height={80}
               className="brightness-0 invert mb-8"
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
             transition={{ delay: 0.4 }}
             className="text-lg text-white/70 text-center max-w-md"
           >
-            CourseIntellect platform yönetimi. Bu alan sadece geliştirici ekibi kullanımı içindir.
+            SchoolAsist platform yönetimi. Bu alan sadece geliştirici ekibi kullanımı içindir.
           </motion.p>
         </div>
       </div>
@@ -138,7 +138,7 @@ export default function AdminLoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center">
             <Link href="/" className="inline-flex items-center gap-2">
-              <Image src="/images/logo.png" alt="CourseIntellect" width={48} height={48} />
+              <Image src="/images/logo.png" alt="SchoolAsist" width={48} height={48} />
               <span className="text-xl font-bold text-primary">
                 Course<span className="text-accent">Intellect</span>
               </span>

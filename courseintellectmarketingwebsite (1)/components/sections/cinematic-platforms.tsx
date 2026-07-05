@@ -67,7 +67,7 @@ export function CinematicPlatforms() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(ellipse at 30% 50%, rgba(217,121,11,0.10), transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(0,53,79,0.5), transparent 60%)",
+              "radial-gradient(ellipse at 30% 50%, rgba(247,148,29,0.10), transparent 50%), radial-gradient(ellipse at 70% 50%, rgba(21,41,75,0.5), transparent 60%)",
           }}
         />
 
@@ -98,7 +98,7 @@ export function CinematicPlatforms() {
               style={{ opacity: 0.3 + titleOpacity * 0.7 }}
             >
               <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.32em] text-[#FBB971]/85">
-                <span aria-hidden className="inline-block h-px w-8 bg-[#D9790B]" />
+                <span aria-hidden className="inline-block h-px w-8 bg-[#F7941D]" />
                 <span>Platformlar · 3D</span>
               </div>
               <h2
@@ -135,7 +135,7 @@ export function CinematicPlatforms() {
                       className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 backdrop-blur-md"
                     >
                       <div className="flex items-center gap-2.5">
-                        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#D9790B]/15">
+                        <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#F7941D]/15">
                           <Icon className="h-4 w-4 text-[#FBB971]" />
                         </span>
                         <div>
@@ -156,7 +156,7 @@ export function CinematicPlatforms() {
                 className="mt-6 flex items-center gap-5"
               >
                 <Link href="/indir">
-                  <button className="group inline-flex h-12 items-center gap-2 rounded-full bg-[#D9790B] px-7 text-[14px] font-semibold tracking-tight text-[#00354F] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]">
+                  <button className="group inline-flex h-12 items-center gap-2 rounded-full bg-[#F7941D] px-7 text-[14px] font-semibold tracking-tight text-[#15294B] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]">
                     İndir
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </button>
@@ -176,8 +176,8 @@ export function CinematicPlatforms() {
         <div className="absolute left-6 top-28 z-10 font-mono text-[10px] uppercase tracking-[0.32em] text-white/40 md:left-14 lg:left-24">
           <div className="flex items-center gap-2">
             <span
-              className="inline-block h-1 w-1 rounded-full bg-[#D9790B]"
-              style={{ boxShadow: "0 0 6px #D9790B" }}
+              className="inline-block h-1 w-1 rounded-full bg-[#F7941D]"
+              style={{ boxShadow: "0 0 6px #F7941D" }}
             />
             <span>3D · Gerçek zamanlı render</span>
           </div>

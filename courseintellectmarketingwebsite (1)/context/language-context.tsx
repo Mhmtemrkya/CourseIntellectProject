@@ -217,7 +217,7 @@ const defaultTranslations: Record<Language, Translations> = {
     faq: {
       title: "Sıkça Sorulan Sorular",
       subtitle: "Merak ettiklerinizi yanıtlıyoruz",
-      q1: "CourseIntellect ücretsiz mi?",
+      q1: "SchoolAsist ücretsiz mi?",
       a1: "Temel özelliklerimizi ücretsiz olarak kullanabilirsiniz. Gelişmiş özellikler için uygun fiyatlı paketlerimize göz atabilirsiniz.",
       q2: "Hangi cihazlarda kullanabilirim?",
       a2: "Windows, macOS masaüstü uygulamalarımız ve iOS, Android mobil uygulamalarımız mevcuttur. Ayrıca web tarayıcınızdan da erişebilirsiniz.",
@@ -245,7 +245,7 @@ const defaultTranslations: Record<Language, Translations> = {
       helpCenter: "Yardım Merkezi",
       privacy: "Gizlilik Politikası",
       terms: "Kullanım Şartları",
-      copyright: "© 2026 CourseIntellect. Tüm hakları saklıdır.",
+      copyright: "© 2026 SchoolAsist. Tüm hakları saklıdır.",
     },
     common: {
       loading: "Yükleniyor...",
@@ -344,7 +344,7 @@ const defaultTranslations: Record<Language, Translations> = {
     faq: {
       title: "Frequently Asked Questions",
       subtitle: "We answer your questions",
-      q1: "Is CourseIntellect free?",
+      q1: "Is SchoolAsist free?",
       a1: "You can use our basic features for free. Check out our affordable packages for advanced features.",
       q2: "Which devices can I use?",
       a2: "We have Windows, macOS desktop apps and iOS, Android mobile apps. You can also access from your web browser.",
@@ -372,7 +372,7 @@ const defaultTranslations: Record<Language, Translations> = {
       helpCenter: "Help Center",
       privacy: "Privacy Policy",
       terms: "Terms of Use",
-      copyright: "© 2026 CourseIntellect. All rights reserved.",
+      copyright: "© 2026 SchoolAsist. All rights reserved.",
     },
     common: {
       loading: "Loading...",

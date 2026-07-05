@@ -50,13 +50,13 @@ export function Footer() {
             <Link href="/" className="flex items-center gap-2 mb-6">
               <Image
                 src="/images/logo.png"
-                alt="CourseIntellect Logo"
+                alt="SchoolAsist Logo"
                 width={44}
                 height={44}
                 className="brightness-0 invert"
               />
               <span className="text-xl font-bold">
-                Course<span className="text-accent">Intellect</span>
+                Course<span className="text-accent">Asist</span>
               </span>
             </Link>
             <p className="text-primary-foreground/70 mb-6 max-w-sm leading-relaxed">{footerContent.description}</p>

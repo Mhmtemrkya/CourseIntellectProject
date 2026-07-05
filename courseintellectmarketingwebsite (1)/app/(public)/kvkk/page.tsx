@@ -13,14 +13,14 @@ const sections = [
   {
     id: "giris",
     title: "1. Giriş",
-    content: `CourseIntellect olarak, kişisel verilerinizin güvenliği bizim için son derece önemlidir. Bu Gizlilik Politikası, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında kişisel verilerinizin nasıl toplandığını, kullanıldığını, paylaşıldığını ve korunduğunu açıklamaktadır.
+    content: `SchoolAsist olarak, kişisel verilerinizin güvenliği bizim için son derece önemlidir. Bu Gizlilik Politikası, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") kapsamında kişisel verilerinizin nasıl toplandığını, kullanıldığını, paylaşıldığını ve korunduğunu açıklamaktadır.
 
-Bu politika, CourseIntellect platformunu (web sitesi, masaüstü ve mobil uygulamalar dahil) kullanan tüm kullanıcılar için geçerlidir.`,
+Bu politika, SchoolAsist platformunu (web sitesi, masaüstü ve mobil uygulamalar dahil) kullanan tüm kullanıcılar için geçerlidir.`,
   },
   {
     id: "veri-sorumlusu",
     title: "2. Veri Sorumlusu",
-    content: `Veri sorumlusu olarak CourseIntellect Eğitim Teknolojileri A.Ş. aşağıdaki iletişim bilgileri üzerinden ulaşılabilirdir:
+    content: `Veri sorumlusu olarak SchoolAsist Eğitim Teknolojileri A.Ş. aşağıdaki iletişim bilgileri üzerinden ulaşılabilirdir:
 
 • Adres: Levent, Büyükdere Cad. No:123, 34330 Beşiktaş/İstanbul
 • E-posta: kvkk@courseintellect.com

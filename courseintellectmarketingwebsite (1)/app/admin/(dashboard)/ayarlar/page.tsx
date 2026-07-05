@@ -56,7 +56,7 @@ export default function SettingsPage() {
     name: "Admin Kullanıcı",
     email: "admin@courseintellect.com",
     phone: "+90 555 123 4567",
-    bio: "CourseIntellect sistem yöneticisi",
+    bio: "SchoolAsist sistem yöneticisi",
   })
 
   // Security state
@@ -88,7 +88,7 @@ export default function SettingsPage() {
 
   // Site state
   const [site, setSite] = useState({
-    siteName: "CourseIntellect",
+    siteName: "SchoolAsist",
     siteDescription: "Eğitimde yeni nesil deneyim",
     maintenanceMode: false,
     registrationEnabled: true,

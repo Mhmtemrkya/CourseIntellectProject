@@ -6,6 +6,7 @@ import { ArrowRight, Play } from "lucide-react"
 import { motion, useMotionValue, useSpring, useTransform } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { useSectionContent } from "@/context/content-context"
+import { useLanguage } from "@/context/language-context"
 
 type FrameManifest = {
   fps: number
@@ -20,29 +21,54 @@ const FALLBACK_VIDEO_URL = "/hero-dimensional-portal.mp4"
 const FRAME_SEQUENCE_ENABLED = false
 const PRIMING_BATCH = 24 // first batch to load before dismissing loader (1 second of video)
 
-const ANNOTATIONS = [
-  {
-    at: [0.18, 0.32] as const,
-    eyebrow: "01 / Bilgi evreni",
-    title: "Hepsi tek platformda",
-    body: "Öğretmen, öğrenci, veli — üçünün de ihtiyacı aynı ekosistemde buluşuyor.",
-    side: "right" as const,
-  },
-  {
-    at: [0.45, 0.6] as const,
-    eyebrow: "02 / Entegre deneyim",
-    title: "Veriniz hep birbirine bağlı",
-    body: "Ders, ödev, sınav, rapor, bildirim — hiçbir adım tekrar etmiyor.",
-    side: "left" as const,
-  },
-  {
-    at: [0.7, 0.85] as const,
-    eyebrow: "03 / Ölçeklenebilir",
-    title: "Tek kurum, binlerce kullanıcı",
-    body: "Türkiye sunucularında KVKK uyumlu, ISO 27001 sertifikalı altyapı.",
-    side: "right" as const,
-  },
-]
+const ANNOTATIONS_BY_LANGUAGE = {
+  tr: [
+    {
+      at: [0.18, 0.32] as const,
+      eyebrow: "01 / Bilgi evreni",
+      title: "Hepsi tek platformda",
+      body: "Öğretmen, öğrenci, veli — üçünün de ihtiyacı aynı ekosistemde buluşuyor.",
+      side: "right" as const,
+    },
+    {
+      at: [0.45, 0.6] as const,
+      eyebrow: "02 / Entegre deneyim",
+      title: "Veriniz hep birbirine bağlı",
+      body: "Ders, ödev, sınav, rapor, bildirim — hiçbir adım tekrar etmiyor.",
+      side: "left" as const,
+    },
+    {
+      at: [0.7, 0.85] as const,
+      eyebrow: "03 / Ölçeklenebilir",
+      title: "Tek kurum, binlerce kullanıcı",
+      body: "Türkiye sunucularında KVKK uyumlu, güvenli altyapı.",
+      side: "right" as const,
+    },
+  ],
+  en: [
+    {
+      at: [0.18, 0.32] as const,
+      eyebrow: "01 / One universe",
+      title: "Everything on one platform",
+      body: "Teachers, students, parents — all three meet in the same ecosystem.",
+      side: "right" as const,
+    },
+    {
+      at: [0.45, 0.6] as const,
+      eyebrow: "02 / Integrated experience",
+      title: "Your data stays connected",
+      body: "Lessons, homework, exams, reports, notifications — nothing is entered twice.",
+      side: "left" as const,
+    },
+    {
+      at: [0.7, 0.85] as const,
+      eyebrow: "03 / Built to scale",
+      title: "One institution, thousands of users",
+      body: "Secure infrastructure hosted in Türkiye, KVKK compliant.",
+      side: "right" as const,
+    },
+  ],
+}
 
 function clamp(v: number, min = 0, max = 1) {
   return Math.max(min, Math.min(max, v))
@@ -87,6 +113,8 @@ function loadImage(src: string, signal?: AbortSignal): Promise<HTMLImageElement>
 }
 
 export function ScrollVideoStage() {
+  const { language } = useLanguage()
+  const ANNOTATIONS = ANNOTATIONS_BY_LANGUAGE[language]
   const { hero } = useSectionContent("homepage")
   const sectionRef = useRef<HTMLElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -301,7 +329,7 @@ export function ScrollVideoStage() {
         <div
           className="h-16 w-16"
           style={{
-            filter: "drop-shadow(0 0 26px rgba(217,121,11,0.55))",
+            filter: "drop-shadow(0 0 26px rgba(247,148,29,0.55))",
             animation: "ci-pulse 2.2s ease-in-out infinite",
           }}
         >
@@ -313,7 +341,7 @@ export function ScrollVideoStage() {
         </div>
         <div className="mt-6 h-[2px] w-[220px] overflow-hidden rounded-full bg-white/[0.06]">
           <div
-            className="h-full bg-gradient-to-r from-[#D9790B] via-[#F08C1E] to-[#FBB971] transition-[width] duration-200"
+            className="h-full bg-gradient-to-r from-[#F7941D] via-[#F08C1E] to-[#FBB971] transition-[width] duration-200"
             style={{ width: `${Math.max(loaded, 0.05) * 100}%` }}
           />
         </div>
@@ -325,10 +353,10 @@ export function ScrollVideoStage() {
       {/* Top scroll progress bar */}
       <div
         aria-hidden
-        className="fixed left-0 top-0 z-[60] h-[3px] origin-left bg-gradient-to-r from-[#D9790B] via-[#F08C1E] to-[#FBB971]"
+        className="fixed left-0 top-0 z-[60] h-[3px] origin-left bg-gradient-to-r from-[#F7941D] via-[#F08C1E] to-[#FBB971]"
         style={{
           width: `${progress * 100}%`,
-          boxShadow: "0 0 12px rgba(217,121,11,0.6)",
+          boxShadow: "0 0 12px rgba(247,148,29,0.6)",
         }}
       />
 
@@ -338,7 +366,7 @@ export function ScrollVideoStage() {
           aria-hidden
           className="fixed bottom-4 right-4 z-[55] flex items-center gap-2 rounded-full border border-white/10 bg-[#021E2E]/80 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.2em] text-[#8FA4AE] backdrop-blur"
         >
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#D9790B]" />
+          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#F7941D]" />
           {Math.round(loaded * 100)}%
         </div>
       )}
@@ -462,12 +490,12 @@ export function ScrollVideoStage() {
                 }}
               >
                 <div
-                  className="relative rounded-[20px] border border-[#D9790B]/25 px-7 py-6 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.85)] backdrop-blur-md"
+                  className="relative rounded-[20px] border border-[#F7941D]/25 px-7 py-6 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.85)] backdrop-blur-md"
                   style={{ background: "rgba(2,30,46,0.62)" }}
                 >
-                  <span className="absolute left-0 top-5 bottom-5 w-[3px] rounded-full bg-[#D9790B]" />
+                  <span className="absolute left-0 top-5 bottom-5 w-[3px] rounded-full bg-[#F7941D]" />
                   <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-[#FBB971]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#D9790B] shadow-[0_0_8px_#D9790B]" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#F7941D] shadow-[0_0_8px_#F7941D]" />
                     {ann.eyebrow}
                   </div>
                   <h4 className="mt-2.5 text-[19px] font-semibold leading-snug text-white">
@@ -488,14 +516,14 @@ export function ScrollVideoStage() {
           >
             <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
               <Link href={hero.primaryCTA.href}>
-                <Button className="rounded-full bg-[#D9790B] px-7 font-semibold text-[#00354F] hover:bg-[#F08C1E]">
+                <Button className="rounded-full bg-[#F7941D] px-7 font-semibold text-[#15294B] hover:bg-[#F08C1E]">
                   Hemen Başla
                 </Button>
               </Link>
               <Link href={hero.secondaryCTA.href}>
                 <Button
                   variant="outline"
-                  className="rounded-full border-white/25 bg-transparent text-white hover:border-[#D9790B]/60 hover:text-[#FBB971]"
+                  className="rounded-full border-white/25 bg-transparent text-white hover:border-[#F7941D]/60 hover:text-[#FBB971]"
                 >
                   Demo İzle
                 </Button>
@@ -507,16 +535,16 @@ export function ScrollVideoStage() {
 
       <style jsx global>{`
         @keyframes ci-pulse {
-          0%, 100% { filter: drop-shadow(0 0 18px rgba(217,121,11,0.35)); }
-          50%      { filter: drop-shadow(0 0 38px rgba(217,121,11,0.75)); }
+          0%, 100% { filter: drop-shadow(0 0 18px rgba(247,148,29,0.35)); }
+          50%      { filter: drop-shadow(0 0 38px rgba(247,148,29,0.75)); }
         }
         @keyframes ci-bounce {
           0%, 100% { transform: translateY(0); opacity: 1; }
           50%      { transform: translateY(6px); opacity: 0.45; }
         }
         @keyframes ci-cta-glow {
-          0%, 100% { box-shadow: 0 8px 22px -8px rgba(217,121,11,0.55), 0 0 0 0 rgba(217,121,11,0.0); }
-          50%      { box-shadow: 0 14px 36px -10px rgba(217,121,11,0.85), 0 0 0 8px rgba(217,121,11,0.08); }
+          0%, 100% { box-shadow: 0 8px 22px -8px rgba(247,148,29,0.55), 0 0 0 0 rgba(247,148,29,0.0); }
+          50%      { box-shadow: 0 14px 36px -10px rgba(247,148,29,0.85), 0 0 0 8px rgba(247,148,29,0.08); }
         }
         @keyframes ci-shimmer {
           0%   { background-position: -200% center; }
@@ -595,7 +623,7 @@ function HeroOverlay({ hero, opacity, primed }: { hero: HeroData; opacity: numbe
         className="absolute left-6 top-1/2 hidden h-[140px] w-[1px] origin-top -translate-y-1/2 md:block md:left-12 lg:left-20"
         style={{
           background:
-            "linear-gradient(to bottom, transparent, #D9790B 30%, #D9790B 70%, transparent)",
+            "linear-gradient(to bottom, transparent, #F7941D 30%, #F7941D 70%, transparent)",
         }}
       />
 
@@ -615,7 +643,7 @@ function HeroOverlay({ hero, opacity, primed }: { hero: HeroData; opacity: numbe
             >
               <span
                 aria-hidden
-                className="inline-block h-px w-8 bg-[#D9790B]"
+                className="inline-block h-px w-8 bg-[#F7941D]"
               />
               <span>{hero.badge}</span>
             </motion.div>
@@ -648,7 +676,7 @@ function HeroOverlay({ hero, opacity, primed }: { hero: HeroData; opacity: numbe
                     isAccent
                       ? {
                           backgroundImage:
-                            "linear-gradient(100deg, #D9790B 0%, #F08C1E 45%, #FBB971 70%, #D9790B 100%)",
+                            "linear-gradient(100deg, #F7941D 0%, #F08C1E 45%, #FBB971 70%, #F7941D 100%)",
                           WebkitBackgroundClip: "text",
                           backgroundClip: "text",
                           WebkitTextFillColor: "transparent",
@@ -691,7 +719,7 @@ function HeroOverlay({ hero, opacity, primed }: { hero: HeroData; opacity: numbe
             <Link href={hero.primaryCTA.href}>
               <Button
                 size="lg"
-                className="group h-12 rounded-full bg-[#D9790B] px-7 text-[14px] font-semibold tracking-tight text-[#00354F] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]"
+                className="group h-12 rounded-full bg-[#F7941D] px-7 text-[14px] font-semibold tracking-tight text-[#15294B] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]"
               >
                 {hero.primaryCTA.text}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
@@ -722,7 +750,7 @@ function HeroOverlay({ hero, opacity, primed }: { hero: HeroData; opacity: numbe
             aria-hidden
             className="absolute inset-x-0 h-3"
             style={{
-              background: "linear-gradient(to bottom, transparent, #D9790B 50%, transparent)",
+              background: "linear-gradient(to bottom, transparent, #F7941D 50%, transparent)",
               animation: "ci-line-drop 2.2s ease-in-out infinite",
             }}
           />

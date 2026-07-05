@@ -81,7 +81,7 @@ export function Navbar() {
             className="absolute inset-x-0 top-0 h-px opacity-70"
             style={{
               background:
-                "linear-gradient(90deg, transparent, rgba(217,121,11,0.6), rgba(251,185,113,0.8), rgba(217,121,11,0.6), transparent)",
+                "linear-gradient(90deg, transparent, rgba(247,148,29,0.6), rgba(251,185,113,0.8), rgba(247,148,29,0.6), transparent)",
             }}
           />
         )}
@@ -97,9 +97,9 @@ export function Navbar() {
                 ? {
                     background:
                       "linear-gradient(135deg, rgba(2,22,34,0.72) 0%, rgba(10,24,37,0.72) 50%, rgba(2,22,34,0.72) 100%)",
-                    borderColor: "rgba(217,121,11,0.28)",
+                    borderColor: "rgba(247,148,29,0.28)",
                     boxShadow:
-                      "0 12px 40px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 22px rgba(217,121,11,0.12)",
+                      "0 12px 40px -12px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.06), 0 0 22px rgba(247,148,29,0.12)",
                     backdropFilter: "blur(18px) saturate(140%)",
                     WebkitBackdropFilter: "blur(18px) saturate(140%)",
                   }
@@ -113,13 +113,13 @@ export function Navbar() {
                 transition={{ type: "spring", stiffness: 400 }}
                 style={
                   !isScrolled
-                    ? { filter: "drop-shadow(0 0 14px rgba(217,121,11,0.45))" }
+                    ? { filter: "drop-shadow(0 0 14px rgba(247,148,29,0.45))" }
                     : undefined
                 }
               >
                 <Image
                   src="/images/logo.png"
-                  alt="CourseIntellect Logo"
+                  alt="SchoolAsist Logo"
                   width={isScrolled ? 36 : 34}
                   height={isScrolled ? 36 : 34}
                   priority
@@ -133,9 +133,9 @@ export function Navbar() {
                 )}
               >
                 <span className={isScrolled ? "text-primary" : "text-white"}>
-                  {navContent.logoText.split("Intellect")[0]}
+                  {navContent.logoText.replace(/Asist$/, "")}
                 </span>
-                <span className="text-accent">Intellect</span>
+                <span className="text-accent">Asist</span>
               </span>
             </Link>
 
@@ -243,7 +243,7 @@ export function Navbar() {
                     "relative overflow-hidden group font-semibold",
                     isScrolled
                       ? "bg-accent hover:bg-accent/90 text-accent-foreground"
-                      : "bg-[#D9790B] hover:bg-[#F08C1E] text-[#00354F] shadow-[0_8px_22px_-8px_rgba(217,121,11,0.7)]",
+                      : "bg-[#F7941D] hover:bg-[#F08C1E] text-[#15294B] shadow-[0_8px_22px_-8px_rgba(247,148,29,0.7)]",
                   )}
                 >
                   <span className="relative z-10">{navContent.ctaButton.text}</span>
@@ -259,7 +259,7 @@ export function Navbar() {
                 "lg:hidden p-2 rounded-lg transition-colors",
                 isScrolled
                   ? "text-foreground hover:bg-secondary"
-                  : "text-white border border-[#D9790B]/30 hover:bg-white/10",
+                  : "text-white border border-[#F7941D]/30 hover:bg-white/10",
               )}
               aria-label="Menüyü aç/kapat"
             >

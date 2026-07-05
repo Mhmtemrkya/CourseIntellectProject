@@ -32,11 +32,11 @@ function clamp(v: number, min = 0, max = 1) {
 function VisualCourseTracking({ progress }: { progress: number }) {
   const days = ["Pzt", "Sal", "Çar", "Per", "Cum"]
   const blocks = [
-    { h: 0.55, color: "#D9790B" },
+    { h: 0.55, color: "#F7941D" },
     { h: 0.7, color: "#FBB971" },
-    { h: 0.4, color: "#D9790B" },
+    { h: 0.4, color: "#F7941D" },
     { h: 0.85, color: "#FBB971" },
-    { h: 0.6, color: "#D9790B" },
+    { h: 0.6, color: "#F7941D" },
   ]
   // Use progress for a "highlight that travels" effect — not for whether bars exist
   const highlightIdx = Math.min(blocks.length - 1, Math.floor(progress * blocks.length))
@@ -47,7 +47,7 @@ function VisualCourseTracking({ progress }: { progress: number }) {
         <div className="border-b border-white/[0.06] px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[12px] text-white/65">
-              <BookOpen className="h-3.5 w-3.5 text-[#D9790B]" />
+              <BookOpen className="h-3.5 w-3.5 text-[#F7941D]" />
               Haftalık Plan
             </div>
             <div className="flex items-center gap-1.5 text-[10px] text-white/40">
@@ -91,9 +91,9 @@ function VisualCourseTracking({ progress }: { progress: number }) {
       </div>
       {/* Floating notif card — visible from start, subtle hover */}
       <div
-        className="absolute -right-4 top-10 w-[210px] rounded-2xl border border-[#D9790B]/30 bg-[#021622]/90 p-4 backdrop-blur-md"
+        className="absolute -right-4 top-10 w-[210px] rounded-2xl border border-[#F7941D]/30 bg-[#021622]/90 p-4 backdrop-blur-md"
         style={{
-          boxShadow: "0 20px 40px -12px rgba(0,0,0,0.7), 0 0 30px rgba(217,121,11,0.15)",
+          boxShadow: "0 20px 40px -12px rgba(0,0,0,0.7), 0 0 30px rgba(247,148,29,0.15)",
           transform: `translateY(${Math.sin(progress * 4) * 4}px)`,
         }}
       >
@@ -104,7 +104,7 @@ function VisualCourseTracking({ progress }: { progress: number }) {
         <div className="mt-2 text-[13px] font-medium text-white">Matematik · Konu 4.2</div>
         <div className="mt-1 text-[11px] text-white/60">28 / 30 öğrenci</div>
         <div className="mt-3 h-1 w-full overflow-hidden rounded-full bg-white/10">
-          <div className="h-full rounded-full bg-gradient-to-r from-[#D9790B] to-[#FBB971]" style={{ width: "93%" }} />
+          <div className="h-full rounded-full bg-gradient-to-r from-[#F7941D] to-[#FBB971]" style={{ width: "93%" }} />
         </div>
       </div>
     </div>
@@ -113,10 +113,10 @@ function VisualCourseTracking({ progress }: { progress: number }) {
 
 function VisualNotifications({ progress }: { progress: number }) {
   const cards = [
-    { x: 4, y: 14, icon: Bell, title: "Sınav hatırlatıcı", body: "Matematik · 14:30", color: "#D9790B" },
+    { x: 4, y: 14, icon: Bell, title: "Sınav hatırlatıcı", body: "Matematik · 14:30", color: "#F7941D" },
     { x: 70, y: 28, icon: Calendar, title: "Etkinlik", body: "Veli toplantısı yarın", color: "#FBB971" },
     { x: 8, y: 64, icon: CheckCircle2, title: "Ödev tamam", body: "Fizik · Bölüm 3", color: "#5499c7" },
-    { x: 62, y: 70, icon: Bell, title: "Yeni mesaj", body: "Ahmet öğretmen", color: "#D9790B" },
+    { x: 62, y: 70, icon: Bell, title: "Yeni mesaj", body: "Ahmet öğretmen", color: "#F7941D" },
   ]
   // Progress drives which card pulses
   const activeCard = Math.min(cards.length - 1, Math.floor(progress * cards.length))
@@ -128,12 +128,12 @@ function VisualNotifications({ progress }: { progress: number }) {
           className="grid h-28 w-28 place-items-center rounded-full"
           style={{
             background:
-              "radial-gradient(circle, rgba(217,121,11,0.45) 0%, rgba(217,121,11,0.1) 55%, transparent 100%)",
+              "radial-gradient(circle, rgba(247,148,29,0.45) 0%, rgba(247,148,29,0.1) 55%, transparent 100%)",
           }}
         >
           <div
-            className="grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-[#D9790B] to-[#F08C1E]"
-            style={{ boxShadow: "0 0 50px rgba(217,121,11,0.7), inset 0 -2px 8px rgba(0,0,0,0.25)" }}
+            className="grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-[#F7941D] to-[#F08C1E]"
+            style={{ boxShadow: "0 0 50px rgba(247,148,29,0.7), inset 0 -2px 8px rgba(0,0,0,0.25)" }}
           >
             <Bell className="h-7 w-7 text-[#021622]" />
           </div>
@@ -141,7 +141,7 @@ function VisualNotifications({ progress }: { progress: number }) {
         {[0, 1, 2].map((i) => (
           <span
             key={i}
-            className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#D9790B]/45"
+            className="absolute left-1/2 top-1/2 h-28 w-28 -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#F7941D]/45"
             style={{ animation: `ci-pulse-ring 2.6s ease-out ${i * 0.65}s infinite` }}
           />
         ))}
@@ -161,7 +161,7 @@ function VisualNotifications({ progress }: { progress: number }) {
               y1={y1}
               x2={x2}
               y2={y2}
-              stroke="rgba(217,121,11,0.18)"
+              stroke="rgba(247,148,29,0.18)"
               strokeWidth="1"
               strokeDasharray="3 4"
             />
@@ -222,7 +222,7 @@ function VisualReports({ progress }: { progress: number }) {
         <div className="border-b border-white/[0.06] px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-[12px] text-white/65">
-              <BarChart3 className="h-3.5 w-3.5 text-[#D9790B]" />
+              <BarChart3 className="h-3.5 w-3.5 text-[#F7941D]" />
               Sınıf Performansı · 7. Sınıf
             </div>
             <div className="flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2.5 py-1 text-[10px] uppercase tracking-[0.15em] text-emerald-300">
@@ -263,14 +263,14 @@ function VisualReports({ progress }: { progress: number }) {
                     style={{
                       height: `${b}%`,
                       background: isHi
-                        ? "linear-gradient(to top, #D9790B, #FBB971)"
-                        : "linear-gradient(to top, rgba(217,121,11,0.5), rgba(251,185,113,0.4))",
-                      boxShadow: isHi ? "0 0 28px rgba(217,121,11,0.6)" : "none",
+                        ? "linear-gradient(to top, #F7941D, #FBB971)"
+                        : "linear-gradient(to top, rgba(247,148,29,0.5), rgba(251,185,113,0.4))",
+                      boxShadow: isHi ? "0 0 28px rgba(247,148,29,0.6)" : "none",
                     }}
                   />
                   {isHi && (
                     <div
-                      className="absolute -top-7 left-1/2 -translate-x-1/2 rounded-md border border-[#D9790B]/40 bg-[#021622] px-2 py-0.5 font-mono text-[10px] text-[#FBB971]"
+                      className="absolute -top-7 left-1/2 -translate-x-1/2 rounded-md border border-[#F7941D]/40 bg-[#021622] px-2 py-0.5 font-mono text-[10px] text-[#FBB971]"
                       style={{ boxShadow: "0 4px 12px rgba(0,0,0,0.5)" }}
                     >
                       {b}%
@@ -312,7 +312,7 @@ function VisualParentPortal({ progress }: { progress: number }) {
   // Items always visible; progress drives which item is highlighted
   const items = [
     { label: "Matematik · Sınav", v: "94", color: "#FBB971" },
-    { label: "Fizik · Ödev", v: "✓", color: "#D9790B" },
+    { label: "Fizik · Ödev", v: "✓", color: "#F7941D" },
     { label: "Türkçe · Devam", v: "✓", color: "#5499c7" },
     { label: "Kimya · Rapor", v: "📈", color: "#FBB971" },
   ]
@@ -325,7 +325,7 @@ function VisualParentPortal({ progress }: { progress: number }) {
           className="relative h-[460px] w-[240px] rounded-[40px] border border-white/[0.12] bg-[#021622]"
           style={{
             boxShadow:
-              "0 36px 70px -20px rgba(0,0,0,0.75), inset 0 0 1px rgba(255,255,255,0.1), 0 0 90px rgba(217,121,11,0.18)",
+              "0 36px 70px -20px rgba(0,0,0,0.75), inset 0 0 1px rgba(255,255,255,0.1), 0 0 90px rgba(247,148,29,0.18)",
             transform: `perspective(1100px) rotateY(-9deg) rotateX(3deg) translateY(${Math.sin(progress * 4) * 4}px)`,
           }}
         >
@@ -337,7 +337,7 @@ function VisualParentPortal({ progress }: { progress: number }) {
             <div className="flex items-center justify-between text-[9px] text-white/55">
               <span className="font-mono">09:41</span>
               <span className="flex items-center gap-1">
-                <ShieldCheck className="h-3 w-3 text-[#D9790B]" />
+                <ShieldCheck className="h-3 w-3 text-[#F7941D]" />
                 <span className="text-[8px] uppercase tracking-[0.15em]">Veli</span>
               </span>
             </div>
@@ -348,8 +348,8 @@ function VisualParentPortal({ progress }: { progress: number }) {
             </div>
             {/* Stat card — always visible */}
             <div
-              className="mt-4 rounded-2xl border border-[#D9790B]/35 bg-gradient-to-br from-[#D9790B]/18 to-[#D9790B]/5 p-4"
-              style={{ boxShadow: "0 0 24px rgba(217,121,11,0.15)" }}
+              className="mt-4 rounded-2xl border border-[#F7941D]/35 bg-gradient-to-br from-[#F7941D]/18 to-[#F7941D]/5 p-4"
+              style={{ boxShadow: "0 0 24px rgba(247,148,29,0.15)" }}
             >
               <div className="text-[9px] uppercase tracking-[0.18em] text-[#FBB971]">Bugün · 5 Mart</div>
               <div className="mt-1.5 flex items-baseline gap-1.5">
@@ -360,7 +360,7 @@ function VisualParentPortal({ progress }: { progress: number }) {
                 {[1, 2, 3, 4, 5].map((i) => (
                   <span
                     key={i}
-                    className="h-1 flex-1 rounded-full bg-[#D9790B]"
+                    className="h-1 flex-1 rounded-full bg-[#F7941D]"
                     style={{ opacity: 0.85 }}
                   />
                 ))}
@@ -416,7 +416,7 @@ const PANELS: PanelData[] = [
     eyebrow: "Ders Takibi",
     title: "Her dersin nabzını tut.",
     body: "Müfredat, konu ve kazanım haritası tek panoda. Öğrenci ilerlemesi otomatik kayıt altında — sen yorumuna odaklan.",
-    accent: "#D9790B",
+    accent: "#F7941D",
     Visual: VisualCourseTracking,
   },
   {
@@ -432,7 +432,7 @@ const PANELS: PanelData[] = [
     eyebrow: "Detaylı Raporlar",
     title: "Veriyle karar ver.",
     body: "Sınıf, kurum, şube — her seviyede analiz. PDF dışa aktarım, özelleştirilebilir panolar, eğilim grafikleri.",
-    accent: "#D9790B",
+    accent: "#F7941D",
     Visual: VisualReports,
   },
   {
@@ -491,7 +491,7 @@ export function HorizontalFeaturesTour() {
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(circle at 20% 30%, rgba(217,121,11,0.08), transparent 45%), radial-gradient(circle at 80% 70%, rgba(0,53,79,0.5), transparent 55%)",
+              "radial-gradient(circle at 20% 30%, rgba(247,148,29,0.08), transparent 45%), radial-gradient(circle at 80% 70%, rgba(21,41,75,0.5), transparent 55%)",
           }}
         />
 
@@ -500,7 +500,7 @@ export function HorizontalFeaturesTour() {
           <div className="flex items-end justify-between gap-6">
             <div>
               <div className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.32em] text-[#FBB971]/85">
-                <span aria-hidden className="inline-block h-px w-8 bg-[#D9790B]" />
+                <span aria-hidden className="inline-block h-px w-8 bg-[#F7941D]" />
                 <span>Özellikler · Tur</span>
               </div>
               <div className="mt-2 font-display text-[14px] text-white/65">
@@ -523,7 +523,7 @@ export function HorizontalFeaturesTour() {
                       <span
                         className="h-px w-8 rounded-full bg-white/15"
                         style={{
-                          background: i < activeIdx ? "#D9790B" : "rgba(255,255,255,0.12)",
+                          background: i < activeIdx ? "#F7941D" : "rgba(255,255,255,0.12)",
                         }}
                       />
                     )}
@@ -626,8 +626,8 @@ export function HorizontalFeaturesTour() {
                 className="absolute inset-y-0 left-0"
                 style={{
                   width: `${progress * 100}%`,
-                  background: "linear-gradient(to right, #D9790B, #FBB971)",
-                  boxShadow: "0 0 12px rgba(217,121,11,0.6)",
+                  background: "linear-gradient(to right, #F7941D, #FBB971)",
+                  boxShadow: "0 0 12px rgba(247,148,29,0.6)",
                 }}
               />
             </div>

@@ -9,16 +9,16 @@ const sections = [
   {
     id: "giris",
     title: "1. Giriş",
-    content: `Bu Kullanım Şartları ("Şartlar"), CourseIntellect platformunu ("Platform") kullanımınızı düzenlemektedir. Platformu kullanarak bu Şartları kabul etmiş olursunuz.
+    content: `Bu Kullanım Şartları ("Şartlar"), SchoolAsist platformunu ("Platform") kullanımınızı düzenlemektedir. Platformu kullanarak bu Şartları kabul etmiş olursunuz.
 
-Platform, CourseIntellect Eğitim Teknolojileri A.Ş. ("Şirket") tarafından işletilmektedir. Platform, web sitesi, masaüstü uygulamaları ve mobil uygulamaları kapsamaktadır.`,
+Platform, SchoolAsist Eğitim Teknolojileri A.Ş. ("Şirket") tarafından işletilmektedir. Platform, web sitesi, masaüstü uygulamaları ve mobil uygulamaları kapsamaktadır.`,
   },
   {
     id: "tanimlar",
     title: "2. Tanımlar",
     content: `Bu Şartlarda kullanılan terimler:
 
-• "Platform": CourseIntellect web sitesi, masaüstü ve mobil uygulamaları
+• "Platform": SchoolAsist web sitesi, masaüstü ve mobil uygulamaları
 • "Kullanıcı": Platformu kullanan öğretmen, öğrenci, veli veya yönetici
 • "Hesap": Kullanıcının Platforma erişim için oluşturduğu kullanıcı hesabı
 • "İçerik": Platform üzerinde paylaşılan metin, görsel, video ve diğer materyaller

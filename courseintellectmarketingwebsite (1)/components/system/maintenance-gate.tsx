@@ -84,19 +84,19 @@ function MaintenanceScreen({
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="max-w-xl w-full"
       >
-        <div className="rounded-3xl border border-[#D9790B]/25 bg-[#021622]/90 p-10 backdrop-blur-md shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
+        <div className="rounded-3xl border border-[#F7941D]/25 bg-[#021622]/90 p-10 backdrop-blur-md shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-3 text-[11px] font-mono uppercase tracking-[0.32em] text-[#FBB971]/85">
-            <span aria-hidden className="inline-block h-px w-8 bg-[#D9790B]" />
+            <span aria-hidden className="inline-block h-px w-8 bg-[#F7941D]" />
             <span>Sistem · Bakım</span>
           </div>
-          <div className="mt-6 grid h-16 w-16 place-items-center rounded-2xl bg-[#D9790B]/15 ring-1 ring-[#D9790B]/35">
+          <div className="mt-6 grid h-16 w-16 place-items-center rounded-2xl bg-[#F7941D]/15 ring-1 ring-[#F7941D]/35">
             <Wrench className="h-7 w-7 text-[#FBB971]" />
           </div>
           <h1 className="mt-6 text-3xl md:text-4xl font-semibold text-white tracking-[-0.02em]">
             Sistem şu anda bakımda
           </h1>
           <p className="mt-4 text-[15px] leading-relaxed text-white/65">
-            {message || "CourseIntellect platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak."}
+            {message || "SchoolAsist platformu kısa bir süreliğine bakımda. Servis kısa sürede yeniden açılacak."}
           </p>
           {sinceDate && (
             <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-white/60">
@@ -105,7 +105,7 @@ function MaintenanceScreen({
             </div>
           )}
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <Button onClick={onRetry} className="h-11 bg-[#D9790B] text-[#00354F] hover:bg-[#F08C1E] font-semibold">
+            <Button onClick={onRetry} className="h-11 bg-[#F7941D] text-[#15294B] hover:bg-[#F08C1E] font-semibold">
               <RefreshCw className="mr-2 h-4 w-4" /> Yeniden dene
             </Button>
             <Button

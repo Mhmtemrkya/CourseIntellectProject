@@ -7,9 +7,9 @@
 
 :root {
   /* CourseIntellect Brand Colors */
-  --brand-primary: #00354f;
-  --brand-accent: #d9790b;
-  --brand-accent-light: #f5a623;
+  --brand-primary: #15294B;
+  --brand-accent: #F7941D;
+  --brand-accent-light: #FFB25A;
 
   /* Base colors */
   --background: #ffffff;
@@ -20,19 +20,19 @@
   --popover-foreground: #0a1628;
 
   /* Primary - Dark Blue */
-  --primary: #00354f;
+  --primary: #15294B;
   --primary-foreground: #ffffff;
 
   /* Secondary - Light backgrounds */
   --secondary: #f0f4f8;
-  --secondary-foreground: #00354f;
+  --secondary-foreground: #15294B;
 
   /* Muted */
   --muted: #f0f4f8;
   --muted-foreground: #5a6a7a;
 
   /* Accent - Orange */
-  --accent: #d9790b;
+  --accent: #F7941D;
   --accent-foreground: #ffffff;
 
   /* Destructive */
@@ -42,11 +42,11 @@
   /* Border & Input */
   --border: #e2e8f0;
   --input: #e2e8f0;
-  --ring: #00354f;
+  --ring: #15294B;
 
   /* Chart colors */
-  --chart-1: #00354f;
-  --chart-2: #d9790b;
+  --chart-1: #15294B;
+  --chart-2: #F7941D;
   --chart-3: #0ea5e9;
   --chart-4: #10b981;
   --chart-5: #8b5cf6;
@@ -56,12 +56,12 @@
   /* Sidebar - Admin Panel */
   --sidebar: #0a1628;
   --sidebar-foreground: #f0f4f8;
-  --sidebar-primary: #d9790b;
+  --sidebar-primary: #F7941D;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1a2a3a;
   --sidebar-accent-foreground: #f0f4f8;
   --sidebar-border: #1a2a3a;
-  --sidebar-ring: #d9790b;
+  --sidebar-ring: #F7941D;
 }
 
 .dark {
@@ -72,31 +72,31 @@
   --popover: #0f1f2e;
   --popover-foreground: #f0f4f8;
   --primary: #f0f4f8;
-  --primary-foreground: #00354f;
+  --primary-foreground: #15294B;
   --secondary: #1a2a3a;
   --secondary-foreground: #f0f4f8;
   --muted: #1a2a3a;
   --muted-foreground: #94a3b8;
-  --accent: #d9790b;
+  --accent: #F7941D;
   --accent-foreground: #ffffff;
   --destructive: #7f1d1d;
   --destructive-foreground: #fecaca;
   --border: #1a2a3a;
   --input: #1a2a3a;
-  --ring: #d9790b;
+  --ring: #F7941D;
   --chart-1: #60a5fa;
-  --chart-2: #d9790b;
+  --chart-2: #F7941D;
   --chart-3: #34d399;
   --chart-4: #a78bfa;
   --chart-5: #f472b6;
   --sidebar: #050d17;
   --sidebar-foreground: #f0f4f8;
-  --sidebar-primary: #d9790b;
+  --sidebar-primary: #F7941D;
   --sidebar-primary-foreground: #ffffff;
   --sidebar-accent: #1a2a3a;
   --sidebar-accent-foreground: #f0f4f8;
   --sidebar-border: #1a2a3a;
-  --sidebar-ring: #d9790b;
+  --sidebar-ring: #F7941D;
 }
 
 @theme inline {

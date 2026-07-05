@@ -101,7 +101,7 @@ export function AdminSidebar() {
         <Link href="/admin" className="flex items-center gap-3">
           <Image
             src="/images/logo.png"
-            alt="CourseIntellect"
+            alt="SchoolAsist"
             width={36}
             height={36}
             className="brightness-0 invert shrink-0"

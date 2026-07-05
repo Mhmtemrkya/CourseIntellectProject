@@ -39,7 +39,7 @@ export function CinematicStats() {
         className="pointer-events-none absolute inset-0 opacity-[0.6]"
         style={{
           backgroundImage:
-            "radial-gradient(circle at 18% 24%, rgba(217,121,11,0.08), transparent 38%), radial-gradient(circle at 82% 76%, rgba(0,53,79,0.7), transparent 50%)",
+            "radial-gradient(circle at 18% 24%, rgba(247,148,29,0.08), transparent 38%), radial-gradient(circle at 82% 76%, rgba(21,41,75,0.7), transparent 50%)",
         }}
       />
 
@@ -67,7 +67,7 @@ export function CinematicStats() {
               transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
               className="flex items-center gap-3 font-mono text-[11px] uppercase tracking-[0.32em] text-[#FBB971]/85"
             >
-              <span aria-hidden className="inline-block h-px w-8 bg-[#D9790B]" />
+              <span aria-hidden className="inline-block h-px w-8 bg-[#F7941D]" />
               <span>Rakamlar · Konuşur</span>
             </motion.div>
             <motion.h2
@@ -147,8 +147,8 @@ function StatBlock({
       <div className="mb-4 flex items-center justify-between font-mono text-[10px] uppercase tracking-[0.3em] text-white/45">
         <span>{String(index).padStart(2, "0")} / {String(total).padStart(2, "0")}</span>
         <span
-          className="inline-block h-1 w-1 rounded-full bg-[#D9790B]"
-          style={{ boxShadow: "0 0 6px #D9790B" }}
+          className="inline-block h-1 w-1 rounded-full bg-[#F7941D]"
+          style={{ boxShadow: "0 0 6px #F7941D" }}
         />
       </div>
 
@@ -159,7 +159,7 @@ function StatBlock({
           style={{
             fontSize: "clamp(38px, 4.6vw, 78px)",
             letterSpacing: "-0.045em",
-            textShadow: active ? "0 0 36px rgba(217,121,11,0.18)" : "none",
+            textShadow: active ? "0 0 36px rgba(247,148,29,0.18)" : "none",
             transition: "text-shadow 600ms ease",
           }}
         >
@@ -179,7 +179,7 @@ function StatBlock({
         initial={{ scaleX: 0 }}
         animate={active ? { scaleX: 1 } : {}}
         transition={{ delay: delay + 0.4, duration: 0.9, ease: [0.22, 1, 0.36, 1] }}
-        className="my-5 h-px w-12 origin-left bg-[#D9790B]/70"
+        className="my-5 h-px w-12 origin-left bg-[#F7941D]/70"
       />
 
       {/* Label */}

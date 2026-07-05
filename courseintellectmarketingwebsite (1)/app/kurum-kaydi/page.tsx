@@ -83,9 +83,16 @@ export default function KurumKaydiPage() {
     terms: { tr: "Şartlar", en: "Terms" },
   }
 
+  // Bot koruması: gizli alan doluysa istek gönderilmez, sessizce "başarılı" gösterilir.
+  const [website, setWebsite] = useState("")
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError("")
+    if (website.trim() !== "") {
+      setSubmitted(true)
+      return
+    }
     setLoading(true)
     try {
       await apiRequest("/api/platformops/tenants/register", {
@@ -121,7 +128,7 @@ export default function KurumKaydiPage() {
       <div className="min-h-screen flex">
         <div className="hidden lg:flex lg:w-1/2 bg-primary p-12 flex-col justify-between">
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/images/logo.png" alt="CourseIntellect" width={48} height={48} className="brightness-0 invert" />
+            <Image src="/images/logo.png" alt="SchoolAsist" width={48} height={48} className="brightness-0 invert" />
             <span className="text-2xl font-bold text-primary-foreground">
               Course<span className="text-accent">Intellect</span>
             </span>
@@ -163,7 +170,7 @@ export default function KurumKaydiPage() {
       <div className="hidden lg:flex lg:w-1/2 bg-primary p-12 flex-col justify-between">
         <div>
           <Link href="/" className="flex items-center gap-3">
-            <Image src="/images/logo.png" alt="CourseIntellect" width={48} height={48} className="brightness-0 invert" />
+            <Image src="/images/logo.png" alt="SchoolAsist" width={48} height={48} className="brightness-0 invert" />
             <span className="text-2xl font-bold text-primary-foreground">
               Course<span className="text-accent">Intellect</span>
             </span>
@@ -210,7 +217,7 @@ export default function KurumKaydiPage() {
         <div className="w-full max-w-md">
           <div className="lg:hidden flex justify-center mb-8">
             <Link href="/" className="flex items-center gap-2">
-              <Image src="/images/logo.png" alt="CourseIntellect" width={40} height={40} />
+              <Image src="/images/logo.png" alt="SchoolAsist" width={40} height={40} />
               <span className="text-xl font-bold">Course<span className="text-accent">Intellect</span></span>
             </Link>
           </div>
@@ -238,6 +245,17 @@ export default function KurumKaydiPage() {
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleSubmit} className="space-y-4">
+                  {/* Honeypot: insanlar görmez, botlar doldurur */}
+                  <input
+                    type="text"
+                    name="website"
+                    value={website}
+                    onChange={(e) => setWebsite(e.target.value)}
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    className="absolute -left-[9999px] h-0 w-0 opacity-0"
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="institutionName">{t.institutionName[language]}</Label>
                     <div className="relative">
