@@ -1706,3 +1706,100 @@ export async function fetchCafeteriaWeek(weekStart) {
 export async function saveCafeteriaWeek(payload) {
   return api.post('/api/cafeteria/weeks', payload);
 }
+
+// --- Rehberlik (Guidance) ---
+
+export async function fetchGuidanceOverview() {
+  const response = await api.get('/api/guidance/overview');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchGuidanceCounselors() {
+  const response = await api.get('/api/guidance/counselors');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchGuidanceStudentFile(student) {
+  return api.get('/api/guidance/student-file', { params: { student } });
+}
+
+export async function createGuidanceSession(payload) {
+  return api.post('/api/guidance/sessions', payload);
+}
+
+export async function updateGuidanceSession(id, payload) {
+  return api.patch(`/api/guidance/sessions/${id}`, payload);
+}
+
+export async function deleteGuidanceSession(id) {
+  return api.delete(`/api/guidance/sessions/${id}`);
+}
+
+export async function fetchGuidanceFollowUps() {
+  const response = await api.get('/api/guidance/follow-ups');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchGuidanceAvailability(counselor) {
+  return api.get('/api/guidance/availability', {
+    params: counselor ? { counselor } : undefined,
+  });
+}
+
+export async function saveGuidanceAvailability(slots) {
+  return api.put('/api/guidance/availability', { slots });
+}
+
+export async function fetchGuidanceAppointments(mine = false) {
+  const response = await api.get('/api/guidance/appointments', { params: { mine } });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function createGuidanceAppointment(payload) {
+  return api.post('/api/guidance/appointments', payload);
+}
+
+export async function decideGuidanceAppointment(id, { approved, note = '' }) {
+  return api.patch(`/api/guidance/appointments/${id}/decide`, { approved, note });
+}
+
+export async function completeGuidanceAppointment(id) {
+  return api.patch(`/api/guidance/appointments/${id}/complete`, {});
+}
+
+export async function saveGuidanceGoal(studentName, payload) {
+  return api.put(`/api/guidance/goals/${encodeURIComponent(studentName)}`, payload);
+}
+
+export async function createGuidanceRiskReview(payload) {
+  return api.post('/api/guidance/risk-reviews', payload);
+}
+
+export async function fetchGuidanceInventories(student) {
+  const response = await api.get('/api/guidance/inventories', {
+    params: student ? { student } : undefined,
+  });
+  return Array.isArray(response) ? response : [];
+}
+
+export async function assignGuidanceInventory(payload) {
+  return api.post('/api/guidance/inventories', payload);
+}
+
+export async function completeGuidanceInventory(id, answersJson) {
+  return api.patch(`/api/guidance/inventories/${id}/complete`, { answersJson });
+}
+
+export async function fetchGuidanceStudyPlan(student) {
+  return api.get('/api/guidance/study-plan', { params: { student } });
+}
+
+export async function updateGuidanceStudyPlan(payload) {
+  return api.put('/api/guidance/study-plan', payload);
+}
+
+export async function fetchGuidanceClassReport(className) {
+  return api.get('/api/guidance/class-report', {
+    params: className ? { className } : undefined,
+  });
+}

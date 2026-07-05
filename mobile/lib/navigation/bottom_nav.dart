@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:student/pages/content_page.dart';
 import 'package:student/pages/exams_page.dart';
 import 'package:student/pages/messages_page.dart';
+import 'package:student/pages/student_guidance_page.dart';
 import 'package:student/pages/student_home_page.dart';
 import 'package:student/pages/profile_page.dart';
 import 'package:student/widgets/adaptive_scaffold.dart';
@@ -37,6 +38,12 @@ class BottomNav extends StatelessWidget {
           label: 'Deneme',
           pageBuilder: (_) => const ExamsPage(mockOnly: true),
           sidebarColor: const Color(0xFFF97316),
+        ),
+        AdaptiveDestination(
+          icon: Icons.psychology_alt_rounded,
+          label: 'Rehberlik',
+          pageBuilder: (_) => const StudentGuidancePage(),
+          sidebarColor: const Color(0xFFF7941D),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

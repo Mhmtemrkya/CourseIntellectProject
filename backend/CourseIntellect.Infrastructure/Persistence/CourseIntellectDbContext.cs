@@ -56,6 +56,12 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<AnnouncementItem> Announcements => Set<AnnouncementItem>();
     public DbSet<ExamResult> ExamResults => Set<ExamResult>();
     public DbSet<MeetingRequest> MeetingRequests => Set<MeetingRequest>();
+    public DbSet<GuidanceSessionRecord> GuidanceSessions => Set<GuidanceSessionRecord>();
+    public DbSet<GuidanceAppointment> GuidanceAppointments => Set<GuidanceAppointment>();
+    public DbSet<GuidanceAvailabilitySlot> GuidanceAvailabilitySlots => Set<GuidanceAvailabilitySlot>();
+    public DbSet<GuidanceGoal> GuidanceGoals => Set<GuidanceGoal>();
+    public DbSet<GuidanceRiskReview> GuidanceRiskReviews => Set<GuidanceRiskReview>();
+    public DbSet<GuidanceInventoryAssignment> GuidanceInventories => Set<GuidanceInventoryAssignment>();
     public DbSet<MessageThread> MessageThreads => Set<MessageThread>();
     public DbSet<MessageItem> MessageItems => Set<MessageItem>();
     public DbSet<ContentItem> ContentItems => Set<ContentItem>();
@@ -210,6 +216,81 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.Net).HasPrecision(6, 2);
+        });
+
+        modelBuilder.Entity<GuidanceSessionRecord>(entity =>
+        {
+            entity.ToTable("guidance_sessions");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.CounselorName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ClassName).HasMaxLength(100);
+            entity.Property(x => x.SessionType).HasMaxLength(30);
+            entity.Property(x => x.Topic).HasMaxLength(50);
+            entity.Property(x => x.Visibility).HasMaxLength(20);
+            entity.HasIndex(x => x.StudentName);
+            entity.HasIndex(x => x.CounselorName);
+        });
+
+        modelBuilder.Entity<GuidanceAppointment>(entity =>
+        {
+            entity.ToTable("guidance_appointments");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.CounselorName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.RequesterName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.RequesterRole).HasMaxLength(20);
+            entity.Property(x => x.StudentName).HasMaxLength(150);
+            entity.Property(x => x.Slot).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(30);
+            entity.HasIndex(x => x.CounselorName);
+        });
+
+        modelBuilder.Entity<GuidanceAvailabilitySlot>(entity =>
+        {
+            entity.ToTable("guidance_availability_slots");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.CounselorName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Slot).HasMaxLength(80).IsRequired();
+            entity.HasIndex(x => x.CounselorName);
+        });
+
+        modelBuilder.Entity<GuidanceGoal>(entity =>
+        {
+            entity.ToTable("guidance_goals");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.CounselorName).HasMaxLength(150);
+            entity.Property(x => x.TargetSchool).HasMaxLength(200);
+            entity.Property(x => x.TargetField).HasMaxLength(150);
+            entity.Property(x => x.TargetScore).HasMaxLength(50);
+            entity.HasIndex(x => x.StudentName).IsUnique(false);
+        });
+
+        modelBuilder.Entity<GuidanceRiskReview>(entity =>
+        {
+            entity.ToTable("guidance_risk_reviews");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.CounselorName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.RiskLevel).HasMaxLength(20);
+            entity.HasIndex(x => x.StudentName);
+        });
+
+        modelBuilder.Entity<GuidanceInventoryAssignment>(entity =>
+        {
+            entity.ToTable("guidance_inventories");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.CounselorName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.StudentName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.InventoryType).HasMaxLength(50);
+            entity.Property(x => x.Status).HasMaxLength(20);
+            entity.HasIndex(x => x.StudentName);
         });
 
         modelBuilder.Entity<MeetingRequest>(entity =>

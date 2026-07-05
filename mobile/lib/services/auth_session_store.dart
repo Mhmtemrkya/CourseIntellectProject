@@ -12,6 +12,7 @@ class AuthSession {
   final String fullName;
   final String username;
   final String primaryRole;
+  final String departmentOrBranch;
   final List<String> extraRoles;
   final String? tenantId;
   final String tenantName;
@@ -27,6 +28,7 @@ class AuthSession {
     required this.fullName,
     required this.username,
     required this.primaryRole,
+    this.departmentOrBranch = '',
     required this.extraRoles,
     required this.tenantId,
     required this.tenantName,
@@ -48,6 +50,7 @@ class AuthSession {
       fullName: map['fullName'] as String,
       username: map['username'] as String,
       primaryRole: map['primaryRole'] as String,
+      departmentOrBranch: (map['departmentOrBranch'] as String?) ?? '',
       extraRoles: (map['extraRoles'] as List<dynamic>? ?? const [])
           .cast<String>(),
       tenantId: map['tenantId'] as String?,
@@ -66,6 +69,7 @@ class AuthSession {
     'fullName': fullName,
     'username': username,
     'primaryRole': primaryRole,
+    'departmentOrBranch': departmentOrBranch,
     'extraRoles': extraRoles,
     'tenantId': tenantId,
     'tenantName': tenantName,

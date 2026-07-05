@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
 import {
   LayoutDashboard,
+  Clock,
+  HeartHandshake,
   Users,
   UserCheck,
   GraduationCap,
@@ -561,6 +563,56 @@ export const menuConfigs = {
     { path: "/sa/support", icon: Ticket, label: "Destek", color: "#a855f7" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
+  counselor: [
+    {
+      path: "/g/dashboard",
+      icon: LayoutDashboard,
+      label: "Vaka Merkezi",
+      color: "#3b82f6",
+    },
+    {
+      path: "/g/sessions",
+      icon: ClipboardCheck,
+      label: "Görüşmeler",
+      color: "#8b5cf6",
+    },
+    {
+      path: "/g/planner",
+      icon: Calendar,
+      label: "Çalışma Programı",
+      color: "#06b6d4",
+    },
+    {
+      path: "/g/appointments",
+      icon: Clock,
+      label: "Randevular",
+      color: "#f59e0b",
+    },
+    {
+      path: "/g/inventories",
+      icon: Brain,
+      label: "Envanterler",
+      color: "#ec4899",
+    },
+    {
+      path: "/g/reports",
+      icon: BarChart3,
+      label: "Raporlar",
+      color: "#22c55e",
+    },
+    {
+      path: "/chat",
+      icon: MessageSquare,
+      label: "Mesajlar",
+      color: "#0ea5e9",
+    },
+    {
+      path: "/settings",
+      icon: Settings,
+      label: "Ayarlar",
+      color: "#64748b",
+    },
+  ],
   teacher: [
     {
       path: "/t/dashboard",
@@ -794,6 +846,12 @@ export const menuConfigs = {
       label: "Mesajlar",
       color: "#0ea5e9",
     },
+    {
+      path: "/s/guidance",
+      icon: HeartHandshake,
+      label: "Rehberlik",
+      color: "#f97316",
+    },
     { path: "/s/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/s/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -895,6 +953,12 @@ export const menuConfigs = {
       label: "Mesajlar",
       color: "#0ea5e9",
     },
+    {
+      path: "/p/guidance",
+      icon: HeartHandshake,
+      label: "Rehberlik",
+      color: "#f97316",
+    },
     { path: "/p/profile", icon: User, label: "Profilim", color: "#8b5cf6" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
@@ -911,6 +975,7 @@ export const menuConfigs = {
 
 export const ROLE_LABELS = {
   admin: "Kurum Yöneticisi",
+  counselor: "Rehberlik Öğretmeni",
   administrative: "İdari Personel",
   finance: "Muhasebe",
   superadmin: "Platform Admin",
@@ -954,6 +1019,12 @@ const ROLE_MENU_GROUPS = {
     { id: "institutions", title: "Kurum Yönetimi", modules: ["tenants", "plans", "billing", "limits", "customization"] },
     { id: "intelligence", title: "AI & Sistem", modules: ["ai-management", "system"] },
     { id: "support", title: "Destek", modules: ["support"] },
+  ],
+  counselor: [
+    { id: "main", title: "Rehberlik", modules: ["dashboard"] },
+    { id: "students", title: "Öğrenci Takibi", modules: [] },
+    { id: "communication", title: "İletişim", modules: ["chat"] },
+    { id: "system", title: "Sistem", modules: ["profile", "system"] },
   ],
   teacher: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "schedule", "attendance", "live-lessons", "duties"] },

@@ -52,6 +52,14 @@ const AIManagement = lazyWithReload(() => import("./pages/superadmin/AIManagemen
 const TenantCustomization = lazyWithReload(() => import("./pages/superadmin/TenantCustomization"));
 
 // Teacher Pages
+import GuidanceDashboard from "./pages/guidance/GuidanceDashboard";
+import GuidanceStudentFile from "./pages/guidance/GuidanceStudentFile";
+import GuidanceSessions from "./pages/guidance/GuidanceSessions";
+import GuidancePlanner from "./pages/guidance/GuidancePlanner";
+import GuidanceAppointments from "./pages/guidance/GuidanceAppointments";
+import GuidanceInventories from "./pages/guidance/GuidanceInventories";
+import GuidanceReports from "./pages/guidance/GuidanceReports";
+import GuidanceRequest from "./pages/guidance/GuidanceRequest";
 import TeacherDashboard from "./pages/teacher/TeacherDashboard";
 import TeacherSchedule from "./pages/teacher/TeacherSchedule";
 import TeacherAttendance from "./pages/teacher/TeacherAttendance";
@@ -331,6 +339,17 @@ function App() {
               <Route path="/sa/support" element={<Support />} />
               <Route path="/sa/ai" element={<AIManagement />} />
               <Route path="/sa/customization" element={<TenantCustomization />} />
+
+              {/* Guidance (Rehberlik) Routes */}
+              <Route path="/g/dashboard" element={<GuidanceDashboard />} />
+              <Route path="/g/student/:studentName" element={<GuidanceStudentFile />} />
+              <Route path="/g/sessions" element={<GuidanceSessions />} />
+              <Route path="/g/planner" element={<GuidancePlanner />} />
+              <Route path="/g/appointments" element={<GuidanceAppointments />} />
+              <Route path="/g/inventories" element={<GuidanceInventories />} />
+              <Route path="/g/reports" element={<GuidanceReports />} />
+              <Route path="/s/guidance" element={<GuidanceRequest />} />
+              <Route path="/p/guidance" element={<GuidanceRequest />} />
 
               {/* Teacher Routes */}
               <Route path="/t/dashboard" element={<TeacherDashboard />} />

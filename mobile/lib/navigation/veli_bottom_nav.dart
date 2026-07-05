@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../pages/veli_home_page.dart';
 import '../pages/veli_devamsizlik_page.dart';
 import '../pages/veli_duyurular_page.dart';
+import '../pages/veli_guidance_page.dart';
 import '../pages/veli_mesajlar_page.dart';
 import '../pages/veli_odeme_page.dart';
 import '../pages/veli_profile_page.dart';
@@ -38,6 +39,12 @@ class VeliBottomNav extends StatelessWidget {
           label: 'Ödemeler',
           pageBuilder: (_) => const VeliOdemePage(),
           sidebarColor: const Color(0xFF10B981),
+        ),
+        AdaptiveDestination(
+          icon: Icons.psychology_alt_rounded,
+          label: 'Rehberlik',
+          pageBuilder: (_) => const VeliGuidancePage(),
+          sidebarColor: const Color(0xFFF7941D),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

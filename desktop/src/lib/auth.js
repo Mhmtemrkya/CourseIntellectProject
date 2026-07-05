@@ -65,6 +65,8 @@ export function getHomePathForRole(role, options = {}) {
       return "/finance/dashboard";
     case "teacher":
       return "/t/dashboard";
+    case "counselor":
+      return "/g/dashboard";
     case "student":
       return "/s/dashboard";
     case "parent":
@@ -178,10 +180,21 @@ function getHomePathForModule(role, moduleKey, options = {}) {
   return byRole[moduleKey] || "";
 }
 
+// Rehberlik: backend'de ayrı rol yok; branşı "Rehberlik" olan öğretmen
+// masaüstünde counselor rolüyle çalışır (backend uçları da aynı kuralı uygular).
+function isCounselorBranch(departmentOrBranch) {
+  return String(departmentOrBranch || "")
+    .toLocaleLowerCase("tr-TR")
+    .includes("rehberlik");
+}
+
 export function createDesktopUser(payload) {
   const data = unwrapBackendPayload(payload);
   const backendRole = data?.user?.primaryRole || data?.user?.role || "";
-  const role = mapBackendRoleToDesktopRole(backendRole);
+  let role = mapBackendRoleToDesktopRole(backendRole);
+  if (role === "teacher" && isCounselorBranch(data?.user?.departmentOrBranch)) {
+    role = "counselor";
+  }
   const tenantId = data?.user?.tenantId || null;
   const isPlatformAdmin = Boolean(data?.user?.isPlatformAdmin) || ((backendRole || "").toLowerCase() === "developer" && tenantId == null);
   const tenantName = data?.user?.tenantName || (isPlatformAdmin ? "Platform" : "SchoolAsist Desktop");

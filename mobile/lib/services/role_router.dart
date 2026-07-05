@@ -4,6 +4,7 @@ import '../navigation/accounting_bottom_nav.dart';
 import '../navigation/administrative_bottom_nav.dart';
 import '../navigation/bottom_nav.dart';
 import '../navigation/cafeteria_bottom_nav.dart';
+import '../navigation/counselor_bottom_nav.dart';
 import '../navigation/teacher_bottom_nav.dart';
 import '../navigation/veli_bottom_nav.dart';
 import '../pages/branch_select_page.dart';
@@ -14,7 +15,18 @@ import 'service_tracking_api_service.dart';
 class RoleRouter {
   RoleRouter._();
 
+  static bool isCounselor(AuthSession session) {
+    if (_normalizeRole(session.primaryRole) != 'Teacher') return false;
+    final branch = session.departmentOrBranch
+        .toLowerCase()
+        .replaceAll('İ', 'i')
+        .replaceAll('ı', 'i');
+    return branch.contains('rehberlik');
+  }
+
   static Widget? panelFor(AuthSession session) {
+    // Rehberlik branşlı öğretmen kendi paneline yönlenir.
+    if (isCounselor(session)) return const CounselorBottomNav();
     final candidates = <String>[session.primaryRole, ...session.extraRoles];
     for (final role in candidates) {
       final page = _pageFor(role);
