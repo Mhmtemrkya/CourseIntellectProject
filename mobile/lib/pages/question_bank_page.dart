@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/question_bank_store.dart';
 import '../services/school_feed_api_service.dart';
@@ -100,7 +101,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
     final topics = _groupedQuestions();
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Soru Bankası"),
+        title: Text("Soru Bankası".tr),
         actions: const [Icon(Icons.search), SizedBox(width: 12)],
       ),
       body: FadeTransition(
@@ -142,7 +143,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                     )
                   else if (topics.isEmpty)
                     StudentEmptyStatePanel(
-                      title: 'Henüz soru çözmedin',
+                      title: 'Henüz soru çözmedin'.tr,
                       description:
                           'Soru bankamızdan konu çalışmaya başlayın. Sana özel sorular ve çözümler burada olacak.',
                       accentColor: const Color(0xFF2563EB),
@@ -245,7 +246,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       controller: _searchController,
       onChanged: (_) => setState(() {}),
       decoration: InputDecoration(
-        hintText: "Konu veya soru ara...",
+        hintText: "Konu veya soru ara...".tr,
         prefixIcon: const Icon(Icons.search),
         filled: true,
         fillColor: isDark(context) ? const Color(0xFF0E1A2F) : Colors.white,
@@ -393,7 +394,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
       subtitle: teacher.isEmpty ? null : teacher,
       badge: '${group.questions.length} soru',
       footer: CardPrimaryButton(
-        label: 'Seti Başlat',
+        label: 'Seti Başlat'.tr,
         icon: Icons.play_arrow_rounded,
         onTap: () => _openTopicGroup(group),
       ),
@@ -471,12 +472,12 @@ class _QuestionBankPageState extends State<QuestionBankPage>
         children: [
           const Icon(Icons.emoji_events, color: Colors.white, size: 32),
           const SizedBox(width: 12),
-          const Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Günlük Meydan Okuma",
+                  "Günlük Meydan Okuma".tr,
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.bold,
@@ -484,7 +485,7 @@ class _QuestionBankPageState extends State<QuestionBankPage>
                 ),
                 SizedBox(height: 4),
                 Text(
-                  "10 soru çöz, 500 XP kazan!",
+                  "10 soru çöz, 500 XP kazan!".tr,
                   style: TextStyle(color: Colors.white70),
                 ),
               ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/teacher_create_live_lesson_page.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/school_feed_api_service.dart';
@@ -27,7 +28,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Canlı ders bağlantısı açılamadı.")),
+        SnackBar(content: Text("Canlı ders bağlantısı açılamadı.".tr)),
       );
     }
   }
@@ -40,12 +41,12 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Canlı Dersi Sil'),
+        title: Text('Canlı Dersi Sil'.tr),
         content: Text('"${lesson.title}" silinsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -62,7 +63,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
       await _loadLessons();
       if (!mounted) return;
       messenger.showSnackBar(
-        const SnackBar(content: Text('Canlı ders silindi')),
+        SnackBar(content: Text('Canlı ders silindi'.tr)),
       );
     } on SchoolFeedApiException catch (error) {
       if (!mounted) return;
@@ -148,7 +149,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text("Canlı ders kaydedildi")));
+      ).showSnackBar(SnackBar(content: Text("Canlı ders kaydedildi".tr)));
     } on SchoolFeedApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -157,7 +158,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Canlı ders kaydedilemedi.")),
+        SnackBar(content: Text("Canlı ders kaydedilemedi.".tr)),
       );
     }
   }
@@ -319,7 +320,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Canlı Dersler",
+        title: "Canlı Dersler".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${lessons.length} aktif plan',
         showBackButton: true,
@@ -341,7 +342,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                   child: ElevatedButton.icon(
                     onPressed: _createLesson,
                     icon: const Icon(Icons.add_circle_outline_rounded),
-                    label: const Text("Canlı Ders Oluştur"),
+                    label: Text("Canlı Ders Oluştur".tr),
                   ),
                 ),
                 const SizedBox(height: 18),
@@ -362,7 +363,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                   )
                 else if (lessons.isEmpty)
                   TeacherEmptyStatePanel(
-                    title: 'Henüz canlı ders oluşturulmamış',
+                    title: 'Henüz canlı ders oluşturulmamış'.tr,
                     description:
                         'Öğrencilerinle buluşmak için ilk canlı dersini oluştur ve etkileşimli bir öğrenme deneyimi başlat.',
                     accentColor: const Color(0xFFEF4444),
@@ -372,7 +373,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                     secondaryLabel: 'Nasıl Çalışır?',
                     onSecondary: () => _showToolSheet(
                       context,
-                      title: 'Canlı Ders Akışı',
+                      title: 'Canlı Ders Akışı'.tr,
                       icon: Icons.video_call_rounded,
                       color: const Color(0xFFEF4444),
                       description:
@@ -446,12 +447,12 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.videocam_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Canlı Ders Merkezi",
+                "Canlı Ders Merkezi".tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -462,7 +463,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Zoom ve Microsoft Teams bağlantılarınızı tek ekrandan yönetin, canlı derslerinize hızlıca katılın.",
+            "Zoom ve Microsoft Teams bağlantılarınızı tek ekrandan yönetin, canlı derslerinize hızlıca katılın.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -719,7 +720,7 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
                     child: ElevatedButton.icon(
                       onPressed: () => _openMeeting(context, meetingUrl),
                       icon: const Icon(Icons.open_in_new_rounded),
-                      label: const Text("Canlı Derse Katıl"),
+                      label: Text("Canlı Derse Katıl".tr),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: accentColor,
                         foregroundColor: Colors.white,
@@ -784,11 +785,11 @@ class _TeacherLiveLessonsPageState extends State<TeacherLiveLessonsPage> {
         _toolCard(
           context,
           icon: Icons.screen_share_rounded,
-          title: "Ekran Paylaş",
+          title: "Ekran Paylaş".tr,
           color: Colors.blue,
           onTap: () => _showToolSheet(
             context,
-            title: "Ekran Paylaş",
+            title: "Ekran Paylaş".tr,
             icon: Icons.screen_share_rounded,
             color: Colors.blue,
             description:

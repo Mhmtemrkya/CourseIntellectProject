@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/announcements_page.dart';
 import 'package:student/pages/exam_analysis_page.dart';
 import 'package:student/pages/exams_page.dart';
@@ -85,9 +86,9 @@ class QuickActions extends StatelessWidget {
         Icons.insights_rounded,
         "Sınav Sonuçları",
         const Color(0xFF2563EB),
-        const StudentExamHistoryPage(
+        StudentExamHistoryPage(
           studentName: '',
-          title: 'Sınav Sonuçlarım',
+          title: 'Sınav Sonuçlarım'.tr,
         ),
         'exams',
       ),
@@ -149,8 +150,8 @@ class QuickActions extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Hızlı İşlemler",
+        Text(
+          "Hızlı İşlemler".tr,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),

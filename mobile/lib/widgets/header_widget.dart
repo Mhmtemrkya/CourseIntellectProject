@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/student_xp_service.dart';
 
@@ -53,7 +54,7 @@ class _HeaderWidgetState extends State<HeaderWidget> {
         ),
         const SizedBox(height: 6),
         Text(
-          "Bugün harika şeyler öğrenmeye hazır mısın?",
+          "Bugün harika şeyler öğrenmeye hazır mısın?".tr,
           style: TextStyle(color: Colors.grey.shade500),
         ),
         const SizedBox(height: 12),

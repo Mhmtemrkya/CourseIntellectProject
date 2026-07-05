@@ -59,7 +59,7 @@ class TeacherAnalyticsClassRecord {
   final String topTopic;
   final String supportTopic;
 
-  const TeacherAnalyticsClassRecord({
+  TeacherAnalyticsClassRecord({
     required this.className,
     required this.studentCount,
     required this.average,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth_session_store.dart';
@@ -41,13 +42,13 @@ class _VeliMeetingsListPageState extends State<VeliMeetingsListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Görüşmelerim')),
+      appBar: AppBar(title: Text('Görüşmelerim'.tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)))
               : _items.isEmpty
-                  ? const Center(child: Text('Görüşme talebiniz yok.'))
+                  ? Center(child: Text('Görüşme talebiniz yok.'.tr))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.separated(
@@ -64,7 +65,7 @@ class _VeliMeetingsListPageState extends State<VeliMeetingsListPage> {
                                 ? FilledButton.icon(
                                     onPressed: () => _join(m.meetingLink),
                                     icon: const Icon(Icons.videocam, size: 16),
-                                    label: const Text('Katıl'),
+                                    label: Text('Katıl'.tr),
                                   )
                                 : null,
                           ));

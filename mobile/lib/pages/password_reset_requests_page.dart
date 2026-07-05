@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/services.dart';
 
 import '../services/auth_api_service.dart';
@@ -95,7 +96,7 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
                   controller: noteController,
                   maxLines: 3,
                   decoration: InputDecoration(
-                    labelText: 'Not (isteğe bağlı)',
+                    labelText: 'Not (isteğe bağlı)'.tr,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                     ),
@@ -154,13 +155,13 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Geçici Şifre Oluşturuldu'),
+          title: Text('Geçici Şifre Oluşturuldu'.tr),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Kullanıcı bu şifreyle giriş yapınca doğrudan yeni şifre belirleme ekranına yönlenir.',
+              Text(
+                'Kullanıcı bu şifreyle giriş yapınca doğrudan yeni şifre belirleme ekranına yönlenir.'.tr,
               ),
               const SizedBox(height: 14),
               Container(
@@ -195,7 +196,7 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
                 );
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Geçici şifre kopyalandı.')),
+                  SnackBar(content: Text('Geçici şifre kopyalandı.'.tr)),
                 );
               },
               icon: const Icon(Icons.copy_rounded),
@@ -215,8 +216,8 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Şifre Talepleri',
+        title: Text(
+          'Şifre Talepleri'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -230,7 +231,7 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
           children: [
             AdminHeroCard(
               eyebrow: 'Güvenli hesap erişimi',
-              title: 'Şifre sıfırlama taleplerini onaylayın.',
+              title: 'Şifre sıfırlama taleplerini onaylayın.'.tr,
               description:
                   'Onaylanan kullanıcıya geçici şifre verilir ve ilk girişte yeni şifre belirlemesi zorunlu olur.',
               colors: const [Color(0xFF111827), Color(0xFFF97316)],
@@ -272,8 +273,8 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'Talepler alınamadı',
+                    Text(
+                      'Talepler alınamadı'.tr,
                       style: TextStyle(fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 8),
@@ -288,10 +289,10 @@ class _PasswordResetRequestsPageState extends State<PasswordResetRequestsPage> {
                 ),
               )
             else if (_items.isEmpty)
-              const AdminPanel(
+              AdminPanel(
                 child: Padding(
                   padding: EdgeInsets.all(18),
-                  child: Center(child: Text('Bu filtrede talep yok.')),
+                  child: Center(child: Text('Bu filtrede talep yok.'.tr)),
                 ),
               )
             else

@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/content_api_service.dart';
@@ -77,7 +78,7 @@ class _TeacherCreateLiveLessonPageState
         if (!mounted) return;
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Materyal yüklenemedi.')));
+        ).showSnackBar(SnackBar(content: Text('Materyal yüklenemedi.'.tr)));
       } finally {
         if (mounted) {
           setState(() => _uploadingMaterial = false);
@@ -113,8 +114,8 @@ class _TeacherCreateLiveLessonPageState
         timeController.text.trim().isEmpty ||
         dateController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Konu, sınıf, saat ve bağlantı alanları zorunludur."),
+        SnackBar(
+          content: Text("Konu, sınıf, saat ve bağlantı alanları zorunludur.".tr),
         ),
       );
       return;
@@ -153,9 +154,9 @@ class _TeacherCreateLiveLessonPageState
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Canlı Ders Oluştur",
+        title: "Canlı Ders Oluştur".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
-        subtitle: "Canlı Ders Planlama",
+        subtitle: "Canlı Ders Planlama".tr,
         showBackButton: true,
       ),
       body: SingleChildScrollView(
@@ -191,20 +192,20 @@ class _TeacherCreateLiveLessonPageState
                   const SizedBox(height: 16),
                   TextField(
                     controller: topicController,
-                    decoration: const InputDecoration(labelText: "Konu Adı"),
+                    decoration: InputDecoration(labelText: "Konu Adı".tr),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: descriptionController,
                     maxLines: 3,
-                    decoration: const InputDecoration(labelText: "Açıklama"),
+                    decoration: InputDecoration(labelText: "Açıklama".tr),
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedClass.isEmpty
                         ? null
                         : _selectedClass,
-                    decoration: const InputDecoration(labelText: "Sınıf"),
+                    decoration: InputDecoration(labelText: "Sınıf".tr),
                     items: _classOptions
                         .map(
                           (item) =>
@@ -222,9 +223,9 @@ class _TeacherCreateLiveLessonPageState
                   TextField(
                     controller: dateController,
                     readOnly: true,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: "Tarih",
-                      hintText: "Takvimden seçin",
+                      hintText: "Takvimden seçin".tr,
                       suffixIcon: Icon(Icons.calendar_today_rounded),
                     ),
                     onTap: _pickDate,
@@ -232,9 +233,9 @@ class _TeacherCreateLiveLessonPageState
                   const SizedBox(height: 14),
                   TextField(
                     controller: timeController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: "Saat",
-                      hintText: "Örnek: 14:00 - 14:40",
+                      hintText: "Örnek: 14:00 - 14:40".tr,
                     ),
                   ),
                   const SizedBox(height: 14),
@@ -287,7 +288,7 @@ class _TeacherCreateLiveLessonPageState
                   Row(
                     children: [
                       Text(
-                        "İndirilebilir Materyaller",
+                        "İndirilebilir Materyaller".tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -324,7 +325,7 @@ class _TeacherCreateLiveLessonPageState
                   const SizedBox(height: 14),
                   if (materials.isEmpty)
                     Text(
-                      "Henüz materyal eklenmedi.",
+                      "Henüz materyal eklenmedi.".tr,
                       style: theme.textTheme.bodyMedium,
                     ),
                   ...materials.map(
@@ -366,7 +367,7 @@ class _TeacherCreateLiveLessonPageState
               child: ElevatedButton.icon(
                 onPressed: _uploadingMaterial ? null : _saveLesson,
                 icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text("Canlı Dersi Oluştur"),
+                label: Text("Canlı Dersi Oluştur".tr),
               ),
             ),
           ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/header_widget.dart';
 import '../widgets/summary_cards.dart';
 import '../widgets/achievements_widget.dart';
@@ -167,7 +168,7 @@ class _StudentHomePageState extends State<StudentHomePage>
       MaterialPageRoute(
         builder: (_) => StudentExamHistoryPage(
           studentName: _studentName,
-          title: 'Sınav Sonuçlarım',
+          title: 'Sınav Sonuçlarım'.tr,
         ),
       ),
     );
@@ -303,14 +304,14 @@ class _StudentHomePageState extends State<StudentHomePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Öğrenci Gelişim Alanları',
+            'Öğrenci Gelişim Alanları'.tr,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            'Yanlışlarını tekrar listesinde topla ve öğretmen, ödev, sınav hareketlerini canlı bildirim kutusundan izle.',
+            'Yanlışlarını tekrar listesinde topla ve öğretmen, ödev, sınav hareketlerini canlı bildirim kutusundan izle.'.tr,
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),
@@ -318,7 +319,7 @@ class _StudentHomePageState extends State<StudentHomePage>
             children: [
               Expanded(
                 child: _miniAction(
-                  title: "Yanlış Defteri",
+                  title: "Yanlış Defteri".tr,
                   icon: Icons.menu_book_outlined,
                   color: const Color(0xFFEF4444),
                   onTap: goToWrongAnswers,
@@ -327,7 +328,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               const SizedBox(width: 10),
               Expanded(
                 child: _miniAction(
-                  title: "Canlı Bildirim",
+                  title: "Canlı Bildirim".tr,
                   icon: Icons.notifications_active_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: goToNotifications,
@@ -336,7 +337,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               const SizedBox(width: 10),
               Expanded(
                 child: _miniAction(
-                  title: "Devamsızlık",
+                  title: "Devamsızlık".tr,
                   icon: Icons.event_busy_outlined,
                   color: const Color(0xFFB42318),
                   onTap: goToAttendanceHistory,
@@ -363,14 +364,14 @@ class _StudentHomePageState extends State<StudentHomePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Günlük okul hizmetleri',
+            'Günlük okul hizmetleri'.tr,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w900,
             ),
           ),
           const SizedBox(height: 6),
           Text(
-            'Servis konumunu ve haftalık yemekhane listesini buradan takip edebilirsin.',
+            'Servis konumunu ve haftalık yemekhane listesini buradan takip edebilirsin.'.tr,
             style: theme.textTheme.bodySmall?.copyWith(
               color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.68),
             ),
@@ -381,7 +382,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               Expanded(
                 child: _serviceHomeCard(
                   title: 'Servisim',
-                  subtitle: 'Canlı konum ve ETA',
+                  subtitle: 'Canlı konum ve ETA'.tr,
                   icon: Icons.directions_bus_filled_outlined,
                   color: const Color(0xFF0F766E),
                   onTap: () => Navigator.push(
@@ -397,7 +398,7 @@ class _StudentHomePageState extends State<StudentHomePage>
               Expanded(
                 child: _serviceHomeCard(
                   title: 'Yemekhane',
-                  subtitle: 'Haftalık menü',
+                  subtitle: 'Haftalık menü'.tr,
                   icon: Icons.restaurant_menu_rounded,
                   color: const Color(0xFFF97316),
                   onTap: () => Navigator.push(
@@ -486,14 +487,14 @@ class _StudentHomePageState extends State<StudentHomePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Bugünkü Öğrenci Paneli",
+            "Bugünkü Öğrenci Paneli".tr,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 8),
           Text(
-            "QR yoklamaya katıl, öğretmenine soru gönder ve otomatik oluşan çalışma planını takip et.",
+            "QR yoklamaya katıl, öğretmenine soru gönder ve otomatik oluşan çalışma planını takip et.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
             ),
@@ -522,25 +523,25 @@ class _StudentHomePageState extends State<StudentHomePage>
                 onTap: goToAttendanceScan,
               ),
               _miniAction(
-                title: "Sınavlarım",
+                title: "Sınavlarım".tr,
                 icon: Icons.fact_check_rounded,
                 color: const Color(0xFF7C3AED),
                 onTap: goToExams,
               ),
               _miniAction(
-                title: "Deneme Sınavları",
+                title: "Deneme Sınavları".tr,
                 icon: Icons.workspace_premium_rounded,
                 color: const Color(0xFFF97316),
                 onTap: goToMockExams,
               ),
               _miniAction(
-                title: "Sınav Sonuçlarım",
+                title: "Sınav Sonuçlarım".tr,
                 icon: Icons.bar_chart_rounded,
                 color: const Color(0xFFF59E0B),
                 onTap: goToExamResults,
               ),
               _miniAction(
-                title: "Detaylı Analiz",
+                title: "Detaylı Analiz".tr,
                 icon: Icons.insights_rounded,
                 color: const Color(0xFF7C3AED),
                 onTap: () => Navigator.push(
@@ -549,13 +550,13 @@ class _StudentHomePageState extends State<StudentHomePage>
                 ),
               ),
               _miniAction(
-                title: "Çalışma Planım",
+                title: "Çalışma Planım".tr,
                 icon: Icons.event_note_rounded,
                 color: const Color(0xFF10B981),
                 onTap: goToStudyPlan,
               ),
               _miniAction(
-                title: "Devamsızlık",
+                title: "Devamsızlık".tr,
                 icon: Icons.rule_folder_outlined,
                 color: const Color(0xFFB42318),
                 onTap: goToAttendanceHistory,

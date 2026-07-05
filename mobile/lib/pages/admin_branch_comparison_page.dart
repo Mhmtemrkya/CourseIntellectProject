@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/staff_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -55,8 +56,8 @@ class _AdminBranchComparisonPageState extends State<AdminBranchComparisonPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Şube Karşılaştırma',
+        title: Text(
+          'Şube Karşılaştırma'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

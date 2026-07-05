@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/language_tile.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_session_store.dart';
@@ -47,7 +49,7 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
       setState(() => _profile = updated);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Profil güncellendi.')));
+      ).showSnackBar(SnackBar(content: Text('Profil güncellendi.'.tr)));
     }
   }
 
@@ -116,7 +118,7 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
             AdminHeroCard(
               eyebrow: 'İdari profil',
               title:
-                  'İletişim bilgileri, bildirim tercihleri ve tema ayarlarını yönetin.',
+                  'İletişim bilgileri, bildirim tercihleri ve tema ayarlarını yönetin.'.tr,
               description: tenantName.isEmpty
                   ? 'İdari birim hesabına ait operasyonel tercihler burada güncellenir.'
                   : '$tenantName • İdari birim operasyonel tercihleri.',
@@ -169,7 +171,7 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
                           ? null
                           : () => _openEdit(profile),
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Profili Düzenle'),
+                      label: Text('Profili Düzenle'.tr),
                     ),
                   ),
                 ],
@@ -184,12 +186,13 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
                     onChanged: (value) => themeProvider.toggleTheme(value),
                     title: const Text('Dark Mode'),
                   ),
+                  const LanguageTile(),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.notifications_active_outlined),
                     title: const Text('Bildirim Tercihleri'),
-                    subtitle: const Text(
-                      'Kayıt, veli dönüşü ve duyuru banner ayarlarını yönet.',
+                    subtitle: Text(
+                      'Kayıt, veli dönüşü ve duyuru banner ayarlarını yönet.'.tr,
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.push(
@@ -202,9 +205,9 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
-                    title: const Text('Şifre Değiştir'),
-                    subtitle: const Text(
-                      'Hesap güvenliği için şifrenizi güncelleyin.',
+                    title: Text('Şifre Değiştir'.tr),
+                    subtitle: Text(
+                      'Hesap güvenliği için şifrenizi güncelleyin.'.tr,
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.push(
@@ -224,34 +227,34 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'İdari Yetkiler',
+                    'İdari Yetkiler'.tr,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 12),
-                  const ListTile(
+                  ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.person_add_alt_1_outlined),
-                    title: Text('Öğrenci kayıt oluşturma'),
+                    title: Text('Öğrenci kayıt oluşturma'.tr),
                     subtitle: Text(
-                      'Yeni öğrenci ve veli bilgileri ekleyebilir',
+                      'Yeni öğrenci ve veli bilgileri ekleyebilir'.tr,
                     ),
                   ),
-                  const ListTile(
+                  ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.campaign_outlined),
-                    title: Text('Duyuru yayınlama'),
+                    title: Text('Duyuru yayınlama'.tr),
                     subtitle: Text(
-                      'Öğrenci, veli ve kurum geneline duyuru paylaşabilir',
+                      'Öğrenci, veli ve kurum geneline duyuru paylaşabilir'.tr,
                     ),
                   ),
-                  const ListTile(
+                  ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: Icon(Icons.chat_bubble_outline_rounded),
-                    title: Text('İletişim akışı'),
+                    title: Text('İletişim akışı'.tr),
                     subtitle: Text(
-                      'Veli ve kurum birimleriyle mesajlaşma erişimi',
+                      'Veli ve kurum birimleriyle mesajlaşma erişimi'.tr,
                     ),
                   ),
                 ],
@@ -263,7 +266,7 @@ class _AdministrativeProfilePageState extends State<AdministrativeProfilePage> {
               child: OutlinedButton.icon(
                 onPressed: () => logoutToRoleSelect(context),
                 icon: const Icon(Icons.logout_rounded),
-                label: const Text('Çıkış Yap'),
+                label: Text('Çıkış Yap'.tr),
               ),
             ),
           ],

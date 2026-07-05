@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/question_bank_api_service.dart';
 import 'package:student/services/question_bank_store.dart';
@@ -105,7 +106,7 @@ class _TopicTestPageState extends State<TopicTestPage>
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Cevap kaydı senkronize edilemedi.')),
+        SnackBar(content: Text('Cevap kaydı senkronize edilemedi.'.tr)),
       );
     }
   }
@@ -179,11 +180,11 @@ class _TopicTestPageState extends State<TopicTestPage>
                 ),
               )
             : _questions.isEmpty
-            ? const Center(
+            ? Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
                   child: Text(
-                    'Konu testi için uygun soru bankası kaydı bulunmuyor.',
+                    'Konu testi için uygun soru bankası kaydı bulunmuyor.'.tr,
                   ),
                 ),
               )

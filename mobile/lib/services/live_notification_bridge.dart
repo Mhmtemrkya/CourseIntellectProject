@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -299,7 +300,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'homework:${item['id']}',
-            title: 'Yeni ödev yayınlandı',
+            title: 'Yeni ödev yayınlandı'.tr,
             body: _compactBody(
               item['title']?.toString() ?? 'Yeni ödev',
               '${item['subject'] ?? 'Ödev'} • Teslim: ${item['deadline'] ?? '-'}',
@@ -316,7 +317,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'teacher-homework:${item['id']}',
-            title: 'Ödev güncellemesi',
+            title: 'Ödev güncellemesi'.tr,
             body: _compactBody(
               item['title']?.toString() ?? 'Ödev',
               '${item['className'] ?? '-'} • ${item['subject'] ?? 'Ödev'} • ${item['deadline'] ?? '-'}',
@@ -335,9 +336,9 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'content:${item.id ?? item.title}',
-            title: 'Yeni içerik yayınlandı',
+            title: 'Yeni içerik yayınlandı'.tr,
             body: _compactBody(
-              item.title.isNotEmpty ? item.title : 'Yeni içerik',
+              item.title.isNotEmpty ? item.title : 'Yeni içerik'.tr,
               '${item.subject} • ${item.teacher} • ${item.fileType}',
             ),
             category: 'content',
@@ -361,7 +362,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'planned-exam:${item.id}',
-            title: 'Yeni sınav planlandı',
+            title: 'Yeni sınav planlandı'.tr,
             body: _compactBody(
               item.title,
               '${item.subject} • ${item.date} • ${item.duration}',
@@ -382,7 +383,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'teacher-exam:${item.id}',
-            title: 'Sınav takvimi güncellendi',
+            title: 'Sınav takvimi güncellendi'.tr,
             body: _compactBody(
               item.title,
               '${item.className} • ${item.subject} • ${item.date}',
@@ -410,7 +411,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'parent-planned-exam:${item.id}',
-            title: 'Çocuğunuz için yeni sınav planlandı',
+            title: 'Çocuğunuz için yeni sınav planlandı'.tr,
             body: _compactBody(
               item.title,
               '${item.subject} • ${item.date} • ${item.className}',
@@ -479,7 +480,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'weekly-report:${item.id}',
-            title: 'Yeni haftalık rapor gönderildi',
+            title: 'Yeni haftalık rapor gönderildi'.tr,
             body: _compactBody(
               item.title.isEmpty ? 'Haftalık rapor' : item.title,
               '${item.subject} • ${item.studentName} • ${item.weeklyPeriodLabel}',
@@ -502,7 +503,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'teacher-report:${item.id}',
-            title: 'Haftalık rapor kaydı güncellendi',
+            title: 'Haftalık rapor kaydı güncellendi'.tr,
             body: _compactBody(
               item.title.isEmpty ? 'Haftalık rapor' : item.title,
               '${item.studentName} • ${item.subject} • ${item.weeklyPeriodLabel}',
@@ -523,7 +524,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'teacher-meeting:${item.id}:${item.status}',
-            title: 'Yeni görüşme talebi',
+            title: 'Yeni görüşme talebi'.tr,
             body: _trim(
               '${item.parentName} • ${item.studentName} • ${item.slot}',
             ),
@@ -543,7 +544,7 @@ class LiveNotificationBridge {
         .map(
           (item) => _LiveNotificationItem(
             id: 'parent-meeting:${item.id}:${item.status}',
-            title: 'Görüşme durumu güncellendi',
+            title: 'Görüşme durumu güncellendi'.tr,
             body: _trim('${item.advisor} • ${item.slot} • ${item.status}'),
             category: 'meeting',
           ),

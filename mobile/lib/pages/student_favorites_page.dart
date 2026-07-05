@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
 import 'content_detail_page.dart';
@@ -131,7 +132,7 @@ class _StudentFavoritesPageState extends State<StudentFavoritesPage> {
     final theme = Theme.of(context);
     final favorites = _favorites;
     return Scaffold(
-      appBar: AppBar(title: const Text('Favori Konularım')),
+      appBar: AppBar(title: Text('Favori Konularım'.tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -153,8 +154,8 @@ class _StudentFavoritesPageState extends State<StudentFavoritesPage> {
                   TextField(
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      hintText: 'Favorilerde ara...',
+                    decoration: InputDecoration(
+                      hintText: 'Favorilerde ara...'.tr,
                       prefixIcon: Icon(Icons.search_rounded),
                     ),
                   ),
@@ -166,13 +167,13 @@ class _StudentFavoritesPageState extends State<StudentFavoritesPage> {
                         children: [
                           Icon(Icons.star_border_rounded, size: 48, color: theme.disabledColor),
                           const SizedBox(height: 12),
-                          const Text(
-                            'Henüz favori konun yok',
+                          Text(
+                            'Henüz favori konun yok'.tr,
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            'İçerik sayfasında bir konuyu yıldızladığında burada görünür.',
+                            'İçerik sayfasında bir konuyu yıldızladığında burada görünür.'.tr,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodySmall,
                           ),
@@ -219,7 +220,7 @@ class _StudentFavoritesPageState extends State<StudentFavoritesPage> {
         ),
         subtitle: Text('${item.subject}${item.teacher.isNotEmpty ? ' • ${item.teacher}' : ''}'),
         trailing: IconButton(
-          tooltip: 'Favoriden çıkar',
+          tooltip: 'Favoriden çıkar'.tr,
           icon: const Icon(Icons.star_rounded, color: Color(0xFFFF9D2E)),
           onPressed: () => _removeFavorite(item),
         ),

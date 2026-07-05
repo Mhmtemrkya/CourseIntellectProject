@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/teacher_assignments_page.dart';
 import 'package:student/pages/teacher_attendance_page.dart';
 import 'package:student/pages/teacher_exams_page.dart';
@@ -417,7 +418,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               children: [
                 _sheetAction(
                   icon: Icons.fact_check_rounded,
-                  title: "Deneme Sınavı Oluştur",
+                  title: "Deneme Sınavı Oluştur".tr,
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherMockExamsPage());
@@ -425,7 +426,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.assignment_rounded,
-                  title: "Ödev Ver",
+                  title: "Ödev Ver".tr,
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherAssignmentsPage());
@@ -433,7 +434,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.campaign_rounded,
-                  title: "Duyuru Paylaş",
+                  title: "Duyuru Paylaş".tr,
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherAnnouncementsPage());
@@ -441,7 +442,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.help_center_rounded,
-                  title: "Soru Oluştur",
+                  title: "Soru Oluştur".tr,
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherQuestionCreatePage());
@@ -449,7 +450,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.folder_copy_rounded,
-                  title: "İçerik Yükle",
+                  title: "İçerik Yükle".tr,
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherContentPage());
@@ -457,7 +458,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                 ),
                 _sheetAction(
                   icon: Icons.bar_chart_rounded,
-                  title: "Rapor Gönder",
+                  title: "Rapor Gönder".tr,
                   onTap: () {
                     Navigator.pop(context);
                     _openPage(const TeacherReportsPage());
@@ -504,7 +505,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
-              title: const Text("Yapılacak Ekle"),
+              title: Text("Yapılacak Ekle".tr),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -512,18 +513,18 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                   children: [
                     TextField(
                       controller: _taskTitleController,
-                      decoration: const InputDecoration(
-                        labelText: "Başlık",
-                        hintText: "Örnek: 11-A quiz sonucunu kontrol et",
+                      decoration: InputDecoration(
+                        labelText: "Başlık".tr,
+                        hintText: "Örnek: 11-A quiz sonucunu kontrol et".tr,
                       ),
                     ),
                     const SizedBox(height: 12),
                     TextField(
                       controller: _taskSubtitleController,
                       maxLines: 3,
-                      decoration: const InputDecoration(
-                        labelText: "Açıklama",
-                        hintText: "Bu görevin neden eklendiğini yazın",
+                      decoration: InputDecoration(
+                        labelText: "Açıklama".tr,
+                        hintText: "Bu görevin neden eklendiğini yazın".tr,
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -558,8 +559,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                       }).toList(),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      "İkon",
+                    Text(
+                      "İkon".tr,
                       style: TextStyle(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 10),
@@ -656,7 +657,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
         backgroundColor: const Color(0xFFFF7A00),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_rounded),
-        label: const Text("Hızlı İşlem"),
+        label: Text("Hızlı İşlem".tr),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),
@@ -666,7 +667,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             children: [
               _heroCard(theme, isDark),
               const SizedBox(height: 18),
-              _sectionHeader(theme, title: "Hızlı İşlemler", actionText: ""),
+              _sectionHeader(theme, title: "Hızlı İşlemler".tr, actionText: ""),
               const SizedBox(height: 12),
               _quickActions(context),
               const SizedBox(height: 18),
@@ -674,7 +675,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 18),
               _sectionHeader(
                 theme,
-                title: "Bugün Yapılacaklar",
+                title: "Bugün Yapılacaklar".tr,
                 actionText: "Ekle",
                 onActionTap: _openAddTaskDialog,
               ),
@@ -683,14 +684,14 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 18),
               _sectionHeader(
                 theme,
-                title: "Akıllı Bildirimler",
+                title: "Akıllı Bildirimler".tr,
                 actionText: "Tümünü Gör",
                 onActionTap: _openNotificationsSheet,
               ),
               const SizedBox(height: 12),
               _notificationsPanel(theme, isDark),
               const SizedBox(height: 18),
-              _sectionHeader(theme, title: "Riskli Öğrenciler", actionText: ""),
+              _sectionHeader(theme, title: "Riskli Öğrenciler".tr, actionText: ""),
               const SizedBox(height: 12),
               ...riskyStudents.map(
                 (item) => _riskStudentCard(theme, isDark, item),
@@ -698,13 +699,13 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 18),
               _sectionHeader(
                 theme,
-                title: "Sınıf Karşılaştırma",
+                title: "Sınıf Karşılaştırma".tr,
                 actionText: "",
               ),
               const SizedBox(height: 12),
               _classComparisonCard(theme, isDark),
               const SizedBox(height: 18),
-              _sectionHeader(theme, title: "Akıllı Öneriler", actionText: ""),
+              _sectionHeader(theme, title: "Akıllı Öneriler".tr, actionText: ""),
               const SizedBox(height: 12),
               ...suggestions.map(
                 (item) => _suggestionCard(theme, isDark, item),
@@ -712,7 +713,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 18),
               _sectionHeader(
                 theme,
-                title: "Canlı Ders Sonrası Özet",
+                title: "Canlı Ders Sonrası Özet".tr,
                 actionText: "",
               ),
               const SizedBox(height: 12),
@@ -720,7 +721,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               const SizedBox(height: 18),
               _sectionHeader(
                 theme,
-                title: "Ders Programım",
+                title: "Ders Programım".tr,
                 actionText: "Takvimi Aç",
                 onActionTap: () {
                   _openPage(const TeacherSchedulePage());
@@ -795,8 +796,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             ],
           ),
           const SizedBox(height: 20),
-          const Text(
-            "Öğretmen operasyon merkezi",
+          Text(
+            "Öğretmen operasyon merkezi".tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 28,
@@ -1112,7 +1113,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               Expanded(
                 child: _metricBox(
                   theme,
-                  title: "Başarı",
+                  title: "Başarı".tr,
                   value: "${item["score"]}",
                 ),
               ),
@@ -1325,8 +1326,8 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             const SizedBox(height: 12),
             Text('Zaman: ${item["time"]}'),
             const SizedBox(height: 8),
-            const Text(
-              'Bu kayıt, sınıf performansı, veli geri bildirimi ve katılım hareketlerine göre akıllı olarak oluşturuldu.',
+            Text(
+              'Bu kayıt, sınıf performansı, veli geri bildirimi ve katılım hareketlerine göre akıllı olarak oluşturuldu.'.tr,
             ),
           ],
         ),
@@ -1350,14 +1351,14 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
           shrinkWrap: true,
           children: [
             Text(
-              'Sınıf Karşılaştırma Detayı',
+              'Sınıf Karşılaştırma Detayı'.tr,
               style: Theme.of(
                 context,
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
             ),
             const SizedBox(height: 8),
-            const Text(
-              'Ortalama, trend ve risk seviyeleri birlikte listelenir.',
+            Text(
+              'Ortalama, trend ve risk seviyeleri birlikte listelenir.'.tr,
             ),
             const SizedBox(height: 16),
             ...classComparison.map(
@@ -1479,7 +1480,7 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
                     ),
                     child: const Icon(Icons.event_busy_rounded),
                   ),
-                  title: const Text("Bugün planli canlı ders görünmüyor"),
+                  title: Text("Bugün planli canlı ders görünmüyor".tr),
                   subtitle: Text(
                     _loadingDashboard
                         ? "Takvim verisi yükleniyor."
@@ -1563,24 +1564,24 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
             theme,
             icon: Icons.campaign_rounded,
             color: const Color(0xFFFFB020),
-            title: "Yarın zümre toplantısı var",
-            subtitle: "Saat 14:30'da öğretmenler odasında yapılacak.",
+            title: "Yarın zümre toplantısı var".tr,
+            subtitle: "Saat 14:30'da öğretmenler odasında yapılacak.".tr,
           ),
           _divider(theme),
           _announcementItem(
             theme,
             icon: Icons.videocam_rounded,
             color: const Color(0xFF4E8DF5),
-            title: "Canlı ders bağlantılari güncellendi",
-            subtitle: "Yeni bağlantılar ders sayfasina eklendi.",
+            title: "Canlı ders bağlantılari güncellendi".tr,
+            subtitle: "Yeni bağlantılar ders sayfasina eklendi.".tr,
           ),
           _divider(theme),
           _announcementItem(
             theme,
             icon: Icons.assignment_turned_in_rounded,
             color: const Color(0xFF69C36D),
-            title: "Haftalık rapor teslim günu",
-            subtitle: "Cuma 17:00'ye kadar sistemden yüklenmeli.",
+            title: "Haftalık rapor teslim günu".tr,
+            subtitle: "Cuma 17:00'ye kadar sistemden yüklenmeli.".tr,
           ),
         ],
       ),

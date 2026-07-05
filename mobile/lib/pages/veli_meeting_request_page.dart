@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/linked_children_service.dart';
@@ -179,7 +180,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Görüşme Talebi'),
+      appBar: AppHeader(title: 'Görüşme Talebi'.tr),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -193,7 +194,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Öğrenci seçimi',
+                    'Öğrenci seçimi'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -203,8 +204,8 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                     initialValue: _selectedStudent.isEmpty
                         ? null
                         : _selectedStudent,
-                    decoration: const InputDecoration(
-                      labelText: 'Çocuk',
+                    decoration: InputDecoration(
+                      labelText: 'Çocuk'.tr,
                       border: OutlineInputBorder(),
                     ),
                     items: _children
@@ -225,8 +226,8 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                     initialValue: _selectedAdvisor.isEmpty
                         ? null
                         : _selectedAdvisor,
-                    decoration: const InputDecoration(
-                      labelText: 'Öğretmen',
+                    decoration: InputDecoration(
+                      labelText: 'Öğretmen'.tr,
                       border: OutlineInputBorder(),
                     ),
                     items: _teachers
@@ -249,7 +250,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Görüşme konusu',
+                    'Görüşme konusu'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -279,14 +280,14 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Görüşme tipi',
+                    'Görüşme tipi'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
                   ),
                   const SizedBox(height: 12),
                   SegmentedButton<bool>(
-                    segments: const [
+                    segments: [
                       ButtonSegment<bool>(
                         value: true,
                         icon: Icon(Icons.video_call_outlined),
@@ -295,7 +296,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                       ButtonSegment<bool>(
                         value: false,
                         icon: Icon(Icons.meeting_room_outlined),
-                        label: Text('Yüz yüze'),
+                        label: Text('Yüz yüze'.tr),
                       ),
                     ],
                     selected: {_onlineMeeting},
@@ -323,12 +324,12 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                       ],
                     )
                   else if (_slots.isEmpty)
-                    const Text(
-                      'Bu öğretmen için uygun görüşme saati bulunamadı.',
+                    Text(
+                      'Bu öğretmen için uygun görüşme saati bulunamadı.'.tr,
                     )
                   else ...[
                     Text(
-                      'Uygün günler',
+                      'Uygün günler'.tr,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -426,10 +427,10 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                   TextField(
                     controller: _noteController,
                     maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Görüşme notu',
+                    decoration: InputDecoration(
+                      labelText: 'Görüşme notu'.tr,
                       hintText:
-                          'Görüşme öncesi paylaşmak istediğiniz notu yazın',
+                          'Görüşme öncesi paylaşmak istediğiniz notu yazın'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -443,7 +444,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Talep özeti',
+                    'Talep özeti'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -479,7 +480,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
                     child: FilledButton.icon(
                       onPressed: _submitRequest,
                       icon: const Icon(Icons.send_rounded),
-                      label: const Text('Talebi Oluştur'),
+                      label: Text('Talebi Oluştur'.tr),
                     ),
                   ),
                 ],
@@ -527,7 +528,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Öğretmenin açtığı uygun gün ve saatlerden birini seçerek talep oluştur.',
+            'Öğretmenin açtığı uygun gün ve saatlerden birini seçerek talep oluştur.'.tr,
             style: theme.textTheme.titleLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -536,7 +537,7 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Liste dışındaki saatler seçilemez. Böylece hem veli tarafı net kalır hem öğretmenin takvimi düzenli çalışır.',
+            'Liste dışındaki saatler seçilemez. Böylece hem veli tarafı net kalır hem öğretmenin takvimi düzenli çalışır.'.tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.88),
               height: 1.45,
@@ -582,8 +583,8 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
   Future<void> _submitRequest() async {
     if (_selectedStudent.isEmpty || _selectedSlot.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Lütfen öğrenci ve saat seçin.'),
+        SnackBar(
+          content: Text('Lütfen öğrenci ve saat seçin.'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -607,9 +608,9 @@ class _VeliMeetingRequestPageState extends State<VeliMeetingRequestPage> {
       await showDialog<void>(
         context: context,
         builder: (dialogContext) => AlertDialog(
-          title: const Text('Talep Gönderildi'),
-          content: const Text(
-            'Görüşme talebiniz öğretmene başarıyla iletildi. Onay durumunu veli panelinden takip edebilirsiniz.',
+          title: Text('Talep Gönderildi'.tr),
+          content: Text(
+            'Görüşme talebiniz öğretmene başarıyla iletildi. Onay durumunu veli panelinden takip edebilirsiniz.'.tr,
           ),
           actions: [
             TextButton(

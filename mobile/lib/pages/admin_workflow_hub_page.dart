@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_workflow_api_service.dart';
 
 const _statusTr = {
@@ -25,7 +26,7 @@ class _AdminWorkflowHubPageState extends State<AdminWorkflowHubPage> {
       length: 7,
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('İdari Yönetim'),
+          title: Text('İdari Yönetim'.tr),
           bottom: const TabBar(
             isScrollable: true,
             tabs: [
@@ -86,7 +87,7 @@ class _ApprovalsTabState extends State<_ApprovalsTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_items.isEmpty) return const Center(child: Text('Bekleyen onay yok.'));
+    if (_items.isEmpty) return Center(child: Text('Bekleyen onay yok.'.tr));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
@@ -143,12 +144,12 @@ class _LeavesTabState extends State<_LeavesTab> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(onPressed: _create, icon: const Icon(Icons.add), label: const Text('İzin')),
+      floatingActionButton: FloatingActionButton.extended(onPressed: _create, icon: const Icon(Icons.add), label: Text('İzin'.tr)),
       body: _loading ? const Center(child: CircularProgressIndicator())
         : RefreshIndicator(
             onRefresh: _load,
             child: _items.isEmpty
-              ? ListView(children: const [SizedBox(height: 200), Center(child: Text('İzin talebi yok.'))])
+              ? ListView(children: [SizedBox(height: 200), Center(child: Text('İzin talebi yok.'.tr))])
               : ListView.separated(
                   padding: const EdgeInsets.all(12),
                   itemCount: _items.length,
@@ -211,9 +212,9 @@ class _LeaveDialogState extends State<_LeaveDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Yeni İzin'),
+      title: Text('Yeni İzin'.tr),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: _name, decoration: const InputDecoration(labelText: 'Personel adı')),
+        TextField(controller: _name, decoration: InputDecoration(labelText: 'Personel adı'.tr)),
         DropdownButtonFormField<String>(
           initialValue: _type,
           items: const ['Yıllık', 'Mazeret', 'Hastalık', 'Ücretsiz'].map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
@@ -225,8 +226,8 @@ class _LeaveDialogState extends State<_LeaveDialog> {
         ]),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
-        ElevatedButton(onPressed: _busy ? null : _submit, child: const Text('Oluştur')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text('Vazgeç'.tr)),
+        ElevatedButton(onPressed: _busy ? null : _submit, child: Text('Oluştur'.tr)),
       ],
     );
   }
@@ -271,7 +272,7 @@ class _TasksTabState extends State<_TasksTab> {
       Padding(
         padding: const EdgeInsets.all(12),
         child: Row(children: [
-          Expanded(child: TextField(controller: _title, decoration: const InputDecoration(hintText: 'Yeni görev başlığı', isDense: true))),
+          Expanded(child: TextField(controller: _title, decoration: InputDecoration(hintText: 'Yeni görev başlığı'.tr, isDense: true))),
           const SizedBox(width: 8),
           FilledButton(onPressed: _add, child: const Text('Ekle')),
         ]),
@@ -279,7 +280,7 @@ class _TasksTabState extends State<_TasksTab> {
       Expanded(child: RefreshIndicator(
         onRefresh: _load,
         child: _items.isEmpty
-          ? ListView(children: const [SizedBox(height: 160), Center(child: Text('Görev yok.'))])
+          ? ListView(children: [SizedBox(height: 160), Center(child: Text('Görev yok.'.tr))])
           : ListView.separated(
               padding: const EdgeInsets.all(12),
               itemCount: _items.length,
@@ -344,7 +345,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
       Padding(
         padding: const EdgeInsets.all(12),
         child: Row(children: [
-          Expanded(child: TextField(controller: _title, decoration: const InputDecoration(hintText: 'Evrak başlığı', isDense: true))),
+          Expanded(child: TextField(controller: _title, decoration: InputDecoration(hintText: 'Evrak başlığı'.tr, isDense: true))),
           const SizedBox(width: 8),
           FilledButton(onPressed: _add, child: const Text('Ekle')),
         ]),
@@ -352,7 +353,7 @@ class _DocumentsTabState extends State<_DocumentsTab> {
       Expanded(child: RefreshIndicator(
         onRefresh: _load,
         child: _items.isEmpty
-          ? ListView(children: const [SizedBox(height: 160), Center(child: Text('Belge yok.'))])
+          ? ListView(children: [SizedBox(height: 160), Center(child: Text('Belge yok.'.tr))])
           : ListView.separated(
               padding: const EdgeInsets.all(12),
               itemCount: _items.length,
@@ -395,7 +396,7 @@ class _AuditTabState extends State<_AuditTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_items.isEmpty) return const Center(child: Text('Denetim kaydı yok.'));
+    if (_items.isEmpty) return Center(child: Text('Denetim kaydı yok.'.tr));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
@@ -455,12 +456,12 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
         content: StatefulBuilder(
           builder: (ctx, setLocal) => SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Birim adı')),
+              TextField(controller: nameCtrl, decoration: InputDecoration(labelText: 'Birim adı'.tr)),
               DropdownButtonFormField<String>(
                 initialValue: type,
-                decoration: const InputDecoration(labelText: 'Tür'),
-                items: const [
-                  DropdownMenuItem(value: 'Kampüs', child: Text('Kampüs')),
+                decoration: InputDecoration(labelText: 'Tür'.tr),
+                items: [
+                  DropdownMenuItem(value: 'Kampüs', child: Text('Kampüs'.tr)),
                   DropdownMenuItem(value: 'Birim', child: Text('Birim')),
                   DropdownMenuItem(value: 'Departman', child: Text('Departman')),
                 ],
@@ -468,9 +469,9 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
               ),
               DropdownButtonFormField<String?>(
                 initialValue: parentId,
-                decoration: const InputDecoration(labelText: 'Üst birim'),
+                decoration: InputDecoration(labelText: 'Üst birim'.tr),
                 items: [
-                  const DropdownMenuItem<String?>(value: null, child: Text('Yok (kök)')),
+                  DropdownMenuItem<String?>(value: null, child: Text('Yok (kök)'.tr)),
                   ..._items.map((e) => DropdownMenuItem<String?>(value: '${e['id']}', child: Text('${e['name']}'))),
                 ],
                 onChanged: (v) => setLocal(() => parentId = v),
@@ -480,7 +481,7 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Vazgeç'.tr)),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Ekle')),
         ],
       ),
@@ -504,10 +505,10 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Birimi sil'),
+        title: Text('Birimi sil'.tr),
         content: Text('"${it['name']}" silinsin mi? Alt birimler köke taşınır.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Vazgeç'.tr)),
           FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sil')),
         ],
       ),
@@ -525,7 +526,7 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
         onPressed: _add, icon: const Icon(Icons.add), label: const Text('Birim'),
       ),
       body: _items.isEmpty
-          ? const Center(child: Text('Henüz birim yok.'))
+          ? Center(child: Text('Henüz birim yok.'.tr))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView.separated(
@@ -578,7 +579,7 @@ class _RolesTabState extends State<_RolesTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: CircularProgressIndicator());
-    if (_items.isEmpty) return const Center(child: Text('Rol bulunamadı.'));
+    if (_items.isEmpty) return Center(child: Text('Rol bulunamadı.'.tr));
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView.separated(
@@ -598,7 +599,7 @@ class _RolesTabState extends State<_RolesTab> {
                 ]),
                 const SizedBox(height: 6),
                 if (modules.isEmpty)
-                  const Text('Modül erişimi tanımsız.', style: TextStyle(fontSize: 12, color: Colors.grey))
+                  Text('Modül erişimi tanımsız.'.tr, style: TextStyle(fontSize: 12, color: Colors.grey))
                 else
                   Wrap(spacing: 6, runSpacing: 6, children: modules.map((m) => Chip(
                     label: Text(m, style: const TextStyle(fontSize: 11)),

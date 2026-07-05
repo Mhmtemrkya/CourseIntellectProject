@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_config.dart';
@@ -20,8 +21,8 @@ class StudentQuestionDetailPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Soru Detayı',
+        title: Text(
+          'Soru Detayı'.tr,
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -40,7 +41,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Soru Açıklaması',
+                      'Soru Açıklaması'.tr,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -112,7 +113,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Text(
-                          'Bu soruya eklenmiş dosya bulunmuyor.',
+                          'Bu soruya eklenmiş dosya bulunmuyor.'.tr,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: theme.textTheme.bodySmall?.color?.withValues(
                               alpha: 0.72,
@@ -147,7 +148,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
                                   context,
                                   item['fileUrl']?.toString(),
                                 ),
-                                child: const Text('Aç'),
+                                child: Text('Aç'.tr),
                               ),
                             ],
                           ),
@@ -208,7 +209,7 @@ class StudentQuestionDetailPage extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            'Gönderdiğin soru kaydını ve öğretmene iletilen içeriği buradan detaylı inceleyebilirsin.',
+            'Gönderdiğin soru kaydını ve öğretmene iletilen içeriği buradan detaylı inceleyebilirsin.'.tr,
             style: theme.textTheme.titleMedium?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w800,
@@ -337,6 +338,6 @@ class StudentQuestionDetailPage extends StatelessWidget {
     if (!context.mounted || success) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Ek dosya açılamadı.')));
+    ).showSnackBar(SnackBar(content: Text('Ek dosya açılamadı.'.tr)));
   }
 }

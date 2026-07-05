@@ -23,7 +23,7 @@ class LegalSection {
   const LegalSection({required this.title, required this.bullets});
 }
 
-const legalDocuments = <LegalDocument>[
+final legalDocuments = <LegalDocument>[
   LegalDocument(
     title: 'KVKK Aydınlatma Metni',
     summary:

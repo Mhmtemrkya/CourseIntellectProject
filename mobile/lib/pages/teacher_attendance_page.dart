@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -349,8 +350,8 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(22),
                 ),
-                child: const Text(
-                  'Öğretmene atanmış sınıf veya yoklama dersi bulunmuyor.',
+                child: Text(
+                  'Öğretmene atanmış sınıf veya yoklama dersi bulunmuyor.'.tr,
                 ),
               )
             else ...[
@@ -408,7 +409,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
                           ? null
                           : _markAllPresent,
                       icon: const Icon(Icons.done_all_rounded),
-                      label: const Text("Tümünü Geldi"),
+                      label: Text("Tümünü Geldi".tr),
                     ),
                   ],
                 ),
@@ -446,7 +447,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
               if (_attendanceAlreadyTaken) ...[
                 const SizedBox(height: 10),
                 Text(
-                  'Bu dersin yoklaması daha önce kaydedildi. Aynı ders için ikinci kez yoklama alınmaz.',
+                  'Bu dersin yoklaması daha önce kaydedildi. Aynı ders için ikinci kez yoklama alınmaz.'.tr,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.textTheme.bodySmall?.color?.withValues(
                       alpha: 0.72,
@@ -487,7 +488,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Seçili Ders"),
+                Text("Seçili Ders".tr),
                 const SizedBox(height: 4),
                 Text(
                   currentLesson["title"] as String,
@@ -547,7 +548,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
           pw.MultiPage(
             build: (_) => [
               pw.Text(
-                'Yoklama Özeti',
+                'Yoklama Özeti'.tr,
                 style: pw.TextStyle(
                   fontSize: 20,
                   fontWeight: pw.FontWeight.bold,
@@ -877,14 +878,14 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             selected: status == "late",
             icon: Icons.access_time,
             color: Colors.orange,
-            tooltip: 'Geç',
+            tooltip: 'Geç'.tr,
             onTap: () => _setStudentStatus(index, "late"),
           ),
           _statusIconButton(
             selected: status == "excuse",
             icon: Icons.info_rounded,
             color: Colors.blue,
-            tooltip: 'İzinli',
+            tooltip: 'İzinli'.tr,
             onTap: () => _setStudentStatus(index, "excuse"),
           ),
         ],
@@ -1067,7 +1068,7 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
             child: OutlinedButton.icon(
               onPressed: hasSession ? _applyQrScans : null,
               icon: const Icon(Icons.fact_check_outlined),
-              label: const Text('QR Katılımlarını Listeye İşle'),
+              label: Text('QR Katılımlarını Listeye İşle'.tr),
             ),
           ),
         ],
@@ -1094,22 +1095,22 @@ class _TeacherAttendancePageState extends State<TeacherAttendancePage> {
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
+        children: [
           Text(
             "QR ile yoklama nasil calisir?",
             style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
           SizedBox(height: 10),
-          Text("1. Öğretmen QR kodu sınıfa veya ekrana yansıtır."),
+          Text("1. Öğretmen QR kodu sınıfa veya ekrana yansıtır.".tr),
           SizedBox(height: 6),
-          Text("2. Öğrenciler uygulamadan QR kodu okutarak yoklama gönderir."),
+          Text("2. Öğrenciler uygulamadan QR kodu okutarak yoklama gönderir.".tr),
           SizedBox(height: 6),
           Text(
-            "3. Kod her 60 saniyede değişir, bu sayede eski kodlar kullanılamaz.",
+            "3. Kod her 60 saniyede değişir, bu sayede eski kodlar kullanılamaz.".tr,
           ),
           SizedBox(height: 6),
           Text(
-            "4. Geç gelen öğrenciler için yeni QR ile katılım yeniden alınabilir.",
+            "4. Geç gelen öğrenciler için yeni QR ile katılım yeniden alınabilir.".tr,
           ),
         ],
       ),

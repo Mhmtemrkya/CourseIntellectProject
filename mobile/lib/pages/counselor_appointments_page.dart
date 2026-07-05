@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/guidance_api_service.dart';
 
 const _navy = Color(0xFF15294B);
@@ -102,13 +103,13 @@ class _CounselorAppointmentsPageState extends State<CounselorAppointmentsPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Müsaitlik Slotu Ekle',
+              Text('Müsaitlik Slotu Ekle'.tr,
                   style:
                       TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: day,
-                decoration: const InputDecoration(labelText: 'Gün'),
+                decoration: InputDecoration(labelText: 'Gün'.tr),
                 items: _weekDays
                     .map((d) => DropdownMenuItem(value: d, child: Text(d)))
                     .toList(),
@@ -196,7 +197,7 @@ class _CounselorAppointmentsPageState extends State<CounselorAppointmentsPage> {
                             .map((a) => _appointmentCard(theme, isDark, a,
                                 pendingActions: true)),
                       const SizedBox(height: 16),
-                      const Text('Geçmiş & Onaylılar',
+                      Text('Geçmiş & Onaylılar'.tr,
                           style: TextStyle(fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
                       if (others.isEmpty)
@@ -235,11 +236,11 @@ class _CounselorAppointmentsPageState extends State<CounselorAppointmentsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Haftalık Müsaitlik',
+            Text('Haftalık Müsaitlik'.tr,
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             if (slots.isEmpty)
-              Text('Slot eklemeden randevu alınamaz.',
+              Text('Slot eklemeden randevu alınamaz.'.tr,
                   style: theme.textTheme.bodySmall)
             else
               Wrap(
@@ -350,7 +351,7 @@ class _CounselorAppointmentsPageState extends State<CounselorAppointmentsPage> {
                       .completeAppointment(a['id'].toString());
                   _load();
                 },
-                child: const Text('Görüşme Yapıldı'),
+                child: Text('Görüşme Yapıldı'.tr),
               ),
             ),
           ],

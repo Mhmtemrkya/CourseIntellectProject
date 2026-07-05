@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
@@ -124,7 +125,7 @@ class _TeacherExamLiveCameraPageState extends State<TeacherExamLiveCameraPage> {
                 ),
                 _chip('${entries.length} öğrenci bağlandı', theme.hintColor),
                 Text(
-                  "Görüntüler ~4 sn'de bir yenilenir.",
+                  "Görüntüler ~4 sn'de bir yenilenir.".tr,
                   style: theme.textTheme.bodySmall,
                 ),
               ],
@@ -259,12 +260,12 @@ class _TeacherExamLiveCameraPageState extends State<TeacherExamLiveCameraPage> {
         children: [
           Icon(Icons.videocam_off_rounded, size: 44, color: theme.hintColor),
           const SizedBox(height: 12),
-          Text('Henüz kamera yayını yok.', style: theme.textTheme.titleSmall),
+          Text('Henüz kamera yayını yok.'.tr, style: theme.textTheme.titleSmall),
           const SizedBox(height: 6),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 40),
             child: Text(
-              'Öğrenciler kameralı sınava girince görüntüleri burada canlı belirir.',
+              'Öğrenciler kameralı sınava girince görüntüleri burada canlı belirir.'.tr,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodySmall,
             ),

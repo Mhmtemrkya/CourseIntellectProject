@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'accounting_installment_detail_page.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/student_registry_store.dart';
@@ -120,7 +121,7 @@ class _AccountingInstallmentsPageState
           AccountingHeroCard(
             eyebrow: 'Taksit planlama',
             title:
-                'Bekleyen, alınan ve geciken taksitleri aylık akışla izleyin.',
+                'Bekleyen, alınan ve geciken taksitleri aylık akışla izleyin.'.tr,
             description:
                 'Yeni taksit planı oluştururken ilk taksit, başlangıç tarihi ve notlar aynı formda yönetilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF7C3AED)],
@@ -139,8 +140,8 @@ class _AccountingInstallmentsPageState
           ),
           const SizedBox(height: 16),
           TextField(
-            decoration: const InputDecoration(
-              labelText: 'Öğrenci ara',
+            decoration: InputDecoration(
+              labelText: 'Öğrenci ara'.tr,
               prefixIcon: Icon(Icons.search),
               border: OutlineInputBorder(),
             ),
@@ -183,8 +184,8 @@ class _AccountingInstallmentsPageState
           ),
           const SizedBox(height: 16),
           if (filtered.isEmpty)
-            const AccountingPanel(
-              child: Text('Seçili filtreye uygun taksit bulunamadı.'),
+            AccountingPanel(
+              child: Text('Seçili filtreye uygun taksit bulunamadı.'.tr),
             ),
           ...filtered.map((plan) => _planCard(context, plan)),
         ],
@@ -302,15 +303,15 @@ class _AccountingInstallmentsPageState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const AccountingHeroCard(
+                  AccountingHeroCard(
                     eyebrow: 'Yeni plan',
-                    title: 'Taksit planını kontrollü şekilde oluşturun.',
+                    title: 'Taksit planını kontrollü şekilde oluşturun.'.tr,
                     description:
                         'Öğrenci, toplam tutar, taksit sayısı ve ilk taksit bilgisine göre aylık yapı hazırlanır.',
                     colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
                     metrics: [
                       AccountingHeroMetric(label: 'Plan', value: 'Aylık'),
-                      AccountingHeroMetric(label: 'Önizleme', value: 'Aktif'),
+                      AccountingHeroMetric(label: 'Önizleme'.tr, value: 'Aktif'),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -328,8 +329,8 @@ class _AccountingInstallmentsPageState
                           initialValue: selectedStudent.isEmpty
                               ? null
                               : selectedStudent,
-                          decoration: const InputDecoration(
-                            labelText: 'Öğrenci',
+                          decoration: InputDecoration(
+                            labelText: 'Öğrenci'.tr,
                             border: OutlineInputBorder(),
                           ),
                           items: students
@@ -354,24 +355,24 @@ class _AccountingInstallmentsPageState
                         const SizedBox(height: 12),
                         TextField(
                           controller: countController,
-                          decoration: const InputDecoration(
-                            labelText: 'Taksit Sayısı',
+                          decoration: InputDecoration(
+                            labelText: 'Taksit Sayısı'.tr,
                             border: OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: startDateController,
-                          decoration: const InputDecoration(
-                            labelText: 'Başlangıç Tarihi',
+                          decoration: InputDecoration(
+                            labelText: 'Başlangıç Tarihi'.tr,
                             border: OutlineInputBorder(),
                           ),
                         ),
                         const SizedBox(height: 12),
                         TextField(
                           controller: firstInstallmentController,
-                          decoration: const InputDecoration(
-                            labelText: 'İlk Taksit Tutarı',
+                          decoration: InputDecoration(
+                            labelText: 'İlk Taksit Tutarı'.tr,
                             border: OutlineInputBorder(),
                           ),
                         ),
@@ -399,9 +400,9 @@ class _AccountingInstallmentsPageState
                             onPressed: () async {
                               if (selectedStudent.isEmpty) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
-                                      'Plan oluşturmak için önce öğrenci kaydı gerekir.',
+                                      'Plan oluşturmak için önce öğrenci kaydı gerekir.'.tr,
                                     ),
                                     behavior: SnackBarBehavior.floating,
                                   ),
@@ -419,8 +420,8 @@ class _AccountingInstallmentsPageState
                                 );
                                 if (!mounted) return;
                                 messenger.showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Taksit planı oluşturuldu.'),
+                                  SnackBar(
+                                    content: Text('Taksit planı oluşturuldu.'.tr),
                                     behavior: SnackBarBehavior.floating,
                                   ),
                                 );
@@ -434,7 +435,7 @@ class _AccountingInstallmentsPageState
                                 );
                               }
                             },
-                            child: const Text('Taksit Planını Oluştur'),
+                            child: Text('Taksit Planını Oluştur'.tr),
                           ),
                         ),
                       ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../services/cafeteria_api_service.dart';
 import '../services/cafeteria_pdf_service.dart';
 
@@ -95,7 +96,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
       if (!mounted) return;
       setState(() => _week = result);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Haftalık yemek programı kaydedildi.')),
+        SnackBar(content: Text('Haftalık yemek programı kaydedildi.'.tr)),
       );
     } on CafeteriaApiException catch (error) {
       if (!mounted) return;
@@ -122,7 +123,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('PDF oluşturulamadı.')));
+      ).showSnackBar(SnackBar(content: Text('PDF oluşturulamadı.'.tr)));
     } finally {
       if (mounted) setState(() => _exporting = false);
     }
@@ -165,7 +166,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
         title: Text(widget.canEdit ? 'Yemek Programı Düzenle' : 'Yemekhane'),
         actions: [
           IconButton(
-            tooltip: 'PDF paylaş',
+            tooltip: 'PDF paylaş'.tr,
             onPressed: _exporting || _week == null ? null : _exportPdf,
             icon: _exporting
                 ? const SizedBox.square(
@@ -202,14 +203,14 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
                   const SizedBox(height: 16),
                   _mealCard(
                     meal: _meal('Breakfast'),
-                    title: 'Kahvaltı',
+                    title: 'Kahvaltı'.tr,
                     icon: Icons.wb_sunny_outlined,
                     color: const Color(0xFFF59E0B),
                   ),
                   const SizedBox(height: 12),
                   _mealCard(
                     meal: _meal('Lunch'),
-                    title: 'Öğle Yemeği',
+                    title: 'Öğle Yemeği'.tr,
                     icon: Icons.soup_kitchen_outlined,
                     color: const Color(0xFF10B981),
                   ),
@@ -244,8 +245,8 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Haftalık Yemek Programı',
+          Text(
+            'Haftalık Yemek Programı'.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 22,
@@ -395,7 +396,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
               const Spacer(),
               if (widget.canEdit && meal != null)
                 IconButton(
-                  tooltip: 'Düzenle',
+                  tooltip: 'Düzenle'.tr,
                   onPressed: () => _editMeal(meal, title),
                   icon: const Icon(Icons.edit_outlined),
                 ),
@@ -489,8 +490,8 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Haftalık Besin Değerleri Ortalaması',
+          Text(
+            'Haftalık Besin Değerleri Ortalaması'.tr,
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 14),
@@ -596,8 +597,8 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
               TextField(
                 controller: itemsController,
                 maxLines: 6,
-                decoration: const InputDecoration(
-                  labelText: 'Yemekler (satır satır)',
+                decoration: InputDecoration(
+                  labelText: 'Yemekler (satır satır)'.tr,
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -622,8 +623,8 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
               const SizedBox(height: 12),
               TextField(
                 controller: allergens,
-                decoration: const InputDecoration(
-                  labelText: 'Alerjenler (virgülle ayırın)',
+                decoration: InputDecoration(
+                  labelText: 'Alerjenler (virgülle ayırın)'.tr,
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -631,8 +632,8 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
               TextField(
                 controller: description,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Açıklama',
+                decoration: InputDecoration(
+                  labelText: 'Açıklama'.tr,
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -662,7 +663,7 @@ class _CafeteriaWeeklyMenuPageState extends State<CafeteriaWeeklyMenuPage> {
                       description: description.text.trim(),
                     ),
                   ),
-                  child: const Text('Öğünü Uygula'),
+                  child: Text('Öğünü Uygula'.tr),
                 ),
               ),
             ],

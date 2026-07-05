@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/premium_resource_card.dart';
 
 import '../services/content_api_service.dart';
@@ -73,8 +74,8 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "İçerik Yönetimi",
+                        Text(
+                          "İçerik Yönetimi".tr,
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.w900,
@@ -82,8 +83,8 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                           ),
                         ),
                         const SizedBox(height: 10),
-                        const Text(
-                          "Video, PDF, Word ve PowerPoint içeriklerini tek panelden yayınla. Eklenen içerikler öğrenci ekranında anında görünsün.",
+                        Text(
+                          "Video, PDF, Word ve PowerPoint içeriklerini tek panelden yayınla. Eklenen içerikler öğrenci ekranında anında görünsün.".tr,
                           style: TextStyle(color: Colors.white70, height: 1.4),
                         ),
                         const SizedBox(height: 16),
@@ -119,7 +120,7 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
                     ),
                     onPressed: _openCreateContent,
                     icon: const Icon(Icons.add),
-                    label: const Text("Yeni İçerik"),
+                    label: Text("Yeni İçerik".tr),
                   ),
                 ],
               ),
@@ -171,7 +172,7 @@ class _TeacherContentPageState extends State<TeacherContentPage> {
               )
             else if (_contents.isEmpty)
               TeacherEmptyStatePanel(
-                title: 'Henüz içerik yüklenmemiş',
+                title: 'Henüz içerik yüklenmemiş'.tr,
                 description:
                     'Bu derse ait henüz bir konu anlatımı içeriği bulunmuyor. Hemen içerik ekleyerek öğrencilerinize sunabilirsiniz.',
                 accentColor: const Color(0xFFF97316),
@@ -506,9 +507,9 @@ class ContentCard extends StatelessWidget {
               ),
               const Spacer(),
               Row(
-                children: const [
+                children: [
                   Text(
-                    'Detayı aç',
+                    'Detayı aç'.tr,
                     style: TextStyle(
                       color: Color(0xFFFF7A1A),
                       fontWeight: FontWeight.w900,

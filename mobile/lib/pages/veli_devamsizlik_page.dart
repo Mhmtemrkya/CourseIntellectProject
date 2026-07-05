@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/attendance_service.dart';
 import '../services/linked_children_service.dart';
 import '../widgets/adaptive_scaffold.dart';
@@ -63,7 +64,7 @@ class _VeliDevamsizlikPageState extends State<VeliDevamsizlikPage> {
     final hasSidebar = SidebarState.of(context);
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: hasSidebar ? null : const AppHeader(title: 'Devamsızlık Takibi'),
+      appBar: hasSidebar ? null : AppHeader(title: 'Devamsızlık Takibi'.tr),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -94,7 +95,7 @@ class _VeliDevamsizlikPageState extends State<VeliDevamsizlikPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Gün, hafta ve ay bazında devamsızlık ve geç kalma hareketleri.',
+                            'Gün, hafta ve ay bazında devamsızlık ve geç kalma hareketleri.'.tr,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white.withValues(alpha: 0.86),
                             ),
@@ -120,8 +121,8 @@ class _VeliDevamsizlikPageState extends State<VeliDevamsizlikPage> {
                           DropdownButtonFormField<String>(
                             isExpanded: true,
                             initialValue: _selectedChild,
-                            decoration: const InputDecoration(
-                              labelText: 'Çocuk',
+                            decoration: InputDecoration(
+                              labelText: 'Çocuk'.tr,
                               border: OutlineInputBorder(),
                             ),
                             items: _children
@@ -146,8 +147,8 @@ class _VeliDevamsizlikPageState extends State<VeliDevamsizlikPage> {
                           DropdownButtonFormField<String>(
                             isExpanded: true,
                             initialValue: _period,
-                            decoration: const InputDecoration(
-                              labelText: 'Görünüm',
+                            decoration: InputDecoration(
+                              labelText: 'Görünüm'.tr,
                               border: OutlineInputBorder(),
                             ),
                             items: const ['Gün', 'Hafta', 'Ay']

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/services.dart';
 
 import '../utils/input_formatters.dart';
@@ -164,23 +165,23 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Öğretmen ve Personel Kaydı',
+        title: Text(
+          'Öğretmen ve Personel Kaydı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const AdminHeroCard(
+          AdminHeroCard(
             eyebrow: 'İnsan kaynağı kayıt merkezi',
             title:
-                'Öğretmen, idari personel ve yemekhaneci profillerini kurumsal standartta oluşturun.',
+                'Öğretmen, idari personel ve yemekhaneci profillerini kurumsal standartta oluşturun.'.tr,
             description:
                 'Branş, departman, kampüs ve iletişim bilgileri tek akışta toplanır. Öğretmen hesapları için sistem giriş bilgisi otomatik üretilir.',
             colors: [Color(0xFF0F172A), Color(0xFF7C3AED)],
             metrics: [
-              AdminHeroMetric(label: 'Öğretmen', value: 'Hesap oluşur'),
+              AdminHeroMetric(label: 'Öğretmen'.tr, value: 'Hesap oluşur'),
               AdminHeroMetric(label: 'Personel', value: 'Hesap oluşur'),
             ],
           ),
@@ -259,11 +260,11 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     initialValue: _teacherBranch,
-                    decoration: const InputDecoration(
-                      labelText: 'Branş',
+                    decoration: InputDecoration(
+                      labelText: 'Branş'.tr,
                       border: OutlineInputBorder(),
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'Matematik',
                         child: Text('Matematik'),
@@ -272,10 +273,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                         value: 'Fen Bilimleri',
                         child: Text('Fen Bilimleri'),
                       ),
-                      DropdownMenuItem(value: 'Türkçe', child: Text('Türkçe')),
+                      DropdownMenuItem(value: 'Türkçe', child: Text('Türkçe'.tr)),
                       DropdownMenuItem(
                         value: 'İngilizce',
-                        child: Text('İngilizce'),
+                        child: Text('İngilizce'.tr),
                       ),
                     ],
                     onChanged: (value) => setState(
@@ -322,7 +323,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: _field(
                     controller: _teacherCampusController,
-                    label: 'Kampüs',
+                    label: 'Kampüs'.tr,
                   ),
                 ),
               ],
@@ -330,14 +331,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _teacherHomeroomClass,
-              decoration: const InputDecoration(
-                labelText: 'Sınıf Öğretmenliği',
+              decoration: InputDecoration(
+                labelText: 'Sınıf Öğretmenliği'.tr,
                 border: OutlineInputBorder(),
               ),
               items: [
-                const DropdownMenuItem(
+                DropdownMenuItem(
                   value: 'Sınıf öğretmenliği yok',
-                  child: Text('Sınıf öğretmenliği yok'),
+                  child: Text('Sınıf öğretmenliği yok'.tr),
                 ),
                 ..._classOptions.map(
                   (item) => DropdownMenuItem(value: item, child: Text(item)),
@@ -349,7 +350,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             ),
             const SizedBox(height: 12),
             Text(
-              'Ders Girdiği Sınıflar',
+              'Ders Girdiği Sınıflar'.tr,
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -400,7 +401,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: _field(
                     controller: _teacherChildCountController,
-                    label: 'Çocuk Sayisi',
+                    label: 'Çocuk Sayisi'.tr,
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -409,15 +410,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             _field(
               controller: _teacherNoteController,
-              label: 'Görev Notu',
+              label: 'Görev Notu'.tr,
               maxLines: 4,
               required: false,
             ),
             const SizedBox(height: 16),
-            const AdminSectionTitle(title: 'Kayıt Sonrasi'),
+            AdminSectionTitle(title: 'Kayıt Sonrasi'.tr),
             const SizedBox(height: 10),
-            const _InfoRow(
-              title: 'Sistem Hesabı',
+            _InfoRow(
+              title: 'Sistem Hesabı'.tr,
               value: 'Otomatik kullanıcı adı ve şifre üretilir',
             ),
             const _InfoRow(
@@ -425,7 +426,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               value: 'Öğretmen paneline giriş hazır olur',
             ),
             _InfoRow(
-              title: 'Öğretmen Ataması',
+              title: 'Öğretmen Ataması'.tr,
               value: _teacherAssignedClasses.isEmpty
                   ? 'Sınıf seçilmedi'
                   : (_teacherHomeroomClass == 'Sınıf öğretmenliği yok'
@@ -434,7 +435,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             ),
             const SizedBox(height: 16),
             _submitButton(
-              label: 'Öğretmen Kaydını Tamamla',
+              label: 'Öğretmen Kaydını Tamamla'.tr,
               onPressed: _submitTeacher,
             ),
           ],
@@ -454,14 +455,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _personnelRole,
-              decoration: const InputDecoration(
-                labelText: 'Personel Rolü',
+              decoration: InputDecoration(
+                labelText: 'Personel Rolü'.tr,
                 border: OutlineInputBorder(),
               ),
-              items: const [
+              items: [
                 DropdownMenuItem(
                   value: 'Administrative',
-                  child: Text('İdari Personel'),
+                  child: Text('İdari Personel'.tr),
                 ),
                 DropdownMenuItem(
                   value: 'Cafeteria',
@@ -469,7 +470,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ),
                 DropdownMenuItem(
                   value: 'ServiceDriver',
-                  child: Text('Servis Şoförü'),
+                  child: Text('Servis Şoförü'.tr),
                 ),
               ],
               onChanged: (value) {
@@ -514,16 +515,16 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                             ),
                           ]
                         : _personnelRole == 'ServiceDriver'
-                        ? const [
+                        ? [
                             DropdownMenuItem(
                               value: 'Servis Şoförü',
-                              child: Text('Servis Şoförü'),
+                              child: Text('Servis Şoförü'.tr),
                             ),
                           ]
-                        : const [
+                        : [
                             DropdownMenuItem(
                               value: 'Öğrenci Isleri',
-                              child: Text('Öğrenci İşleri'),
+                              child: Text('Öğrenci İşleri'.tr),
                             ),
                             DropdownMenuItem(
                               value: 'Muhasebe',
@@ -531,7 +532,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                             ),
                             DropdownMenuItem(
                               value: 'Destek ve IT',
-                              child: Text('Destek ve IT'),
+                              child: Text('Destek ve IT'.tr),
                             ),
                             DropdownMenuItem(
                               value: 'Operasyon',
@@ -586,17 +587,17 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               const SizedBox(height: 12),
               _field(
                 controller: _driverLicenseController,
-                label: 'Ehliyet No / Sınıfı',
+                label: 'Ehliyet No / Sınıfı'.tr,
               ),
               const SizedBox(height: 16),
-              const AdminSectionTitle(title: 'Servis Aracı ve Rota Bilgileri'),
+              AdminSectionTitle(title: 'Servis Aracı ve Rota Bilgileri'.tr),
               const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: _field(
                       controller: _vehicleNumberController,
-                      label: 'Araç No',
+                      label: 'Araç No'.tr,
                       required: false,
                     ),
                   ),
@@ -615,7 +616,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   Expanded(
                     child: _field(
                       controller: _vehicleBrandController,
-                      label: 'Araç Marka',
+                      label: 'Araç Marka'.tr,
                       required: false,
                     ),
                   ),
@@ -623,7 +624,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   Expanded(
                     child: _field(
                       controller: _vehicleModelController,
-                      label: 'Araç Model',
+                      label: 'Araç Model'.tr,
                       required: false,
                     ),
                   ),
@@ -647,14 +648,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                         labelText: 'Rota Tipi',
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'Morning',
                           child: Text('Sabah'),
                         ),
                         DropdownMenuItem(
                           value: 'Evening',
-                          child: Text('Akşam'),
+                          child: Text('Akşam'.tr),
                         ),
                       ],
                       onChanged: (value) =>
@@ -664,21 +665,21 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 ],
               ),
               const SizedBox(height: 12),
-              _field(controller: _routeNameController, label: 'Rota Adı'),
+              _field(controller: _routeNameController, label: 'Rota Adı'.tr),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: _field(
                       controller: _routeStartController,
-                      label: 'Başlangıç Saati',
+                      label: 'Başlangıç Saati'.tr,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: _field(
                       controller: _routeEndController,
-                      label: 'Bitiş Saati',
+                      label: 'Bitiş Saati'.tr,
                     ),
                   ),
                 ],
@@ -697,7 +698,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: _field(
                     controller: _personnelCampusController,
-                    label: 'Kampüs',
+                    label: 'Kampüs'.tr,
                   ),
                 ),
               ],
@@ -726,7 +727,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                 Expanded(
                   child: _field(
                     controller: _personnelChildCountController,
-                    label: 'Çocuk Sayisi',
+                    label: 'Çocuk Sayisi'.tr,
                     keyboardType: TextInputType.number,
                   ),
                 ),
@@ -742,14 +743,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               required: false,
             ),
             const SizedBox(height: 16),
-            const AdminSectionTitle(title: 'Kayıt Sonrasi'),
+            AdminSectionTitle(title: 'Kayıt Sonrasi'.tr),
             const SizedBox(height: 10),
             const _InfoRow(
               title: 'Personel Profili',
               value: 'Departman ve kampus kaydı kurumsal listede yer alir',
             ),
             _InfoRow(
-              title: 'Erişim',
+              title: 'Erişim'.tr,
               value: _personnelRole == 'ServiceDriver'
                   ? 'Şoför hesabı, aracı ve ilk rotası tek kayıtta oluşturulur'
                   : _personnelRole == 'Cafeteria'
@@ -836,7 +837,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const AdminSectionTitle(title: 'Role Göre Personel'),
+          AdminSectionTitle(title: 'Role Göre Personel'.tr),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,
@@ -852,7 +853,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           Text('${selected.$2} • ${filtered.length} kişi', style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 8),
           if (filtered.isEmpty)
-            const Text('Bu rolde kayıtlı personel yok.')
+            Text('Bu rolde kayıtlı personel yok.'.tr)
           else
             ...filtered.map(
               (s) => Padding(
@@ -934,7 +935,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
       if (!mounted) return;
       setState(() => _saving = false);
       await _showResultCard(
-        title: 'Öğretmen kaydı tamamlandı',
+        title: 'Öğretmen kaydı tamamlandı'.tr,
         description:
             'Öğretmen paneli için kullanıcı adı ve şifre otomatik oluşturuldu.',
         credentials: credentials,
@@ -958,7 +959,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
           int.tryParse(_vehicleCapacityController.text.trim()) ?? 0;
       if (capacity < 2) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Araç kapasitesi en az 2 olmalı.')),
+          SnackBar(content: Text('Araç kapasitesi en az 2 olmalı.'.tr)),
         );
         return;
       }
@@ -1175,7 +1176,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       if (!withLogin) ...[
                         const SizedBox(height: 10),
                         Text(
-                          'Bu kayıt su an kurum içi personel profili olarak tutulur.',
+                          'Bu kayıt su an kurum içi personel profili olarak tutulur.'.tr,
                           style: Theme.of(dialogContext).textTheme.bodySmall,
                         ),
                       ],
@@ -1199,7 +1200,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                         );
                       },
                       icon: const Icon(Icons.picture_as_pdf_outlined),
-                      label: const Text('PDF Olarak İndir / Paylaş'),
+                      label: Text('PDF Olarak İndir / Paylaş'.tr),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -1217,9 +1218,9 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                           );
                           if (!mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text(
-                                'Kayıt bilgileri panoya kopyalandı.',
+                                'Kayıt bilgileri panoya kopyalandı.'.tr,
                               ),
                               behavior: SnackBarBehavior.floating,
                             ),
@@ -1252,11 +1253,11 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   Widget _branchDropdown() {
     return DropdownButtonFormField<String>(
       initialValue: _branchId,
-      decoration: const InputDecoration(
-        labelText: 'Şube',
+      decoration: InputDecoration(
+        labelText: 'Şube'.tr,
         border: OutlineInputBorder(),
       ),
-      hint: const Text('Şube seçin'),
+      hint: Text('Şube seçin'.tr),
       items: _branches
           .map((b) => DropdownMenuItem(
                 value: b['id'] as String?,

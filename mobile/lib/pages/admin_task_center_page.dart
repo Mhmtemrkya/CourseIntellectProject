@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'admin_branch_comparison_page.dart';
 import 'admin_staff_registration_page.dart';
 import 'accounting_approvals_page.dart';
@@ -93,8 +94,8 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Canlı Görev Merkezi',
+        title: Text(
+          'Canlı Görev Merkezi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -133,12 +134,12 @@ class _AdminTaskCenterPageState extends State<AdminTaskCenterPage> {
               ),
           ),
           const SizedBox(height: 12),
-          const AdminSectionTitle(title: 'Oluşturulan Görevler'),
+          AdminSectionTitle(title: 'Oluşturulan Görevler'.tr),
           const SizedBox(height: 12),
           if (_loadingTasks)
             const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
           else if (_backendTasks.isEmpty)
-            const AdminPanel(child: Text('Henüz oluşturulmuş idari görev yok.'))
+            AdminPanel(child: Text('Henüz oluşturulmuş idari görev yok.'.tr))
           else
             ..._backendTasks.map((task) => AdminPanel(
                   margin: const EdgeInsets.only(bottom: 10),

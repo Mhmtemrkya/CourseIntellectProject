@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/exam_results_store.dart';
@@ -140,7 +141,7 @@ class _TeacherStudentExamsPageState extends State<TeacherStudentExamsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Öğrenci Sınavları'),
+        title: Text('Öğrenci Sınavları'.tr),
         actions: [
           IconButton(
             tooltip: 'Yenile',
@@ -188,7 +189,7 @@ class _TeacherStudentExamsPageState extends State<TeacherStudentExamsPage> {
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    'SALT GÖRÜNTÜLEME',
+                                    'SALT GÖRÜNTÜLEME'.tr,
                                     style: TextStyle(
                                       color: Colors.white.withValues(
                                         alpha: 0.9,
@@ -212,8 +213,7 @@ class _TeacherStudentExamsPageState extends State<TeacherStudentExamsPage> {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                'Bu ekrandan not değişikliği yapılamaz; '
-                                'sonuçlar yalnızca incelenir.',
+                                'Bu ekrandan not değişikliği yapılamaz; sonuçlar yalnızca incelenir.'.tr,
                                 style: theme.textTheme.bodySmall?.copyWith(
                                   color: Colors.white.withValues(alpha: 0.85),
                                 ),
@@ -228,8 +228,8 @@ class _TeacherStudentExamsPageState extends State<TeacherStudentExamsPage> {
                                 classes.contains(_selectedClass)
                                 ? _selectedClass
                                 : 'Tümü',
-                            decoration: const InputDecoration(
-                              labelText: 'Sınıf Filtresi',
+                            decoration: InputDecoration(
+                              labelText: 'Sınıf Filtresi'.tr,
                             ),
                             items: classes
                                 .map(
@@ -260,8 +260,8 @@ class _TeacherStudentExamsPageState extends State<TeacherStudentExamsPage> {
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(color: theme.dividerColor),
                             ),
-                            child: const Text(
-                              'Bu kapsamda kayıtlı sınav sonucu bulunmuyor.',
+                            child: Text(
+                              'Bu kapsamda kayıtlı sınav sonucu bulunmuyor.'.tr,
                               textAlign: TextAlign.center,
                             ),
                           )

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/linked_children_service.dart';
@@ -193,7 +194,7 @@ class _VeliMesajlarPageState extends State<VeliMesajlarPage> {
 
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
-      title: 'Aliçi Seç',
+      title: 'Aliçi Seç'.tr,
       description:
           'Çocuğunuza, öğretmenlere, idari birimlere ve yönetiçiye mesaj gönderebilirsiniz.',
       recipients: recipients,

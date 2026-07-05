@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/current_user_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -65,8 +66,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Profili Düzenle',
+        title: Text(
+          'Profili Düzenle'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -79,7 +80,7 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'Kişisel Bilgiler'),
+                  AdminSectionTitle(title: 'Kişisel Bilgiler'.tr),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _fullName,
@@ -95,8 +96,8 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _campus,
-                    decoration: const InputDecoration(
-                      labelText: 'Kampüs',
+                    decoration: InputDecoration(
+                      labelText: 'Kampüs'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../pages/administrative_announcements_page.dart';
 import '../pages/administrative_home_page.dart';
 import '../pages/administrative_messages_page.dart';
@@ -24,7 +25,7 @@ class AdministrativeBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.folder_shared_outlined,
-          label: 'Kayıtlar',
+          label: 'Kayıtlar'.tr,
           pageBuilder: (_) => const AdministrativeRecordsPage(),
           sidebarColor: const Color(0xFF8B5CF6),
         ),
@@ -42,7 +43,7 @@ class AdministrativeBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.local_library_rounded,
-          label: 'Kütüphane',
+          label: 'Kütüphane'.tr,
           pageBuilder: (_) => const LibraryManagePage(),
           sidebarColor: const Color(0xFF0EA5E9),
         ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 
@@ -53,7 +54,7 @@ class _AccountingCollectionCalendarPageState
           AccountingHeroCard(
             eyebrow: 'Aylık tahsilat görünümü',
             title:
-                'Her ay için planlanan ve gerçekleşen tahsilatları öğrenci bazında izleyin.',
+                'Her ay için planlanan ve gerçekleşen tahsilatları öğrenci bazında izleyin.'.tr,
             description:
                 'Tarih, öğrenci adı, tahsil edilen tutar ve tahsil edilmediyse durum bilgisi aynı akışta gösterilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0EA5E9)],
@@ -70,9 +71,9 @@ class _AccountingCollectionCalendarPageState
           ),
           const SizedBox(height: 16),
           if (monthlyPlans.isEmpty)
-            const AccountingPanel(
+            AccountingPanel(
               child: Text(
-                'Henüz gösterilecek tahsilat veya taksit kaydı bulunmuyor.',
+                'Henüz gösterilecek tahsilat veya taksit kaydı bulunmuyor.'.tr,
               ),
             )
           else

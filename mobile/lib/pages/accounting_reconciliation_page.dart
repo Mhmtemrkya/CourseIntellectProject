@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 
@@ -65,7 +66,7 @@ class AccountingReconciliationPage extends StatelessWidget {
           AccountingHeroCard(
             eyebrow: 'Canlı denetim',
             title:
-                'Fatura, tahsilat ve onay kayıtlarıyla anlık mutabakat özeti.',
+                'Fatura, tahsilat ve onay kayıtlarıyla anlık mutabakat özeti.'.tr,
             description:
                 'Bu ekran artık sabit senaryo yerine muhasebe dashboard verisini kullanır.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -145,7 +146,7 @@ class AccountingReconciliationPage extends StatelessWidget {
                       );
                     },
                     icon: const Icon(Icons.assignment_turned_in_outlined),
-                    label: const Text('Mutabakat Kaydını Oluştur'),
+                    label: Text('Mutabakat Kaydını Oluştur'.tr),
                   ),
                 ],
               ),

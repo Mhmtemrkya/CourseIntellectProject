@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/attendance_service.dart';
 import '../services/auth_session_store.dart';
 import '../services/school_feed_api_service.dart';
@@ -57,7 +58,7 @@ class _StudentAttendanceHistoryPageState
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Devamsızlıklarim'),
+      appBar: AppHeader(title: 'Devamsızlıklarim'.tr),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -90,7 +91,7 @@ class _StudentAttendanceHistoryPageState
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Gün, hafta ve ay bazında tüm yoklama hareketlerin tek ekranda.',
+                            'Gün, hafta ve ay bazında tüm yoklama hareketlerin tek ekranda.'.tr,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white.withValues(alpha: 0.86),
                             ),

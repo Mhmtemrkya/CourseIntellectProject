@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/notification_preferences_service.dart';
 
@@ -92,8 +93,8 @@ class _NotificationPreferencesPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Canlı Bildirim Merkezi',
+                Text(
+                  'Canlı Bildirim Merkezi'.tr,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 22,
@@ -102,7 +103,7 @@ class _NotificationPreferencesPageState
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Internet açıkken hangi banner bildirimlerin görüneceğini ve hangilerinin sessiz kalacağını buradan yönetebilirsin.',
+                  'Internet açıkken hangi banner bildirimlerin görüneceğini ve hangilerinin sessiz kalacağını buradan yönetebilirsin.'.tr,
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: Colors.white.withValues(alpha: 0.88),
                   ),
@@ -118,9 +119,9 @@ class _NotificationPreferencesPageState
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Canlı bildirimler açık'),
-                  subtitle: const Text(
-                    'Tüm banner akışını tek hamlede aç veya kapat.',
+                  title: Text('Canlı bildirimler açık'.tr),
+                  subtitle: Text(
+                    'Tüm banner akışını tek hamlede aç veya kapat.'.tr,
                   ),
                   value: prefs.allEnabled,
                   onChanged: (value) =>
@@ -128,9 +129,9 @@ class _NotificationPreferencesPageState
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Mesaj önizlemesi göster'),
-                  subtitle: const Text(
-                    'Bildirim içinde kısa mesaj ve içerik özeti göster.',
+                  title: Text('Mesaj önizlemesi göster'.tr),
+                  subtitle: Text(
+                    'Bildirim içinde kısa mesaj ve içerik özeti göster.'.tr,
                   ),
                   value: prefs.previewEnabled,
                   onChanged: (value) =>
@@ -142,14 +143,14 @@ class _NotificationPreferencesPageState
           const SizedBox(height: 16),
           _section(
             context,
-            title: 'Bildirim Türleri',
+            title: 'Bildirim Türleri'.tr,
             child: Column(
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Duyuru ve mesajlar'),
-                  subtitle: const Text(
-                    'Duyuru, sohbet ve genel iletişim akışları.',
+                  title: Text('Duyuru ve mesajlar'.tr),
+                  subtitle: Text(
+                    'Duyuru, sohbet ve genel iletişim akışları.'.tr,
                   ),
                   value: prefs.socialEnabled,
                   onChanged: (value) =>
@@ -158,9 +159,9 @@ class _NotificationPreferencesPageState
                 if (showAcademic)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Akademik akışlar'),
-                    subtitle: const Text(
-                      'Ödev, içerik, planlı sınav ve sınav sonucu bildirimleri.',
+                    title: Text('Akademik akışlar'.tr),
+                    subtitle: Text(
+                      'Ödev, içerik, planlı sınav ve sınav sonucu bildirimleri.'.tr,
                     ),
                     value: prefs.academicEnabled,
                     onChanged: (value) =>
@@ -169,9 +170,9 @@ class _NotificationPreferencesPageState
                 if (showMeetings)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Görüşme hareketleri'),
-                    subtitle: const Text(
-                      'Veli-öğretmen görüşme talepleri ve durum güncellemeleri.',
+                    title: Text('Görüşme hareketleri'.tr),
+                    subtitle: Text(
+                      'Veli-öğretmen görüşme talepleri ve durum güncellemeleri.'.tr,
                     ),
                     value: prefs.meetingEnabled,
                     onChanged: (value) =>
@@ -180,9 +181,9 @@ class _NotificationPreferencesPageState
                 if (showReports)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Rapor akışları'),
-                    subtitle: const Text(
-                      'Haftalık rapor ve geri bildirim kayıtları.',
+                    title: Text('Rapor akışları'.tr),
+                    subtitle: Text(
+                      'Haftalık rapor ve geri bildirim kayıtları.'.tr,
                     ),
                     value: prefs.reportEnabled,
                     onChanged: (value) =>
@@ -191,9 +192,9 @@ class _NotificationPreferencesPageState
                 if (showFinance)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Finans uyarıları'),
-                    subtitle: const Text(
-                      'Ödeme, tahsilat ve makbuz hareketleri.',
+                    title: Text('Finans uyarıları'.tr),
+                    subtitle: Text(
+                      'Ödeme, tahsilat ve makbuz hareketleri.'.tr,
                     ),
                     value: prefs.financeEnabled,
                     onChanged: (value) =>
@@ -210,8 +211,8 @@ class _NotificationPreferencesPageState
               children: [
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
-                  title: const Text('Mesajları sessiz göster'),
-                  subtitle: const Text('Banner görünsün ama ses çalmasın.'),
+                  title: Text('Mesajları sessiz göster'.tr),
+                  subtitle: Text('Banner görünsün ama ses çalmasın.'.tr),
                   value: prefs.silentMessages,
                   onChanged: (value) =>
                       _update(prefs.copyWith(silentMessages: value)),
@@ -219,8 +220,8 @@ class _NotificationPreferencesPageState
                 if (showFinance)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Finans bildirimlerini sessiz göster'),
-                    subtitle: const Text('Ödeme uyarıları ses olmadan düşsün.'),
+                    title: Text('Finans bildirimlerini sessiz göster'.tr),
+                    subtitle: Text('Ödeme uyarıları ses olmadan düşsün.'.tr),
                     value: prefs.silentFinance,
                     onChanged: (value) =>
                         _update(prefs.copyWith(silentFinance: value)),
@@ -228,9 +229,9 @@ class _NotificationPreferencesPageState
                 if (showReports)
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Rapor bildirimlerini sessiz göster'),
-                    subtitle: const Text(
-                      'Haftalık rapor güncellemeleri sessiz kalsın.',
+                    title: Text('Rapor bildirimlerini sessiz göster'.tr),
+                    subtitle: Text(
+                      'Haftalık rapor güncellemeleri sessiz kalsın.'.tr,
                     ),
                     value: prefs.silentReports,
                     onChanged: (value) =>

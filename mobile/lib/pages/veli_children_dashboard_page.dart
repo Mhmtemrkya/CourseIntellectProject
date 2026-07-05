@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/attendance_service.dart';
 import '../services/linked_children_service.dart';
@@ -75,8 +76,8 @@ class _VeliChildrenDashboardPageState extends State<VeliChildrenDashboardPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Çocuk Bazli Dashboard',
+        title: Text(
+          'Çocuk Bazli Dashboard'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

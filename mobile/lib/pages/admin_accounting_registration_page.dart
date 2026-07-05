@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../utils/input_formatters.dart';
 import 'package:flutter/services.dart';
 
@@ -49,24 +50,24 @@ class _AdminAccountingRegistrationPageState
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Muhasebe Kaydı',
+        title: Text(
+          'Muhasebe Kaydı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const AdminHeroCard(
+          AdminHeroCard(
             eyebrow: 'Yöneticiye özel finans kadro kaydı',
             title:
-                'Muhasebe kullanıcılarını ayrı bir finans kayıt akışıyla oluşturun.',
+                'Muhasebe kullanıcılarını ayrı bir finans kayıt akışıyla oluşturun.'.tr,
             description:
                 'Bu ekran sadece yönetiçi tarafında kullanılır. Kayıt tamamlandığında muhasebe paneline girebilecek kullanıcı adı ve şifre otomatik üretilir.',
             colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(label: 'Rol', value: 'Muhasebe'),
-              AdminHeroMetric(label: 'Erişim', value: 'Yönetici oluşturur'),
+              AdminHeroMetric(label: 'Erişim'.tr, value: 'Yönetici oluşturur'),
             ],
           ),
           const SizedBox(height: 16),
@@ -123,7 +124,7 @@ class _AdminAccountingRegistrationPageState
                       Expanded(
                         child: _field(
                           controller: _campusController,
-                          label: 'Kampüs',
+                          label: 'Kampüs'.tr,
                         ),
                       ),
                     ],
@@ -157,7 +158,7 @@ class _AdminAccountingRegistrationPageState
                       Expanded(
                         child: _field(
                           controller: _childCountController,
-                          label: 'Çocuk Sayisi',
+                          label: 'Çocuk Sayisi'.tr,
                           keyboardType: TextInputType.number,
                         ),
                       ),
@@ -181,7 +182,7 @@ class _AdminAccountingRegistrationPageState
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Kayıt Sonrasi Yetki Cevresi',
+                          'Kayıt Sonrasi Yetki Cevresi'.tr,
                           style: Theme.of(context).textTheme.bodyLarge
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
@@ -190,8 +191,8 @@ class _AdminAccountingRegistrationPageState
                           title: 'Panel',
                           value: 'Muhasebe modülu aktif olur',
                         ),
-                        const _InfoRow(
-                          title: 'Mesajlaşma',
+                        _InfoRow(
+                          title: 'Mesajlaşma'.tr,
                           value: 'Yönetici ve veli ile iletişim',
                         ),
                         const _InfoRow(
@@ -277,7 +278,7 @@ class _AdminAccountingRegistrationPageState
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Muhasebe hesabı oluşturuldu',
+                  'Muhasebe hesabı oluşturuldu'.tr,
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -302,7 +303,7 @@ class _AdminAccountingRegistrationPageState
                     border: Border.all(color: Colors.amber.shade200),
                   ),
                   child: Text(
-                    'Bu şifre ilk girişte değiştirilmesi zorunludur.',
+                    'Bu şifre ilk girişte değiştirilmesi zorunludur.'.tr,
                     style: TextStyle(
                       fontSize: 12,
                       color: Colors.amber.shade900,
@@ -315,7 +316,7 @@ class _AdminAccountingRegistrationPageState
                   width: double.infinity,
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.picture_as_pdf_outlined),
-                    label: const Text('PDF Olarak İndir / Paylaş'),
+                    label: Text('PDF Olarak İndir / Paylaş'.tr),
                     onPressed: () async {
                       final session = await AuthSessionStore.instance.load();
                       await CredentialsPdfService.generateAndShare(

@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/admin_directory_api_service.dart';
@@ -158,8 +159,8 @@ class _TeacherQuestionBatchCreatePageState
     );
     if (hasInvalid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Her soru kartında konu ve soru metni zorunludur.'),
+        SnackBar(
+          content: Text('Her soru kartında konu ve soru metni zorunludur.'.tr),
         ),
       );
       return;
@@ -175,8 +176,8 @@ class _TeacherQuestionBatchCreatePageState
     );
     if (hasInvalidMultipleChoice) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Çoktan seçmeli soru kartlarında en az iki şık girin.'),
+        SnackBar(
+          content: Text('Çoktan seçmeli soru kartlarında en az iki şık girin.'.tr),
         ),
       );
       return;
@@ -276,7 +277,7 @@ class _TeacherQuestionBatchCreatePageState
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Soru Seti Oluştur'),
+        title: Text('Soru Seti Oluştur'.tr),
         actions: [
           TextButton.icon(
             onPressed: _isSaving ? null : _addDraft,
@@ -359,18 +360,18 @@ class _TeacherQuestionBatchCreatePageState
                 DropdownButtonFormField<String>(
                   initialValue: draft.type,
                   decoration: const InputDecoration(labelText: 'Soru Tipi'),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'Açık Uçlu',
-                      child: Text('Açık Uçlu'),
+                      child: Text('Açık Uçlu'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'Çoktan Seçmeli',
-                      child: Text('Çoktan Seçmeli'),
+                      child: Text('Çoktan Seçmeli'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'Doğru / Yanlış',
-                      child: Text('Doğru / Yanlış'),
+                      child: Text('Doğru / Yanlış'.tr),
                     ),
                   ],
                   onChanged: (value) =>
@@ -379,12 +380,12 @@ class _TeacherQuestionBatchCreatePageState
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: draft.imagePlacement,
-                  decoration: const InputDecoration(labelText: 'Görsel Konumu'),
-                  items: const [
-                    DropdownMenuItem(value: 'Top', child: Text('Görsel Üstte')),
+                  decoration: InputDecoration(labelText: 'Görsel Konumu'.tr),
+                  items: [
+                    DropdownMenuItem(value: 'Top', child: Text('Görsel Üstte'.tr)),
                     DropdownMenuItem(
                       value: 'Bottom',
-                      child: Text('Görsel Altta'),
+                      child: Text('Görsel Altta'.tr),
                     ),
                   ],
                   onChanged: (value) => setState(
@@ -444,7 +445,7 @@ class _TeacherQuestionBatchCreatePageState
                   ),
                   DropdownButtonFormField<int>(
                     initialValue: draft.correctOptionIndex,
-                    decoration: const InputDecoration(labelText: 'Doğru Şık'),
+                    decoration: InputDecoration(labelText: 'Doğru Şık'.tr),
                     items: List.generate(
                       draft.optionControllers.length,
                       (index) => DropdownMenuItem(
@@ -487,7 +488,7 @@ class _TeacherQuestionBatchCreatePageState
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
                   value: draft.revealCorrectAnswerToStudent,
-                  title: const Text('Doğru cevabı öğrenciye göster'),
+                  title: Text('Doğru cevabı öğrenciye göster'.tr),
                   onChanged: (value) => setState(
                     () => draft.revealCorrectAnswerToStudent = value,
                   ),

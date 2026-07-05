@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/pages/change_password_page.dart';
 import 'package:student/services/auth_api_service.dart';
@@ -207,6 +208,23 @@ class _LoginPageState extends State<LoginPage> {
             left: 24,
             child: IgnorePointer(child: _DotGrid(color: _navy)),
           ),
+          // Dil değiştirici (sağ üst)
+          Positioned(
+            top: 8,
+            right: 12,
+            child: SafeArea(
+              child: ValueListenableBuilder<String>(
+                valueListenable: AppLocale.language,
+                builder: (context, lang, _) => TextButton.icon(
+                  onPressed: AppLocale.toggle,
+                  icon: const Icon(Icons.translate_rounded, size: 18),
+                  label: Text(lang == 'tr' ? 'EN' : 'TR',
+                      style: const TextStyle(fontWeight: FontWeight.w800)),
+                  style: TextButton.styleFrom(foregroundColor: _navy),
+                ),
+              ),
+            ),
+          ),
           Positioned(
             bottom: 150,
             right: 24,
@@ -226,7 +244,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 30),
                   Text(
-                    'Giriş Yapın',
+                    'Giriş Yapın'.tr,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w900,
@@ -235,7 +253,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'SchoolAsist hesabınıza giriş yaparak\neğitim süreçlerinizi kolayca yönetin.',
+                    'SchoolAsist hesabınıza giriş yaparak\neğitim süreçlerinizi kolayca yönetin.'.tr,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge?.copyWith(color: subtleText),
                   ),
@@ -312,7 +330,7 @@ class _LoginPageState extends State<LoginPage> {
                               ),
                               const SizedBox(width: 10),
                               Text(
-                                'Beni hatırla',
+                                'Beni hatırla'.tr,
                                 style: TextStyle(
                                   fontWeight: FontWeight.w700,
                                   color: headingColor,
@@ -328,8 +346,8 @@ class _LoginPageState extends State<LoginPage> {
                           foregroundColor: _orange,
                           padding: EdgeInsets.zero,
                         ),
-                        child: const Text(
-                          'Şifremi unuttum?',
+                        child: Text(
+                          'Şifremi unuttum?'.tr,
                           style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
@@ -360,9 +378,9 @@ class _LoginPageState extends State<LoginPage> {
                             )
                           : Stack(
                               alignment: Alignment.center,
-                              children: const [
+                              children: [
                                 Text(
-                                  'Giriş Yap',
+                                  'Giriş Yap'.tr,
                                   style: TextStyle(
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,
@@ -381,7 +399,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 26),
                   Text(
-                    'Hesabınız yok mu?',
+                    'Hesabınız yok mu?'.tr,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge?.copyWith(color: subtleText),
                   ),
@@ -389,8 +407,8 @@ class _LoginPageState extends State<LoginPage> {
                     child: TextButton(
                       onPressed: () {},
                       style: TextButton.styleFrom(foregroundColor: _orange),
-                      child: const Text(
-                        'İletişime geçin',
+                      child: Text(
+                        'İletişime geçin'.tr,
                         style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
@@ -516,7 +534,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
     final email = _emailController.text.trim();
     if (!email.contains('@')) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kayıtlı e-posta adresinizi girin.')),
+        SnackBar(content: Text('Kayıtlı e-posta adresinizi girin.'.tr)),
       );
       return;
     }
@@ -537,8 +555,8 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Talep gönderilemedi. Bağlantıyı kontrol edin.'),
+        SnackBar(
+          content: Text('Talep gönderilemedi. Bağlantıyı kontrol edin.'.tr),
         ),
       );
       setState(() => _submitting = false);
@@ -586,14 +604,14 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
             ),
             const SizedBox(height: 14),
             Text(
-              'Şifremi Unuttum',
+              'Şifremi Unuttum'.tr,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w900,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari yetkili ekranına düşer.',
+              'Kayıtlı e-postanızı girin. Talep kurum yöneticisi ve idari yetkili ekranına düşer.'.tr,
               style: theme.textTheme.bodyMedium?.copyWith(height: 1.4),
             ),
             const SizedBox(height: 18),
@@ -604,7 +622,7 @@ class _ForgotPasswordSheetState extends State<_ForgotPasswordSheet> {
               autocorrect: false,
               enableSuggestions: false,
               decoration: InputDecoration(
-                labelText: 'Kayıtlı E-posta',
+                labelText: 'Kayıtlı E-posta'.tr,
                 hintText: 'ornek@kurum.com',
                 prefixIcon: const Icon(Icons.mail_outline_rounded),
                 border: OutlineInputBorder(

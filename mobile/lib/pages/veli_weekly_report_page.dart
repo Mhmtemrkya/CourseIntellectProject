@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -109,7 +110,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Haftalık Rapor'),
+      appBar: AppHeader(title: 'Haftalık Rapor'.tr),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: ResponsiveContent(
@@ -178,8 +179,8 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
               color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'Güncel dönem raporu',
+            child: Text(
+              'Güncel dönem raporu'.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -197,7 +198,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Katılım, sınav, finans ve veli aksiyonları tek görünümde toplandı. Bu kart seçili öğrencinin güncel kayıtlarından üretilir.',
+            'Katılım, sınav, finans ve veli aksiyonları tek görünümde toplandı. Bu kart seçili öğrencinin güncel kayıtlarından üretilir.'.tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.86),
               height: 1.45,
@@ -271,13 +272,13 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
       runSpacing: 12,
       children: [
         _SummaryTile(
-          title: 'Sınav ortalaması',
+          title: 'Sınav ortalaması'.tr,
           value: average == 0 ? 'Veri yok' : average.toString(),
           icon: Icons.analytics_outlined,
           color: Color(0xFF2563EB),
         ),
         _SummaryTile(
-          title: 'Katılım kaydı',
+          title: 'Katılım kaydı'.tr,
           value: '$completed / $total',
           icon: Icons.assignment_turned_in_outlined,
           color: Color(0xFF0F766E),
@@ -312,7 +313,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Öğretmen değerlendirmesi',
+            'Öğretmen değerlendirmesi'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -357,7 +358,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
             children: [
               Expanded(
                 child: Text(
-                  'Öğretmenden Gelen Raporlar',
+                  'Öğretmenden Gelen Raporlar'.tr,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -392,11 +393,11 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                 borderRadius: BorderRadius.circular(24),
                 border: Border.all(color: const Color(0xFFE2E8F0)),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Henüz özel haftalık rapor yok',
+                    'Henüz özel haftalık rapor yok'.tr,
                     style: TextStyle(
                       fontWeight: FontWeight.w800,
                       color: Color(0xFF0F172A),
@@ -404,7 +405,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                   ),
                   SizedBox(height: 6),
                   Text(
-                    'Öğretmen bu öğrenci için rapor paylaştığında burada düzenli rapor kartları halinde görünecek.',
+                    'Öğretmen bu öğrenci için rapor paylaştığında burada düzenli rapor kartları halinde görünecek.'.tr,
                     style: TextStyle(color: Color(0xFF64748B), height: 1.45),
                   ),
                 ],
@@ -557,7 +558,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                             color: const Color(0xFFF8FAFC),
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
                               Icon(
                                 Icons.visibility_outlined,
@@ -567,7 +568,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                               SizedBox(width: 8),
                               Expanded(
                                 child: Text(
-                                  'Raporu aç, detayları ve ek dosyaları incele',
+                                  'Raporu aç, detayları ve ek dosyaları incele'.tr,
                                   style: TextStyle(
                                     color: Color(0xFF334155),
                                     fontWeight: FontWeight.w700,
@@ -661,7 +662,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'Bu rapor veli paneline iletildi ve kalıcı olarak kaydedildi.',
+                                  'Bu rapor veli paneline iletildi ve kalıcı olarak kaydedildi.'.tr,
                                   style: theme.textTheme.bodySmall?.copyWith(
                                     color: Colors.white.withValues(alpha: 0.90),
                                     fontWeight: FontWeight.w600,
@@ -676,7 +677,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                   ),
                   const SizedBox(height: 16),
                   _reportSurface(
-                    title: 'Öğretmen Özeti',
+                    title: 'Öğretmen Özeti'.tr,
                     child: Text(report.summary),
                   ),
                   const SizedBox(height: 12),
@@ -684,7 +685,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                     children: [
                       Expanded(
                         child: _reportSurface(
-                          title: 'Güçlü Yönler',
+                          title: 'Güçlü Yönler'.tr,
                           child: Text(
                             report.highlights.isEmpty
                                 ? 'Bu raporda ayrıca güçlü yön notu paylaşılmadı.'
@@ -695,7 +696,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: _reportSurface(
-                          title: 'Destek Alanları',
+                          title: 'Destek Alanları'.tr,
                           child: Text(
                             report.supportNotes.isEmpty
                                 ? 'Bu raporda ayrıca destek notu paylaşılmadı.'
@@ -709,7 +710,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                   _reportSurface(
                     title: 'Ek Dosyalar',
                     child: report.attachments.isEmpty
-                        ? const Text('Bu rapora ek dosya yüklenmedi.')
+                        ? Text('Bu rapora ek dosya yüklenmedi.'.tr)
                         : Column(
                             children: report.attachments
                                 .map(
@@ -766,7 +767,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Ders bazlı görünüm',
+            'Ders bazlı görünüm'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -790,7 +791,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Hafta içi aksiyon planı',
+            'Hafta içi aksiyon planı'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -798,14 +799,14 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
           const SizedBox(height: 14),
           _PlanItem(
             day: 'Bugün',
-            title: 'Yoklama ve sınav kayıtlarını kontrol et',
+            title: 'Yoklama ve sınav kayıtlarını kontrol et'.tr,
             detail:
                 'Bu rapor öğrencinin güncel katılım ve sınav verilerine göre oluşturuldu.',
           ),
           const SizedBox(height: 10),
           _PlanItem(
             day: 'Bu hafta',
-            title: 'Zayif derslere kisa tekrar bloklari ekle',
+            title: 'Zayif derslere kisa tekrar bloklari ekle'.tr,
             detail: _lessonRows().isEmpty
                 ? 'Yeni sınav kaydı geldikçe ders bazlı öneri burada güçlenecek.'
                 : 'En düşük ortalamali ders için 20-30 dakikalik tekrar penceresi planlanabilir.',
@@ -832,7 +833,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Hızlı işlemler',
+            'Hızlı işlemler'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -860,7 +861,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Raporun gönderileceği adres',
+                          'Raporun gönderileceği adres'.tr,
                           style: Theme.of(context).textTheme.bodySmall
                               ?.copyWith(
                                 color: const Color(0xFF4F46E5),
@@ -869,7 +870,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
                         ),
                         const SizedBox(height: 3),
                         Text(
-                          'mehmet.yilmaz.veli@example.com',
+                          'mehmet.yilmaz.veli@example.com'.tr,
                           style: Theme.of(context).textTheme.bodyMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
@@ -892,21 +893,21 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
               FilledButton.icon(
                 onPressed: () => _downloadPdf(context),
                 icon: const Icon(Icons.download_rounded),
-                label: const Text('PDF İndir'),
+                label: Text('PDF İndir'.tr),
               ),
               FilledButton.tonalIcon(
                 onPressed: () {
                   _openEmail(context);
                 },
                 icon: const Icon(Icons.mail_outline_rounded),
-                label: const Text('E-posta Gönder'),
+                label: Text('E-posta Gönder'.tr),
               ),
               OutlinedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
                 },
                 icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Ana Sayfaya Dön'),
+                label: Text('Ana Sayfaya Dön'.tr),
               ),
             ],
           ),
@@ -934,8 +935,8 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
 
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('E-posta uygulaması açılamadı.'),
+      SnackBar(
+        content: Text('E-posta uygulaması açılamadı.'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -947,15 +948,15 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
       pw.MultiPage(
         build: (_) => [
           pw.Text(
-            'Haftalık Veli Raporu',
+            'Haftalık Veli Raporu'.tr,
             style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 8),
           pw.Text('Öğrenci: $_selectedChild'),
-          pw.Text('Dönem: Güncel rapor'),
+          pw.Text('Dönem: Güncel rapor'.tr),
           pw.SizedBox(height: 18),
           pw.Text(
-            'Genel Özet',
+            'Genel Özet'.tr,
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
           pw.Bullet(text: 'Katılım oranı: %${_attendanceRate()}'),
@@ -969,7 +970,7 @@ class _VeliWeeklyReportPageState extends State<VeliWeeklyReportPage> {
           ),
           pw.SizedBox(height: 18),
           pw.Text(
-            'Öğretmen Notları',
+            'Öğretmen Notları'.tr,
             style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
           ),
           pw.Paragraph(

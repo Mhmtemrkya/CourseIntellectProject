@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:provider/provider.dart';
 
+import 'i18n/app_locale.dart';
 import 'pages/splash_page.dart';
 import 'services/live_notification_bridge.dart';
 import 'services/remote_push_service.dart';
@@ -16,6 +17,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AppLocale.load();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   runApp(
     ChangeNotifierProvider(
@@ -61,15 +63,22 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Consumer<ThemeProvider>(
       builder: (context, themeProvider, child) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: "Student App",
-          theme: themeProvider.lightTheme,
-          darkTheme: themeProvider.darkTheme,
-          themeMode: themeProvider.themeMode,
-          home: const MaintenanceGate(
-            child: LegalConsentGate(child: SplashPage()),
-          ),
+        // Dil değişiminde tüm ağaç yeni dille yeniden kurulur (key ile).
+        return ValueListenableBuilder<String>(
+          valueListenable: AppLocale.language,
+          builder: (context, lang, _) {
+            return MaterialApp(
+              key: ValueKey('app-$lang'),
+              debugShowCheckedModeBanner: false,
+              title: "Student App",
+              theme: themeProvider.lightTheme,
+              darkTheme: themeProvider.darkTheme,
+              themeMode: themeProvider.themeMode,
+              home: const MaintenanceGate(
+                child: LegalConsentGate(child: SplashPage()),
+              ),
+            );
+          },
         );
       },
     );

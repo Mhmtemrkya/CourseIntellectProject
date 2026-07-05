@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 class TypingIndicator extends StatelessWidget {
   final bool typing;
 
@@ -9,9 +10,9 @@ class TypingIndicator extends StatelessWidget {
   Widget build(BuildContext context) {
     if (!typing) return const SizedBox();
 
-    return const Padding(
+    return Padding(
       padding: EdgeInsets.all(8),
-      child: Text("Yazıyor...", style: TextStyle(color: Colors.grey)),
+      child: Text("Yazıyor...".tr, style: TextStyle(color: Colors.grey)),
     );
   }
 }

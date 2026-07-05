@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_api_service.dart';
 
 class ChangePasswordPage extends StatefulWidget {
@@ -57,7 +58,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şifreniz başarıyla güncellendi.')),
+        SnackBar(content: Text('Şifreniz başarıyla güncellendi.'.tr)),
       );
       widget.onSuccess?.call();
       if (widget.forceMode) {
@@ -140,7 +141,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
     final body = Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: force ? null : AppBar(title: const Text('Şifre Değiştir')),
+      appBar: force ? null : AppBar(title: Text('Şifre Değiştir'.tr)),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16),
@@ -174,7 +175,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   const SizedBox(height: 16),
                   Center(
                     child: Text(
-                      'Yeni Şifre Belirleyin',
+                      'Yeni Şifre Belirleyin'.tr,
                       style: theme.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                       ),
@@ -182,14 +183,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Hesabınızın güvenliği için ilk girişte şifrenizi yenilemeniz gerekiyor.',
+                    'Hesabınızın güvenliği için ilk girişte şifrenizi yenilemeniz gerekiyor.'.tr,
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
                 ] else ...[
                   Text(
-                    'Şifre Güvenliği',
+                    'Şifre Güvenliği'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                       fontSize: 20,
@@ -197,12 +198,12 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Hesabınızın güvenliği için yeni bir şifre belirleyin.',
+                    'Hesabınızın güvenliği için yeni bir şifre belirleyin.'.tr,
                     style: theme.textTheme.bodyMedium,
                   ),
                   const SizedBox(height: 24),
                   _passwordField(
-                    label: 'Mevcut Şifre',
+                    label: 'Mevcut Şifre'.tr,
                     controller: oldPass,
                     obscureText: hideOld,
                     onToggle: () => setState(() => hideOld = !hideOld),
@@ -210,14 +211,14 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
                   const SizedBox(height: 16),
                 ],
                 _passwordField(
-                  label: 'Yeni Şifre',
+                  label: 'Yeni Şifre'.tr,
                   controller: newPass,
                   obscureText: hideNew,
                   onToggle: () => setState(() => hideNew = !hideNew),
                 ),
                 const SizedBox(height: 16),
                 _passwordField(
-                  label: 'Yeni Şifre Tekrar',
+                  label: 'Yeni Şifre Tekrar'.tr,
                   controller: newPassAgain,
                   obscureText: hideAgain,
                   onToggle: () => setState(() => hideAgain = !hideAgain),

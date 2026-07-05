@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/api_config.dart';
@@ -36,7 +37,7 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text('Konu Detayı')),
+      appBar: AppBar(title: Text('Konu Detayı'.tr)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: ResponsiveContent(
@@ -109,7 +110,7 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Konu Özeti',
+                      'Konu Özeti'.tr,
                       style: theme.textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
@@ -121,7 +122,7 @@ class StudentQuestionBankDetailPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Hedef sınıflar',
+                      'Hedef sınıflar'.tr,
                       style: theme.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),

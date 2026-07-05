@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/accounting_finance_store.dart';
@@ -482,7 +483,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
     return AccountingHeroCard(
       eyebrow: '${_periodLabel(_period, _anchor)} finans özeti',
       title:
-          'Tahsilat akışları, onay bekleyen işlemler ve riskli bakiyeler tek panelde.',
+          'Tahsilat akışları, onay bekleyen işlemler ve riskli bakiyeler tek panelde.'.tr,
       description:
           'Bu ${_periodNoun[_period]}: ${_periodCollections.length} tahsilat, ${_store.approvals.where((item) => item.status == 'Bekliyor').length} bekleyen onay ve ${_overdueInstallments.length} geciken plan izleniyor.',
       metrics: [
@@ -491,7 +492,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
           value: _store.formatAmount(_periodCollected),
         ),
         AccountingHeroMetric(
-          label: 'Net Akış',
+          label: 'Net Akış'.tr,
           value: _store.formatAmount(_periodCollected - _periodExpense),
         ),
       ],
@@ -643,7 +644,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
             children: [
               Expanded(
                 child: Text(
-                  'Gelir - Gider Grafiği',
+                  'Gelir - Gider Grafiği'.tr,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -734,7 +735,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Tahsilat Oranı',
+            'Tahsilat Oranı'.tr,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w900,
             ),
@@ -1049,7 +1050,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               child: _quickAction(
                 context,
                 title: 'Tahsilat Takvimi',
-                subtitle: 'Günlük ödeme planları',
+                subtitle: 'Günlük ödeme planları'.tr,
                 icon: Icons.calendar_month_outlined,
                 color: const Color(0xFF2563EB),
                 page: const AccountingCollectionCalendarPage(),
@@ -1060,7 +1061,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               child: _quickAction(
                 context,
                 title: 'Mutabakat',
-                subtitle: 'Banka ve kasa denetimi',
+                subtitle: 'Banka ve kasa denetimi'.tr,
                 icon: Icons.compare_arrows_outlined,
                 color: const Color(0xFF4F46E5),
                 page: const AccountingReconciliationPage(),
@@ -1119,7 +1120,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   child: Text(
-                    'Geciken ödeme yok.',
+                    'Geciken ödeme yok.'.tr,
                     style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 )
@@ -1365,7 +1366,7 @@ class _FlowChartState extends State<_FlowChart> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
         ),
-        child: Text('Bu dönem için veri yok.',
+        child: Text('Bu dönem için veri yok.'.tr,
             style: theme.textTheme.bodyMedium),
       );
     }
@@ -1414,7 +1415,7 @@ class _FlowChartState extends State<_FlowChart> {
           _detailCard(context, selected)
         else
           Text(
-            'Detay için bir sütuna dokun.',
+            'Detay için bir sütuna dokun.'.tr,
             style: theme.textTheme.bodySmall,
           ),
       ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../legal/legal_content.dart';
 
 class LegalDocumentsPage extends StatelessWidget {
@@ -8,7 +9,7 @@ class LegalDocumentsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('KVKK ve Yasal Metinler')),
+      appBar: AppBar(title: Text('KVKK ve Yasal Metinler'.tr)),
       body: ListView.separated(
         padding: const EdgeInsets.all(16),
         itemBuilder: (context, index) {

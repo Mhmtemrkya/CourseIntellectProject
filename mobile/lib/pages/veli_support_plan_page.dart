@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/app_header.dart';
 
 class VeliSupportPlanPage extends StatelessWidget {
@@ -18,7 +19,7 @@ class VeliSupportPlanPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Destek Planı'),
+      appBar: AppHeader(title: 'Destek Planı'.tr),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -62,8 +63,8 @@ class VeliSupportPlanPage extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'Veli destek akışı',
+            child: Text(
+              'Veli destek akışı'.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -89,13 +90,13 @@ class VeliSupportPlanPage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Row(
-            children: const [
+            children: [
               Expanded(
-                child: _HeroMetric(label: 'Süre', value: '7 gün'),
+                child: _HeroMetric(label: 'Süre'.tr, value: '7 gün'),
               ),
               SizedBox(width: 10),
               Expanded(
-                child: _HeroMetric(label: 'Öncelik', value: 'Yüksek'),
+                child: _HeroMetric(label: 'Öncelik'.tr, value: 'Yüksek'),
               ),
               SizedBox(width: 10),
               Expanded(
@@ -115,7 +116,7 @@ class VeliSupportPlanPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Bu plan neden önerildi?',
+            'Bu plan neden önerildi?'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
@@ -153,35 +154,35 @@ class VeliSupportPlanPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            '7 günlük uygulama akışı',
+            '7 günlük uygulama akışı'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 14),
-          const _TimelineTile(
+          _TimelineTile(
             day: '1. Gün',
-            title: 'Kısa başlangıç konuşması',
+            title: 'Kısa başlangıç konuşması'.tr,
             detail:
                 'Öğrenciyle 5 dakikalık sakin hedef konuşması yapın, baskı dili kullanmayın.',
           ),
           const SizedBox(height: 12),
-          const _TimelineTile(
+          _TimelineTile(
             day: '3. Gün',
-            title: 'Akşam mini tekrar rutini',
+            title: 'Akşam mini tekrar rutini'.tr,
             detail:
                 '20 dakikalık kısa çalışma sonrasında sadece tamamlandı takibi yapın.',
           ),
           const SizedBox(height: 12),
-          const _TimelineTile(
+          _TimelineTile(
             day: '5. Gün',
-            title: 'Öğretmenden kısa geri bildirim isteyin',
+            title: 'Öğretmenden kısa geri bildirim isteyin'.tr,
             detail: 'Gerekirse mesajlar bölümünden hızlı not talep edin.',
           ),
           const SizedBox(height: 12),
-          const _TimelineTile(
+          _TimelineTile(
             day: '7. Gün',
-            title: 'Sonuç değerlendirmesi',
+            title: 'Sonuç değerlendirmesi'.tr,
             detail:
                 'Plana uyum ve öğrencinin motivasyonu birlikte gözden geçirilsin.',
           ),
@@ -209,8 +210,8 @@ class VeliSupportPlanPage extends StatelessWidget {
               color: const Color(0xFFECFDF3),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text(
-              'Bugün sadece kısa bir bölüm yapman yeterli. Bitince birlikte kontrol ederiz.',
+            child: Text(
+              'Bugün sadece kısa bir bölüm yapman yeterli. Bitince birlikte kontrol ederiz.'.tr,
               style: TextStyle(
                 color: Color(0xFF065F46),
                 fontWeight: FontWeight.w700,
@@ -225,8 +226,8 @@ class VeliSupportPlanPage extends StatelessWidget {
               color: const Color(0xFFFFF7ED),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text(
-              'Kaç soru çözdün, neden eksik kaldın? yerine kısa hedefi tamamlayıp tamamlamadığını sorun.',
+            child: Text(
+              'Kaç soru çözdün, neden eksik kaldın? yerine kısa hedefi tamamlayıp tamamlamadığını sorun.'.tr,
               style: TextStyle(
                 color: Color(0xFF9A3412),
                 fontWeight: FontWeight.w700,
@@ -246,14 +247,14 @@ class VeliSupportPlanPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Planı başlat',
+            'Planı başlat'.tr,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 12),
           Text(
-            'Plan başlatıldığında veli takvimine eklenir ve öğretmen tarafına bilgilendirme notu düşer.',
+            'Plan başlatıldığında veli takvimine eklenir ve öğretmen tarafına bilgilendirme notu düşer.'.tr,
             style: Theme.of(
               context,
             ).textTheme.bodyMedium?.copyWith(height: 1.4),
@@ -265,8 +266,8 @@ class VeliSupportPlanPage extends StatelessWidget {
                 child: FilledButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Destek planı takvime eklendi.'),
+                      SnackBar(
+                        content: Text('Destek planı takvime eklendi.'.tr),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
@@ -280,16 +281,16 @@ class VeliSupportPlanPage extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: () {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
+                      SnackBar(
                         content: Text(
-                          'Öğretmene plan bilgilendirmesi gönderildi.',
+                          'Öğretmene plan bilgilendirmesi gönderildi.'.tr,
                         ),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );
                   },
                   icon: const Icon(Icons.send_outlined),
-                  label: const Text('Öğretmene Bildir'),
+                  label: Text('Öğretmene Bildir'.tr),
                 ),
               ),
             ],

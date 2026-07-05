@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 
 class VeliReceiptArchivePage extends StatelessWidget {
@@ -11,8 +12,8 @@ class VeliReceiptArchivePage extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Makbuz Arşivi',
+        title: Text(
+          'Makbuz Arşivi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

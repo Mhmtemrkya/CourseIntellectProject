@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/language_tile.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_session_store.dart';
@@ -46,7 +48,7 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
       setState(() => _profile = updated);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Profil güncellendi.')));
+      ).showSnackBar(SnackBar(content: Text('Profil güncellendi.'.tr)));
     }
   }
 
@@ -168,7 +170,7 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
                         ? null
                         : () => _openEdit(_profile!),
                     icon: const Icon(Icons.edit_outlined),
-                    label: const Text('Profili Düzenle'),
+                    label: Text('Profili Düzenle'.tr),
                   ),
                 ),
               ],
@@ -183,11 +185,12 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
                   value: themeProvider.isDarkMode,
                   onChanged: themeProvider.toggleTheme,
                 ),
+                const LanguageTile(),
                 ListTile(
                   leading: const Icon(Icons.notifications_active_outlined),
                   title: const Text("Bildirim Tercihleri"),
-                  subtitle: const Text(
-                    "Finans ve duyuru banner akışlarını yönet.",
+                  subtitle: Text(
+                    "Finans ve duyuru banner akışlarını yönet.".tr,
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
@@ -199,9 +202,9 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock_outline),
-                  title: const Text("Şifre Değiştir"),
-                  subtitle: const Text(
-                    "Hesap güvenliği için şifrenizi güncelleyin.",
+                  title: Text("Şifre Değiştir".tr),
+                  subtitle: Text(
+                    "Hesap güvenliği için şifrenizi güncelleyin.".tr,
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
@@ -214,8 +217,8 @@ class _AccountingProfilePageState extends State<AccountingProfilePage> {
                 const LegalProfileTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                  title: const Text(
-                    "Çıkış Yap",
+                  title: Text(
+                    "Çıkış Yap".tr,
                     style: TextStyle(color: Colors.red),
                   ),
                   onTap: () => logoutToRoleSelect(context),

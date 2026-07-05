@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/linked_children_service.dart';
 
 class ChildSelector extends StatefulWidget {
@@ -56,7 +57,7 @@ class _ChildSelectorState extends State<ChildSelector> {
             borderRadius: BorderRadius.circular(12),
           ),
           child: Text(
-            'Çocuk yok',
+            'Çocuk yok'.tr,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(color: theme.textTheme.bodyLarge?.color),

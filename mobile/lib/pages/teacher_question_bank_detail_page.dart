@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/api_config.dart';
@@ -61,14 +62,14 @@ class _TeacherQuestionBankDetailPageState
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Soruyu sil'),
-          content: const Text(
-            'Bu soru öğretmen ve öğrenci soru bankasından kaldırılacak. Emin misiniz?',
+          title: Text('Soruyu sil'.tr),
+          content: Text(
+            'Bu soru öğretmen ve öğrenci soru bankasından kaldırılacak. Emin misiniz?'.tr,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogContext, false),
-              child: const Text('İptal'),
+              child: Text('İptal'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialogContext, true),
@@ -127,7 +128,7 @@ class _TeacherQuestionBankDetailPageState
               );
             },
             icon: const Icon(Icons.edit_note_rounded),
-            tooltip: 'Kalemle çöz / önizle',
+            tooltip: 'Kalemle çöz / önizle'.tr,
           ),
           IconButton(
             onPressed: () async {
@@ -140,7 +141,7 @@ class _TeacherQuestionBankDetailPageState
               );
             },
             icon: const Icon(Icons.edit_outlined),
-            tooltip: 'Düzenle',
+            tooltip: 'Düzenle'.tr,
           ),
           IconButton(
             onPressed: _deleteQuestion,
@@ -218,7 +219,7 @@ class _TeacherQuestionBankDetailPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Seçenekler',
+                        'Seçenekler'.tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -282,8 +283,8 @@ class _TeacherQuestionBankDetailPageState
                                 ),
                               ],
                               if (isCorrect)
-                                const Text(
-                                  'Doğru',
+                                Text(
+                                  'Doğru'.tr,
                                   style: TextStyle(
                                     color: Color(0xFF047857),
                                     fontWeight: FontWeight.w800,
@@ -306,7 +307,7 @@ class _TeacherQuestionBankDetailPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Soru Görseli',
+                        'Soru Görseli'.tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -337,7 +338,7 @@ class _TeacherQuestionBankDetailPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Çözüm Metni',
+                        'Çözüm Metni'.tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -362,7 +363,7 @@ class _TeacherQuestionBankDetailPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Çözüm Eki',
+                        'Çözüm Eki'.tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),

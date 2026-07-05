@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_export_service.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
@@ -27,7 +28,7 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
   @override
   Widget build(BuildContext context) {
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Dışa Aktar'),
+      appBar: AppHeader(title: 'Dışa Aktar'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -53,13 +54,13 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
           AccountingHeroCard(
             eyebrow: 'Rapor dışa aktarımı',
             title:
-                'Muhasebe verilerini yönetim ve operasyon ekipleri için hazır paketler halinde alın.',
+                'Muhasebe verilerini yönetim ve operasyon ekipleri için hazır paketler halinde alın.'.tr,
             description: 'Excel ve PDF çıktıları özet önizleme ile hazırlanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
-              const AccountingHeroMetric(label: 'Hazır Şablon', value: '3'),
+              AccountingHeroMetric(label: 'Hazır Şablon'.tr, value: '3'),
               AccountingHeroMetric(
-                label: 'Fatura Kayıt',
+                label: 'Fatura Kayıt'.tr,
                 value: '${_store.invoices.length}',
               ),
             ],
@@ -145,7 +146,7 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
                   onPressed: () =>
                       _showExportPreview(context, title, exportType),
                   icon: const Icon(Icons.download_rounded),
-                  label: const Text('Dışa Aktar'),
+                  label: Text('Dışa Aktar'.tr),
                 ),
               ),
               const SizedBox(width: 10),
@@ -170,7 +171,7 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
                               ),
                               behavior: SnackBarBehavior.floating,
                               action: SnackBarAction(
-                                label: 'Paylaş',
+                                label: 'Paylaş'.tr,
                                 onPressed: () {
                                   AccountingExportService.instance.shareExport(
                                     saved,
@@ -284,7 +285,7 @@ class _AccountingExportsPageState extends State<AccountingExportsPage> {
           ),
           behavior: SnackBarBehavior.floating,
           action: SnackBarAction(
-            label: 'Aç',
+            label: 'Aç'.tr,
             onPressed: () => AccountingExportService.instance.openExport(saved),
           ),
         ),

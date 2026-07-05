@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:convert';
@@ -111,7 +112,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
         elevation: 0,
         centerTitle: false,
         title: Text(
-          "Soru Bankası",
+          "Soru Bankası".tr,
           style: TextStyle(
             color: isDark ? Colors.white : const Color(0xFF111827),
             fontWeight: FontWeight.w900,
@@ -120,13 +121,13 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
         actions: [
           _appBarAction(
             icon: Icons.download_rounded,
-            tooltip: 'Dışa Aktar',
+            tooltip: 'Dışa Aktar'.tr,
             onPressed: _exportQuestions,
             isDark: isDark,
           ),
           _appBarAction(
             icon: Icons.upload_rounded,
-            tooltip: 'İçe Aktar',
+            tooltip: 'İçe Aktar'.tr,
             onPressed: _importQuestions,
             isDark: isDark,
           ),
@@ -291,12 +292,12 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                 ),
               ),
               const SizedBox(width: 14),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Öğretmen Soru Bankası',
+                      'Öğretmen Soru Bankası'.tr,
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 20,
@@ -305,7 +306,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                     ),
                     SizedBox(height: 4),
                     Text(
-                      'Soru üret, setle, sınıflara hazırla',
+                      'Soru üret, setle, sınıflara hazırla'.tr,
                       style: TextStyle(color: Colors.white70, height: 1.35),
                     ),
                   ],
@@ -399,8 +400,8 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
             ),
             onPressed: _importQuestions,
             icon: const Icon(Icons.upload_file_outlined),
-            label: const Text(
-              'JSON arşivinden içe aktar',
+            label: Text(
+              'JSON arşivinden içe aktar'.tr,
               style: TextStyle(fontWeight: FontWeight.w800),
             ),
           ),
@@ -464,7 +465,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
             controller: _searchController,
             onChanged: (_) => setState(() {}),
             decoration: InputDecoration(
-              hintText: "Konu, soru veya öğretmen ara...",
+              hintText: "Konu, soru veya öğretmen ara...".tr,
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
               fillColor: isDark
@@ -514,7 +515,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
           DropdownButtonFormField<String>(
             initialValue: _classFilter,
             decoration: InputDecoration(
-              labelText: 'Sınıf Filtresi',
+              labelText: 'Sınıf Filtresi'.tr,
               filled: true,
               fillColor: isDark
                   ? Colors.white.withValues(alpha: 0.06)
@@ -677,7 +678,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Henüz soru oluşturulmadı',
+                'Henüz soru oluşturulmadı'.tr,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontWeight: FontWeight.w900,
@@ -686,7 +687,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
               ),
               const SizedBox(height: 12),
               Text(
-                'Soru bankanızı oluşturmak için hemen yeni soru ekleyebilir\nveya içe aktararak arşivinizi zenginleştirebilirsiniz.',
+                'Soru bankanızı oluşturmak için hemen yeni soru ekleyebilir\nveya içe aktararak arşivinizi zenginleştirebilirsiniz.'.tr,
                 textAlign: TextAlign.center,
                 style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   height: 1.45,
@@ -739,8 +740,8 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                       ),
                       onPressed: _importQuestions,
                       icon: const Icon(Icons.upload_file_outlined),
-                      label: const Text(
-                        'İçe Aktar',
+                      label: Text(
+                        'İçe Aktar'.tr,
                         style: TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),
@@ -779,7 +780,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                     const SizedBox(width: 14),
                     Expanded(
                       child: Text(
-                        'PDF veya JSON dosyalarından içe aktararak sorularınızı hızlıca sisteme ekleyebilirsiniz.',
+                        'PDF veya JSON dosyalarından içe aktararak sorularınızı hızlıca sisteme ekleyebilirsiniz.'.tr,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           height: 1.45,
                           color: isDark
@@ -828,7 +829,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Bu filtrelere uygun soru bulunamadı',
+            'Bu filtrelere uygun soru bulunamadı'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: isDark ? Colors.white : const Color(0xFF111827),
@@ -838,7 +839,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Arama kelimesini veya sınıf filtresini değiştirerek tekrar deneyebilirsin.',
+            'Arama kelimesini veya sınıf filtresini değiştirerek tekrar deneyebilirsin.'.tr,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: isDark
@@ -935,7 +936,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
                 const SizedBox(width: 5),
                 Expanded(
                   child: Text(
-                    'Pasif — öğrenci görmez',
+                    'Pasif — öğrenci görmez'.tr,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
@@ -1066,7 +1067,7 @@ class _TeacherQuestionBankPageState extends State<TeacherQuestionBankPage> {
     await _load();
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Soru bankası içe aktarıldı.')),
+      SnackBar(content: Text('Soru bankası içe aktarıldı.'.tr)),
     );
   }
 

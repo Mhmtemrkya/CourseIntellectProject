@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
@@ -18,7 +19,7 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
     final summary = _studentSummary(store, student, records);
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Taksit Detayı'),
+      appBar: AppHeader(title: 'Taksit Detayı'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -39,7 +40,7 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
               Expanded(
                 child: _metricCard(
                   context,
-                  title: 'Ödenen',
+                  title: 'Ödenen'.tr,
                   value: summary.paid,
                   color: const Color(0xFF0F766E),
                   icon: Icons.check_circle_outline_rounded,
@@ -90,15 +91,15 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Expanded(
-                      child: AccountingSectionTitle(title: 'Plan Özeti'),
+                    Expanded(
+                      child: AccountingSectionTitle(title: 'Plan Özeti'.tr),
                     ),
                     OutlinedButton.icon(
                       onPressed: records.isEmpty
                           ? null
                           : () => _openEditSheet(context, store, records.first),
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Taksidi Düzenle'),
+                      label: Text('Taksidi Düzenle'.tr),
                     ),
                   ],
                 ),
@@ -260,7 +261,7 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
                   AccountingFinanceStore.instance,
                   record,
                 ),
-                child: const Text('Düzenle'),
+                child: Text('Düzenle'.tr),
               ),
             ],
           ),
@@ -347,8 +348,8 @@ class AccountingInstallmentDetailPage extends StatelessWidget {
                     );
                     Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Taksit planı güncellendi.'),
+                      SnackBar(
+                        content: Text('Taksit planı güncellendi.'.tr),
                         behavior: SnackBarBehavior.floating,
                       ),
                     );

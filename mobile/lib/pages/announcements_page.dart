@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/responsive_layout.dart';
 
@@ -70,8 +71,8 @@ class _AnnouncementsPageState extends State<AnnouncementsPage> {
         title: _searching
             ? TextField(
                 autofocus: true,
-                decoration: const InputDecoration(
-                  hintText: 'Duyurularda ara...',
+                decoration: InputDecoration(
+                  hintText: 'Duyurularda ara...'.tr,
                   border: InputBorder.none,
                 ),
                 onChanged: (value) => setState(() => _query = value),

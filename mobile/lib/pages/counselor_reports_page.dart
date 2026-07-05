@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/guidance_api_service.dart';
 
 const _navy = Color(0xFF15294B);
@@ -134,7 +135,7 @@ class _CounselorReportsPageState extends State<CounselorReportsPage> {
                       _barsCard(
                         theme,
                         isDark,
-                        title: 'Konu Dağılımı',
+                        title: 'Konu Dağılımı'.tr,
                         entries: _list('sessionsByTopic')
                             .map((e) => (
                                   _topicLabels[e['topic']] ??
@@ -147,7 +148,7 @@ class _CounselorReportsPageState extends State<CounselorReportsPage> {
                       _barsCard(
                         theme,
                         isDark,
-                        title: 'Aylık Görüşme',
+                        title: 'Aylık Görüşme'.tr,
                         entries: _list('sessionsByMonth')
                             .map((e) => (
                                   e['month'].toString(),
@@ -160,7 +161,7 @@ class _CounselorReportsPageState extends State<CounselorReportsPage> {
                       _barsCard(
                         theme,
                         isDark,
-                        title: 'Görüşme Türleri',
+                        title: 'Görüşme Türleri'.tr,
                         entries: _list('sessionsByType')
                             .map((e) => (
                                   e['type'].toString(),
@@ -244,7 +245,7 @@ class _CounselorReportsPageState extends State<CounselorReportsPage> {
           Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 12),
           if (entries.isEmpty)
-            Text('Kayıt yok.', style: theme.textTheme.bodySmall)
+            Text('Kayıt yok.'.tr, style: theme.textTheme.bodySmall)
           else
             ...entries.map((entry) => Padding(
                   padding: const EdgeInsets.symmetric(vertical: 5),

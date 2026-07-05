@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/staff_registry_store.dart';
 import '../services/question_thread_api_service.dart';
@@ -356,7 +357,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Sorular yüklenemedi',
+            'Sorular yüklenemedi'.tr,
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -401,8 +402,8 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Takıldığın soruyu hemen gönder",
+          Text(
+            "Takıldığın soruyu hemen gönder".tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 26,
@@ -411,7 +412,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Öğretmenine konu, öncelik ve eklerle birlikte soru gönderebilir, önceki yanıtlarını takip edebilirsin.",
+            "Öğretmenine konu, öncelik ve eklerle birlikte soru gönderebilir, önceki yanıtlarını takip edebilirsin.".tr,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -541,7 +542,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: selectedTeacher.isEmpty ? null : selectedTeacher,
-            decoration: const InputDecoration(labelText: "Öğretmen"),
+            decoration: InputDecoration(labelText: "Öğretmen".tr),
             items: currentTeachers
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
@@ -555,22 +556,22 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                   },
           ),
           if (currentTeachers.isEmpty)
-            const Padding(
+            Padding(
               padding: EdgeInsets.only(top: 8),
-              child: Text('Seçili ders için uygun öğretmen bulunamadı.'),
+              child: Text('Seçili ders için uygun öğretmen bulunamadı.'.tr),
             ),
           const SizedBox(height: 12),
           TextField(
             controller: _topicController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               labelText: "Konu",
-              hintText: "Örnek: Turev, Fonksiyonlar, Parabol",
+              hintText: "Örnek: Turev, Fonksiyonlar, Parabol".tr,
             ),
           ),
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: selectedPriority,
-            decoration: const InputDecoration(labelText: "Öncelik"),
+            decoration: InputDecoration(labelText: "Öncelik".tr),
             items: priorities
                 .map((item) => DropdownMenuItem(value: item, child: Text(item)))
                 .toList(),
@@ -585,10 +586,10 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
           TextField(
             controller: _questionController,
             maxLines: 6,
-            decoration: const InputDecoration(
-              labelText: "Soru Açıklaması",
+            decoration: InputDecoration(
+              labelText: "Soru Açıklaması".tr,
               hintText:
-                  "Soruyu detaylı yaz. Takıldığın adımı, denediğin yöntemi ve tam olarak neyi anlamadığını belirt.",
+                  "Soruyu detaylı yaz. Takıldığın adımı, denediğin yöntemi ve tam olarak neyi anlamadığını belirt.".tr,
             ),
           ),
           const SizedBox(height: 16),
@@ -654,7 +655,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                     _attachmentButton(
                       theme,
                       icon: Icons.image_outlined,
-                      label: "Görsel",
+                      label: "Görsel".tr,
                       onTap: () {
                         _pickAndUploadAttachment(type: FileType.image);
                       },
@@ -999,7 +1000,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                       ),
                     );
                   },
-                  child: const Text("Yanıtı Gör"),
+                  child: Text("Yanıtı Gör".tr),
                 ),
             ],
           ),
@@ -1044,7 +1045,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Text(
-                'Henüz yeni soru bildirimi yok.',
+                'Henüz yeni soru bildirimi yok.'.tr,
                 style: theme.textTheme.bodyMedium,
               ),
             )
@@ -1100,7 +1101,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          "Soru Geçmişi",
+          "Soru Geçmişi".tr,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w800,
           ),
@@ -1115,7 +1116,7 @@ class _StudentQuestionPageState extends State<StudentQuestionPage> {
               borderRadius: BorderRadius.circular(22),
             ),
             child: Text(
-              'Henüz gönderdiğin soru bulunmuyor.',
+              'Henüz gönderdiğin soru bulunmuyor.'.tr,
               style: theme.textTheme.bodyMedium,
             ),
           )

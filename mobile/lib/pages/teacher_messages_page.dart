@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/message_api_service.dart';
@@ -189,7 +190,7 @@ class _TeacherMessagesPageState extends State<TeacherMessagesPage> {
 
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
-      title: 'Alıcı Seç',
+      title: 'Alıcı Seç'.tr,
       description:
           'Öğrenci, veli, idari birim veya yönetiçi ile yeni sohbet başlatın.',
       recipients: recipients,

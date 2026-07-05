@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -130,7 +131,7 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                       icon: Icons.sensors_rounded,
                     ),
                     ServiceHeroStat(
-                      label: 'Geçmiş',
+                      label: 'Geçmiş'.tr,
                       value: '${_history.length}',
                       icon: Icons.history_rounded,
                     ),
@@ -159,20 +160,20 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                   ServiceQuickAction(
                     title: 'Servis Kullanmayacak Talebi',
                     subtitle:
-                        'Yarın sabah, akşam veya tüm gün için talep açın.',
+                        'Yarın sabah, akşam veya tüm gün için talep açın.'.tr,
                     icon: Icons.event_busy_outlined,
                     color: serviceOrange,
                     onTap: _statuses.isEmpty ? null : _showAbsenceRequestDialog,
                   ),
                 if (widget.parentMode) const SizedBox(height: 16),
-                const ServiceSectionHeader(
-                  title: 'Canlı Durum',
-                  subtitle: 'Servis, durak ve tahmini varış bilgileri',
+                ServiceSectionHeader(
+                  title: 'Canlı Durum'.tr,
+                  subtitle: 'Servis, durak ve tahmini varış bilgileri'.tr,
                 ),
                 const SizedBox(height: 10),
                 if (_statuses.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Servis ataması bulunamadı',
+                  ServiceEmptyPanel(
+                    title: 'Servis ataması bulunamadı'.tr,
                     description:
                         'Atama yapıldığında canlı servis durumu burada görünecek.',
                     icon: Icons.directions_bus_outlined,
@@ -181,14 +182,14 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                   ..._statuses.map(_statusCard),
                 if (widget.parentMode) ...[
                   const SizedBox(height: 18),
-                  const ServiceSectionHeader(
+                  ServiceSectionHeader(
                     title: 'Servis Kullanmayacak Talepleri',
-                    subtitle: 'Oluşturduğunuz taleplerin son durumu',
+                    subtitle: 'Oluşturduğunuz taleplerin son durumu'.tr,
                   ),
                   const SizedBox(height: 10),
                   if (_requests.isEmpty)
-                    const ServiceEmptyPanel(
-                      title: 'Henüz talep yok',
+                    ServiceEmptyPanel(
+                      title: 'Henüz talep yok'.tr,
                       description:
                           'Yarın servise binmeyecek durumları için buradan talep oluşturabilirsiniz.',
                       icon: Icons.event_available_outlined,
@@ -197,14 +198,14 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                     ..._requests.map(_requestCard),
                 ],
                 const SizedBox(height: 18),
-                const ServiceSectionHeader(
-                  title: 'Geçmiş',
-                  subtitle: 'Önceki servis hareketleri',
+                ServiceSectionHeader(
+                  title: 'Geçmiş'.tr,
+                  subtitle: 'Önceki servis hareketleri'.tr,
                 ),
                 const SizedBox(height: 10),
                 if (_history.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Geçmiş henüz oluşmadı',
+                  ServiceEmptyPanel(
+                    title: 'Geçmiş henüz oluşmadı'.tr,
                     description:
                         'Servis hareketleri tamamlandıkça kayıtlar burada listelenecek.',
                     icon: Icons.history_rounded,
@@ -320,7 +321,7 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Canlı servis haritası',
+                      'Canlı servis haritası'.tr,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
@@ -449,13 +450,13 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
             ),
           ),
           item.status == 'Cancelled'
-              ? const ServiceStatusPill(
-                  label: 'İptal',
+              ? ServiceStatusPill(
+                  label: 'İptal'.tr,
                   color: Color(0xFF64748B),
                   icon: Icons.cancel_outlined,
                 )
               : IconButton(
-                  tooltip: 'Talebi iptal et',
+                  tooltip: 'Talebi iptal et'.tr,
                   onPressed: () => _cancelRequest(item.id),
                   icon: const Icon(Icons.cancel_outlined),
                 ),
@@ -537,24 +538,24 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                       .toList(),
                   onChanged: (value) =>
                       setDialogState(() => selected = value ?? selected),
-                  decoration: const InputDecoration(
-                    labelText: 'Öğrenci / Rota',
+                  decoration: InputDecoration(
+                    labelText: 'Öğrenci / Rota'.tr,
                   ),
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: tripType,
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'Morning',
-                      child: Text('Yarın sabah'),
+                      child: Text('Yarın sabah'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'Evening',
-                      child: Text('Yarın akşam'),
+                      child: Text('Yarın akşam'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'Both',
-                      child: Text('Yarın sabah ve akşam'),
+                      child: Text('Yarın sabah ve akşam'.tr),
                     ),
                   ],
                   onChanged: (value) =>
@@ -563,7 +564,7 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
                 ),
                 TextField(
                   controller: reason,
-                  decoration: const InputDecoration(labelText: 'Açıklama'),
+                  decoration: InputDecoration(labelText: 'Açıklama'.tr),
                 ),
               ],
             ),
@@ -571,11 +572,11 @@ class _ServiceLiveStatusPageState extends State<ServiceLiveStatusPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('Gönder'),
+              child: Text('Gönder'.tr),
             ),
           ],
         ),

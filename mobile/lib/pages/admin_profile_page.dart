@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/language_tile.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:provider/provider.dart';
 
 import '../services/auth_session_store.dart';
@@ -47,7 +49,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
       setState(() => _profile = updated);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Profil güncellendi.')));
+      ).showSnackBar(SnackBar(content: Text('Profil güncellendi.'.tr)));
     }
   }
 
@@ -116,7 +118,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
             AdminHeroCard(
               eyebrow: 'Yönetici profili',
               title:
-                  'Kurum bilgileri, güvenlik tercihleri ve tema ayarları tek noktada.',
+                  'Kurum bilgileri, güvenlik tercihleri ve tema ayarları tek noktada.'.tr,
               description: tenantName.isEmpty
                   ? 'Yönetici rolüne ait iletişim ve bildirim tercihleri burada güncellenir.'
                   : '$tenantName • Yönetici rolü tercihleri burada güncellenir.',
@@ -168,7 +170,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                           ? null
                           : () => _openEdit(profile),
                       icon: const Icon(Icons.edit_outlined),
-                      label: const Text('Profili Düzenle'),
+                      label: Text('Profili Düzenle'.tr),
                     ),
                   ),
                 ],
@@ -183,12 +185,13 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                     onChanged: (value) => themeProvider.toggleTheme(value),
                     title: const Text('Dark Mode'),
                   ),
+                  const LanguageTile(),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.notifications_active_outlined),
                     title: const Text('Bildirim Tercihleri'),
-                    subtitle: const Text(
-                      'Kritik, finans ve akademik banner akışlarını yönet.',
+                    subtitle: Text(
+                      'Kritik, finans ve akademik banner akışlarını yönet.'.tr,
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.push(
@@ -201,9 +204,9 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.lock_outline),
-                    title: const Text('Şifre Değiştir'),
-                    subtitle: const Text(
-                      'Hesap güvenliği için şifrenizi güncelleyin.',
+                    title: Text('Şifre Değiştir'.tr),
+                    subtitle: Text(
+                      'Hesap güvenliği için şifrenizi güncelleyin.'.tr,
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.push(
@@ -223,7 +226,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Kurumsal Araçlar',
+                    'Kurumsal Araçlar'.tr,
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -232,9 +235,9 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.settings_outlined),
-                    title: const Text('Kurum Ayarları'),
-                    subtitle: const Text(
-                      'Genel sistem ve otomasyon tercihleri',
+                    title: Text('Kurum Ayarları'.tr),
+                    subtitle: Text(
+                      'Genel sistem ve otomasyon tercihleri'.tr,
                     ),
                     trailing: const Icon(Icons.chevron_right_rounded),
                     onTap: () => Navigator.push(
@@ -253,7 +256,7 @@ class _AdminProfilePageState extends State<AdminProfilePage> {
               child: OutlinedButton.icon(
                 onPressed: () => logoutToRoleSelect(context),
                 icon: const Icon(Icons.logout_rounded),
-                label: const Text('Çıkış Yap'),
+                label: Text('Çıkış Yap'.tr),
               ),
             ),
           ],

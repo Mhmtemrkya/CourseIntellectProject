@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:io';
 import 'dart:async';
 
@@ -465,12 +466,12 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                 padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
                 child: Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Pasif Testlerden Soru Seç',
+                            'Pasif Testlerden Soru Seç'.tr,
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.w900,
@@ -478,7 +479,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                           ),
                           SizedBox(height: 4),
                           Text(
-                            'Farklı testlerden birden fazla soru seçebilirsin.',
+                            'Farklı testlerden birden fazla soru seçebilirsin.'.tr,
                           ),
                         ],
                       ),
@@ -493,11 +494,11 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               const Divider(height: 1),
               Expanded(
                 child: groups.isEmpty
-                    ? const Center(
+                    ? Center(
                         child: Padding(
                           padding: EdgeInsets.all(28),
                           child: Text(
-                            'Seçili ders ve sınıf için pasif test bulunamadı.',
+                            'Seçili ders ve sınıf için pasif test bulunamadı.'.tr,
                             textAlign: TextAlign.center,
                           ),
                         ),
@@ -617,7 +618,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Soru Önizleme'),
+        title: Text('Soru Önizleme'.tr),
         content: SizedBox(
           width: 560,
           child: SingleChildScrollView(
@@ -634,7 +635,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                   Image.network(
                     _imagePath!,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Text('Görsel yüklenemedi.'),
+                        Text('Görsel yüklenemedi.'.tr),
                   ),
                 ],
                 if (_usesOptions) ...[
@@ -671,8 +672,8 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                 ],
                 if (_solutionController.text.trim().isNotEmpty) ...[
                   const Divider(height: 28),
-                  const Text(
-                    'Çözüm',
+                  Text(
+                    'Çözüm'.tr,
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   Text(_solutionController.text),
@@ -762,7 +763,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
         ),
         actions: [
           IconButton(
-            tooltip: 'Önizleme',
+            tooltip: 'Önizleme'.tr,
             onPressed: _showPreview,
             icon: const Icon(Icons.visibility_outlined),
           ),
@@ -843,7 +844,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                   children: [
                     Expanded(
                       child: Text(
-                        'Deneme Sınavı Oluştur',
+                        'Deneme Sınavı Oluştur'.tr,
                         style: TextStyle(
                           fontSize: isCompact ? 19 : 20,
                           fontWeight: FontWeight.w900,
@@ -853,7 +854,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                     FilledButton.icon(
                       onPressed: _saving ? null : _publishExam,
                       icon: const Icon(Icons.publish_rounded),
-                      label: const Text('Yayınla'),
+                      label: Text('Yayınla'.tr),
                     ),
                   ],
                 ),
@@ -863,7 +864,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                   child: OutlinedButton.icon(
                     onPressed: _saving ? null : _openPassiveQuestionPicker,
                     icon: const Icon(Icons.library_books_outlined),
-                    label: const Text('Pasif Testlerden Soru Seç'),
+                    label: Text('Pasif Testlerden Soru Seç'.tr),
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -957,7 +958,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               ),
               const SizedBox(height: 6),
               Text(
-                'Rich editor, seçenek yönetimi, çözüm ve çizim tek akışta.',
+                'Rich editor, seçenek yönetimi, çözüm ve çizim tek akışta.'.tr,
                 style: theme.textTheme.bodySmall?.copyWith(height: 1.35),
               ),
               const SizedBox(height: 16),
@@ -977,7 +978,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                         ? null
                         : () => _pickAsset(solution: false),
                     icon: const Icon(Icons.add_photo_alternate_outlined),
-                    label: const Text('Görsel Yükle'),
+                    label: Text('Görsel Yükle'.tr),
                     style: _secondaryButtonStyle(),
                   ),
                   if (_imagePath != null) ...[
@@ -1002,7 +1003,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                     width: double.infinity,
                     fit: BoxFit.contain,
                     errorBuilder: (context, error, stackTrace) =>
-                        const Text('Görsel gösterilemedi.'),
+                        Text('Görsel gösterilemedi.'.tr),
                   ),
                 ),
               ],
@@ -1017,9 +1018,9 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
+                    Expanded(
                       child: Text(
-                        'Seçenekler',
+                        'Seçenekler'.tr,
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
@@ -1091,7 +1092,7 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
                           ),
                         ],
                         IconButton(
-                          tooltip: 'Şık görseli',
+                          tooltip: 'Şık görseli'.tr,
                           onPressed: _saving
                               ? null
                               : () => _pickOptionAsset(index),
@@ -1113,8 +1114,8 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Çözüm',
+              Text(
+                'Çözüm'.tr,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 12),
@@ -1170,8 +1171,8 @@ class _TeacherQuestionStudioPageState extends State<TeacherQuestionStudioPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Soru Ayarları',
+              Text(
+                'Soru Ayarları'.tr,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 16),

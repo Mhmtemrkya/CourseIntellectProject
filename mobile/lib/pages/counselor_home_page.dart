@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/counselor_student_file_page.dart';
 import 'package:student/services/guidance_api_service.dart';
 
@@ -125,7 +126,7 @@ class _CounselorHomePageState extends State<CounselorHomePage> {
                         Padding(
                           padding: const EdgeInsets.all(32),
                           child: Center(
-                            child: Text('Filtreye uyan öğrenci yok.',
+                            child: Text('Filtreye uyan öğrenci yok.'.tr,
                                 style: theme.textTheme.bodyMedium),
                           ),
                         )
@@ -210,10 +211,10 @@ class _CounselorHomePageState extends State<CounselorHomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: const [
+              children: [
                 Icon(Icons.alarm_rounded, color: _orange, size: 20),
                 SizedBox(width: 8),
-                Text('Yaklaşan Takipler',
+                Text('Yaklaşan Takipler'.tr,
                     style: TextStyle(fontWeight: FontWeight.w800)),
               ],
             ),
@@ -249,7 +250,7 @@ class _CounselorHomePageState extends State<CounselorHomePage> {
           TextField(
             onChanged: (v) => setState(() => search = v),
             decoration: InputDecoration(
-              hintText: 'Öğrenci ara...',
+              hintText: 'Öğrenci ara...'.tr,
               prefixIcon: const Icon(Icons.search_rounded, size: 20),
               filled: true,
               fillColor: theme.cardColor,

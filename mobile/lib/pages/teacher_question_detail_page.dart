@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/widgets/teacher_header.dart';
 
@@ -48,7 +49,7 @@ class _TeacherQuestionDetailPageState extends State<TeacherQuestionDetailPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Soru Detayı",
+        title: "Soru Detayı".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${widget.thread['subject'] as String? ?? 'Genel'} Öğretmeni',
         showBackButton: true,

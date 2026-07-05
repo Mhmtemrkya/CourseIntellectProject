@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
 import 'admin_staff_edit_page.dart';
 
@@ -56,7 +57,7 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -107,8 +108,8 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
 
     if (record == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Personel Detayı')),
-        body: const Center(child: Text('Personel kaydı bulunamadı.')),
+        appBar: AppBar(title: Text('Personel Detayı'.tr)),
+        body: Center(child: Text('Personel kaydı bulunamadı.'.tr)),
       );
     }
 
@@ -116,10 +117,10 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personel Detayı'),
+        title: Text('Personel Detayı'.tr),
         actions: [
           IconButton(
-            tooltip: 'Düzenle',
+            tooltip: 'Düzenle'.tr,
             onPressed: () => _openEdit(record),
             icon: const Icon(Icons.edit_outlined),
           ),
@@ -131,7 +132,7 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
           _HeaderCard(record: record, isActive: isActive),
           const SizedBox(height: 16),
           _SectionCard(
-            title: 'İletişim',
+            title: 'İletişim'.tr,
             rows: [
               _DetailRow(
                 icon: Icons.email_outlined,
@@ -147,11 +148,11 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
           ),
           const SizedBox(height: 12),
           _SectionCard(
-            title: 'Görev Bilgisi',
+            title: 'Görev Bilgisi'.tr,
             rows: [
               _DetailRow(
                 icon: Icons.badge_outlined,
-                label: 'Kullanıcı Adı',
+                label: 'Kullanıcı Adı'.tr,
                 value: record.username,
               ),
               _DetailRow(
@@ -161,23 +162,23 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
               ),
               _DetailRow(
                 icon: Icons.apartment_outlined,
-                label: 'Kampüs',
+                label: 'Kampüs'.tr,
                 value: record.campus,
               ),
               _DetailRow(
                 icon: Icons.account_tree_outlined,
-                label: 'Departman / Branş',
+                label: 'Departman / Branş'.tr,
                 value: record.branchOrDepartment,
               ),
               _DetailRow(
                 icon: Icons.class_outlined,
-                label: 'Sınıf Öğretmenliği',
+                label: 'Sınıf Öğretmenliği'.tr,
                 value: record.homeroomClass,
               ),
               if (record.assignedClasses.isNotEmpty)
                 _DetailRow(
                   icon: Icons.groups_outlined,
-                  label: 'Atanan Sınıflar',
+                  label: 'Atanan Sınıflar'.tr,
                   value: record.assignedClasses.join(', '),
                 ),
               if (record.extraRoles.isNotEmpty)
@@ -190,7 +191,7 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
           ),
           const SizedBox(height: 12),
           _SectionCard(
-            title: 'Özlük',
+            title: 'Özlük'.tr,
             rows: [
               _DetailRow(
                 icon: Icons.credit_card_outlined,
@@ -199,12 +200,12 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
               ),
               _DetailRow(
                 icon: Icons.school_outlined,
-                label: 'Öğrenim',
+                label: 'Öğrenim'.tr,
                 value: record.education,
               ),
               _DetailRow(
                 icon: Icons.event_outlined,
-                label: 'İşe Başlama',
+                label: 'İşe Başlama'.tr,
                 value: record.startDate,
               ),
               _DetailRow(
@@ -214,7 +215,7 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
               ),
               _DetailRow(
                 icon: Icons.child_care_outlined,
-                label: 'Çocuk Sayısı',
+                label: 'Çocuk Sayısı'.tr,
                 value: record.childCount.toString(),
               ),
               if (record.note.isNotEmpty)
@@ -258,7 +259,7 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
                 child: FilledButton.icon(
                   onPressed: () => _openEdit(record),
                   icon: const Icon(Icons.edit_outlined),
-                  label: const Text('Düzenle'),
+                  label: Text('Düzenle'.tr),
                   style: FilledButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(

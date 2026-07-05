@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/message_api_service.dart';
@@ -48,7 +49,7 @@ class _AdminMessagesPageState extends State<AdminMessagesPage> {
   @override
   Widget build(BuildContext context) {
     return MessageThreadsView(
-      title: 'Yönetici Mesajları',
+      title: 'Yönetici Mesajları'.tr,
       threads: _threads,
       loading: _loading,
       error: _error,

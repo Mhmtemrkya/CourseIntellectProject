@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/admin_ui.dart';
@@ -42,8 +43,8 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Sınav Sonuçları',
+        title: Text(
+          'Sınav Sonuçları'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -53,20 +54,20 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
           AdminHeroCard(
             eyebrow: 'Sonuç merkezi',
             title:
-                'Öğrenci notları ve deneme sonuçlarını kurumsal düzeyde görüntüleyin.',
+                'Öğrenci notları ve deneme sonuçlarını kurumsal düzeyde görüntüleyin.'.tr,
             description:
                 'Sınıf bazlı filtreleme ile öğrenci geçmişi ve genel sınav performansı açılır.',
             metrics: [
-              AdminHeroMetric(label: 'Öğrenci', value: '${students.length}'),
-              AdminHeroMetric(label: 'Kayıt', value: '${_records.length}'),
+              AdminHeroMetric(label: 'Öğrenci'.tr, value: '${students.length}'),
+              AdminHeroMetric(label: 'Kayıt'.tr, value: '${_records.length}'),
             ],
           ),
           const SizedBox(height: 16),
           AdminPanel(
             child: DropdownButtonFormField<String>(
               initialValue: _selectedClass,
-              decoration: const InputDecoration(
-                labelText: 'Sınıf Filtresi',
+              decoration: InputDecoration(
+                labelText: 'Sınıf Filtresi'.tr,
                 border: OutlineInputBorder(),
               ),
               items: classes
@@ -123,7 +124,7 @@ class _AdminExamResultsPageState extends State<AdminExamResultsPage> {
                     MaterialPageRoute(
                       builder: (_) => StudentExamHistoryPage(
                         studentName: student,
-                        title: 'Öğrenci Sonuç Geçmişi',
+                        title: 'Öğrenci Sonuç Geçmişi'.tr,
                       ),
                     ),
                   ),

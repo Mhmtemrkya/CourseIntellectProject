@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/wrong_answers_api_service.dart';
 import '../widgets/responsive_layout.dart';
@@ -86,8 +87,8 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Yanlış Defterim',
+        title: Text(
+          'Yanlış Defterim'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -109,10 +110,10 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
                 ),
               )
             : _cards.isEmpty
-            ? const Center(
+            ? Center(
                 child: Padding(
                   padding: EdgeInsets.all(24),
-                  child: Text('Henüz analiz edilecek sınav sonucu bulunmuyor.'),
+                  child: Text('Henüz analiz edilecek sınav sonucu bulunmuyor.'.tr),
                 ),
               )
             : ListView(
@@ -141,8 +142,8 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
                             color: Colors.white.withValues(alpha: 0.14),
                             borderRadius: BorderRadius.circular(999),
                           ),
-                          child: const Text(
-                            'Yanlış Analizi',
+                          child: Text(
+                            'Yanlış Analizi'.tr,
                             style: TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.w700,
@@ -160,7 +161,7 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          'Çözdüğün yanlış sorular ders ve konu bazında burada toplanır. Detaya girip doğru cevabı ve notu görebilirsin.',
+                          'Çözdüğün yanlış sorular ders ve konu bazında burada toplanır. Detaya girip doğru cevabı ve notu görebilirsin.'.tr,
                           style: theme.textTheme.bodyMedium?.copyWith(
                             color: Colors.white.withValues(alpha: 0.88),
                             height: 1.45,
@@ -183,13 +184,13 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
                         await _loadCards();
                         if (!mounted) return;
                         messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Yanlış defteri temizlendi.'),
+                          SnackBar(
+                            content: Text('Yanlış defteri temizlendi.'.tr),
                           ),
                         );
                       },
                       icon: const Icon(Icons.delete_sweep_rounded),
-                      label: const Text('Yanlışlarımı Temizle'),
+                      label: Text('Yanlışlarımı Temizle'.tr),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -292,7 +293,7 @@ class _StudentWrongAnswersPageState extends State<StudentWrongAnswersPage> {
                             Row(
                               children: [
                                 Text(
-                                  'Detayı aç',
+                                  'Detayı aç'.tr,
                                   style: Theme.of(context).textTheme.bodySmall
                                       ?.copyWith(
                                         color: item.color,

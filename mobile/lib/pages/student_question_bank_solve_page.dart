@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/api_config.dart';
 import '../services/badge_progress_store.dart';
@@ -310,7 +311,7 @@ class _StudentQuestionBankSolvePageState
                         Expanded(
                           child: _resultMetric(
                             theme,
-                            label: 'Doğru',
+                            label: 'Doğru'.tr,
                             value: '$correctCount / $total',
                             valueColor: resultColor,
                           ),
@@ -319,7 +320,7 @@ class _StudentQuestionBankSolvePageState
                         Expanded(
                           child: _resultMetric(
                             theme,
-                            label: 'Kazanılan XP',
+                            label: 'Kazanılan XP'.tr,
                             value: '+$totalXp',
                             valueColor: theme.colorScheme.primary,
                           ),
@@ -329,7 +330,7 @@ class _StudentQuestionBankSolvePageState
                     if (bonuses.isNotEmpty) ...[
                       const SizedBox(height: 16),
                       Text(
-                        'XP Özeti',
+                        'XP Özeti'.tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -413,7 +414,7 @@ class _StudentQuestionBankSolvePageState
                               });
                               _loadCurrentAnswer();
                             },
-                            child: const Text('Tekrar Çöz'),
+                            child: Text('Tekrar Çöz'.tr),
                           ),
                         ),
                         SizedBox(
@@ -423,7 +424,7 @@ class _StudentQuestionBankSolvePageState
                               Navigator.pop(dialogContext);
                               Navigator.pop(context);
                             },
-                            child: const Text('Soru Bankasına Dön'),
+                            child: Text('Soru Bankasına Dön'.tr),
                           ),
                         ),
                       ],
@@ -487,7 +488,7 @@ class _StudentQuestionBankSolvePageState
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Bu setteki soruları sırayla çöz. Sonunda genel başarı durumunu göreceksin.',
+                      'Bu setteki soruları sırayla çöz. Sonunda genel başarı durumunu göreceksin.'.tr,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: Colors.white.withValues(alpha: 0.9),
                         height: 1.45,
@@ -536,7 +537,7 @@ class _StudentQuestionBankSolvePageState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Seçenekler',
+                            'Seçenekler'.tr,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -632,7 +633,7 @@ class _StudentQuestionBankSolvePageState
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Cevabın',
+                            'Cevabın'.tr,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -641,8 +642,8 @@ class _StudentQuestionBankSolvePageState
                           TextField(
                             controller: _answerController,
                             maxLines: 5,
-                            decoration: const InputDecoration(
-                              hintText: 'Cevabını yaz...',
+                            decoration: InputDecoration(
+                              hintText: 'Cevabını yaz...'.tr,
                             ),
                           ),
                         ],
@@ -662,7 +663,7 @@ class _StudentQuestionBankSolvePageState
                   Expanded(
                     child: OutlinedButton(
                       onPressed: _currentIndex == 0 ? null : _goPrevious,
-                      child: const Text('Önceki'),
+                      child: Text('Önceki'.tr),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -791,7 +792,7 @@ class _StudentQuestionBankSolvePageState
       alignment: Alignment.center,
       padding: const EdgeInsets.all(16),
       child: Text(
-        'Soru görseli yüklenemedi',
+        'Soru görseli yüklenemedi'.tr,
         style: theme.textTheme.bodyMedium?.copyWith(
           color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
           fontWeight: FontWeight.w600,

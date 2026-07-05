@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/student_homework_detail_page.dart';
 import 'package:student/pages/student_homework_upload_page.dart';
 import 'package:student/services/auth_session_store.dart';
@@ -128,7 +129,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Ödevlerim")),
+      appBar: AppBar(title: Text("Ödevlerim".tr)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: ResponsiveContent(
@@ -198,12 +199,12 @@ class _HomeworkPageState extends State<HomeworkPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.assignment_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Ödev Takibi",
+                "Ödev Takibi".tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -214,7 +215,7 @@ class _HomeworkPageState extends State<HomeworkPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Aktif ödevlerini takip et, materyalleri görüntüle ve teslimlerini zamanında tamamla.",
+            "Aktif ödevlerini takip et, materyalleri görüntüle ve teslimlerini zamanında tamamla.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,

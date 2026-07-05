@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/courses_api_service.dart';
 import '../services/notification_api_service.dart';
 import '../services/school_feed_api_service.dart';
@@ -149,7 +150,7 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -182,8 +183,8 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
     final active = _courses.where((c) => c.isActive).length;
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Kurs Yönetimi',
+        title: Text(
+          'Kurs Yönetimi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -206,7 +207,7 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
               children: [
                 AdminHeroCard(
                   eyebrow: 'Kurs katalogu',
-                  title: 'Kurumdaki tüm kurs ve programları yönetin.',
+                  title: 'Kurumdaki tüm kurs ve programları yönetin.'.tr,
                   description: 'Kurs ekleyin, düzenleyin veya pasife alın.',
                   metrics: [
                     AdminHeroMetric(
@@ -273,7 +274,7 @@ class _AdminCoursesPageState extends State<AdminCoursesPage> {
                             FilledButton.tonalIcon(
                               onPressed: () => _openForm(existing: course),
                               icon: const Icon(Icons.edit_outlined, size: 18),
-                              label: const Text('Düzenle'),
+                              label: Text('Düzenle'.tr),
                             ),
                             const SizedBox(width: 8),
                             OutlinedButton.icon(
@@ -386,7 +387,7 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
             TextField(
               controller: _description,
               maxLines: 2,
-              decoration: const InputDecoration(labelText: 'Açıklama'),
+              decoration: InputDecoration(labelText: 'Açıklama'.tr),
             ),
             const SizedBox(height: 10),
             SwitchListTile(
@@ -400,8 +401,8 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
               SwitchListTile(
                 value: _announce,
                 onChanged: (v) => setState(() => _announce = v),
-                title: const Text('Duyuru olarak yayınla'),
-                subtitle: const Text('Seçili rollerin duyurularında göster + mobil bildirim'),
+                title: Text('Duyuru olarak yayınla'.tr),
+                subtitle: Text('Seçili rollerin duyurularında göster + mobil bildirim'.tr),
                 contentPadding: EdgeInsets.zero,
               ),
               if (_announce) ...[
@@ -431,9 +432,9 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
                   const SizedBox(height: 10),
                   DropdownButtonFormField<String>(
                     initialValue: _announceClass,
-                    decoration: const InputDecoration(labelText: 'Sınıf (opsiyonel)'),
+                    decoration: InputDecoration(labelText: 'Sınıf (opsiyonel)'.tr),
                     items: [
-                      const DropdownMenuItem(value: null, child: Text('Tüm öğrenciler')),
+                      DropdownMenuItem(value: null, child: Text('Tüm öğrenciler'.tr)),
                       ...widget.classNames.map((c) => DropdownMenuItem(value: c, child: Text(c))),
                     ],
                     onChanged: (v) => setState(() => _announceClass = v),
@@ -453,14 +454,14 @@ class _CourseFormDialogState extends State<_CourseFormDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Vazgeç'),
+          child: Text('Vazgeç'.tr),
         ),
         FilledButton(
           onPressed: () {
             if (_name.text.trim().isEmpty) return;
             if (_announce && _audiences.isEmpty) {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Duyuru için en az bir rol seçin.')),
+                SnackBar(content: Text('Duyuru için en az bir rol seçin.'.tr)),
               );
               return;
             }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/app_header.dart';
@@ -63,7 +64,7 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
     }).toList();
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Öğrenci Cari Hesapları'),
+      appBar: AppHeader(title: 'Öğrenci Cari Hesapları'.tr),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -71,13 +72,13 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
             AccountingHeroCard(
               eyebrow: 'Cari görünüm',
               title:
-                  'Öğrenci bakiyelerini sınıf, durum ve kalan tutara göre yönetin.',
+                  'Öğrenci bakiyelerini sınıf, durum ve kalan tutara göre yönetin.'.tr,
               description:
                   'Cari hesap listesi günlük tahsilat ve risk durumuna göre filtrelenebilir.',
               colors: const [Color(0xFF0F172A), Color(0xFF1D4ED8)],
               metrics: [
                 AccountingHeroMetric(
-                  label: 'Açık Bakiye',
+                  label: 'Açık Bakiye'.tr,
                   value: _store.formatAmount(
                     filtered.fold<int>(
                       0,
@@ -129,9 +130,9 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
           TextField(
             controller: _searchController,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               prefixIcon: Icon(Icons.search),
-              hintText: 'Öğrenci ara',
+              hintText: 'Öğrenci ara'.tr,
               border: OutlineInputBorder(),
             ),
           ),
@@ -141,8 +142,8 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
               Expanded(
                 child: DropdownButtonFormField<String>(
                   initialValue: _selectedClass,
-                  decoration: const InputDecoration(
-                    labelText: 'Sınıf',
+                  decoration: InputDecoration(
+                    labelText: 'Sınıf'.tr,
                     border: OutlineInputBorder(),
                   ),
                   items: classes

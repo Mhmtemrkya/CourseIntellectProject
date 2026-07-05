@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/api_config.dart';
 import 'package:student/services/solution_session_api_service.dart';
@@ -416,8 +417,8 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  const Text(
-                    'Teslim başarılı',
+                  Text(
+                    'Teslim başarılı'.tr,
                     style: TextStyle(
                       color: Color(0xFF34D399),
                       fontSize: 12,
@@ -427,7 +428,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sınavınız öğretmeninize gönderilmiştir',
+                    'Sınavınız öğretmeninize gönderilmiştir'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 24,
@@ -438,7 +439,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Cevapların kaydedildi. Öğretmenin sınav teslimleri ve öğrenci sınavları ekranından teslimini görebilir.',
+                    'Cevapların kaydedildi. Öğretmenin sınav teslimleri ve öğrenci sınavları ekranından teslimini görebilir.'.tr,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: colors.muted, height: 1.42),
                   ),
@@ -459,7 +460,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                       onPressed: () =>
                           Navigator.popUntil(context, (route) => route.isFirst),
                       icon: const Icon(Icons.assignment_turned_in_rounded),
-                      label: const Text('Sınavlarıma Dön'),
+                      label: Text('Sınavlarıma Dön'.tr),
                     ),
                   ),
                   if (summary.report?.downloadUrl != null) ...[
@@ -469,7 +470,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                       child: OutlinedButton.icon(
                         onPressed: () => _openPdf(summary.report),
                         icon: const Icon(Icons.picture_as_pdf_rounded),
-                        label: const Text('PDF raporunu aç'),
+                        label: Text('PDF raporunu aç'.tr),
                       ),
                     ),
                   ],
@@ -527,19 +528,18 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
         final leave = await showDialog<bool>(
           context: context,
           builder: (dialogContext) => AlertDialog(
-            title: const Text('Sınavdan çıkılsın mı?'),
-            content: const Text(
-              'Sınav devam ediyor. Çıkmak için önce "Sınavı Bitir" demelisin. '
-              'Yine de çıkmak istiyor musun?',
+            title: Text('Sınavdan çıkılsın mı?'.tr),
+            content: Text(
+              'Sınav devam ediyor. Çıkmak için önce "Sınavı Bitir" demelisin. Yine de çıkmak istiyor musun?'.tr,
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Sınava Dön'),
+                child: Text('Sınava Dön'.tr),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, true),
-                child: const Text('Çık'),
+                child: Text('Çık'.tr),
               ),
             ],
           ),
@@ -738,7 +738,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                       alignment: Alignment.center,
                       color: colors.surfaceSoft,
                       child: Text(
-                        'Görsel yüklenemedi',
+                        'Görsel yüklenemedi'.tr,
                         style: TextStyle(color: colors.muted),
                       ),
                     ),
@@ -768,7 +768,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Cevabın',
+                  'Cevabın'.tr,
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
@@ -782,7 +782,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   maxLines: 6,
                   style: TextStyle(color: colors.text),
                   decoration: InputDecoration(
-                    hintText: 'Cevabını buraya yaz...',
+                    hintText: 'Cevabını buraya yaz...'.tr,
                     hintStyle: TextStyle(color: colors.muted),
                     filled: true,
                     fillColor: colors.surfaceSoft,
@@ -806,7 +806,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                   child: FilledButton.icon(
                     onPressed: _saving ? null : _saveOpenAnswer,
                     icon: const Icon(Icons.save_rounded, size: 18),
-                    label: const Text('Cevabı Kaydet'),
+                    label: Text('Cevabı Kaydet'.tr),
                   ),
                 ),
               ],
@@ -832,7 +832,7 @@ class _ExamSolvePageState extends State<ExamSolvePage> {
                 maxLines: 5,
                 style: TextStyle(color: colors.text),
                 decoration: InputDecoration(
-                  hintText: 'Bu soru için notunu yaz...',
+                  hintText: 'Bu soru için notunu yaz...'.tr,
                   hintStyle: TextStyle(color: colors.muted),
                   filled: true,
                   fillColor: colors.surfaceSoft,
@@ -1147,7 +1147,7 @@ class _BottomNav extends StatelessWidget {
               child: OutlinedButton.icon(
                 onPressed: saving ? null : onPrevious,
                 icon: const Icon(Icons.arrow_back_rounded),
-                label: const Text('Önceki'),
+                label: Text('Önceki'.tr),
               ),
             ),
             Padding(
@@ -1324,7 +1324,7 @@ class _ErrorState extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'Çözüm ekranı açılamadı',
+                'Çözüm ekranı açılamadı'.tr,
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.w900,

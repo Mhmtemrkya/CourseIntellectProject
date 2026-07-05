@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
 
@@ -32,19 +33,19 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
   @override
   Widget build(BuildContext context) {
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Yeni Fatura Oluştur'),
+      appBar: AppHeader(title: 'Yeni Fatura Oluştur'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const AccountingHeroCard(
+          AccountingHeroCard(
             eyebrow: 'Belge üretimi',
-            title: 'Yeni fatura veya gider kaydını tek akışta oluşturun.',
+            title: 'Yeni fatura veya gider kaydını tek akışta oluşturun.'.tr,
             description:
                 'Kayıt oluşturulduğunda listeye düşer ve gerekiyorsa onay sürecine girer.',
             colors: [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(label: 'Durum', value: 'Taslak'),
-              AccountingHeroMetric(label: 'Çıkış', value: 'Onaya düşer'),
+              AccountingHeroMetric(label: 'Çıkış'.tr, value: 'Onaya düşer'),
             ],
           ),
           const SizedBox(height: 16),
@@ -58,10 +59,10 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
                     decoration: const InputDecoration(
                       labelText: 'Belge Kategorisi',
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'Öğrenci Faturaları',
-                        child: Text('Öğrenci Faturaları'),
+                        child: Text('Öğrenci Faturaları'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Dershane Mekân Giderleri',
@@ -69,11 +70,11 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
                       ),
                       DropdownMenuItem(
                         value: 'Diğer Gider Faturaları',
-                        child: Text('Diğer Gider Faturaları'),
+                        child: Text('Diğer Gider Faturaları'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Maaş Faturaları',
-                        child: Text('Maaş Faturaları'),
+                        child: Text('Maaş Faturaları'.tr),
                       ),
                     ],
                     onChanged: (value) =>
@@ -82,8 +83,8 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Belge Başlığı',
+                    decoration: InputDecoration(
+                      labelText: 'Belge Başlığı'.tr,
                     ),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
@@ -112,8 +113,8 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
                   TextFormField(
                     controller: _reasonController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Açıklama / Gerekçe',
+                    decoration: InputDecoration(
+                      labelText: 'Açıklama / Gerekçe'.tr,
                     ),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
@@ -125,7 +126,7 @@ class _AccountingInvoiceFormPageState extends State<AccountingInvoiceFormPage> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: _submit,
-                      child: const Text('Kaydı Oluştur'),
+                      child: Text('Kaydı Oluştur'.tr),
                     ),
                   ),
                 ],

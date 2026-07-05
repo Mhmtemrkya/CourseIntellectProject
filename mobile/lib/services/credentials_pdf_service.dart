@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -147,7 +148,7 @@ class CredentialsPdfService {
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
-                            'Geçici Şifre',
+                            'Geçici Şifre'.tr,
                             style: pw.TextStyle(
                               fontSize: 11,
                               color: PdfColors.grey700,
@@ -178,7 +179,7 @@ class CredentialsPdfService {
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Text(
-                            'Önemli Uyarı',
+                            'Önemli Uyarı'.tr,
                             style: pw.TextStyle(
                               fontWeight: pw.FontWeight.bold,
                               fontSize: 11,
@@ -187,11 +188,11 @@ class CredentialsPdfService {
                           ),
                           pw.SizedBox(height: 6),
                           pw.Text(
-                            'İlk girişinizde şifre değişikliği yapmanız zorunludur.',
+                            'İlk girişinizde şifre değişikliği yapmanız zorunludur.'.tr,
                             style: const pw.TextStyle(fontSize: 10),
                           ),
                           pw.Text(
-                            'Bu şifreyi güvenli bir yerde saklayın ve kimseyle paylaşmayın.',
+                            'Bu şifreyi güvenli bir yerde saklayın ve kimseyle paylaşmayın.'.tr,
                             style: const pw.TextStyle(fontSize: 10),
                           ),
                         ],
@@ -214,7 +215,7 @@ class CredentialsPdfService {
               pw.Padding(
                 padding: const pw.EdgeInsets.all(24),
                 child: pw.Text(
-                  'SchoolAsist • Eğitim Yönetim Platformu',
+                  'SchoolAsist • Eğitim Yönetim Platformu'.tr,
                   style: const pw.TextStyle(
                     fontSize: 9,
                     color: PdfColors.grey400,

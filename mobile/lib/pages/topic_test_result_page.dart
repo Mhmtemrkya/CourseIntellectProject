@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 class TopicTestResultPage extends StatelessWidget {
   final int total;
   final int correct;
@@ -20,14 +21,14 @@ class TopicTestResultPage extends StatelessWidget {
     int score = ((correct / total) * 100).round();
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Test Sonuçu")),
+      appBar: AppBar(title: Text("Test Sonuçu".tr)),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
             const SizedBox(height: 20),
             Text(
-              "Puanın",
+              "Puanın".tr,
               style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -61,14 +62,14 @@ class TopicTestResultPage extends StatelessWidget {
                         ),
                       );
                     },
-              child: const Text("Yanlış Soruları Tekrar Çöz"),
+              child: Text("Yanlış Soruları Tekrar Çöz".tr),
             ),
 
             const SizedBox(height: 10),
 
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Geri Dön"),
+              child: Text("Geri Dön".tr),
             ),
           ],
         ),
@@ -113,7 +114,7 @@ class WrongQuestionsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Yanlış Sorular")),
+      appBar: AppBar(title: Text("Yanlış Sorular".tr)),
       body: ListView.builder(
         itemCount: wrongQuestions.length,
         itemBuilder: (context, index) {

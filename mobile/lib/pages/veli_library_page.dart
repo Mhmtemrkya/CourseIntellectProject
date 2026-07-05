@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/library_api_service.dart';
 
 const _navy = Color(0xFF15294B);
@@ -59,7 +60,7 @@ class _VeliLibraryPageState extends State<VeliLibraryPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Kütüphane',
+        title: Text('Kütüphane'.tr,
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: loading
@@ -83,11 +84,11 @@ class _VeliLibraryPageState extends State<VeliLibraryPage> {
                   onRefresh: _load,
                   child: children.isEmpty
                       ? ListView(
-                          children: const [
+                          children: [
                             Padding(
                               padding: EdgeInsets.all(48),
                               child: Center(
-                                  child: Text('Bağlı öğrenci bulunamadı.')),
+                                  child: Text('Bağlı öğrenci bulunamadı.'.tr)),
                             ),
                           ],
                         )
@@ -164,7 +165,7 @@ class _VeliLibraryPageState extends State<VeliLibraryPage> {
                                   ),
                                   const SizedBox(height: 12),
                                   if (loans.isEmpty)
-                                    Text('Üzerinde kitap yok.',
+                                    Text('Üzerinde kitap yok.'.tr,
                                         style: theme.textTheme.bodySmall)
                                   else
                                     ...loans.map((loan) {

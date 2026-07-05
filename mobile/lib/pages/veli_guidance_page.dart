@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/guidance_api_service.dart';
 
 const _navy = Color(0xFF15294B);
@@ -107,7 +108,7 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
       if (!mounted) return;
       noteController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Randevu talebiniz gönderildi.')));
+          SnackBar(content: Text('Randevu talebiniz gönderildi.'.tr)));
       _load();
     } catch (e) {
       if (!mounted) return;
@@ -157,15 +158,15 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
                       if (childSummary.isNotEmpty) const SizedBox(height: 8),
                       _requestCard(theme, isDark),
                       const SizedBox(height: 16),
-                      const Text('Randevularım',
+                      Text('Randevularım'.tr,
                           style: TextStyle(fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
                       if (appointments.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: _cardDecoration(theme, isDark),
-                          child: const Center(
-                              child: Text('Henüz randevu talebiniz yok.')),
+                          child: Center(
+                              child: Text('Henüz randevu talebiniz yok.'.tr)),
                         )
                       else
                         ...appointments
@@ -248,7 +249,7 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
             ],
           ),
           const SizedBox(height: 12),
-          Text('Çalışma programı uyumu',
+          Text('Çalışma programı uyumu'.tr,
               style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
           const SizedBox(height: 6),
@@ -300,17 +301,17 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Rehber Öğretmenden Randevu',
+            Text('Rehber Öğretmenden Randevu'.tr,
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             if (counselors.isEmpty)
-              Text('Kurumda tanımlı rehber öğretmen bulunamadı.',
+              Text('Kurumda tanımlı rehber öğretmen bulunamadı.'.tr,
                   style: theme.textTheme.bodySmall)
             else ...[
               if (childSummary.length > 1) ...[
                 DropdownButtonFormField<String>(
                   initialValue: selectedChild,
-                  decoration: const InputDecoration(labelText: 'Öğrenci'),
+                  decoration: InputDecoration(labelText: 'Öğrenci'.tr),
                   items: childSummary
                       .map((c) => DropdownMenuItem(
                             value: c['studentName'] as String,
@@ -324,7 +325,7 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
               DropdownButtonFormField<String>(
                 initialValue: counselor,
                 decoration:
-                    const InputDecoration(labelText: 'Rehber Öğretmen'),
+                    InputDecoration(labelText: 'Rehber Öğretmen'.tr),
                 items: counselors
                     .map((c) => DropdownMenuItem(
                           value: c['fullName'] as String,
@@ -338,7 +339,7 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
               ),
               const SizedBox(height: 12),
               if (slots.isEmpty)
-                Text('Uygun saat bulunamadı.',
+                Text('Uygun saat bulunamadı.'.tr,
                     style: theme.textTheme.bodySmall)
               else
                 Wrap(
@@ -364,8 +365,8 @@ class _VeliGuidancePageState extends State<VeliGuidancePage> {
               TextField(
                 controller: noteController,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Görüşme konusu (opsiyonel)',
+                decoration: InputDecoration(
+                  labelText: 'Görüşme konusu (opsiyonel)'.tr,
                   alignLabelWithHint: true,
                 ),
               ),

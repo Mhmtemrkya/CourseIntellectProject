@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/student_finance_api_service.dart';
 
 class StudentFinanceAccountPage extends StatefulWidget {
@@ -95,7 +96,7 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
           autofocus: true,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Vazgeç'.tr)),
           ElevatedButton(
             onPressed: () {
               final value = double.tryParse(controller.text.trim());
@@ -150,7 +151,7 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)))
               : !hasData
-                  ? const Center(child: Text('Bu öğrenci için finans kaydı bulunamadı.'))
+                  ? Center(child: Text('Bu öğrenci için finans kaydı bulunamadı.'.tr))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(
@@ -164,7 +165,7 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
                                 child: ElevatedButton.icon(
                                   onPressed: _busy ? null : _recordPayment,
                                   icon: const Icon(Icons.payments_rounded),
-                                  label: const Text('Ödeme Al'),
+                                  label: Text('Ödeme Al'.tr),
                                 ),
                               ),
                               const SizedBox(width: 12),
@@ -172,7 +173,7 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
                                 child: OutlinedButton.icon(
                                   onPressed: _busy ? null : _refund,
                                   icon: const Icon(Icons.undo_rounded),
-                                  label: const Text('İade'),
+                                  label: Text('İade'.tr),
                                 ),
                               ),
                             ],
@@ -182,7 +183,7 @@ class _StudentFinanceAccountPageState extends State<StudentFinanceAccountPage> {
                           const SizedBox(height: 8),
                           ...((account['installments'] as List<dynamic>? ?? []).map(_installmentTile)),
                           const SizedBox(height: 16),
-                          const Text('Ödemeler / Makbuzlar', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                          Text('Ödemeler / Makbuzlar'.tr, style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                           const SizedBox(height: 8),
                           ...((account['payments'] as List<dynamic>? ?? []).map(_paymentTile)),
                         ],

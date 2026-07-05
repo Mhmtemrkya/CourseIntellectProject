@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/parent_request_api_service.dart';
 
 class VeliAcademicPage extends StatefulWidget {
@@ -27,13 +28,13 @@ class _VeliAcademicPageState extends State<VeliAcademicPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Akademik Özet')),
+      appBar: AppBar(title: Text('Akademik Özet'.tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)))
               : _children.isEmpty
-                  ? const Center(child: Text('Görüntülenecek öğrenci yok.'))
+                  ? Center(child: Text('Görüntülenecek öğrenci yok.'.tr))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(padding: const EdgeInsets.all(16), children: _children.map(_childCard).toList()),
@@ -66,10 +67,10 @@ class _VeliAcademicPageState extends State<VeliAcademicPage> {
             _metric('Net Trend', '${trend > 0 ? '+' : ''}$trend', color: trendColor),
           ]),
           const Divider(height: 20),
-          const Text('Son Sınavlar', style: TextStyle(fontWeight: FontWeight.w700)),
+          Text('Son Sınavlar'.tr, style: TextStyle(fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
           if (exams.isEmpty)
-            const Text('Sınav kaydı yok.', style: TextStyle(color: Colors.grey, fontSize: 12))
+            Text('Sınav kaydı yok.'.tr, style: TextStyle(color: Colors.grey, fontSize: 12))
           else
             ...exams.map((raw) {
               final e = Map<String, dynamic>.from(raw as Map);

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import 'accounting_approval_detail_page.dart';
 import '../widgets/accounting_ui.dart';
@@ -154,7 +155,7 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
               ),
             if (isPending && !widget.canApprove)
               Text(
-                'Bu talep yönetiçi onayı bekliyor.',
+                'Bu talep yönetiçi onayı bekliyor.'.tr,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: const Color(0xFFB45309),
                   fontWeight: FontWeight.w700,

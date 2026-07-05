@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/guidance_api_service.dart';
 
@@ -185,13 +186,13 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Çalışma Programı',
+        title: Text('Çalışma Programı'.tr,
             style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           if (student != null)
             PopupMenuButton<String>(
               icon: const Icon(Icons.auto_awesome_rounded, color: _orange),
-              tooltip: 'Şablon uygula',
+              tooltip: 'Şablon uygula'.tr,
               onSelected: _applyTemplate,
               itemBuilder: (_) => _templates.entries
                   .map((e) =>
@@ -216,7 +217,7 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
             child: DropdownButtonFormField<String>(
               initialValue: student,
               decoration: InputDecoration(
-                labelText: 'Öğrenci',
+                labelText: 'Öğrenci'.tr,
                 filled: true,
                 fillColor: theme.cardColor,
                 border: OutlineInputBorder(
@@ -268,7 +269,7 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
             ),
           Expanded(
             child: student == null
-                ? const Center(child: Text('Önce öğrenci seçin.'))
+                ? Center(child: Text('Önce öğrenci seçin.'.tr))
                 : loading
                     ? const Center(child: CircularProgressIndicator())
                     : error != null
@@ -327,7 +328,7 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
           if (tasks.isEmpty)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Text('Blok yok',
+              child: Text('Blok yok'.tr,
                   style: theme.textTheme.bodySmall
                       ?.copyWith(color: theme.hintColor)),
             )
@@ -424,8 +425,8 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
               const SizedBox(height: 12),
               TextField(
                 controller: titleController,
-                decoration: const InputDecoration(
-                    labelText: 'Başlık (örn. Paragraf denemesi)'),
+                decoration: InputDecoration(
+                    labelText: 'Başlık (örn. Paragraf denemesi)'.tr),
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<String>(
@@ -459,7 +460,7 @@ class _CounselorPlannerPageState extends State<CounselorPlannerPage> {
                     child: DropdownButtonFormField<int>(
                       initialValue: minutes,
                       decoration:
-                          const InputDecoration(labelText: 'Süre'),
+                          InputDecoration(labelText: 'Süre'.tr),
                       items: const [30, 45, 60, 90, 120]
                           .map((m) => DropdownMenuItem(
                               value: m, child: Text('$m dk')))

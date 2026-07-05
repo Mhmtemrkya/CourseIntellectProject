@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'child_selector.dart';
 
@@ -89,7 +90,7 @@ class _VeliHeaderState extends State<VeliHeader> {
                     const SizedBox(height: 4),
 
                     Text(
-                      "Veli Paneline Hoş Geldiniz",
+                      "Veli Paneline Hoş Geldiniz".tr,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

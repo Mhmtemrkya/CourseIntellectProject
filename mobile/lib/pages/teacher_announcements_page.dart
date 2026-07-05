@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../services/student_registry_store.dart';
@@ -154,14 +155,14 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateAnnouncementSheet,
         icon: const Icon(Icons.campaign_outlined),
-        label: const Text('Duyuru Paylaş'),
+        label: Text('Duyuru Paylaş'.tr),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AdminHeroCard(
             eyebrow: 'Öğretmen duyuruları',
-            title: 'Öğrenci ve öğretmen hedefli duyuruları tek yerden yönetin.',
+            title: 'Öğrenci ve öğretmen hedefli duyuruları tek yerden yönetin.'.tr,
             description:
                 'Sınıf duyuruları, hatırlatmalar ve öğretmen içi bilgilendirmeler bu ekrandan yayınlanır.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -171,12 +172,12 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                 value: '${_announcements.length}',
               ),
               AdminHeroMetric(
-                label: 'Öğrenci',
+                label: 'Öğrenci'.tr,
                 value:
                     '${_announcements.where((item) => item.audience.toLowerCase().contains('öğrenci')).length}',
               ),
               AdminHeroMetric(
-                label: 'Öğretmen',
+                label: 'Öğretmen'.tr,
                 value:
                     '${_announcements.where((item) => item.audience.toLowerCase().contains('teacher')).length}',
               ),
@@ -291,7 +292,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                 : _studentOptionsForClass(targetClassName);
             return PremiumModalShell(
               eyebrow: 'Yeni Duyuru',
-              title: 'Duyurunu oluştur ve hedef kitleye yayınla.',
+              title: 'Duyurunu oluştur ve hedef kitleye yayınla.'.tr,
               description:
                   'Desktop akışındaki gibi sınıf seç, liste kaynağını belirle ve duyuruyu sadece seçtiğin kişilere gönder.',
               colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -301,8 +302,8 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                 children: [
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Duyuru Başlığı',
+                    decoration: InputDecoration(
+                      labelText: 'Duyuru Başlığı'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -313,19 +314,19 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                       labelText: 'Hedef Kitle',
                       border: OutlineInputBorder(),
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(value: 'Veli', child: Text('Veliler')),
                       DropdownMenuItem(
                         value: 'Öğrenci',
-                        child: Text('Öğrenciler'),
+                        child: Text('Öğrenciler'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Teacher',
-                        child: Text('Öğretmen'),
+                        child: Text('Öğretmen'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Tüm Kurum',
-                        child: Text('Tüm Kurum'),
+                        child: Text('Tüm Kurum'.tr),
                       ),
                     ],
                     onChanged: (value) => setSheetState(() {
@@ -341,8 +342,8 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                           targetClassName.isEmpty && _classes.isNotEmpty
                           ? _classes.first
                           : targetClassName,
-                      decoration: const InputDecoration(
-                        labelText: 'Sınıf',
+                      decoration: InputDecoration(
+                        labelText: 'Sınıf'.tr,
                         border: OutlineInputBorder(),
                       ),
                       items: _classes
@@ -363,7 +364,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                   ],
                   if (audience == 'Veli') ...[
                     Text(
-                      'Liste Kaynağı',
+                      'Liste Kaynağı'.tr,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -391,8 +392,8 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                   TextField(
                     controller: detailController,
                     maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Duyuru İçeriği',
+                    decoration: InputDecoration(
+                      labelText: 'Duyuru İçeriği'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -401,7 +402,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                     Row(
                       children: [
                         Text(
-                          'Seçili Kişiler',
+                          'Seçili Kişiler'.tr,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
@@ -479,7 +480,7 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(sheetContext),
-                          child: const Text('İptal'),
+                          child: Text('İptal'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -489,9 +490,9 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                             if ((audience == 'Veli' || audience == 'Öğrenci') &&
                                 selectedKeys.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Lütfen duyuruyu alacak kişileri seçin.',
+                                    'Lütfen duyuruyu alacak kişileri seçin.'.tr,
                                   ),
                                   behavior: SnackBarBehavior.floating,
                                 ),
@@ -528,13 +529,13 @@ class _TeacherAnnouncementsPageState extends State<TeacherAnnouncementsPage> {
                             Navigator.pop(sheetContext);
                             _loadAnnouncements();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Duyuru yayınlandı.'),
+                              SnackBar(
+                                content: Text('Duyuru yayınlandı.'.tr),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },
-                          child: const Text('Yayınla'),
+                          child: Text('Yayınla'.tr),
                         ),
                       ),
                     ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../pages/student_badges_page.dart';
 import '../services/badge_catalog.dart';
 import '../services/badge_progress_store.dart';
@@ -177,8 +178,8 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
       children: [
         Row(
           children: [
-            const Text(
-              "Başarılar",
+            Text(
+              "Başarılar".tr,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const Spacer(),
@@ -208,7 +209,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
                 );
               },
               icon: const Icon(Icons.military_tech_rounded, size: 18),
-              label: const Text('Tüm Rozetler'),
+              label: Text('Tüm Rozetler'.tr),
             ),
           ],
         ),
@@ -289,7 +290,7 @@ class _AchievementsWidgetState extends State<AchievementsWidget> {
           ),
           const SizedBox(height: 14),
           Text(
-            "Sıradaki Rozet",
+            "Sıradaki Rozet".tr,
             style: TextStyle(
               color: Colors.grey.shade700,
               fontWeight: FontWeight.w700,
@@ -454,7 +455,7 @@ class _AchievementSnackContentState extends State<_AchievementSnackContent>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Yeni başarı açıldı",
+                        "Yeni başarı açıldı".tr,
                         style: TextStyle(
                           color: widget.color,
                           fontSize: 12,

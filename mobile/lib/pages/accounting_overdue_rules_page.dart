@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/app_settings_api_service.dart';
 import '../widgets/accounting_ui.dart';
 
@@ -73,7 +74,7 @@ class _AccountingOverdueRulesPageState
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Gecikme kuralları kaydedildi.')),
+        SnackBar(content: Text('Gecikme kuralları kaydedildi.'.tr)),
       );
     } catch (error) {
       if (!mounted) return;
@@ -88,8 +89,8 @@ class _AccountingOverdueRulesPageState
   Widget build(BuildContext context) {
     return AccountingScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Otomatik Gecikme Senaryoları',
+        title: Text(
+          'Otomatik Gecikme Senaryoları'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -104,17 +105,17 @@ class _AccountingOverdueRulesPageState
                       SwitchListTile(
                         value: day3,
                         onChanged: (v) => setState(() => day3 = v),
-                        title: const Text('3. gün hatırlatmasi'),
+                        title: Text('3. gün hatırlatmasi'.tr),
                       ),
                       SwitchListTile(
                         value: day7,
                         onChanged: (v) => setState(() => day7 = v),
-                        title: const Text('7. gün veli mesaji'),
+                        title: Text('7. gün veli mesaji'.tr),
                       ),
                       SwitchListTile(
                         value: day15,
                         onChanged: (v) => setState(() => day15 = v),
-                        title: const Text('15. gün yönetiçi eskalasyonu'),
+                        title: Text('15. gün yönetiçi eskalasyonu'.tr),
                       ),
                       const SizedBox(height: 16),
                       SizedBox(

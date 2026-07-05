@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
@@ -55,8 +56,8 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
   Future<void> _submitHomework() async {
     if (files.isEmpty && noteController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Lütfen dosya ekleyin veya açıklama yazın."),
+        SnackBar(
+          content: Text("Lütfen dosya ekleyin veya açıklama yazın.".tr),
         ),
       );
       return;
@@ -80,7 +81,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
       context: context,
       builder: (dialogContext) {
         return AlertDialog(
-          title: const Text("Başarılı"),
+          title: Text("Başarılı".tr),
           content: Text(
             "Ödeviniz teslim edildi. +${reward.amount} XP kazandınız."
             "${reward.bonuses.isEmpty ? "" : "\nBonus: ${reward.bonuses.join(" • ")}"}",
@@ -116,7 +117,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Ödev Yükle")),
+      appBar: AppBar(title: Text("Ödev Yükle".tr)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -152,9 +153,9 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
                   TextField(
                     controller: noteController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: "Not",
-                      hintText: "Ögretmeniniz için kısa bir not yazabilirsiniz",
+                      hintText: "Ögretmeniniz için kısa bir not yazabilirsiniz".tr,
                     ),
                   ),
                 ],
@@ -174,7 +175,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
                   Row(
                     children: [
                       Text(
-                        "Yüklenen Dosyalar",
+                        "Yüklenen Dosyalar".tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w800,
                         ),
@@ -203,7 +204,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
                   const SizedBox(height: 14),
                   if (files.isEmpty)
                     Text(
-                      "Henüz dosya eklenmedi. PDF, resim ve belge yükleyebilirsiniz.",
+                      "Henüz dosya eklenmedi. PDF, resim ve belge yükleyebilirsiniz.".tr,
                       style: theme.textTheme.bodyMedium,
                     ),
                   ...files.map(
@@ -244,7 +245,7 @@ class _StudentHomeworkUploadPageState extends State<StudentHomeworkUploadPage> {
               child: ElevatedButton.icon(
                 onPressed: _submitHomework,
                 icon: const Icon(Icons.upload_file_rounded),
-                label: const Text("Ödevi Teslim Et"),
+                label: Text("Ödevi Teslim Et".tr),
               ),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/exam_detail_page.dart';
 import 'package:student/pages/exam_solve_page.dart';
 import 'package:student/pages/student_exam_history_page.dart';
@@ -288,12 +289,12 @@ class _ExamsPageState extends State<ExamsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
-                    children: const [
+                    children: [
                       Icon(Icons.verified_user_rounded,
                           color: Color(0xFFFF7A00)),
                       SizedBox(width: 8),
                       Text(
-                        "Sınav Giriş Kontrolü",
+                        "Sınav Giriş Kontrolü".tr,
                         style: TextStyle(
                             fontSize: 20, fontWeight: FontWeight.w800),
                       ),
@@ -314,9 +315,9 @@ class _ExamsPageState extends State<ExamsPage> {
                             : Icons.videocam_rounded,
                         color: joinedLive ? Colors.green : Colors.blue,
                       ),
-                      title: const Text("Canlı yayına katıl"),
-                      subtitle: const Text(
-                          "Öğretmenin canlı bağlantısına gir, kameranı aç."),
+                      title: Text("Canlı yayına katıl".tr),
+                      subtitle: Text(
+                          "Öğretmenin canlı bağlantısına gir, kameranı aç.".tr),
                     ),
                     SizedBox(
                       width: double.infinity,
@@ -349,7 +350,7 @@ class _ExamsPageState extends State<ExamsPage> {
                           ? "2. Kameranı aç"
                           : "Kameranı aç"),
                       subtitle:
-                          const Text("Sınav boyunca kameran açık kalmalı."),
+                          Text("Sınav boyunca kameran açık kalmalı.".tr),
                     ),
                     const SizedBox(height: 8),
                     ExamCameraPreview(
@@ -366,7 +367,7 @@ class _ExamsPageState extends State<ExamsPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       icon: const Icon(Icons.login_rounded),
-                      label: const Text("Sınava Gir"),
+                      label: Text("Sınava Gir".tr),
                       onPressed: canEnter
                           ? () => Navigator.pop(sheetContext, true)
                           : null,
@@ -877,7 +878,7 @@ class _ExamsPageState extends State<ExamsPage> {
                                     MaterialPageRoute(
                                       builder: (_) => StudentExamHistoryPage(
                                         studentName: _studentName,
-                                        title: 'Sınav Sonuçlarım',
+                                        title: 'Sınav Sonuçlarım'.tr,
                                       ),
                                     ),
                                   );

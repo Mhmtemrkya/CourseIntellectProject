@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:open_filex/open_filex.dart';
@@ -397,7 +398,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
           ),
           pw.SizedBox(height: 16),
           pw.Text(
-            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.',
+            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.'.tr,
             style: const pw.TextStyle(fontSize: 10),
           ),
         ],
@@ -525,7 +526,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                 children: [
                   _actionTile(
                     icon: Icons.picture_as_pdf_rounded,
-                    title: "PDF Olarak Dışa Aktar",
+                    title: "PDF Olarak Dışa Aktar".tr,
                     subtitle:
                         "$selectedPeriod filtreli yönetiçi özeti oluşturur.",
                     onTap: () {
@@ -535,8 +536,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   ),
                   _actionTile(
                     icon: Icons.table_chart_rounded,
-                    title: "Excel Olarak Dışa Aktar",
-                    subtitle: "Sınıf bazlı puan ve devam verilerini indirir.",
+                    title: "Excel Olarak Dışa Aktar".tr,
+                    subtitle: "Sınıf bazlı puan ve devam verilerini indirir.".tr,
                     onTap: () {
                       Navigator.pop(context);
                       _shareActiveReportCsv();
@@ -544,9 +545,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   ),
                   _actionTile(
                     icon: Icons.share_rounded,
-                    title: "İdare ile Paylaş",
+                    title: "İdare ile Paylaş".tr,
                     subtitle:
-                        "Seçili raporu müdür yardımcısı paneline gönderir.",
+                        "Seçili raporu müdür yardımcısı paneline gönderir.".tr,
                     onTap: () {
                       Navigator.pop(context);
                       _shareManagementSummary();
@@ -583,7 +584,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text("Sınıf Seçimi"),
+                    Text("Sınıf Seçimi".tr),
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: tempClass,
@@ -611,7 +612,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(dialogContext),
-                  child: const Text("Vazgeç"),
+                  child: Text("Vazgeç".tr),
                 ),
                 ElevatedButton(
                   onPressed: () {
@@ -729,7 +730,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                             );
                           },
                           icon: const Icon(Icons.analytics_outlined),
-                          label: const Text("Sonuçları Aç"),
+                          label: Text("Sonuçları Aç".tr),
                         ),
                       ),
                     ],
@@ -747,7 +748,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
                       icon: const Icon(Icons.picture_as_pdf_rounded),
-                      label: const Text("PDF Modunu Aç"),
+                      label: Text("PDF Modunu Aç".tr),
                     ),
                   ),
                 ],
@@ -855,13 +856,13 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                           final compact = constraints.maxWidth < 560;
                           final cards = [
                             _studentMetricCard(
-                              title: "Genel Başarı",
+                              title: "Genel Başarı".tr,
                               value: average <= 0 ? '-' : "$average / 100",
                               icon: Icons.trending_up_rounded,
                               color: const Color(0xFF7B61FF),
                             ),
                             _studentMetricCard(
-                              title: "Devamsızlık",
+                              title: "Devamsızlık".tr,
                               value: attendance <= 0
                                   ? '-'
                                   : "%${(100 - attendance).clamp(0, 100)}",
@@ -869,13 +870,13 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                               color: const Color(0xFFFF9D2E),
                             ),
                             _studentMetricCard(
-                              title: "Sınav Sayısı",
+                              title: "Sınav Sayısı".tr,
                               value: "${analytics?.examCount ?? 0}",
                               icon: Icons.fact_check_rounded,
                               color: const Color(0xFF30D158),
                             ),
                             _studentMetricCard(
-                              title: "Risk Puanı",
+                              title: "Risk Puanı".tr,
                               value: "$riskScore",
                               icon: Icons.warning_amber_rounded,
                               color: const Color(0xFFFF5C7A),
@@ -911,7 +912,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       ),
                       const SizedBox(height: 16),
                       _reportPanel(
-                        title: "Akademik Özet",
+                        title: "Akademik Özet".tr,
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -935,10 +936,10 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       ),
                       const SizedBox(height: 14),
                       _reportPanel(
-                        title: "Ders Bazlı Sınavlar",
+                        title: "Ders Bazlı Sınavlar".tr,
                         child: analytics == null || analytics.subjects.isEmpty
-                            ? const Text(
-                                "Bu öğrenci için ders bazlı sınav verisi bulunamadı.",
+                            ? Text(
+                                "Bu öğrenci için ders bazlı sınav verisi bulunamadı.".tr,
                               )
                             : Column(
                                 children: analytics.subjects
@@ -1053,7 +1054,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   "${topic["name"]} için telafi çalışma planı oluşturuldu.",
                 );
               },
-              child: const Text("Plan Oluştur"),
+              child: Text("Plan Oluştur".tr),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
@@ -1220,16 +1221,16 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
-                          "Haftalık rapor oluştur",
+                        Text(
+                          "Haftalık rapor oluştur".tr,
                           style: TextStyle(
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                         const SizedBox(height: 8),
-                        const Text(
-                          "Rapor seçilen öğrencinin veli haftalık rapor alanına düşürülür.",
+                        Text(
+                          "Rapor seçilen öğrencinin veli haftalık rapor alanına düşürülür.".tr,
                         ),
                         const SizedBox(height: 18),
                         LayoutBuilder(
@@ -1251,8 +1252,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                     ),
                                   )
                                   .toList(),
-                              decoration: const InputDecoration(
-                                labelText: "Sınıf",
+                              decoration: InputDecoration(
+                                labelText: "Sınıf".tr,
                                 border: OutlineInputBorder(),
                               ),
                               onChanged: (value) {
@@ -1328,8 +1329,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                 ),
                               )
                               .toList(),
-                          decoration: const InputDecoration(
-                            labelText: "Öğrenci",
+                          decoration: InputDecoration(
+                            labelText: "Öğrenci".tr,
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) {
@@ -1349,8 +1350,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                 ),
                               )
                               .toList(),
-                          decoration: const InputDecoration(
-                            labelText: "Dönem",
+                          decoration: InputDecoration(
+                            labelText: "Dönem".tr,
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) {
@@ -1361,8 +1362,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         ),
                         const SizedBox(height: 12),
                         TextField(
-                          decoration: const InputDecoration(
-                            labelText: "Rapor Başlığı",
+                          decoration: InputDecoration(
+                            labelText: "Rapor Başlığı".tr,
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) => title = value,
@@ -1370,8 +1371,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         const SizedBox(height: 12),
                         TextField(
                           maxLines: 5,
-                          decoration: const InputDecoration(
-                            labelText: "Öğretmen Özeti",
+                          decoration: InputDecoration(
+                            labelText: "Öğretmen Özeti".tr,
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) => summary = value,
@@ -1379,8 +1380,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         const SizedBox(height: 12),
                         TextField(
                           maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: "Güçlü Yönler",
+                          decoration: InputDecoration(
+                            labelText: "Güçlü Yönler".tr,
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) => highlights = value,
@@ -1388,8 +1389,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         const SizedBox(height: 12),
                         TextField(
                           maxLines: 3,
-                          decoration: const InputDecoration(
-                            labelText: "Destek Notları",
+                          decoration: InputDecoration(
+                            labelText: "Destek Notları".tr,
                             border: OutlineInputBorder(),
                           ),
                           onChanged: (value) => supportNotes = value,
@@ -1434,8 +1435,8 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                               ),
                               const SizedBox(height: 12),
                               if (attachments.isEmpty)
-                                const Text(
-                                  "Görsel, PDF veya dosya ekleyebilirsin.",
+                                Text(
+                                  "Görsel, PDF veya dosya ekleyebilirsin.".tr,
                                   style: TextStyle(color: Colors.white70),
                                 )
                               else
@@ -1612,7 +1613,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         _reportPanel(
-                          title: "Öğretmen Özeti",
+                          title: "Öğretmen Özeti".tr,
                           child: Text(report.summary),
                         ),
                         const SizedBox(height: 14),
@@ -1645,7 +1646,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         _reportPanel(
                           title: "Ek Dosyalar",
                           child: report.attachments.isEmpty
-                              ? const Text("Bu rapora ek dosya yüklenmedi.")
+                              ? Text("Bu rapora ek dosya yüklenmedi.".tr)
                               : Column(
                                   children: report.attachments
                                       .map(
@@ -1751,9 +1752,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                     final cards = [
                       _kpiCard(
                         reportTheme,
-                        title: "Toplam Öğrenci",
+                        title: "Toplam Öğrenci".tr,
                         value: "$totalStudents",
-                        subtitle: "Rapor kapsamindaki aktif öğrenci",
+                        subtitle: "Rapor kapsamindaki aktif öğrenci".tr,
                         icon: Icons.groups_2_rounded,
                         color: const Color(0xFF4DA3FF),
                         onTap: () => _openKpiDetail(
@@ -1766,7 +1767,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         reportTheme,
                         title: "Genel Ortalama",
                         value: "$averageScore",
-                        subtitle: "Sınav ve ödeve dayalı net başarı",
+                        subtitle: "Sınav ve ödeve dayalı net başarı".tr,
                         icon: Icons.auto_graph_rounded,
                         color: const Color(0xFF30D158),
                         onTap: () => _openKpiDetail(
@@ -1779,7 +1780,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                         reportTheme,
                         title: "Devam Orani",
                         value: "%$averageAttendance",
-                        subtitle: "Canlı ders ve yoklama uyumu",
+                        subtitle: "Canlı ders ve yoklama uyumu".tr,
                         icon: Icons.fact_check_rounded,
                         color: const Color(0xFFFF9D2E),
                         onTap: () => _openKpiDetail(
@@ -1790,9 +1791,9 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       ),
                       _kpiCard(
                         reportTheme,
-                        title: "Görev Tamamlama",
+                        title: "Görev Tamamlama".tr,
                         value: "%$averageCompletion",
-                        subtitle: "Ödev ve quiz teslim disiplini",
+                        subtitle: "Ödev ve quiz teslim disiplini".tr,
                         icon: Icons.assignment_turned_in_rounded,
                         color: const Color(0xFF7B61FF),
                         onTap: () => _openKpiDetail(
@@ -1887,7 +1888,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   ),
                 ),
                 icon: const Icon(Icons.file_download_outlined),
-                label: const Text("Dışa Aktar"),
+                label: Text("Dışa Aktar".tr),
               ),
             ],
           ),
@@ -2101,7 +2102,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Öğrenciye dokun, detaylı raporu aç",
+                      "Öğrenciye dokun, detaylı raporu aç".tr,
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         color: reportTheme.textColor,
@@ -2110,7 +2111,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Başarı, devamsızlık, ders kırılımı ve PDF modu aynı modal içinde görünür.",
+                      "Başarı, devamsızlık, ders kırılımı ve PDF modu aynı modal içinde görünür.".tr,
                       style: TextStyle(color: reportTheme.subtleTextColor),
                     ),
                   ],
@@ -2132,7 +2133,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               Expanded(
                 child: _miniMetric(
                   reportTheme,
-                  label: "Sınıf",
+                  label: "Sınıf".tr,
                   value: selectedClass == 'Tüm Sınıflar'
                       ? "Tümü"
                       : selectedClass,
@@ -2150,7 +2151,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
             )
           else if (students.isEmpty)
             Text(
-              "Seçili filtrede öğrenci bulunamadı.",
+              "Seçili filtrede öğrenci bulunamadı.".tr,
               style: TextStyle(color: reportTheme.subtleTextColor),
             )
           else
@@ -2280,7 +2281,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "Öğrenci için haftalık rapor oluştur",
+                      "Öğrenci için haftalık rapor oluştur".tr,
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         color: reportTheme.textColor,
@@ -2289,7 +2290,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      "Sınıf seç, öğrenciyi belirle, ek dosya yükle ve veliye tek adımda gönder.",
+                      "Sınıf seç, öğrenciyi belirle, ek dosya yükle ve veliye tek adımda gönder.".tr,
                       style: TextStyle(color: reportTheme.subtleTextColor),
                     ),
                   ],
@@ -2303,7 +2304,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               Expanded(
                 child: _miniMetric(
                   reportTheme,
-                  label: "Sınıf",
+                  label: "Sınıf".tr,
                   value: "${_weeklyBootstrap?.classes.length ?? 0}",
                 ),
               ),
@@ -2311,7 +2312,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               Expanded(
                 child: _miniMetric(
                   reportTheme,
-                  label: "Öğrenci",
+                  label: "Öğrenci".tr,
                   value: "${_weeklyBootstrap?.students.length ?? 0}",
                 ),
               ),
@@ -2319,7 +2320,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
               Expanded(
                 child: _miniMetric(
                   reportTheme,
-                  label: "Gönderilen",
+                  label: "Gönderilen".tr,
                   value: "${_sentWeeklyReports.length}",
                 ),
               ),
@@ -2331,7 +2332,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
             child: ElevatedButton.icon(
               onPressed: _openWeeklyReportComposer,
               icon: const Icon(Icons.send_rounded),
-              label: const Text("Rapor Oluştur ve Veliye Gönder"),
+              label: Text("Rapor Oluştur ve Veliye Gönder".tr),
             ),
           ),
           if (_sentWeeklyReports.isNotEmpty) ...[
@@ -2465,7 +2466,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                                   const SizedBox(width: 8),
                                   Expanded(
                                     child: Text(
-                                      'Raporu aç ve detayları incele',
+                                      'Raporu aç ve detayları incele'.tr,
                                       style: TextStyle(
                                         color: reportTheme.textColor,
                                         fontWeight: FontWeight.w700,
@@ -2603,7 +2604,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
           const SizedBox(height: 18),
           _progressLine(
             reportTheme,
-            label: "Sınıf Ortalamasi",
+            label: "Sınıf Ortalamasi".tr,
             value: average,
             color: const Color(0xFF4DA3FF),
           ),
@@ -2617,7 +2618,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
           const SizedBox(height: 12),
           _progressLine(
             reportTheme,
-            label: "Görev Tamamlama",
+            label: "Görev Tamamlama".tr,
             value: completion,
             color: const Color(0xFFFF9D2E),
           ),
@@ -2659,7 +2660,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                       ),
                     );
                   },
-                  child: const Text("Sonuçlar"),
+                  child: Text("Sonuçlar".tr),
                 ),
               ),
             ],
@@ -2857,7 +2858,7 @@ class _TeacherReportsPageState extends State<TeacherReportsPage> {
                     _showInfo("Haftalık rapor yönetime gönderildi.");
                   },
                   icon: const Icon(Icons.send_outlined),
-                  label: const Text("Rapor Gönder"),
+                  label: Text("Rapor Gönder".tr),
                 ),
               ),
             ],
@@ -3146,7 +3147,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
           ),
           pw.SizedBox(height: 16),
           pw.Text(
-            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.',
+            'Bu rapor Course Intellect mobil rapor merkezinden oluşturulmuştur.'.tr,
             style: const pw.TextStyle(fontSize: 10),
           ),
         ],
@@ -3216,12 +3217,12 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            tooltip: 'PDF indir / paylaş',
+            tooltip: 'PDF indir / paylaş'.tr,
             onPressed: () => _sharePdf(context),
             icon: const Icon(Icons.file_download_outlined),
           ),
           IconButton(
-            tooltip: 'PDF aç / yazdır',
+            tooltip: 'PDF aç / yazdır'.tr,
             onPressed: () => _openPdfForPrint(context),
             icon: const Icon(Icons.print_outlined),
           ),
@@ -3275,9 +3276,9 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 12),
-                      const Expanded(
+                      Expanded(
                         child: Text(
-                          'Öğrenci Başarı Raporu',
+                          'Öğrenci Başarı Raporu'.tr,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -3297,7 +3298,7 @@ class _MobilePdfReportPreviewPage extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Akademik performans raporu mobil önizleme modu.',
+                    'Akademik performans raporu mobil önizleme modu.'.tr,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.72),
                       height: 1.45,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/exam_results_store.dart';
 import 'package:student/services/planned_exam_api_service.dart';
@@ -129,7 +130,7 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sınav Sonuçları",
+        title: "Sınav Sonuçları".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: "$subject Öğretmeni",
         showBackButton: true,
@@ -352,8 +353,8 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
                   color: const Color(0xFFFF7A1A).withValues(alpha: 0.30),
                 ),
               ),
-              child: const Text(
-                'Onay bekliyor — onaylayınca sonuç not girişine işlenir.',
+              child: Text(
+                'Onay bekliyor — onaylayınca sonuç not girişine işlenir.'.tr,
                 style: TextStyle(
                   color: Color(0xFFB45309),
                   fontWeight: FontWeight.w700,
@@ -369,7 +370,7 @@ class _TeacherExamResultsPageState extends State<TeacherExamResultsPage> {
                 child: OutlinedButton.icon(
                   onPressed: () => _showSubmissionAnswers(item),
                   icon: const Icon(Icons.fact_check_outlined),
-                  label: const Text('Cevapları Gör'),
+                  label: Text('Cevapları Gör'.tr),
                 ),
               ),
               if (item.approvalStatus == 'Pending' &&

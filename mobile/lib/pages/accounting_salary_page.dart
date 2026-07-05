@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import 'accounting_salary_detail_page.dart';
 import 'accounting_salary_form_page.dart';
@@ -40,7 +41,7 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
   @override
   Widget build(BuildContext context) {
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Maaş Ödemeleri'),
+      appBar: AppHeader(title: 'Maaş Ödemeleri'.tr),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateSalary,
         backgroundColor: const Color(0xFF0F172A),
@@ -54,7 +55,7 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
           AccountingHeroCard(
             eyebrow: 'Bordro görünümü',
             title:
-                'Personel maaş, planlanan ödeme ve onay bekleyen bordroları izleyin.',
+                'Personel maaş, planlanan ödeme ve onay bekleyen bordroları izleyin.'.tr,
             description:
                 'Öğretmen ve idari kadro ödemeleri aynı modülde toplanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF1D4ED8)],
@@ -163,8 +164,8 @@ class _AccountingSalaryPageState extends State<AccountingSalaryPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yeni bordro oluşturuldu ve onaya gönderildi.'),
+        SnackBar(
+          content: Text('Yeni bordro oluşturuldu ve onaya gönderildi.'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/schedule_api_service.dart';
 import '../services/schedule_store.dart';
 import '../widgets/schedule_grid_view.dart';
@@ -58,8 +59,8 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
   Future<void> _openEdit(ScheduleEntryApiRecord record) async {
     if (record.isReadOnly) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Eski kayıtlar salt okunurdur, düzenlenemez.'),
+        SnackBar(
+          content: Text('Eski kayıtlar salt okunurdur, düzenlenemez.'.tr),
         ),
       );
       return;
@@ -74,20 +75,20 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
     if (record.isReadOnly) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Eski kayıtlar silinemez.')));
+      ).showSnackBar(SnackBar(content: Text('Eski kayıtlar silinemez.'.tr)));
       return;
     }
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Kaydı sil'),
+        title: Text('Kaydı sil'.tr),
         content: Text(
           '${record.className} • ${record.day} ${record.time} (${record.subject}) silinsin mi?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -103,7 +104,7 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Kayıt silindi.')));
+      ).showSnackBar(SnackBar(content: Text('Kayıt silindi.'.tr)));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -127,10 +128,10 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ders Programı'),
+        title: Text('Ders Programı'.tr),
         actions: [
           IconButton(
-            tooltip: 'Sınıf Ekle',
+            tooltip: 'Sınıf Ekle'.tr,
             onPressed: () => Navigator.push(
               context,
               MaterialPageRoute(
@@ -179,11 +180,11 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
                   _buildFilters(theme),
                   const SizedBox(height: 12),
                   SegmentedButton<bool>(
-                    segments: const [
+                    segments: [
                       ButtonSegment(
                         value: true,
                         icon: Icon(Icons.calendar_view_week_rounded),
-                        label: Text('Çizelge'),
+                        label: Text('Çizelge'.tr),
                       ),
                       ButtonSegment(
                         value: false,
@@ -267,21 +268,21 @@ class _AdminScheduleListPageState extends State<AdminScheduleListPage> {
       child: Row(
         children: [
           _dropdownFilter(
-            label: 'Sınıf',
+            label: 'Sınıf'.tr,
             value: _classFilter,
             options: classOptions,
             onChanged: (value) => setState(() => _classFilter = value),
           ),
           const SizedBox(width: 8),
           _dropdownFilter(
-            label: 'Öğretmen',
+            label: 'Öğretmen'.tr,
             value: _teacherFilter,
             options: teacherOptions,
             onChanged: (value) => setState(() => _teacherFilter = value),
           ),
           const SizedBox(width: 8),
           _dropdownFilter(
-            label: 'Gün',
+            label: 'Gün'.tr,
             value: _dayFilter,
             options: _days,
             onChanged: (value) => setState(() => _dayFilter = value),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/message_api_service.dart';
 
 class ChatRecipientOption {
@@ -92,14 +93,14 @@ class MessageThreadsView extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Henüz sohbet yok',
+                      'Henüz sohbet yok'.tr,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w800,
                       ),
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      'Yeni mesaj başlatarak konuşmaları burada görebilirsiniz.',
+                      'Yeni mesaj başlatarak konuşmaları burada görebilirsiniz.'.tr,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyMedium,
                     ),

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/badge_catalog.dart';
@@ -164,7 +165,7 @@ class _BadgeUnlockViewState extends State<_BadgeUnlockView>
                   child: Column(
                     children: [
                       Text(
-                        'YENİ ROZET KAZANDIN!',
+                        'YENİ ROZET KAZANDIN!'.tr,
                         style: TextStyle(
                           color: color,
                           fontWeight: FontWeight.w900,

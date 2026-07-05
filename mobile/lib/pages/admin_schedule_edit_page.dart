@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/courses_api_service.dart';
 import '../services/schedule_api_service.dart';
@@ -293,26 +294,26 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
     if (_selectedClass == null || _selectedClass!.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Lütfen bir sınıf seçin.')));
+      ).showSnackBar(SnackBar(content: Text('Lütfen bir sınıf seçin.'.tr)));
       return;
     }
     if (_selectedSubject == null || _selectedSubject!.trim().isEmpty) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Lütfen bir ders seçin.')));
+      ).showSnackBar(SnackBar(content: Text('Lütfen bir ders seçin.'.tr)));
       return;
     }
     if (_teacher == null || _teacher!.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Seçilen derse uygun bir öğretmen seçin.'),
+        SnackBar(
+          content: Text('Seçilen derse uygun bir öğretmen seçin.'.tr),
         ),
       );
       return;
     }
     if (_startTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen başlangıç saatini seçin.')),
+        SnackBar(content: Text('Lütfen başlangıç saatini seçin.'.tr)),
       );
       return;
     }
@@ -413,12 +414,12 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
                   ],
                   _section(
                     theme,
-                    title: 'Sınıf ve Ders',
+                    title: 'Sınıf ve Ders'.tr,
                     children: [
                       if (_classOptions.isEmpty)
                         _emptyPickerCard(
                           context,
-                          title: 'Sınıf listesi boş',
+                          title: 'Sınıf listesi boş'.tr,
                           description:
                               'Önce sınıf ekleyin, sonra burada liste halinde görünsün.',
                           buttonLabel: 'Sınıf Ekle',
@@ -459,7 +460,7 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
                       if (_courseOptions.isEmpty)
                         _emptyPickerCard(
                           context,
-                          title: 'Ders listesi boş',
+                          title: 'Ders listesi boş'.tr,
                           description:
                               'Dersler kurs kayıtlarından gelir. Kurs yönetiminden ders ekleyin.',
                           buttonLabel: 'Listeyi Yenile',
@@ -503,7 +504,7 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
                   ),
                   _section(
                     theme,
-                    title: 'Gün ve Saat',
+                    title: 'Gün ve Saat'.tr,
                     children: [
                       DropdownButtonFormField<String>(
                         initialValue: _day,
@@ -540,7 +541,7 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
                       if (_existingTimes().isNotEmpty) ...[
                         const SizedBox(height: 10),
                         Text(
-                          'Sistemdeki ders saatleri',
+                          'Sistemdeki ders saatleri'.tr,
                           style: theme.textTheme.bodySmall,
                         ),
                         const SizedBox(height: 6),
@@ -561,17 +562,17 @@ class _AdminScheduleEditPageState extends State<AdminScheduleEditPage> {
                   ),
                   _section(
                     theme,
-                    title: 'Öğretmen',
+                    title: 'Öğretmen'.tr,
                     children: [
                       if (_selectedSubject == null ||
                           _selectedSubject!.trim().isEmpty)
                         Text(
-                          'Önce ders seçildiğinde uygun öğretmenler burada listelenir.',
+                          'Önce ders seçildiğinde uygun öğretmenler burada listelenir.'.tr,
                           style: theme.textTheme.bodySmall,
                         )
                       else if (teacherOptions.isEmpty)
                         Text(
-                          'Seçilen derse uygun öğretmen bulunamadı. Önce ilgili branş öğretmenini ekleyin veya branş bilgisini güncelleyin.',
+                          'Seçilen derse uygun öğretmen bulunamadı. Önce ilgili branş öğretmenini ekleyin veya branş bilgisini güncelleyin.'.tr,
                           style: theme.textTheme.bodySmall,
                         )
                       else

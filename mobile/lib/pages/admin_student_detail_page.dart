@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import 'admin_student_edit_page.dart';
@@ -38,14 +39,14 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Öğrenciyi Sil'),
+        title: Text('Öğrenciyi Sil'.tr),
         content: Text(
           '${_student.fullName} adli öğrenciyi ve kullanıcı kaydini silmek istediginize emin misiniz? Bu islem geri alinamaz.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -64,7 +65,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Öğrenci silindi.')));
+      ).showSnackBar(SnackBar(content: Text('Öğrenci silindi.'.tr)));
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
@@ -87,13 +88,13 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Öğrenci Detayı',
+        title: Text(
+          'Öğrenci Detayı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
           IconButton(
-            tooltip: 'Düzenle',
+            tooltip: 'Düzenle'.tr,
             icon: const Icon(Icons.edit_outlined),
             onPressed: _deleting ? null : _openEdit,
           ),
@@ -132,7 +133,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Genel Öğrenci Bilgileri'),
+                AdminSectionTitle(title: 'Genel Öğrenci Bilgileri'.tr),
                 const SizedBox(height: 12),
                 _infoRow('Ad Soyad', student.fullName),
                 _infoRow('TC Kimlik No', student.tcNo),
@@ -149,7 +150,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Veli ve İletişim Bilgileri'),
+                AdminSectionTitle(title: 'Veli ve İletişim Bilgileri'.tr),
                 const SizedBox(height: 12),
                 _infoRow('Veli Ad Soyad', student.parentName),
                 _infoRow('Telefon', student.parentPhone),
@@ -171,7 +172,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Sistem Giriş Bilgileri'),
+                AdminSectionTitle(title: 'Sistem Giriş Bilgileri'.tr),
                 const SizedBox(height: 12),
                 _credentialCard(context, 'Kullanıcı Adı', student.username),
                 const SizedBox(height: 10),
@@ -184,7 +185,7 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'İdari Not ve Durum'),
+                AdminSectionTitle(title: 'İdari Not ve Durum'.tr),
                 const SizedBox(height: 12),
                 Row(
                   children: [

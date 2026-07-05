@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
 
 import '../services/content_api_service.dart';
@@ -120,7 +121,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Açıklama',
+                    'Açıklama'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -129,8 +130,8 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                   TextField(
                     controller: _reasonController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      hintText: 'Mazeret nedenini kısa ve net şekilde yazın',
+                    decoration: InputDecoration(
+                      hintText: 'Mazeret nedenini kısa ve net şekilde yazın'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -153,7 +154,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Belge ve teslim bilgisi',
+                    'Belge ve teslim bilgisi'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -206,7 +207,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Bildirim özeti',
+                    'Bildirim özeti'.tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -221,7 +222,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                     child: FilledButton.icon(
                       onPressed: _submitRequest,
                       icon: const Icon(Icons.send_rounded),
-                      label: const Text('Bildirimi Gönder'),
+                      label: Text('Bildirimi Gönder'.tr),
                     ),
                   ),
                 ],
@@ -256,8 +257,8 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
               color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'Resmi bildirim akışı',
+            child: Text(
+              'Resmi bildirim akışı'.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -266,7 +267,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Mazeret bildirimini düzenli ve eksiksiz iletin',
+            'Mazeret bildirimini düzenli ve eksiksiz iletin'.tr,
             style: theme.textTheme.headlineSmall?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -275,7 +276,7 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            'Tarih, neden ve not alanlarını tamamlayın. Kayıt okul yönetimi ve ilgili öğretmene aynı akışta iletilir.',
+            'Tarih, neden ve not alanlarını tamamlayın. Kayıt okul yönetimi ve ilgili öğretmene aynı akışta iletilir.'.tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.86),
               height: 1.45,
@@ -368,14 +369,14 @@ class _VeliExcuseRequestPageState extends State<VeliExcuseRequestPage> {
                   ),
                   const SizedBox(height: 14),
                   Text(
-                    'Bildirim gönderildi',
+                    'Bildirim gönderildi'.tr,
                     style: Theme.of(dialogContext).textTheme.titleMedium
                         ?.copyWith(fontWeight: FontWeight.w900),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Mazeret kaydı okul yönetimine ve ilgili öğretmene iletildi.',
+                    'Mazeret kaydı okul yönetimine ve ilgili öğretmene iletildi.'.tr,
                     style: Theme.of(
                       dialogContext,
                     ).textTheme.bodyMedium?.copyWith(height: 1.4),

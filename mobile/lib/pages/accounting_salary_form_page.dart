@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
 
@@ -32,19 +33,19 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
   @override
   Widget build(BuildContext context) {
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Yeni Bordro Oluştur'),
+      appBar: AppHeader(title: 'Yeni Bordro Oluştur'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          const AccountingHeroCard(
+          AccountingHeroCard(
             eyebrow: 'Bordro hazırlığı',
-            title: 'Personel için yeni maaş ödeme planını oluşturun.',
+            title: 'Personel için yeni maaş ödeme planını oluşturun.'.tr,
             description:
                 'Kayıt sonrası bordro listeye düşer ve yönetiçi onayına gönderilir.',
             colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
               AccountingHeroMetric(label: 'Durum', value: 'Bekliyor'),
-              AccountingHeroMetric(label: 'Akış', value: 'Onay süreci'),
+              AccountingHeroMetric(label: 'Akış'.tr, value: 'Onay süreci'),
             ],
           ),
           const SizedBox(height: 16),
@@ -55,8 +56,8 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
                 children: [
                   TextFormField(
                     controller: _employeeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Personel Adı',
+                    decoration: InputDecoration(
+                      labelText: 'Personel Adı'.tr,
                     ),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
@@ -84,8 +85,8 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
                   const SizedBox(height: 14),
                   TextFormField(
                     controller: _dateController,
-                    decoration: const InputDecoration(
-                      labelText: 'Ödeme Tarihi',
+                    decoration: InputDecoration(
+                      labelText: 'Ödeme Tarihi'.tr,
                     ),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
@@ -96,8 +97,8 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
                   TextFormField(
                     controller: _reasonController,
                     maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Not / Gerekçe',
+                    decoration: InputDecoration(
+                      labelText: 'Not / Gerekçe'.tr,
                     ),
                     validator: (value) =>
                         (value == null || value.trim().isEmpty)
@@ -109,7 +110,7 @@ class _AccountingSalaryFormPageState extends State<AccountingSalaryFormPage> {
                     width: double.infinity,
                     child: FilledButton(
                       onPressed: _submit,
-                      child: const Text('Bordroyu Oluştur'),
+                      child: Text('Bordroyu Oluştur'.tr),
                     ),
                   ),
                 ],

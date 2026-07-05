@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/role_card.dart';
 import '../widgets/course_intellect_logo.dart';
 import '../widgets/responsive_layout.dart';
@@ -32,13 +33,13 @@ class RoleSelectPage extends StatelessWidget {
                   const SizedBox(height: 8),
                   const SchoolAsistLogo(scale: 0.8, compact: true),
                   const SizedBox(height: 16),
-                  const Text(
-                    "Hoş Geldiniz",
+                  Text(
+                    "Hoş Geldiniz".tr,
                     style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    "Kullanıcı tipinizi seçin",
+                    "Kullanıcı tipinizi seçin".tr,
                     style: TextStyle(
                       color: theme.textTheme.bodyMedium?.color?.withValues(
                         alpha: 0.68,
@@ -61,7 +62,7 @@ class RoleSelectPage extends StatelessWidget {
                           : .95,
                       children: [
                         RoleCard(
-                          title: "Öğrenci",
+                          title: "Öğrenci".tr,
                           subtitle: "Derslerinizi takip edin",
                           icon: Icons.school,
                           color: Colors.blue,
@@ -77,7 +78,7 @@ class RoleSelectPage extends StatelessWidget {
 
                         RoleCard(
                           title: "Veli",
-                          subtitle: "Çocuğunuzun eğitimini izleyin",
+                          subtitle: "Çocuğunuzun eğitimini izleyin".tr,
                           icon: Icons.group,
                           color: Colors.green,
                           onTap: () {
@@ -91,8 +92,8 @@ class RoleSelectPage extends StatelessWidget {
                         ),
 
                         RoleCard(
-                          title: "Öğretmen",
-                          subtitle: "Sınıflarınızı yönetin",
+                          title: "Öğretmen".tr,
+                          subtitle: "Sınıflarınızı yönetin".tr,
                           icon: Icons.menu_book,
                           color: Colors.purple,
                           onTap: () {
@@ -107,7 +108,7 @@ class RoleSelectPage extends StatelessWidget {
 
                         RoleCard(
                           title: "Muhasebeci",
-                          subtitle: "Finansal işlemleri yönetin",
+                          subtitle: "Finansal işlemleri yönetin".tr,
                           icon: Icons.calculate,
                           color: Colors.orange,
                           onTap: () {
@@ -121,8 +122,8 @@ class RoleSelectPage extends StatelessWidget {
                         ),
 
                         RoleCard(
-                          title: "İdari Birimler",
-                          subtitle: "Kayıt, duyuru ve öğrenci işleri",
+                          title: "İdari Birimler".tr,
+                          subtitle: "Kayıt, duyuru ve öğrenci işleri".tr,
                           icon: Icons.apartment_outlined,
                           color: Colors.teal,
                           onTap: () {
@@ -136,8 +137,8 @@ class RoleSelectPage extends StatelessWidget {
                         ),
 
                         RoleCard(
-                          title: "Yönetici",
-                          subtitle: "Kurumu uçtan uca yönetin",
+                          title: "Yönetici".tr,
+                          subtitle: "Kurumu uçtan uca yönetin".tr,
                           icon: Icons.admin_panel_settings_outlined,
                           color: Colors.indigo,
                           onTap: () {

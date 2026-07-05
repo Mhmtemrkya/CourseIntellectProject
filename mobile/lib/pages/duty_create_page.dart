@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/duty_api_service.dart';
 
@@ -88,18 +89,18 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
 
   Future<void> _save() async {
     if (_selectedIds.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('En az bir öğretmen seçin.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('En az bir öğretmen seçin.'.tr)));
       return;
     }
     final startMin = _start.hour * 60 + _start.minute;
     final endMin = _end.hour * 60 + _end.minute;
     if (endMin <= startMin) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Bitiş saati başlangıçtan sonra olmalı.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Bitiş saati başlangıçtan sonra olmalı.'.tr)));
       return;
     }
     final todayDate = DateTime.now();
     if (DateTime(_date.year, _date.month, _date.day).isBefore(DateTime(todayDate.year, todayDate.month, todayDate.day))) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Geçmiş bir tarihe nöbet oluşturulamaz.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Geçmiş bir tarihe nöbet oluşturulamaz.'.tr)));
       return;
     }
     setState(() => _saving = true);
@@ -151,7 +152,7 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
         q.isEmpty || t.fullName.toLowerCase().contains(q) || t.departmentOrBranch.toLowerCase().contains(q)).toList();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Nöbet Oluştur')),
+      appBar: AppBar(title: Text('Nöbet Oluştur'.tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : ListView(
@@ -181,7 +182,7 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
                   controller: _descriptionCtrl,
                   maxLines: 3,
                   maxLength: 250,
-                  decoration: const InputDecoration(border: OutlineInputBorder(), hintText: 'Nöbet ile ilgili açıklama...'),
+                  decoration: InputDecoration(border: OutlineInputBorder(), hintText: 'Nöbet ile ilgili açıklama...'.tr),
                 ),
                 const SizedBox(height: 8),
                 Container(
@@ -194,7 +195,7 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
                       SwitchListTile(
                         value: _repeatWeekly,
                         onChanged: (v) => setState(() => _repeatWeekly = v),
-                        title: const Text('Haftalık tekrarla', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
+                        title: Text('Haftalık tekrarla'.tr, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12),
                       ),
                       if (_repeatWeekly)
@@ -202,7 +203,7 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
                           padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
                           child: Row(
                             children: [
-                              Text('Kaç hafta? ', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
+                              Text('Kaç hafta? '.tr, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.7))),
                               IconButton(
                                 onPressed: () => setState(() => _repeatWeeks = (_repeatWeeks - 1).clamp(1, 20)),
                                 icon: const Icon(Icons.remove_circle_outline),
@@ -213,7 +214,7 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
                                 icon: const Icon(Icons.add_circle_outline),
                               ),
                               const Spacer(),
-                              Text('aynı gün', style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
+                              Text('aynı gün'.tr, style: TextStyle(fontSize: 12, color: theme.colorScheme.onSurface.withValues(alpha: 0.6))),
                             ],
                           ),
                         ),
@@ -226,17 +227,17 @@ class _DutyCreatePageState extends State<DutyCreatePage> {
                 TextField(
                   controller: _searchCtrl,
                   onChanged: (v) => setState(() => _search = v),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     prefixIcon: Icon(Icons.search_rounded),
                     border: OutlineInputBorder(),
-                    hintText: 'Öğretmen ara...',
+                    hintText: 'Öğretmen ara...'.tr,
                   ),
                 ),
                 const SizedBox(height: 8),
                 if (filtered.isEmpty)
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(child: Text('Öğretmen bulunamadı.', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))),
+                    child: Center(child: Text('Öğretmen bulunamadı.'.tr, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))),
                   )
                 else
                   ...filtered.map((t) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/teacher_question_detail_page.dart';
 import 'package:student/pages/teacher_question_reply_page.dart';
 import 'package:student/services/auth_session_store.dart';
@@ -201,7 +202,7 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
               )
             else if (_questions.isEmpty)
               TeacherEmptyStatePanel(
-                title: 'Henüz soru eklenmemiş',
+                title: 'Henüz soru eklenmemiş'.tr,
                 description:
                     'Öğrencilerin sana soru gönderdiğinde bu alanda toplanacak. Bekleyen soruları buradan takip edip yanıtlayabilirsin.',
                 accentColor: const Color(0xFF7C3AED),
@@ -269,7 +270,7 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
           ),
           const SizedBox(height: 6),
           Text(
-            "Öğrencilerden gelen soruları yönetin ve hızlıca yanıtlayın.",
+            "Öğrencilerden gelen soruları yönetin ve hızlıca yanıtlayın.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.textTheme.bodyMedium?.color?.withValues(alpha: 0.72),
             ),
@@ -369,7 +370,7 @@ class _QuestionBoxPageState extends State<QuestionBoxPage> {
             Icons.search_rounded,
             color: theme.iconTheme.color?.withValues(alpha: 0.7),
           ),
-          hintText: "Öğrenci veya konu ara...",
+          hintText: "Öğrenci veya konu ara...".tr,
           border: InputBorder.none,
         ),
       ),

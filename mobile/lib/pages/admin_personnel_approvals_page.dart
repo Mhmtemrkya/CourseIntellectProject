@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
 import '../widgets/admin_ui.dart';
 import 'admin_staff_registration_page.dart';
@@ -55,8 +56,8 @@ class _AdminPersonnelApprovalsPageState
     _store.ensureLoaded();
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Personel ve Onay Merkezi',
+        title: Text(
+          'Personel ve Onay Merkezi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -77,7 +78,7 @@ class _AdminPersonnelApprovalsPageState
           AdminHeroCard(
             eyebrow: 'Yetki merkezi',
             title:
-                'Öğretmen, personel ve operasyon taleplerini yönetiçi seviyesinde onaylayın.',
+                'Öğretmen, personel ve operasyon taleplerini yönetiçi seviyesinde onaylayın.'.tr,
             description:
                 'Ek ders, izin, vardiya ve görev planları için tek bir onay görünümü sunulur.',
             metrics: [
@@ -87,7 +88,7 @@ class _AdminPersonnelApprovalsPageState
                     '${_items.where((item) => item['status'] == 'Bekliyor').length}',
               ),
               AdminHeroMetric(
-                label: 'Kayıtlı Kadro',
+                label: 'Kayıtlı Kadro'.tr,
                 value: '${_store.staff.length}',
               ),
             ],
@@ -99,7 +100,7 @@ class _AdminPersonnelApprovalsPageState
               children: [
                 Expanded(
                   child: Text(
-                    'Yeni öğretmen veya personel kaydını burada açabilirsiniz.',
+                    'Yeni öğretmen veya personel kaydını burada açabilirsiniz.'.tr,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -114,7 +115,7 @@ class _AdminPersonnelApprovalsPageState
                     ),
                   ),
                   icon: const Icon(Icons.add_circle_outline_rounded),
-                  label: const Text('Yeni Kayıt'),
+                  label: Text('Yeni Kayıt'.tr),
                 ),
               ],
             ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/duty_api_service.dart';
 
 const List<String> _trMonths = [
@@ -89,7 +90,7 @@ class _DutiesBoardPageState extends State<DutiesBoardPage> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Tüm Nöbetler')),
+      appBar: AppBar(title: Text('Tüm Nöbetler'.tr)),
       body: RefreshIndicator(
         onRefresh: _load_,
         child: _loading
@@ -103,7 +104,7 @@ class _DutiesBoardPageState extends State<DutiesBoardPage> {
                       child: Text(_error!, style: const TextStyle(color: Color(0xFFEF4444))),
                     ),
                   if (_load.isNotEmpty) ...[
-                    Text('Öğretmen Yükü (bu ay)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                    Text('Öğretmen Yükü (bu ay)'.tr, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 8),
                     Wrap(
                       spacing: 8,
@@ -117,12 +118,12 @@ class _DutiesBoardPageState extends State<DutiesBoardPage> {
                     ),
                     const SizedBox(height: 16),
                   ],
-                  Text('Nöbet Çizelgesi (30 gün)', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+                  Text('Nöbet Çizelgesi (30 gün)'.tr, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   if (_duties.isEmpty)
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 32),
-                      child: Center(child: Text('Bu aralıkta nöbet yok.', style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))),
+                      child: Center(child: Text('Bu aralıkta nöbet yok.'.tr, style: TextStyle(color: theme.colorScheme.onSurface.withValues(alpha: 0.6)))),
                     )
                   else
                     ..._duties.map((d) => _dutyCard(theme, d)),
@@ -172,7 +173,7 @@ class _DutiesBoardPageState extends State<DutiesBoardPage> {
               TextButton.icon(
                 onPressed: () => _action(() => _api.setStatus(d.id, 'İptal Edildi'), 'İptal edildi'),
                 icon: const Icon(Icons.cancel_outlined, size: 18, color: Color(0xFFF59E0B)),
-                label: const Text('İptal', style: TextStyle(color: Color(0xFFF59E0B))),
+                label: Text('İptal'.tr, style: TextStyle(color: Color(0xFFF59E0B))),
               ),
               TextButton.icon(
                 onPressed: () => _action(() => _api.deleteDuty(d.id), 'Silindi'),

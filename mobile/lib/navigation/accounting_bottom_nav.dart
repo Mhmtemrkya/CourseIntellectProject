@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../pages/accounting_exports_page.dart';
 import '../pages/accounting_home_page.dart';
 import '../pages/accounting_installments_page.dart';
@@ -48,7 +49,7 @@ class AccountingBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.ios_share_outlined,
-          label: 'Dışa Aktar',
+          label: 'Dışa Aktar'.tr,
           pageBuilder: (_) => const AccountingExportsPage(),
           sidebarColor: const Color(0xFF14B8A6),
         ),

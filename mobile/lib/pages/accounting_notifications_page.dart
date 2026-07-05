@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
@@ -47,7 +48,7 @@ class _AccountingNotificationsPageState
         children: [
           AccountingHeroCard(
             eyebrow: 'Bildirim merkezi',
-            title: 'Tahsilat, onay ve riskli bakiye bildirimleri tek listede.',
+            title: 'Tahsilat, onay ve riskli bakiye bildirimleri tek listede.'.tr,
             description:
                 'Muhasebe ekibi için kritik olaylar okunma durumu ile birlikte izlenir.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -56,7 +57,7 @@ class _AccountingNotificationsPageState
                 label: 'Toplam',
                 value: '${_store.notifications.length}',
               ),
-              AccountingHeroMetric(label: 'Okunmamış', value: '$unreadCount'),
+              AccountingHeroMetric(label: 'Okunmamış'.tr, value: '$unreadCount'),
             ],
           ),
           const SizedBox(height: 16),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/content_api_service.dart';
 import '../services/content_store.dart';
 
@@ -129,7 +130,7 @@ class _StudentNotesPageState extends State<StudentNotesPage> {
     final notes = _notes;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Notlarım'),
+        title: Text('Notlarım'.tr),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
         ],
@@ -163,8 +164,8 @@ class _StudentNotesPageState extends State<StudentNotesPage> {
                   TextField(
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
-                      hintText: 'Notlarda ara...',
+                    decoration: InputDecoration(
+                      hintText: 'Notlarda ara...'.tr,
                       prefixIcon: Icon(Icons.search_rounded),
                     ),
                   ),
@@ -176,10 +177,10 @@ class _StudentNotesPageState extends State<StudentNotesPage> {
                         children: [
                           Icon(Icons.sticky_note_2_outlined, size: 48, color: theme.disabledColor),
                           const SizedBox(height: 12),
-                          const Text('Henüz not almadın', style: TextStyle(fontWeight: FontWeight.w800)),
+                          Text('Henüz not almadın'.tr, style: TextStyle(fontWeight: FontWeight.w800)),
                           const SizedBox(height: 6),
                           Text(
-                            'Bir içeriği açıp not aldığında burada toplanır ve senkronlanır.',
+                            'Bir içeriği açıp not aldığında burada toplanır ve senkronlanır.'.tr,
                             textAlign: TextAlign.center,
                             style: theme.textTheme.bodySmall,
                           ),

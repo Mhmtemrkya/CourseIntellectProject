@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/linked_children_service.dart';
 import 'package:student/widgets/app_header.dart';
 
@@ -46,15 +47,15 @@ class _VeliOdemeMakbuzPageState extends State<VeliOdemeMakbuzPage> {
 
             const SizedBox(height: 20),
 
-            const Text(
-              "Ödeme Başarılı",
+            Text(
+              "Ödeme Başarılı".tr,
               style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 10),
 
-            const Text(
-              "Ödemeniz başarıyla alınmıştır.",
+            Text(
+              "Ödemeniz başarıyla alınmıştır.".tr,
               style: TextStyle(color: Colors.grey),
             ),
 
@@ -77,7 +78,7 @@ class _VeliOdemeMakbuzPageState extends State<VeliOdemeMakbuzPage> {
                 children: [
                   const _ReceiptRow(title: "Makbuz No", value: "ONLINE-ODEME"),
                   const Divider(),
-                  _ReceiptRow(title: "Öğrenci", value: _studentName),
+                  _ReceiptRow(title: "Öğrenci".tr, value: _studentName),
                   const Divider(),
                   const _ReceiptRow(
                     title: "Tutar",
@@ -112,7 +113,7 @@ class _VeliOdemeMakbuzPageState extends State<VeliOdemeMakbuzPage> {
                   ),
                 ),
 
-                child: const Text("Ana Sayfaya Dön"),
+                child: Text("Ana Sayfaya Dön".tr),
               ),
             ),
           ],

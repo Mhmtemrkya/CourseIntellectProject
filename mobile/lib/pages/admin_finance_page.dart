@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'admin_accounting_registration_page.dart';
 import 'accounting_approvals_page.dart';
 import 'accounting_exports_page.dart';
@@ -93,7 +94,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
               TextField(
                 controller: controller,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(hintText: 'Brüt maaş (₺)'),
+                decoration: InputDecoration(hintText: 'Brüt maaş (₺)'.tr),
               ),
               if (result != null) ...[
                 const SizedBox(height: 12),
@@ -227,7 +228,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
           AdminHeroCard(
             eyebrow: 'Finans görünümü',
             title:
-                'Tahsilat, onay ve riskli bakiye akışlarını yönetiçi perspektifiyle izleyin.',
+                'Tahsilat, onay ve riskli bakiye akışlarını yönetiçi perspektifiyle izleyin.'.tr,
             description:
                 'Muhasebe modülundeki hareketler özetlenir ve kritik finans süreçleri doğrudan açılır.',
             metrics: [
@@ -235,7 +236,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                 label: 'Nakit Sagligi',
                 value: riskCount == 0 ? 'Dengede' : 'Izleme',
               ),
-              AdminHeroMetric(label: 'Riskli Kayıt', value: '$riskCount'),
+              AdminHeroMetric(label: 'Riskli Kayıt'.tr, value: '$riskCount'),
             ],
           ),
           const SizedBox(height: 16),
@@ -275,7 +276,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
           ),
           if (_financeDash != null) ...[
             const SizedBox(height: 18),
-            const AdminSectionTitle(title: 'Kayıt Finansmanı (Öğrenci Cari)'),
+            AdminSectionTitle(title: 'Kayıt Finansmanı (Öğrenci Cari)'.tr),
             const SizedBox(height: 12),
             AdminPanel(
               child: Column(
@@ -289,7 +290,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  const Text('Yaşlandırma (Aging)', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text('Yaşlandırma (Aging)'.tr, style: TextStyle(fontSize: 12, color: Colors.grey)),
                   const SizedBox(height: 6),
                   ...((_financeDash!['aging'] as List<dynamic>? ?? []).map((raw) {
                     final b = Map<String, dynamic>.from(raw as Map);
@@ -319,12 +320,12 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
                       Expanded(
                         child: TextField(
                           controller: _studentSearchController,
-                          decoration: const InputDecoration(hintText: 'Öğrenci adıyla cari aç', isDense: true),
+                          decoration: InputDecoration(hintText: 'Öğrenci adıyla cari aç'.tr, isDense: true),
                           onSubmitted: (_) => _openAccount(),
                         ),
                       ),
                       const SizedBox(width: 8),
-                      FilledButton(onPressed: _openAccount, child: const Text('Aç')),
+                      FilledButton(onPressed: _openAccount, child: Text('Aç'.tr)),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -395,7 +396,7 @@ class _AdminFinancePageState extends State<AdminFinancePage> {
               MaterialPageRoute(builder: (_) => const AccountingHomePage()),
             ),
             icon: const Icon(Icons.open_in_new_rounded),
-            label: const Text('Muhasebe Modülünü Aç'),
+            label: Text('Muhasebe Modülünü Aç'.tr),
           ),
         ],
       ),

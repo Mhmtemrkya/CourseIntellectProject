@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../pages/veli_devamsizlik_page.dart';
 import '../pages/veli_odeme_page.dart';
 import '../pages/veli_mesajlar_page.dart';
@@ -14,7 +15,7 @@ class VeliQuickActions extends StatelessWidget {
       children: [
         _QuickAction(
           icon: Icons.event_busy,
-          label: "Devamsızlık",
+          label: "Devamsızlık".tr,
           onTap: () {
             Navigator.push(
               context,
@@ -27,13 +28,13 @@ class VeliQuickActions extends StatelessWidget {
 
         _QuickAction(
           icon: Icons.bar_chart,
-          label: "Sınav Sonuçları",
+          label: "Sınav Sonuçları".tr,
           onTap: () {},
         ),
 
         _QuickAction(
           icon: Icons.payment,
-          label: "Ödeme Yap",
+          label: "Ödeme Yap".tr,
           onTap: () {
             Navigator.push(
               context,
@@ -44,7 +45,7 @@ class VeliQuickActions extends StatelessWidget {
 
         _QuickAction(
           icon: Icons.chat,
-          label: "Mesaj Gönder",
+          label: "Mesaj Gönder".tr,
           onTap: () {
             Navigator.push(
               context,

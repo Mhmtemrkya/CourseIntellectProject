@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../pages/veli_home_page.dart';
 import '../pages/veli_devamsizlik_page.dart';
 import '../pages/veli_duyurular_page.dart';
@@ -25,7 +26,7 @@ class VeliBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.fact_check_outlined,
-          label: 'Devamsızlık',
+          label: 'Devamsızlık'.tr,
           pageBuilder: (_) => const VeliDevamsizlikPage(),
           sidebarColor: const Color(0xFFEF4444),
         ),
@@ -37,7 +38,7 @@ class VeliBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.payment_rounded,
-          label: 'Ödemeler',
+          label: 'Ödemeler'.tr,
           pageBuilder: (_) => const VeliOdemePage(),
           sidebarColor: const Color(0xFF10B981),
         ),
@@ -49,7 +50,7 @@ class VeliBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.local_library_rounded,
-          label: 'Kütüphane',
+          label: 'Kütüphane'.tr,
           pageBuilder: (_) => const VeliLibraryPage(),
           sidebarColor: const Color(0xFF0EA5E9),
         ),

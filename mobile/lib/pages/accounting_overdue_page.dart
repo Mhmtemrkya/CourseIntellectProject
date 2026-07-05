@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'accounting_chat_page.dart';
@@ -82,14 +83,14 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
     }).toList();
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Geciken Ödemeler'),
+      appBar: AppHeader(title: 'Geciken Ödemeler'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AccountingHeroCard(
             eyebrow: 'Riskli bakiye takibi',
             title:
-                'Gecikmiş ödemeleri sınıf ve öğrenci bazında filtreleyin, hızlı aksiyon alın.',
+                'Gecikmiş ödemeleri sınıf ve öğrenci bazında filtreleyin, hızlı aksiyon alın.'.tr,
             description:
                 'Mesaj, arama ve hatırlatma akışları aynı kart içinde kullanılabilir.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -99,7 +100,7 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                 value: _store.formatAmount(_store.overdueTotal),
               ),
               AccountingHeroMetric(
-                label: 'Kritik Kayıt',
+                label: 'Kritik Kayıt'.tr,
                 value: '${filtered.length}',
               ),
             ],
@@ -111,9 +112,9 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                 TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     prefixIcon: Icon(Icons.search),
-                    hintText: 'Öğrenci ara',
+                    hintText: 'Öğrenci ara'.tr,
                     border: OutlineInputBorder(),
                   ),
                 ),
@@ -123,8 +124,8 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                     'overdue-class-$selectedClass-${classes.length}',
                   ),
                   initialValue: selectedClass,
-                  decoration: const InputDecoration(
-                    labelText: 'Sınıf',
+                  decoration: InputDecoration(
+                    labelText: 'Sınıf'.tr,
                     border: OutlineInputBorder(),
                   ),
                   items: classes
@@ -190,7 +191,7 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                   ),
                 ),
                 icon: const Icon(Icons.message_outlined),
-                label: const Text('Mesaj Gönder'),
+                label: Text('Mesaj Gönder'.tr),
               ),
               FilledButton.tonalIcon(
                 onPressed: () => _callParent(context, item.student),
@@ -207,7 +208,7 @@ class _AccountingOverduePageState extends State<AccountingOverduePage> {
                   _showSnack(context, 'Hatırlatma bildirimi veliye iletildi.');
                 },
                 icon: const Icon(Icons.notifications_active_outlined),
-                label: const Text('Hatırlat'),
+                label: Text('Hatırlat'.tr),
               ),
             ],
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 
@@ -64,8 +65,8 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
 
     return AccountingScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Kasa ve Ödeme Dağılımı',
+        title: Text(
+          'Kasa ve Ödeme Dağılımı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -75,7 +76,7 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
           AccountingHeroCard(
             eyebrow: 'Kasa görünümü',
             title:
-                'Nakit, kart ve havale tahsilatlarını canlı dağılımla izleyin.',
+                'Nakit, kart ve havale tahsilatlarını canlı dağılımla izleyin.'.tr,
             description:
                 'Bu ekran artık doğrudan tahsilat kayıtlarını okuyup ödeme yöntemi kırılımını gösterir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0EA5E9)],
@@ -85,7 +86,7 @@ class _AccountingCashReportPageState extends State<AccountingCashReportPage> {
                 value: _store.formatAmount(grandTotal),
               ),
               AccountingHeroMetric(
-                label: 'İşlem',
+                label: 'İşlem'.tr,
                 value: '${collections.length}',
               ),
             ],

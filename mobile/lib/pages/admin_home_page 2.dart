@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'admin_branch_comparison_page.dart';
 import 'admin_workflow_hub_page.dart';
 import 'admin_global_search_page.dart';
@@ -138,8 +139,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Yönetici Paneli',
+        title: Text(
+          'Yönetici Paneli'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -161,12 +162,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
               AdminHeroCard(
                 eyebrow: 'Kurumsal kontrol merkezi',
                 title:
-                    'Akademik başarı, finans sağlığı ve operasyonel işleyiş tek yönetiçi ekranında.',
+                    'Akademik başarı, finans sağlığı ve operasyonel işleyiş tek yönetiçi ekranında.'.tr,
                 description:
                     'Kurum genelinde riskleri, büyüme alanlarını ve kritik süreçleri aynı panelden yönetin.',
                 metrics: [
                   AdminHeroMetric(
-                    label: 'Bugün',
+                    label: 'Bugün'.tr,
                     value: '${_finance.auditLogs.take(5).length} aksiyon',
                   ),
                   AdminHeroMetric(
@@ -184,15 +185,15 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     .toList(),
               ),
               const SizedBox(height: 18),
-              const AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'),
+              AdminSectionTitle(title: 'Hızlı Yönetici Erişimleri'.tr),
               const SizedBox(height: 12),
               Row(
                 children: [
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'İdari Yönetim',
-                      subtitle: 'Onay, izin, görev, evrak ve denetim',
+                      title: 'İdari Yönetim'.tr,
+                      subtitle: 'Onay, izin, görev, evrak ve denetim'.tr,
                       color: const Color(0xFF7C3AED),
                       icon: Icons.verified_user_outlined,
                       onTap: () => Navigator.push(
@@ -212,7 +213,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Servis Takip',
-                      subtitle: 'Araç, rota, durak ve öğrenci atama',
+                      subtitle: 'Araç, rota, durak ve öğrenci atama'.tr,
                       color: const Color(0xFF0F766E),
                       icon: Icons.directions_bus_filled_outlined,
                       onTap: () => Navigator.push(
@@ -232,7 +233,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Akademik Rapor',
-                      subtitle: 'Sınıf ve branş trendleri',
+                      subtitle: 'Sınıf ve branş trendleri'.tr,
                       color: const Color(0xFF2563EB),
                       icon: Icons.bar_chart_rounded,
                       onTap: () => Navigator.push(
@@ -248,7 +249,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Finans Paneli',
-                      subtitle: 'Tahsilat ve onay akışı',
+                      subtitle: 'Tahsilat ve onay akışı'.tr,
                       color: const Color(0xFF14532D),
                       icon: Icons.account_balance_wallet_outlined,
                       onTap: () => Navigator.push(
@@ -267,8 +268,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Görüşme Akışı',
-                      subtitle: 'Veli talepleri ve onaylar',
+                      title: 'Görüşme Akışı'.tr,
+                      subtitle: 'Veli talepleri ve onaylar'.tr,
                       color: const Color(0xFF0F766E),
                       icon: Icons.calendar_month_outlined,
                       onTap: () => Navigator.push(
@@ -287,8 +288,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Sınav Sonuçları',
-                      subtitle: 'Kurumsal deneme görünümü',
+                      title: 'Sınav Sonuçları'.tr,
+                      subtitle: 'Kurumsal deneme görünümü'.tr,
                       color: const Color(0xFF7C3AED),
                       icon: Icons.fact_check_outlined,
                       onTap: () => Navigator.push(
@@ -309,8 +310,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Geciken Ödemeler',
-                      subtitle: 'Riskli finans kayıtları',
+                      title: 'Geciken Ödemeler'.tr,
+                      subtitle: 'Riskli finans kayıtları'.tr,
                       color: const Color(0xFFB42318),
                       icon: Icons.warning_amber_rounded,
                       onTap: () => Navigator.push(
@@ -330,7 +331,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Mesaj Merkezi',
-                      subtitle: 'Tüm birimlerle hızlı iletişim',
+                      subtitle: 'Tüm birimlerle hızlı iletişim'.tr,
                       color: const Color(0xFF14532D),
                       icon: Icons.chat_bubble_outline_rounded,
                       onTap: () => Navigator.push(
@@ -346,7 +347,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                     child: _quickCard(
                       context,
                       title: 'Duyurular',
-                      subtitle: 'Tüm paylaşımları tek merkezde gör',
+                      subtitle: 'Tüm paylaşımları tek merkezde gör'.tr,
                       color: const Color(0xFFB45309),
                       icon: Icons.campaign_outlined,
                       onTap: () => Navigator.push(
@@ -365,8 +366,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Devamsızlık',
-                      subtitle: 'Tüm şube yoklama akışı',
+                      title: 'Devamsızlık'.tr,
+                      subtitle: 'Tüm şube yoklama akışı'.tr,
                       color: const Color(0xFFB42318),
                       icon: Icons.fact_check_outlined,
                       onTap: () => Navigator.push(
@@ -381,8 +382,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Kurum İçi Arama',
-                      subtitle: 'Öğrenci, veli ve kadro arama',
+                      title: 'Kurum İçi Arama'.tr,
+                      subtitle: 'Öğrenci, veli ve kadro arama'.tr,
                       color: const Color(0xFF2563EB),
                       icon: Icons.manage_search_rounded,
                       onTap: () => Navigator.push(
@@ -397,8 +398,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Şube Karşılaştırma',
-                      subtitle: 'Kampüs performans özeti',
+                      title: 'Şube Karşılaştırma'.tr,
+                      subtitle: 'Kampüs performans özeti'.tr,
                       color: const Color(0xFF14532D),
                       icon: Icons.apartment_outlined,
                       onTap: () => Navigator.push(
@@ -417,8 +418,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Rol Yönetimi',
-                      subtitle: 'Yetki ve erişim kontrolü',
+                      title: 'Rol Yönetimi'.tr,
+                      subtitle: 'Yetki ve erişim kontrolü'.tr,
                       color: const Color(0xFF7C3AED),
                       icon: Icons.admin_panel_settings_outlined,
                       onTap: () => Navigator.push(
@@ -433,8 +434,8 @@ class _AdminHomePageState extends State<AdminHomePage> {
                   Expanded(
                     child: _quickCard(
                       context,
-                      title: 'Canlı Görev',
-                      subtitle: 'Bekleyen süreçler ve aksiyonlar',
+                      title: 'Canlı Görev'.tr,
+                      subtitle: 'Bekleyen süreçler ve aksiyonlar'.tr,
                       color: const Color(0xFFB45309),
                       icon: Icons.playlist_add_check_circle_outlined,
                       onTap: () => Navigator.push(
@@ -450,9 +451,9 @@ class _AdminHomePageState extends State<AdminHomePage> {
               const SizedBox(height: 12),
               _quickCard(
                 context,
-                title: 'Kurum Özeti',
+                title: 'Kurum Özeti'.tr,
                 subtitle:
-                    'Doluluk, tahsilat, devamsızlık ve başarı göstergeleri',
+                    'Doluluk, tahsilat, devamsızlık ve başarı göstergeleri'.tr,
                 color: const Color(0xFF0F766E),
                 icon: Icons.insights_outlined,
                 onTap: () => Navigator.push(
@@ -466,7 +467,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
               _quickCard(
                 context,
                 title: 'Destek',
-                subtitle: 'SchoolAsist ekibine talep aç',
+                subtitle: 'SchoolAsist ekibine talep aç'.tr,
                 color: const Color(0xFFFF7A1A),
                 icon: Icons.support_agent_outlined,
                 onTap: () => Navigator.push(
@@ -475,7 +476,7 @@ class _AdminHomePageState extends State<AdminHomePage> {
                 ),
               ),
               const SizedBox(height: 18),
-              const AdminSectionTitle(title: 'Öncelikli Uyarılar'),
+              AdminSectionTitle(title: 'Öncelikli Uyarılar'.tr),
               const SizedBox(height: 12),
               ...alerts.map(
                 (item) => AdminPanel(

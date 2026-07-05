@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -263,7 +264,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('İçerik Detayı'),
+        title: Text('İçerik Detayı'.tr),
         actions: [
           IconButton(
             tooltip: 'Sil',
@@ -370,7 +371,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
             const SizedBox(height: 18),
             _sectionCard(
               context,
-              title: 'Yayın Bilgileri',
+              title: 'Yayın Bilgileri'.tr,
               child: Column(
                 children: [
                   _detailRow('Öğretmen', _content.teacher),
@@ -513,7 +514,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
             ],
             _sectionCard(
               context,
-              title: 'İçerik Açıklaması',
+              title: 'İçerik Açıklaması'.tr,
               child: Text(
                 _content.description,
                 style: TextStyle(
@@ -527,12 +528,12 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
             const SizedBox(height: 14),
             _sectionCard(
               context,
-              title: 'Yayın Durumu',
+              title: 'Yayın Durumu'.tr,
               child: Row(
                 children: [
                   Expanded(
                     child: _miniMetric(
-                      label: 'Öğrenci Görünümü',
+                      label: 'Öğrenci Görünümü'.tr,
                       value: _content.publishStatus,
                       accent: _statusColor(_content.publishStatus),
                     ),
@@ -555,7 +556,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   child: OutlinedButton.icon(
                     onPressed: _openEditSheet,
                     icon: const Icon(Icons.edit_rounded),
-                    label: const Text('Düzenle'),
+                    label: Text('Düzenle'.tr),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -563,7 +564,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   child: ElevatedButton.icon(
                     onPressed: _openPublishStatusSheet,
                     icon: const Icon(Icons.campaign_rounded),
-                    label: const Text('Yayın Durumu'),
+                    label: Text('Yayın Durumu'.tr),
                   ),
                 ),
               ],
@@ -577,7 +578,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         ? null
                         : () => _openFile(download: false),
                     icon: const Icon(Icons.open_in_new_rounded),
-                    label: const Text('Dosyayı Aç'),
+                    label: Text('Dosyayı Aç'.tr),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -587,7 +588,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         ? null
                         : () => _openFile(download: true),
                     icon: const Icon(Icons.download_rounded),
-                    label: const Text('İndir'),
+                    label: Text('İndir'.tr),
                   ),
                 ),
               ],
@@ -610,7 +611,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'Bu içerik öğrenci panelindeki İçerikler sayfasında anında görünür. Öğrenci kartına tıklandığında detaylar bu bilgiyle açılır.',
+                      'Bu içerik öğrenci panelindeki İçerikler sayfasında anında görünür. Öğrenci kartına tıklandığında detaylar bu bilgiyle açılır.'.tr,
                       style: TextStyle(
                         color: theme.textTheme.bodyMedium?.color?.withValues(
                           alpha: 0.74,
@@ -633,7 +634,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     if (uri == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu içerik için dosya bulunamadı.')),
+        SnackBar(content: Text('Bu içerik için dosya bulunamadı.'.tr)),
       );
       return;
     }
@@ -648,7 +649,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     if (!launched && mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Dosya açılamadı.')));
+      ).showSnackBar(SnackBar(content: Text('Dosya açılamadı.'.tr)));
     }
   }
 
@@ -703,11 +704,11 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                           ),
                           borderRadius: BorderRadius.circular(24),
                         ),
-                        child: const Column(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'İçeriği Düzenle',
+                              'İçeriği Düzenle'.tr,
                               style: TextStyle(
                                 color: Colors.white,
                                 fontSize: 22,
@@ -716,7 +717,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                             ),
                             SizedBox(height: 8),
                             Text(
-                              'Başlık, ders, sınıf, tür ve açıklama alanlarını bu ekrandan güncelleyebilirsin.',
+                              'Başlık, ders, sınıf, tür ve açıklama alanlarını bu ekrandan güncelleyebilirsin.'.tr,
                               style: TextStyle(
                                 color: Colors.white70,
                                 height: 1.4,
@@ -729,8 +730,8 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       TextFormField(
                         controller: titleController,
                         validator: _requiredValidator,
-                        decoration: const InputDecoration(
-                          labelText: 'İçerik Başlığı',
+                        decoration: InputDecoration(
+                          labelText: 'İçerik Başlığı'.tr,
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -752,8 +753,8 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                             child: TextFormField(
                               controller: gradeController,
                               validator: _requiredValidator,
-                              decoration: const InputDecoration(
-                                labelText: 'Sınıf',
+                              decoration: InputDecoration(
+                                labelText: 'Sınıf'.tr,
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -764,16 +765,16 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       TextFormField(
                         controller: teacherController,
                         validator: _requiredValidator,
-                        decoration: const InputDecoration(
-                          labelText: 'Öğretmen',
+                        decoration: InputDecoration(
+                          labelText: 'Öğretmen'.tr,
                           border: OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 12),
                       DropdownButtonFormField<String>(
                         initialValue: selectedType,
-                        decoration: const InputDecoration(
-                          labelText: 'Dosya Türü',
+                        decoration: InputDecoration(
+                          labelText: 'Dosya Türü'.tr,
                           border: OutlineInputBorder(),
                         ),
                         items: const [
@@ -799,8 +800,8 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                       TextFormField(
                         controller: infoController,
                         validator: _requiredValidator,
-                        decoration: const InputDecoration(
-                          labelText: 'Süre / Sayfa / Slayt',
+                        decoration: InputDecoration(
+                          labelText: 'Süre / Sayfa / Slayt'.tr,
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -810,8 +811,8 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                         validator: _requiredValidator,
                         minLines: 4,
                         maxLines: 5,
-                        decoration: const InputDecoration(
-                          labelText: 'İçerik Açıklaması',
+                        decoration: InputDecoration(
+                          labelText: 'İçerik Açıklaması'.tr,
                           border: OutlineInputBorder(),
                           alignLabelWithHint: true,
                         ),
@@ -902,8 +903,8 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'Yayın Durumu',
+                        Text(
+                          'Yayın Durumu'.tr,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 22,
@@ -1108,13 +1109,13 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
 
   Widget _videoPlaceholder() {
     if (_videoLoading) {
-      return const Column(
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularProgressIndicator(color: Colors.white),
           SizedBox(height: 14),
           Text(
-            'Video yükleniyor...',
+            'Video yükleniyor...'.tr,
             style: TextStyle(
               color: Colors.white70,
               fontWeight: FontWeight.w700,
@@ -1273,7 +1274,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
   Widget _speedMenu({required ValueChanged<double> onSelected, Color? color}) {
     final foreground = color ?? _accentForType(_content.fileType);
     return PopupMenuButton<double>(
-      tooltip: 'Hız',
+      tooltip: 'Hız'.tr,
       onSelected: onSelected,
       itemBuilder: (context) => const [
         PopupMenuItem(value: 0.75, child: Text('0.75x')),
@@ -1328,12 +1329,12 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('İçeriği Sil'),
+        title: Text('İçeriği Sil'.tr),
         content: Text('"${_content.title}" silinsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -1356,7 +1357,7 @@ class _TeacherContentDetailPageState extends State<TeacherContentDetailPage> {
       Navigator.of(context).pop(true);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('İçerik silindi')));
+      ).showSnackBar(SnackBar(content: Text('İçerik silindi'.tr)));
     } on ContentApiException catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(

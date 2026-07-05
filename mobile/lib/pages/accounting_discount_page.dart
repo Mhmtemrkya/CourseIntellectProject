@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/student_registry_store.dart';
 import 'accounting_discount_form_page.dart';
@@ -67,11 +68,11 @@ class _AccountingDiscountPageState extends State<AccountingDiscountPage> {
     });
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'İndirim ve Burs'),
+      appBar: AppHeader(title: 'İndirim ve Burs'.tr),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openNewDiscountPage,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Yeni İndirim'),
+        label: Text('Yeni İndirim'.tr),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
@@ -79,13 +80,13 @@ class _AccountingDiscountPageState extends State<AccountingDiscountPage> {
           AccountingHeroCard(
             eyebrow: 'Burs ve indirim merkezi',
             title:
-                'Aktif tanımları, yararlanan öğrencileri ve onay bekleyen kayıtları yönetin.',
+                'Aktif tanımları, yararlanan öğrencileri ve onay bekleyen kayıtları yönetin.'.tr,
             description:
                 'Bu görünüm artık öğrenci ve muhasebe kayıtlarından türetilen canlı finansal destek adaylarını gösterir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0891B2)],
             metrics: [
               AccountingHeroMetric(
-                label: 'Aktif Kayıt',
+                label: 'Aktif Kayıt'.tr,
                 value: '$activeDiscount',
               ),
               AccountingHeroMetric(
@@ -243,8 +244,8 @@ class _AccountingDiscountPageState extends State<AccountingDiscountPage> {
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('İndirim / burs tanımı onay sürecine alındı.'),
+      SnackBar(
+        content: Text('İndirim / burs tanımı onay sürecine alındı.'.tr),
         behavior: SnackBarBehavior.floating,
       ),
     );

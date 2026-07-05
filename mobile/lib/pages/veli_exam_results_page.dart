@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
@@ -71,7 +72,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Sınav Sonuçları'),
+      appBar: AppHeader(title: 'Sınav Sonuçları'.tr),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -114,12 +115,12 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
                           MaterialPageRoute(
                             builder: (_) => StudentExamHistoryPage(
                               studentName: _studentName,
-                              title: 'Öğrenci Sonuç Geçmişi',
+                              title: 'Öğrenci Sonuç Geçmişi'.tr,
                             ),
                           ),
                         ),
                         icon: const Icon(Icons.bar_chart_rounded),
-                        label: const Text('Tüm Sonuçları Gör'),
+                        label: Text('Tüm Sonuçları Gör'.tr),
                       ),
                     ),
                   ],
@@ -182,8 +183,8 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Sınav performans merkezi',
+          Text(
+            'Sınav performans merkezi'.tr,
             style: TextStyle(
               color: Colors.white70,
               fontWeight: FontWeight.w700,
@@ -282,7 +283,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
           Expanded(
             child: _summaryCard(
               context,
-              title: 'En Yüksek Sonuç',
+              title: 'En Yüksek Sonuç'.tr,
               value: best == null ? '-' : '${best.score}',
               subtitle: best == null
                   ? 'Kayıt yok'
@@ -310,7 +311,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
       children: [
         _summaryCard(
           context,
-          title: 'En Yüksek Sonuç',
+          title: 'En Yüksek Sonuç'.tr,
           value: best == null ? '-' : '${best.score}',
           subtitle: best == null
               ? 'Kayıt yok'
@@ -381,7 +382,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
       context,
       title: 'Denemeler',
       child: trialRecords.isEmpty
-          ? const Text('Bu öğrenci için deneme kaydı bulunmuyor.')
+          ? Text('Bu öğrenci için deneme kaydı bulunmuyor.'.tr)
           : Column(
               children: trialRecords
                   .map(
@@ -405,7 +406,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
   ) {
     return _surfaceSection(
       context,
-      title: 'Ders Bazlı Sonuçlar',
+      title: 'Ders Bazlı Sonuçlar'.tr,
       child: Column(
         children: lessonGroups.entries.map((entry) {
           final avg =
@@ -478,7 +479,7 @@ class _VeliExamResultsPageState extends State<VeliExamResultsPage> {
           ? 'Tüm Kayıtlar'
           : '$_selectedSegment Kayıtları',
       child: records.isEmpty
-          ? const Text('Seçilen grupta kayıt bulunmuyor.')
+          ? Text('Seçilen grupta kayıt bulunmuyor.'.tr)
           : Column(
               children: records
                   .map(

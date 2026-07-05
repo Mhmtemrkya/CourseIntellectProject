@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/student_finance_api_service.dart';
 
 class VeliFinancePage extends StatefulWidget {
@@ -62,13 +63,13 @@ class _VeliFinancePageState extends State<VeliFinancePage> {
           TextField(controller: controller, keyboardType: TextInputType.number, decoration: const InputDecoration(hintText: 'Tutar'), autofocus: true),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Vazgeç'.tr)),
           ElevatedButton(
             onPressed: () {
               final v = double.tryParse(controller.text.trim());
               Navigator.pop(ctx, (v != null && v > 0) ? v : null);
             },
-            child: const Text('Öde'),
+            child: Text('Öde'.tr),
           ),
         ],
       ),
@@ -90,13 +91,13 @@ class _VeliFinancePageState extends State<VeliFinancePage> {
   Widget build(BuildContext context) {
     final visible = _accounts.where((a) => (a['netTotal'] as num? ?? 0) > 0).toList();
     return Scaffold(
-      appBar: AppBar(title: const Text('Ödemeler')),
+      appBar: AppBar(title: Text('Ödemeler'.tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
               ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!)))
               : visible.isEmpty
-                  ? const Center(child: Text('Tanımlı kayıt ücreti / taksit planı yok.'))
+                  ? Center(child: Text('Tanımlı kayıt ücreti / taksit planı yok.'.tr))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView(
@@ -139,7 +140,7 @@ class _VeliFinancePageState extends State<VeliFinancePage> {
             const Text('Taksitler', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             if (installments.isEmpty)
-              const Text('Taksit yok.', style: TextStyle(color: Colors.grey, fontSize: 12))
+              Text('Taksit yok.'.tr, style: TextStyle(color: Colors.grey, fontSize: 12))
             else
               ...installments.map((raw) {
                 final it = Map<String, dynamic>.from(raw as Map);

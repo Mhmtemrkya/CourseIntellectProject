@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:typed_data';
 
 import 'package:flutter/services.dart' show rootBundle;
@@ -95,7 +96,7 @@ class AccountingExportService {
         theme: pw.ThemeData.withFont(base: regularFont, bold: regularFont),
         build: (context) => [
           pw.Text(
-            'SchoolAsist Finans Özeti',
+            'SchoolAsist Finans Özeti'.tr,
             style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 12),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 class ExamResultPage extends StatefulWidget {
   final Map<String, dynamic> exam;
 
@@ -46,7 +47,7 @@ class _ExamResultPageState extends State<ExamResultPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Sınav Sonuçu")),
+      appBar: AppBar(title: Text("Sınav Sonuçu".tr)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -71,8 +72,8 @@ class _ExamResultPageState extends State<ExamResultPage> {
               ),
               child: Column(
                 children: [
-                  const Text(
-                    "Sınav Sonuçun",
+                  Text(
+                    "Sınav Sonuçun".tr,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 22,

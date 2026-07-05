@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/meeting_request_api_service.dart';
 import '../widgets/adaptive_scaffold.dart';
@@ -207,9 +208,9 @@ class _TeacherMeetingApprovalsPageState
       appBar: hasSidebar
           ? null
           : TeacherHeader(
-              title: 'Görüşme Onayları',
+              title: 'Görüşme Onayları'.tr,
               teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
-              subtitle: 'Takvim ve veli talepleri',
+              subtitle: 'Takvim ve veli talepleri'.tr,
               showBackButton: true,
             ),
       body: _loading
@@ -257,8 +258,8 @@ class _TeacherMeetingApprovalsPageState
                           color: Colors.white.withValues(alpha: 0.14),
                           borderRadius: BorderRadius.circular(999),
                         ),
-                        child: const Text(
-                          'Öğretmen görüşme takvimi',
+                        child: Text(
+                          'Öğretmen görüşme takvimi'.tr,
                           style: TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.w700,
@@ -267,7 +268,7 @@ class _TeacherMeetingApprovalsPageState
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        'Gün ve saat tanımla, veli tarafında sadece o listedeki saatler görünsün.',
+                        'Gün ve saat tanımla, veli tarafında sadece o listedeki saatler görünsün.'.tr,
                         style: theme.textTheme.titleLarge?.copyWith(
                           color: Colors.white,
                           fontWeight: FontWeight.w900,
@@ -296,7 +297,7 @@ class _TeacherMeetingApprovalsPageState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Müsaitlik Takvimi',
+                        'Müsaitlik Takvimi'.tr,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),
@@ -338,7 +339,7 @@ class _TeacherMeetingApprovalsPageState
                       ),
                       const SizedBox(height: 12),
                       SegmentedButton<bool>(
-                        segments: const [
+                        segments: [
                           ButtonSegment<bool>(
                             value: true,
                             icon: Icon(Icons.video_call_outlined),
@@ -347,7 +348,7 @@ class _TeacherMeetingApprovalsPageState
                           ButtonSegment<bool>(
                             value: false,
                             icon: Icon(Icons.meeting_room_outlined),
-                            label: Text('Yüz yüze'),
+                            label: Text('Yüz yüze'.tr),
                           ),
                         ],
                         selected: {_slotOnline},
@@ -364,7 +365,7 @@ class _TeacherMeetingApprovalsPageState
                       ),
                       const SizedBox(height: 16),
                       if (groupedAvailability.isEmpty)
-                        const Text('Henüz tanımlı görüşme saati yok.')
+                        Text('Henüz tanımlı görüşme saati yok.'.tr)
                       else
                         ...groupedAvailability.entries.map((entry) {
                           final dayLabel = entry.value.first.info.dayLabel;

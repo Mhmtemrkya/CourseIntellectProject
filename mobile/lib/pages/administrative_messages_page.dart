@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/message_api_service.dart';
@@ -48,7 +49,7 @@ class _AdministrativeMessagesPageState
   @override
   Widget build(BuildContext context) {
     return MessageThreadsView(
-      title: 'İdari Mesajlar',
+      title: 'İdari Mesajlar'.tr,
       threads: _threads,
       loading: _loading,
       error: _error,
@@ -206,7 +207,7 @@ class _AdministrativeMessagesPageState
                 .trim()
                 .split('@')
                 .first,
-            subtitle: 'Veli İletişimi',
+            subtitle: 'Veli İletişimi'.tr,
           ),
         );
     return [...studentContacts, ...staffContacts, ...parentContacts].toList();

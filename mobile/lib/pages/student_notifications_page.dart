@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/notification_api_service.dart';
 
 class StudentNotificationsPage extends StatefulWidget {
@@ -44,8 +45,8 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Canlı Bildirim Kutusu',
+        title: Text(
+          'Canlı Bildirim Kutusu'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -60,8 +61,8 @@ class _StudentNotificationsPageState extends State<StudentNotificationsPage> {
               ),
               borderRadius: BorderRadius.circular(26),
             ),
-            child: const Text(
-              'Öğretmen yanıtları, ödev yorumları ve sınav güncellemeleri burada toplanır.',
+            child: Text(
+              'Öğretmen yanıtları, ödev yorumları ve sınav güncellemeleri burada toplanır.'.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w900,

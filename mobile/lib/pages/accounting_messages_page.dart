@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/message_api_service.dart';
@@ -159,7 +160,7 @@ class _AccountingMessagesPageState extends State<AccountingMessagesPage> {
 
     final selected = await MessageThreadsView.showRecipientPicker(
       context: context,
-      title: 'Alıcı Seç',
+      title: 'Alıcı Seç'.tr,
       description:
           'Yalnızca idari birimler ve yönetiçi ile yeni sohbet başlatabilirsiniz.',
       recipients: recipients,

@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/support_tickets_api_service.dart';
 
@@ -212,8 +213,8 @@ class _SupportPageState extends State<SupportPage> {
           ],
         ),
         const SizedBox(height: 14),
-        const Text(
-          'Bize ulaşın',
+        Text(
+          'Bize ulaşın'.tr,
           style: TextStyle(
             color: Colors.white,
             fontSize: 26,
@@ -223,7 +224,7 @@ class _SupportPageState extends State<SupportPage> {
         ),
         const SizedBox(height: 6),
         Text(
-          'Bir sorun ya da öneriniz mi var? Talebinizi açın, ekibimiz dönsün.',
+          'Bir sorun ya da öneriniz mi var? Talebinizi açın, ekibimiz dönsün.'.tr,
           style: TextStyle(
             color: Colors.white.withOpacity(0.65),
             fontSize: 14,
@@ -376,8 +377,8 @@ class _SupportPageState extends State<SupportPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const Text(
-          'Açtığım talepler',
+        Text(
+          'Açtığım talepler'.tr,
           style: TextStyle(
             color: Colors.white,
             fontSize: 16,
@@ -743,8 +744,8 @@ class _NotAdminMessage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
-              'Sadece kurum yöneticisi',
+            Text(
+              'Sadece kurum yöneticisi'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white,
@@ -754,7 +755,7 @@ class _NotAdminMessage extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Destek talebi yalnızca kurum yöneticisi tarafından oluşturulabilir.\nLütfen kurumunuzun yöneticisine ulaşın.',
+              'Destek talebi yalnızca kurum yöneticisi tarafından oluşturulabilir.\nLütfen kurumunuzun yöneticisine ulaşın.'.tr,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withOpacity(0.65),
@@ -788,7 +789,7 @@ class _EmptyTickets extends StatelessWidget {
           ),
           const SizedBox(height: 10),
           Text(
-            'Henüz talep oluşturmadınız.',
+            'Henüz talep oluşturmadınız.'.tr,
             style: TextStyle(
               color: Colors.white.withOpacity(0.55),
               fontSize: 13,

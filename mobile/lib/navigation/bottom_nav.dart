@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/content_page.dart';
 import 'package:student/pages/exams_page.dart';
 import 'package:student/pages/messages_page.dart';
@@ -24,13 +25,13 @@ class BottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.menu_book,
-          label: 'İçerikler',
+          label: 'İçerikler'.tr,
           pageBuilder: (_) => const ContentPage(),
           sidebarColor: const Color(0xFF8B5CF6),
         ),
         AdaptiveDestination(
           icon: Icons.fact_check_rounded,
-          label: 'Sınavlarım',
+          label: 'Sınavlarım'.tr,
           pageBuilder: (_) => const ExamsPage(),
           sidebarColor: const Color(0xFF7C3AED),
         ),
@@ -48,7 +49,7 @@ class BottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.local_library_rounded,
-          label: 'Kütüphane',
+          label: 'Kütüphane'.tr,
           pageBuilder: (_) => const StudentLibraryPage(),
           sidebarColor: const Color(0xFF0EA5E9),
         ),

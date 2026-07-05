@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/parent_request_api_service.dart';
 
 const _types = ['Erken Çıkış', 'İzin', 'Gezi Onamı', 'KVKK / Fotoğraf Onamı', 'Kayıt Yenileme', 'Diğer'];
@@ -54,7 +55,7 @@ class _VeliRequestsPageState extends State<VeliRequestsPage> {
               : RefreshIndicator(
                   onRefresh: _load,
                   child: _items.isEmpty
-                      ? ListView(children: const [SizedBox(height: 200), Center(child: Text('Henüz talebiniz yok.'))])
+                      ? ListView(children: [SizedBox(height: 200), Center(child: Text('Henüz talebiniz yok.'.tr))])
                       : ListView.separated(
                           padding: const EdgeInsets.all(12),
                           itemCount: _items.length,
@@ -88,7 +89,7 @@ class _RequestDialogState extends State<_RequestDialog> {
 
   Future<void> _submit() async {
     if (_child.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Öğrenci adı zorunlu.')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Öğrenci adı zorunlu.'.tr)));
       return;
     }
     setState(() => _busy = true);
@@ -115,12 +116,12 @@ class _RequestDialogState extends State<_RequestDialog> {
           items: _types.map((t) => DropdownMenuItem(value: t, child: Text(t))).toList(),
           onChanged: (v) => setState(() => _type = v ?? _types.first),
         ),
-        TextField(controller: _child, decoration: const InputDecoration(labelText: 'Öğrenci adı')),
-        TextField(controller: _desc, decoration: const InputDecoration(labelText: 'Açıklama')),
+        TextField(controller: _child, decoration: InputDecoration(labelText: 'Öğrenci adı'.tr)),
+        TextField(controller: _desc, decoration: InputDecoration(labelText: 'Açıklama'.tr)),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
-        ElevatedButton(onPressed: _busy ? null : _submit, child: const Text('Gönder')),
+        TextButton(onPressed: () => Navigator.pop(context), child: Text('Vazgeç'.tr)),
+        ElevatedButton(onPressed: _busy ? null : _submit, child: Text('Gönder'.tr)),
       ],
     );
   }

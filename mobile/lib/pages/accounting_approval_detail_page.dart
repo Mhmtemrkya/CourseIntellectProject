@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
@@ -26,7 +27,7 @@ class AccountingApprovalDetailPage extends StatelessWidget {
         : const Color(0xFFB45309);
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Onay Detayı'),
+      appBar: AppHeader(title: 'Onay Detayı'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -46,7 +47,7 @@ class AccountingApprovalDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'Talep Detayı'),
+                AccountingSectionTitle(title: 'Talep Detayı'.tr),
                 const SizedBox(height: 14),
                 Text(
                   current.reason,
@@ -64,7 +65,7 @@ class AccountingApprovalDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'Onay Çerçevesi'),
+                AccountingSectionTitle(title: 'Onay Çerçevesi'.tr),
                 const SizedBox(height: 14),
                 _line(context, 'Kategori', current.category),
                 _line(context, 'Kaynak Tipi', current.sourceType),

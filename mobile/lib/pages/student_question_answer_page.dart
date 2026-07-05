@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_config.dart';
@@ -22,8 +23,8 @@ class StudentQuestionAnswerPage extends StatelessWidget {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text(
-          'Öğretmen Yanıtı',
+        title: Text(
+          'Öğretmen Yanıtı'.tr,
           style: TextStyle(fontWeight: FontWeight.w800),
         ),
       ),
@@ -75,7 +76,7 @@ class StudentQuestionAnswerPage extends StatelessWidget {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      'Yanıtlanan sorunun çözümünü ve öğretmen notlarını bu ekranda görebilirsin.',
+                      'Yanıtlanan sorunun çözümünü ve öğretmen notlarını bu ekranda görebilirsin.'.tr,
                       style: theme.textTheme.titleMedium?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w800,
@@ -137,7 +138,7 @@ class StudentQuestionAnswerPage extends StatelessWidget {
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          'Öğretmen Yanıtı',
+                          'Öğretmen Yanıtı'.tr,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -207,7 +208,7 @@ class StudentQuestionAnswerPage extends StatelessWidget {
                                   context,
                                   item['fileUrl']?.toString(),
                                 ),
-                                child: const Text('Aç'),
+                                child: Text('Aç'.tr),
                               ),
                             ],
                           ),
@@ -295,6 +296,6 @@ class StudentQuestionAnswerPage extends StatelessWidget {
     if (!context.mounted || success) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Ek dosya açılamadı.')));
+    ).showSnackBar(SnackBar(content: Text('Ek dosya açılamadı.'.tr)));
   }
 }

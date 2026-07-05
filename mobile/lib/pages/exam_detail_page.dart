@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 class ExamDetailPage extends StatelessWidget {
   final Map<String, dynamic> exam;
 
@@ -12,7 +13,7 @@ class ExamDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Sınav Detayı")),
+      appBar: AppBar(title: Text("Sınav Detayı".tr)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(

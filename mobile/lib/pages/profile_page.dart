@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/language_tile.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:provider/provider.dart';
 
 import 'change_password_page.dart';
@@ -77,7 +79,7 @@ class _ProfilePageState extends State<ProfilePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  "Öğrenci Bilgileri",
+                  "Öğrenci Bilgileri".tr,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -98,8 +100,8 @@ class _ProfilePageState extends State<ProfilePage> {
                     color: const Color(0xFFFF7A00).withValues(alpha: 0.08),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Text(
-                    "Bu alanlar sadece yönetiçi ve idari birimler tarafından güncellenebilir.",
+                  child: Text(
+                    "Bu alanlar sadece yönetiçi ve idari birimler tarafından güncellenebilir.".tr,
                   ),
                 ),
               ],
@@ -114,11 +116,12 @@ class _ProfilePageState extends State<ProfilePage> {
                   value: themeProvider.isDarkMode,
                   onChanged: themeProvider.toggleTheme,
                 ),
+                const LanguageTile(),
                 ListTile(
                   leading: const Icon(Icons.notifications_active_outlined),
                   title: const Text("Bildirim Tercihleri"),
-                  subtitle: const Text(
-                    "Canlı banner, sessiz mod ve önizleme ayarlarını yönet.",
+                  subtitle: Text(
+                    "Canlı banner, sessiz mod ve önizleme ayarlarını yönet.".tr,
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
@@ -130,9 +133,9 @@ class _ProfilePageState extends State<ProfilePage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock_outline),
-                  title: const Text("Şifre Değiştir"),
-                  subtitle: const Text(
-                    "Hesap güvenliği için şifrenizi güncelleyin.",
+                  title: Text("Şifre Değiştir".tr),
+                  subtitle: Text(
+                    "Hesap güvenliği için şifrenizi güncelleyin.".tr,
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
@@ -145,15 +148,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 ListTile(
                   leading: const Icon(Icons.security_rounded),
                   title: const Text("Hesap Yetkileri"),
-                  subtitle: const Text(
-                    "Profil verileri sadece yönetiçi ve idari birimler tarafından güncellenebilir.",
+                  subtitle: Text(
+                    "Profil verileri sadece yönetiçi ve idari birimler tarafından güncellenebilir.".tr,
                   ),
                 ),
                 const LegalProfileTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                  title: const Text(
-                    "Çıkış Yap",
+                  title: Text(
+                    "Çıkış Yap".tr,
                     style: TextStyle(color: Colors.red),
                   ),
                   onTap: () => logoutToRoleSelect(context),

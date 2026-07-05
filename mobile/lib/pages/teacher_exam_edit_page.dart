@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/student_registry_store.dart';
 import 'package:student/widgets/teacher_header.dart';
@@ -88,7 +89,7 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sınavı Düzenle",
+        title: "Sınavı Düzenle".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${widget.exam["subject"] as String? ?? 'Ders'} Öğretmeni',
         showBackButton: true,
@@ -106,14 +107,14 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
             children: [
               TextField(
                 controller: titleController,
-                decoration: const InputDecoration(labelText: "Sınav Başlığı"),
+                decoration: InputDecoration(labelText: "Sınav Başlığı".tr),
               ),
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: selectedType,
-                decoration: const InputDecoration(labelText: "Sınav Türü"),
-                items: const [
-                  DropdownMenuItem(value: "Yazılı", child: Text("Yazılı")),
+                decoration: InputDecoration(labelText: "Sınav Türü".tr),
+                items: [
+                  DropdownMenuItem(value: "Yazılı", child: Text("Yazılı".tr)),
                   DropdownMenuItem(value: "Quiz", child: Text("Quiz")),
                   DropdownMenuItem(value: "Deneme", child: Text("Deneme")),
                 ],
@@ -126,7 +127,7 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
               const SizedBox(height: 14),
               DropdownButtonFormField<String>(
                 initialValue: _selectedClass.isEmpty ? null : _selectedClass,
-                decoration: const InputDecoration(labelText: "Sınıf"),
+                decoration: InputDecoration(labelText: "Sınıf".tr),
                 items: _classOptions
                     .map(
                       (item) =>
@@ -148,7 +149,7 @@ class _TeacherExamEditPageState extends State<TeacherExamEditPage> {
               const SizedBox(height: 14),
               TextField(
                 controller: questionController,
-                decoration: const InputDecoration(labelText: "Soru Sayısı"),
+                decoration: InputDecoration(labelText: "Soru Sayısı".tr),
               ),
               const SizedBox(height: 14),
               TextField(

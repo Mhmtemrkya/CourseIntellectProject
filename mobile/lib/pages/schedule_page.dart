@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/linked_children_service.dart';
 import '../services/schedule_api_service.dart';
@@ -110,7 +111,7 @@ class _SchedulePageState extends State<SchedulePage>
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ders Programı'),
+        title: Text('Ders Programı'.tr),
         actions: [
           IconButton(
             tooltip: _gridMode ? 'Liste görünümü' : 'Haftalık çizelge',
@@ -149,11 +150,11 @@ class _SchedulePageState extends State<SchedulePage>
                 ),
                 const SizedBox(height: 12),
                 SegmentedButton<bool>(
-                  segments: const [
+                  segments: [
                     ButtonSegment(
                       value: true,
                       icon: Icon(Icons.calendar_view_week_rounded),
-                      label: Text('Çizelge'),
+                      label: Text('Çizelge'.tr),
                     ),
                     ButtonSegment(
                       value: false,
@@ -296,8 +297,8 @@ class _SchedulePageState extends State<SchedulePage>
       color: theme.cardColor,
       borderRadius: BorderRadius.circular(18),
     ),
-    child: const Text(
-      'Bu gün için planlı ders yok.',
+    child: Text(
+      'Bu gün için planlı ders yok.'.tr,
       textAlign: TextAlign.center,
     ),
   );

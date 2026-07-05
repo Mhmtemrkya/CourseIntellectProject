@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/duty_api_service.dart';
 
 const List<String> _trMonths = [
@@ -108,7 +109,7 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
     final list = _tab == 0 ? upcoming : past;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Görevlerim')),
+      appBar: AppBar(title: Text('Görevlerim'.tr)),
       body: RefreshIndicator(
         onRefresh: _load,
         child: _loading
@@ -196,7 +197,7 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Atanan Görevlerim', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
+        Text('Atanan Görevlerim'.tr, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 10),
         if (_tasks.isEmpty)
           Container(
@@ -206,7 +207,7 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: theme.dividerColor.withValues(alpha: 0.4)),
             ),
-            child: Text('Size atanmış idari görev bulunmuyor.', style: TextStyle(color: muted)),
+            child: Text('Size atanmış idari görev bulunmuyor.'.tr, style: TextStyle(color: muted)),
           )
         else
           ..._tasks.map((task) => Container(
@@ -309,16 +310,16 @@ class _TeacherDutiesPageState extends State<TeacherDutiesPage> {
     final reason = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Görevi kabul etmeme nedeni'),
+        title: Text('Görevi kabul etmeme nedeni'.tr),
         content: TextField(
           controller: controller,
           minLines: 3,
           maxLines: 5,
-          decoration: const InputDecoration(hintText: 'Mazeretinizi yazın'),
+          decoration: InputDecoration(hintText: 'Mazeretinizi yazın'.tr),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Vazgeç')),
-          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: const Text('Gönder')),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Vazgeç'.tr)),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text.trim()), child: Text('Gönder'.tr)),
         ],
       ),
     );

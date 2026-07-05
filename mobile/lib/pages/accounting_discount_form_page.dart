@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/app_header.dart';
 import '../widgets/accounting_ui.dart';
@@ -63,20 +64,20 @@ class _AccountingDiscountFormPageState
     final discounted = total - (total * rate / 100);
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Yeni İndirim / Burs'),
+      appBar: AppHeader(title: 'Yeni İndirim / Burs'.tr),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const AccountingHeroCard(
+            AccountingHeroCard(
               eyebrow: 'Yeni tanım',
-              title: 'Öğrenci bazlı burs ve indirim tanımlama',
+              title: 'Öğrenci bazlı burs ve indirim tanımlama'.tr,
               description:
                   'Oran değiştikçe tutar otomatik güncellenir ve önizleme alanı yeni bakiyeyi gösterir.',
               colors: [Color(0xFF0F172A), Color(0xFF0891B2)],
               metrics: [
-                AccountingHeroMetric(label: 'Önizleme', value: 'Canlı'),
+                AccountingHeroMetric(label: 'Önizleme'.tr, value: 'Canlı'),
                 AccountingHeroMetric(label: 'Durum', value: 'Onay akışı'),
               ],
             ),
@@ -87,8 +88,8 @@ class _AccountingDiscountFormPageState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment<bool>(value: false, label: Text('İndirim')),
+                    segments: [
+                      ButtonSegment<bool>(value: false, label: Text('İndirim'.tr)),
                       ButtonSegment<bool>(value: true, label: Text('Burs')),
                     ],
                     selected: {isScholarship},
@@ -103,8 +104,8 @@ class _AccountingDiscountFormPageState
                     initialValue: _studentUsername.isEmpty
                         ? null
                         : _studentUsername,
-                    decoration: const InputDecoration(
-                      labelText: 'Öğrenci',
+                    decoration: InputDecoration(
+                      labelText: 'Öğrenci'.tr,
                       border: OutlineInputBorder(),
                     ),
                     items: _students
@@ -168,7 +169,7 @@ class _AccountingDiscountFormPageState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Önizleme',
+                    'Önizleme'.tr,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -206,7 +207,7 @@ class _AccountingDiscountFormPageState
                                 'note': noteController.text.trim(),
                               });
                             },
-                      child: const Text('Kaydı Oluştur'),
+                      child: Text('Kaydı Oluştur'.tr),
                     ),
                   ),
                 ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/question_bank_store.dart';
 import 'package:student/services/school_feed_api_service.dart';
@@ -217,8 +218,8 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
           child: ListView(
             shrinkWrap: true,
             children: [
-              const Text(
-                "İçerik Seç",
+              Text(
+                "İçerik Seç".tr,
                 style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 14),
@@ -295,12 +296,12 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              'Pasif Testlerden Soru Seç',
+                              'Pasif Testlerden Soru Seç'.tr,
                               style: TextStyle(
                                 fontSize: 22,
                                 fontWeight: FontWeight.w900,
@@ -308,7 +309,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                             ),
                             SizedBox(height: 4),
                             Text(
-                              'Birden fazla testten istediğin soruları seçebilirsin.',
+                              'Birden fazla testten istediğin soruları seçebilirsin.'.tr,
                             ),
                           ],
                         ),
@@ -323,12 +324,11 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                 const Divider(height: 1),
                 Expanded(
                   child: grouped.isEmpty
-                      ? const Center(
+                      ? Center(
                           child: Padding(
                             padding: EdgeInsets.all(28),
                             child: Text(
-                              'Bu ders ve sınıf için pasif test bulunamadı. '
-                              'Önce soru bankasından bir testi pasife alabilirsin.',
+                              'Bu ders ve sınıf için pasif test bulunamadı. Önce soru bankasından bir testi pasife alabilirsin.'.tr,
                               textAlign: TextAlign.center,
                             ),
                           ),
@@ -462,7 +462,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
         dateController.text.trim().isEmpty ||
         durationController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Başlık, tarih ve süre zorunludur.")),
+        SnackBar(content: Text("Başlık, tarih ve süre zorunludur.".tr)),
       );
       return;
     }
@@ -488,9 +488,9 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
               item.topicController.text.trim().isEmpty,
         )) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Manuel soru kartlarında konu ve soru metni zorunludur.',
+            'Manuel soru kartlarında konu ve soru metni zorunludur.'.tr,
           ),
         ),
       );
@@ -581,7 +581,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sınav Oluştur",
+        title: "Sınav Oluştur".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: selectedSubject.isEmpty
             ? "Öğretmen"
@@ -604,7 +604,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Sınav Bilgileri",
+                    "Sınav Bilgileri".tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -613,23 +613,23 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   const SizedBox(height: 16),
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: "Sınav Başlığı",
+                    decoration: InputDecoration(
+                      labelText: "Sınav Başlığı".tr,
                     ),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: typeController,
-                    decoration: const InputDecoration(
-                      labelText: "Sınav Türü (örn. 1. Yazılı)",
+                    decoration: InputDecoration(
+                      labelText: "Sınav Türü (örn. 1. Yazılı)".tr,
                       helperText:
-                          "Not girişinde sonuç bu etiketle eşleştirilir.",
+                          "Not girişinde sonuç bu etiketle eşleştirilir.".tr,
                     ),
                   ),
                   const SizedBox(height: 14),
                   DropdownButtonFormField<String>(
                     initialValue: selectedClass.isEmpty ? null : selectedClass,
-                    decoration: const InputDecoration(labelText: "Sınıf"),
+                    decoration: InputDecoration(labelText: "Sınıf".tr),
                     items: _classOptions
                         .map(
                           (item) =>
@@ -670,18 +670,18 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   TextField(
                     controller: dateController,
                     readOnly: true,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: "Tarih / Saat",
-                      hintText: "Örnek: 30 Mart • 10:00",
+                      hintText: "Örnek: 30 Mart • 10:00".tr,
                     ),
                     onTap: _pickDateTime,
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: durationController,
-                    decoration: const InputDecoration(
-                      labelText: "Süre",
-                      hintText: "Örnek: 40 dk",
+                    decoration: InputDecoration(
+                      labelText: "Süre".tr,
+                      hintText: "Örnek: 40 dk".tr,
                     ),
                   ),
                 ],
@@ -695,7 +695,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Soru Kaynağı",
+                    "Soru Kaynağı".tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontSize: 22,
                       fontWeight: FontWeight.w800,
@@ -704,15 +704,15 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
                     initialValue: selectedSource,
-                    decoration: const InputDecoration(labelText: "Kaynak Türü"),
-                    items: const [
+                    decoration: InputDecoration(labelText: "Kaynak Türü".tr),
+                    items: [
                       DropdownMenuItem(
                         value: "Manuel Ekle",
                         child: Text("Manuel Ekle"),
                       ),
                       DropdownMenuItem(
                         value: "Soru Bankasından",
-                        child: Text("Soru Bankasından"),
+                        child: Text("Soru Bankasından".tr),
                       ),
                       DropdownMenuItem(
                         value: "Denemelerden",
@@ -720,7 +720,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       ),
                       DropdownMenuItem(
                         value: "Karisik",
-                        child: Text("Karışık"),
+                        child: Text("Karışık".tr),
                       ),
                     ],
                     onChanged: (value) {
@@ -738,7 +738,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                   TextField(
                     controller: questionCountController,
                     readOnly: selectedSource != "Manuel Ekle",
-                    decoration: const InputDecoration(labelText: "Soru Sayısı"),
+                    decoration: InputDecoration(labelText: "Soru Sayısı".tr),
                   ),
                   const SizedBox(height: 16),
                   Container(
@@ -753,8 +753,8 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          "Sınav Güvenliği",
+                        Text(
+                          "Sınav Güvenliği".tr,
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                         const SizedBox(height: 8),
@@ -777,19 +777,19 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                           value: _blockTabChange,
                           onChanged: (value) =>
                               setState(() => _blockTabChange = value),
-                          title: const Text("Sekme/uygulama değiştirme yasak"),
+                          title: Text("Sekme/uygulama değiştirme yasak".tr),
                         ),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
                           value: _blockCopyPaste,
                           onChanged: (value) =>
                               setState(() => _blockCopyPaste = value),
-                          title: const Text("Kopyala/yapıştır yasak"),
+                          title: Text("Kopyala/yapıştır yasak".tr),
                         ),
                         Row(
                           children: [
-                            const Expanded(
-                              child: Text("Geç giriş limiti (dk)"),
+                            Expanded(
+                              child: Text("Geç giriş limiti (dk)".tr),
                             ),
                             DropdownButton<int>(
                               value: _lateEntryLimitMinutes,
@@ -811,16 +811,14 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                           const SizedBox(height: 4),
                           TextField(
                             controller: liveLinkController,
-                            decoration: const InputDecoration(
-                              labelText: "Canlı Yayın / Toplantı Linki",
+                            decoration: InputDecoration(
+                              labelText: "Canlı Yayın / Toplantı Linki".tr,
                               hintText: "https://zoom.us/j/... veya Meet linki",
                             ),
                           ),
                           const SizedBox(height: 4),
-                          const Text(
-                            "Kamera zorunluyken öğrenci bu canlı yayına girip "
-                            "kamerasını açmadan sınava başlayamaz. Linke giren "
-                            "öğrenciler yoklamada otomatik \"Var\" işaretlenir.",
+                          Text(
+                            "Kamera zorunluyken öğrenci bu canlı yayına girip kamerasını açmadan sınava başlayamaz. Linke giren öğrenciler yoklamada otomatik \"Var\" işaretlenir.".tr,
                             style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                         ],
@@ -847,14 +845,14 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Bu seçimde her soruyu tek tek tanımlayıp sınavla birlikte kaydedebilirsin.",
+                          "Bu seçimde her soruyu tek tek tanımlayıp sınavla birlikte kaydedebilirsin.".tr,
                           style: theme.textTheme.bodyMedium,
                         ),
                         const SizedBox(height: 12),
                         OutlinedButton.icon(
                           onPressed: _addManualQuestion,
                           icon: const Icon(Icons.add_circle_outline_rounded),
-                          label: const Text("Soru Kartı Ekle"),
+                          label: Text("Soru Kartı Ekle".tr),
                         ),
                         if (_manualQuestions.isNotEmpty) ...[
                           const SizedBox(height: 14),
@@ -892,18 +890,18 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                                     decoration: const InputDecoration(
                                       labelText: "Soru Tipi",
                                     ),
-                                    items: const [
+                                    items: [
                                       DropdownMenuItem(
                                         value: "Açık Uçlu",
-                                        child: Text("Açık Uçlu"),
+                                        child: Text("Açık Uçlu".tr),
                                       ),
                                       DropdownMenuItem(
                                         value: "Çoktan Seçmeli",
-                                        child: Text("Çoktan Seçmeli"),
+                                        child: Text("Çoktan Seçmeli".tr),
                                       ),
                                       DropdownMenuItem(
                                         value: "Doğru / Yanlış",
-                                        child: Text("Doğru / Yanlış"),
+                                        child: Text("Doğru / Yanlış".tr),
                                       ),
                                     ],
                                     onChanged: (value) {
@@ -945,8 +943,8 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
                                     ),
                                     DropdownButtonFormField<int>(
                                       initialValue: item.correctOptionIndex,
-                                      decoration: const InputDecoration(
-                                        labelText: "Doğru Şık",
+                                      decoration: InputDecoration(
+                                        labelText: "Doğru Şık".tr,
                                       ),
                                       items: List.generate(
                                         item.optionControllers.length,
@@ -1016,7 +1014,7 @@ class _TeacherCreateExamPageState extends State<TeacherCreateExamPage> {
               child: ElevatedButton.icon(
                 onPressed: _saveExam,
                 icon: const Icon(Icons.check_circle_outline_rounded),
-                label: const Text("Sınavı Oluştur"),
+                label: Text("Sınavı Oluştur".tr),
               ),
             ),
           ],

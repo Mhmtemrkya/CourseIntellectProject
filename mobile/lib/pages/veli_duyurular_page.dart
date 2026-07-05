@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/school_feed_api_service.dart';
 import '../widgets/adaptive_scaffold.dart';
 import '../widgets/app_header.dart';
@@ -179,7 +180,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
         final searchField = TextField(
           controller: _searchController,
           decoration: InputDecoration(
-            hintText: 'Duyuru ara...',
+            hintText: 'Duyuru ara...'.tr,
             prefixIcon: const Icon(Icons.search),
             isDense: true,
             filled: true,
@@ -203,8 +204,8 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
               borderSide: BorderSide.none,
             ),
           ),
-          items: const [
-            DropdownMenuItem(value: 'Tümu', child: Text('Tümü')),
+          items: [
+            DropdownMenuItem(value: 'Tümu', child: Text('Tümü'.tr)),
             DropdownMenuItem(value: 'Yeni', child: Text('Yeni')),
             DropdownMenuItem(value: 'Veli', child: Text('Veli')),
           ],
@@ -296,7 +297,7 @@ class _VeliDuyurularPageState extends State<VeliDuyurularPage> {
                   date: date,
                   tags: tags,
                 ),
-                child: const Text('Detayları Gör →'),
+                child: Text('Detayları Gör →'.tr),
               ),
             ],
           ),

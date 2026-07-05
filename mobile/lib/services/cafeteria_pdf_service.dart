@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/services.dart' show rootBundle;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
@@ -47,7 +48,7 @@ class CafeteriaPdfService {
                     ),
                   ),
                   pw.Text(
-                    'Haftalık Yemek Programı',
+                    'Haftalık Yemek Programı'.tr,
                     style: pw.TextStyle(
                       fontSize: 20,
                       fontWeight: pw.FontWeight.bold,
@@ -183,7 +184,7 @@ class CafeteriaPdfService {
           pw.SizedBox(height: 6),
           if (items.isEmpty)
             pw.Text(
-              'Menü girilmedi',
+              'Menü girilmedi'.tr,
               style: const pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
             )
           else
@@ -231,7 +232,7 @@ class CafeteriaPdfService {
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
           pw.Text(
-            'Günlük Besin Değerleri Ortalaması',
+            'Günlük Besin Değerleri Ortalaması'.tr,
             style: pw.TextStyle(fontWeight: pw.FontWeight.bold),
           ),
           pw.SizedBox(height: 10),

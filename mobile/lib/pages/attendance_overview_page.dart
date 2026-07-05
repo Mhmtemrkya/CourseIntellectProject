@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/attendance_service.dart';
 import '../widgets/app_header.dart';
 import '../widgets/responsive_layout.dart';
@@ -48,7 +49,7 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: const AppHeader(title: 'Devamsızlık Paneli'),
+      appBar: AppHeader(title: 'Devamsızlık Paneli'.tr),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -71,7 +72,7 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Tüm öğrenciler için yoklama ve devamsızlık görünümü',
+                            'Tüm öğrenciler için yoklama ve devamsızlık görünümü'.tr,
                             style: theme.textTheme.titleLarge?.copyWith(
                               color: Colors.white,
                               fontWeight: FontWeight.w900,
@@ -79,7 +80,7 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Gün gün, tarih tarih ve sube bazlı filtrelenebilir tek panel.',
+                            'Gün gün, tarih tarih ve sube bazlı filtrelenebilir tek panel.'.tr,
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: Colors.white.withValues(alpha: 0.86),
                             ),
@@ -93,8 +94,8 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
                         Expanded(
                           child: DropdownButtonFormField<String>(
                             initialValue: _classFilter,
-                            decoration: const InputDecoration(
-                              labelText: 'Şube / Sınıf',
+                            decoration: InputDecoration(
+                              labelText: 'Şube / Sınıf'.tr,
                               border: OutlineInputBorder(),
                             ),
                             items: classes
@@ -204,14 +205,14 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
             onSelected: (value) {
               if (value == 'delete') _confirmDelete(context, item);
             },
-            itemBuilder: (context) => const [
+            itemBuilder: (context) => [
               PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [
                     Icon(Icons.delete_outline, color: Color(0xFFB42318)),
                     SizedBox(width: 8),
-                    Text('Devamsızlık kaydını sil'),
+                    Text('Devamsızlık kaydını sil'.tr),
                   ],
                 ),
               ),
@@ -227,10 +228,10 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Kaydı sil'),
+        title: Text('Kaydı sil'.tr),
         content: Text('${item.studentName} • ${item.lesson} (${item.date.day}.${item.date.month}.${item.date.year}) kaydı silinsin mi?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
           FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: const Text('Sil')),
         ],
       ),
@@ -241,7 +242,7 @@ class _AttendanceOverviewPageState extends State<AttendanceOverviewPage> {
       if (!mounted) return;
       setState(() {});
       messenger.showSnackBar(
-        const SnackBar(content: Text('Devamsızlık kaydı silindi.'), behavior: SnackBarBehavior.floating),
+        SnackBar(content: Text('Devamsızlık kaydı silindi.'.tr), behavior: SnackBarBehavior.floating),
       );
     } catch (error) {
       messenger.showSnackBar(

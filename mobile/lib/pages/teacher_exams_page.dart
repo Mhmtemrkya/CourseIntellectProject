@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/premium_resource_card.dart';
 import 'package:student/pages/teacher_exam_edit_page.dart';
 import 'package:student/pages/teacher_exam_live_camera_page.dart';
@@ -165,7 +166,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
       await _loadExams();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Planlı sınav oluşturuldu.")),
+        SnackBar(content: Text("Planlı sınav oluşturuldu.".tr)),
       );
     } catch (error) {
       if (!mounted) return;
@@ -220,7 +221,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                   _detailRow("Ortalama", exam["avgScore"] as String),
                 if (sources.isNotEmpty) ...[
                   Text(
-                    "Seçilen İçerikler",
+                    "Seçilen İçerikler".tr,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
@@ -332,7 +333,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Sınavlarım",
+        title: "Sınavlarım".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${completedExams.length} tamamlanan sınav',
         showBackButton: true,
@@ -366,7 +367,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                     ),
                   ),
                   icon: const Icon(Icons.edit_note_rounded),
-                  label: const Text('Sınav Notu / Deneme Puanı Gir'),
+                  label: Text('Sınav Notu / Deneme Puanı Gir'.tr),
                 ),
               ),
               const SizedBox(height: 18),
@@ -442,12 +443,12 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.fact_check_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Sınav Yönetimi",
+                "Sınav Yönetimi".tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -458,7 +459,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Yaklaşan sınavlarını planla, tamamlanan sınavları analiz et ve tüm süreci tek ekrandan yönet.",
+            "Yaklaşan sınavlarını planla, tamamlanan sınavları analiz et ve tüm süreci tek ekrandan yönet.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -828,7 +829,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                         );
                       },
                       icon: const Icon(Icons.bar_chart_rounded),
-                      label: const Text("Öğrenci Sonuçları"),
+                      label: Text("Öğrenci Sonuçları".tr),
                       style: OutlinedButton.styleFrom(
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
@@ -852,7 +853,7 @@ class _TeacherExamsPageState extends State<TeacherExamsPage> {
                         );
                       },
                       icon: const Icon(Icons.videocam_rounded),
-                      label: const Text("Canlı Kamera"),
+                      label: Text("Canlı Kamera".tr),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: const Color(0xFF2563EB),
                         side: const BorderSide(color: Color(0x552563EB)),

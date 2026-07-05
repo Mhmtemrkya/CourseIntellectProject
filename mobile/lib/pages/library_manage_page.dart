@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:student/services/admin_directory_api_service.dart';
 import 'package:student/services/library_api_service.dart';
@@ -80,11 +81,11 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Kütüphane',
+        title: Text('Kütüphane'.tr,
             style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(
-            tooltip: 'Hatırlatma gönder',
+            tooltip: 'Hatırlatma gönder'.tr,
             onPressed: () async {
               try {
                 final result = await LibraryApiService.instance.sendReminders();
@@ -190,7 +191,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
         TextField(
           onChanged: (v) => setState(() => search = v),
           decoration: InputDecoration(
-            hintText: 'Kitap, yazar veya ISBN ara...',
+            hintText: 'Kitap, yazar veya ISBN ara...'.tr,
             prefixIcon: const Icon(Icons.search_rounded, size: 20),
             filled: true,
             fillColor: theme.cardColor,
@@ -291,7 +292,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                     ),
                     onPressed:
                         available > 0 ? () => _openCheckoutSheet(book) : null,
-                    child: const Text('Ödünç Ver'),
+                    child: Text('Ödünç Ver'.tr),
                   ),
                 ],
               ),
@@ -310,7 +311,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
           Padding(
             padding: const EdgeInsets.all(32),
             child: Center(
-                child: Text('Dışarıda kitap yok.',
+                child: Text('Dışarıda kitap yok.'.tr,
                     style: theme.textTheme.bodyMedium)),
           )
         else
@@ -389,7 +390,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                                   SnackBar(content: Text(e.toString())));
                             }
                           },
-                          child: const Text('İade Al'),
+                          child: Text('İade Al'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -401,8 +402,8 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                                   .extendLoan(loan['id'].toString());
                               if (!mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                      content: Text('Süre uzatıldı.')));
+                                  SnackBar(
+                                      content: Text('Süre uzatıldı.'.tr)));
                               _load();
                             } catch (e) {
                               if (!mounted) return;
@@ -521,7 +522,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                   TextField(
                       controller: title,
                       decoration:
-                          const InputDecoration(labelText: 'Kitap adı *')),
+                          InputDecoration(labelText: 'Kitap adı *'.tr)),
                   const SizedBox(height: 10),
                   Row(
                     children: [
@@ -536,7 +537,7 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                         child: TextField(
                             controller: publisher,
                             decoration:
-                                const InputDecoration(labelText: 'Yayınevi')),
+                                InputDecoration(labelText: 'Yayınevi'.tr)),
                       ),
                     ],
                   ),
@@ -646,8 +647,8 @@ class _LibraryManagePageState extends State<LibraryManagePage> {
                   const SizedBox(height: 12),
                   TextField(
                     onChanged: (v) => setSheetState(() => query = v),
-                    decoration: const InputDecoration(
-                      hintText: 'Öğrenci ara...',
+                    decoration: InputDecoration(
+                      hintText: 'Öğrenci ara...'.tr,
                       prefixIcon: Icon(Icons.search_rounded, size: 20),
                     ),
                   ),

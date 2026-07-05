@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -152,8 +153,8 @@ class _MessageComposerState extends State<MessageComposer> {
                             color: Colors.white,
                           ),
                         )
-                      : const Text(
-                          'Gönder',
+                      : Text(
+                          'Gönder'.tr,
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                 ),

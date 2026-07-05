@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -46,7 +47,7 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
                 ),
                 const SizedBox(height: 12),
                 if (_classes.isEmpty)
-                  const Text('Henüz sınıf kaydı bulunmuyor.')
+                  Text('Henüz sınıf kaydı bulunmuyor.'.tr)
                 else
                   ..._classes.map((className) {
                     final count = students.where((s) => s.className == className).length;
@@ -98,7 +99,7 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
     final name = _classNameController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lütfen sınıf adını girin.')),
+        SnackBar(content: Text('Lütfen sınıf adını girin.'.tr)),
       );
       return;
     }
@@ -128,8 +129,8 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Sınıf Ekle',
+        title: Text(
+          'Sınıf Ekle'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -138,10 +139,10 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
-                const AdminHeroCard(
+                AdminHeroCard(
                   eyebrow: 'Sınıf yönetimi',
                   title:
-                      'Yeni sınıf tanımlarını ekleyin ve tüm mobil formlarda kullanıma açın.',
+                      'Yeni sınıf tanımlarını ekleyin ve tüm mobil formlarda kullanıma açın.'.tr,
                   description:
                       'Eklenen sınıflar öğrenci kaydı ve ders programı ekranlarında liste olarak görünür.',
                   metrics: [
@@ -154,13 +155,13 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const AdminSectionTitle(title: 'Yeni Sınıf'),
+                      AdminSectionTitle(title: 'Yeni Sınıf'.tr),
                       const SizedBox(height: 12),
                       TextField(
                         controller: _classNameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Sınıf Adı',
-                          hintText: 'Örn: 10-B',
+                        decoration: InputDecoration(
+                          labelText: 'Sınıf Adı'.tr,
+                          hintText: 'Örn: 10-B'.tr,
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -200,7 +201,7 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       AdminSectionTitle(
-                        title: 'Kayıtlı Sınıflar',
+                        title: 'Kayıtlı Sınıflar'.tr,
                         actionLabel: 'Yenile',
                         onAction: _loadClasses,
                       ),
@@ -215,7 +216,7 @@ class _AdminClassManagementPageState extends State<AdminClassManagementPage> {
                       ),
                       const SizedBox(height: 12),
                       if (_classes.isEmpty)
-                        const Text('Henüz sınıf kaydı bulunmuyor.')
+                        Text('Henüz sınıf kaydı bulunmuyor.'.tr)
                       else
                         Wrap(
                           spacing: 8,

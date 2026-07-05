@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_export_service.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
@@ -31,7 +32,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
     final approvalComplete = approvalLabel == 'Onaylandı';
 
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Fatura Detayı'),
+      appBar: AppHeader(title: 'Fatura Detayı'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -43,7 +44,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
             colors: [const Color(0xFF0F172A), accentColor],
             metrics: [
               AccountingHeroMetric(
-                label: 'Belge Tutarı',
+                label: 'Belge Tutarı'.tr,
                 value: current.amount,
               ),
               AccountingHeroMetric(label: 'Durum', value: current.status),
@@ -54,11 +55,11 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'Belge Özeti'),
+                AccountingSectionTitle(title: 'Belge Özeti'.tr),
                 const SizedBox(height: 14),
-                _DetailRow(label: 'Belge Adı', value: current.title),
+                _DetailRow(label: 'Belge Adı'.tr, value: current.title),
                 _DetailRow(label: 'Kategori', value: current.category),
-                _DetailRow(label: 'Kayıt Bilgisi', value: current.subtitle),
+                _DetailRow(label: 'Kayıt Bilgisi'.tr, value: current.subtitle),
                 _DetailRow(label: 'Toplam Tutar', value: current.amount),
                 _DetailRow(label: 'Onay Durumu', value: approvalLabel),
               ],
@@ -69,14 +70,14 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'Finans Akışı'),
+                AccountingSectionTitle(title: 'Finans Akışı'.tr),
                 const SizedBox(height: 14),
                 _FlowTile(
                   color: accentColor,
                   icon: Icons.receipt_long_outlined,
-                  title: 'Belge oluşturuldu',
+                  title: 'Belge oluşturuldu'.tr,
                   subtitle:
-                      'Muhasebe kaydı sisteme işlendi ve belge numarası üretildi.',
+                      'Muhasebe kaydı sisteme işlendi ve belge numarası üretildi.'.tr,
                 ),
                 _FlowTile(
                   color: accentColor,
@@ -91,9 +92,9 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                 _FlowTile(
                   color: accentColor,
                   icon: Icons.picture_as_pdf_outlined,
-                  title: 'Belge çıktısı hazır',
+                  title: 'Belge çıktısı hazır'.tr,
                   subtitle:
-                      'Makbuz ve PDF paylaşımı için belge formatı hazır tutuluyor.',
+                      'Makbuz ve PDF paylaşımı için belge formatı hazır tutuluyor.'.tr,
                   isLast: true,
                 ),
               ],
@@ -104,7 +105,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'Hızlı İşlemler'),
+                AccountingSectionTitle(title: 'Hızlı İşlemler'.tr),
                 const SizedBox(height: 14),
                 Row(
                   children: [
@@ -112,7 +113,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                       child: FilledButton.icon(
                         onPressed: () => _downloadPdf(context),
                         icon: const Icon(Icons.download_rounded),
-                        label: const Text('PDF İndir'),
+                        label: Text('PDF İndir'.tr),
                       ),
                     ),
                     const SizedBox(width: 10),
@@ -120,7 +121,7 @@ class AccountingInvoiceDetailPage extends StatelessWidget {
                       child: OutlinedButton.icon(
                         onPressed: () => _sharePdf(context),
                         icon: const Icon(Icons.share_outlined),
-                        label: const Text('Paylaş'),
+                        label: Text('Paylaş'.tr),
                       ),
                     ),
                   ],

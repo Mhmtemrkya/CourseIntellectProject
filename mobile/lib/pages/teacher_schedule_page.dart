@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/schedule_api_service.dart';
 import '../services/schedule_store.dart';
@@ -86,7 +87,7 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ders Programım'),
+        title: Text('Ders Programım'.tr),
         actions: [
           IconButton(
             tooltip: _gridMode ? 'Liste görünümü' : 'Haftalık çizelge',
@@ -114,11 +115,11 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
             _heroCard(theme),
             const SizedBox(height: 16),
             SegmentedButton<bool>(
-              segments: const [
+              segments: [
                 ButtonSegment(
                   value: true,
                   icon: Icon(Icons.calendar_view_week_rounded),
-                  label: Text('Çizelge'),
+                  label: Text('Çizelge'.tr),
                 ),
                 ButtonSegment(
                   value: false,
@@ -178,8 +179,8 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Ders Programım',
+          Text(
+            'Ders Programım'.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 24,
@@ -334,8 +335,8 @@ class _TeacherSchedulePageState extends State<TeacherSchedulePage> {
       color: theme.cardColor,
       borderRadius: BorderRadius.circular(18),
     ),
-    child: const Text(
-      'Bu gün için planlı ders yok.',
+    child: Text(
+      'Bu gün için planlı ders yok.'.tr,
       textAlign: TextAlign.center,
     ),
   );

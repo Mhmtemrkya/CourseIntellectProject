@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
 import 'admin_staff_detail_page.dart';
 import 'admin_staff_registration_page.dart';
@@ -97,7 +98,7 @@ class _AdminStaffListPageState extends State<AdminStaffListPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Personel Yönetimi'),
+        title: Text('Personel Yönetimi'.tr),
         actions: [
           IconButton(
             onPressed: _isRefreshing ? null : _refresh,
@@ -134,7 +135,7 @@ class _AdminStaffListPageState extends State<AdminStaffListPage> {
                                 setState(() => _search = value),
                             decoration: InputDecoration(
                               hintText:
-                                  'Ad, kullanıcı adı, departman veya e-posta ara…',
+                                  'Ad, kullanıcı adı, departman veya e-posta ara…'.tr,
                               prefixIcon: const Icon(Icons.search),
                               filled: true,
                               fillColor: theme.scaffoldBackgroundColor,
@@ -181,13 +182,13 @@ class _AdminStaffListPageState extends State<AdminStaffListPage> {
                     ),
                   ),
                   if (filtered.isEmpty)
-                    const SliverFillRemaining(
+                    SliverFillRemaining(
                       hasScrollBody: false,
                       child: Center(
                         child: Padding(
                           padding: EdgeInsets.all(32),
                           child: Text(
-                            'Filtrelere uyan personel bulunamadı.',
+                            'Filtrelere uyan personel bulunamadı.'.tr,
                             textAlign: TextAlign.center,
                           ),
                         ),

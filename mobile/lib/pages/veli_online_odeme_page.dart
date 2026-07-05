@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/widgets/app_header.dart';
 import 'veli_odeme_makbuz_page.dart';
 
@@ -24,7 +25,7 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
 
-      appBar: const AppHeader(title: "Online Ödeme"),
+      appBar: AppHeader(title: "Online Ödeme".tr),
 
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -37,7 +38,7 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
               const SizedBox(height: 20),
 
               Text(
-                "Ödenecek Tutar",
+                "Ödenecek Tutar".tr,
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -87,7 +88,7 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                 keyboardType: TextInputType.number,
 
                 decoration: InputDecoration(
-                  labelText: "Kart Numarası",
+                  labelText: "Kart Numarası".tr,
                   filled: true,
                   fillColor: theme.cardColor,
                   border: OutlineInputBorder(
@@ -185,8 +186,8 @@ class _VeliOnlineOdemePageState extends State<VeliOnlineOdemePage> {
                     ),
                   ),
 
-                  child: const Text(
-                    "Ödemeyi Tamamla",
+                  child: Text(
+                    "Ödemeyi Tamamla".tr,
                     style: TextStyle(fontSize: 16),
                   ),
                 ),

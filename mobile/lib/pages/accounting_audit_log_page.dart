@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/app_header.dart';
@@ -35,20 +36,20 @@ class _AccountingAuditLogPageState extends State<AccountingAuditLogPage> {
   @override
   Widget build(BuildContext context) {
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'İşlem Kayıtları'),
+      appBar: AppHeader(title: 'İşlem Kayıtları'.tr),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AccountingHeroCard(
             eyebrow: 'Audit log',
             title:
-                'Muhasebe modülünde yapılan finans işlemleri kronolojik olarak kaydedilir.',
+                'Muhasebe modülünde yapılan finans işlemleri kronolojik olarak kaydedilir.'.tr,
             description:
                 'Kimin neyi ne zaman tetiklediğini görmek için bu kayıtlar kullanılır.',
             colors: const [Color(0xFF0F172A), Color(0xFF4F46E5)],
             metrics: [
               AccountingHeroMetric(
-                label: 'Kayıt',
+                label: 'Kayıt'.tr,
                 value: '${_store.auditLogs.length}',
               ),
               AccountingHeroMetric(

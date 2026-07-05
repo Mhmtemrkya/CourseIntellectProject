@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:video_player/video_player.dart';
 
@@ -336,7 +337,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     if (uri == null) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Bu içerik için dosya bulunamadı.')),
+        SnackBar(content: Text('Bu içerik için dosya bulunamadı.'.tr)),
       );
       return;
     }
@@ -351,7 +352,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     if (!launched && mounted) {
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Dosya açılamadı.')));
+      ).showSnackBar(SnackBar(content: Text('Dosya açılamadı.'.tr)));
     }
   }
 
@@ -396,7 +397,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         title: Text(currentTitle),
         actions: [
           IconButton(
-            tooltip: 'İndir',
+            tooltip: 'İndir'.tr,
             onPressed: _fileUri == null
                 ? null
                 : () => _openFile(download: true),
@@ -771,8 +772,8 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                           ),
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          "İçerik Açıklaması",
+                        Text(
+                          "İçerik Açıklaması".tr,
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -790,7 +791,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                         const SizedBox(height: 18),
                         _premiumInfoCard(
                           accent: accent,
-                          title: 'Bu içerikte ilerlemen',
+                          title: 'Bu içerikte ilerlemen'.tr,
                           subtitle: widget.playlist.length > 1
                               ? '${widget.playlist.length} içeriklik seri içindesin.'
                               : 'Bu içerik tek ders olarak yayınlandı.',
@@ -846,7 +847,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                   onPressed: () =>
                                       _playPlaylistItem(nextPlaylistItem),
                                   icon: const Icon(Icons.skip_next_rounded),
-                                  label: const Text('Sıradaki'),
+                                  label: Text('Sıradaki'.tr),
                                 ),
                             ],
                           ),
@@ -924,7 +925,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
                                 const SizedBox(width: 10),
                                 _youtubeAction(
                                   icon: Icons.download_rounded,
-                                  label: 'İndir',
+                                  label: 'İndir'.tr,
                                   onTap: _fileUri == null
                                       ? null
                                       : () => _openFile(download: true),
@@ -1032,9 +1033,9 @@ class _ContentDetailPageState extends State<ContentDetailPage>
     final comments = _engagement?.comments ?? const <ContentCommentRecord>[];
     return _premiumInfoCard(
       accent: accent,
-      title: 'Etkileşim ve Notlar',
+      title: 'Etkileşim ve Notlar'.tr,
       subtitle:
-          'Notların, favorilerin ve yorumların canlı backend ile saklanır.',
+          'Notların, favorilerin ve yorumların canlı backend ile saklanır.'.tr,
       children: [
         Row(
           children: [
@@ -1088,7 +1089,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         ],
         const SizedBox(height: 18),
         Text(
-          'Alıştırmalar',
+          'Alıştırmalar'.tr,
           style: Theme.of(
             context,
           ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w900),
@@ -1096,7 +1097,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         const SizedBox(height: 8),
         if (exercises.isEmpty)
           Text(
-            'Bu içerik için alıştırma eklenmemiş.',
+            'Bu içerik için alıştırma eklenmemiş.'.tr,
             style: TextStyle(
               color: Theme.of(
                 context,
@@ -1130,7 +1131,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
         const SizedBox(height: 8),
         if (comments.isEmpty)
           Text(
-            'Henüz yorum yok.',
+            'Henüz yorum yok.'.tr,
             style: TextStyle(
               color: Theme.of(
                 context,
@@ -1294,13 +1295,13 @@ class _ContentDetailPageState extends State<ContentDetailPage>
 
   Widget _videoPlaceholder() {
     if (_videoLoading) {
-      return const Column(
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           CircularProgressIndicator(color: Colors.white),
           SizedBox(height: 14),
           Text(
-            'Video yükleniyor...',
+            'Video yükleniyor...'.tr,
             style: TextStyle(
               color: Colors.white70,
               fontWeight: FontWeight.w700,
@@ -1341,7 +1342,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
               onPressed: () => _openFile(download: false),
               style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
               icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Tarayıcıda Aç'),
+              label: Text('Tarayıcıda Aç'.tr),
             ),
           ],
         ),
@@ -1379,7 +1380,7 @@ class _ContentDetailPageState extends State<ContentDetailPage>
   Widget _speedMenu({required ValueChanged<double> onSelected, Color? color}) {
     final foreground = color ?? _accentColor();
     return PopupMenuButton<double>(
-      tooltip: 'Hız',
+      tooltip: 'Hız'.tr,
       onSelected: onSelected,
       itemBuilder: (context) => const [
         PopupMenuItem(value: 0.75, child: Text('0.75x')),

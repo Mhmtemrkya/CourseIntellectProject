@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../services/student_registry_store.dart';
@@ -46,7 +47,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
           AdminHeroCard(
             eyebrow: 'Yönetici duyuruları',
             title:
-                'Kurum genelindeki duyuruları oluşturun, düzenleyin ve hedef kitleye göre yönetin.',
+                'Kurum genelindeki duyuruları oluşturun, düzenleyin ve hedef kitleye göre yönetin.'.tr,
             description:
                 'Öğrenci, veli, öğretmen veya tüm kurum için profesyonel duyuru akışı buradan yönetilir.',
             metrics: [
@@ -54,7 +55,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                 label: 'Toplam',
                 value: '${_announcements.length}',
               ),
-              AdminHeroMetric(label: 'Bugün', value: '1 yeni'),
+              AdminHeroMetric(label: 'Bugün'.tr, value: '1 yeni'),
             ],
           ),
           const SizedBox(height: 16),
@@ -285,7 +286,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                 : _studentOptionsForClass(targetClassName);
             return PremiumModalShell(
               eyebrow: 'Yeni Duyuru',
-              title: 'Kurumsal duyuruyu profesyonel biçimde oluşturun.',
+              title: 'Kurumsal duyuruyu profesyonel biçimde oluşturun.'.tr,
               description:
                   'Desktop akışındaki gibi hedef kitleyi, sınıfı ve gerekirse seçili kişi listesini belirleyin.',
               colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -295,8 +296,8 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                 children: [
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Duyuru Başlığı',
+                    decoration: InputDecoration(
+                      labelText: 'Duyuru Başlığı'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -307,19 +308,19 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                       labelText: 'Hedef Kitle',
                       border: OutlineInputBorder(),
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'Tüm Kurum',
-                        child: Text('Tüm Kurum'),
+                        child: Text('Tüm Kurum'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Öğrenci',
-                        child: Text('Öğrenciler'),
+                        child: Text('Öğrenciler'.tr),
                       ),
                       DropdownMenuItem(value: 'Veli', child: Text('Veliler')),
                       DropdownMenuItem(
                         value: 'Teacher',
-                        child: Text('Öğretmenler'),
+                        child: Text('Öğretmenler'.tr),
                       ),
                     ],
                     onChanged: (value) => setSheetState(() {
@@ -336,8 +337,8 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                           targetClassName.isEmpty && _classes.isNotEmpty
                           ? _classes.first
                           : targetClassName,
-                      decoration: const InputDecoration(
-                        labelText: 'Sınıf',
+                      decoration: InputDecoration(
+                        labelText: 'Sınıf'.tr,
                         border: OutlineInputBorder(),
                       ),
                       items: _classes
@@ -358,7 +359,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                   ],
                   if (normalizedAudience == 'Veli') ...[
                     Text(
-                      'Liste Kaynağı',
+                      'Liste Kaynağı'.tr,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -386,8 +387,8 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                   TextField(
                     controller: detailController,
                     maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Duyuru İçeriği',
+                    decoration: InputDecoration(
+                      labelText: 'Duyuru İçeriği'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -396,7 +397,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                     Row(
                       children: [
                         Text(
-                          'Seçili Kişiler',
+                          'Seçili Kişiler'.tr,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
@@ -474,7 +475,7 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(sheetContext),
-                          child: const Text('İptal'),
+                          child: Text('İptal'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -485,8 +486,8 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                                     normalizedAudience == 'Öğrenci') &&
                                 selectedKeys.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Lütfen en az bir kişi seçin.'),
+                                SnackBar(
+                                  content: Text('Lütfen en az bir kişi seçin.'.tr),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -522,13 +523,13 @@ class _AdminAnnouncementsPageState extends State<AdminAnnouncementsPage> {
                             Navigator.pop(sheetContext);
                             _loadAnnouncements();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Duyuru başarıyla oluşturuldu.'),
+                              SnackBar(
+                                content: Text('Duyuru başarıyla oluşturuldu.'.tr),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },
-                          child: const Text('Duyuruyu Yayınla'),
+                          child: Text('Duyuruyu Yayınla'.tr),
                         ),
                       ),
                     ],

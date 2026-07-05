@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session_store.dart';
@@ -309,13 +310,13 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                   ),
                 ),
                 const SizedBox(height: 14),
-                const Text(
-                  'İçerik yayınlandı',
+                Text(
+                  'İçerik yayınlandı'.tr,
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Yeni içerik öğrenci panelinde görünmeye başladı.',
+                  'Yeni içerik öğrenci panelinde görünmeye başladı.'.tr,
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Theme.of(
@@ -331,7 +332,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                       Navigator.pop(dialogContext);
                       navigator.pop();
                     },
-                    child: const Text('İçerik Yönetimine Dön'),
+                    child: Text('İçerik Yönetimine Dön'.tr),
                   ),
                 ),
               ],
@@ -349,8 +350,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
       backgroundColor: isDark ? const Color(0xFF07111F) : null,
       appBar: AppBar(
         backgroundColor: isDark ? const Color(0xFF07111F) : null,
-        title: const Text(
-          'İçerik Yükleme',
+        title: Text(
+          'İçerik Yükleme'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -380,11 +381,11 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                   ),
                 ],
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'İçerik yükleme merkezi',
+                    'İçerik yükleme merkezi'.tr,
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.w900,
@@ -393,7 +394,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                   ),
                   SizedBox(height: 10),
                   Text(
-                    'Video, PDF, Word veya PowerPoint içeriğini tek akışta ekleyip doğrudan öğrenci panelinde yayınlayabilirsin.',
+                    'Video, PDF, Word veya PowerPoint içeriğini tek akışta ekleyip doğrudan öğrenci panelinde yayınlayabilirsin.'.tr,
                     style: TextStyle(color: Colors.white70, height: 1.45),
                   ),
                 ],
@@ -403,11 +404,11 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: const [
-                  _UploadStepChip(number: '1', label: 'Yükle', active: true),
+                children: [
+                  _UploadStepChip(number: '1', label: 'Yükle'.tr, active: true),
                   _UploadStepChip(number: '2', label: 'Bilgi'),
                   _UploadStepChip(number: '3', label: 'Ayar'),
-                  _UploadStepChip(number: '4', label: 'Yayınla'),
+                  _UploadStepChip(number: '4', label: 'Yayınla'.tr),
                 ],
               ),
             ),
@@ -419,8 +420,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                   TextFormField(
                     controller: _titleController,
                     validator: _requiredValidator,
-                    decoration: const InputDecoration(
-                      labelText: 'İçerik Başlığı',
+                    decoration: InputDecoration(
+                      labelText: 'İçerik Başlığı'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -441,8 +442,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                       Expanded(
                         child: DropdownButtonFormField<String>(
                           initialValue: _selectedClass,
-                          decoration: const InputDecoration(
-                            labelText: 'Sınıf',
+                          decoration: InputDecoration(
+                            labelText: 'Sınıf'.tr,
                             border: OutlineInputBorder(),
                           ),
                           items: _classOptions
@@ -467,8 +468,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                   TextFormField(
                     controller: _teacherController,
                     validator: _requiredValidator,
-                    decoration: const InputDecoration(
-                      labelText: 'Öğretmen',
+                    decoration: InputDecoration(
+                      labelText: 'Öğretmen'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -477,13 +478,13 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
             ),
             const SizedBox(height: 14),
             _sectionCard(
-              title: 'Yayın Ayrıntıları',
+              title: 'Yayın Ayrıntıları'.tr,
               child: Column(
                 children: [
                   DropdownButtonFormField<String>(
                     initialValue: _fileType,
-                    decoration: const InputDecoration(
-                      labelText: 'Dosya Türü',
+                    decoration: InputDecoration(
+                      labelText: 'Dosya Türü'.tr,
                       border: OutlineInputBorder(),
                     ),
                     items: const [
@@ -516,8 +517,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                     validator: _requiredValidator,
                     minLines: 4,
                     maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'İçerik Açıklaması',
+                    decoration: InputDecoration(
+                      labelText: 'İçerik Açıklaması'.tr,
                       border: OutlineInputBorder(),
                       alignLabelWithHint: true,
                     ),
@@ -592,8 +593,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                                 }
                                 return null;
                               },
-                              decoration: const InputDecoration(
-                                labelText: 'Liste Başlığı',
+                              decoration: InputDecoration(
+                                labelText: 'Liste Başlığı'.tr,
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -601,8 +602,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                             TextFormField(
                               controller: _playlistOrderController,
                               keyboardType: TextInputType.number,
-                              decoration: const InputDecoration(
-                                labelText: 'Video Sırası',
+                              decoration: InputDecoration(
+                                labelText: 'Video Sırası'.tr,
                                 border: OutlineInputBorder(),
                               ),
                             ),
@@ -610,8 +611,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                           if (_playlistMode == 'existing') ...[
                             const SizedBox(height: 12),
                             if (_playlistOptions.isEmpty)
-                              const Text(
-                                'Henüz oluşturulmuş video listesi yok. Önce yeni liste başlatın.',
+                              Text(
+                                'Henüz oluşturulmuş video listesi yok. Önce yeni liste başlatın.'.tr,
                               )
                             else ...[
                               DropdownButtonFormField<String>(
@@ -650,8 +651,8 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                               TextFormField(
                                 controller: _playlistOrderController,
                                 keyboardType: TextInputType.number,
-                                decoration: const InputDecoration(
-                                  labelText: 'Video Sırası',
+                                decoration: InputDecoration(
+                                  labelText: 'Video Sırası'.tr,
                                   border: OutlineInputBorder(),
                                 ),
                               ),
@@ -717,14 +718,14 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                         OutlinedButton.icon(
                           onPressed: _saving ? null : _pickFile,
                           icon: const Icon(Icons.upload_file_rounded),
-                          label: const Text('Dosya Seç'),
+                          label: Text('Dosya Seç'.tr),
                         ),
                       ],
                     ),
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Desteklenen türler: Video, PDF, Word ve PowerPoint',
+                    'Desteklenen türler: Video, PDF, Word ve PowerPoint'.tr,
                     style: TextStyle(
                       color: Theme.of(
                         context,
@@ -736,7 +737,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
             ),
             const SizedBox(height: 14),
             _sectionCard(
-              title: 'Kapak ve Ayarlar',
+              title: 'Kapak ve Ayarlar'.tr,
               child: Column(
                 children: [
                   Container(
@@ -770,7 +771,7 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                         ),
                         OutlinedButton(
                           onPressed: _saving ? null : _pickCoverFile,
-                          child: const Text('Kapak Seç'),
+                          child: Text('Kapak Seç'.tr),
                         ),
                       ],
                     ),
@@ -780,18 +781,18 @@ class _TeacherContentCreatePageState extends State<TeacherContentCreatePage> {
                     value: _allowDownload,
                     onChanged: (value) =>
                         setState(() => _allowDownload = value),
-                    title: const Text('İndirmeye izin ver'),
+                    title: Text('İndirmeye izin ver'.tr),
                   ),
                   SwitchListTile(
                     value: _allowNotes,
                     onChanged: (value) => setState(() => _allowNotes = value),
-                    title: const Text('Öğrenci notu alabilir'),
+                    title: Text('Öğrenci notu alabilir'.tr),
                   ),
                   SwitchListTile(
                     value: _completionCertificate,
                     onChanged: (value) =>
                         setState(() => _completionCertificate = value),
-                    title: const Text('Tamamlanma sertifikası'),
+                    title: Text('Tamamlanma sertifikası'.tr),
                   ),
                 ],
               ),

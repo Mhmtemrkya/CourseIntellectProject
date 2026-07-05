@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/counselor_appointments_page.dart';
 import 'package:student/pages/counselor_home_page.dart';
 import 'package:student/pages/counselor_planner_page.dart';
@@ -42,7 +43,7 @@ class CounselorBottomNav extends StatelessWidget {
         ),
         AdaptiveDestination(
           icon: Icons.local_library_rounded,
-          label: 'Kütüphane',
+          label: 'Kütüphane'.tr,
           pageBuilder: (_) => const TeacherLibraryPage(),
           sidebarColor: const Color(0xFF0EA5E9),
         ),

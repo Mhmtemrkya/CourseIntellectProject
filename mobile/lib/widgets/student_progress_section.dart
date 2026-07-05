@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/content_api_service.dart';
 import '../services/school_feed_api_service.dart';
 
@@ -157,8 +158,8 @@ class _StudentProgressSectionState extends State<StudentProgressSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Başarı Sıralaması',
+                Text(
+                  'Başarı Sıralaması'.tr,
                   style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
@@ -205,7 +206,7 @@ class _StudentProgressSectionState extends State<StudentProgressSection> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Çalışma İstatistiklerim',
+                  'Çalışma İstatistiklerim'.tr,
                   style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
@@ -239,7 +240,7 @@ class _StudentProgressSectionState extends State<StudentProgressSection> {
             child: total == 0
                 ? Center(
                     child: Text(
-                      'Bu aralıkta çalışma hareketi bulunamadı.',
+                      'Bu aralıkta çalışma hareketi bulunamadı.'.tr,
                       style: theme.textTheme.bodySmall,
                     ),
                   )

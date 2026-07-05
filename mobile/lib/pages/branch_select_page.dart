@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../navigation/admin_bottom_nav.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../services/branch_scope_store.dart';
@@ -71,17 +72,17 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
     }
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Şube Seçin')),
+      appBar: AppBar(title: Text('Şube Seçin'.tr)),
       body: ListView(
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'Yönetmek istediğiniz şubeyi seçin',
+            'Yönetmek istediğiniz şubeyi seçin'.tr,
             style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
           ),
           const SizedBox(height: 4),
           Text(
-            'Tüm ekranlar seçtiğiniz şubeye göre görüntülenir.',
+            'Tüm ekranlar seçtiğiniz şubeye göre görüntülenir.'.tr,
             style: theme.textTheme.bodyMedium,
           ),
           const SizedBox(height: 16),

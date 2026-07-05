@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
 import 'package:student/services/planned_exam_api_service.dart';
@@ -94,7 +95,7 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.calendar_today_rounded,
-        title: "Bugünkü Ders",
+        title: "Bugünkü Ders".tr,
         value: _loading ? "..." : "$_liveLessonCount",
         hint: _liveLessonCount > 0
             ? "Canlı ders kayıtları hazır"
@@ -105,7 +106,7 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.track_changes_rounded,
-        title: "Sınavlarım",
+        title: "Sınavlarım".tr,
         value: _loading ? "..." : "$_upcomingExamCount",
         hint: _upcomingExamCount > 0
             ? "Çözmeye hazır sınavlar var"
@@ -116,7 +117,7 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.bar_chart_rounded,
-        title: "Sınav Sonuçlarım",
+        title: "Sınav Sonuçlarım".tr,
         value: _loading ? "..." : "$_examResultCount",
         hint: _examResultCount > 0
             ? "Tüm notlar bir arada"
@@ -127,7 +128,7 @@ class _SummaryCardsState extends State<SummaryCards> {
       _card(
         context,
         icon: Icons.book_rounded,
-        title: "Bekleyen Ödev",
+        title: "Bekleyen Ödev".tr,
         value: _loading ? "..." : "$_pendingHomeworkCount",
         hint: _pendingHomeworkCount > 0
             ? "Teslim takibi gerekli"

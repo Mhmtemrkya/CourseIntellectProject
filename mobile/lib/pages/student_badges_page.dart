@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/badge_catalog.dart';
 import '../services/student_xp_service.dart';
 import '../widgets/badge_unlock_modal.dart';
@@ -50,7 +51,7 @@ class _StudentBadgesPageState extends State<StudentBadgesPage> {
               .clamp(0.0, 1.0);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Başarı Rozetleri')),
+      appBar: AppBar(title: Text('Başarı Rozetleri'.tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -77,7 +78,7 @@ class _StudentBadgesPageState extends State<StudentBadgesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              '300 BAŞARI ROZETİ',
+                              '300 BAŞARI ROZETİ'.tr,
                               style: theme.textTheme.titleLarge?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.w900,
@@ -85,7 +86,7 @@ class _StudentBadgesPageState extends State<StudentBadgesPage> {
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              'Her soru, her ödev, her adım seni zirveye taşır.',
+                              'Her soru, her ödev, her adım seni zirveye taşır.'.tr,
                               style: theme.textTheme.bodyMedium?.copyWith(
                                 color: Colors.white.withValues(alpha: 0.9),
                               ),

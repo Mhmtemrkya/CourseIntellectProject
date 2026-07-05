@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/api_config.dart';
@@ -81,7 +82,7 @@ class _TeacherAssignmentDetailPageState
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Ödev Detayı",
+        title: "Ödev Detayı".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle:
             '${_decodeText(widget.assignment["subject"] as String? ?? 'Ders')} Öğretmeni',
@@ -130,7 +131,7 @@ class _TeacherAssignmentDetailPageState
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Açıklama",
+                    "Açıklama".tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -172,7 +173,7 @@ class _TeacherAssignmentDetailPageState
                   const SizedBox(height: 10),
                   if (materials.isEmpty)
                     Text(
-                      "Bu ödeve öğretmen tarafından ek materyal yüklenmedi.",
+                      "Bu ödeve öğretmen tarafından ek materyal yüklenmedi.".tr,
                       style: theme.textTheme.bodyMedium,
                     )
                   else
@@ -251,14 +252,14 @@ class _TeacherAssignmentDetailPageState
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text("Ödevi Sil"),
+        title: Text("Ödevi Sil".tr),
         content: Text(
           '"${_decodeText(widget.assignment["title"] as String?)}" ödevi silinsin mi?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text("Vazgeç"),
+            child: Text("Vazgeç".tr),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -277,7 +278,7 @@ class _TeacherAssignmentDetailPageState
     Navigator.pop(context);
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text("Ödev silindi")));
+    ).showSnackBar(SnackBar(content: Text("Ödev silindi".tr)));
   }
 
   Widget _card(ThemeData theme, bool isDark, Widget child) {

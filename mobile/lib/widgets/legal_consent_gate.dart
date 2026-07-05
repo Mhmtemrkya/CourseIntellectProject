@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../legal/legal_content.dart';
@@ -165,16 +166,31 @@ class _LegalConsentSheetState extends State<_LegalConsentSheet> {
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              Text(
-                'KVKK ve Yasal Bilgilendirme',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.w900,
-                ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'KVKK ve Yasal Bilgilendirme'.tr,
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  ValueListenableBuilder<String>(
+                    valueListenable: AppLocale.language,
+                    builder: (context, lang, _) => TextButton.icon(
+                      onPressed: AppLocale.toggle,
+                      icon: const Icon(Icons.translate_rounded, size: 18),
+                      label: Text(lang == 'tr' ? 'EN' : 'TR',
+                          style: const TextStyle(fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Devam etmeden önce aydınlatma metnini okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylayın. Açık rızalar isteğe bağlıdır.',
+              Text(
+                'Devam etmeden önce aydınlatma metnini okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylayın. Açık rızalar isteğe bağlıdır.'.tr,
               ),
               const SizedBox(height: 12),
               Expanded(
@@ -188,27 +204,27 @@ class _LegalConsentSheetState extends State<_LegalConsentSheet> {
                         ),
                       ),
                       icon: const Icon(Icons.article_outlined),
-                      label: const Text('Tüm yasal metinleri oku'),
+                      label: Text('Tüm yasal metinleri oku'.tr),
                     ),
                     const SizedBox(height: 12),
                     CheckboxListTile(
                       value: _understoodKvkk,
                       onChanged: (value) =>
                           setState(() => _understoodKvkk = value ?? false),
-                      title: const Text(
-                        'KVKK aydınlatma metnini okudum ve anladım.',
+                      title: Text(
+                        'KVKK aydınlatma metnini okudum ve anladım.'.tr,
                       ),
-                      subtitle: const Text(
-                        'Bu bir açık rıza değildir; veri işleme hakkında bilgilendirme teyididir.',
+                      subtitle: Text(
+                        'Bu bir açık rıza değildir; veri işleme hakkında bilgilendirme teyididir.'.tr,
                       ),
                     ),
                     CheckboxListTile(
                       value: _acceptedTerms,
                       onChanged: (value) =>
                           setState(() => _acceptedTerms = value ?? false),
-                      title: const Text('Kullanım koşullarını kabul ediyorum.'),
-                      subtitle: const Text(
-                        'Hesap güvenliği, yetkili kullanım ve kurum kurallarını kapsar.',
+                      title: Text('Kullanım koşullarını kabul ediyorum.'.tr),
+                      subtitle: Text(
+                        'Hesap güvenliği, yetkili kullanım ve kurum kurallarını kapsar.'.tr,
                       ),
                     ),
                     const Divider(height: 24),
@@ -216,24 +232,24 @@ class _LegalConsentSheetState extends State<_LegalConsentSheet> {
                       value: _marketing,
                       onChanged: (value) => setState(() => _marketing = value),
                       title: const Text('Ticari/etkinlik ileti izni'),
-                      subtitle: const Text(
-                        'Kampanya, etkinlik ve tanıtım amaçlı e-posta/SMS gönderimine açık rıza veriyorum.',
+                      subtitle: Text(
+                        'Kampanya, etkinlik ve tanıtım amaçlı e-posta/SMS gönderimine açık rıza veriyorum.'.tr,
                       ),
                     ),
                     SwitchListTile(
                       value: _push,
                       onChanged: (value) => setState(() => _push = value),
-                      title: const Text('Anlık bildirim izni'),
-                      subtitle: const Text(
-                        'Duyuru, sınav, ödev, ödeme ve görüşme hatırlatmalarının cihaz bildirimiyle gönderilmesine izin veriyorum.',
+                      title: Text('Anlık bildirim izni'.tr),
+                      subtitle: Text(
+                        'Duyuru, sınav, ödev, ödeme ve görüşme hatırlatmalarının cihaz bildirimiyle gönderilmesine izin veriyorum.'.tr,
                       ),
                     ),
                     SwitchListTile(
                       value: _analytics,
                       onChanged: (value) => setState(() => _analytics = value),
-                      title: const Text('Kullanım analitiği izni'),
-                      subtitle: const Text(
-                        'Hizmet kalitesini artırmak için kullanım verilerimin toplulaştırılmış analizlerde kullanılmasına izin veriyorum.',
+                      title: Text('Kullanım analitiği izni'.tr),
+                      subtitle: Text(
+                        'Hizmet kalitesini artırmak için kullanım verilerimin toplulaştırılmış analizlerde kullanılmasına izin veriyorum.'.tr,
                       ),
                     ),
                   ],
@@ -260,7 +276,7 @@ class _LegalConsentSheetState extends State<_LegalConsentSheet> {
                               ),
                             )
                           : null,
-                      child: const Text('Kabul Et ve Devam Et'),
+                      child: Text('Kabul Et ve Devam Et'.tr),
                     ),
                   ),
                 ],
@@ -290,15 +306,15 @@ class _LegalDeclinedScreen extends StatelessWidget {
               const Icon(Icons.gpp_maybe_outlined, size: 54),
               const SizedBox(height: 16),
               Text(
-                'Yasal koşullar kabul edilmedi',
+                'Yasal koşullar kabul edilmedi'.tr,
                 textAlign: TextAlign.center,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 10),
-              const Text(
-                'Uygulamayı kullanabilmek için KVKK aydınlatmasını okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylamanız gerekir.',
+              Text(
+                'Uygulamayı kullanabilmek için KVKK aydınlatmasını okuyup anladığınızı ve kullanım koşullarını kabul ettiğinizi onaylamanız gerekir.'.tr,
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),

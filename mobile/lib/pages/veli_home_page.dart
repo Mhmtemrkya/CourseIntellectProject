@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/attendance_service.dart';
 import '../services/linked_children_service.dart';
@@ -243,7 +244,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
       children: [
         _sectionTitle(
           context,
-          title: 'Canlı akademik özet',
+          title: 'Canlı akademik özet'.tr,
           actionLabel: 'Detaylar',
           onAction: _showAcademicSummary,
         ),
@@ -266,7 +267,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 8),
         _sectionTitle(
           context,
-          title: 'Haftalık veli raporu',
+          title: 'Haftalık veli raporu'.tr,
           actionLabel: 'Rapor aç',
           onAction: _openWeeklyReport,
         ),
@@ -275,7 +276,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Öğretmenle hızlı iletişim',
+          title: 'Öğretmenle hızlı iletişim'.tr,
           actionLabel: 'Mesajlar',
           onAction: () => _openPage(context, const VeliMesajlarPage()),
         ),
@@ -284,7 +285,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Çalışma takibi',
+          title: 'Çalışma takibi'.tr,
           actionLabel: 'Ayrıntı',
           onAction: _showStudyTracking,
         ),
@@ -300,7 +301,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
       children: [
         _sectionTitle(
           context,
-          title: 'Sınav ve ödev takvimi',
+          title: 'Sınav ve ödev takvimi'.tr,
           actionLabel: 'Takvimi aç',
           onAction: _showScheduleSheet,
         ),
@@ -309,7 +310,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Günlük okul hizmetleri',
+          title: 'Günlük okul hizmetleri'.tr,
           actionLabel: 'Takip et',
           onAction: () =>
               _openPage(context, const ServiceLiveStatusPage(parentMode: true)),
@@ -319,7 +320,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Finans ve ödeme takibi',
+          title: 'Finans ve ödeme takibi'.tr,
           actionLabel: 'Ödemeler',
           onAction: () => _openPage(context, const VeliFinancePage()),
         ),
@@ -328,7 +329,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Çocuk ve belge yönetimi',
+          title: 'Çocuk ve belge yönetimi'.tr,
           actionLabel: 'Dashboard',
           onAction: () => _openPage(context, const VeliChildrenDashboardPage()),
         ),
@@ -337,7 +338,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'İzin ve devamsızlık bildirimi',
+          title: 'İzin ve devamsızlık bildirimi'.tr,
           actionLabel: 'Mazeret bildir',
           onAction: _openExcuseRequest,
         ),
@@ -346,7 +347,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Talepler ve onaylar',
+          title: 'Talepler ve onaylar'.tr,
           actionLabel: 'Taleplerim',
           onAction: () => _openPage(context, const VeliRequestsPage()),
         ),
@@ -362,7 +363,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 18),
         _sectionTitle(
           context,
-          title: 'Veli için öneriler',
+          title: 'Veli için öneriler'.tr,
           actionLabel: 'Plan oluştur',
           onAction: () => _openRecommendationPlan(
             _supportSuggestions.first['title']!,
@@ -409,7 +410,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   TextButton(
                     onPressed: () =>
                         _openPage(context, const VeliDevamsizlikPage()),
-                    child: const Text('Devamsızlık'),
+                    child: Text('Devamsızlık'.tr),
                   ),
                 ],
               ),
@@ -429,7 +430,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
             Expanded(
               child: _toolCard(
                 context,
-                title: 'Çocuk Dashboard',
+                title: 'Çocuk Dashboard'.tr,
                 icon: Icons.family_restroom_outlined,
                 color: const Color(0xFF2563EB),
                 onTap: () =>
@@ -440,7 +441,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
             Expanded(
               child: _toolCard(
                 context,
-                title: 'Makbuz Arşivi',
+                title: 'Makbuz Arşivi'.tr,
                 icon: Icons.folder_copy_outlined,
                 color: const Color(0xFF0F766E),
                 onTap: () => _openPage(context, const VeliReceiptArchivePage()),
@@ -451,7 +452,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
         const SizedBox(height: 10),
         _toolCard(
           context,
-          title: 'Öğretmen Geri Bildirimleri',
+          title: 'Öğretmen Geri Bildirimleri'.tr,
           icon: Icons.feedback_outlined,
           color: const Color(0xFF7C3AED),
           onTap: () => _openPage(context, const VeliTeacherFeedbackPage()),
@@ -605,7 +606,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 onPressed: () =>
                     _openPage(context, const VeliExamResultsPage()),
                 icon: const Icon(Icons.analytics_outlined),
-                label: const Text('Sonuçlar'),
+                label: Text('Sonuçlar'.tr),
               ),
               const SizedBox(width: 8),
               FilledButton.tonalIcon(
@@ -630,7 +631,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
               Expanded(
                 child: _metricBox(
                   context,
-                  title: 'Haftalık katılım',
+                  title: 'Haftalık katılım'.tr,
                   value: '%$attendanceRate',
                   color: const Color(0xFF7C3AED),
                 ),
@@ -639,7 +640,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
               Expanded(
                 child: _metricBox(
                   context,
-                  title: 'Eksik görev',
+                  title: 'Eksik görev'.tr,
                   value: '${absent + late}',
                   color: const Color(0xFFB54708),
                 ),
@@ -717,7 +718,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   children: [
                     OutlinedButton(
                       onPressed: _openWeeklyReport,
-                      child: const Text('Raporu Aç'),
+                      child: Text('Raporu Aç'.tr),
                     ),
                   ],
                 ),
@@ -751,14 +752,14 @@ class _VeliHomePageState extends State<VeliHomePage> {
             children: [
               Expanded(
                 child: Text(
-                  'Güncel veli raporu',
+                  'Güncel veli raporu'.tr,
                   style: Theme.of(
                     context,
                   ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
               ),
               Chip(
-                label: const Text('Hazır'),
+                label: Text('Hazır'.tr),
                 side: BorderSide.none,
                 backgroundColor: const Color(0xFFD1FAE5),
                 labelStyle: const TextStyle(color: Color(0xFF065F46)),
@@ -766,9 +767,9 @@ class _VeliHomePageState extends State<VeliHomePage> {
             ],
           ),
           const SizedBox(height: 12),
-          _ReportLine(label: 'Katılım', value: '%$attendanceRate'),
+          _ReportLine(label: 'Katılım'.tr, value: '%$attendanceRate'),
           _ReportLine(
-            label: 'Tamamlanan ders',
+            label: 'Tamamlanan ders'.tr,
             value: '$attended / ${attendance.length}',
           ),
           _ReportLine(
@@ -776,12 +777,12 @@ class _VeliHomePageState extends State<VeliHomePage> {
             value: overdue == 0 ? 'Dengede' : '$overdue uyarı',
           ),
           _ReportLine(
-            label: 'Öğretmen raporu',
+            label: 'Öğretmen raporu'.tr,
             value:
                 _teacherReports.firstOrNull?.title ?? 'Yeni rapor bekleniyor',
           ),
           _ReportLine(
-            label: 'Gönderilen rapor',
+            label: 'Gönderilen rapor'.tr,
             value: _teacherReports.isEmpty
                 ? 'Henüz yok'
                 : '${_teacherReports.length} kayıt',
@@ -793,7 +794,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 child: FilledButton.icon(
                   onPressed: _openWeeklyReport,
                   icon: const Icon(Icons.picture_as_pdf_outlined),
-                  label: const Text('PDF Görünümü'),
+                  label: Text('PDF Görünümü'.tr),
                 ),
               ),
               const SizedBox(width: 10),
@@ -802,7 +803,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   onPressed: () =>
                       _showInfoSnack('Rapor veli e-posta adresine gönderildi.'),
                   icon: const Icon(Icons.mail_outline_rounded),
-                  label: const Text('E-posta Gönder'),
+                  label: Text('E-posta Gönder'.tr),
                 ),
               ),
             ],
@@ -852,17 +853,17 @@ class _VeliHomePageState extends State<VeliHomePage> {
               FilledButton.tonalIcon(
                 onPressed: () => _openPage(context, const VeliMesajlarPage()),
                 icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: const Text('Mesaj Gönder'),
+                label: Text('Mesaj Gönder'.tr),
               ),
               FilledButton.tonalIcon(
                 onPressed: () => _openMeetingRequest(_preferredAdvisor),
                 icon: const Icon(Icons.video_call_outlined),
-                label: const Text('Görüşme Talebi'),
+                label: Text('Görüşme Talebi'.tr),
               ),
               OutlinedButton.icon(
                 onPressed: () => _openPage(context, const VeliMeetingsListPage()),
                 icon: const Icon(Icons.event_available_outlined),
-                label: const Text('Görüşmelerim'),
+                label: Text('Görüşmelerim'.tr),
               ),
               OutlinedButton.icon(
                 onPressed: () => _openPage(context, const VeliDuyurularPage()),
@@ -1054,7 +1055,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
               Expanded(
                 child: _metricBox(
                   context,
-                  title: 'Son ödeme',
+                  title: 'Son ödeme'.tr,
                   value: latestDue,
                   color: const Color(0xFF2563EB),
                 ),
@@ -1094,12 +1095,12 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 onPressed: () =>
                     _openPage(context, const VeliOnlineOdemePage()),
                 icon: const Icon(Icons.credit_card_rounded),
-                label: const Text('Online Ödeme'),
+                label: Text('Online Ödeme'.tr),
               ),
               OutlinedButton.icon(
                 onPressed: () => _openPage(context, const VeliOdemePage()),
                 icon: const Icon(Icons.receipt_long_outlined),
-                label: const Text('Geçmişi Gör'),
+                label: Text('Geçmişi Gör'.tr),
               ),
             ],
           ),
@@ -1243,7 +1244,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 suggestion['title']!,
                 suggestion['detail']!,
               ),
-              child: const Text('Planı Uygula'),
+              child: Text('Planı Uygula'.tr),
             ),
           ),
         ],
@@ -1384,7 +1385,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Canlı akademik özet',
+                'Canlı akademik özet'.tr,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1397,7 +1398,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                   Navigator.pop(context);
                   _openPage(this.context, const VeliAcademicPage());
                 },
-                child: const Text('Detaylı Akademik Özet'),
+                child: Text('Detaylı Akademik Özet'.tr),
               ),
             ],
           ),
@@ -1411,7 +1412,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('Risk özeti'),
+          title: Text('Risk özeti'.tr),
           content: Text(
             _riskAlerts
                 .map((item) => '• ${item['title']}: ${item['detail']}')
@@ -1427,7 +1428,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 Navigator.pop(context);
                 _openMeetingRequest(_preferredAdvisor);
               },
-              child: const Text('Görüşme Talebi'),
+              child: Text('Görüşme Talebi'.tr),
             ),
           ],
         );
@@ -1451,7 +1452,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Çalışma takibi ayrıntısı',
+                'Çalışma takibi ayrıntısı'.tr,
                 style: Theme.of(
                   context,
                 ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
@@ -1476,16 +1477,16 @@ class _VeliHomePageState extends State<VeliHomePage> {
         .where((item) => item.studentName == _selectedChild)
         .length;
     return [
-      _ReportLine(label: 'Seçili öğrenci', value: _selectedChild),
+      _ReportLine(label: 'Seçili öğrenci'.tr, value: _selectedChild),
       _ReportLine(
-        label: 'Yoklama kaydı',
+        label: 'Yoklama kaydı'.tr,
         value: '${attendance.length} hareket',
       ),
       _ReportLine(
-        label: 'Geciken ödeme',
+        label: 'Geciken ödeme'.tr,
         value: overdue == 0 ? 'Yok' : '$overdue uyarı',
       ),
-      _ReportLine(label: 'Görüşme takibi', value: '$meetings kayıt'),
+      _ReportLine(label: 'Görüşme takibi'.tr, value: '$meetings kayıt'),
     ];
   }
 
@@ -1502,8 +1503,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
         )
         .length;
     return [
-      _ReportLine(label: 'Tamamlanan ders', value: '$attended kayıt'),
-      _ReportLine(label: 'Devamsızlık', value: '$absent kayıt'),
+      _ReportLine(label: 'Tamamlanan ders'.tr, value: '$attended kayıt'),
+      _ReportLine(label: 'Devamsızlık'.tr, value: '$absent kayıt'),
       _ReportLine(label: 'Gec kalma', value: '$late kayıt'),
       _ReportLine(
         label: 'Finans sinyali',
@@ -1661,7 +1662,7 @@ class _VeliHomePageState extends State<VeliHomePage> {
                 Navigator.pop(context);
                 _showInfoSnack('${document['title']} indirildi.');
               },
-              child: const Text('İndir'),
+              child: Text('İndir'.tr),
             ),
           ],
         );
@@ -1731,8 +1732,8 @@ class _VeliHomePageState extends State<VeliHomePage> {
       context,
       child: DropdownButtonFormField<String>(
         initialValue: _selectedChild,
-        decoration: const InputDecoration(
-          labelText: 'Çocuk Seçimi',
+        decoration: InputDecoration(
+          labelText: 'Çocuk Seçimi'.tr,
           border: OutlineInputBorder(),
         ),
         items: options

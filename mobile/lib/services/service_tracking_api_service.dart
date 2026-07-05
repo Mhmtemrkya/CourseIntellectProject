@@ -309,7 +309,7 @@ class DriverTodayRouteRecord {
   final String tripStatus;
   final int studentCount;
 
-  const DriverTodayRouteRecord({
+  DriverTodayRouteRecord({
     required this.routeId,
     required this.routeName,
     required this.routeType,
@@ -394,7 +394,7 @@ class ServiceLiveStatusRecord {
   final double? distanceMeters;
   final String lastLocationAt;
 
-  const ServiceLiveStatusRecord({
+  ServiceLiveStatusRecord({
     required this.studentId,
     required this.studentFullName,
     required this.routeId,
@@ -490,7 +490,7 @@ class ServiceHistoryRecord {
   final String attendanceStatus;
   final String markedAt;
 
-  const ServiceHistoryRecord({
+  ServiceHistoryRecord({
     required this.tripId,
     required this.tripDate,
     required this.tripType,
@@ -522,7 +522,7 @@ class ServiceAbsenceRequestRecord {
   final String reason;
   final String status;
 
-  const ServiceAbsenceRequestRecord({
+  ServiceAbsenceRequestRecord({
     required this.id,
     required this.studentId,
     required this.studentFullName,

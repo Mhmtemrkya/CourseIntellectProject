@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_directory_api_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../services/student_registry_store.dart';
@@ -162,7 +163,7 @@ class _AdministrativeAnnouncementsPageState
           AdminHeroCard(
             eyebrow: 'İdari duyurular',
             title:
-                'Kayıt, veli bilgilendirme ve kurum içi akışları hedefli listelerle yönetin.',
+                'Kayıt, veli bilgilendirme ve kurum içi akışları hedefli listelerle yönetin.'.tr,
             description:
                 'Desktop tarafındaki gibi sınıf ve kişi seçerek yalnızca ilgili hesaplara duyuru yayınlayın.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -172,7 +173,7 @@ class _AdministrativeAnnouncementsPageState
                 value: '${_announcements.length}',
               ),
               AdminHeroMetric(
-                label: 'Sınıf',
+                label: 'Sınıf'.tr,
                 value: _classes.isEmpty ? 'Hazır değil' : '${_classes.length}',
               ),
             ],
@@ -287,7 +288,7 @@ class _AdministrativeAnnouncementsPageState
 
             return PremiumModalShell(
               eyebrow: 'Yeni Duyuru',
-              title: 'İdari duyuruyu hedefli listeyle oluştur.',
+              title: 'İdari duyuruyu hedefli listeyle oluştur.'.tr,
               description:
                   'Sınıf ve alıcı listesini seçerek yalnızca ilgili veli veya öğrencilere yayın yap.',
               colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -297,8 +298,8 @@ class _AdministrativeAnnouncementsPageState
                 children: [
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Duyuru Başlığı',
+                    decoration: InputDecoration(
+                      labelText: 'Duyuru Başlığı'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -309,19 +310,19 @@ class _AdministrativeAnnouncementsPageState
                       labelText: 'Hedef Kitle',
                       border: OutlineInputBorder(),
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(value: 'Veli', child: Text('Veliler')),
                       DropdownMenuItem(
                         value: 'Öğrenci',
-                        child: Text('Öğrenciler'),
+                        child: Text('Öğrenciler'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Teacher',
-                        child: Text('Öğretmenler'),
+                        child: Text('Öğretmenler'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'Tüm Kurum',
-                        child: Text('Tüm Kurum'),
+                        child: Text('Tüm Kurum'.tr),
                       ),
                     ],
                     onChanged: (value) => setSheetState(() {
@@ -337,8 +338,8 @@ class _AdministrativeAnnouncementsPageState
                           targetClassName.isEmpty && _classes.isNotEmpty
                           ? _classes.first
                           : targetClassName,
-                      decoration: const InputDecoration(
-                        labelText: 'Sınıf',
+                      decoration: InputDecoration(
+                        labelText: 'Sınıf'.tr,
                         border: OutlineInputBorder(),
                       ),
                       items: _classes
@@ -359,7 +360,7 @@ class _AdministrativeAnnouncementsPageState
                   ],
                   if (audience == 'Veli') ...[
                     Text(
-                      'Liste Kaynağı',
+                      'Liste Kaynağı'.tr,
                       style: Theme.of(context).textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                       ),
@@ -387,8 +388,8 @@ class _AdministrativeAnnouncementsPageState
                   TextField(
                     controller: detailController,
                     maxLines: 5,
-                    decoration: const InputDecoration(
-                      labelText: 'Duyuru İçeriği',
+                    decoration: InputDecoration(
+                      labelText: 'Duyuru İçeriği'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -397,7 +398,7 @@ class _AdministrativeAnnouncementsPageState
                     Row(
                       children: [
                         Text(
-                          'Seçili Kişiler',
+                          'Seçili Kişiler'.tr,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(fontWeight: FontWeight.w700),
                         ),
@@ -475,7 +476,7 @@ class _AdministrativeAnnouncementsPageState
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(sheetContext),
-                          child: const Text('İptal'),
+                          child: Text('İptal'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -485,8 +486,8 @@ class _AdministrativeAnnouncementsPageState
                             if ((audience == 'Veli' || audience == 'Öğrenci') &&
                                 selectedKeys.isEmpty) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Lütfen en az bir kişi seçin.'),
+                                SnackBar(
+                                  content: Text('Lütfen en az bir kişi seçin.'.tr),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
@@ -522,13 +523,13 @@ class _AdministrativeAnnouncementsPageState
                             Navigator.pop(sheetContext);
                             _loadAnnouncements();
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Duyuru yayınlandı.'),
+                              SnackBar(
+                                content: Text('Duyuru yayınlandı.'.tr),
                                 behavior: SnackBarBehavior.floating,
                               ),
                             );
                           },
-                          child: const Text('Yayınla'),
+                          child: Text('Yayınla'.tr),
                         ),
                       ),
                     ],

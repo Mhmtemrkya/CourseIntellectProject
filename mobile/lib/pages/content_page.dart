@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'content_detail_page.dart';
 import 'student_favorites_page.dart';
 import 'student_notes_page.dart';
@@ -149,7 +150,7 @@ class _ContentPageState extends State<ContentPage>
     final filtered = _filteredContents;
     final hasSidebar = SidebarState.of(context);
     return Scaffold(
-      appBar: hasSidebar ? null : AppBar(title: const Text("İçerikler")),
+      appBar: hasSidebar ? null : AppBar(title: Text("İçerikler".tr)),
       body: FadeTransition(
         opacity: fadeAnim,
         child: SlideTransition(
@@ -187,7 +188,7 @@ class _ContentPageState extends State<ContentPage>
                         child: filtered.isEmpty
                             ? SingleChildScrollView(
                                 child: StudentEmptyStatePanel(
-                                  title: 'Henüz içerik bulunmuyor',
+                                  title: 'Henüz içerik bulunmuyor'.tr,
                                   description:
                                       'Bu derse ait konu anlatımı içerikleri henüz eklenmemiş. Yeni içerikler eklendiğinde burada görebilirsin.',
                                   accentColor: const Color(0xFF6366F1),
@@ -245,7 +246,7 @@ class _ContentPageState extends State<ContentPage>
         Expanded(
           child: _quickAccessButton(
             icon: Icons.star_rounded,
-            label: 'Favori Konularım',
+            label: 'Favori Konularım'.tr,
             color: const Color(0xFFFF9D2E),
             onTap: () => Navigator.push(
               context,
@@ -257,7 +258,7 @@ class _ContentPageState extends State<ContentPage>
         Expanded(
           child: _quickAccessButton(
             icon: Icons.sticky_note_2_rounded,
-            label: 'Notlarım',
+            label: 'Notlarım'.tr,
             color: const Color(0xFF7C3AED),
             onTap: () => Navigator.push(
               context,
@@ -325,7 +326,7 @@ class _ContentPageState extends State<ContentPage>
           children: [
             const Icon(Icons.auto_awesome_rounded, size: 18, color: Color(0xFFFF9D2E)),
             const SizedBox(width: 6),
-            Text('Önerilen Konular', style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
+            Text('Önerilen Konular'.tr, style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800)),
           ],
         ),
         const SizedBox(height: 2),
@@ -430,8 +431,8 @@ class _ContentPageState extends State<ContentPage>
         TextField(
           controller: _searchController,
           onChanged: (_) => setState(() {}),
-          decoration: const InputDecoration(
-            hintText: 'İçerik ara...',
+          decoration: InputDecoration(
+            hintText: 'İçerik ara...'.tr,
             prefixIcon: Icon(Icons.search_rounded),
           ),
         ),

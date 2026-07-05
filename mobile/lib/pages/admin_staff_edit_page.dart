@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
 
 class AdminStaffEditPage extends StatefulWidget {
@@ -111,7 +112,7 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Personel bilgileri güncellendi.')),
+        SnackBar(content: Text('Personel bilgileri güncellendi.'.tr)),
       );
       Navigator.pop(context);
     } catch (error) {
@@ -129,13 +130,13 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
     final record = _findRecord();
     if (record == null) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Personel Düzenle')),
-        body: const Center(child: Text('Personel kaydı bulunamadı.')),
+        appBar: AppBar(title: Text('Personel Düzenle'.tr)),
+        body: Center(child: Text('Personel kaydı bulunamadı.'.tr)),
       );
     }
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Personel Düzenle')),
+      appBar: AppBar(title: Text('Personel Düzenle'.tr)),
       body: Form(
         key: _formKey,
         child: ListView(
@@ -162,28 +163,28 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
               ],
             ),
             _Section(
-              title: 'Görev',
+              title: 'Görev'.tr,
               children: [
-                _textField(controller: _campus, label: 'Kampüs'),
+                _textField(controller: _campus, label: 'Kampüs'.tr),
                 _textField(
                   controller: _branchOrDepartment,
-                  label: 'Departman / Branş',
+                  label: 'Departman / Branş'.tr,
                 ),
                 _textField(
                   controller: _homeroomClass,
-                  label: 'Sınıf Öğretmenliği (opsiyonel)',
+                  label: 'Sınıf Öğretmenliği (opsiyonel)'.tr,
                 ),
                 _textField(
                   controller: _assignedClasses,
-                  label: 'Atanan Sınıflar (virgülle ayır)',
+                  label: 'Atanan Sınıflar (virgülle ayır)'.tr,
                   hint: 'Örn: 10-A, 11-B',
                 ),
               ],
             ),
             _Section(
-              title: 'Özlük',
+              title: 'Özlük'.tr,
               children: [
-                _textField(controller: _education, label: 'Öğrenim'),
+                _textField(controller: _education, label: 'Öğrenim'.tr),
                 DropdownButtonFormField<String>(
                   initialValue: _maritalStatus,
                   items: _maritalOptions
@@ -201,7 +202,7 @@ class _AdminStaffEditPageState extends State<AdminStaffEditPage> {
                 const SizedBox(height: 12),
                 _textField(
                   controller: _childCount,
-                  label: 'Çocuk Sayısı',
+                  label: 'Çocuk Sayısı'.tr,
                   keyboardType: TextInputType.number,
                 ),
                 _textField(controller: _note, label: 'Not', maxLines: 3),

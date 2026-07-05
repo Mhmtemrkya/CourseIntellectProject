@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/veli_online_odeme_page.dart';
 import 'package:student/services/accounting_finance_store.dart';
 import 'package:student/services/auth_session_store.dart';
@@ -57,7 +58,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
     final hasSidebar = SidebarState.of(context);
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: hasSidebar ? null : const AppHeader(title: "Ödemeler"),
+      appBar: hasSidebar ? null : AppHeader(title: "Ödemeler".tr),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -97,7 +98,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
         color: Colors.blue,
       ),
       _SummaryCard(
-        title: "Ödenen",
+        title: "Ödenen".tr,
         value: store.formatAmount(paid),
         icon: Icons.check_circle,
         color: Colors.green,
@@ -144,7 +145,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
         SizedBox(width: 8),
         Expanded(
           child: _SummaryCard(
-            title: "Ödenen",
+            title: "Ödenen".tr,
             value: store.formatAmount(paid),
             icon: Icons.check_circle,
             color: Colors.green,
@@ -179,8 +180,8 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
         children: [
           Row(
             children: [
-              const Text(
-                "Ödeme İlerlemesi",
+              Text(
+                "Ödeme İlerlemesi".tr,
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               const Spacer(),
@@ -217,12 +218,12 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            "Taksit Planı (2024-2025)",
+            "Taksit Planı (2024-2025)".tr,
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           SizedBox(height: 12),
           if (installments.isEmpty)
-            const Text('Bagli öğrenci için henüz taksit planı bulunmuyor.')
+            Text('Bagli öğrenci için henüz taksit planı bulunmuyor.'.tr)
           else
             ...installments.map(
               (item) => _InstallmentRow(
@@ -247,12 +248,12 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
       Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Ödeme Geçmişi", style: TextStyle(fontWeight: FontWeight.bold)),
+          Text("Ödeme Geçmişi".tr, style: TextStyle(fontWeight: FontWeight.bold)),
           SizedBox(height: 12),
           if (store.collections
               .where((item) => item.name == studentName)
               .isEmpty)
-            const Text('Bagli öğrenci için henüz tahsilat kaydı bulunmuyor.')
+            Text('Bagli öğrenci için henüz tahsilat kaydı bulunmuyor.'.tr)
           else
             ...store.collections
                 .where((item) => item.name == studentName)
@@ -285,7 +286,7 @@ class _VeliOdemePageState extends State<VeliOdemePage> {
                 );
               },
         icon: const Icon(Icons.credit_card),
-        label: const Text("Online Ödeme Yap"),
+        label: Text("Online Ödeme Yap".tr),
       ),
     );
   }

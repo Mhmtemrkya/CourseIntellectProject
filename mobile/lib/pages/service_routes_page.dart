@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/service_tracking_api_service.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/service_tracking_ui.dart';
@@ -70,7 +71,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
               children: [
                 ServiceHeroPanel(
                   eyebrow: 'Servis Operasyon Merkezi',
-                  title: 'Araç, şoför ve rotaları tek ekrandan yönetin.',
+                  title: 'Araç, şoför ve rotaları tek ekrandan yönetin.'.tr,
                   description:
                       'Yeni şoför kayıtları personel kaydında kişisel bilgi, araç ve rota bilgisiyle tek akışta yapılır. Burada durak ve öğrenci atamaları tamamlanır.',
                   icon: Icons.route_rounded,
@@ -82,12 +83,12 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                       icon: Icons.alt_route_rounded,
                     ),
                     ServiceHeroStat(
-                      label: 'Araç',
+                      label: 'Araç'.tr,
                       value: '${_vehicles.length}',
                       icon: Icons.directions_bus_rounded,
                     ),
                     ServiceHeroStat(
-                      label: 'Şoför',
+                      label: 'Şoför'.tr,
                       value: '${_drivers.length}',
                       icon: Icons.badge_rounded,
                     ),
@@ -100,14 +101,14 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 const SizedBox(height: 16),
                 _quickActionGrid(),
                 const SizedBox(height: 18),
-                const ServiceSectionHeader(
-                  title: 'Servis Araçları',
-                  subtitle: 'Plaka, kapasite ve aktiflik durumunu yönetin.',
+                ServiceSectionHeader(
+                  title: 'Servis Araçları'.tr,
+                  subtitle: 'Plaka, kapasite ve aktiflik durumunu yönetin.'.tr,
                 ),
                 const SizedBox(height: 10),
                 if (_vehicles.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Henüz servis aracı eklenmedi',
+                  ServiceEmptyPanel(
+                    title: 'Henüz servis aracı eklenmedi'.tr,
                     description:
                         'İlk aracı ekleyerek rota planlamasına başlayabilirsiniz.',
                     icon: Icons.directions_bus_filled_outlined,
@@ -115,14 +116,14 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 else
                   ..._vehicles.map((vehicle) => _vehicleCard(vehicle)),
                 const SizedBox(height: 18),
-                const ServiceSectionHeader(
-                  title: 'Servis Şoförleri',
-                  subtitle: 'Mevcut kullanıcıları servis şoförü olarak atayın.',
+                ServiceSectionHeader(
+                  title: 'Servis Şoförleri'.tr,
+                  subtitle: 'Mevcut kullanıcıları servis şoförü olarak atayın.'.tr,
                 ),
                 const SizedBox(height: 10),
                 if (_drivers.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Henüz servis şoförü yok',
+                  ServiceEmptyPanel(
+                    title: 'Henüz servis şoförü yok'.tr,
                     description:
                         'Personel/kullanıcı kaydını seçerek şoför profili oluşturabilirsiniz.',
                     icon: Icons.badge_outlined,
@@ -130,14 +131,14 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 else
                   ..._drivers.map((driver) => _driverCard(driver)),
                 const SizedBox(height: 18),
-                const ServiceSectionHeader(
+                ServiceSectionHeader(
                   title: 'Rotalar',
-                  subtitle: 'Sabah ve akşam rotalarını kapasiteyle izleyin.',
+                  subtitle: 'Sabah ve akşam rotalarını kapasiteyle izleyin.'.tr,
                 ),
                 const SizedBox(height: 10),
                 if (_routes.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Henüz servis rotası yok',
+                  ServiceEmptyPanel(
+                    title: 'Henüz servis rotası yok'.tr,
                     description:
                         'Araç ve şoför seçerek sabah veya akşam rotası oluşturun.',
                     icon: Icons.alt_route_rounded,
@@ -152,8 +153,8 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
   Widget _quickActionGrid() {
     final actions = [
       ServiceQuickAction(
-        title: 'Şoför + Araç',
-        subtitle: 'Tek kayıt formu',
+        title: 'Şoför + Araç'.tr,
+        subtitle: 'Tek kayıt formu'.tr,
         icon: Icons.directions_bus_filled_outlined,
         color: serviceBlue,
         onTap: () async {
@@ -167,7 +168,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
         },
       ),
       ServiceQuickAction(
-        title: 'Şoför Kaydı',
+        title: 'Şoför Kaydı'.tr,
         subtitle: 'Personelden tek form',
         icon: Icons.badge_outlined,
         color: serviceGreen,
@@ -182,15 +183,15 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
         },
       ),
       ServiceQuickAction(
-        title: 'Rota Oluştur',
-        subtitle: 'Sabah / akşam',
+        title: 'Rota Oluştur'.tr,
+        subtitle: 'Sabah / akşam'.tr,
         icon: Icons.alt_route_rounded,
         color: serviceOrange,
         onTap: _showCreateRouteDialog,
       ),
       ServiceQuickAction(
-        title: 'Şoför Ekranı',
-        subtitle: 'Yoklama ve GPS',
+        title: 'Şoför Ekranı'.tr,
+        subtitle: 'Yoklama ve GPS'.tr,
         icon: Icons.fact_check_outlined,
         color: servicePurple,
         onTap: () => Navigator.push(
@@ -274,7 +275,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 const SizedBox(height: 5),
                 ServiceInfoRow(
                   icon: Icons.directions_bus_outlined,
-                  label: 'Araç',
+                  label: 'Araç'.tr,
                   value: route.vehiclePlate.isEmpty
                       ? 'Araç seçilmedi'
                       : route.vehiclePlate,
@@ -283,7 +284,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 const SizedBox(height: 5),
                 ServiceInfoRow(
                   icon: Icons.person_pin_circle_outlined,
-                  label: 'Şoför',
+                  label: 'Şoför'.tr,
                   value: route.driverName.isEmpty
                       ? 'Şoför seçilmedi'
                       : route.driverName,
@@ -424,7 +425,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                 : Icons.pause_circle_outline,
           ),
           IconButton(
-            tooltip: 'Pasifleştir',
+            tooltip: 'Pasifleştir'.tr,
             onPressed: driver.isActive ? () => _deactivateDriver(driver) : null,
             icon: const Icon(Icons.block_outlined),
           ),
@@ -457,18 +458,18 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Şoförü Pasifleştir'),
+        title: Text('Şoförü Pasifleştir'.tr),
         content: Text(
           '${driver.fullName} servis şoförü olarak pasifleştirilsin mi?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Pasifleştir'),
+            child: Text('Pasifleştir'.tr),
           ),
         ],
       ),
@@ -498,20 +499,20 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Rota Oluştur'),
+          title: Text('Rota Oluştur'.tr),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: name,
-                  decoration: const InputDecoration(labelText: 'Rota adı'),
+                  decoration: InputDecoration(labelText: 'Rota adı'.tr),
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: routeType,
-                  items: const [
+                  items: [
                     DropdownMenuItem(value: 'Morning', child: Text('Sabah')),
-                    DropdownMenuItem(value: 'Evening', child: Text('Akşam')),
+                    DropdownMenuItem(value: 'Evening', child: Text('Akşam'.tr)),
                   ],
                   onChanged: (value) =>
                       setDialogState(() => routeType = value ?? 'Morning'),
@@ -529,7 +530,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                       .toList(),
                   onChanged: (value) =>
                       setDialogState(() => vehicleId = value ?? vehicleId),
-                  decoration: const InputDecoration(labelText: 'Araç'),
+                  decoration: InputDecoration(labelText: 'Araç'.tr),
                 ),
                 DropdownButtonFormField<String>(
                   initialValue: driverId,
@@ -543,17 +544,17 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
                       .toList(),
                   onChanged: (value) =>
                       setDialogState(() => driverId = value ?? driverId),
-                  decoration: const InputDecoration(labelText: 'Şoför'),
+                  decoration: InputDecoration(labelText: 'Şoför'.tr),
                 ),
                 TextField(
                   controller: start,
-                  decoration: const InputDecoration(
-                    labelText: 'Başlangıç 07:30',
+                  decoration: InputDecoration(
+                    labelText: 'Başlangıç 07:30'.tr,
                   ),
                 ),
                 TextField(
                   controller: end,
-                  decoration: const InputDecoration(labelText: 'Bitiş 09:00'),
+                  decoration: InputDecoration(labelText: 'Bitiş 09:00'.tr),
                 ),
               ],
             ),
@@ -561,7 +562,7 @@ class _ServiceRoutesPageState extends State<ServiceRoutesPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () async {
@@ -667,7 +668,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                   colors: const [Color(0xFF07111F), Color(0xFF1D4ED8)],
                   stats: [
                     ServiceHeroStat(
-                      label: 'Öğrenci',
+                      label: 'Öğrenci'.tr,
                       value: '${detail.totalStudents}',
                       icon: Icons.school_outlined,
                     ),
@@ -677,7 +678,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                       icon: Icons.event_seat_outlined,
                     ),
                     ServiceHeroStat(
-                      label: 'Boş',
+                      label: 'Boş'.tr,
                       value: '${detail.availableSeats}',
                       icon: Icons.airline_seat_recline_normal_outlined,
                     ),
@@ -689,9 +690,9 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const ServiceSectionHeader(
-                        title: 'Rota Doluluğu',
-                        subtitle: 'Araç kapasitesi ve aktif öğrenci sayısı',
+                      ServiceSectionHeader(
+                        title: 'Rota Doluluğu'.tr,
+                        subtitle: 'Araç kapasitesi ve aktif öğrenci sayısı'.tr,
                       ),
                       const SizedBox(height: 12),
                       ClipRRect(
@@ -736,7 +737,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                           ? null
                           : _showAssignStudentDialog,
                       icon: const Icon(Icons.person_add_alt_1_outlined),
-                      label: const Text('Öğrenci Ata'),
+                      label: Text('Öğrenci Ata'.tr),
                     ),
                     OutlinedButton.icon(
                       onPressed: () async {
@@ -755,20 +756,20 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                     OutlinedButton.icon(
                       onPressed: _deleteRoute,
                       icon: const Icon(Icons.delete_outline),
-                      label: const Text('Rotayı Sil/Pasifleştir'),
+                      label: Text('Rotayı Sil/Pasifleştir'.tr),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                const ServiceSectionHeader(
-                  title: 'Duraklar ve Öğrenciler',
+                ServiceSectionHeader(
+                  title: 'Duraklar ve Öğrenciler'.tr,
                   subtitle:
-                      'Şoför ekranındaki sıralama bu listeye göre oluşur.',
+                      'Şoför ekranındaki sıralama bu listeye göre oluşur.'.tr,
                 ),
                 const SizedBox(height: 10),
                 if (detail.stops.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Bu rotada durak yok',
+                  ServiceEmptyPanel(
+                    title: 'Bu rotada durak yok'.tr,
                     description:
                         'Durak ekleyip öğrencileri uygun durağa atayabilirsiniz.',
                     icon: Icons.add_location_alt_outlined,
@@ -835,19 +836,19 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                 ),
               ),
               IconButton(
-                tooltip: 'Yukarı taşı',
+                tooltip: 'Yukarı taşı'.tr,
                 onPressed: stop.sortOrder <= 1
                     ? null
                     : () => _moveStop(stop, -1),
                 icon: const Icon(Icons.arrow_upward_rounded),
               ),
               IconButton(
-                tooltip: 'Aşağı taşı',
+                tooltip: 'Aşağı taşı'.tr,
                 onPressed: () => _moveStop(stop, 1),
                 icon: const Icon(Icons.arrow_downward_rounded),
               ),
               IconButton(
-                tooltip: 'Düzenle',
+                tooltip: 'Düzenle'.tr,
                 onPressed: () => _showEditStopDialog(stop),
                 icon: const Icon(Icons.edit_outlined),
               ),
@@ -860,8 +861,8 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
           ),
           const SizedBox(height: 10),
           if (stop.students.isEmpty)
-            const ServiceStatusPill(
-              label: 'Bu durakta öğrenci yok',
+            ServiceStatusPill(
+              label: 'Bu durakta öğrenci yok'.tr,
               color: Color(0xFF64748B),
               icon: Icons.info_outline_rounded,
             )
@@ -916,7 +917,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                       ),
                     ),
                     IconButton(
-                      tooltip: 'Atamayı kaldır',
+                      tooltip: 'Atamayı kaldır'.tr,
                       onPressed: () => _deleteAssignment(student),
                       icon: const Icon(Icons.person_remove_outlined),
                     ),
@@ -947,7 +948,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
             children: [
               TextField(
                 controller: name,
-                decoration: const InputDecoration(labelText: 'Durak adı'),
+                decoration: InputDecoration(labelText: 'Durak adı'.tr),
               ),
               TextField(
                 controller: address,
@@ -964,7 +965,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
               TextField(
                 controller: order,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Sıra'),
+                decoration: InputDecoration(labelText: 'Sıra'.tr),
               ),
             ],
           ),
@@ -972,7 +973,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () async {
@@ -1003,14 +1004,14 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
     final saved = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Durak Düzenle'),
+        title: Text('Durak Düzenle'.tr),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: name,
-                decoration: const InputDecoration(labelText: 'Durak adı'),
+                decoration: InputDecoration(labelText: 'Durak adı'.tr),
               ),
               TextField(
                 controller: address,
@@ -1027,7 +1028,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
               TextField(
                 controller: order,
                 keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Sıra'),
+                decoration: InputDecoration(labelText: 'Sıra'.tr),
               ),
             ],
           ),
@@ -1035,7 +1036,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () async {
@@ -1106,7 +1107,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -1129,18 +1130,18 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Öğrenciyi Servisten Çıkar'),
+        title: Text('Öğrenciyi Servisten Çıkar'.tr),
         content: Text(
           '${student.studentFullName} servis ataması pasifleştirilsin mi?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Çıkar'),
+            child: Text('Çıkar'.tr),
           ),
         ],
       ),
@@ -1161,16 +1162,16 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Rota Sil/Pasifleştir'),
+        title: Text('Rota Sil/Pasifleştir'.tr),
         content: Text('${detail.name} rotası pasifleştirilsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Pasifleştir'),
+            child: Text('Pasifleştir'.tr),
           ),
         ],
       ),
@@ -1194,7 +1195,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Öğrenciyi Servise Ata'),
+          title: Text('Öğrenciyi Servise Ata'.tr),
           content: SizedBox(
             width: 420,
             child: Column(
@@ -1203,7 +1204,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                 TextField(
                   controller: keyword,
                   decoration: InputDecoration(
-                    labelText: 'Öğrenci ara',
+                    labelText: 'Öğrenci ara'.tr,
                     suffixIcon: IconButton(
                       icon: const Icon(Icons.search),
                       onPressed: () async {
@@ -1234,7 +1235,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
                         .toList(),
                     onChanged: (value) =>
                         setDialogState(() => selectedStudent = value),
-                    decoration: const InputDecoration(labelText: 'Öğrenci'),
+                    decoration: InputDecoration(labelText: 'Öğrenci'.tr),
                   ),
                 DropdownButtonFormField<String>(
                   initialValue: stopId,
@@ -1264,7 +1265,7 @@ class _ServiceRouteDetailPageState extends State<ServiceRouteDetailPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: selectedStudent == null

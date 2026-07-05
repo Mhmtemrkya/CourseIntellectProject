@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/pages/counselor_planner_page.dart';
 import 'package:student/services/guidance_api_service.dart';
@@ -114,7 +115,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
               backgroundColor: _orange,
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add_comment_rounded),
-              label: const Text('Görüşme'),
+              label: Text('Görüşme'.tr),
             ),
       body: loading
           ? const Center(child: CircularProgressIndicator())
@@ -308,11 +309,11 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Sınav Trendi',
+            Text('Sınav Trendi'.tr,
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             if (scores.length < 2)
-              Text('Grafik için en az 2 sınav gerekli.',
+              Text('Grafik için en az 2 sınav gerekli.'.tr,
                   style: theme.textTheme.bodySmall)
             else
               SizedBox(
@@ -343,11 +344,11 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Branş Ortalamaları',
+            Text('Branş Ortalamaları'.tr,
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             if (bySubject.isEmpty)
-              Text('Sınav kaydı yok.', style: theme.textTheme.bodySmall)
+              Text('Sınav kaydı yok.'.tr, style: theme.textTheme.bodySmall)
             else
               ...bySubject.entries.map((entry) {
                 final avg = entry.value.reduce((a, b) => a + b) /
@@ -403,8 +404,8 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: _cardDecoration(theme, isDark),
-          child: const Center(
-              child: Text('Görüşme kaydı yok. Sağ alttan ekleyin.')),
+          child: Center(
+              child: Text('Görüşme kaydı yok. Sağ alttan ekleyin.'.tr)),
         ),
       ];
     }
@@ -494,7 +495,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
               Text('${entries.length}',
                   style: const TextStyle(
                       fontWeight: FontWeight.w900, fontSize: 22)),
-              Text('Kayıt (120 gün)', style: theme.textTheme.bodySmall),
+              Text('Kayıt (120 gün)'.tr, style: theme.textTheme.bodySmall),
             ]),
             Column(children: [
               Text('$absentCount',
@@ -502,7 +503,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                       fontWeight: FontWeight.w900,
                       fontSize: 22,
                       color: Color(0xFFEF4444))),
-              Text('Devamsızlık', style: theme.textTheme.bodySmall),
+              Text('Devamsızlık'.tr, style: theme.textTheme.bodySmall),
             ]),
             Column(children: [
               Text(
@@ -514,7 +515,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                     fontSize: 22,
                     color: Color(0xFF22C55E)),
               ),
-              Text('Katılım', style: theme.textTheme.bodySmall),
+              Text('Katılım'.tr, style: theme.textTheme.bodySmall),
             ]),
           ],
         ),
@@ -524,7 +525,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: _cardDecoration(theme, isDark),
-          child: const Center(child: Text('Devamsızlık kaydı yok. 🎉')),
+          child: Center(child: Text('Devamsızlık kaydı yok. 🎉'.tr)),
         )
       else
         ...absents.map((e) => Container(
@@ -570,7 +571,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                 TextButton.icon(
                   onPressed: _openGoalSheet,
                   icon: const Icon(Icons.edit_rounded, size: 16),
-                  label: const Text('Düzenle'),
+                  label: Text('Düzenle'.tr),
                 ),
               ],
             ),
@@ -607,7 +608,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Çalışma Programı',
+            Text('Çalışma Programı'.tr,
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 10),
             Row(
@@ -638,7 +639,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                   ),
                 ).then((_) => _load()),
                 icon: const Icon(Icons.edit_calendar_rounded),
-                label: const Text('Programı Düzenle'),
+                label: Text('Programı Düzenle'.tr),
               ),
             ),
           ],
@@ -676,7 +677,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
         Container(
           padding: const EdgeInsets.all(20),
           decoration: _cardDecoration(theme, isDark),
-          child: const Center(child: Text('Atanmış envanter yok.')),
+          child: Center(child: Text('Atanmış envanter yok.'.tr)),
         )
       else
         ...inventories.map((item) {
@@ -783,7 +784,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                     Expanded(
                       child: DropdownButtonFormField<String>(
                         initialValue: sessionType,
-                        decoration: const InputDecoration(labelText: 'Tür'),
+                        decoration: InputDecoration(labelText: 'Tür'.tr),
                         items: const [
                           DropdownMenuItem(
                               value: 'bireysel', child: Text('Bireysel')),
@@ -813,8 +814,8 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                 TextField(
                   controller: noteController,
                   maxLines: 4,
-                  decoration: const InputDecoration(
-                    labelText: 'Görüşme notu',
+                  decoration: InputDecoration(
+                    labelText: 'Görüşme notu'.tr,
                     alignLabelWithHint: true,
                   ),
                 ),
@@ -822,14 +823,14 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                 DropdownButtonFormField<String>(
                   initialValue: visibility,
                   decoration: const InputDecoration(labelText: 'Gizlilik'),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                         value: 'private', child: Text('Sadece Ben')),
                     DropdownMenuItem(
                         value: 'guidance', child: Text('Rehberlik Servisi')),
                     DropdownMenuItem(
                         value: 'admin',
-                        child: Text('İdareyle Paylaşılabilir')),
+                        child: Text('İdareyle Paylaşılabilir'.tr)),
                   ],
                   onChanged: (v) =>
                       setSheetState(() => visibility = v ?? 'guidance'),
@@ -854,7 +855,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                           setSheetState(() => followUp = picked);
                         }
                       },
-                      child: const Text('Takip Tarihi Seç'),
+                      child: Text('Takip Tarihi Seç'.tr),
                     ),
                   ],
                 ),
@@ -918,7 +919,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Hedef Düzenle',
+              Text('Hedef Düzenle'.tr,
                   style:
                       TextStyle(fontWeight: FontWeight.w900, fontSize: 16)),
               const SizedBox(height: 12),
@@ -933,7 +934,7 @@ class _CounselorStudentFilePageState extends State<CounselorStudentFilePage> {
                     child: TextField(
                         controller: field,
                         decoration:
-                            const InputDecoration(labelText: 'Alan/Bölüm')),
+                            InputDecoration(labelText: 'Alan/Bölüm'.tr)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(

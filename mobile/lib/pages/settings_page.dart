@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:provider/provider.dart';
 
 import '../theme_provider.dart';
@@ -43,7 +44,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           /// BİLDİRİMLER
           SwitchListTile(
-            title: const Text("Bildirimleri Aç"),
+            title: Text("Bildirimleri Aç".tr),
 
             value: notificationsEnabled,
 
@@ -68,7 +69,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
 
             SwitchListTile(
-              title: const Text("Sınav Bildirimleri"),
+              title: Text("Sınav Bildirimleri".tr),
 
               value: examNotif,
 
@@ -80,7 +81,7 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
 
             SwitchListTile(
-              title: const Text("Ödev Bildirimleri"),
+              title: Text("Ödev Bildirimleri".tr),
 
               value: homeworkNotif,
 
@@ -96,7 +97,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
           ListTile(
             leading: const Icon(Icons.logout),
-            title: const Text("Çıkış Yap"),
+            title: Text("Çıkış Yap".tr),
             onTap: () => logoutToRoleSelect(context),
           ),
         ],

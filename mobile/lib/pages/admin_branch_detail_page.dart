@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/admin_ui.dart';
 
 class AdminBranchDetailPage extends StatelessWidget {
@@ -75,14 +76,14 @@ class AdminBranchDetailPage extends StatelessWidget {
           FilledButton.icon(
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Şube raporu paylaşıma hazırlandı.'),
+                SnackBar(
+                  content: Text('Şube raporu paylaşıma hazırlandı.'.tr),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
             },
             icon: const Icon(Icons.share_outlined),
-            label: const Text('Şube Raporunu Paylaş'),
+            label: Text('Şube Raporunu Paylaş'.tr),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 class VeliAttendanceStatus extends StatelessWidget {
   const VeliAttendanceStatus({super.key});
 
@@ -28,7 +29,7 @@ class VeliAttendanceStatus extends StatelessWidget {
           const SizedBox(height: 8),
 
           Text(
-            "Devam Oranı: 92%",
+            "Devam Oranı: 92%".tr,
             style: Theme.of(context).textTheme.bodyMedium,
           ),
 
@@ -42,24 +43,24 @@ class VeliAttendanceStatus extends StatelessWidget {
 
           const SizedBox(height: 16),
 
-          const Row(
+          Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _AttendanceBox(
                 title: "45",
-                subtitle: "Katılım",
+                subtitle: "Katılım".tr,
                 color: Colors.green,
               ),
 
               _AttendanceBox(
                 title: "3",
-                subtitle: "Devamsız",
+                subtitle: "Devamsız".tr,
                 color: Colors.red,
               ),
 
               _AttendanceBox(
                 title: "2",
-                subtitle: "İzinli",
+                subtitle: "İzinli".tr,
                 color: Colors.orange,
               ),
             ],

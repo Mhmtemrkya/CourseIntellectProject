@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/attendance_service.dart';
 import '../services/linked_children_service.dart';
 import '../services/message_api_service.dart';
@@ -128,8 +129,8 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Öğretmen Geri Bildirim Kutusu',
+        title: Text(
+          'Öğretmen Geri Bildirim Kutusu'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -181,7 +182,7 @@ class _VeliTeacherFeedbackPageState extends State<VeliTeacherFeedbackPage> {
             color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(22),
           ),
-          child: const Text('Henüz gösterilecek geri bildirim bulunmuyor.'),
+          child: Text('Henüz gösterilecek geri bildirim bulunmuyor.'.tr),
         ),
       ];
     }

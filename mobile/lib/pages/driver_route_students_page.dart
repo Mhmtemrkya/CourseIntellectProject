@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
@@ -102,7 +103,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text('Servis Şoförü'),
+        title: Text('Servis Şoförü'.tr),
         automaticallyImplyLeading: !widget.standalone,
         actions: [
           IconButton(
@@ -111,7 +112,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
           ),
           if (widget.standalone)
             IconButton(
-              tooltip: 'Çıkış Yap',
+              tooltip: 'Çıkış Yap'.tr,
               onPressed: () => logoutToRoleSelect(context),
               icon: const Icon(Icons.logout_rounded),
             ),
@@ -164,8 +165,8 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                 ],
                 const SizedBox(height: 14),
                 if (_routes.isEmpty)
-                  const ServiceEmptyPanel(
-                    title: 'Bugün için rota yok',
+                  ServiceEmptyPanel(
+                    title: 'Bugün için rota yok'.tr,
                     description:
                         'Size atanmış servis rotası oluştuğunda burada görünecek.',
                     icon: Icons.route_outlined,
@@ -174,8 +175,8 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                   DropdownButtonFormField<DriverTodayRouteRecord>(
                     initialValue: _selectedRoute,
                     isExpanded: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Bugünkü rota',
+                    decoration: InputDecoration(
+                      labelText: 'Bugünkü rota'.tr,
                     ),
                     items: _routes
                         .map(
@@ -206,9 +207,9 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                   _liveTrackingCard(),
                   const SizedBox(height: 16),
                   ServiceSectionHeader(
-                    title: 'Öğrenci Alım Listesi',
+                    title: 'Öğrenci Alım Listesi'.tr,
                     subtitle:
-                        'Durak sırasına göre yoklama alın ve veliye bildirim gönderin.',
+                        'Durak sırasına göre yoklama alın ve veliye bildirim gönderin.'.tr,
                     trailing: ServiceStatusPill(
                       label: '$_boardedCount / ${_students.length}',
                       color: serviceGreen,
@@ -216,8 +217,8 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                   ),
                   const SizedBox(height: 10),
                   if (_students.isEmpty)
-                    const ServiceEmptyPanel(
-                      title: 'Bu rotada öğrenci yok',
+                    ServiceEmptyPanel(
+                      title: 'Bu rotada öğrenci yok'.tr,
                       description:
                           'Yönetim panelinden öğrenci ataması yapıldığında liste burada görünecek.',
                       icon: Icons.groups_2_outlined,
@@ -264,7 +265,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
           icon: Icons.sensors_rounded,
         ),
         ServiceHeroStat(
-          label: 'Öğrenci',
+          label: 'Öğrenci'.tr,
           value: '${_students.length}',
           icon: Icons.groups_2_outlined,
         ),
@@ -294,7 +295,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
               child: _miniMetricCard(
                 icon: Icons.alt_route_rounded,
                 color: serviceBlue,
-                label: 'Bugünkü Rota',
+                label: 'Bugünkü Rota'.tr,
                 value: '${_routes.length}',
                 detail: 'Toplam rota',
               ),
@@ -304,7 +305,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
               child: _miniMetricCard(
                 icon: Icons.groups_2_outlined,
                 color: serviceGreen,
-                label: 'Öğrenci',
+                label: 'Öğrenci'.tr,
                 value: '${_students.length}',
                 detail: 'Toplam',
               ),
@@ -414,7 +415,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                 ? null
                 : _arrivedSchool,
             icon: const Icon(Icons.school_outlined),
-            label: const Text('Okula Ulaştı'),
+            label: Text('Okula Ulaştı'.tr),
           ),
           OutlinedButton.icon(
             onPressed:
@@ -453,7 +454,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           ServiceSectionHeader(
-            title: 'Bugünkü Rota',
+            title: 'Bugünkü Rota'.tr,
             trailing: route == null
                 ? null
                 : ServiceStatusPill(
@@ -464,8 +465,8 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
           ),
           const SizedBox(height: 14),
           if (route == null)
-            const ServiceEmptyPanel(
-              title: 'Rota bilgisi yok',
+            ServiceEmptyPanel(
+              title: 'Rota bilgisi yok'.tr,
               description: 'Şoföre rota atandığında güzergah burada oluşur.',
               icon: Icons.route_outlined,
             )
@@ -647,7 +648,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const ServiceSectionHeader(title: 'Bildirimler'),
+              ServiceSectionHeader(title: 'Bildirimler'.tr),
               const SizedBox(height: 12),
               _notificationRow(
                 icon: Icons.event_busy_outlined,
@@ -662,7 +663,7 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                     ? Icons.location_on_outlined
                     : Icons.location_off_outlined,
                 color: _locationTracking ? serviceGreen : serviceBlue,
-                title: 'Konum paylaşımı',
+                title: 'Konum paylaşımı'.tr,
                 detail: _locationTracking
                     ? 'Aktif'
                     : 'Servis başlayınca açılır',
@@ -775,8 +776,8 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
                 ),
               ),
               if (student.hasAbsenceRequest)
-                const ServiceStatusPill(
-                  label: 'Bugün binmeyecek',
+                ServiceStatusPill(
+                  label: 'Bugün binmeyecek'.tr,
                   color: serviceAmber,
                   icon: Icons.event_busy_outlined,
                 )

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/library_api_service.dart';
 
 const _navy = Color(0xFF15294B);
@@ -78,7 +79,7 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Kütüphane',
+        title: Text('Kütüphane'.tr,
             style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: loading
@@ -146,7 +147,7 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
                       const SizedBox(height: 14),
 
                       if (activeLoans.isNotEmpty) ...[
-                        const Text('Üzerimdeki Kitaplar',
+                        Text('Üzerimdeki Kitaplar'.tr,
                             style: TextStyle(fontWeight: FontWeight.w900)),
                         const SizedBox(height: 8),
                         ...activeLoans.map((loan) {
@@ -190,7 +191,7 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
                       ],
 
                       if (reservations.isNotEmpty) ...[
-                        const Text('Rezervasyonlarım',
+                        Text('Rezervasyonlarım'.tr,
                             style: TextStyle(fontWeight: FontWeight.w900)),
                         const SizedBox(height: 8),
                         ...reservations.map((r) => Container(
@@ -255,11 +256,11 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                children: const [
+                                children: [
                                   Icon(Icons.star_rounded,
                                       color: _orange, size: 20),
                                   SizedBox(width: 8),
-                                  Text('Öğretmenlerin Önerdi',
+                                  Text('Öğretmenlerin Önerdi'.tr,
                                       style: TextStyle(
                                           fontWeight: FontWeight.w800)),
                                 ],
@@ -298,7 +299,7 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
                       TextField(
                         onChanged: (v) => setState(() => search = v),
                         decoration: InputDecoration(
-                          hintText: 'Kitap veya yazar ara...',
+                          hintText: 'Kitap veya yazar ara...'.tr,
                           prefixIcon:
                               const Icon(Icons.search_rounded, size: 20),
                           filled: true,
@@ -372,7 +373,7 @@ class _StudentLibraryPageState extends State<StudentLibraryPage> {
                                               content: Text(e.toString())));
                                     }
                                   },
-                                  child: const Text('Ayırt'),
+                                  child: Text('Ayırt'.tr),
                                 ),
                             ],
                           ),

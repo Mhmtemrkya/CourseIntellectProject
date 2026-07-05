@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/notification_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -46,8 +47,8 @@ class _AdministrativeNotificationsPageState
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'İdari Bildirimler',
+        title: Text(
+          'İdari Bildirimler'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -57,7 +58,7 @@ class _AdministrativeNotificationsPageState
           AdminHeroCard(
             eyebrow: 'Bildirim merkezi',
             title:
-                'Kayıt, veli dönüşü ve evrak süreçlerine ait idari bildirimleri tek akışta görün.',
+                'Kayıt, veli dönüşü ve evrak süreçlerine ait idari bildirimleri tek akışta görün.'.tr,
             description:
                 'Yeni öğrenci kaydı, otomatik veli bilgilendirmesi ve eksik evrak hatırlatmaları burada toplanır.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],

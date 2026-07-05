@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 
@@ -47,7 +48,7 @@ class _AccountingSalaryDetailPageState
       setState(() => _salary = refreshed);
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Bordro güncellendi.')));
+      ).showSnackBar(SnackBar(content: Text('Bordro güncellendi.'.tr)));
     } catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -67,7 +68,7 @@ class _AccountingSalaryDetailPageState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             style: FilledButton.styleFrom(
@@ -109,7 +110,7 @@ class _AccountingSalaryDetailPageState
         ),
         actions: [
           IconButton(
-            tooltip: 'Düzenle',
+            tooltip: 'Düzenle'.tr,
             icon: const Icon(Icons.edit_outlined),
             onPressed: _deleting || current.id.isEmpty ? null : _openEdit,
           ),
@@ -148,7 +149,7 @@ class _AccountingSalaryDetailPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'Bordro Özeti'),
+                AccountingSectionTitle(title: 'Bordro Özeti'.tr),
                 const SizedBox(height: 14),
                 _row(context, 'Personel', current.employee),
                 _row(context, 'Pozisyon', current.role),
@@ -163,7 +164,7 @@ class _AccountingSalaryDetailPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AccountingSectionTitle(title: 'İşlem Adımları'),
+                AccountingSectionTitle(title: 'İşlem Adımları'.tr),
                 const SizedBox(height: 14),
                 _step(
                   context,
@@ -306,7 +307,7 @@ class _SalaryEditDialogState extends State<_SalaryEditDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Bordro Düzenle'),
+      title: Text('Bordro Düzenle'.tr),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -328,16 +329,16 @@ class _SalaryEditDialogState extends State<_SalaryEditDialog> {
             const SizedBox(height: 10),
             TextField(
               controller: _payDate,
-              decoration: const InputDecoration(labelText: 'Ödeme Tarihi'),
+              decoration: InputDecoration(labelText: 'Ödeme Tarihi'.tr),
             ),
             const SizedBox(height: 10),
             DropdownButtonFormField<String>(
               initialValue: _status,
               decoration: const InputDecoration(labelText: 'Durum'),
-              items: const [
+              items: [
                 DropdownMenuItem(value: 'Bekliyor', child: Text('Bekliyor')),
-                DropdownMenuItem(value: 'Planlandı', child: Text('Planlandı')),
-                DropdownMenuItem(value: 'Ödendi', child: Text('Ödendi')),
+                DropdownMenuItem(value: 'Planlandı', child: Text('Planlandı'.tr)),
+                DropdownMenuItem(value: 'Ödendi', child: Text('Ödendi'.tr)),
                 DropdownMenuItem(
                   value: 'Reddedildi',
                   child: Text('Reddedildi'),
@@ -351,7 +352,7 @@ class _SalaryEditDialogState extends State<_SalaryEditDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Vazgeç'),
+          child: Text('Vazgeç'.tr),
         ),
         FilledButton(
           onPressed: () => Navigator.pop(context, {

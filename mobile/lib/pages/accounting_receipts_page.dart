@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/accounting_finance_store.dart';
@@ -129,7 +130,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
           AccountingHeroCard(
             eyebrow: 'Tahsilat merkezi',
             title:
-                'Ödeme hareketlerini tek ekranda yönetin ve yeni tahsilatı güvenli akışla tamamlayın.',
+                'Ödeme hareketlerini tek ekranda yönetin ve yeni tahsilatı güvenli akışla tamamlayın.'.tr,
             description:
                 'Kart, havale, nakit ve POS tahsilatları için hızlı giriş ve makbuz üretimi hazır.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
@@ -138,7 +139,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                 label: 'Toplam',
                 value: _store.formatAmount(visibleTotal),
               ),
-              AccountingHeroMetric(label: 'İşlem', value: '$visibleCount'),
+              AccountingHeroMetric(label: 'İşlem'.tr, value: '$visibleCount'),
             ],
           ),
           const SizedBox(height: 16),
@@ -147,7 +148,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
             child: Row(
               children: [
                 AccountingFilterChip(
-                  label: 'Alınan Tahsilatlar',
+                  label: 'Alınan Tahsilatlar'.tr,
                   selected: _viewMode == 'received',
                   onTap: () => setState(() => _viewMode = 'received'),
                 ),
@@ -181,12 +182,12 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
           _summaryCard(context, visibleTotal, visibleCount),
           const SizedBox(height: 16),
           if (_viewMode == 'received' && filteredCollections.isEmpty)
-            const AccountingPanel(
-              child: Text('Seçili ayda alınan tahsilat bulunamadı.'),
+            AccountingPanel(
+              child: Text('Seçili ayda alınan tahsilat bulunamadı.'.tr),
             ),
           if (_viewMode == 'planned' && filteredPlans.isEmpty)
-            const AccountingPanel(
-              child: Text('Seçili ayda planlanan tahsilat bulunamadı.'),
+            AccountingPanel(
+              child: Text('Seçili ayda planlanan tahsilat bulunamadı.'.tr),
             ),
           if (_viewMode == 'received')
             ...filteredCollections.map((item) => _collectionCard(context, item))
@@ -367,7 +368,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                 Icons.edit_outlined,
                 color: Color(0xFF2563EB),
               ),
-              title: const Text('Tahsilatı Düzenle'),
+              title: Text('Tahsilatı Düzenle'.tr),
               onTap: () {
                 Navigator.pop(context);
                 _showEditCollectionSheet(item);
@@ -378,7 +379,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                 Icons.delete_outline_rounded,
                 color: Color(0xFFDC2626),
               ),
-              title: const Text('Tahsilatı Sil'),
+              title: Text('Tahsilatı Sil'.tr),
               onTap: () async {
                 final messenger = ScaffoldMessenger.of(this.context);
                 Navigator.pop(context);
@@ -441,8 +442,8 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: selectedMethod,
-                    decoration: const InputDecoration(
-                      labelText: 'Ödeme Türü',
+                    decoration: InputDecoration(
+                      labelText: 'Ödeme Türü'.tr,
                       border: OutlineInputBorder(),
                     ),
                     items: const ['Kredi Kartı', 'Havale/EFT', 'Nakit']
@@ -484,8 +485,8 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                         if (!mounted) return;
                         navigator.pop();
                         messenger.showSnackBar(
-                          const SnackBar(
-                            content: Text('Tahsilat güncellendi.'),
+                          SnackBar(
+                            content: Text('Tahsilat güncellendi.'.tr),
                             behavior: SnackBarBehavior.floating,
                           ),
                         );
@@ -569,15 +570,15 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const AccountingHeroCard(
+                      AccountingHeroCard(
                         eyebrow: 'Yeni kayıt',
                         title:
-                            'Tahsilatı hızlı ama kontrollü şekilde oluşturun.',
+                            'Tahsilatı hızlı ama kontrollü şekilde oluşturun.'.tr,
                         description:
                             'Öğrenci, tutar ve ödeme yöntemi seçildikten sonra kayıt onay ekranına alınır.',
                         colors: [Color(0xFF0F172A), Color(0xFF0F766E)],
                         metrics: [
-                          AccountingHeroMetric(label: 'Akış', value: '2 adım'),
+                          AccountingHeroMetric(label: 'Akış'.tr, value: '2 adım'),
                           AccountingHeroMetric(
                             label: 'Makbuz',
                             value: 'QR hazır',
@@ -599,8 +600,8 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                               initialValue: hasSelectedStudentOption
                                   ? selectedStudent
                                   : null,
-                              decoration: const InputDecoration(
-                                labelText: 'Öğrenci',
+                              decoration: InputDecoration(
+                                labelText: 'Öğrenci'.tr,
                                 border: OutlineInputBorder(),
                               ),
                               items: studentOptions
@@ -627,8 +628,8 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             ),
                             const SizedBox(height: 12),
                             InputDecorator(
-                              decoration: const InputDecoration(
-                                labelText: 'Sınıf',
+                              decoration: InputDecoration(
+                                labelText: 'Sınıf'.tr,
                                 border: OutlineInputBorder(),
                               ),
                               child: Text(
@@ -649,8 +650,8 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             const SizedBox(height: 12),
                             DropdownButtonFormField<String>(
                               initialValue: selectedMethod,
-                              decoration: const InputDecoration(
-                                labelText: 'Ödeme Türü',
+                              decoration: InputDecoration(
+                                labelText: 'Ödeme Türü'.tr,
                                 border: OutlineInputBorder(),
                               ),
                               items:
@@ -689,7 +690,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                                         selectedMethod,
                                         noteController.text,
                                       ),
-                                child: const Text('Tahsilatı Tamamla'),
+                                child: Text('Tahsilatı Tamamla'.tr),
                               ),
                             ),
                           ],
@@ -744,7 +745,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          'Tahsilatı onaylayın',
+                          'Tahsilatı onaylayın'.tr,
                           style: Theme.of(dialogContext).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w900),
                         ),
@@ -776,7 +777,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                       Expanded(
                         child: OutlinedButton(
                           onPressed: () => Navigator.pop(dialogContext),
-                          child: const Text('Vazgeç'),
+                          child: Text('Vazgeç'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -886,7 +887,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                       ),
                       const SizedBox(height: 14),
                       Text(
-                        'Başarılı Tahsilat',
+                        'Başarılı Tahsilat'.tr,
                         style: Theme.of(dialogContext).textTheme.titleMedium
                             ?.copyWith(fontWeight: FontWeight.w900),
                       ),
@@ -915,16 +916,16 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                             onPressed: () {
                               Navigator.pop(dialogContext);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
+                                SnackBar(
                                   content: Text(
-                                    'Tahsilat özeti paylaşıma hazırlandı.',
+                                    'Tahsilat özeti paylaşıma hazırlandı.'.tr,
                                   ),
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
                             },
                             icon: const Icon(Icons.share_outlined),
-                            label: const Text('Paylaş'),
+                            label: Text('Paylaş'.tr),
                           ),
                           FilledButton.tonalIcon(
                             onPressed: () {
@@ -937,7 +938,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                               );
                             },
                             icon: const Icon(Icons.picture_as_pdf_outlined),
-                            label: const Text('Makbuzu PDF İndir'),
+                            label: Text('Makbuzu PDF İndir'.tr),
                           ),
                         ],
                       ),

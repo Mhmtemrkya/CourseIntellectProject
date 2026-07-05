@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -66,8 +67,8 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Kayıtlar',
+        title: Text(
+          'Kayıtlar'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -76,13 +77,13 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
         children: [
           AdminHeroCard(
             eyebrow: 'Kayıt merkezi',
-            title: 'Öğrenci ve personel kayıt süreçlerini tek yerden yönetin.',
+            title: 'Öğrenci ve personel kayıt süreçlerini tek yerden yönetin.'.tr,
             description:
                 'Yeni kayıt açabilir, mevcut kayıtları izleyebilir ve öğrenci listesine geçiş yapabilirsiniz.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
               AdminHeroMetric(
-                label: 'Öğrenci',
+                label: 'Öğrenci'.tr,
                 value: '${_students.students.length}',
               ),
               AdminHeroMetric(label: 'Veli', value: '${_parents.length}'),
@@ -98,8 +99,8 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Öğrenci Kaydı',
-                  subtitle: 'TC, okul, veli ve giriş bilgileri',
+                  title: 'Öğrenci Kaydı'.tr,
+                  subtitle: 'TC, okul, veli ve giriş bilgileri'.tr,
                   icon: Icons.person_add_alt_1_outlined,
                   color: const Color(0xFF2563EB),
                   onTap: () => _openPage(const AdminStudentRegistrationPage()),
@@ -109,8 +110,8 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Personel Kaydı',
-                  subtitle: 'Öğretmen, idari personel ve yemekhaneci',
+                  title: 'Personel Kaydı'.tr,
+                  subtitle: 'Öğretmen, idari personel ve yemekhaneci'.tr,
                   icon: Icons.badge_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: () => _openPage(const AdminStaffRegistrationPage()),
@@ -120,8 +121,8 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Rol Yönetimi',
-                  subtitle: 'Yetki ve erişimleri düzenle',
+                  title: 'Rol Yönetimi'.tr,
+                  subtitle: 'Yetki ve erişimleri düzenle'.tr,
                   icon: Icons.admin_panel_settings_outlined,
                   color: const Color(0xFF0F766E),
                   onTap: () => _openPage(const AdminRoleManagementPage()),
@@ -136,7 +137,7 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
                 child: _actionCard(
                   context,
                   title: 'Evrak Takibi',
-                  subtitle: 'Eksik belge ve sözleşmeleri izle',
+                  subtitle: 'Eksik belge ve sözleşmeleri izle'.tr,
                   icon: Icons.folder_open_outlined,
                   color: const Color(0xFFB45309),
                   onTap: () => _openPage(const AdministrativeDocumentsPage()),
@@ -146,8 +147,8 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Şifre Talepleri',
-                  subtitle: 'Geçici şifre onay akışı',
+                  title: 'Şifre Talepleri'.tr,
+                  subtitle: 'Geçici şifre onay akışı'.tr,
                   icon: Icons.key_rounded,
                   color: const Color(0xFFF97316),
                   onTap: () => _openPage(const PasswordResetRequestsPage()),
@@ -215,7 +216,7 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AdminSectionTitle(
-                  title: 'Öğrenci Listesi',
+                  title: 'Öğrenci Listesi'.tr,
                   actionLabel: 'Detaylı Aç',
                   onAction: () => _openPage(const AdminStudentsPage()),
                 ),
@@ -247,7 +248,7 @@ class _AdministrativeRecordsPageState extends State<AdministrativeRecordsPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'İdari Kontroller'),
+                AdminSectionTitle(title: 'İdari Kontroller'.tr),
                 const SizedBox(height: 12),
                 _infoTile(
                   context,

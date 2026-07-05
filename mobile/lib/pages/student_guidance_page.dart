@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/guidance_api_service.dart';
 
@@ -138,7 +139,7 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
       if (!mounted) return;
       noteController.clear();
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Randevu talebin gönderildi.')));
+          SnackBar(content: Text('Randevu talebin gönderildi.'.tr)));
       _load();
     } catch (e) {
       if (!mounted) return;
@@ -191,15 +192,15 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
                       ],
                       _requestCard(theme, isDark),
                       const SizedBox(height: 16),
-                      const Text('Randevularım',
+                      Text('Randevularım'.tr,
                           style: TextStyle(fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
                       if (appointments.isEmpty)
                         Container(
                           padding: const EdgeInsets.all(20),
                           decoration: _cardDecoration(theme, isDark),
-                          child: const Center(
-                              child: Text('Henüz randevu talebin yok.')),
+                          child: Center(
+                              child: Text('Henüz randevu talebin yok.'.tr)),
                         )
                       else
                         ...appointments
@@ -208,7 +209,7 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
                           .where((i) => i['status'] == 'Tamamlandı')
                           .isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        const Text('Tamamladığım Envanterler',
+                        Text('Tamamladığım Envanterler'.tr,
                             style: TextStyle(fontWeight: FontWeight.w900)),
                         const SizedBox(height: 8),
                         ...inventories
@@ -266,11 +267,11 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: const [
+            children: [
               Icon(Icons.assignment_rounded, color: _orange, size: 20),
               SizedBox(width: 8),
               Expanded(
-                child: Text('Rehber öğretmenin senden envanter doldurmanı istedi',
+                child: Text('Rehber öğretmenin senden envanter doldurmanı istedi'.tr,
                     style: TextStyle(fontWeight: FontWeight.w800)),
               ),
             ],
@@ -308,13 +309,13 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
                 style: TextStyle(fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             if (counselors.isEmpty)
-              Text('Kurumunuzda tanımlı rehber öğretmen bulunamadı.',
+              Text('Kurumunuzda tanımlı rehber öğretmen bulunamadı.'.tr,
                   style: theme.textTheme.bodySmall)
             else ...[
               DropdownButtonFormField<String>(
                 initialValue: counselor,
                 decoration:
-                    const InputDecoration(labelText: 'Rehber Öğretmen'),
+                    InputDecoration(labelText: 'Rehber Öğretmen'.tr),
                 items: counselors
                     .map((c) => DropdownMenuItem(
                           value: c['fullName'] as String,
@@ -328,7 +329,7 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
               ),
               const SizedBox(height: 12),
               if (slots.isEmpty)
-                Text('Uygun saat bulunamadı.',
+                Text('Uygun saat bulunamadı.'.tr,
                     style: theme.textTheme.bodySmall)
               else
                 Wrap(
@@ -354,8 +355,8 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
               TextField(
                 controller: noteController,
                 maxLines: 2,
-                decoration: const InputDecoration(
-                  labelText: 'Görüşmek istediğin konu (opsiyonel)',
+                decoration: InputDecoration(
+                  labelText: 'Görüşmek istediğin konu (opsiyonel)'.tr,
                   alignLabelWithHint: true,
                 ),
               ),
@@ -456,8 +457,8 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
                 TextField(
                   controller: controllers[i],
                   maxLines: 2,
-                  decoration: const InputDecoration(
-                      hintText: 'Yanıtın...', isDense: true),
+                  decoration: InputDecoration(
+                      hintText: 'Yanıtın...'.tr, isDense: true),
                 ),
                 const SizedBox(height: 12),
               ],
@@ -473,8 +474,8 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
                     ];
                     if (answers.any((a) => (a['a'] as String).isEmpty)) {
                       ScaffoldMessenger.of(sheetContext).showSnackBar(
-                          const SnackBar(
-                              content: Text('Tüm soruları yanıtla.')));
+                          SnackBar(
+                              content: Text('Tüm soruları yanıtla.'.tr)));
                       return;
                     }
                     await GuidanceApiService.instance.completeInventory(
@@ -483,7 +484,7 @@ class _StudentGuidancePageState extends State<StudentGuidancePage> {
                     Navigator.pop(sheetContext);
                     _load();
                   },
-                  child: const Text('Gönder'),
+                  child: Text('Gönder'.tr),
                 ),
               ),
             ],

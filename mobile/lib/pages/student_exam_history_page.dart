@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
@@ -124,7 +125,7 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
                     const SizedBox(height: 12),
                     _groupCard(
                       context,
-                      title: 'Tüm Deneme Sonuçları',
+                      title: 'Tüm Deneme Sonuçları'.tr,
                       subtitle: denemeler.isEmpty
                           ? 'Henüz deneme kaydı yok'
                           : '${denemeler.length} kayıt • son skor ${denemeler.first.score}',
@@ -260,8 +261,8 @@ class _StudentExamHistoryPageState extends State<StudentExamHistoryPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Bütün ders notlarını ve girdigin tüm deneme sonuçlarını tek merkezden ac.',
+          Text(
+            'Bütün ders notlarını ve girdigin tüm deneme sonuçlarını tek merkezden ac.'.tr,
             style: TextStyle(
               color: Colors.white,
               fontSize: 20,

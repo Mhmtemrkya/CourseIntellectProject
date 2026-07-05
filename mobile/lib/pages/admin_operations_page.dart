@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'admin_administrative_units_page.dart';
 import 'admin_announcements_page.dart';
 import 'admin_branch_detail_page.dart';
@@ -149,13 +150,13 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
           AdminHeroCard(
             eyebrow: 'Kurumsal operasyon',
             title:
-                'Şube, insan kaynağı ve günlük operasyon akışlarını yönetin.',
+                'Şube, insan kaynağı ve günlük operasyon akışlarını yönetin.'.tr,
             description:
                 'Yönetici panelinde saha işleyişi, destek süreçleri ve iç iletişim aynı çatı altında izlenir.',
             metrics: [
-              AdminHeroMetric(label: 'Aktif Şube', value: '$campusCount'),
+              AdminHeroMetric(label: 'Aktif Şube'.tr, value: '$campusCount'),
               AdminHeroMetric(
-                label: 'Açık Talep',
+                label: 'Açık Talep'.tr,
                 value: '${pendingPersonnel + pendingStudents + overdueCount}',
               ),
             ],
@@ -166,7 +167,7 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Dönemsel Özet',
+                  'Dönemsel Özet'.tr,
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
@@ -266,7 +267,7 @@ class _AdminOperationsPageState extends State<AdminOperationsPage> {
                     'Operasyon görev listesi paylaşildi.',
                   ),
                   icon: const Icon(Icons.assignment_turned_in_outlined),
-                  label: const Text('Görev Plani'),
+                  label: Text('Görev Plani'.tr),
                 ),
               ),
             ],

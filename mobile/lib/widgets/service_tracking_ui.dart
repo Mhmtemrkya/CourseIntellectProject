@@ -405,7 +405,7 @@ class ServiceSectionHeader extends StatelessWidget {
   final String? subtitle;
   final Widget? trailing;
 
-  const ServiceSectionHeader({
+  ServiceSectionHeader({
     super.key,
     required this.title,
     this.subtitle,

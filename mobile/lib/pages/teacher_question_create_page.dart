@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/admin_directory_api_service.dart';
@@ -191,7 +192,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
     if (_topicController.text.trim().isEmpty ||
         _questionController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Konu ve soru metni zorunludur.')),
+        SnackBar(content: Text('Konu ve soru metni zorunludur.'.tr)),
       );
       return;
     }
@@ -202,8 +203,8 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
         .toList();
     if (_isMultipleChoice && optionValues.length < 2) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Çoktan seçmeli sorular için en az iki seçenek girin.'),
+        SnackBar(
+          content: Text('Çoktan seçmeli sorular için en az iki seçenek girin.'.tr),
         ),
       );
       return;
@@ -423,7 +424,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Öğrenci soru bankasına düşecek profesyonel soru kaydını hazırlayın.',
+                      'Öğrenci soru bankasına düşecek profesyonel soru kaydını hazırlayın.'.tr,
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w900,
@@ -483,10 +484,10 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                                 : double.infinity,
                             child: TextField(
                               controller: _topicController,
-                              decoration: const InputDecoration(
+                              decoration: InputDecoration(
                                 labelText: 'Konu',
                                 hintText:
-                                    'Örnek: Parabol, Türev, Organik Kimya',
+                                    'Örnek: Parabol, Türev, Organik Kimya'.tr,
                               ),
                             ),
                           ),
@@ -542,18 +543,18 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                                 decoration: const InputDecoration(
                                   labelText: 'Soru Tipi',
                                 ),
-                                items: const [
+                                items: [
                                   DropdownMenuItem(
                                     value: 'Açık Uçlu',
-                                    child: Text('Açık Uçlu'),
+                                    child: Text('Açık Uçlu'.tr),
                                   ),
                                   DropdownMenuItem(
                                     value: 'Çoktan Seçmeli',
-                                    child: Text('Çoktan Seçmeli'),
+                                    child: Text('Çoktan Seçmeli'.tr),
                                   ),
                                   DropdownMenuItem(
                                     value: 'Doğru / Yanlış',
-                                    child: Text('Doğru / Yanlış'),
+                                    child: Text('Doğru / Yanlış'.tr),
                                   ),
                                 ],
                                 onChanged: (value) =>
@@ -568,19 +569,19 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                     TextField(
                       controller: _questionController,
                       maxLines: 7,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         labelText: 'Soru Metni',
-                        hintText: 'Soruyu tam metin olarak yazın.',
+                        hintText: 'Soruyu tam metin olarak yazın.'.tr,
                       ),
                     ),
                     if (!_isMultipleChoice && !_isTrueFalse) ...[
                       const SizedBox(height: 12),
                       TextField(
                         controller: _answerKeyController,
-                        decoration: const InputDecoration(
-                          labelText: 'Cevap Anahtarı',
+                        decoration: InputDecoration(
+                          labelText: 'Cevap Anahtarı'.tr,
                           hintText:
-                              'Öğrencinin cevabı bununla karşılaştırılır.',
+                              'Öğrencinin cevabı bununla karşılaştırılır.'.tr,
                         ),
                       ),
                     ],
@@ -596,7 +597,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Hedef Sınıflar',
+                            'Hedef Sınıflar'.tr,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -663,7 +664,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Soru Görseli (Opsiyonel)',
+                            'Soru Görseli (Opsiyonel)'.tr,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -672,7 +673,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                           Text(fileName, style: theme.textTheme.bodyMedium),
                           const SizedBox(height: 4),
                           Text(
-                            'Görsel eklemek zorunlu değil. İstersen boş bırakıp soruyu yayınlayabilirsin.',
+                            'Görsel eklemek zorunlu değil. İstersen boş bırakıp soruyu yayınlayabilirsin.'.tr,
                             style: theme.textTheme.bodySmall,
                           ),
                           const SizedBox(height: 12),
@@ -683,7 +684,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                               OutlinedButton.icon(
                                 onPressed: _pickImage,
                                 icon: const Icon(Icons.image_outlined),
-                                label: const Text('Görsel Ekle'),
+                                label: Text('Görsel Ekle'.tr),
                               ),
                               if (_imagePath != null)
                                 OutlinedButton.icon(
@@ -692,7 +693,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                                   icon: const Icon(
                                     Icons.delete_outline_rounded,
                                   ),
-                                  label: const Text('Kaldır'),
+                                  label: Text('Kaldır'.tr),
                                 ),
                             ],
                           ),
@@ -711,7 +712,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Çözüm Eki',
+                            'Çözüm Eki'.tr,
                             style: theme.textTheme.titleSmall?.copyWith(
                               fontWeight: FontWeight.w800,
                             ),
@@ -738,7 +739,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                                 icon: const Icon(
                                   Icons.playlist_add_check_circle_outlined,
                                 ),
-                                label: const Text('Çözüm Eki Seç'),
+                                label: Text('Çözüm Eki Seç'.tr),
                               ),
                               if (_solutionAssetPath != null)
                                 OutlinedButton.icon(
@@ -749,7 +750,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                                   icon: const Icon(
                                     Icons.delete_outline_rounded,
                                   ),
-                                  label: const Text('Kaldır'),
+                                  label: Text('Kaldır'.tr),
                                 ),
                             ],
                           ),
@@ -764,9 +765,9 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
                         onChanged: (value) => setState(
                           () => _revealCorrectAnswerToStudent = value,
                         ),
-                        title: const Text('Doğru cevap öğrenciye görünsün'),
-                        subtitle: const Text(
-                          'Kapalıysa doğru seçenek sadece öğretmen detayında görünür.',
+                        title: Text('Doğru cevap öğrenciye görünsün'.tr),
+                        subtitle: Text(
+                          'Kapalıysa doğru seçenek sadece öğretmen detayında görünür.'.tr,
                         ),
                       ),
                     ],
@@ -808,7 +809,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Seçenekler',
+            'Seçenekler'.tr,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -841,7 +842,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
             ),
           ),
           Text(
-            'Doğru seçeneği soldaki seçimden işaretleyin.',
+            'Doğru seçeneği soldaki seçimden işaretleyin.'.tr,
             style: theme.textTheme.bodySmall,
           ),
         ],
@@ -864,7 +865,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Doğru Cevap',
+            'Doğru Cevap'.tr,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -875,7 +876,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
               Expanded(
                 child: _trueFalseButton(
                   theme,
-                  label: 'Doğru',
+                  label: 'Doğru'.tr,
                   icon: Icons.check_circle_rounded,
                   color: const Color(0xFF16A34A),
                   selected: current == 'Doğru',
@@ -887,7 +888,7 @@ class _TeacherQuestionCreatePageState extends State<TeacherQuestionCreatePage> {
               Expanded(
                 child: _trueFalseButton(
                   theme,
-                  label: 'Yanlış',
+                  label: 'Yanlış'.tr,
                   icon: Icons.cancel_rounded,
                   color: const Color(0xFFDC2626),
                   selected: current == 'Yanlış',

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../pages/veli_duyurular_page.dart';
 
 class VeliAnnouncements extends StatelessWidget {
@@ -55,21 +56,21 @@ class VeliAnnouncements extends StatelessWidget {
 
             const SizedBox(height: 10),
 
-            const ListTile(
+            ListTile(
               leading: Icon(Icons.campaign, color: Colors.orange),
-              title: Text("Yarıyıl Tatili Duyurusu"),
+              title: Text("Yarıyıl Tatili Duyurusu".tr),
               trailing: Text("06.01.2025"),
             ),
 
-            const ListTile(
+            ListTile(
               leading: Icon(Icons.people, color: Colors.orange),
-              title: Text("Veli Toplantısı"),
+              title: Text("Veli Toplantısı".tr),
               trailing: Text("10.01.2025"),
             ),
 
-            const ListTile(
+            ListTile(
               leading: Icon(Icons.calendar_month, color: Colors.orange),
-              title: Text("Ara Sınav Takvimi"),
+              title: Text("Ara Sınav Takvimi".tr),
               trailing: Text("08.01.2025"),
             ),
           ],

@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/question_thread_api_service.dart';
@@ -98,8 +99,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text("Başarılı"),
-            content: const Text("Yanıtınız öğrenciye gönderildi."),
+            title: Text("Başarılı".tr),
+            content: Text("Yanıtınız öğrenciye gönderildi.".tr),
             actions: [
               TextButton(
                 onPressed: () {
@@ -198,7 +199,7 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Yanıtınız",
+                    "Yanıtınız".tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -207,8 +208,8 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                   TextField(
                     controller: replyController,
                     maxLines: 6,
-                    decoration: const InputDecoration(
-                      hintText: "Öğrenciye açıklayıcı bir yanıt yazın...",
+                    decoration: InputDecoration(
+                      hintText: "Öğrenciye açıklayıcı bir yanıt yazın...".tr,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -249,14 +250,14 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    "Çözüm Ekleri",
+                                    "Çözüm Ekleri".tr,
                                     style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
                                   const SizedBox(height: 2),
                                   Text(
-                                    "Görsel, PDF veya video ekleyerek anlatımı güçlendirebilirsin.",
+                                    "Görsel, PDF veya video ekleyerek anlatımı güçlendirebilirsin.".tr,
                                     style: theme.textTheme.bodySmall?.copyWith(
                                       color: theme.textTheme.bodySmall?.color
                                           ?.withValues(alpha: 0.72),
@@ -276,7 +277,7 @@ class _TeacherQuestionReplyPageState extends State<TeacherQuestionReplyPage> {
                             _mediaButton(
                               context,
                               icon: Icons.image_outlined,
-                              label: "Fotoğraf",
+                              label: "Fotoğraf".tr,
                               onTap: () => _pickAndUploadAttachment(
                                 type: FileType.image,
                               ),

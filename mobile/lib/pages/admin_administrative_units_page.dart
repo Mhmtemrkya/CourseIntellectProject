@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/admin_workflow_api_service.dart';
 import '../services/school_feed_api_service.dart';
 import '../services/staff_registry_store.dart';
@@ -67,8 +68,8 @@ class _AdminAdministrativeUnitsPageState
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'İdari Birimler',
+        title: Text(
+          'İdari Birimler'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -78,13 +79,13 @@ class _AdminAdministrativeUnitsPageState
           AdminHeroCard(
             eyebrow: 'İdari operasyon',
             title:
-                'Kayıt, duyuru ve öğrenci evrak akışlarını tek merkezden yönetin.',
+                'Kayıt, duyuru ve öğrenci evrak akışlarını tek merkezden yönetin.'.tr,
             description:
                 'Yönetici birimi yeni öğrenci kaydı açabilir, kurumsal duyuru yayına alabilir ve son kayıtları anında izleyebilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
               AdminHeroMetric(
-                label: 'Kayıtlı Öğrenci',
+                label: 'Kayıtlı Öğrenci'.tr,
                 value: '${_store.students.length}',
               ),
               AdminHeroMetric(
@@ -99,8 +100,8 @@ class _AdminAdministrativeUnitsPageState
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Yeni Öğrenci Kaydı',
-                  subtitle: 'Tüm alanlarıyla kapsamlı kayıt aç',
+                  title: 'Yeni Öğrenci Kaydı'.tr,
+                  subtitle: 'Tüm alanlarıyla kapsamlı kayıt aç'.tr,
                   icon: Icons.person_add_alt_1_outlined,
                   color: const Color(0xFF2563EB),
                   onTap: () => Navigator.push(
@@ -115,8 +116,8 @@ class _AdminAdministrativeUnitsPageState
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Öğretmen / Personel',
-                  subtitle: 'Kadro kaydı ve profil oluşturma',
+                  title: 'Öğretmen / Personel'.tr,
+                  subtitle: 'Kadro kaydı ve profil oluşturma'.tr,
                   icon: Icons.groups_2_outlined,
                   color: const Color(0xFF7C3AED),
                   onTap: () => Navigator.push(
@@ -135,8 +136,8 @@ class _AdminAdministrativeUnitsPageState
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Duyuru Oluştur',
-                  subtitle: 'Öğrenci, veli ve öğretmene yayınla',
+                  title: 'Duyuru Oluştur'.tr,
+                  subtitle: 'Öğrenci, veli ve öğretmene yayınla'.tr,
                   icon: Icons.campaign_outlined,
                   color: const Color(0xFFB45309),
                   onTap: () => Navigator.push(
@@ -151,8 +152,8 @@ class _AdminAdministrativeUnitsPageState
               Expanded(
                 child: _actionCard(
                   context,
-                  title: 'Şube Kaydı',
-                  subtitle: 'Yeni şube/kampüs oluştur',
+                  title: 'Şube Kaydı'.tr,
+                  subtitle: 'Yeni şube/kampüs oluştur'.tr,
                   icon: Icons.apartment_outlined,
                   color: const Color(0xFF0EA5E9),
                   onTap: _openBranchDialog,
@@ -168,7 +169,7 @@ class _AdminAdministrativeUnitsPageState
                 const AdminSectionTitle(title: 'Belgeler'),
                 const SizedBox(height: 12),
                 if (_documents.isEmpty)
-                  const Text('Kayıtlı belge bulunamadı.')
+                  Text('Kayıtlı belge bulunamadı.'.tr)
                 else
                   ..._documents.take(5).map(
                     (doc) => _infoRow(
@@ -187,11 +188,11 @@ class _AdminAdministrativeUnitsPageState
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'İdari Özet'),
+                AdminSectionTitle(title: 'İdari Özet'.tr),
                 const SizedBox(height: 12),
                 _infoRow(context, icon: Icons.verified_user_outlined, title: 'Bekleyen Onay', detail: '${_overview['pendingApprovals'] ?? 0} kayıt', color: const Color(0xFF2563EB)),
-                _infoRow(context, icon: Icons.checklist_rtl_outlined, title: 'Açık Görev', detail: '${_overview['openTasks'] ?? 0} görev', color: const Color(0xFF7C3AED)),
-                _infoRow(context, icon: Icons.warning_amber_rounded, title: 'Süresi Dolan Evrak', detail: '${_overview['expiringDocuments'] ?? 0} belge', color: const Color(0xFFB45309)),
+                _infoRow(context, icon: Icons.checklist_rtl_outlined, title: 'Açık Görev'.tr, detail: '${_overview['openTasks'] ?? 0} görev', color: const Color(0xFF7C3AED)),
+                _infoRow(context, icon: Icons.warning_amber_rounded, title: 'Süresi Dolan Evrak'.tr, detail: '${_overview['expiringDocuments'] ?? 0} belge', color: const Color(0xFFB45309)),
               ],
             ),
           ),
@@ -203,7 +204,7 @@ class _AdminAdministrativeUnitsPageState
                 const AdminSectionTitle(title: 'Son Duyurular'),
                 const SizedBox(height: 12),
                 if (_announcements.isEmpty)
-                  const Text('Yayınlanmış duyuru bulunamadı.')
+                  Text('Yayınlanmış duyuru bulunamadı.'.tr)
                 else
                   ..._announcements.take(5).map(
                     (item) => _infoRow(
@@ -230,22 +231,22 @@ class _AdminAdministrativeUnitsPageState
       context: context,
       builder: (dialogContext) => StatefulBuilder(
         builder: (dialogContext, setDialogState) => AlertDialog(
-          title: const Text('Şube Kaydı'),
+          title: Text('Şube Kaydı'.tr),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: nameController,
-                  decoration: const InputDecoration(labelText: 'Şube Adı', hintText: 'Örn: Merkez Şube'),
+                  decoration: InputDecoration(labelText: 'Şube Adı'.tr, hintText: 'Örn: Merkez Şube'.tr),
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   initialValue: unitType,
-                  decoration: const InputDecoration(labelText: 'Tür'),
-                  items: const [
-                    DropdownMenuItem(value: 'Şube', child: Text('Şube')),
-                    DropdownMenuItem(value: 'Kampüs', child: Text('Kampüs')),
+                  decoration: InputDecoration(labelText: 'Tür'.tr),
+                  items: [
+                    DropdownMenuItem(value: 'Şube', child: Text('Şube'.tr)),
+                    DropdownMenuItem(value: 'Kampüs', child: Text('Kampüs'.tr)),
                   ],
                   onChanged: (v) => setDialogState(() => unitType = v ?? 'Şube'),
                 ),
@@ -258,7 +259,7 @@ class _AdminAdministrativeUnitsPageState
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: const Text('Vazgeç')),
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
             FilledButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
@@ -285,7 +286,7 @@ class _AdminAdministrativeUnitsPageState
     );
     if (created == true && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Şube oluşturuldu.')),
+        SnackBar(content: Text('Şube oluşturuldu.'.tr)),
       );
     }
   }

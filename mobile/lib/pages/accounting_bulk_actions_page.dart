@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_api_service.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
@@ -16,8 +17,8 @@ class AccountingBulkActionsPage extends StatelessWidget {
 
     return AccountingScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Toplu Tahsilat ve Mesaj',
+        title: Text(
+          'Toplu Tahsilat ve Mesaj'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -27,7 +28,7 @@ class AccountingBulkActionsPage extends StatelessWidget {
           AccountingHeroCard(
             eyebrow: 'Toplu işlem merkezi',
             title:
-                'Aynı akışta tahsilat planı ve hatırlatma adımlarını yönetin.',
+                'Aynı akışta tahsilat planı ve hatırlatma adımlarını yönetin.'.tr,
             description:
                 'Geciken planlar için toplu hatırlatma ve özet kontrol bu ekranda yapılır.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -66,7 +67,7 @@ class AccountingBulkActionsPage extends StatelessWidget {
                     );
                   },
                   icon: const Icon(Icons.payments_outlined),
-                  label: const Text('Toplu Tahsilat Başlat'),
+                  label: Text('Toplu Tahsilat Başlat'.tr),
                 ),
                 const SizedBox(height: 10),
                 FilledButton.tonalIcon(
@@ -97,7 +98,7 @@ class AccountingBulkActionsPage extends StatelessWidget {
                           }
                         },
                   icon: const Icon(Icons.sms_outlined),
-                  label: const Text('Toplu Hatırlatma Gönder'),
+                  label: Text('Toplu Hatırlatma Gönder'.tr),
                 ),
                 const SizedBox(height: 16),
                 ...overdue

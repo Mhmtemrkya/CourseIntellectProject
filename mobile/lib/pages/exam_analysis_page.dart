@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/linked_children_service.dart';
 import '../services/reports_analytics_api_service.dart';
 
@@ -201,7 +202,7 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Detaylı Analiz")),
+      appBar: AppBar(title: Text("Detaylı Analiz".tr)),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -271,7 +272,7 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Ders Bazlı Başarı",
+                          "Ders Bazlı Başarı".tr,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -279,8 +280,8 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                         ),
                         const SizedBox(height: 16),
                         if (subjects.isEmpty)
-                          const Text(
-                            'Ders bazlı analiz için henüz sonuç kaydı bulunmuyor.',
+                          Text(
+                            'Ders bazlı analiz için henüz sonuç kaydı bulunmuyor.'.tr,
                           )
                         else
                           ...subjects.asMap().entries.map((entry) {
@@ -306,7 +307,7 @@ class _ExamAnalysisPageState extends State<ExamAnalysisPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          "Analiz Notları",
+                          "Analiz Notları".tr,
                           style: theme.textTheme.titleMedium?.copyWith(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/language_tile.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:provider/provider.dart';
 
 import 'change_password_page.dart';
@@ -94,8 +96,8 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedChild.isEmpty ? null : _selectedChild,
-                  decoration: const InputDecoration(
-                    labelText: 'Çocuk Seç',
+                  decoration: InputDecoration(
+                    labelText: 'Çocuk Seç'.tr,
                     border: OutlineInputBorder(),
                   ),
                   items: _children
@@ -112,8 +114,8 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                   },
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  "Bu bilgiler sadece yönetiçi ve idari birimler tarafından güncellenebilir.",
+                Text(
+                  "Bu bilgiler sadece yönetiçi ve idari birimler tarafından güncellenebilir.".tr,
                 ),
               ],
             ),
@@ -127,11 +129,12 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                   value: themeProvider.isDarkMode,
                   onChanged: themeProvider.toggleTheme,
                 ),
+                const LanguageTile(),
                 ListTile(
                   leading: const Icon(Icons.notifications_active_outlined),
                   title: const Text("Bildirim Tercihleri"),
-                  subtitle: const Text(
-                    "Ödeme, mesaj, görüşme ve rapor uyarılarını yönet.",
+                  subtitle: Text(
+                    "Ödeme, mesaj, görüşme ve rapor uyarılarını yönet.".tr,
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
@@ -143,9 +146,9 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock_outline),
-                  title: const Text("Şifre Değiştir"),
-                  subtitle: const Text(
-                    "Hesap güvenliği için şifrenizi güncelleyin.",
+                  title: Text("Şifre Değiştir".tr),
+                  subtitle: Text(
+                    "Hesap güvenliği için şifrenizi güncelleyin.".tr,
                   ),
                   trailing: const Icon(Icons.chevron_right_rounded),
                   onTap: () => Navigator.push(
@@ -158,8 +161,8 @@ class _VeliProfilPageState extends State<VeliProfilPage> {
                 const LegalProfileTile(),
                 ListTile(
                   leading: const Icon(Icons.logout_rounded, color: Colors.red),
-                  title: const Text(
-                    "Çıkış Yap",
+                  title: Text(
+                    "Çıkış Yap".tr,
                     style: TextStyle(color: Colors.red),
                   ),
                   onTap: () => logoutToRoleSelect(context),

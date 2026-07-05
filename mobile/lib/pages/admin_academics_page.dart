@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'admin_courses_page.dart';
 import 'admin_exam_results_page.dart';
 import 'admin_schedule_list_page.dart';
@@ -74,8 +75,8 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Akademik Yönetim',
+        title: Text(
+          'Akademik Yönetim'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -85,7 +86,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
           AdminHeroCard(
             eyebrow: 'Akademik kontrol',
             title:
-                'Sınıf başarısı, branş sağlığı ve öğretmen etkisini kurumsal düzeyde izleyin.',
+                'Sınıf başarısı, branş sağlığı ve öğretmen etkisini kurumsal düzeyde izleyin.'.tr,
             description:
                 'Yönetici görünümünde sınav sonuçları, katılım ve öğretmen etkisi birlikte değerlendirilir.',
             metrics: [
@@ -134,7 +135,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
             ),
           ),
           const SizedBox(height: 18),
-          const AdminSectionTitle(title: 'Öğretmen Etkisi'),
+          AdminSectionTitle(title: 'Öğretmen Etkisi'.tr),
           const SizedBox(height: 12),
           ...teachers.map(
             (item) => AdminPanel(
@@ -172,7 +173,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
             ),
           ),
           if (teachers.isEmpty)
-            const AdminPanel(child: Text('Henüz öğretmen kaydı görünmüyor.')),
+            AdminPanel(child: Text('Henüz öğretmen kaydı görünmüyor.'.tr)),
           const SizedBox(height: 18),
           FilledButton.icon(
             onPressed: () => Navigator.push(
@@ -180,7 +181,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
               MaterialPageRoute(builder: (_) => const AdminScheduleListPage()),
             ),
             icon: const Icon(Icons.schedule_rounded),
-            label: const Text('Ders Programi Yönetimi'),
+            label: Text('Ders Programi Yönetimi'.tr),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -195,7 +196,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
               MaterialPageRoute(builder: (_) => const AdminCoursesPage()),
             ),
             icon: const Icon(Icons.menu_book_rounded),
-            label: const Text('Kurs Yönetimi'),
+            label: Text('Kurs Yönetimi'.tr),
             style: FilledButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 14),
               shape: RoundedRectangleBorder(
@@ -228,7 +229,7 @@ class _AdminAcademicsPageState extends State<AdminAcademicsPage> {
                     ),
                   ),
                   icon: const Icon(Icons.fact_check_outlined),
-                  label: const Text('Sınav Sonuçları'),
+                  label: Text('Sınav Sonuçları'.tr),
                 ),
               ),
             ],

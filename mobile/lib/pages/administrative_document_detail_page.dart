@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/admin_ui.dart';
 import 'administrative_chat_page.dart';
 
@@ -35,8 +36,8 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Evrak Detayı',
+        title: Text(
+          'Evrak Detayı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -60,7 +61,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Belge Kontrolü',
+                  'Belge Kontrolü'.tr,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -79,7 +80,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'İdari Aksiyonlar',
+                  'İdari Aksiyonlar'.tr,
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),
@@ -91,9 +92,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                     Icons.mark_email_unread_outlined,
                     color: statusColor,
                   ),
-                  title: const Text('Veliye belge hatırlatması hazırla'),
-                  subtitle: const Text(
-                    'Eksik belge varsa standart bilgilendirme mesajı oluşturulur.',
+                  title: Text('Veliye belge hatırlatması hazırla'.tr),
+                  subtitle: Text(
+                    'Eksik belge varsa standart bilgilendirme mesajı oluşturulur.'.tr,
                   ),
                   onTap: () => _openReminderModal(context, statusColor),
                 ),
@@ -103,9 +104,9 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                     Icons.description_outlined,
                     color: Color(0xFF2563EB),
                   ),
-                  title: const Text('Evrak özetini oluştur'),
-                  subtitle: const Text(
-                    'Kayıt dosyasının idari özet çıktısı hazırlanır.',
+                  title: Text('Evrak özetini oluştur'.tr),
+                  subtitle: Text(
+                    'Kayıt dosyasının idari özet çıktısı hazırlanır.'.tr,
                   ),
                   onTap: () => _openSummaryModal(context),
                 ),
@@ -176,7 +177,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
               ),
               const SizedBox(height: 14),
               Text(
-                'Belge Hatırlatması',
+                'Belge Hatırlatması'.tr,
                 style: theme.textTheme.titleLarge?.copyWith(
                   fontWeight: FontWeight.w900,
                 ),
@@ -265,7 +266,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 Text(
-                  'Evrak Özeti',
+                  'Evrak Özeti'.tr,
                   style: theme.textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w900,
                   ),
@@ -293,7 +294,7 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                         children: [
                           Expanded(
                             child: Text(
-                              'KAYIT DOSYASI ÖZETİ',
+                              'KAYIT DOSYASI ÖZETİ'.tr,
                               style: theme.textTheme.labelLarge?.copyWith(
                                 fontWeight: FontWeight.w900,
                                 letterSpacing: 0.8,
@@ -346,15 +347,15 @@ class AdministrativeDocumentDetailPage extends StatelessWidget {
                         onPressed: () {
                           Navigator.pop(dialogContext);
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
+                            SnackBar(
                               content: Text(
-                                'Evrak özeti belge görünümünde hazırlandı.',
+                                'Evrak özeti belge görünümünde hazırlandı.'.tr,
                               ),
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         },
-                        child: const Text('Belgeyi Hazırla'),
+                        child: Text('Belgeyi Hazırla'.tr),
                       ),
                     ),
                   ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/app_settings_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -127,8 +128,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
       if (!mounted) return;
       setState(() => _saving = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Kurum ayarları kaydedildi.'),
+        SnackBar(
+          content: Text('Kurum ayarları kaydedildi.'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -145,8 +146,8 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Kurum Ayarları',
+        title: Text(
+          'Kurum Ayarları'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -171,11 +172,11 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                 AdminHeroCard(
                   eyebrow: 'Kurumsal yapı',
                   title:
-                      'Kurum bilgileri, otomasyon tercihleri ve genel yönetim ayarları tek sayfada.',
+                      'Kurum bilgileri, otomasyon tercihleri ve genel yönetim ayarları tek sayfada.'.tr,
                   description:
                       'Yönetici tarafında rapor, iletişim ve kapasite ayarları merkezi olarak güncellenir.',
                   metrics: [
-                    const AdminHeroMetric(label: 'Aktif Şube', value: '4'),
+                    AdminHeroMetric(label: 'Aktif Şube'.tr, value: '4'),
                     AdminHeroMetric(
                       label: 'Kapasite',
                       value: _quotaController.text.isEmpty
@@ -222,7 +223,7 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text('Ayarları Kaydet'),
+                              : Text('Ayarları Kaydet'.tr),
                         ),
                       ),
                     ],
@@ -236,20 +237,20 @@ class _AdminSettingsPageState extends State<AdminSettingsPage> {
                         value: autoReports,
                         onChanged: (value) =>
                             setState(() => autoReports = value),
-                        title: const Text('Haftalık raporları otomatik uret'),
+                        title: Text('Haftalık raporları otomatik uret'.tr),
                       ),
                       SwitchListTile(
                         value: parentNotifications,
                         onChanged: (value) =>
                             setState(() => parentNotifications = value),
-                        title: const Text('Velilere toplu bildirim akışı'),
+                        title: Text('Velilere toplu bildirim akışı'.tr),
                       ),
                       SwitchListTile(
                         value: financeApprovals,
                         onChanged: (value) =>
                             setState(() => financeApprovals = value),
-                        title: const Text(
-                          'Finans onaylari için ikinci kontrol',
+                        title: Text(
+                          'Finans onaylari için ikinci kontrol'.tr,
                         ),
                       ),
                     ],

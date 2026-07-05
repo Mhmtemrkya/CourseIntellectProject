@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/exam_results_store.dart';
 import '../services/school_feed_api_service.dart';
@@ -58,8 +59,8 @@ class _AdminKpiDashboardPageState extends State<AdminKpiDashboardPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Kurum Özeti',
+        title: Text(
+          'Kurum Özeti'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

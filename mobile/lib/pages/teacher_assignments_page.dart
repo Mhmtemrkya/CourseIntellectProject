@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/premium_resource_card.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:student/pages/teacher_assignment_detail_page.dart';
@@ -133,7 +134,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     });
     await _loadAssignments();
 
-    messenger.showSnackBar(const SnackBar(content: Text("Ödev oluşturuldu")));
+    messenger.showSnackBar(SnackBar(content: Text("Ödev oluşturuldu".tr)));
   }
 
   @override
@@ -154,9 +155,9 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Ödevlerim",
+        title: "Ödevlerim".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
-        subtitle: "Ödev Takip Merkezi",
+        subtitle: "Ödev Takip Merkezi".tr,
         showBackButton: true,
       ),
       floatingActionButton: FloatingActionButton(
@@ -253,12 +254,12 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.assignment_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Ödev Yönetimi",
+                "Ödev Yönetimi".tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -269,7 +270,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Sınıflara verdiğin ödevleri takip et, teslim durumlarını gör ve yeni ödevler oluştur.",
+            "Sınıflara verdiğin ödevleri takip et, teslim durumlarını gör ve yeni ödevler oluştur.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -468,12 +469,12 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Ödevi Sil'),
+        title: Text('Ödevi Sil'.tr),
         content: Text('"${item["title"]}" silinsin mi?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(dialogContext, true),
@@ -489,7 +490,7 @@ class _TeacherAssignmentsPageState extends State<TeacherAssignmentsPage> {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Ödev silindi')));
+    ).showSnackBar(SnackBar(content: Text('Ödev silindi'.tr)));
   }
 }
 
@@ -614,7 +615,7 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
         : '${pickedDate.day.toString().padLeft(2, '0')}.${pickedDate.month.toString().padLeft(2, '0')}.${pickedDate.year}';
 
     return AlertDialog(
-      title: const Text('Ödev Oluştur'),
+      title: Text('Ödev Oluştur'.tr),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -622,13 +623,13 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
           children: [
             TextField(
               controller: _titleController,
-              decoration: const InputDecoration(labelText: 'Ödev Başlığı'),
+              decoration: InputDecoration(labelText: 'Ödev Başlığı'.tr),
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _selectedClass,
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Sınıf'),
+              decoration: InputDecoration(labelText: 'Sınıf'.tr),
               items: widget.availableClasses
                   .map(
                     (item) => DropdownMenuItem(value: item, child: Text(item)),
@@ -674,9 +675,9 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
             TextField(
               controller: _descriptionController,
               maxLines: 4,
-              decoration: const InputDecoration(
-                labelText: 'Ödev Açıklaması',
-                hintText: 'Metin, yönergeler ve teslim notlarını yazın',
+              decoration: InputDecoration(
+                labelText: 'Ödev Açıklaması'.tr,
+                hintText: 'Metin, yönergeler ve teslim notlarını yazın'.tr,
               ),
             ),
             const SizedBox(height: 16),
@@ -695,9 +696,9 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
               ],
             ),
             if (_attachments.isEmpty)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(top: 4),
-                child: Text('PDF, resim ve belge ekleyebilirsiniz.'),
+                child: Text('PDF, resim ve belge ekleyebilirsiniz.'.tr),
               )
             else
               ..._attachments.map(
@@ -775,7 +776,7 @@ class _CreateHomeworkDialogState extends State<_CreateHomeworkDialog> {
               'attachmentFiles': List<PlatformFile>.from(_attachmentFiles),
             });
           },
-          child: const Text('Oluştur'),
+          child: Text('Oluştur'.tr),
         ),
       ],
     );

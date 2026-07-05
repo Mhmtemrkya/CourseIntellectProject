@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/meeting_request_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -62,8 +63,8 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Görüşme Akışı',
+        title: Text(
+          'Görüşme Akışı'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -73,7 +74,7 @@ class _AdminMeetingOverviewPageState extends State<AdminMeetingOverviewPage> {
           AdminHeroCard(
             eyebrow: 'Yönetici denetimi',
             title:
-                'Veli taleplerini ve öğretmen onaylarını tek yönetiçi ekranında takip edin.',
+                'Veli taleplerini ve öğretmen onaylarını tek yönetiçi ekranında takip edin.'.tr,
             description:
                 'Kim talep göndermiş, hangi öğretmen hangi saati onaylamış ya da reddetmiş bu ekranda görünür.',
             colors: const [Color(0xFF111827), Color(0xFF0F766E)],

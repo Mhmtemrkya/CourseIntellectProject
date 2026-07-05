@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../widgets/course_intellect_logo.dart';
@@ -95,7 +96,7 @@ class _SplashPageState extends State<SplashPage>
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'Akademik takip, ölçümleme ve kurum yönetimi tek platformda.',
+                  'Akademik takip, ölçümleme ve kurum yönetimi tek platformda.'.tr,
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     color: Theme.of(
@@ -108,7 +109,7 @@ class _SplashPageState extends State<SplashPage>
                 const _LoadingBar(),
                 const SizedBox(height: 14),
                 Text(
-                  'Yükleniyor...',
+                  'Yükleniyor...'.tr,
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w700,
                     color: Theme.of(

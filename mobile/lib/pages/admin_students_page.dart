@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import 'admin_parent_contact_page.dart';
 import 'admin_student_detail_page.dart';
 import '../services/admin_directory_api_service.dart';
@@ -71,8 +72,8 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Öğrenci Listesi',
+        title: Text(
+          'Öğrenci Listesi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -82,7 +83,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
           AdminHeroCard(
             eyebrow: 'Öğrenci yönetimi',
             title:
-                'Kurumdaki tüm öğrencileri sınıf, veli ve durum bilgisiyle yönetin.',
+                'Kurumdaki tüm öğrencileri sınıf, veli ve durum bilgisiyle yönetin.'.tr,
             description:
                 'Yönetici görünümünde öğrenci arama, sınıf filtreleme ve hızlı erişim aksiyonları tek ekranda sunulur.',
             metrics: [
@@ -126,17 +127,17 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   TextField(
                     controller: _searchController,
                     onChanged: (_) => setState(() {}),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       prefixIcon: Icon(Icons.search),
-                      hintText: 'Öğrenci veya veli ara',
+                      hintText: 'Öğrenci veya veli ara'.tr,
                       border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
                     initialValue: _selectedClass,
-                    decoration: const InputDecoration(
-                      labelText: 'Sınıf Filtresi',
+                    decoration: InputDecoration(
+                      labelText: 'Sınıf Filtresi'.tr,
                       border: OutlineInputBorder(),
                     ),
                     items: classes
@@ -268,7 +269,7 @@ class _AdminStudentsPageState extends State<AdminStudentsPage> {
                   ),
                 ),
                 icon: const Icon(Icons.chat_bubble_outline_rounded),
-                label: const Text('Veli İletişimi'),
+                label: Text('Veli İletişimi'.tr),
               ),
             ],
           ),

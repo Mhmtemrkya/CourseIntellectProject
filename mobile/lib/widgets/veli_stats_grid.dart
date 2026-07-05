@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/pages/veli_exam_results_page.dart';
 import '../pages/veli_odeme_page.dart';
 import '../pages/veli_mesajlar_page.dart';
@@ -24,7 +25,7 @@ class VeliStatsGrid extends StatelessWidget {
       children: [
         /// DEVAMSIZLIK
         _StatCard(
-          title: "Devamsızlık",
+          title: "Devamsızlık".tr,
           value: "8%",
           icon: Icons.cancel,
           iconColor: Colors.orange,
@@ -38,7 +39,7 @@ class VeliStatsGrid extends StatelessWidget {
 
         /// SON SINAV
         _StatCard(
-          title: "Sınav Sonuçları",
+          title: "Sınav Sonuçları".tr,
           value: "85",
           icon: Icons.book,
           iconColor: Colors.blue,
@@ -52,7 +53,7 @@ class VeliStatsGrid extends StatelessWidget {
 
         /// ÖDEME
         _StatCard(
-          title: "Ödeme",
+          title: "Ödeme".tr,
           value: "₺7.000",
           icon: Icons.payment,
           iconColor: Colors.green,

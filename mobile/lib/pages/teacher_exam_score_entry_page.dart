@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/auth_session_store.dart';
 import '../services/exam_results_store.dart';
 import '../services/planned_exam_api_service.dart';
@@ -111,7 +112,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
     return Scaffold(
       backgroundColor: _pageColor(theme),
       appBar: TeacherHeader(
-        title: 'Sonuç Girişi',
+        title: 'Sonuç Girişi'.tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '$subject Öğretmeni',
         showBackButton: true,
@@ -239,13 +240,13 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'İçe Aktar',
+              Text(
+                'İçe Aktar'.tr,
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
               ),
               const SizedBox(height: 8),
               Text(
-                'E-Okul formatındaki dosya seçildiğinde öğrenciler mevcut kayıtlarla eşleştirilecek.',
+                'E-Okul formatındaki dosya seçildiğinde öğrenciler mevcut kayıtlarla eşleştirilecek.'.tr,
                 style: TextStyle(color: _mutedText(Theme.of(context))),
               ),
               const SizedBox(height: 18),
@@ -257,7 +258,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                     _showSnack('Dosya seçici entegrasyonu hazır.');
                   },
                   icon: const Icon(Icons.upload_file_rounded),
-                  label: const Text('Dosya Seç'),
+                  label: Text('Dosya Seç'.tr),
                 ),
               ),
             ],
@@ -378,8 +379,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
               color: Colors.white.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(999),
             ),
-            child: const Text(
-              'Öğretmen giriş merkezi',
+            child: Text(
+              'Öğretmen giriş merkezi'.tr,
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
@@ -388,7 +389,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           ),
           const SizedBox(height: 14),
           Text(
-            'Sınav notlarını ve deneme puanlarını sınıf bazında hızlıca yönetin.',
+            'Sınav notlarını ve deneme puanlarını sınıf bazında hızlıca yönetin.'.tr,
             style: theme.textTheme.titleLarge?.copyWith(
               color: Colors.white,
               fontWeight: FontWeight.w900,
@@ -397,7 +398,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Öğrenciye özel puan girişi yapın, son sonucu görün ve tek dokunuşla tüm geçmişi açın.',
+            'Öğrenciye özel puan girişi yapın, son sonucu görün ve tek dokunuşla tüm geçmişi açın.'.tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.86),
               height: 1.45,
@@ -476,7 +477,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Sınıf Seçimi',
+            'Sınıf Seçimi'.tr,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
@@ -484,8 +485,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           const SizedBox(height: 12),
           DropdownButtonFormField<String>(
             initialValue: effectiveClass.isEmpty ? null : effectiveClass,
-            decoration: const InputDecoration(
-              labelText: 'Sınıf',
+            decoration: InputDecoration(
+              labelText: 'Sınıf'.tr,
               border: OutlineInputBorder(),
             ),
             items: classes
@@ -499,8 +500,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
           const SizedBox(height: 12),
           TextField(
             onChanged: (value) => setState(() => _searchQuery = value),
-            decoration: const InputDecoration(
-              labelText: 'Öğrenci ara',
+            decoration: InputDecoration(
+              labelText: 'Öğrenci ara'.tr,
               prefixIcon: Icon(Icons.search_rounded),
               border: OutlineInputBorder(),
             ),
@@ -610,7 +611,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                 child: _miniMetric(
                   theme,
                   icon: Icons.history_rounded,
-                  label: 'Kayıt',
+                  label: 'Kayıt'.tr,
                   value: '${studentRecords.length}',
                   color: const Color(0xFF22C55E),
                 ),
@@ -794,7 +795,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         child: _miniMetric(
                           theme,
                           icon: Icons.emoji_events_rounded,
-                          label: 'Kayıt',
+                          label: 'Kayıt'.tr,
                           value: '${records.length}',
                           color: const Color(0xFF3B82F6),
                         ),
@@ -803,7 +804,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                   ),
                   const SizedBox(height: 18),
                   Text(
-                    'Son Sınav Sonuçları',
+                    'Son Sınav Sonuçları'.tr,
                     style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w900,
                     ),
@@ -853,13 +854,13 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                               MaterialPageRoute(
                                 builder: (_) => StudentExamHistoryPage(
                                   studentName: student,
-                                  title: 'Öğrenci Sonuç Geçmişi',
+                                  title: 'Öğrenci Sonuç Geçmişi'.tr,
                                 ),
                               ),
                             );
                           },
                           icon: const Icon(Icons.bar_chart_rounded),
-                          label: const Text('Geçmiş'),
+                          label: Text('Geçmiş'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -995,8 +996,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
-                            'Sonuç Girişi',
+                          Text(
+                            'Sonuç Girişi'.tr,
                             style: TextStyle(
                               color: Colors.white70,
                               fontWeight: FontWeight.w700,
@@ -1024,7 +1025,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Giriş Formu',
+                      'Giriş Formu'.tr,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w900,
                       ),
@@ -1032,18 +1033,18 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: selectedExamType,
-                      decoration: const InputDecoration(
-                        labelText: 'Sınav Türü',
+                      decoration: InputDecoration(
+                        labelText: 'Sınav Türü'.tr,
                         border: OutlineInputBorder(),
                       ),
-                      items: const [
+                      items: [
                         DropdownMenuItem(
                           value: 'Deneme',
                           child: Text('Deneme'),
                         ),
                         DropdownMenuItem(
                           value: 'Yazılı',
-                          child: Text('Yazılı'),
+                          child: Text('Yazılı'.tr),
                         ),
                         DropdownMenuItem(value: 'Quiz', child: Text('Quiz')),
                       ],
@@ -1054,8 +1055,8 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                     const SizedBox(height: 12),
                     DropdownButtonFormField<String>(
                       initialValue: selectedExam.isEmpty ? null : selectedExam,
-                      decoration: const InputDecoration(
-                        labelText: 'Sınav Adı',
+                      decoration: InputDecoration(
+                        labelText: 'Sınav Adı'.tr,
                         border: OutlineInputBorder(),
                       ),
                       items: resultExamOptions
@@ -1143,7 +1144,7 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => Navigator.pop(sheetContext),
-                            child: const Text('İptal'),
+                            child: Text('İptal'.tr),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -1193,9 +1194,9 @@ class _TeacherExamScoreEntryPageState extends State<TeacherExamScoreEntryPage> {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
-                                        const SnackBar(
+                                        SnackBar(
                                           content: Text(
-                                            'Sınav sonucu kaydedildi.',
+                                            'Sınav sonucu kaydedildi.'.tr,
                                           ),
                                           behavior: SnackBarBehavior.floating,
                                         ),

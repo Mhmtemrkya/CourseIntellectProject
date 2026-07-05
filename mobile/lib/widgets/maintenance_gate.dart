@@ -1,6 +1,7 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 
 import '../services/auth_session_store.dart';
@@ -105,7 +106,7 @@ class _MaintenanceScreen extends StatelessWidget {
                       Container(width: 36, height: 1, color: orange),
                       const SizedBox(width: 10),
                       Text(
-                        'SİSTEM · BAKIM',
+                        'SİSTEM · BAKIM'.tr,
                         style: TextStyle(
                           fontSize: 11,
                           color: warm,
@@ -127,8 +128,8 @@ class _MaintenanceScreen extends StatelessWidget {
                     child: Icon(Icons.build_outlined, color: warm, size: 28),
                   ),
                   const SizedBox(height: 28),
-                  const Text(
-                    'Sistem şu anda bakımda',
+                  Text(
+                    'Sistem şu anda bakımda'.tr,
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -205,7 +206,7 @@ class _MaintenanceScreen extends StatelessWidget {
                         child: OutlinedButton.icon(
                           onPressed: () => onLogout(),
                           icon: const Icon(Icons.logout, size: 18),
-                          label: const Text('Çıkış'),
+                          label: Text('Çıkış'.tr),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.white.withOpacity(0.85),
                             side: BorderSide(
@@ -241,7 +242,7 @@ class _MaintenanceScreen extends StatelessWidget {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            'Verileriniz güvende. Bakım yalnızca girişleri kapatır; veri kaybı yaşanmaz.',
+                            'Verileriniz güvende. Bakım yalnızca girişleri kapatır; veri kaybı yaşanmaz.'.tr,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.7),
                               fontSize: 12,

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -546,7 +547,7 @@ class _ChatConversationViewState extends State<ChatConversationView> {
                 color: Color(0xFFDC2626),
               ),
               title: const Text('Benden Sil'),
-              subtitle: const Text('Mesaj sadece senin ekranından kaldırılır.'),
+              subtitle: Text('Mesaj sadece senin ekranından kaldırılır.'.tr),
               onTap: () async {
                 Navigator.pop(context);
                 await _deleteForMe(message);

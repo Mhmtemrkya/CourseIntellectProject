@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -56,7 +57,7 @@ class _AdministrativeDocumentsPageState
         ),
         actions: [
           IconButton(
-            tooltip: 'Evrak Yükle',
+            tooltip: 'Evrak Yükle'.tr,
             icon: const Icon(Icons.upload_file_rounded),
             onPressed: _uploadDocument,
           ),
@@ -68,7 +69,7 @@ class _AdministrativeDocumentsPageState
           AdminHeroCard(
             eyebrow: 'Evrak kontrolü',
             title:
-                'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.',
+                'Kayıt dosyaları, veli sözleşmeleri ve eksik belge süreçlerini yönetin.'.tr,
             description:
                 'Öğrenci bazlı evrak durumu, eksik belge ve sözleşme takibi bu ekranda toplanır.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
@@ -84,8 +85,8 @@ class _AdministrativeDocumentsPageState
           TextField(
             controller: _searchController,
             onChanged: (_) => setState(() {}),
-            decoration: const InputDecoration(
-              hintText: 'Öğrenci veya veli ara...',
+            decoration: InputDecoration(
+              hintText: 'Öğrenci veya veli ara...'.tr,
               prefixIcon: Icon(Icons.search_rounded),
               border: OutlineInputBorder(),
             ),
@@ -163,14 +164,14 @@ class _AdministrativeDocumentsPageState
                               ),
                             );
                           },
-                          child: const Text('Detayı Aç'),
+                          child: Text('Detayı Aç'.tr),
                         ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: FilledButton(
                           onPressed: () => _sendReminder(item),
-                          child: const Text('Hatırlat'),
+                          child: Text('Hatırlat'.tr),
                         ),
                       ),
                     ],
@@ -246,16 +247,16 @@ class _AdministrativeDocumentsPageState
       builder: (dialogContext) {
         return StatefulBuilder(
           builder: (builderContext, setDialogState) => AlertDialog(
-            title: const Text('Evrak Yükle'),
+            title: Text('Evrak Yükle'.tr),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (students.isEmpty)
-                  const Text('Önce öğrenci kaydı olmalıdır.')
+                  Text('Önce öğrenci kaydı olmalıdır.'.tr)
                 else
                   DropdownButtonFormField<String>(
                     initialValue: selectedStudentName,
-                    decoration: const InputDecoration(labelText: 'Öğrenci'),
+                    decoration: InputDecoration(labelText: 'Öğrenci'.tr),
                     items: students
                         .map(
                           (student) => DropdownMenuItem(
@@ -303,7 +304,7 @@ class _AdministrativeDocumentsPageState
                 onPressed: students.isEmpty
                     ? null
                     : () => Navigator.pop(dialogContext, true),
-                child: const Text('Dosya Seç'),
+                child: Text('Dosya Seç'.tr),
               ),
             ],
           ),

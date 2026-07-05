@@ -1,4 +1,5 @@
 import 'package:file_picker/file_picker.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/content_api_service.dart';
@@ -122,7 +123,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           content: TextField(
             controller: controller,
             maxLines: 4,
-            decoration: const InputDecoration(hintText: "Notunuzu yazın..."),
+            decoration: InputDecoration(hintText: "Notunuzu yazın...".tr),
           ),
           actions: [
             TextButton(
@@ -259,7 +260,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: TeacherHeader(
-        title: "Canlı Ders Odası",
+        title: "Canlı Ders Odası".tr,
         teacherName: _teacherName.isEmpty ? 'Öğretmen' : _teacherName,
         subtitle: '${widget.className} • ${widget.time}',
         showBackButton: true,
@@ -298,13 +299,13 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
                         color: Colors.blue.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(18),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
                           Icon(Icons.screen_share_rounded, color: Colors.blue),
                           SizedBox(width: 10),
                           Expanded(
                             child: Text(
-                              "Ekran paylaşımı aktif. Öğrenciler paylaştığınız içeriği görüyor.",
+                              "Ekran paylaşımı aktif. Öğrenciler paylaştığınız içeriği görüyor.".tr,
                               style: TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
@@ -360,12 +361,12 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.wifi_tethering_rounded, color: Colors.white),
               SizedBox(width: 8),
               Text(
-                "Canlı Ders Aktif",
+                "Canlı Ders Aktif".tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.w800,
@@ -376,7 +377,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
           ),
           const SizedBox(height: 10),
           Text(
-            "Öğrenciler bağlandı, ders akışınız hazır. Şimdi paylaşım yapabilir, kamera ve mikrofon kontrollerini yönetebilirsin.",
+            "Öğrenciler bağlandı, ders akışınız hazır. Şimdi paylaşım yapabilir, kamera ve mikrofon kontrollerini yönetebilirsin.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -515,7 +516,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
         ],
       ),
       child: participants.isEmpty
-          ? const Text('Bu sınıf için katılımcı listesi henüz oluşmadı.')
+          ? Text('Bu sınıf için katılımcı listesi henüz oluşmadı.'.tr)
           : Wrap(
               spacing: 10,
               runSpacing: 10,
@@ -580,7 +581,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
         const SizedBox(width: 12),
         _toggleToolCard(
           context,
-          title: "Paylaş",
+          title: "Paylaş".tr,
           active: sharingOn,
           activeIcon: Icons.screen_share_rounded,
           inactiveIcon: Icons.stop_screen_share_rounded,
@@ -677,7 +678,7 @@ class _TeacherLiveRoomPageState extends State<TeacherLiveRoomPage> {
             children: [
               Expanded(
                 child: Text(
-                  "Paylaşılan İçerikler",
+                  "Paylaşılan İçerikler".tr,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w800,
                   ),

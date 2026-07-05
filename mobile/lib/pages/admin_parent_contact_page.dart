@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/meeting_request_api_service.dart';
 import '../services/message_api_service.dart';
 import '../services/student_registry_store.dart';
@@ -36,8 +37,8 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Veli İletişimi',
+        title: Text(
+          'Veli İletişimi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -51,7 +52,7 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
                 '${widget.student.fullName} öğrencisinin velisi ile kurum içi iletişim ve bilgilendirme akışlarını yönetin.',
             colors: const [Color(0xFF08111F), Color(0xFFFF7A1A)],
             metrics: [
-              AdminHeroMetric(label: 'Öğrenci', value: widget.student.fullName),
+              AdminHeroMetric(label: 'Öğrenci'.tr, value: widget.student.fullName),
               AdminHeroMetric(label: 'Kanal', value: _selectedChannel),
             ],
           ),
@@ -60,7 +61,7 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Veli Kayıt Bilgileri'),
+                AdminSectionTitle(title: 'Veli Kayıt Bilgileri'.tr),
                 const SizedBox(height: 12),
                 _contactRow(Icons.phone_outlined, widget.student.parentPhone),
                 const SizedBox(height: 10),
@@ -83,12 +84,12 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'İletişim Akışı'),
+                AdminSectionTitle(title: 'İletişim Akışı'.tr),
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedChannel,
-                  decoration: const InputDecoration(
-                    labelText: 'İletişim Kanali',
+                  decoration: InputDecoration(
+                    labelText: 'İletişim Kanali'.tr,
                     border: OutlineInputBorder(),
                   ),
                   items: const [
@@ -107,22 +108,22 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   initialValue: _selectedTemplate,
-                  decoration: const InputDecoration(
-                    labelText: 'Hazır Mesaj',
+                  decoration: InputDecoration(
+                    labelText: 'Hazır Mesaj'.tr,
                     border: OutlineInputBorder(),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'Genel Bilgilendirme',
                       child: Text('Genel Bilgilendirme'),
                     ),
                     DropdownMenuItem(
                       value: 'Ödeme Hatırlatma',
-                      child: Text('Ödeme Hatırlatma'),
+                      child: Text('Ödeme Hatırlatma'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'Görüşme Daveti',
-                      child: Text('Görüşme Daveti'),
+                      child: Text('Görüşme Daveti'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'Akademik Bilgilendirme',
@@ -154,7 +155,7 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Hızlı Aksiyonlar'),
+                AdminSectionTitle(title: 'Hızlı Aksiyonlar'.tr),
                 const SizedBox(height: 12),
                 Wrap(
                   spacing: 10,
@@ -170,12 +171,12 @@ class _AdminParentContactPageState extends State<AdminParentContactPage> {
                     FilledButton.tonalIcon(
                       onPressed: _sendMessage,
                       icon: const Icon(Icons.send_outlined),
-                      label: const Text('Mesaji Gönder'),
+                      label: Text('Mesaji Gönder'.tr),
                     ),
                     FilledButton.tonalIcon(
                       onPressed: _createMeetingRequest,
                       icon: const Icon(Icons.event_available_outlined),
-                      label: const Text('Görüşme Planla'),
+                      label: Text('Görüşme Planla'.tr),
                     ),
                   ],
                 ),

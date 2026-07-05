@@ -1,4 +1,5 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -88,7 +89,7 @@ class _NotificationPrimerSheetState extends State<_NotificationPrimerSheet> {
             ),
             const SizedBox(height: 12),
             Text(
-              'Bildirimleri aç',
+              'Bildirimleri aç'.tr,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.w700,
@@ -96,7 +97,7 @@ class _NotificationPrimerSheetState extends State<_NotificationPrimerSheet> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Yeni ders, ödev, sınav sonucu ve veli mesajlarından anında haberdar olmak için bildirimlere izin ver. Kamera, mikrofon ve fotoğraf izinleri ise sadece o özelliği kullandığında istenecek.',
+              'Yeni ders, ödev, sınav sonucu ve veli mesajlarından anında haberdar olmak için bildirimlere izin ver. Kamera, mikrofon ve fotoğraf izinleri ise sadece o özelliği kullandığında istenecek.'.tr,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -115,11 +116,11 @@ class _NotificationPrimerSheetState extends State<_NotificationPrimerSheet> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Text('Bildirimlere İzin Ver'),
+                  : Text('Bildirimlere İzin Ver'.tr),
             ),
             TextButton(
               onPressed: _busy ? null : _skip,
-              child: const Text('Şimdi değil'),
+              child: Text('Şimdi değil'.tr),
             ),
           ],
         ),

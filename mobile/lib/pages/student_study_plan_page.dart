@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:student/i18n/app_locale.dart';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -270,8 +271,8 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     final start = _taskStartDateTime(task);
     if (start == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Hatırlatma için görevin tarih ve saati olmalı.'),
+        SnackBar(
+          content: Text('Hatırlatma için görevin tarih ve saati olmalı.'.tr),
         ),
       );
       return;
@@ -285,7 +286,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
         setState(() => _scheduledReminderIds.remove(task.id));
         ScaffoldMessenger.of(
           context,
-        ).showSnackBar(const SnackBar(content: Text('Hatırlatma kaldırıldı.')));
+        ).showSnackBar(SnackBar(content: Text('Hatırlatma kaldırıldı.'.tr)));
         return;
       }
 
@@ -296,8 +297,8 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
       if (reminderAt.isBefore(DateTime.now())) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bu görevin saati geçmiş; hatırlatma kurulamaz.'),
+          SnackBar(
+            content: Text('Bu görevin saati geçmiş; hatırlatma kurulamaz.'.tr),
           ),
         );
         return;
@@ -660,9 +661,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     final suggestions = _suggestions;
     if (suggestions.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Öneri bulunamadı: ödev, deneme veya eksik ders verisi yok.',
+            'Öneri bulunamadı: ödev, deneme veya eksik ders verisi yok.'.tr,
           ),
         ),
       );
@@ -690,9 +691,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
       if (!mounted) return;
       setState(() => _selectedDate = _isoDate(DateTime.now()));
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text(
-            'Bugünün planı ödev ve denemelerinden otomatik oluşturuldu.',
+            'Bugünün planı ödev ve denemelerinden otomatik oluşturuldu.'.tr,
           ),
         ),
       );
@@ -711,7 +712,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Çalışma Planım'),
+        title: Text('Çalışma Planım'.tr),
         actions: [
           IconButton(
             tooltip: 'Yenile',
@@ -734,7 +735,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
           : FloatingActionButton.extended(
               onPressed: _showAddTaskSheet,
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Görev Ekle'),
+              label: Text('Görev Ekle'.tr),
             ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -811,7 +812,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                 Center(
                   child: _ProgressRing(
                     progress: _todayProgress,
-                    label: 'Bugünkü İlerleme',
+                    label: 'Bugünkü İlerleme'.tr,
                     size: 168,
                   ),
                 ),
@@ -831,7 +832,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                       icon: Icons.check_circle_rounded,
                       color: const Color(0xFF22C55E),
                       value: '$doneCount / ${dayTasks.length}',
-                      label: 'Tamamlanan Görev',
+                      label: 'Tamamlanan Görev'.tr,
                     ),
                     const SizedBox(width: 10),
                     _statCard(
@@ -839,7 +840,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                       icon: Icons.timer_rounded,
                       color: const Color(0xFFF97316),
                       value: _formatMinutes(doneMinutes),
-                      label: 'Çalışılan Süre',
+                      label: 'Çalışılan Süre'.tr,
                     ),
                   ],
                 ),
@@ -994,14 +995,14 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
           const Icon(Icons.task_alt_rounded, size: 40),
           const SizedBox(height: 10),
           Text(
-            'Bu gün için görev yok',
+            'Bu gün için görev yok'.tr,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w800,
             ),
           ),
           const SizedBox(height: 4),
           Text(
-            '"Otomatik Plan Oluştur" ile ödev ve denemelerinden plan üret ya da görev ekle.',
+            '"Otomatik Plan Oluştur" ile ödev ve denemelerinden plan üret ya da görev ekle.'.tr,
             textAlign: TextAlign.center,
             style: theme.textTheme.bodySmall,
           ),
@@ -1161,12 +1162,12 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.lightbulb_rounded, color: Color(0xFFF97316), size: 18),
               SizedBox(width: 6),
               Text(
-                'Akıllı Öneriler',
+                'Akıllı Öneriler'.tr,
                 style: TextStyle(fontWeight: FontWeight.w900),
               ),
             ],
@@ -1286,7 +1287,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                         const Icon(Icons.flag_rounded, size: 40),
                         const SizedBox(height: 10),
                         Text(
-                          'Henüz hedefin yok',
+                          'Henüz hedefin yok'.tr,
                           style: theme.textTheme.titleSmall?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
@@ -1639,7 +1640,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                       icon: Icons.local_fire_department_rounded,
                       color: const Color(0xFFF97316),
                       value: '$_streak gün',
-                      label: 'Çalışma Serisi',
+                      label: 'Çalışma Serisi'.tr,
                     ),
                     const SizedBox(width: 10),
                     _statCard(
@@ -1647,7 +1648,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                       icon: Icons.task_alt_rounded,
                       color: const Color(0xFF22C55E),
                       value: '${doneTasks.length}',
-                      label: 'Tamamlanan Görev',
+                      label: 'Tamamlanan Görev'.tr,
                     ),
                     const SizedBox(width: 10),
                     _statCard(
@@ -1660,7 +1661,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                           (sum, task) => sum + task.durationMinutes,
                         ),
                       ),
-                      label: 'Toplam Süre',
+                      label: 'Toplam Süre'.tr,
                     ),
                   ],
                 ),
@@ -1677,7 +1678,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Haftalık Çalışma Süresi',
+                        'Haftalık Çalışma Süresi'.tr,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),
@@ -1758,7 +1759,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Ders Bazlı Dağılım',
+                        'Ders Bazlı Dağılım'.tr,
                         style: theme.textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.w900,
                         ),
@@ -1766,7 +1767,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                       const SizedBox(height: 12),
                       if (subjectRows.isEmpty)
                         Text(
-                          'Tamamlanan görev olunca dağılım burada görünür.',
+                          'Tamamlanan görev olunca dağılım burada görünür.'.tr,
                           style: theme.textTheme.bodySmall,
                         ),
                       ...subjectRows.map((entry) {
@@ -1853,16 +1854,16 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Görev Ekle',
+                    'Görev Ekle'.tr,
                     style: Theme.of(sheetContext).textTheme.titleLarge
                         ?.copyWith(fontWeight: FontWeight.w900),
                   ),
                   const SizedBox(height: 14),
                   TextField(
                     controller: titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Görev adı',
-                      hintText: 'Örn: Üslü Sayılar Soru Çözümü',
+                    decoration: InputDecoration(
+                      labelText: 'Görev adı'.tr,
+                      hintText: 'Örn: Üslü Sayılar Soru Çözümü'.tr,
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -1881,9 +1882,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                   const SizedBox(height: 10),
                   TextField(
                     controller: topicController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Konu (opsiyonel)',
-                      hintText: 'Örn: Konu Tekrarı',
+                      hintText: 'Örn: Konu Tekrarı'.tr,
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -1910,7 +1911,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                       Expanded(
                         child: DropdownButtonFormField<int>(
                           initialValue: duration,
-                          decoration: const InputDecoration(labelText: 'Süre'),
+                          decoration: InputDecoration(labelText: 'Süre'.tr),
                           items: const [20, 30, 45, 60, 90, 120]
                               .map(
                                 (item) => DropdownMenuItem(
@@ -1950,7 +1951,7 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
                           );
                         }
                       },
-                      child: const Text('Göreve Ekle'),
+                      child: Text('Göreve Ekle'.tr),
                     ),
                   ),
                 ],
@@ -1993,9 +1994,9 @@ class _StudentStudyPlanPageState extends State<StudentStudyPlanPage>
               const SizedBox(height: 14),
               TextField(
                 controller: titleController,
-                decoration: const InputDecoration(
-                  labelText: 'Hedef adı',
-                  hintText: 'Örn: TYT Matematik Net 40+',
+                decoration: InputDecoration(
+                  labelText: 'Hedef adı'.tr,
+                  hintText: 'Örn: TYT Matematik Net 40+'.tr,
                 ),
               ),
               const SizedBox(height: 10),
@@ -2125,7 +2126,7 @@ class _RingPainter extends CustomPainter {
   final double progress;
   final Color trackColor;
 
-  const _RingPainter({required this.progress, required this.trackColor});
+  _RingPainter({required this.progress, required this.trackColor});
 
   @override
   void paint(Canvas canvas, Size size) {

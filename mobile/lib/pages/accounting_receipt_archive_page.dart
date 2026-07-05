@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../widgets/accounting_ui.dart';
 
@@ -14,8 +15,8 @@ class AccountingReceiptArchivePage extends StatelessWidget {
 
     return AccountingScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Makbuz Arşivi',
+        title: Text(
+          'Makbuz Arşivi'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -25,7 +26,7 @@ class AccountingReceiptArchivePage extends StatelessWidget {
           AccountingHeroCard(
             eyebrow: 'Belge arşivi',
             title:
-                'Canlı tahsilat kayıtlarından üretilen makbuzlar burada listelenir.',
+                'Canlı tahsilat kayıtlarından üretilen makbuzlar burada listelenir.'.tr,
             description:
                 'Her satır son tahsilat zamanı, öğrenci ve ödeme yöntemiyle birlikte tutulur.',
             colors: const [Color(0xFF0F172A), Color(0xFF7C3AED)],
@@ -36,8 +37,8 @@ class AccountingReceiptArchivePage extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (items.isEmpty)
-            const AccountingPanel(
-              child: Text('Henüz makbuz arşivine düşen tahsilat bulunmuyor.'),
+            AccountingPanel(
+              child: Text('Henüz makbuz arşivine düşen tahsilat bulunmuyor.'.tr),
             )
           else
             ...items.map(

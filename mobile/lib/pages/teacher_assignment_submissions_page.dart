@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
 import 'package:student/widgets/teacher_header.dart';
@@ -135,8 +136,8 @@ class _TeacherAssignmentSubmissionsPageState
                         color: theme.cardColor,
                         borderRadius: BorderRadius.circular(20),
                       ),
-                      child: const Text(
-                        'Bu ödev için henüz teslim bulunmuyor.',
+                      child: Text(
+                        'Bu ödev için henüz teslim bulunmuyor.'.tr,
                       ),
                     ),
                   ..._submissions.map(

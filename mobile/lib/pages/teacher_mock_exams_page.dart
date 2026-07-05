@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/premium_resource_card.dart';
 
 import '../services/auth_session_store.dart';
@@ -68,7 +69,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
       await _load();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Deneme sınavı oluşturuldu.')),
+        SnackBar(content: Text('Deneme sınavı oluşturuldu.'.tr)),
       );
     }
   }
@@ -77,14 +78,14 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Denemeyi sil'),
+        title: Text('Denemeyi sil'.tr),
         content: Text(
           '${exam.title} kaydını silmek istediğinizden emin misiniz?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
@@ -115,7 +116,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
 
     return Scaffold(
       appBar: TeacherHeader(
-        title: 'Deneme Sınavları',
+        title: 'Deneme Sınavları'.tr,
         teacherName: _teacherName,
         subtitle: '${_exams.length} canlı deneme',
         showBackButton: true,
@@ -123,7 +124,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _create,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Deneme Oluştur'),
+        label: Text('Deneme Oluştur'.tr),
       ),
       body: RefreshIndicator(
         onRefresh: _load,
@@ -140,7 +141,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
                 if (_error != null) ...[
                   _messageCard(
                     icon: Icons.cloud_off_rounded,
-                    title: 'Canlı denemeler alınamadı',
+                    title: 'Canlı denemeler alınamadı'.tr,
                     description: _error!,
                     action: TextButton(
                       onPressed: _load,
@@ -151,7 +152,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
                 ],
                 if (!_loading && _error == null && _exams.isEmpty)
                   TeacherEmptyStatePanel(
-                    title: 'Henüz deneme sınavı oluşturulmadı',
+                    title: 'Henüz deneme sınavı oluşturulmadı'.tr,
                     description:
                         'İlk denemeni oluştur, sorularını ekle ve öğrencilerin için yayınla.',
                     accentColor: const Color(0xFFFF8A1C),
@@ -190,12 +191,12 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.fact_check_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                'Deneme Yönetimi',
+                'Deneme Yönetimi'.tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -205,8 +206,8 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
             ],
           ),
           const SizedBox(height: 10),
-          const Text(
-            'Deneme sorularını ortak editörden hazırlayın ve canlı yayınlayın.',
+          Text(
+            'Deneme sorularını ortak editörden hazırlayın ve canlı yayınlayın.'.tr,
             style: TextStyle(color: Colors.white, height: 1.4),
           ),
           const SizedBox(height: 18),
@@ -262,7 +263,7 @@ class _TeacherMockExamsPageState extends State<TeacherMockExamsPage> {
       actions: [
         CardIconAction(
           icon: Icons.delete_outline_rounded,
-          tooltip: 'Denemeyi sil',
+          tooltip: 'Denemeyi sil'.tr,
           danger: true,
           onTap: () => _delete(exam),
         ),

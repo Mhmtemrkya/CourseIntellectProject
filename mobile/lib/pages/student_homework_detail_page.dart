@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/api_config.dart';
@@ -57,7 +58,7 @@ class StudentHomeworkDetailPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Ödev Detayı")),
+      appBar: AppBar(title: Text("Ödev Detayı".tr)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         child: Column(
@@ -95,7 +96,7 @@ class StudentHomeworkDetailPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    "Açıklama",
+                    "Açıklama".tr,
                     style: theme.textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                     ),
@@ -124,7 +125,7 @@ class StudentHomeworkDetailPage extends StatelessWidget {
                   const SizedBox(height: 10),
                   if (materials.isEmpty)
                     Text(
-                      "Bu ödeve ek materyal yüklenmedi.",
+                      "Bu ödeve ek materyal yüklenmedi.".tr,
                       style: theme.textTheme.bodyMedium,
                     )
                   else

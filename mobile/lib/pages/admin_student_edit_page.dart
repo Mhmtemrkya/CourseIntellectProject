@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
 
@@ -90,7 +91,7 @@ class _AdminStudentEditPageState extends State<AdminStudentEditPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Öğrenci güncellendi.')));
+      ).showSnackBar(SnackBar(content: Text('Öğrenci güncellendi.'.tr)));
       Navigator.pop(context, true);
     } catch (error) {
       if (!mounted) return;
@@ -105,8 +106,8 @@ class _AdminStudentEditPageState extends State<AdminStudentEditPage> {
   Widget build(BuildContext context) {
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Öğrenci Düzenle',
+        title: Text(
+          'Öğrenci Düzenle'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -119,7 +120,7 @@ class _AdminStudentEditPageState extends State<AdminStudentEditPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'Öğrenci Bilgileri'),
+                  AdminSectionTitle(title: 'Öğrenci Bilgileri'.tr),
                   const SizedBox(height: 12),
                   _field(_fullName, 'Ad Soyad', required: true),
                   _field(_tcNo, 'TC Kimlik No'),
@@ -136,7 +137,7 @@ class _AdminStudentEditPageState extends State<AdminStudentEditPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'Veli ve İletişim'),
+                  AdminSectionTitle(title: 'Veli ve İletişim'.tr),
                   const SizedBox(height: 12),
                   _field(_parentName, 'Veli Ad Soyad'),
                   _field(_parentPhone, 'Telefon'),
@@ -150,7 +151,7 @@ class _AdminStudentEditPageState extends State<AdminStudentEditPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const AdminSectionTitle(title: 'İdari Not'),
+                  AdminSectionTitle(title: 'İdari Not'.tr),
                   const SizedBox(height: 12),
                   _field(_note, 'Not', maxLines: 3),
                 ],

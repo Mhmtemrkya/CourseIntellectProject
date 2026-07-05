@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import 'accounting_invoice_detail_page.dart';
 import 'accounting_invoice_form_page.dart';
@@ -40,26 +41,26 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
   @override
   Widget build(BuildContext context) {
     return AccountingScaffold(
-      appBar: const AppHeader(title: 'Faturalar ve Makbuzlar'),
+      appBar: AppHeader(title: 'Faturalar ve Makbuzlar'.tr),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _openCreateInvoice,
         backgroundColor: const Color(0xFF0F172A),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.add_card_rounded),
-        label: const Text('Fatura Oluştur'),
+        label: Text('Fatura Oluştur'.tr),
       ),
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           AccountingHeroCard(
             eyebrow: 'Belge merkezi',
-            title: 'Öğrenci, gider ve maaş faturalarını tek akışta yönetin.',
+            title: 'Öğrenci, gider ve maaş faturalarını tek akışta yönetin.'.tr,
             description:
                 'Kategori bazlı belge arşivi ve makbuz kayıtları detay sayfalarına açılır.',
             colors: const [Color(0xFF0F172A), Color(0xFF4F46E5)],
             metrics: [
               AccountingHeroMetric(
-                label: 'Toplam Kayıt',
+                label: 'Toplam Kayıt'.tr,
                 value: '${_store.invoices.length}',
               ),
               AccountingHeroMetric(
@@ -71,30 +72,30 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
           ),
           SizedBox(height: 16),
           _InvoiceCategoryCard(
-            title: 'Öğrenci Faturaları',
-            subtitle: 'Kurs, etüt ve ek hizmet faturalandırmaları',
+            title: 'Öğrenci Faturaları'.tr,
+            subtitle: 'Kurs, etüt ve ek hizmet faturalandırmaları'.tr,
             count: '${_store.countForCategory('Öğrenci Faturaları')} kayıt',
             color: Color(0xFF2563EB),
           ),
           SizedBox(height: 12),
           _InvoiceCategoryCard(
             title: 'Dershane Mekân Giderleri',
-            subtitle: 'Kira, elektrik, internet ve işletme giderleri',
+            subtitle: 'Kira, elektrik, internet ve işletme giderleri'.tr,
             count:
                 '${_store.countForCategory('Dershane Mekan Giderleri')} kayıt',
             color: Color(0xFFB45309),
           ),
           SizedBox(height: 12),
           _InvoiceCategoryCard(
-            title: 'Diğer Gider Faturaları',
-            subtitle: 'Kırtasiye, reklam, teknik servis ve araç giderleri',
+            title: 'Diğer Gider Faturaları'.tr,
+            subtitle: 'Kırtasiye, reklam, teknik servis ve araç giderleri'.tr,
             count: '${_store.countForCategory('Diğer Gider Faturaları')} kayıt',
             color: Color(0xFF7C3AED),
           ),
           SizedBox(height: 12),
           _InvoiceCategoryCard(
-            title: 'Maaş Faturaları',
-            subtitle: 'Öğretmen, idari kadro ve prim dökümleri',
+            title: 'Maaş Faturaları'.tr,
+            subtitle: 'Öğretmen, idari kadro ve prim dökümleri'.tr,
             count: '${_store.countForCategory('Maaş Faturaları')} kayıt',
             color: Color(0xFF0F766E),
           ),
@@ -124,8 +125,8 @@ class _AccountingInvoicesPageState extends State<AccountingInvoicesPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Yeni fatura oluşturuldu ve onaya gönderildi.'),
+        SnackBar(
+          content: Text('Yeni fatura oluşturuldu ve onaya gönderildi.'.tr),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -263,8 +264,8 @@ class _InvoiceListPageState extends State<_InvoiceListPage> {
         children: [
           DropdownButtonFormField<String>(
             initialValue: _monthFilter,
-            decoration: const InputDecoration(
-              labelText: 'Dönem (ay) filtresi',
+            decoration: InputDecoration(
+              labelText: 'Dönem (ay) filtresi'.tr,
               border: OutlineInputBorder(),
             ),
             items: _monthOptions.entries

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import '../widgets/responsive_layout.dart';
 
 class StudentWrongQuestionDetailPage extends StatelessWidget {
@@ -19,8 +20,8 @@ class StudentWrongQuestionDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Yanlış Sorular',
+        title: Text(
+          'Yanlış Sorular'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),

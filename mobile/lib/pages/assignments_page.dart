@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
 import 'package:student/services/homework_api_service.dart';
 import 'package:student/widgets/responsive_layout.dart';
@@ -54,7 +55,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Ödevler")),
+      appBar: AppBar(title: Text("Ödevler".tr)),
       body: ResponsiveContent(
         child: _loading
             ? const Center(child: CircularProgressIndicator())
@@ -76,7 +77,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
             ? Padding(
                 padding: const EdgeInsets.all(20),
                 child: StudentEmptyStatePanel(
-                  title: 'Henüz ödev bulunmuyor',
+                  title: 'Henüz ödev bulunmuyor'.tr,
                   description:
                       'Öğretmenlerin sana verdiği ödevler burada listelenecek. Takipte kal, hiçbirini kaçırma.',
                   accentColor: const Color(0xFF2563EB),

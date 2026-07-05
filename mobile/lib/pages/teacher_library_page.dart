@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/library_api_service.dart';
 import 'package:student/services/student_registry_store.dart';
 
@@ -80,7 +81,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Kütüphane',
+        title: Text('Kütüphane'.tr,
             style: TextStyle(fontWeight: FontWeight.w800)),
         actions: [
           IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
@@ -109,7 +110,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
                     children: [
                       if (recommendations.isNotEmpty) ...[
-                        const Text('Gönderdiğim Öneriler',
+                        Text('Gönderdiğim Öneriler'.tr,
                             style: TextStyle(fontWeight: FontWeight.w900)),
                         const SizedBox(height: 8),
                         ...recommendations.take(5).map((rec) => Container(
@@ -150,13 +151,13 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                             )),
                         const SizedBox(height: 10),
                       ],
-                      const Text('Katalog — önermek için kitaba dokun',
+                      Text('Katalog — önermek için kitaba dokun'.tr,
                           style: TextStyle(fontWeight: FontWeight.w900)),
                       const SizedBox(height: 8),
                       TextField(
                         onChanged: (v) => setState(() => search = v),
                         decoration: InputDecoration(
-                          hintText: 'Kitap veya yazar ara...',
+                          hintText: 'Kitap veya yazar ara...'.tr,
                           prefixIcon:
                               const Icon(Icons.search_rounded, size: 20),
                           filled: true,
@@ -174,7 +175,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                         Padding(
                           padding: const EdgeInsets.all(32),
                           child: Center(
-                              child: Text('Kitap bulunamadı.',
+                              child: Text('Kitap bulunamadı.'.tr,
                                   style: theme.textTheme.bodyMedium)),
                         )
                       else
@@ -251,7 +252,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                 children: [
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('Sınıfa'),
+                      label: Text('Sınıfa'.tr),
                       selected: target == 'class',
                       selectedColor: _navy,
                       labelStyle: TextStyle(
@@ -264,7 +265,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ChoiceChip(
-                      label: const Text('Öğrenciye'),
+                      label: Text('Öğrenciye'.tr),
                       selected: target == 'student',
                       selectedColor: _navy,
                       labelStyle: TextStyle(
@@ -280,7 +281,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
               if (target == 'class')
                 DropdownButtonFormField<String>(
                   initialValue: className,
-                  decoration: const InputDecoration(labelText: 'Sınıf'),
+                  decoration: InputDecoration(labelText: 'Sınıf'.tr),
                   items: classes
                       .map((c) => DropdownMenuItem(value: c, child: Text(c)))
                       .toList(),
@@ -289,7 +290,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
               else
                 DropdownButtonFormField<String>(
                   initialValue: studentName,
-                  decoration: const InputDecoration(labelText: 'Öğrenci'),
+                  decoration: InputDecoration(labelText: 'Öğrenci'.tr),
                   items: studentNames
                       .map((s) => DropdownMenuItem(value: s, child: Text(s)))
                       .toList(),
@@ -324,8 +325,8 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                       });
                       if (!sheetContext.mounted) return;
                       ScaffoldMessenger.of(sheetContext).showSnackBar(
-                          const SnackBar(
-                              content: Text('Öneri gönderildi.')));
+                          SnackBar(
+                              content: Text('Öneri gönderildi.'.tr)));
                       Navigator.pop(sheetContext);
                       _load();
                     } catch (e) {
@@ -334,7 +335,7 @@ class _TeacherLibraryPageState extends State<TeacherLibraryPage> {
                           SnackBar(content: Text(e.toString())));
                     }
                   },
-                  child: const Text('Gönder'),
+                  child: Text('Gönder'.tr),
                 ),
               ),
             ],

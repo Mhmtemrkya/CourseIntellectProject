@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/accounting_finance_store.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
@@ -83,8 +84,8 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'İdari Panel',
+        title: Text(
+          'İdari Panel'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -94,13 +95,13 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
           AdminHeroCard(
             eyebrow: 'İdari operasyon',
             title:
-                'Kayıt, evrak, duyuru ve iletişim akışlarını tek panelden yönetin.',
+                'Kayıt, evrak, duyuru ve iletişim akışlarını tek panelden yönetin.'.tr,
             description:
                 'Öğrenci işleri, kurumsal duyurular, personel kaydı ve veli iletişimi idari birim panelinde aktif olarak yönetilir.',
             colors: const [Color(0xFF0F172A), Color(0xFF0F766E)],
             metrics: [
               AdminHeroMetric(
-                label: 'Toplam Öğrenci',
+                label: 'Toplam Öğrenci'.tr,
                 value: '${_studentStore.students.length}',
               ),
               AdminHeroMetric(
@@ -116,7 +117,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.person_add_alt_1_outlined,
-                  title: 'Yeni Kayıt',
+                  title: 'Yeni Kayıt'.tr,
                   value: 'Öğrenci ekle',
                   color: const Color(0xFF2563EB),
                   onTap: () => _openPage(const AdminStudentRegistrationPage()),
@@ -153,7 +154,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.add_alarm_rounded,
-                  title: 'Nöbet Oluştur',
+                  title: 'Nöbet Oluştur'.tr,
                   value: 'Öğretmenlere nöbet ata',
                   color: const Color(0xFFF97316),
                   onTap: () => _openPage(const DutyCreatePage()),
@@ -164,7 +165,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.shield_outlined,
-                  title: 'Tüm Nöbetler',
+                  title: 'Tüm Nöbetler'.tr,
                   value: 'Çizelge, denge, boş günler',
                   color: const Color(0xFFF59E0B),
                   onTap: () => _openPage(const DutiesBoardPage()),
@@ -194,7 +195,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.groups_2_outlined,
-                  title: 'Kayıt Listesi',
+                  title: 'Kayıt Listesi'.tr,
                   value: 'Tüm öğrencileri aç',
                   color: const Color(0xFF0F766E),
                   onTap: () => _openPage(const AdminStudentsPage()),
@@ -251,7 +252,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.class_outlined,
-                  title: 'Sınıf Ekle',
+                  title: 'Sınıf Ekle'.tr,
                   value: 'Yeni sınıf tanımı oluştur',
                   color: const Color(0xFF1D4ED8),
                   onTap: () => _openPage(const AdminClassManagementPage()),
@@ -266,7 +267,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.forum_outlined,
-                  title: 'Görüşme Akışı',
+                  title: 'Görüşme Akışı'.tr,
                   value: 'Veli talepleri ve onaylar',
                   color: const Color(0xFF2563EB),
                   onTap: () => _openPage(const AdminMeetingOverviewPage()),
@@ -281,7 +282,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.fact_check_outlined,
-                  title: 'Devamsızlık Paneli',
+                  title: 'Devamsızlık Paneli'.tr,
                   value: 'Tüm öğrencilerin günlük yoklamaları',
                   color: const Color(0xFFB42318),
                   onTap: () => _openPage(const AttendanceOverviewPage()),
@@ -292,7 +293,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
                 child: _metricCard(
                   context,
                   icon: Icons.schedule_rounded,
-                  title: 'Ders Programı',
+                  title: 'Ders Programı'.tr,
                   value: 'Sınıf programlarını düzenle',
                   color: const Color(0xFF2563EB),
                   onTap: () => _openPage(const AdminScheduleListPage()),
@@ -305,7 +306,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const AdminSectionTitle(title: 'Bugünün İş Akışı'),
+                AdminSectionTitle(title: 'Bugünün İş Akışı'.tr),
                 const SizedBox(height: 12),
                 ...todayTasks.map(
                   (item) => _taskTile(context, item.$1, item.$2),
@@ -319,7 +320,7 @@ class _AdministrativeHomePageState extends State<AdministrativeHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 AdminSectionTitle(
-                  title: 'Son Öğrenci Kayıtları',
+                  title: 'Son Öğrenci Kayıtları'.tr,
                   actionLabel: 'Tümünü Gör',
                   onAction: () => _openPage(const AdminStudentsPage()),
                 ),

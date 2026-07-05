@@ -16,7 +16,7 @@ class ServiceVehicleLocationEvent {
   final double? heading;
   final String recordedAt;
 
-  const ServiceVehicleLocationEvent({
+  ServiceVehicleLocationEvent({
     required this.id,
     required this.vehicleId,
     required this.driverId,

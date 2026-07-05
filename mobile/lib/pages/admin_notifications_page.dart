@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/notification_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -46,8 +47,8 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Yönetici Bildirimleri',
+        title: Text(
+          'Yönetici Bildirimleri'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -57,7 +58,7 @@ class _AdminNotificationsPageState extends State<AdminNotificationsPage> {
           AdminHeroCard(
             eyebrow: 'Bildirim merkezi',
             title:
-                'Kurum genelindeki kritik olaylar ve onay bekleyen süreçler burada toplanır.',
+                'Kurum genelindeki kritik olaylar ve onay bekleyen süreçler burada toplanır.'.tr,
             description:
                 'Yönetici görünümünde akademik, finansal ve operasyonel sinyaller tek akışta izlenir.',
             metrics: [

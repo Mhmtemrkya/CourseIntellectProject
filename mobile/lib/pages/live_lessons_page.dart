@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:student/i18n/app_locale.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../services/material_download_service.dart';
 import '../services/school_feed_api_service.dart';
@@ -60,7 +61,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Canlı ders bağlantısı açılamadı.")),
+        SnackBar(content: Text("Canlı ders bağlantısı açılamadı.".tr)),
       );
     }
   }
@@ -180,7 +181,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: Text(
-                          'Bu canlı derse ait materyal bulunmuyor.',
+                          'Bu canlı derse ait materyal bulunmuyor.'.tr,
                           style: theme.textTheme.bodyMedium,
                         ),
                       ),
@@ -267,7 +268,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      appBar: AppBar(title: const Text("Canlı Derslerim")),
+      appBar: AppBar(title: Text("Canlı Derslerim".tr)),
       body: RefreshIndicator(
         onRefresh: _loadLessons,
         child: SingleChildScrollView(
@@ -286,7 +287,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                 ),
                 const SizedBox(height: 18),
                 Text(
-                  "Bugünkü Canlı Dersler",
+                  "Bugünkü Canlı Dersler".tr,
                   style: theme.textTheme.titleMedium?.copyWith(
                     fontSize: 22,
                     fontWeight: FontWeight.w800,
@@ -308,7 +309,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                   )
                 else if (lessons.isEmpty)
                   StudentEmptyStatePanel(
-                    title: 'Henüz canlı ders bulunmuyor',
+                    title: 'Henüz canlı ders bulunmuyor'.tr,
                     description:
                         'Programına eklenen canlı dersler burada listelenecek. Sakın kaçırma, bildirimlerini açık tut.',
                     accentColor: const Color(0xFF8B5CF6),
@@ -378,12 +379,12 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
               Icon(Icons.live_tv_rounded, color: Colors.white, size: 28),
               SizedBox(width: 10),
               Text(
-                "Canlı Ders Programın",
+                "Canlı Ders Programın".tr,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 22,
@@ -394,7 +395,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            "Canlı ders bağlantılarına hızlıca katıl, materyalleri görüntüle ve ders saatlerini takip et.",
+            "Canlı ders bağlantılarına hızlıca katıl, materyalleri görüntüle ve ders saatlerini takip et.".tr,
             style: theme.textTheme.bodyMedium?.copyWith(
               color: Colors.white.withValues(alpha: 0.92),
               height: 1.4,
@@ -635,7 +636,7 @@ class _LiveLessonsPageState extends State<LiveLessonsPage> {
                 child: ElevatedButton.icon(
                   onPressed: () => _openMeeting(context, meetingUrl),
                   icon: const Icon(Icons.open_in_new_rounded),
-                  label: const Text("Derse Katıl"),
+                  label: Text("Derse Katıl".tr),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     foregroundColor: Colors.white,

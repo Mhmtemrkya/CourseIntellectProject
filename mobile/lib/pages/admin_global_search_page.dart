@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
 import '../services/staff_registry_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/admin_ui.dart';
@@ -38,8 +39,8 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
 
     return AdminScaffold(
       appBar: AppBar(
-        title: const Text(
-          'Kurum İçi Arama',
+        title: Text(
+          'Kurum İçi Arama'.tr,
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
       ),
@@ -50,15 +51,15 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
             child: TextField(
               controller: _controller,
               onChanged: (_) => setState(() {}),
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 prefixIcon: Icon(Icons.search),
-                hintText: 'Öğrenci, veli, öğretmen ara',
+                hintText: 'Öğrenci, veli, öğretmen ara'.tr,
                 border: OutlineInputBorder(),
               ),
             ),
           ),
           const SizedBox(height: 16),
-          const AdminSectionTitle(title: 'Öğrenci Sonuçları'),
+          AdminSectionTitle(title: 'Öğrenci Sonuçları'.tr),
           const SizedBox(height: 12),
           ...students.map(
             (item) => AdminPanel(
@@ -69,7 +70,7 @@ class _AdminGlobalSearchPageState extends State<AdminGlobalSearchPage> {
             ),
           ),
           const SizedBox(height: 8),
-          const AdminSectionTitle(title: 'Kadro Sonuçları'),
+          AdminSectionTitle(title: 'Kadro Sonuçları'.tr),
           const SizedBox(height: 12),
           ...staff.map(
             (item) => AdminPanel(
