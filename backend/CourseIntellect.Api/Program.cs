@@ -281,17 +281,21 @@ if (autoMigrateDatabase || seedDatabase)
 }
 
 // ─── Zamanlanmış işler (cron UTC; 05:00 UTC = 08:00 TR) ──────────────────
+// Statik RecurringJob değil, DI'dan IRecurringJobManager kullanılır
+// (JobStorage.Current bu kurulumda set edilmez).
 if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
 {
+    using var jobScope = app.Services.CreateScope();
+    var recurringJobs = jobScope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
     var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
     // Kütüphane iade hatırlatması: her gün 08:00 TR
-    RecurringJob.AddOrUpdate<IReminderJobService>(
+    recurringJobs.AddOrUpdate<IReminderJobService>(
         "library-reminders", x => x.RunLibraryRemindersAsync(CancellationToken.None), "0 5 * * *", utc);
     // Ödeme hatırlatması: Pazartesi & Perşembe 08:00 TR (spam olmasın diye seyrek)
-    RecurringJob.AddOrUpdate<IReminderJobService>(
+    recurringJobs.AddOrUpdate<IReminderJobService>(
         "finance-reminders", x => x.RunFinanceRemindersAsync(CancellationToken.None), "0 5 * * 1,4", utc);
     // Ölü push token temizliği: Pazar 03:00 UTC
-    RecurringJob.AddOrUpdate<IReminderJobService>(
+    recurringJobs.AddOrUpdate<IReminderJobService>(
         "stale-push-token-cleanup", x => x.CleanupStalePushTokensAsync(CancellationToken.None), "0 3 * * 0", utc);
 }
 
