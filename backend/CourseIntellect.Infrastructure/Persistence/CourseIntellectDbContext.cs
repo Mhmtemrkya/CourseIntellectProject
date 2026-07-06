@@ -10,6 +10,8 @@ public sealed class CourseIntellectDbContext : DbContext
 {
     private readonly IHttpContextAccessor? httpContextAccessor;
 
+    private Guid? tenantOverride;
+
     public CourseIntellectDbContext(
         DbContextOptions<CourseIntellectDbContext> options,
         IHttpContextAccessor? httpContextAccessor = null) : base(options)
@@ -17,10 +19,17 @@ public sealed class CourseIntellectDbContext : DbContext
         this.httpContextAccessor = httpContextAccessor;
     }
 
+    /// <summary>Arka plan işleri (Hangfire) gibi HttpContext'in olmadığı akışlarda
+    /// tenant bağlamını elle set etmek için. Ayarlandığında claim'i EZER; böylece
+    /// hem sorgu filtresi hem SaveChanges tenant-stamp doğru kuruma göre çalışır.
+    /// İş bitince <c>null</c>'a çekilerek temizlenmeli.</summary>
+    public void SetTenantOverride(Guid? tenantId) => tenantOverride = tenantId;
+
     public Guid? CurrentTenantId
     {
         get
         {
+            if (tenantOverride is Guid overridden) return overridden;
             var raw = httpContextAccessor?.HttpContext?.User?.FindFirstValue("tenant_id");
             return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
         }

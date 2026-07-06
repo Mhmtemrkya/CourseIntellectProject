@@ -10,7 +10,6 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class StudentFinanceService(
     CourseIntellectDbContext dbContext,
-    INotificationService notificationService,
     IParentNotifier parentNotifier) : IStudentFinanceService
 {
     public async Task<EnrollmentContractDto> CreateEnrollmentAsync(

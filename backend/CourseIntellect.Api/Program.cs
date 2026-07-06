@@ -4,6 +4,8 @@ using CourseIntellect.Infrastructure.Services;
 using CourseIntellect.Api.Hubs;
 using CourseIntellect.Api.Realtime;
 using CourseIntellect.Application.Interfaces;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
@@ -54,6 +56,23 @@ builder.Services.AddControllers();
 // Kütüphane ISBN sorgusu (Open Library) sunucu tarafında yapılır.
 builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// ─── Hangfire (arka plan zamanlanmış işler) ──────────────────────────────
+// Aynı backend process'i içinde çalışır; işleri mevcut PostgreSQL'de saklar
+// (ayrı altyapı yok). Pano public'e AÇILMAZ (güvenlik) — headless çalışır.
+var jobsEnabled = builder.Configuration.GetValue<bool?>("Jobs:Enabled") ?? true;
+var hangfireConnection = Environment.GetEnvironmentVariable("COURSE_INTELLECT_DB")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
+{
+    builder.Services.AddHangfire(cfg => cfg
+        .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings()
+        .UsePostgreSqlStorage(opt => opt.UseNpgsqlConnection(hangfireConnection)));
+    builder.Services.AddHangfireServer();
+}
+
 builder.Services.AddSignalR(options =>
 {
     // Sınav canlı kamera kareleri (küçük JPEG data URL) varsayılan 32 KB sınırını
@@ -259,6 +278,21 @@ if (autoMigrateDatabase || seedDatabase)
     {
         logger.LogInformation("Database seed is disabled by Database:Seed=false.");
     }
+}
+
+// ─── Zamanlanmış işler (cron UTC; 05:00 UTC = 08:00 TR) ──────────────────
+if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
+{
+    var utc = new RecurringJobOptions { TimeZone = TimeZoneInfo.Utc };
+    // Kütüphane iade hatırlatması: her gün 08:00 TR
+    RecurringJob.AddOrUpdate<IReminderJobService>(
+        "library-reminders", x => x.RunLibraryRemindersAsync(CancellationToken.None), "0 5 * * *", utc);
+    // Ödeme hatırlatması: Pazartesi & Perşembe 08:00 TR (spam olmasın diye seyrek)
+    RecurringJob.AddOrUpdate<IReminderJobService>(
+        "finance-reminders", x => x.RunFinanceRemindersAsync(CancellationToken.None), "0 5 * * 1,4", utc);
+    // Ölü push token temizliği: Pazar 03:00 UTC
+    RecurringJob.AddOrUpdate<IReminderJobService>(
+        "stale-push-token-cleanup", x => x.CleanupStalePushTokensAsync(CancellationToken.None), "0 3 * * 0", utc);
 }
 
 app.UseForwardedHeaders();

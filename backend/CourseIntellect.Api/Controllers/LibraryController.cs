@@ -22,8 +22,7 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class LibraryController(
     CourseIntellectDbContext dbContext,
     IHttpClientFactory httpClientFactory,
-    IPushNotificationService pushNotificationService,
-    IParentNotifier parentNotifier) : ControllerBase
+    ILibraryReminderService libraryReminderService) : ControllerBase
 {
     private static string Normalize(string? value)
         => (value ?? string.Empty).Trim().ToLowerInvariant()
@@ -386,40 +385,8 @@ public sealed class LibraryController(
     [Authorize(Roles = "Admin,Administrative")]
     public async Task<IActionResult> SendReminders(CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
-        var soonThreshold = now.AddDays(2);
-        var loans = await dbContext.LibraryLoans
-            .Where(l => l.ReturnedAtUtc == null && l.DueAtUtc <= soonThreshold)
-            .ToListAsync(cancellationToken);
-
-        foreach (var loan in loans)
-        {
-            var overdue = loan.DueAtUtc < now;
-            var title = overdue ? "Kitap iade süresi geçti" : "Kitap iade süresi yaklaşıyor";
-            var message = $"{loan.BookTitle} — iade tarihi {loan.DueAtUtc:dd.MM.yyyy}";
-            // Öğrenci: uygulama içi bildirim
-            dbContext.Notifications.Add(new NotificationItem
-            {
-                Title = title, Message = message,
-                TimeLabel = now.ToString("dd.MM.yyyy HH:mm"),
-                Audience = loan.StudentName, TargetRole = "Student", Category = "library",
-            });
-        }
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        // Öğrenciye telefon push + veliye (ParentNotifier: uygulama içi + push).
-        foreach (var loan in loans)
-        {
-            var overdue = loan.DueAtUtc < now;
-            var title = overdue ? "Kitap iade süresi geçti" : "Kitap iade süresi yaklaşıyor";
-            var message = $"{loan.BookTitle} — iade tarihi {loan.DueAtUtc:dd.MM.yyyy}";
-            await pushNotificationService.SendToUserByNameAsync(
-                loan.StudentName, title, message,
-                new Dictionary<string, string> { ["category"] = "library" }, cancellationToken);
-            await parentNotifier.NotifyStudentParentAsync(
-                loan.StudentName, title, $"{loan.StudentName}: {message}", "library", cancellationToken);
-        }
-        return Ok(new { notified = loans.Count });
+        var notified = await libraryReminderService.SendDueRemindersAsync(cancellationToken);
+        return Ok(new { notified });
     }
 
     // ─── Rezervasyon ─────────────────────────────────────────────────────

@@ -48,6 +48,8 @@ public static class DependencyInjection
         services.AddScoped<ITimetableService, TimetableService>();
         services.AddScoped<IAdminAnalyticsService, AdminAnalyticsService>();
         services.AddScoped<IParentNotifier, ParentNotifier>();
+        services.AddScoped<ILibraryReminderService, LibraryReminderService>();
+        services.AddScoped<IReminderJobService, ReminderJobService>();
         services.AddScoped<IAttendanceService, AttendanceService>();
         services.AddScoped<IStudyPlanService, StudyPlanService>();
         services.AddScoped<IAnnouncementQueryService, AnnouncementQueryService>();
