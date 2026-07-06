@@ -63,14 +63,26 @@ builder.Services.AddInfrastructure(builder.Configuration);
 var jobsEnabled = builder.Configuration.GetValue<bool?>("Jobs:Enabled") ?? true;
 var hangfireConnection = Environment.GetEnvironmentVariable("COURSE_INTELLECT_DB")
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
-if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
+var hangfireAvailable = !string.IsNullOrWhiteSpace(hangfireConnection);
+if (hangfireAvailable)
 {
+    // AddHangfire IBackgroundJobClient'ı da kaydeder → servisler işleri kuyruğa
+    // atabilir. İşleyici sunucu (AddHangfireServer) ve zamanlanmış işler ise
+    // Jobs:Enabled'a bağlı; kapalıyken işler kuyruğa yazılır ama işlenmez.
     builder.Services.AddHangfire(cfg => cfg
         .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
         .UseSimpleAssemblyNameTypeSerializer()
         .UseRecommendedSerializerSettings()
         .UsePostgreSqlStorage(opt => opt.UseNpgsqlConnection(hangfireConnection)));
-    builder.Services.AddHangfireServer();
+    if (jobsEnabled)
+    {
+        builder.Services.AddHangfireServer();
+    }
+}
+else
+{
+    // DB yoksa (beklenmez) uygulamanın DI'sı çökmesin diye no-op istemci.
+    builder.Services.AddSingleton<Hangfire.IBackgroundJobClient, CourseIntellect.Infrastructure.Services.NoOpBackgroundJobClient>();
 }
 
 builder.Services.AddSignalR(options =>

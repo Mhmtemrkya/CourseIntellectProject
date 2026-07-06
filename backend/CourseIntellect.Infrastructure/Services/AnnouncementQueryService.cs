@@ -1,3 +1,4 @@
+using Hangfire;
 using CourseIntellect.Application.DTOs.Announcements;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -8,7 +9,7 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class AnnouncementQueryService(
     CourseIntellectDbContext dbContext,
-    IPushNotificationService pushNotificationService) : IAnnouncementQueryService
+    Hangfire.IBackgroundJobClient backgroundJobClient) : IAnnouncementQueryService
 {
     public async Task<IReadOnlyList<AnnouncementDto>> GetAnnouncementsAsync(
         string? audience,
@@ -58,19 +59,12 @@ public sealed class AnnouncementQueryService(
         await dbContext.Announcements.AddAsync(item, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Hedef kitleye telefon push'u. "Tüm Kurum" için başlıca roller ayrı ayrı.
-        var data = new Dictionary<string, string> { ["category"] = "announcement" };
-        var body = item.Detail.Length > 120 ? item.Detail[..120] + "…" : item.Detail;
-        var roles = item.Audience switch
+        // Hedef kitleye push fan-out'u (çok cihaz olabilir) istek yolunu bloklamasın
+        // diye Hangfire kuyruğuna atılır. Tenant HTTP bağlamından alınır.
+        if (dbContext.CurrentTenantId is Guid tenantId)
         {
-            "Ogrenci" => new[] { "Student" },
-            "Veli" => new[] { "Parent" },
-            "Ogretmen" => new[] { "Teacher" },
-            _ => new[] { "Student", "Parent", "Teacher" },
-        };
-        foreach (var role in roles)
-        {
-            await pushNotificationService.SendToRoleAsync(role, item.Title, body, data, cancellationToken);
+            backgroundJobClient.Enqueue<INotificationFanoutJobService>(
+                x => x.AnnouncementPublishedAsync(tenantId, item.Id, CancellationToken.None));
         }
 
         return new AnnouncementDto(item.Id, item.Title, item.Detail, item.Audience, item.DateLabel, item.ClassName, item.TeacherName);

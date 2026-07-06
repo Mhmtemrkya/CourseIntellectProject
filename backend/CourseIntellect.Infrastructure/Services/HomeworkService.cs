@@ -1,3 +1,4 @@
+using Hangfire;
 using System.Text.Json;
 using CourseIntellect.Application.DTOs.Homework;
 using CourseIntellect.Application.DTOs.Notifications;
@@ -10,9 +11,7 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class HomeworkService(
     CourseIntellectDbContext dbContext,
-    INotificationService notificationService,
-    IPushNotificationService pushNotificationService,
-    IParentNotifier parentNotifier) : IHomeworkService
+    Hangfire.IBackgroundJobClient backgroundJobClient) : IHomeworkService
 {
     public async Task<IReadOnlyList<HomeworkAssignmentDto>> GetAssignmentsAsync(CancellationToken cancellationToken = default)
     {
@@ -48,27 +47,13 @@ public sealed class HomeworkService(
         await dbContext.Set<HomeworkAssignment>().AddAsync(entity, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
-        // Sınıftaki öğrencilere ve velilerine yeni ödev bildirimi (uygulama içi + push).
-        try
+        // Ağır bildirim fan-out'u (sınıftaki tüm öğrenciler + velileri) istek yolunu
+        // bloklamasın diye Hangfire kuyruğuna atılır. Tenant HTTP bağlamından alınıp
+        // işe argüman olarak geçilir (kuyruk işinde HttpContext olmayacak).
+        if (dbContext.CurrentTenantId is Guid tenantId)
         {
-            var normalizedClass = entity.ClassName.Trim().ToLowerInvariant();
-            var students = (await dbContext.Students.AsNoTracking().ToListAsync(cancellationToken))
-                .Where(s => s.ClassName.Trim().ToLowerInvariant() == normalizedClass)
-                .ToList();
-            var title = "Yeni ödev";
-            var message = $"{entity.Subject} — {entity.Title} (son teslim: {entity.DeadlineLabel})";
-            var data = new Dictionary<string, string> { ["category"] = "homework" };
-            foreach (var student in students)
-            {
-                await notificationService.CreateNotificationAsync(new CreateNotificationRequest(
-                    title, message, "Şimdi", student.FullName, "Student", "homework"), cancellationToken);
-                await pushNotificationService.SendToUserByNameAsync(student.FullName, title, message, data, cancellationToken);
-                await parentNotifier.NotifyStudentParentAsync(student.FullName, title, $"{student.FullName}: {message}", "homework", cancellationToken);
-            }
-        }
-        catch
-        {
-            // Bildirim ödev oluşturmayı bloklamamalı.
+            backgroundJobClient.Enqueue<INotificationFanoutJobService>(
+                x => x.HomeworkAssignedAsync(tenantId, entity.Id, CancellationToken.None));
         }
 
         return ToDto(entity, []);
