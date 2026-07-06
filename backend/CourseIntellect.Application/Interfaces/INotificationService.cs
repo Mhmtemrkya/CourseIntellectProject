@@ -11,6 +11,10 @@ public interface INotificationService
 
 public interface IPushNotificationService
 {
+    /// <summary>FCM servis hesabı yapılandırılmış mı (push gerçekten
+    /// gönderilebiliyor mu). Süperadmin durum göstergesi için.</summary>
+    bool IsConfigured { get; }
+
     Task SendToUserAsync(
         Guid userId,
         string title,

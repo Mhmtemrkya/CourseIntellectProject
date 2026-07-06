@@ -4,5 +4,6 @@ public sealed record SystemStatusDto(
     bool MaintenanceMode,
     string? MaintenanceMessage,
     DateTime? MaintenanceSinceUtc,
-    DateTime ServerTimeUtc
+    DateTime ServerTimeUtc,
+    bool PushNotificationsConfigured
 );

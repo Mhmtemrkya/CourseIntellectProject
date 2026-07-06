@@ -6,7 +6,9 @@ using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class SystemService(CourseIntellectDbContext dbContext) : ISystemService
+public sealed class SystemService(
+    CourseIntellectDbContext dbContext,
+    IPushNotificationService pushNotificationService) : ISystemService
 {
     private const string MaintenanceModeKey = "system.maintenance_mode";
     private const string MaintenanceMessageKey = "system.maintenance_message";
@@ -18,7 +20,7 @@ public sealed class SystemService(CourseIntellectDbContext dbContext) : ISystemS
         var enabled = ParseBool(settings.GetValueOrDefault(MaintenanceModeKey));
         var message = settings.GetValueOrDefault(MaintenanceMessageKey);
         var since = ParseDate(settings.GetValueOrDefault(MaintenanceSinceKey));
-        return new SystemStatusDto(enabled, message, since, DateTime.UtcNow);
+        return new SystemStatusDto(enabled, message, since, DateTime.UtcNow, pushNotificationService.IsConfigured);
     }
 
     public async Task<SystemStatusDto> SetMaintenanceAsync(UpdateMaintenanceRequest request, CancellationToken cancellationToken = default)

@@ -53,6 +53,7 @@ export default function SystemSettings() {
   const [features, setFeatures] = useState([]);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [pushConfigured, setPushConfigured] = useState(null);
   const [aiOcrEnabled, setAiOcrEnabled] = useState(true);
   const [aiOcrEndpoint, setAiOcrEndpoint] = useState('');
   const [aiOcrKeyConfigured, setAiOcrKeyConfigured] = useState(false);
@@ -126,6 +127,7 @@ export default function SystemSettings() {
       if (systemStatus) {
         setMaintenanceMode(Boolean(systemStatus.maintenanceMode));
         setMaintenanceMessage(systemStatus.maintenanceMessage || '');
+        setPushConfigured(Boolean(systemStatus.pushNotificationsConfigured));
       } else if (parsedSettings) {
         setMaintenanceMode(Boolean(parsedSettings.maintenanceMode));
         setMaintenanceMessage(parsedSettings.maintenanceMessage || '');
@@ -286,6 +288,38 @@ export default function SystemSettings() {
                 <Switch checked={feature.enabled} onCheckedChange={() => setFeatures((prev) => prev.map((item) => (item.id === feature.id ? { ...item, enabled: !item.enabled } : item)))} />
               </div>
             ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><Bell className="h-5 w-5" />Push Bildirimleri (FCM)</CardTitle>
+          <CardDescription>Sunucunun telefonlara anlık bildirim gönderebilmesi için Firebase servis hesabı durumu</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between p-4 rounded-lg border">
+            <div>
+              <p className="font-medium">Firebase servis hesabı</p>
+              <p className="text-sm text-muted-foreground">
+                {pushConfigured === null
+                  ? 'Durum alınamadı.'
+                  : pushConfigured
+                    ? 'Yapılandırıldı — bildirimler telefonlara gönderilebiliyor.'
+                    : 'Yapılandırılmadı — sunucuda FCM anahtarı eksik, push gönderilemiyor (uygulama içi bildirimler çalışır).'}
+              </p>
+            </div>
+            <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
+              pushConfigured === null
+                ? 'bg-muted text-muted-foreground'
+                : pushConfigured
+                  ? 'bg-emerald-500/15 text-emerald-600'
+                  : 'bg-red-500/15 text-red-500'
+            }`}
+            >
+              <span className={`h-2 w-2 rounded-full ${pushConfigured === null ? 'bg-muted-foreground' : pushConfigured ? 'bg-emerald-500' : 'bg-red-500'}`} />
+              {pushConfigured === null ? 'Bilinmiyor' : pushConfigured ? 'Açık' : 'Kapalı'}
+            </span>
           </div>
         </CardContent>
       </Card>

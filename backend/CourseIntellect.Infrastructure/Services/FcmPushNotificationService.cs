@@ -26,6 +26,8 @@ public sealed class FcmPushNotificationService(
     private string? accessToken;
     private DateTimeOffset accessTokenExpiresAt;
 
+    public bool IsConfigured => options.Value.IsConfigured;
+
     public async Task SendToUserAsync(
         Guid userId,
         string title,
