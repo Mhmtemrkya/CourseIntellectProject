@@ -3,6 +3,7 @@ import { Outlet, Navigate, useLocation } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useApp } from '../../context/AppContext';
 import { checkIsServiceDriver } from '../../lib/driverGuard';
+import { EntitlementGuard } from '../EntitlementGuard';
 import { PremiumSidebar } from './PremiumSidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
@@ -111,7 +112,9 @@ export function DashboardLayout() {
             >
               <div ref={pageRef} className="ci-page p-4 lg:p-5 xl:p-6">
                 <PageErrorBoundary key={location.pathname}>
-                  <Outlet />
+                  <EntitlementGuard>
+                    <Outlet />
+                  </EntitlementGuard>
                 </PageErrorBoundary>
               </div>
             </motion.div>

@@ -12,6 +12,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -533,10 +534,12 @@ export default function Students() {
           <h1 className="text-3xl font-bold font-heading">Öğrenciler</h1>
           <p className="text-muted-foreground mt-1">{students.length} kayıtlı öğrenci</p>
         </div>
-        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/admin/student-registration')}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Öğrenci
-        </Button>
+        <FeatureGate module="students" action="create">
+          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/admin/student-registration')}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Öğrenci
+          </Button>
+        </FeatureGate>
       </div>
 
       {error ? <ErrorBanner title="Öğrenciler alınamadı" message={error} onRetry={loadStudents} /> : null}
