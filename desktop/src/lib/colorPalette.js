@@ -230,5 +230,5 @@ export function removeBrandVariables(vars) {
 }
 
 // Varsayılan SchoolAsist renkleri
-export const DEFAULT_PRIMARY = '#07152E';
-export const DEFAULT_ACCENT = '#FF7A00';
+export const DEFAULT_PRIMARY = '#030F24';
+export const DEFAULT_ACCENT = '#0B2841';

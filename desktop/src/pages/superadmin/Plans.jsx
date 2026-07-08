@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Plus, Edit, Check, Trash2, Users, Package, Star, X,
+  Plus, Edit, Check, Trash2, Users, Package, Star, X, Shield, ChevronDown, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -16,10 +16,18 @@ import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import {
+  fetchPlatformPackages,
   fetchPlatformTenants,
   fetchSiteContentSection,
+  savePlatformPackage,
   updateSiteContentSection,
 } from '../../lib/api/modules';
+import {
+  PACKAGE_ROLES,
+  buildFullAccessRoles,
+  buildMarketingFeatureList,
+  getRoleModuleOptions,
+} from '../../lib/packageCatalog';
 
 const containerVariants = { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { staggerChildren: 0.1 } } };
 
@@ -237,6 +245,224 @@ function PlanDialog({ open, onOpenChange, plan, mode, onSave }) {
   );
 }
 
+// Var olan paket tanımını tam-erişim şablonuyla birleştirir; böylece editörde
+// kataloğa yeni eklenen modül/aksiyonlar da (varsayılan açık) görünür.
+function mergeRolesWithCatalog(existingRoles) {
+  const full = buildFullAccessRoles();
+  if (!existingRoles || typeof existingRoles !== 'object') return full;
+  for (const roleKey of Object.keys(full)) {
+    const saved = existingRoles[roleKey];
+    if (!saved?.modules) continue;
+    for (const moduleKey of Object.keys(full[roleKey].modules)) {
+      const savedModule = saved.modules[moduleKey];
+      if (!savedModule) {
+        // Kayıtlı pakette hiç geçmeyen modül: kayıt varken eklenen yeni katalog
+        // girdisi olabilir — pakette kapalı kabul edip admin kararına bırakırız.
+        full[roleKey].modules[moduleKey].enabled = false;
+        continue;
+      }
+      full[roleKey].modules[moduleKey].enabled = Boolean(savedModule.enabled);
+      for (const actionKey of Object.keys(full[roleKey].modules[moduleKey].actions)) {
+        if (savedModule.actions && savedModule.actions[actionKey] === false) {
+          full[roleKey].modules[moduleKey].actions[actionKey] = false;
+        }
+      }
+    }
+  }
+  return full;
+}
+
+function EntitlementsDialog({ open, onOpenChange, plan, existingRoles, saving, onSave }) {
+  const [rolesDraft, setRolesDraft] = useState(null);
+  const [activeRole, setActiveRole] = useState(PACKAGE_ROLES[0].key);
+  const [expandedModules, setExpandedModules] = useState(() => new Set());
+  const [syncFeatures, setSyncFeatures] = useState(true);
+
+  useEffect(() => {
+    if (!open) return;
+    setRolesDraft(mergeRolesWithCatalog(existingRoles));
+    setActiveRole(PACKAGE_ROLES[0].key);
+    setExpandedModules(new Set());
+    setSyncFeatures(true);
+  }, [open, existingRoles]);
+
+  if (!plan || !rolesDraft) return null;
+
+  const moduleOptions = getRoleModuleOptions(activeRole);
+  const roleDraft = rolesDraft[activeRole] || { modules: {} };
+
+  const setModuleEnabled = (moduleKey, enabled) => {
+    setRolesDraft((prev) => ({
+      ...prev,
+      [activeRole]: {
+        modules: {
+          ...prev[activeRole].modules,
+          [moduleKey]: { ...prev[activeRole].modules[moduleKey], enabled },
+        },
+      },
+    }));
+  };
+
+  const setActionEnabled = (moduleKey, actionKey, enabled) => {
+    setRolesDraft((prev) => {
+      const moduleEntry = prev[activeRole].modules[moduleKey];
+      return {
+        ...prev,
+        [activeRole]: {
+          modules: {
+            ...prev[activeRole].modules,
+            [moduleKey]: {
+              ...moduleEntry,
+              actions: { ...moduleEntry.actions, [actionKey]: enabled },
+            },
+          },
+        },
+      };
+    });
+  };
+
+  const setAllForRole = (enabled) => {
+    setRolesDraft((prev) => {
+      const nextModules = {};
+      for (const [moduleKey, moduleEntry] of Object.entries(prev[activeRole].modules)) {
+        const actions = {};
+        for (const actionKey of Object.keys(moduleEntry.actions)) actions[actionKey] = enabled;
+        nextModules[moduleKey] = { enabled, actions };
+      }
+      return { ...prev, [activeRole]: { modules: nextModules } };
+    });
+  };
+
+  const toggleExpanded = (moduleKey) => {
+    setExpandedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(moduleKey)) next.delete(moduleKey);
+      else next.add(moduleKey);
+      return next;
+    });
+  };
+
+  const roleEnabledCount = (roleKey) =>
+    Object.values(rolesDraft[roleKey]?.modules || {}).filter((m) => m.enabled).length;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-4xl max-h-[88vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Shield className="h-5 w-5 text-brand-accent" />
+            Paket Yetkileri: {plan.name}
+          </DialogTitle>
+          <DialogDescription>
+            Bu paketi kullanan kurumlarda hangi rol hangi sayfayı ve sayfa içindeki hangi işlemleri
+            kullanabilir? Kapattığınız sayfalar menüden gizlenir, kapattığınız işlemler sayfa içinde görünmez.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="flex gap-4 flex-1 min-h-0 py-2">
+          {/* Rol listesi */}
+          <div className="w-52 shrink-0 space-y-1 overflow-y-auto">
+            {PACKAGE_ROLES.map((role) => (
+              <button
+                key={role.key}
+                type="button"
+                onClick={() => setActiveRole(role.key)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm transition-colors flex items-center justify-between gap-2 ${
+                  activeRole === role.key
+                    ? 'bg-brand-primary text-white'
+                    : 'hover:bg-muted text-foreground'
+                }`}
+              >
+                <span>{role.label}</span>
+                <Badge variant={activeRole === role.key ? 'secondary' : 'outline'} className="text-[10px] px-1.5">
+                  {roleEnabledCount(role.key)}/{Object.keys(rolesDraft[role.key]?.modules || {}).length}
+                </Badge>
+              </button>
+            ))}
+          </div>
+
+          {/* Modül + aksiyon listesi */}
+          <div className="flex-1 min-w-0 flex flex-col">
+            <div className="flex items-center justify-between pb-2 border-b mb-2">
+              <p className="text-sm font-medium">
+                {PACKAGE_ROLES.find((r) => r.key === activeRole)?.label} sayfaları
+              </p>
+              <div className="flex gap-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setAllForRole(true)}>Tümünü Aç</Button>
+                <Button type="button" variant="outline" size="sm" onClick={() => setAllForRole(false)}>Tümünü Kapat</Button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto pr-2 space-y-1">
+              {moduleOptions.map((moduleOption) => {
+                const moduleDraft = roleDraft.modules[moduleOption.key] || { enabled: false, actions: {} };
+                const actionEntries = Object.entries(moduleOption.actions);
+                const expanded = expandedModules.has(moduleOption.key);
+                return (
+                  <div key={moduleOption.key} className="rounded-lg border border-border/60">
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <input
+                        type="checkbox"
+                        id={`mod-${activeRole}-${moduleOption.key}`}
+                        checked={moduleDraft.enabled}
+                        onChange={(e) => setModuleEnabled(moduleOption.key, e.target.checked)}
+                        className="h-4 w-4 rounded border-border"
+                      />
+                      <Label htmlFor={`mod-${activeRole}-${moduleOption.key}`} className="cursor-pointer flex-1 text-sm">
+                        {moduleOption.label}
+                      </Label>
+                      {actionEntries.length > 0 && moduleDraft.enabled ? (
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(moduleOption.key)}
+                          className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                        >
+                          {actionEntries.filter(([key]) => moduleDraft.actions[key] !== false).length}/{actionEntries.length} işlem
+                          {expanded ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+                        </button>
+                      ) : null}
+                    </div>
+                    {expanded && moduleDraft.enabled && actionEntries.length > 0 ? (
+                      <div className="px-3 pb-2 pl-9 grid grid-cols-1 sm:grid-cols-2 gap-1">
+                        {actionEntries.map(([actionKey, actionLabel]) => (
+                          <label key={actionKey} className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={moduleDraft.actions[actionKey] !== false}
+                              onChange={(e) => setActionEnabled(moduleOption.key, actionKey, e.target.checked)}
+                              className="h-3.5 w-3.5 rounded border-border"
+                            />
+                            {actionLabel}
+                          </label>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="border-t pt-3 flex-col sm:flex-row gap-3 sm:items-center">
+          <label className="flex items-center gap-2 text-sm text-muted-foreground mr-auto cursor-pointer">
+            <input
+              type="checkbox"
+              checked={syncFeatures}
+              onChange={(e) => setSyncFeatures(e.target.checked)}
+              className="h-4 w-4 rounded border-border"
+            />
+            Özellik listesini web sitesindeki pakete de yaz
+          </label>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>İptal</Button>
+          <Button onClick={() => onSave(rolesDraft, syncFeatures)} disabled={saving}>
+            {saving ? 'Kaydediliyor…' : 'Yetkileri Kaydet'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function Plans() {
   const { toast } = useToast();
   const [content, setContent] = useState(defaultPricingContent);
@@ -248,17 +474,23 @@ export default function Plans() {
   const [dialogMode, setDialogMode] = useState('edit');
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [lastSavedAt, setLastSavedAt] = useState(null);
+  const [packages, setPackages] = useState([]);
+  const [entDialogOpen, setEntDialogOpen] = useState(false);
+  const [entPlan, setEntPlan] = useState(null);
+  const [entSaving, setEntSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [pricingResponse, tenantData] = await Promise.all([
+      const [pricingResponse, tenantData, packageData] = await Promise.all([
         fetchSiteContentSection('pricing', 'tr'),
         fetchPlatformTenants().catch(() => []),
+        fetchPlatformPackages().catch(() => []),
       ]);
       setContent(normalizeContent(pricingResponse?.content));
       setTenants(tenantData);
+      setPackages(Array.isArray(packageData) ? packageData : []);
       if (pricingResponse?.updatedAt) {
         setLastSavedAt(new Date(pricingResponse.updatedAt));
       }
@@ -348,6 +580,60 @@ export default function Plans() {
         description: err.message || 'Lütfen tekrar deneyin.',
         variant: 'destructive',
       });
+    }
+  };
+
+  const findPackageForPlan = (plan) => {
+    if (!plan) return null;
+    const nameLower = plan.name.trim().toLowerCase();
+    return packages.find(
+      (pkg) => pkg.packageId === plan.id || (pkg.name || '').trim().toLowerCase() === nameLower,
+    ) || null;
+  };
+
+  const parsePackageRoles = (pkg) => {
+    if (!pkg?.payloadJson) return null;
+    try {
+      return JSON.parse(pkg.payloadJson)?.roles || null;
+    } catch {
+      return null;
+    }
+  };
+
+  const handleOpenEntitlements = (plan) => {
+    setEntPlan(plan);
+    setEntDialogOpen(true);
+  };
+
+  const handleSaveEntitlements = async (rolesDraft, syncFeatures) => {
+    if (!entPlan) return;
+    setEntSaving(true);
+    try {
+      const saved = await savePlatformPackage(entPlan.id, { name: entPlan.name, roles: rolesDraft });
+      setPackages((prev) => {
+        const others = prev.filter((pkg) => pkg.packageId !== saved.packageId);
+        return [...others, saved];
+      });
+
+      if (syncFeatures) {
+        const features = buildMarketingFeatureList(rolesDraft);
+        const nextPlans = content.plans.map((p) => (p.id === entPlan.id ? { ...p, features } : p));
+        await persist({ ...content, plans: nextPlans });
+      }
+
+      setEntDialogOpen(false);
+      toast({
+        title: 'Paket yetkileri kaydedildi',
+        description: `${entPlan.name} paketini kullanan kurumlar bir sonraki oturumda yeni yetkilerle çalışır.`,
+      });
+    } catch (err) {
+      toast({
+        title: 'Yetkiler kaydedilemedi',
+        description: err.message || 'Lütfen tekrar deneyin.',
+        variant: 'destructive',
+      });
+    } finally {
+      setEntSaving(false);
     }
   };
 
@@ -443,6 +729,16 @@ export default function Plans() {
                       {stats ? `${stats.count} kurum • ${stats.users} kullanıcı` : '0 kurum'}
                     </Badge>
                     <div className="flex gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleOpenEntitlements(plan)}
+                        disabled={saving}
+                        title="Rol / sayfa / işlem yetkileri"
+                        className={findPackageForPlan(plan) ? 'text-brand-accent border-brand-accent/40' : ''}
+                      >
+                        <Shield className="h-4 w-4" />
+                      </Button>
                       <Button variant="outline" size="sm" onClick={() => handleOpenEdit(plan)} disabled={saving}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -470,6 +766,15 @@ export default function Plans() {
         plan={selectedPlan}
         mode={dialogMode}
         onSave={handleSavePlan}
+      />
+
+      <EntitlementsDialog
+        open={entDialogOpen}
+        onOpenChange={setEntDialogOpen}
+        plan={entPlan}
+        existingRoles={parsePackageRoles(findPackageForPlan(entPlan))}
+        saving={entSaving}
+        onSave={handleSaveEntitlements}
       />
     </motion.div>
   );

@@ -1230,7 +1230,7 @@ function getRegistryItem(moduleKey, primaryRole) {
   return entry[primaryRole] || entry.default || null;
 }
 
-function inferModuleKey(item) {
+export function inferModuleKey(item) {
   const path = item?.path || "";
   if (!path) return "";
 

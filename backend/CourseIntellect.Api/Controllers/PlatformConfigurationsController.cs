@@ -71,8 +71,8 @@ public sealed class PlatformConfigurationsController(
                 DisplayName = "Varsayilan Branding",
                 PayloadJson = System.Text.Json.JsonSerializer.Serialize(new
                 {
-                    primaryColor = "#00354F",
-                    accentColor = "#D9790B",
+                    primaryColor = "#030F24",
+                    accentColor = "#0B2841",
                     logoUrl = (string?)null,
                     appName = "SchoolAsist"
                 }),

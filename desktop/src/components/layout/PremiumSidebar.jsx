@@ -18,6 +18,7 @@ import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
+import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
 import { FloatingParticles, GlowingOrb } from "../animations/AnimatedBackground";
@@ -25,6 +26,7 @@ import {
   ROLE_LABELS,
   buildGroupedMenuItems,
   getModuleAwareMenuItems,
+  inferModuleKey,
   menuConfigs,
 } from "./ModernSidebar";
 import {
@@ -138,6 +140,7 @@ export function PremiumSidebar() {
   const light = resolvedTheme === "light";
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
   const [disabledFeatures, setDisabledFeatures] = useState(null);
+  const [entitlements, setEntitlements] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
   useEffect(() => {
@@ -156,9 +159,13 @@ export function PremiumSidebar() {
     let active = true;
     if (user?.isPlatformAdmin) {
       setDisabledFeatures(new Set());
+      setEntitlements({ unrestricted: true, roles: {} });
     } else {
       getDisabledFeatureKeys().then((keys) => {
         if (active) setDisabledFeatures(keys);
+      });
+      getEntitlements().then((value) => {
+        if (active) setEntitlements(value);
       });
     }
     return () => {
@@ -191,15 +198,25 @@ export function PremiumSidebar() {
     const roleFilteredItems = moduleItems.filter((item) =>
       isPathVisibleForRoles(item.path, roles),
     );
-    const visibleItems =
+    const featureFilteredItems =
       disabledFeatures?.size > 0
         ? roleFilteredItems.filter(
             (item) => !isPathDisabled(item.path, disabledFeatures),
           )
         : roleFilteredItems;
+    // Paket yetkisi: kurumun paketi bu rol için modülü içermiyorsa menüden gizle.
+    const visibleItems =
+      entitlements && !entitlements.unrestricted
+        ? featureFilteredItems.filter((item) => {
+            const moduleKey = inferModuleKey(item);
+            if (!moduleKey || moduleKey === "profile" || moduleKey === "system") return true;
+            return isModuleAllowed(entitlements, primaryRole, moduleKey);
+          })
+        : featureFilteredItems;
     return buildGroupedMenuItems(visibleItems, primaryRole);
   }, [
     disabledFeatures,
+    entitlements,
     enabledModules,
     primaryRole,
     roles,

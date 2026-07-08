@@ -45,17 +45,28 @@ const itemVariants = {
 };
 
 const presetThemes = [
-  { id: 'default', name: 'Varsayılan', primary: '#00354F', accent: '#D9790B' },
+  { id: 'default', name: 'Varsayılan', primary: '#030F24', accent: '#0B2841' },
   { id: 'blue', name: 'Mavi', primary: '#1e40af', accent: '#3b82f6' },
   { id: 'green', name: 'Yeşil', primary: '#166534', accent: '#22c55e' },
   { id: 'purple', name: 'Mor', primary: '#581c87', accent: '#a855f7' },
   { id: 'red', name: 'Kırmızı', primary: '#991b1b', accent: '#ef4444' },
   { id: 'teal', name: 'Turkuaz', primary: '#115e59', accent: '#14b8a6' },
+  { id: 'midnight', name: 'Gece Mavisi', primary: '#0f172a', accent: '#f59e0b' },
+  { id: 'gold', name: 'Antrasit & Altın', primary: '#1c1917', accent: '#d4a017' },
+  { id: 'bordeaux', name: 'Bordo', primary: '#4c0519', accent: '#f43f5e' },
+  { id: 'indigo', name: 'İndigo', primary: '#312e81', accent: '#818cf8' },
+  { id: 'petrol', name: 'Petrol', primary: '#083344', accent: '#22d3ee' },
+  { id: 'plum', name: 'Mürdüm', primary: '#3b0764', accent: '#e879f9' },
+  { id: 'forest', name: 'Orman', primary: '#1a2e05', accent: '#84cc16' },
+  { id: 'copper', name: 'Bakır', primary: '#431407', accent: '#ea580c' },
+  { id: 'royal', name: 'Kraliyet', primary: '#172554', accent: '#facc15' },
+  { id: 'graphite', name: 'Grafit', primary: '#111827', accent: '#38bdf8' },
+  { id: 'rosewood', name: 'Gül Ağacı', primary: '#500724', accent: '#fb7185' },
+  { id: 'olive', name: 'Zeytin', primary: '#292524', accent: '#a3e635' },
 ];
 
-function buildThemeId(tenant) {
-  if (tenant.plan === 'Enterprise') return 'purple';
-  if (tenant.plan === 'Business') return 'blue';
+function buildThemeId() {
+  // Yeni kurumlar plandan bağımsız olarak kurumsal varsayılan paletle başlar.
   return 'default';
 }
 

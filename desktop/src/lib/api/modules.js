@@ -742,6 +742,27 @@ export async function fetchMyTenantFeatures() {
   return response;
 }
 
+// ─── Paket yetkileri (paket → rol → sayfa → işlem) ──────────────────────────
+
+export async function fetchPlatformPackages() {
+  const response = await api.get('/api/platform-packages');
+  return response;
+}
+
+export async function savePlatformPackage(packageId, payload) {
+  const response = await api.put(`/api/platform-packages/${encodeURIComponent(packageId)}`, payload);
+  return response;
+}
+
+export async function deletePlatformPackage(packageId) {
+  await api.delete(`/api/platform-packages/${encodeURIComponent(packageId)}`);
+}
+
+export async function fetchMyEntitlements() {
+  const response = await api.get('/api/platform-packages/my-entitlements');
+  return response;
+}
+
 export async function fetchPlatformOverview() {
   const response = await api.get('/api/platformops/overview');
   return response;
