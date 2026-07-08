@@ -13,6 +13,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -684,7 +685,7 @@ export default function Chat() {
                   </div>
                   <DialogFooter>
                     <Button variant="outline" onClick={() => setCreateOpen(false)}>İptal</Button>
-                    <Button onClick={handleCreateThread} disabled={!selectedContact}>Sohbet Başlat</Button>
+                    <FeatureGate module="chat" action="send"><Button onClick={handleCreateThread} disabled={!selectedContact}>Sohbet Başlat</Button></FeatureGate>
                   </DialogFooter>
                 </DialogContent>
               </Dialog>

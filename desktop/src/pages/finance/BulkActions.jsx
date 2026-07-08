@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BellRing, Layers3, Send, ShieldAlert } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { useToast } from '../../hooks/use-toast';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -108,10 +109,12 @@ export default function BulkActions() {
               <p className="text-xs uppercase tracking-wide">Toplam Risk Tutarı</p>
               <p className="mt-1 text-2xl font-semibold">{formatCurrency(summary.totalAmount)}</p>
             </div>
-            <Button onClick={handleNotify} disabled={sending} className="w-full bg-brand-primary hover:bg-brand-primary/90">
-              {sending ? <Send className="h-4 w-4 mr-2 animate-pulse" /> : <BellRing className="h-4 w-4 mr-2" />}
-              {sending ? 'Gönderiliyor...' : 'Toplu Hatırlatma Gönder'}
-            </Button>
+            <FeatureGate module="bulk-actions" action="bulk-notify">
+              <Button onClick={handleNotify} disabled={sending} className="w-full bg-brand-primary hover:bg-brand-primary/90">
+                {sending ? <Send className="h-4 w-4 mr-2 animate-pulse" /> : <BellRing className="h-4 w-4 mr-2" />}
+                {sending ? 'Gönderiliyor...' : 'Toplu Hatırlatma Gönder'}
+              </Button>
+            </FeatureGate>
           </CardContent>
         </Card>
       </div>

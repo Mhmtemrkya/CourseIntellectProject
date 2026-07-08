@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { UserPlus, Save, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -467,9 +468,11 @@ export default function AdminStudentRegistration() {
                     </Button>
                   ) : null}
                   {isLastStep ? (
-                    <Button onClick={handleSubmit} disabled={saving}>
-                      <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Öğrenciyi Kaydet'}
-                    </Button>
+                    <FeatureGate module="registrations" action="student-register">
+                      <Button onClick={handleSubmit} disabled={saving}>
+                        <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : 'Öğrenciyi Kaydet'}
+                      </Button>
+                    </FeatureGate>
                   ) : (
                     <Button onClick={goNext}>
                       Devam <ChevronRight className="h-4 w-4 ml-1" />

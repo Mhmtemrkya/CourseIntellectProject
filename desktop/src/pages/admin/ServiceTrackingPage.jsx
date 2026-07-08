@@ -18,6 +18,7 @@ import {
   UsersRound,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
@@ -946,7 +947,7 @@ export default function ServiceTrackingPage() {
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Vazgeç</Button>
-              <Button type="submit" disabled={saving || users.length === 0}>{saving ? 'Kaydediliyor...' : 'Şoför Oluştur'}</Button>
+              <FeatureGate module="service" action="route-manage"><Button type="submit" disabled={saving || users.length === 0}>{saving ? 'Kaydediliyor...' : 'Şoför Oluştur'}</Button></FeatureGate>
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1001,7 +1002,7 @@ export default function ServiceTrackingPage() {
             </div>
             <DialogFooter className="mt-6">
               <Button type="button" variant="outline" onClick={() => setDialog(null)}>Vazgeç</Button>
-              <Button type="submit" disabled={saving || vehicles.length === 0 || drivers.length === 0}>{saving ? 'Kaydediliyor...' : 'Rota Oluştur'}</Button>
+              <FeatureGate module="service" action="route-manage"><Button type="submit" disabled={saving || vehicles.length === 0 || drivers.length === 0}>{saving ? 'Kaydediliyor...' : 'Rota Oluştur'}</Button></FeatureGate>
             </DialogFooter>
           </form>
         </DialogContent>

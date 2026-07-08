@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -138,7 +139,7 @@ export default function AdministrativeDocuments() {
           <Input className="md:col-span-2" placeholder="Not" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
           <div className="md:col-span-2 flex flex-wrap items-center justify-between gap-3">
             <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className="text-sm" />
-            <Button onClick={submit} disabled={busy}><Upload className="mr-2 h-4 w-4" />{busy ? 'Kaydediliyor...' : 'Belgeyi Kaydet'}</Button>
+            <FeatureGate module="documents" action="upload"><Button onClick={submit} disabled={busy}><Upload className="mr-2 h-4 w-4" />{busy ? 'Kaydediliyor...' : 'Belgeyi Kaydet'}</Button></FeatureGate>
           </div>
         </CardContent>
       </Card>

@@ -5,6 +5,7 @@ import {
   Lock, Palette, Plus, Save, Search, Settings, ShieldCheck, Sparkles,
   Trash2, UserCheck, Users,
 } from 'lucide-react';
+import { FeatureGate } from '../components/FeatureGate';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -527,7 +528,7 @@ export default function Classes() {
             {step < steps.length - 1 ? (
               <Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={nextStep}>İleri: {steps[step + 1][1]} <ChevronRight className="ml-2 h-4 w-4" /></Button>
             ) : (
-              <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={submit} disabled={saving}><Save className="mr-2 h-4 w-4" /> {saving ? 'Kaydediliyor...' : 'Sınıfı Oluştur'}</Button>
+              <FeatureGate module="classes" action="create"><Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={submit} disabled={saving}><Save className="mr-2 h-4 w-4" /> {saving ? 'Kaydediliyor...' : 'Sınıfı Oluştur'}</Button></FeatureGate>
             )}
           </div>
         </main>

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -201,9 +202,11 @@ export default function OverdueRules() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setOpen(false)}>Iptal</Button>
-              <Button onClick={handleSave}>
-                <Save className="h-4 w-4 mr-1" /> Kaydet
-              </Button>
+              <FeatureGate module="overdue-rules" action="define">
+                <Button onClick={handleSave}>
+                  <Save className="h-4 w-4 mr-1" /> Kaydet
+                </Button>
+              </FeatureGate>
             </DialogFooter>
           </DialogContent>
         </Dialog>

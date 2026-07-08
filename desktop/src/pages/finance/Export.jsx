@@ -5,6 +5,7 @@ import {
   CheckCircle, Settings,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Label } from '../../components/ui/label';
 import { Checkbox } from '../../components/ui/checkbox';
@@ -227,13 +228,15 @@ export default function Export() {
                   </div>
                 </div>
 
-                <Button
-                  className="w-full bg-brand-primary hover:bg-brand-primary/90"
-                  onClick={handleExport}
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  Dışa Aktar
-                </Button>
+                <FeatureGate module="finance-export" action="excel">
+                  <Button
+                    className="w-full bg-brand-primary hover:bg-brand-primary/90"
+                    onClick={handleExport}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Dışa Aktar
+                  </Button>
+                </FeatureGate>
               </CardContent>
             </Card>
           </motion.div>

@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CalendarDays, CheckCircle2, Clock3, Plus, Trash2, Video, Building2, UserRound, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -234,7 +235,7 @@ export default function TeacherMeetingApprovals() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={createSlot}><Plus className="mr-2 h-4 w-4" />Saat Ekle</Button>
+              <FeatureGate module="meetings" action="approve"><Button onClick={createSlot}><Plus className="mr-2 h-4 w-4" />Saat Ekle</Button></FeatureGate>
             </div>
             {selectedDate || selectedTime ? (
               <div className="rounded-2xl border border-brand-primary/10 bg-brand-primary/5 px-4 py-3 text-sm text-slate-600">
@@ -312,7 +313,7 @@ export default function TeacherMeetingApprovals() {
                   </div>
                   {statusTone(item.status) === 'warning' ? (
                     <div className="flex flex-wrap gap-2">
-                      <Button onClick={() => updateStatus(item, 'Onaylandı')}><CheckCircle2 className="mr-2 h-4 w-4" />Onayla</Button>
+                      <FeatureGate module="meetings" action="approve"><Button onClick={() => updateStatus(item, 'Onaylandı')}><CheckCircle2 className="mr-2 h-4 w-4" />Onayla</Button></FeatureGate>
                       <Button variant="outline" className="text-rose-600" onClick={() => updateStatus(item, 'Reddedildi')}><XCircle className="mr-2 h-4 w-4" />Reddet</Button>
                     </div>
                   ) : null}

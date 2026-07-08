@@ -444,7 +444,7 @@ export default function LibraryPage() {
               </div>
               {!loan.returnedAtUtc && (
                 <div className="flex gap-2">
-                  <Button size="sm" className="rounded-lg" onClick={() => runReturn(loan)}>İade Al</Button>
+                  <FeatureGate module="library" action="return"><Button size="sm" className="rounded-lg" onClick={() => runReturn(loan)}>İade Al</Button></FeatureGate>
                   <Button size="sm" variant="outline" className="rounded-lg" onClick={() => runExtend(loan)}>Uzat</Button>
                 </div>
               )}

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
+import { FeatureGate } from '../../components/FeatureGate';
 import {
   CalendarDays,
   ChevronLeft,
@@ -185,10 +186,12 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
             <Printer className="h-4 w-4" /> Yazdır / PDF
           </button>
           {editable && (
-            <button type="button" onClick={save} disabled={saving || loading} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-400 disabled:opacity-60">
-              {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Kaydet
-            </button>
+            <FeatureGate module="cafeteria" action="menu-edit">
+              <button type="button" onClick={save} disabled={saving || loading} className="flex items-center gap-2 rounded-xl bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-orange-500/20 transition hover:bg-orange-400 disabled:opacity-60">
+                {saving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                Kaydet
+              </button>
+            </FeatureGate>
           )}
         </div>
       </header>

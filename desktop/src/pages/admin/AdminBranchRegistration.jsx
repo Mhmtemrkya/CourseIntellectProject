@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Building2, Plus, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -113,7 +114,7 @@ export default function AdminBranchRegistration() {
               <Input value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
             </div>
             <div className="md:col-span-2 flex justify-end">
-              <Button onClick={submit} disabled={saving}><Plus className="mr-2 h-4 w-4" />{saving ? 'Kaydediliyor...' : 'Şubeyi Kaydet'}</Button>
+              <FeatureGate module="registrations" action="branch-register"><Button onClick={submit} disabled={saving}><Plus className="mr-2 h-4 w-4" />{saving ? 'Kaydediliyor...' : 'Şubeyi Kaydet'}</Button></FeatureGate>
             </div>
           </CardContent>
         </Card>

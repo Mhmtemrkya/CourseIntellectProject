@@ -5,6 +5,7 @@ import {
   Clock3, Download, FileText, History, Info, MoreVertical, QrCode, RefreshCw,
   Save, Search, Users, XCircle,
 } from 'lucide-react';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -332,9 +333,11 @@ export default function TeacherAttendance() {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-xl" onClick={() => setHistoryOpen(true)}><History className="mr-2 h-4 w-4" /> Geçmiş Yoklamalar</Button>
           <Button variant="outline" className="rounded-xl" onClick={downloadHistory}><Download className="mr-2 h-4 w-4" /> Rapor İndir</Button>
-          <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={handleSave} disabled={saving || classStudents.length === 0}>
-            <Save className="mr-2 h-4 w-4" /> {saving ? 'Kaydediliyor...' : 'Yoklamayı Kaydet'}
-          </Button>
+          <FeatureGate module="attendance" action="take">
+            <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={handleSave} disabled={saving || classStudents.length === 0}>
+              <Save className="mr-2 h-4 w-4" /> {saving ? 'Kaydediliyor...' : 'Yoklamayı Kaydet'}
+            </Button>
+          </FeatureGate>
         </div>
       </div>
 

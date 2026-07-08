@@ -4,6 +4,7 @@ import {
   CalendarDays, CheckCircle2, XCircle, Package, Undo2, UserCog,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -163,7 +164,7 @@ export default function AdminStaffHr() {
                 {balance ? (
                   <p className="text-sm text-muted-foreground">Yıllık izin bakiyesi: <b>{balance.remainingDays}</b> / {balance.entitlement} gün (kullanılan {balance.usedDays})</p>
                 ) : <span />}
-                <Button onClick={submitLeave} disabled={busy}>Talep Oluştur</Button>
+                <FeatureGate module="staff-hr" action="leave-approve"><Button onClick={submitLeave} disabled={busy}>Talep Oluştur</Button></FeatureGate>
               </div>
             </CardContent>
           </Card>

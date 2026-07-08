@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CalendarRange, CheckCircle2, Plus, Save, Sparkles, Trash2 } from 'lucide-react';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -358,7 +359,7 @@ export default function GuidancePlanner() {
           </div>
           <DialogFooter>
             <Button variant="outline" className="rounded-xl" onClick={() => setDialog(null)}>Vazgeç</Button>
-            <Button className="rounded-xl" onClick={addTask}>Ekle</Button>
+            <FeatureGate module="guidance" action="planner"><Button className="rounded-xl" onClick={addTask}>Ekle</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

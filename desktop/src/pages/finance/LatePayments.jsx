@@ -6,6 +6,7 @@ import {
   Calendar, Send, Download,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -210,14 +211,16 @@ export default function LatePayments() {
         >
           <span className="text-sm font-medium">{selected.length} seçili</span>
           <div className="flex gap-2">
-            <Button size="sm" variant="outline" onClick={() => sendReminder('sms')}>
-              <Phone className="h-4 w-4 mr-2" />
-              SMS Gönder
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => sendReminder('email')}>
-              <Mail className="h-4 w-4 mr-2" />
-              E-posta Gönder
-            </Button>
+            <FeatureGate module="late-payments" action="notify">
+              <Button size="sm" variant="outline" onClick={() => sendReminder('sms')}>
+                <Phone className="h-4 w-4 mr-2" />
+                SMS Gönder
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => sendReminder('email')}>
+                <Mail className="h-4 w-4 mr-2" />
+                E-posta Gönder
+              </Button>
+            </FeatureGate>
           </div>
         </motion.div>
       ) : null}

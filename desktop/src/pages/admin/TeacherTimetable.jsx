@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarRange, Plus, Trash2, Save } from 'lucide-react';
 import { PremiumPanel } from '../../components/ui/premium-dashboard';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -174,7 +175,7 @@ export default function TeacherTimetable() {
         <PremiumPanel
           title="Haftalık Program"
           description={`${teacherName(selectedTeacher)} · ${slots.length} ders saati`}
-          action={<Button variant="outline" size="sm" onClick={addSlot}><Plus className="h-4 w-4 mr-1" /> Ders Ekle</Button>}
+          action={<FeatureGate module="duties" action="create"><Button variant="outline" size="sm" onClick={addSlot}><Plus className="h-4 w-4 mr-1" /> Ders Ekle</Button></FeatureGate>}
           contentClassName="space-y-3"
         >
           {slotsLoading ? (

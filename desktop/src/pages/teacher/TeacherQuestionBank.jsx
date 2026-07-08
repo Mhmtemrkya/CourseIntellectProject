@@ -7,6 +7,7 @@ import {
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -926,7 +927,7 @@ export default function TeacherQuestionBank() {
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setShowAddDialog(false)}>İptal</Button>
-                  <Button onClick={handleSaveQuestion} disabled={saving}>{saving ? 'Kaydediliyor...' : editingQuestion ? 'Güncelle' : 'Kaydet'}</Button>
+                  <FeatureGate module="question-bank" action="create"><Button onClick={handleSaveQuestion} disabled={saving}>{saving ? 'Kaydediliyor...' : editingQuestion ? 'Güncelle' : 'Kaydet'}</Button></FeatureGate>
                 </DialogFooter>
               </DialogContent>
             </Dialog>

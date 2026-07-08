@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -189,7 +190,9 @@ export default function Salary() {
         </div>
         <Dialog open={open} onOpenChange={(value) => { setOpen(value); if (!value) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1" /> Maas Kaydi Ekle</Button>
+            <FeatureGate module="salary" action="define">
+              <Button><Plus className="h-4 w-4 mr-1" /> Maas Kaydi Ekle</Button>
+            </FeatureGate>
           </DialogTrigger>
           <DialogContent className="max-h-[90vh] overflow-y-auto">
             <DialogHeader>

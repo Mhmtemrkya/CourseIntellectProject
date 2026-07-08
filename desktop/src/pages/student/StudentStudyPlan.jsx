@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Progress } from '../../components/ui/progress';
@@ -960,7 +961,7 @@ export default function StudentStudyPlan() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTaskDialog(false)}>Vazgeç</Button>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleAddTask} disabled={saving}>{saving ? 'Ekleniyor...' : 'Ekle'}</Button>
+            <FeatureGate module="study-plan" action="create"><Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleAddTask} disabled={saving}>{saving ? 'Ekleniyor...' : 'Ekle'}</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -987,7 +988,7 @@ export default function StudentStudyPlan() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setGoalDialog(false)}>Vazgeç</Button>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleAddGoal} disabled={saving}>{saving ? 'Ekleniyor...' : 'Hedefi Kaydet'}</Button>
+            <FeatureGate module="study-plan" action="create"><Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleAddGoal} disabled={saving}>{saving ? 'Ekleniyor...' : 'Hedefi Kaydet'}</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

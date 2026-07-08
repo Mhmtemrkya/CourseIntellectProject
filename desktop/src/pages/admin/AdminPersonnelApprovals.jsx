@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -192,7 +193,7 @@ export default function AdminPersonnelApprovals() {
           ) : null}
           <DialogFooter>
             <Button variant="outline" disabled={!selected || busyId === selected?.id} className="border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => selected && decide(selected, 'Rejected')}>Reddet</Button>
-            <Button disabled={!selected || busyId === selected?.id} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => selected && decide(selected, 'Approved')}>Onayla</Button>
+            <FeatureGate module="approvals" action="approve"><Button disabled={!selected || busyId === selected?.id} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => selected && decide(selected, 'Approved')}>Onayla</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

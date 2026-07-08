@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CheckSquare2, Plus, Play, Check, Clock3, AlertTriangle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -131,7 +132,7 @@ export default function AdminTaskCenter() {
             <Input type="datetime-local" value={form.endDate} onChange={(e) => setForm((f) => ({ ...f, endDate: e.target.value }))} />
           </div>
           <Textarea className="md:col-span-2" placeholder="Açıklama" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-          <div className="md:col-span-2 flex justify-end"><Button onClick={create} disabled={busy}>Görev Ekle</Button></div>
+          <div className="md:col-span-2 flex justify-end"><FeatureGate module="tasks" action="create"><Button onClick={create} disabled={busy}>Görev Ekle</Button></FeatureGate></div>
         </CardContent>
       </Card>
 

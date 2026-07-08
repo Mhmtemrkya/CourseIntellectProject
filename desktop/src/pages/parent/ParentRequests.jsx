@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -87,7 +88,7 @@ export default function ParentRequests() {
           </div>
           <Textarea className="md:col-span-2" placeholder="Açıklama" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
           <div className="md:col-span-2 flex justify-end">
-            <Button onClick={submit} disabled={busy}><Send className="mr-2 h-4 w-4" />Talebi Gönder</Button>
+            <FeatureGate module="feedback" action="send"><Button onClick={submit} disabled={busy}><Send className="mr-2 h-4 w-4" />Talebi Gönder</Button></FeatureGate>
           </div>
         </CardContent>
       </Card>

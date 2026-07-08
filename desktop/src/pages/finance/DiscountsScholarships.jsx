@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -359,7 +360,7 @@ export default function DiscountsScholarships() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)}>İptal</Button>
-            <Button onClick={handleCreateProfile}>Kaydet</Button>
+            <FeatureGate module="discounts-scholarships" action="define"><Button onClick={handleCreateProfile}>Kaydet</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

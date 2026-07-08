@@ -5,6 +5,7 @@ import {
   FileDown, FileText, MoreVertical, Printer, Save, Search, Settings2, Upload,
   Users,
 } from 'lucide-react';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
@@ -394,7 +395,7 @@ export default function TeacherGradeEntry() {
           <Button variant="outline" onClick={() => fileRef.current?.click()}><Upload className="mr-2 h-4 w-4" />İçe Aktar</Button>
           <Button variant="outline" onClick={() => downloadText('not-girisi.csv', rowsToCsv())}><FileDown className="mr-2 h-4 w-4" />Dışa Aktar</Button>
           <Button variant="outline" onClick={() => window.print()}><Printer className="mr-2 h-4 w-4" />PDF Rapor</Button>
-          <Button onClick={saveAll} disabled={saving || loading} className="bg-orange-500 text-white hover:bg-orange-600"><Save className="mr-2 h-4 w-4" />{saving ? 'Kaydediliyor' : 'Kaydet'}</Button>
+          <FeatureGate module="grade-entry" action="enter"><Button onClick={saveAll} disabled={saving || loading} className="bg-orange-500 text-white hover:bg-orange-600"><Save className="mr-2 h-4 w-4" />{saving ? 'Kaydediliyor' : 'Kaydet'}</Button></FeatureGate>
           <input ref={fileRef} type="file" accept=".csv,text/csv" className="hidden" onChange={(event) => importCsv(event.target.files?.[0])} />
         </div>
       </div>

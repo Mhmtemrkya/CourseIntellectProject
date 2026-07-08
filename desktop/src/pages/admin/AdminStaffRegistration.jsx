@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Save, Briefcase, Copy, BusFront, Route } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -518,9 +519,11 @@ export default function AdminStaffRegistration() {
 
               <div className="flex justify-end gap-3 pt-2">
                 <Button variant="outline" onClick={() => setForm(emptyForm)}>Temizle</Button>
-                <Button onClick={handleSubmit} disabled={saving}>
-                  <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : isServiceDriver ? 'Şoför, Araç ve Rota Kaydet' : 'Personeli Kaydet'}
-                </Button>
+                <FeatureGate module="registrations" action="staff-register">
+                  <Button onClick={handleSubmit} disabled={saving}>
+                    <Save className="h-4 w-4 mr-1" /> {saving ? 'Kaydediliyor...' : isServiceDriver ? 'Şoför, Araç ve Rota Kaydet' : 'Personeli Kaydet'}
+                  </Button>
+                </FeatureGate>
               </div>
             </CardContent>
           </Card>

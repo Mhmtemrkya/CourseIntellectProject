@@ -7,6 +7,7 @@ import {
   LibraryBig, Loader2, Maximize2, Paperclip, Plus, RotateCw, Save, Table2, Trash2,
   Upload, X,
 } from 'lucide-react';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -634,7 +635,7 @@ export default function TeacherQuestionStudio() {
                     </SelectContent>
                   </Select>
                 </Field>
-                <div className="flex items-end"><Button onClick={publishExam} disabled={saving} className="w-full bg-emerald-600 text-white hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" />Sınavı Yayınla</Button></div>
+                <div className="flex items-end"><FeatureGate module="exams" action="publish-results"><Button onClick={publishExam} disabled={saving} className="w-full bg-emerald-600 text-white hover:bg-emerald-700"><Save className="mr-2 h-4 w-4" />Sınavı Yayınla</Button></FeatureGate></div>
                 <Field label="Başlama Saati"><Input type="time" value={examForm.startTime} onChange={(event) => { setExamForm((v) => ({ ...v, startTime: event.target.value })); touch(); }} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
                 <Field label="Bitiş Saati"><Input type="time" value={examForm.endTime} onChange={(event) => { setExamForm((v) => ({ ...v, endTime: event.target.value })); touch(); }} className="border-foreground/10 bg-foreground/5 text-white" /></Field>
                 <Field label="Geç Giriş Limiti">

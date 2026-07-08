@@ -4,6 +4,7 @@ import {
   ShieldCheck, CheckCircle2, XCircle, Trash2, Pencil, Layers,
 } from 'lucide-react';
 import { PremiumPanel } from '../../components/ui/premium-dashboard';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -248,7 +249,7 @@ export default function DutiesBoard() {
           ) : null}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>İptal</Button>
-            <Button onClick={saveEdit} disabled={busy}>Kaydet</Button>
+            <FeatureGate module="duties" action="assign"><Button onClick={saveEdit} disabled={busy}>Kaydet</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

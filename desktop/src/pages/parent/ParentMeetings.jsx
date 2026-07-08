@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { CalendarDays, Clock3, Video, Building2, Send, UserRound } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -234,7 +235,7 @@ export default function ParentMeetings() {
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setOpen(false)}>Vazgeç</Button>
-                <Button onClick={handleCreate} disabled={saving}>{saving ? 'Gönderiliyor...' : 'Talep Oluştur'}</Button>
+                <FeatureGate module="meetings" action="request"><Button onClick={handleCreate} disabled={saving}>{saving ? 'Gönderiliyor...' : 'Talep Oluştur'}</Button></FeatureGate>
               </DialogFooter>
             </DialogContent>
           </Dialog>

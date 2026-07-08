@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { BookOpen, Edit, Plus, RefreshCw, Search, Trash2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -410,7 +411,7 @@ export default function AdminCourses() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setFormOpen(false)}>Vazgeç</Button>
-            <Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
+            <FeatureGate module="courses" action="create"><Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>
