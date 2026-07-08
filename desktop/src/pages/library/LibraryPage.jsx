@@ -17,6 +17,7 @@ import {
   Bar, BarChart, CartesianGrid, Cell, Line, LineChart, Pie, PieChart,
   ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
 } from 'recharts';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -311,15 +312,21 @@ export default function LibraryPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Button variant="outline" className="rounded-xl" onClick={runReminders}>
-            <BellRing className="mr-2 h-4 w-4" /> Hatırlatma Gönder
-          </Button>
-          <Button variant="outline" className="rounded-xl" onClick={() => setBulkOpen(true)}>
-            <Upload className="mr-2 h-4 w-4" /> Toplu Ekle
-          </Button>
-          <Button className="rounded-xl" onClick={openCreateBook} data-testid="library-add-book">
-            <BookPlus className="mr-2 h-4 w-4" /> Kitap Ekle
-          </Button>
+          <FeatureGate module="library" action="lend">
+            <Button variant="outline" className="rounded-xl" onClick={runReminders}>
+              <BellRing className="mr-2 h-4 w-4" /> Hatırlatma Gönder
+            </Button>
+          </FeatureGate>
+          <FeatureGate module="library" action="catalog-manage">
+            <Button variant="outline" className="rounded-xl" onClick={() => setBulkOpen(true)}>
+              <Upload className="mr-2 h-4 w-4" /> Toplu Ekle
+            </Button>
+          </FeatureGate>
+          <FeatureGate module="library" action="catalog-manage">
+            <Button className="rounded-xl" onClick={openCreateBook} data-testid="library-add-book">
+              <BookPlus className="mr-2 h-4 w-4" /> Kitap Ekle
+            </Button>
+          </FeatureGate>
         </div>
       </div>
 

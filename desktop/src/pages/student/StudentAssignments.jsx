@@ -6,6 +6,7 @@ import {
   Search, BookOpen, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Textarea } from '../../components/ui/textarea';
@@ -491,7 +492,9 @@ export default function StudentAssignments() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setSelectedAssignment(null)}>İptal</Button>
-            <Button onClick={handleSubmitHomework} disabled={submitting}>{submitting ? 'Teslim ediliyor...' : 'Teslim Et'}</Button>
+            <FeatureGate module="assignments" action="submit">
+              <Button onClick={handleSubmitHomework} disabled={submitting}>{submitting ? 'Teslim ediliyor...' : 'Teslim Et'}</Button>
+            </FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

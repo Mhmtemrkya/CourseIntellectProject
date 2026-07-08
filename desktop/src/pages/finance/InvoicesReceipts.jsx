@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import {
@@ -461,14 +462,18 @@ export default function InvoicesReceipts() {
             <Printer className="h-4 w-4 mr-2" />
             Toplu Yazdır
           </Button>
-          <Button variant="outline" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Excel
-          </Button>
-          <Button onClick={() => (activeTab === 'invoices' ? setDialogOpen(true) : setReceiptDialogOpen(true))}>
-            <Plus className="h-4 w-4 mr-2" />
-            {activeTab === 'invoices' ? 'Yeni Fatura' : 'Yeni Makbuz'}
-          </Button>
+          <FeatureGate module="billing" action="export">
+            <Button variant="outline" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Excel
+            </Button>
+          </FeatureGate>
+          <FeatureGate module="billing" action={activeTab === 'invoices' ? 'invoice-create' : 'receipt-create'}>
+            <Button onClick={() => (activeTab === 'invoices' ? setDialogOpen(true) : setReceiptDialogOpen(true))}>
+              <Plus className="h-4 w-4 mr-2" />
+              {activeTab === 'invoices' ? 'Yeni Fatura' : 'Yeni Makbuz'}
+            </Button>
+          </FeatureGate>
         </div>
       </div>
 

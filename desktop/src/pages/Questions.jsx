@@ -17,6 +17,7 @@ import {
   FileText,
   Film,
 } from 'lucide-react';
+import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -398,10 +399,12 @@ export default function Questions() {
           <p className="text-muted-foreground mt-1">Soru thread ve yanıt akışı</p>
         </div>
         {isStudent ? (
-          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Soru
-          </Button>
+          <FeatureGate module="questions" action="ask">
+            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Yeni Soru
+            </Button>
+          </FeatureGate>
         ) : null}
       </div>
 

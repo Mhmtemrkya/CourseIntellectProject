@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -273,10 +274,12 @@ export default function AdministrativeAnnouncements() {
                 </div>
               ))}
             </div>
-            <Button onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Duyuru
-            </Button>
+            <FeatureGate module="notifications" action="create">
+              <Button onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Yeni Duyuru
+              </Button>
+            </FeatureGate>
           </div>
         </div>
       </section>

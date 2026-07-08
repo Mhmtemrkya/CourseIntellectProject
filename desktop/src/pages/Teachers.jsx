@@ -13,6 +13,7 @@ import {
   Pencil,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -592,10 +593,12 @@ export default function Teachers() {
           <h1 className="text-3xl font-bold font-heading">Öğretmenler</h1>
           <p className="text-muted-foreground mt-1">{staff.length} kayıtlı öğretmen</p>
         </div>
-        <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Öğretmen
-        </Button>
+        <FeatureGate module="teachers" action="create">
+          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Öğretmen
+          </Button>
+        </FeatureGate>
       </div>
 
       {error ? <ErrorBanner title="Öğretmenler alınamadı" message={error} onRetry={loadTeachers} /> : null}

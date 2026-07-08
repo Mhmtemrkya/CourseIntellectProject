@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Send, BellRing, Paperclip, Image as ImageIcon, FileText, Film, X } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Textarea } from '../../components/ui/textarea';
@@ -211,10 +212,12 @@ export default function StudentQuestionBox() {
               </div>
             ) : null}
           </div>
-          <Button onClick={handleSubmit} disabled={submitting || !title.trim() || !questionText.trim() || !teacher.trim()}>
-            <Send className="h-4 w-4 mr-2" />
-            {submitting ? 'Gönderiliyor...' : 'Soruyu Gönder'}
-          </Button>
+          <FeatureGate module="questions" action="ask">
+            <Button onClick={handleSubmit} disabled={submitting || !title.trim() || !questionText.trim() || !teacher.trim()}>
+              <Send className="h-4 w-4 mr-2" />
+              {submitting ? 'Gönderiliyor...' : 'Soruyu Gönder'}
+            </Button>
+          </FeatureGate>
         </CardContent>
       </Card>
 

@@ -5,6 +5,7 @@ import {
   Clock, Eye, FileText, Filter, MoreVertical, Plus, RefreshCw, Save,
   Search, Trash2, Upload, Users, X,
 } from 'lucide-react';
+import { FeatureGate } from '../components/FeatureGate';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
@@ -299,7 +300,7 @@ export default function Attendance() {
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="rounded-xl" onClick={exportReport}><FileText className="mr-2 h-4 w-4" /> Devamsızlık Raporu</Button>
           <Button className="rounded-xl bg-blue-600 text-white hover:bg-blue-700" onClick={() => setBulkOpen(true)}><Upload className="mr-2 h-4 w-4" /> Toplu Devamsızlık Girişi</Button>
-          <Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={() => setAddOpen(true)}><Plus className="mr-2 h-4 w-4" /> Devamsızlık Ekle</Button>
+          <FeatureGate module="attendance" action="take"><Button className="rounded-xl bg-orange-500 text-white hover:bg-orange-600" onClick={() => setAddOpen(true)}><Plus className="mr-2 h-4 w-4" /> Devamsızlık Ekle</Button></FeatureGate>
         </div>
       </div>
 

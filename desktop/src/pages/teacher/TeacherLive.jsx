@@ -5,6 +5,7 @@ import {
   Video, Clock, Plus, Trash2, Play,
   CalendarPlus, PenTool, BarChart3, FolderOpen,
 } from 'lucide-react';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -278,10 +279,12 @@ export default function TeacherLive() {
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
-              <Plus className="h-4 w-4 mr-2" />
-              Canlı Ders Oluştur
-            </Button>
+            <FeatureGate module="live-lessons" action="schedule">
+              <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
+                <Plus className="h-4 w-4 mr-2" />
+                Canlı Ders Oluştur
+              </Button>
+            </FeatureGate>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

@@ -13,6 +13,7 @@ import {
   ShieldCheck,
   Wallet,
 } from 'lucide-react';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
@@ -147,9 +148,11 @@ export default function ParentPayments() {
         icon={<IconTile icon={CreditCard} tone="purple" className="h-14 w-14" />}
         actions={(
           <>
-            <Button className="h-11 rounded-[10px] bg-purple-600 px-8 font-black text-white hover:bg-purple-500" onClick={() => selectedAccount && openPay(selectedAccount)}>
-              <CreditCard className="mr-2 h-4 w-4" />Ödeme Yap
-            </Button>
+            <FeatureGate module="payments" action="pay">
+              <Button className="h-11 rounded-[10px] bg-purple-600 px-8 font-black text-white hover:bg-purple-500" onClick={() => selectedAccount && openPay(selectedAccount)}>
+                <CreditCard className="mr-2 h-4 w-4" />Ödeme Yap
+              </Button>
+            </FeatureGate>
             <SmallButton onClick={() => document.getElementById('parent-payment-plan')?.scrollIntoView({ behavior: 'smooth' })}>
               <CalendarDays className="mr-2 h-4 w-4" />Ödeme Planı
             </SmallButton>

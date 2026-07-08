@@ -5,6 +5,7 @@ import {
   FileQuestion, Plus, BarChart3, CheckCircle, Calendar, Trophy, Users, Target, Camera,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -169,15 +170,19 @@ export default function TeacherExams() {
           <p className="text-muted-foreground mt-1">Sınav sonucu gir ve mevcut kayıtları incele</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button className="bg-orange-500 text-white hover:bg-orange-600" onClick={() => navigate('/t/exams/create?mode=exam&type=Exam')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Sınav
-          </Button>
+          <FeatureGate module="exams" action="create">
+            <Button className="bg-orange-500 text-white hover:bg-orange-600" onClick={() => navigate('/t/exams/create?mode=exam&type=Exam')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Yeni Sınav
+            </Button>
+          </FeatureGate>
           <Button variant="outline" onClick={() => navigate('/t/exam-workbench')}>Çalışma Alanı</Button>
-          <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/t/grade-entry')}>
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Sonuç
-          </Button>
+          <FeatureGate module="grade-entry" action="enter">
+            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/t/grade-entry')}>
+              <Plus className="h-4 w-4 mr-2" />
+              Yeni Sonuç
+            </Button>
+          </FeatureGate>
         </div>
       </div>
 

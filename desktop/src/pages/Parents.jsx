@@ -14,6 +14,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -219,13 +220,15 @@ export default function Parents() {
           <h1 className="text-3xl font-bold font-heading">Veliler</h1>
           <p className="text-muted-foreground mt-1">{parents.length} kayıtlı veli</p>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => navigate('/admin/parent-registration')}
-        >
-          <Info className="h-4 w-4 mr-2" />
-          Yeni Veli Bilgisi
-        </Button>
+        <FeatureGate module="parents" action="create">
+          <Button
+            variant="outline"
+            onClick={() => navigate('/admin/parent-registration')}
+          >
+            <Info className="h-4 w-4 mr-2" />
+            Yeni Veli Bilgisi
+          </Button>
+        </FeatureGate>
       </div>
 
       {error ? <ErrorBanner title="Veli listesi alınamadı" message={error} onRetry={loadParents} /> : null}

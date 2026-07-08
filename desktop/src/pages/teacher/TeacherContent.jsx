@@ -5,6 +5,7 @@ import {
   CloudUpload, HardDrive, Sparkles, CalendarClock, Settings2, ImageIcon, X, ClipboardCheck, FileUp, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -570,10 +571,12 @@ export default function TeacherContent() {
         </div>
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
-              <Upload className="h-4 w-4 mr-2" />
-              Yeni İçerik Ekle
-            </Button>
+            <FeatureGate module="content" action="upload">
+              <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
+                <Upload className="h-4 w-4 mr-2" />
+                Yeni İçerik Ekle
+              </Button>
+            </FeatureGate>
           </DialogTrigger>
           <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] p-0 text-foreground shadow-2xl sm:w-[calc(100vw-2rem)]">
             <div className="border-b border-foreground/10 bg-gradient-to-r from-[hsl(var(--ci-card))] via-[hsl(var(--ci-card))] to-[#160f08] px-6 py-5">

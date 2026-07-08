@@ -10,6 +10,7 @@ import {
   Download,
   Search,
 } from 'lucide-react';
+import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -300,10 +301,12 @@ export default function Exams() {
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input value={search} onChange={(e) => setSearch(e.target.value)} className="pl-9" placeholder="Sınav, ders veya sınıf ara..." />
             </div>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setResultDialogOpen(true)}>
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Sonuç
-            </Button>
+            <FeatureGate module="exams" action="create">
+              <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setResultDialogOpen(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni Sonuç
+              </Button>
+            </FeatureGate>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

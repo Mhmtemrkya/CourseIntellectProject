@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, Clock3, FileQuestion, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
@@ -70,9 +71,11 @@ export default function TeacherMockExams() {
           <h1 className="mt-2 text-3xl font-black">Deneme Sınavları</h1>
           <p className="mt-2 max-w-xl text-sm text-slate-400">Deneme sorularını oluştur, yayınla ve canlı sınav kayıtlarını tek ekrandan yönet.</p>
         </div>
-        <Button onClick={() => navigate('/t/mock-exams/create?mode=exam&type=MockExam')} className="h-12 bg-orange-500 px-5 text-white hover:bg-orange-600">
-          <Plus className="mr-2 h-5 w-5" />Yeni Deneme Oluştur
-        </Button>
+        <FeatureGate module="mock-exams" action="create">
+          <Button onClick={() => navigate('/t/mock-exams/create?mode=exam&type=MockExam')} className="h-12 bg-orange-500 px-5 text-white hover:bg-orange-600">
+            <Plus className="mr-2 h-5 w-5" />Yeni Deneme Oluştur
+          </Button>
+        </FeatureGate>
       </header>
 
       <div className="grid gap-4 sm:grid-cols-3">

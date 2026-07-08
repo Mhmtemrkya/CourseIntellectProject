@@ -6,6 +6,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -299,13 +300,15 @@ export default function Installments() {
             {filteredPlans.length} kayıt gösteriliyor • Toplam {plans.length} taksit
           </p>
         </div>
-        <Button
-          className="bg-brand-primary hover:bg-brand-primary/90"
-          onClick={() => setDialogOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Plan
-        </Button>
+        <FeatureGate module="installments" action="plan-create">
+          <Button
+            className="bg-brand-primary hover:bg-brand-primary/90"
+            onClick={() => setDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Plan
+          </Button>
+        </FeatureGate>
       </div>
 
       {error ? <ErrorBanner title="Taksit planları alınamadı" message={error} onRetry={loadData} /> : null}

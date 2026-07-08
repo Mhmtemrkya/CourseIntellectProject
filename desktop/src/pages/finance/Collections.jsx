@@ -5,6 +5,7 @@ import {
   Receipt, Download, Pencil, Trash2,
 } from 'lucide-react';
 import { Card, CardContent } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Badge } from '../../components/ui/badge';
@@ -431,13 +432,15 @@ export default function Collections() {
             Bugün: ₺{totalToday.toLocaleString('tr-TR')} • {filteredCollections.length} kayıt gösteriliyor
           </p>
         </div>
-        <Button
-          className="bg-brand-primary hover:bg-brand-primary/90"
-          onClick={() => setDialogOpen(true)}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Yeni Tahsilat
-        </Button>
+        <FeatureGate module="collections" action="collect">
+          <Button
+            className="bg-brand-primary hover:bg-brand-primary/90"
+            onClick={() => setDialogOpen(true)}
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Tahsilat
+          </Button>
+        </FeatureGate>
       </div>
 
       {error ? <ErrorBanner title="Tahsilatlar alınamadı" message={error} onRetry={loadData} /> : null}
@@ -567,9 +570,11 @@ export default function Collections() {
                         </Button>
                       </div>
                     ) : (
-                      <Button size="sm" variant="outline" onClick={() => openPlannedCollectionDialog(collection)}>
-                        Tahsilat Al
-                      </Button>
+                      <FeatureGate module="collections" action="collect">
+                        <Button size="sm" variant="outline" onClick={() => openPlannedCollectionDialog(collection)}>
+                          Tahsilat Al
+                        </Button>
+                      </FeatureGate>
                     )}
                   </TableCell>
                 </TableRow>

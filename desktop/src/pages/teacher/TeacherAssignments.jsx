@@ -4,6 +4,7 @@ import {
   FileText, Plus, Search, Calendar, CheckCircle, AlertCircle, Eye, Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -181,10 +182,12 @@ export default function TeacherAssignments() {
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90">
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Ödev
-            </Button>
+            <FeatureGate module="assignments" action="assign">
+              <Button className="bg-brand-primary hover:bg-brand-primary/90">
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni Ödev
+              </Button>
+            </FeatureGate>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>

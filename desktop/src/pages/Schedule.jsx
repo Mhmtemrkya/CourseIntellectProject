@@ -13,6 +13,7 @@ import {
   User,
   Users,
 } from 'lucide-react';
+import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -414,10 +415,12 @@ export default function Schedule() {
                 {classes.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}
               </SelectContent>
             </Select>
-            <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setCreateOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Slot
-            </Button>
+            <FeatureGate module="schedule" action="edit">
+              <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setCreateOpen(true)}>
+                <Plus className="mr-2 h-4 w-4" />
+                Yeni Slot
+              </Button>
+            </FeatureGate>
           </div>
         </CardContent>
       </Card>

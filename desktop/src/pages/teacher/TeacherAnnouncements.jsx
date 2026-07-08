@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { BellRing, CheckCircle2, GraduationCap, Megaphone, PlusCircle, Users, UsersRound } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
@@ -245,7 +246,9 @@ export default function TeacherAnnouncements() {
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button size="lg"><PlusCircle className="h-4 w-4 mr-2" />Yeni Duyuru</Button>
+            <FeatureGate module="notifications" action="create">
+              <Button size="lg"><PlusCircle className="h-4 w-4 mr-2" />Yeni Duyuru</Button>
+            </FeatureGate>
           </DialogTrigger>
           <DialogContent className="sm:max-w-4xl p-0 overflow-hidden">
             <div className="grid lg:grid-cols-[1.1fr_0.9fr]">
