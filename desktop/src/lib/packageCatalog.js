@@ -91,6 +91,17 @@ export const MODULE_LIBRARY = {
   service: { label: 'Servis Takibi', actions: { 'route-manage': 'Rota/araç yönetimi', 'live-track': 'Canlı konum takibi' } },
   cafeteria: { label: 'Yemekhane', actions: { 'menu-edit': 'Menü düzenle', publish: 'Menü yayınla' } },
   'role-management': { label: 'Rol Yönetimi', actions: { 'policy-edit': 'Rol yetkisi düzenle' } },
+  library: {
+    label: 'Kütüphane',
+    actions: { 'catalog-manage': 'Kitap ekle/düzenle', lend: 'Ödünç ver', return: 'İade al', browse: 'Katalog görüntüle' },
+  },
+  'staff-hr': {
+    label: 'Personel / İK',
+    actions: { 'profile-edit': 'Personel dosyası düzenle', 'leave-approve': 'İzin onayla', 'asset-assign': 'Zimmet ata', export: 'Dışa aktar' },
+  },
+  'audit-log': { label: 'Denetim Kayıtları', actions: { export: 'Dışa aktar' } },
+  'org-units': { label: 'Organizasyon Birimleri', actions: { manage: 'Birim oluştur/düzenle' } },
+  rbac: { label: 'Yetki Matrisi', actions: { edit: 'Matris düzenle' } },
 };
 
 // ─── Rol → kullanılabilir modüller (superadmin hariç tüm kurum rolleri) ───────
@@ -116,10 +127,12 @@ export const ROLE_MODULES = {
     'discounts-scholarships', 'collection-calendar', 'reconciliation', 'bulk-actions', 'overdue-rules',
     'salary', 'cash-report', 'ledger', 'finance-export', 'finance-audit-log', 'finance-detail-hub',
     'notifications', 'meetings', 'chat', 'support', 'service', 'cafeteria', 'role-management',
+    'library', 'staff-hr', 'audit-log', 'org-units', 'rbac',
   ],
   administrative: [
     'operations', 'tasks', 'schedule', 'duties', 'records', 'documents', 'password-reset',
     'registrations', 'reports', 'notifications', 'meetings', 'chat', 'service', 'cafeteria',
+    'library', 'staff-hr',
   ],
   finance: [
     'finance', 'student-accounts', 'collections', 'installments', 'late-payments',
@@ -127,20 +140,20 @@ export const ROLE_MODULES = {
     'overdue-rules', 'cash-report', 'ledger', 'finance-export', 'finance-audit-log',
     'finance-detail-hub', 'salary', 'chat',
   ],
-  counselor: ['guidance', 'chat'],
+  counselor: ['guidance', 'library', 'chat'],
   teacher: [
     'dashboard', 'schedule', 'attendance', 'live-lessons', 'duties',
     'content', 'question-bank', 'questions', 'exams', 'mock-exams', 'grade-entry',
-    'reports', 'assignments', 'meetings', 'notifications', 'chat',
+    'reports', 'assignments', 'meetings', 'notifications', 'chat', 'library',
   ],
   student: [
     'dashboard', 'schedule', 'study-plan', 'live-lessons',
     'content', 'question-bank', 'questions', 'assignments', 'ai',
-    'exams', 'mock-exams', 'reports', 'attendance', 'cafeteria', 'notifications', 'chat',
+    'exams', 'mock-exams', 'reports', 'attendance', 'cafeteria', 'notifications', 'chat', 'library',
   ],
   parent: [
     'dashboard', 'parents', 'attendance', 'exams', 'reports', 'feedback', 'excuse',
-    'payments', 'receipts', 'cafeteria', 'meetings', 'notifications', 'chat',
+    'payments', 'receipts', 'cafeteria', 'meetings', 'notifications', 'chat', 'library',
   ],
   cafeteria: ['cafeteria'],
 };
