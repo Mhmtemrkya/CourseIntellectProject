@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.Meetings;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -84,6 +85,7 @@ public sealed class MeetingRequestsController(IMeetingRequestService meetingRequ
 
     [HttpPost("availability")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("meetings", "approve")]
     public async Task<IActionResult> CreateAvailability([FromBody] MeetingAvailabilityCreateRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Advisor) || string.IsNullOrWhiteSpace(request.Slot))
@@ -124,6 +126,7 @@ public sealed class MeetingRequestsController(IMeetingRequestService meetingRequ
 
     [HttpDelete("availability/{id:guid}")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("meetings", "approve")]
     public async Task<IActionResult> DeleteAvailability(Guid id, CancellationToken cancellationToken)
     {
         var items = await CompatibilitySnapshotStore.LoadListAsync<MeetingAvailabilitySlotSnapshot>(dbContext, AvailabilitySectionKey, cancellationToken);
@@ -145,6 +148,7 @@ public sealed class MeetingRequestsController(IMeetingRequestService meetingRequ
 
     [HttpPost]
     [Authorize(Roles = "Parent")]
+    [RequireEntitlement("meetings", "request")]
     public async Task<IActionResult> Create([FromBody] CreateMeetingRequestRequest request, CancellationToken cancellationToken)
     {
         var created = await meetingRequestService.CreateRequestAsync(request, cancellationToken);
@@ -153,6 +157,7 @@ public sealed class MeetingRequestsController(IMeetingRequestService meetingRequ
 
     [HttpPut("{id:guid}/status")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("meetings", "approve")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateMeetingRequestStatusRequest request, CancellationToken cancellationToken)
     {
         var updated = await meetingRequestService.UpdateStatusAsync(id, request, cancellationToken);

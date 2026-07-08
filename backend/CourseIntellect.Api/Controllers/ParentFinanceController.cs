@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -40,6 +41,7 @@ public sealed class ParentFinanceController(
     }
 
     [HttpPost("pay")]
+    [RequireEntitlement("payments", "pay")]
     public async Task<IActionResult> Pay([FromBody] ParentPaymentRequest request, CancellationToken cancellationToken)
     {
         if (request.Amount <= 0 || string.IsNullOrWhiteSpace(request.StudentName))

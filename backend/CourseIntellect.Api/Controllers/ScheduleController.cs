@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
@@ -57,6 +58,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
 
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("schedule", "edit")]
     public async Task<IActionResult> Create([FromBody] UpsertScheduleEntryRequest request, CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);
@@ -95,6 +97,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
 
     [HttpPut("{id}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("schedule", "edit")]
     public async Task<IActionResult> Update(string id, [FromBody] UpsertScheduleEntryRequest request, CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);
@@ -136,6 +139,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
 
     [HttpDelete("{id}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("schedule", "edit")]
     public async Task<IActionResult> Delete(string id, CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);

@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.ExamResults;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -119,6 +120,7 @@ public sealed class ExamResultsController(
 
     [HttpPost]
     [Authorize(Roles = "Admin,Teacher")]
+    [RequireEntitlement("exams", "create")]
     public async Task<IActionResult> Create([FromBody] CreateExamResultRequest request, CancellationToken cancellationToken)
     {
         // Rehberlik öğretmenleri öğrenci sınavlarını yalnızca görüntüleyebilir;

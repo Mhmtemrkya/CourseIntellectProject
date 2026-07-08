@@ -1,6 +1,7 @@
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Security.Claims;
@@ -55,6 +56,7 @@ public sealed class OverdueRulesController(CourseIntellectDbContext dbContext) :
 
     [HttpPut]
     [Authorize(Roles = "Admin,Administrative,Finance")]
+    [RequireEntitlement("overdue-rules", "define")]
     public async Task<IActionResult> Put([FromBody] JsonElement payload, CancellationToken cancellationToken)
     {
         var tenantId = ResolveTenantId();

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.QuestionThreads;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -25,6 +26,7 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
 
     [HttpPost]
     [Authorize(Roles = "Student")]
+    [RequireEntitlement("questions", "ask")]
     public async Task<IActionResult> Create([FromBody] CreateQuestionThreadRequest request, CancellationToken cancellationToken)
     {
         var fullName = User.FindFirstValue("name") ?? string.Empty;
@@ -37,6 +39,7 @@ public sealed class QuestionThreadsController(IQuestionThreadService questionThr
 
     [HttpPost("{id:guid}/replies")]
     [Authorize(Roles = "Student,Teacher,Admin")]
+    [RequireEntitlement("questions", "reply")]
     public async Task<IActionResult> Reply(Guid id, [FromBody] CreateQuestionThreadReplyRequest request, CancellationToken cancellationToken)
     {
         var senderName = User.FindFirstValue("name") ?? string.Empty;

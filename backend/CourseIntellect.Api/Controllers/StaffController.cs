@@ -1,6 +1,7 @@
 using CourseIntellect.Application.DTOs.Staff;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -19,6 +20,7 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
 
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("teachers", "create")]
     [ProducesResponseType(typeof(StaffCredentialsDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(
         [FromBody] CreateStaffRequest request,
@@ -37,6 +39,7 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("teachers", "edit")]
     [ProducesResponseType(typeof(StaffSummaryDto), StatusCodes.Status200OK)]
     public async Task<IActionResult> Update(
         Guid id,
@@ -49,6 +52,7 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
 
     [HttpDelete("users/{userId:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("teachers")]
     public async Task<IActionResult> DeleteByUserId(Guid userId, CancellationToken cancellationToken)
     {
         try
@@ -65,6 +69,7 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
 
     [HttpPost("accounting")]
     [Authorize(Roles = "Admin")]
+    [RequireEntitlement("registrations", "staff-register")]
     [ProducesResponseType(typeof(StaffCredentialsDto), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> CreateAccounting(

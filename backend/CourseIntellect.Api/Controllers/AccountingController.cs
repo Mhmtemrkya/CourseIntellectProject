@@ -4,6 +4,7 @@ using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -86,6 +87,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPost("benefits")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("discounts-scholarships", "define")]
     public async Task<IActionResult> CreateBenefit([FromBody] CreateAccountingBenefitRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.StudentName) ||
@@ -135,6 +137,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPost("invoices")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("billing", "invoice-create")]
     public async Task<IActionResult> CreateInvoice([FromBody] CreateInvoiceRequest request, CancellationToken cancellationToken)
     {
         var item = await accountingService.CreateInvoiceAsync(request, cancellationToken);
@@ -143,6 +146,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPost("salaries")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("salary", "define")]
     public async Task<IActionResult> CreateSalary([FromBody] CreateSalaryRequest request, CancellationToken cancellationToken)
     {
         var item = await accountingService.CreateSalaryAsync(request, cancellationToken);
@@ -162,6 +166,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPut("salaries/{id:guid}")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("salary", "define")]
     public async Task<IActionResult> UpdateSalary(Guid id, [FromBody] UpdateSalaryRequest request, CancellationToken cancellationToken)
     {
         var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -177,6 +182,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpDelete("salaries/{id:guid}")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("salary")]
     public async Task<IActionResult> DeleteSalary(Guid id, CancellationToken cancellationToken)
     {
         var item = await dbContext.AccountingSalaries.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -188,6 +194,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPost("collections")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("collections", "collect")]
     public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)
     {
         var item = await accountingService.CreateCollectionAsync(request, cancellationToken);
@@ -196,6 +203,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPut("collections/{id:guid}")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("collections", "collect")]
     public async Task<IActionResult> UpdateCollection(Guid id, [FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)
     {
         var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -235,6 +243,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpDelete("collections/{id:guid}")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("collections")]
     public async Task<IActionResult> DeleteCollection(Guid id, CancellationToken cancellationToken)
     {
         var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
@@ -253,6 +262,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPost("installments")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("installments", "plan-create")]
     public async Task<IActionResult> CreateInstallment([FromBody] CreateInstallmentRequest request, CancellationToken cancellationToken)
     {
         var item = await accountingService.CreateInstallmentAsync(request, cancellationToken);
@@ -261,6 +271,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPut("installments/{id:guid}")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("installments", "edit")]
     public async Task<IActionResult> UpdateInstallment(Guid id, [FromBody] UpdateInstallmentRequest request, CancellationToken cancellationToken)
     {
         var item = await accountingService.UpdateInstallmentAsync(id, request, cancellationToken);
@@ -285,6 +296,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
 
     [HttpPost("bulk-reminders")]
     [Authorize(Roles = "Accounting,Admin")]
+    [RequireEntitlement("bulk-actions", "bulk-notify")]
     public async Task<IActionResult> SendBulkReminders(CancellationToken cancellationToken)
     {
         var now = DateTime.UtcNow;

@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.Announcements;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,6 +26,7 @@ public sealed class AnnouncementsController(IAnnouncementQueryService announceme
 
     [HttpPost]
     [Authorize(Roles = "Admin,Teacher,Administrative")]
+    [RequireEntitlement("notifications", "create")]
     public async Task<IActionResult> Create([FromBody] CreateAnnouncementRequest request, CancellationToken cancellationToken)
     {
         var created = await announcementQueryService.CreateAnnouncementAsync(request, cancellationToken);
@@ -33,6 +35,7 @@ public sealed class AnnouncementsController(IAnnouncementQueryService announceme
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin,Teacher,Administrative")]
+    [RequireEntitlement("notifications", "delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var item = await dbContext.Announcements.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

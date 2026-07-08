@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -17,6 +18,7 @@ public sealed class StudentFinanceController(
     IReconciliationService reconciliationService) : ControllerBase
 {
     [HttpPost("enrollments")]
+    [RequireEntitlement("installments", "plan-create")]
     public async Task<IActionResult> CreateEnrollment([FromBody] CreateEnrollmentRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.StudentName))
@@ -43,6 +45,7 @@ public sealed class StudentFinanceController(
     }
 
     [HttpPost("payments")]
+    [RequireEntitlement("collections", "collect")]
     public async Task<IActionResult> RecordPayment([FromBody] RecordPaymentRequest request, CancellationToken cancellationToken)
     {
         if (request.Amount <= 0)
@@ -68,6 +71,7 @@ public sealed class StudentFinanceController(
     }
 
     [HttpPost("refunds")]
+    [RequireEntitlement("collections", "refund")]
     public async Task<IActionResult> Refund([FromBody] RefundRequest request, CancellationToken cancellationToken)
     {
         if (request.Amount <= 0)
@@ -79,6 +83,7 @@ public sealed class StudentFinanceController(
     }
 
     [HttpPost("reminders")]
+    [RequireEntitlement("late-payments", "notify")]
     public async Task<IActionResult> SendReminders([FromQuery] int upcomingWindowDays = 7, CancellationToken cancellationToken = default)
     {
         return Ok(await studentFinanceService.SendDueRemindersAsync(upcomingWindowDays, cancellationToken));
@@ -117,6 +122,7 @@ public sealed class StudentFinanceController(
 
     // ---- Faz 3 ----
     [HttpPost("reconciliation")]
+    [RequireEntitlement("reconciliation", "run")]
     public async Task<IActionResult> Reconcile([FromBody] ReconciliationRequest request, CancellationToken cancellationToken)
     {
         return Ok(await reconciliationService.ReconcileAsync(request, cancellationToken));
@@ -124,6 +130,7 @@ public sealed class StudentFinanceController(
 
     // ---- Faz 4 ----
     [HttpPost("e-invoice/issue")]
+    [RequireEntitlement("billing", "invoice-create")]
     public async Task<IActionResult> IssueEInvoice([FromBody] IssueEInvoiceRequest request, CancellationToken cancellationToken)
     {
         return Ok(await eInvoiceService.IssueAsync(request, cancellationToken));

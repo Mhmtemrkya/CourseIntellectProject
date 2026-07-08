@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.Contents;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -21,6 +22,7 @@ public sealed class ContentsController(IContentService contentService, CourseInt
 
     [HttpPost]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("content", "upload")]
     public async Task<IActionResult> Create([FromBody] CreateContentRequest request, CancellationToken cancellationToken)
     {
         var item = await contentService.CreateContentAsync(request, cancellationToken);
@@ -29,6 +31,7 @@ public sealed class ContentsController(IContentService contentService, CourseInt
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("content", "edit")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CreateContentRequest request, CancellationToken cancellationToken)
     {
         var item = await contentService.UpdateContentAsync(id, request, cancellationToken);
@@ -37,6 +40,7 @@ public sealed class ContentsController(IContentService contentService, CourseInt
 
     [HttpPut("{id:guid}/status")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("content", "edit")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] UpdateContentStatusRequest request, CancellationToken cancellationToken)
     {
         var item = await contentService.UpdateStatusAsync(id, request, cancellationToken);
@@ -45,6 +49,7 @@ public sealed class ContentsController(IContentService contentService, CourseInt
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("content", "delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var item = await dbContext.ContentItems.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);

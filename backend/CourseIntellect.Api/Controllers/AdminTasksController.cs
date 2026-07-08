@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -30,6 +31,7 @@ public sealed class AdminTasksController(IAdminTaskService taskService) : Contro
 
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("tasks", "create")]
     public async Task<IActionResult> Create([FromBody] CreateTaskRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -50,6 +52,7 @@ public sealed class AdminTasksController(IAdminTaskService taskService) : Contro
 
     [HttpPost("{id:guid}/status")]
     [Authorize(Roles = "Admin,Administrative,Teacher")]
+    [RequireEntitlement("tasks", "complete")]
     public async Task<IActionResult> UpdateStatus(Guid id, [FromBody] TaskStatusRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Status))

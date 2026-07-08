@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -41,6 +42,7 @@ public sealed class CafeteriaController(CourseIntellectDbContext dbContext) : Co
 
     [HttpPost("weeks")]
     [Authorize(Roles = EditRoles)]
+    [RequireEntitlement("cafeteria", "menu-edit")]
     public async Task<IActionResult> SaveWeek(
         [FromBody] CafeteriaWeekRequest request,
         CancellationToken cancellationToken)

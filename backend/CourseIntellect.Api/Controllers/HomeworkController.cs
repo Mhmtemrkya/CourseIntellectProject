@@ -1,6 +1,7 @@
 using CourseIntellect.Application.DTOs.Homework;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -19,6 +20,7 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
 
     [HttpPost]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("assignments", "assign")]
     public async Task<IActionResult> Create([FromBody] CreateHomeworkAssignmentRequest request, CancellationToken cancellationToken)
     {
         var item = await homeworkService.CreateAssignmentAsync(request, cancellationToken);
@@ -27,6 +29,7 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("assignments", "delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await homeworkService.DeleteAssignmentAsync(id, cancellationToken);
@@ -35,6 +38,7 @@ public sealed class HomeworkController(IHomeworkService homeworkService) : Contr
 
     [HttpPost("{id:guid}/submit")]
     [Authorize(Roles = "Student,Admin,Teacher")]
+    [RequireEntitlement("assignments", "submit")]
     public async Task<IActionResult> Submit(Guid id, [FromBody] CreateHomeworkSubmissionRequest request, CancellationToken cancellationToken)
     {
         var item = await homeworkService.SubmitAssignmentAsync(id, request, cancellationToken);

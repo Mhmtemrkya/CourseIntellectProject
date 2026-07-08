@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -45,6 +46,7 @@ public sealed class ApprovalsController(IApprovalService approvalService) : Cont
 
     [HttpPost("{id:guid}/decide")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("approvals", "approve")]
     public async Task<IActionResult> Decide(Guid id, [FromBody] ApprovalDecisionRequest decision, CancellationToken cancellationToken)
     {
         var result = await approvalService.DecideAsync(id, decision, CurrentUserId(), CurrentUserName(), cancellationToken);

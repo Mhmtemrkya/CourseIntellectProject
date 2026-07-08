@@ -1,6 +1,7 @@
 using CourseIntellect.Application.DTOs.Courses;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -20,6 +21,7 @@ public sealed class CoursesController(ICourseService courseService) : Controller
 
     [HttpPost]
     [Authorize(Roles = "Admin")]
+    [RequireEntitlement("courses", "create")]
     public async Task<IActionResult> Create([FromBody] CreateCourseRequest request, CancellationToken cancellationToken)
     {
         var created = await courseService.CreateAsync(request, cancellationToken);
@@ -28,6 +30,7 @@ public sealed class CoursesController(ICourseService courseService) : Controller
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin")]
+    [RequireEntitlement("courses", "edit")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCourseRequest request, CancellationToken cancellationToken)
     {
         var updated = await courseService.UpdateAsync(id, request, cancellationToken);
@@ -36,6 +39,7 @@ public sealed class CoursesController(ICourseService courseService) : Controller
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin")]
+    [RequireEntitlement("courses")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await courseService.DeleteAsync(id, cancellationToken);

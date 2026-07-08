@@ -1,5 +1,6 @@
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -57,6 +58,7 @@ public sealed class LiveRoomSessionsController(CourseIntellectDbContext dbContex
     }
 
     [HttpPost("open")]
+    [RequireEntitlement("live-lessons", "schedule")]
     public async Task<IActionResult> Open([FromBody] LiveRoomOpenRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.LessonTitle) ||

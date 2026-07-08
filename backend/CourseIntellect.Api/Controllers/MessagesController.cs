@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Messages;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -20,6 +21,7 @@ public sealed class MessagesController(IMessageService messageService) : Control
     }
 
     [HttpPost("threads")]
+    [RequireEntitlement("chat", "send")]
     public async Task<IActionResult> CreateThread([FromBody] CreateThreadRequest request, CancellationToken cancellationToken)
     {
         var (userId, fullName, role) = GetCurrentUser();
@@ -36,6 +38,7 @@ public sealed class MessagesController(IMessageService messageService) : Control
     }
 
     [HttpPost("threads/{threadId:guid}/messages")]
+    [RequireEntitlement("chat", "send")]
     public async Task<IActionResult> SendMessage(Guid threadId, [FromBody] SendMessageRequest request, CancellationToken cancellationToken)
     {
         var (userId, fullName, role) = GetCurrentUser();

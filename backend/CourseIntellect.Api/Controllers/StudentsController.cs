@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -22,6 +23,7 @@ public sealed class StudentsController(
 
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("students", "create")]
     public async Task<IActionResult> CreateStudent(
         [FromBody] CourseIntellect.Application.DTOs.Students.CreateStudentRequest request,
         CancellationToken cancellationToken)
@@ -55,6 +57,7 @@ public sealed class StudentsController(
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("students", "edit")]
     public async Task<IActionResult> UpdateStudent(
         Guid id,
         [FromBody] CourseIntellect.Application.DTOs.Students.UpdateStudentRequest request,
@@ -66,6 +69,7 @@ public sealed class StudentsController(
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("students", "delete")]
     public async Task<IActionResult> DeleteStudent(Guid id, CancellationToken cancellationToken)
     {
         var removed = await academicQueryService.DeleteStudentAsync(id, cancellationToken);

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Api.Hubs;
 using CourseIntellect.Application.DTOs.StudyPlans;
 using CourseIntellect.Application.Interfaces;
@@ -11,6 +12,7 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/[controller]")]
+[RequireEntitlement("study-plan")]
 public sealed class StudyPlansController(
     IStudyPlanService studyPlanService,
     IHubContext<StudyPlanHub> studyPlanHub) : ControllerBase

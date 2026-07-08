@@ -30,6 +30,7 @@ public static class DependencyInjection
 
         services.AddSingleton<IOptions<JwtOptions>>(Options.Create(jwtOptions));
         services.AddHttpContextAccessor();
+        services.AddMemoryCache();
         services.AddDbContext<CourseIntellectDbContext>(options =>
             options.UseNpgsql(connectionString));
         services.AddSingleton<IOptions<FcmPushOptions>>(Options.Create(FcmPushOptions.FromConfiguration(configuration)));
@@ -41,6 +42,7 @@ public static class DependencyInjection
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<UsernameGenerator>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IEntitlementService, EntitlementService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserDirectoryService, UserDirectoryService>();
         services.AddScoped<IAcademicQueryService, AcademicQueryService>();

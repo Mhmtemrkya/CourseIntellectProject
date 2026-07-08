@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.QuestionBank;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -37,6 +38,7 @@ public sealed class QuestionBankController(
 
     [HttpPost]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("question-bank", "create")]
     public async Task<IActionResult> Create([FromBody] CreateQuestionBankItemRequest request, CancellationToken cancellationToken)
     {
         var item = await questionBankService.CreateQuestionAsync(request, cancellationToken);
@@ -45,6 +47,7 @@ public sealed class QuestionBankController(
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("question-bank")]
     public async Task<IActionResult> Update(Guid id, [FromBody] CreateQuestionBankItemRequest request, CancellationToken cancellationToken)
     {
         var item = await questionBankService.UpdateQuestionAsync(id, request, cancellationToken);
@@ -53,6 +56,7 @@ public sealed class QuestionBankController(
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Teacher,Admin")]
+    [RequireEntitlement("question-bank")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await questionBankService.DeleteQuestionAsync(id, cancellationToken);
@@ -73,6 +77,7 @@ public sealed class QuestionBankController(
     }
 
     [HttpPost("{id:guid}/attempts")]
+    [RequireEntitlement("question-bank", "practice")]
     public async Task<IActionResult> SubmitAttempt(Guid id, [FromBody] SubmitQuestionPracticeAttemptRequest request, CancellationToken cancellationToken)
     {
         var item = await questionBankService.SubmitAttemptAsync(id, request, cancellationToken);

@@ -6,6 +6,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -82,6 +83,7 @@ public sealed class PlannedExamsController(
     }
 
     [HttpPost]
+    [RequireEntitlement("exams", "create")]
     public async Task<IActionResult> Create([FromBody] PlannedExamCreateRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Title) ||
@@ -135,6 +137,7 @@ public sealed class PlannedExamsController(
     }
 
     [HttpDelete("{id:guid}")]
+    [RequireEntitlement("exams", "delete")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var items = await CompatibilitySnapshotStore.LoadListAsync<PlannedExamSnapshot>(dbContext, SectionKey, cancellationToken);

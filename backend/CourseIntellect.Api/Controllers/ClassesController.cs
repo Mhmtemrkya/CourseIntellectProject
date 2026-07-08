@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -36,6 +37,7 @@ public sealed class ClassesController(
 
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("classes", "create")]
     public async Task<ActionResult<object>> Create([FromBody] CreateClassRequest request, CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);
@@ -74,6 +76,7 @@ public sealed class ClassesController(
 
     [HttpPost("create-complete")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("classes", "create")]
     public async Task<ActionResult<object>> CreateComplete([FromBody] CreateCompleteClassRequest request, CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);

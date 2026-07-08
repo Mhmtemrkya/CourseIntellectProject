@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Application.DTOs.Parents;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -12,6 +13,7 @@ public sealed class ParentsController(IAcademicQueryService academicQueryService
 {
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("parents", "create")]
     [ProducesResponseType(typeof(ParentCredentialsDto), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateParent(
         [FromBody] CreateParentRequest request,

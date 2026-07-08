@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -22,6 +23,7 @@ public sealed class AdminDocumentsController(IAdminDocumentService documentServi
     }
 
     [HttpPost]
+    [RequireEntitlement("documents", "upload")]
     public async Task<IActionResult> Create([FromBody] CreateDocumentRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -33,6 +35,7 @@ public sealed class AdminDocumentsController(IAdminDocumentService documentServi
     }
 
     [HttpPost("{id:guid}/archive")]
+    [RequireEntitlement("documents", "delete")]
     public async Task<IActionResult> Archive(Guid id, CancellationToken cancellationToken)
     {
         var result = await documentService.ArchiveAsync(id, CurrentUserId(), CurrentUserName(), cancellationToken);

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Duty;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -13,6 +14,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
 {
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties", "create")]
     public async Task<IActionResult> Create([FromBody] CreateDutyRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.DutyType) || string.IsNullOrWhiteSpace(request.Location))
@@ -37,6 +39,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
 
     [HttpPut("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties", "assign")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateDutyRequest request, CancellationToken cancellationToken)
     {
         try
@@ -52,6 +55,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
 
     [HttpPost("{id:guid}/status")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties", "assign")]
     public async Task<IActionResult> SetStatus(Guid id, [FromBody] DutyStatusRequest request, CancellationToken cancellationToken)
     {
         var result = await dutyService.SetStatusAsync(id, request.Status ?? string.Empty, CurrentUserId(), CurrentUserName(), cancellationToken);
@@ -60,6 +64,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var ok = await dutyService.DeleteAsync(id, CurrentUserId(), CurrentUserName(), cancellationToken);
@@ -68,6 +73,7 @@ public sealed class DutiesController(ITeacherDutyService dutyService) : Controll
 
     [HttpPost("group/{groupId:guid}/cancel")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties")]
     public async Task<IActionResult> CancelSeries(Guid groupId, CancellationToken cancellationToken)
     {
         var count = await dutyService.CancelSeriesAsync(groupId, CurrentUserId(), CurrentUserName(), cancellationToken);

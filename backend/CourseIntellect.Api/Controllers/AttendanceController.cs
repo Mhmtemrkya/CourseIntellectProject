@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Api.Security;
 using CourseIntellect.Application.DTOs.Attendance;
 using CourseIntellect.Application.Interfaces;
@@ -55,6 +56,7 @@ public sealed class AttendanceController(
 
     [HttpPost]
     [Authorize(Roles = "Teacher,Admin,Administrative")]
+    [RequireEntitlement("attendance", "take")]
     public async Task<IActionResult> Save([FromBody] SaveAttendanceRequest request, CancellationToken cancellationToken)
     {
         var items = await attendanceService.SaveLessonAttendanceAsync(request, cancellationToken);
@@ -63,6 +65,7 @@ public sealed class AttendanceController(
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Teacher,Admin,Administrative")]
+    [RequireEntitlement("attendance", "edit-past")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var deleted = await attendanceService.DeleteAsync(id, cancellationToken);

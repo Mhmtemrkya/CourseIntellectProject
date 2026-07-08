@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Timetable;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -23,6 +24,7 @@ public sealed class TimetableController(ITimetableService timetableService) : Co
 
     [HttpPost]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties", "create")]
     public async Task<IActionResult> Set([FromBody] SetTimetableRequest request, CancellationToken cancellationToken)
     {
         try
@@ -37,6 +39,7 @@ public sealed class TimetableController(ITimetableService timetableService) : Co
 
     [HttpDelete("{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("duties")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken)
     {
         var ok = await timetableService.DeleteAsync(id, cancellationToken);

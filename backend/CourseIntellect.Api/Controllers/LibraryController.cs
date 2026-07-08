@@ -5,6 +5,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -130,6 +131,7 @@ public sealed class LibraryController(
 
     [HttpPost("books")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "catalog-manage")]
     public async Task<IActionResult> CreateBook([FromBody] LibraryBook request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Title))
@@ -154,6 +156,7 @@ public sealed class LibraryController(
 
     [HttpPost("books/bulk")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "catalog-manage")]
     public async Task<IActionResult> CreateBooksBulk([FromBody] BulkBooksRequest request, CancellationToken cancellationToken)
     {
         var valid = (request.Books ?? [])
@@ -176,6 +179,7 @@ public sealed class LibraryController(
 
     [HttpPut("books/{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "catalog-manage")]
     public async Task<IActionResult> UpdateBook(Guid id, [FromBody] LibraryBook request, CancellationToken cancellationToken)
     {
         var book = await dbContext.LibraryBooks.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
@@ -195,6 +199,7 @@ public sealed class LibraryController(
 
     [HttpDelete("books/{id:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "catalog-manage")]
     public async Task<IActionResult> DeleteBook(Guid id, CancellationToken cancellationToken)
     {
         var book = await dbContext.LibraryBooks.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
@@ -283,6 +288,7 @@ public sealed class LibraryController(
 
     [HttpPost("loans")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "lend")]
     public async Task<IActionResult> Checkout([FromBody] CheckoutRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.StudentName))
@@ -328,6 +334,7 @@ public sealed class LibraryController(
 
     [HttpPatch("loans/{id:guid}/return")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "return")]
     public async Task<IActionResult> ReturnLoan(Guid id, CancellationToken cancellationToken)
     {
         var loan = await dbContext.LibraryLoans.FirstOrDefaultAsync(l => l.Id == id, cancellationToken);
@@ -601,6 +608,7 @@ public sealed class LibraryController(
 
     [HttpPut("settings")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("library", "catalog-manage")]
     public async Task<IActionResult> SaveSettings([FromBody] LibrarySettings request, CancellationToken cancellationToken)
     {
         var settings = await GetSettingsAsync(cancellationToken);

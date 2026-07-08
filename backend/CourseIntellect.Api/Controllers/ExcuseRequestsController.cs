@@ -1,5 +1,6 @@
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -56,6 +57,7 @@ public sealed class ExcuseRequestsController(CourseIntellectDbContext dbContext)
     }
 
     [HttpPost]
+    [RequireEntitlement("excuse", "send")]
     public async Task<IActionResult> Create([FromBody] ExcuseRequestCreateRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.ChildName) ||
@@ -93,6 +95,7 @@ public sealed class ExcuseRequestsController(CourseIntellectDbContext dbContext)
 
     [HttpPut("{id:guid}/decision")]
     [Authorize(Roles = "Admin,Administrative,Teacher")]
+    [RequireEntitlement("attendance", "excuse-approve")]
     public async Task<IActionResult> Decide(Guid id, [FromBody] ExcuseRequestDecisionRequest request, CancellationToken cancellationToken)
     {
         var decisionStatus = (request.Decision ?? string.Empty).Trim().ToLowerInvariant() switch

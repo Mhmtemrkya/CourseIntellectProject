@@ -4,6 +4,7 @@ using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -46,6 +47,7 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
     }
 
     [HttpPost]
+    [RequireEntitlement("org-units", "manage")]
     public async Task<IActionResult> Create([FromBody] CreateOrgUnitRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.Name))
@@ -57,6 +59,7 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
     }
 
     [HttpPut("{id:guid}")]
+    [RequireEntitlement("org-units", "manage")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateOrgUnitRequest request, CancellationToken cancellationToken)
     {
         var result = await orgUnitService.UpdateAsync(id, request, cancellationToken);
@@ -64,6 +67,7 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
     }
 
     [HttpDelete("{id:guid}")]
+    [RequireEntitlement("org-units", "manage")]
     public async Task<IActionResult> Delete(Guid id, CancellationToken cancellationToken) =>
         await orgUnitService.DeleteAsync(id, cancellationToken) ? NoContent() : NotFound();
 

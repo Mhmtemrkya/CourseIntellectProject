@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -33,6 +34,7 @@ public sealed class StaffHrController(IStaffHrService staffHrService) : Controll
 
     [HttpPost("leaves/{id:guid}/decide")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("staff-hr", "leave-approve")]
     public async Task<IActionResult> DecideLeave(Guid id, [FromBody] LeaveDecisionRequest decision, CancellationToken cancellationToken)
     {
         var result = await staffHrService.DecideLeaveAsync(id, decision, CurrentUserId(), CurrentUserName(), cancellationToken);
@@ -58,6 +60,7 @@ public sealed class StaffHrController(IStaffHrService staffHrService) : Controll
 
     [HttpPost("assets")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("staff-hr", "asset-assign")]
     public async Task<IActionResult> AssignAsset([FromBody] AssignAssetRequest request, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(request.StaffName) || string.IsNullOrWhiteSpace(request.AssetName))
@@ -70,6 +73,7 @@ public sealed class StaffHrController(IStaffHrService staffHrService) : Controll
 
     [HttpPost("assets/{id:guid}/return")]
     [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("staff-hr", "asset-assign")]
     public async Task<IActionResult> ReturnAsset(Guid id, CancellationToken cancellationToken)
     {
         var result = await staffHrService.ReturnAssetAsync(id, CurrentUserId(), CurrentUserName(), cancellationToken);

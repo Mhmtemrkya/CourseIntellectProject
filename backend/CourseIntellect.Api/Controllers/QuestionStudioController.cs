@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Authorization;
+using CourseIntellect.Api.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CourseIntellect.Api.Controllers;
@@ -26,6 +27,7 @@ public sealed class QuestionStudioController(
     }
 
     [HttpPost("drafts")]
+    [RequireEntitlement("question-bank")]
     public async Task<IActionResult> SaveDraft([FromBody] QuestionStudioDraftRequest request, CancellationToken cancellationToken)
     {
         var username = ResolveUsername();

@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Application.DTOs.StudyPlans;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -19,6 +20,9 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/guidance")]
+// Rehberlik modülü kapalı kurumlarda rehber (counselor) uçlara erişemez.
+// Admin bu modülü katalogda sahiplenmediğinden kısıtsız geçer.
+[RequireEntitlement("guidance")]
 public sealed class GuidanceController(
     CourseIntellectDbContext dbContext,
     IStudyPlanService studyPlanService,

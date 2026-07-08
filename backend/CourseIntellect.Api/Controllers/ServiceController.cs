@@ -1,3 +1,4 @@
+using CourseIntellect.Api.Authorization;
 using CourseIntellect.Application.DTOs.ServiceTracking;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
@@ -8,6 +9,10 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/service")]
+// Servis modülü kapatılmış kurumlarda personel (Admin/Administrative) servis
+// uçlarına erişemez. Şoför/veli/öğrenci rolleri bu modülü sahiplenmediğinden
+// kısıtsız geçer (kendi canlı takip akışları etkilenmez).
+[RequireEntitlement("service")]
 public sealed class ServiceController(IServiceTrackingService serviceTrackingService) : ControllerBase
 {
     private const string ServiceManagers = "Admin,Administrative,InstitutionAdmin,Idare";
