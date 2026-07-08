@@ -111,7 +111,7 @@ export default function ExamEntryGate({ exam, onCancel, onEnter }) {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) { stopCamera(); onCancel(); } }}>
-      <DialogContent className="w-[min(96vw,720px)] max-w-[720px] overflow-hidden border-foreground/10 bg-[#0B1728] p-0 text-white">
+      <DialogContent className="w-[min(96vw,720px)] max-w-[720px] overflow-hidden border-foreground/10 bg-[hsl(var(--ci-card))] p-0 text-foreground">
         <div className="flex items-center justify-between border-b border-foreground/10 px-6 py-4">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300">

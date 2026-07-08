@@ -602,7 +602,7 @@ export default function Collections() {
           </DialogHeader>
           {selectedCollection ? (
             <div className="space-y-5 py-2 text-sm text-muted-foreground">
-              <div className="rounded-3xl bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700 p-6 text-white shadow-xl">
+              <div className="rounded-3xl p-6 text-white shadow-xl ci-hero">
                 <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
                   <div>
                     <p className="text-xs uppercase tracking-[0.24em] text-foreground/70">Tahsilat Fişi</p>

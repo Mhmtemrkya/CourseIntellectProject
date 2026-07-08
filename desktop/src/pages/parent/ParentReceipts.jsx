@@ -201,7 +201,7 @@ export default function ParentReceipts() {
             Dönem
           </div>
           <select
-            className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm font-bold text-white outline-none"
+            className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm font-bold text-foreground outline-none"
             value={periodFilter}
             onChange={(event) => { setPeriodFilter(event.target.value); setYearFilter('all'); setPage(1); }}
           >
@@ -246,25 +246,25 @@ export default function ParentReceipts() {
           <Panel>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[0.9fr_1fr_1fr_1.4fr_auto_auto]">
               <label className="space-y-2 text-xs font-semibold text-slate-400">Yıl
-                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={yearFilter} onChange={(event) => { setYearFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm text-foreground outline-none" value={yearFilter} onChange={(event) => { setYearFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tümü</option>
                   {years.map((year) => <option key={year} value={year}>{year}</option>)}
                 </select>
               </label>
               <label className="space-y-2 text-xs font-semibold text-slate-400">Çocuk
-                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={childFilter} onChange={(event) => { setChildFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm text-foreground outline-none" value={childFilter} onChange={(event) => { setChildFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tümü</option>
                   {children.map((child) => <option key={child} value={child}>{decodeText(child)}</option>)}
                 </select>
               </label>
               <label className="space-y-2 text-xs font-semibold text-slate-400">Ödeme Türü
-                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={methodFilter} onChange={(event) => { setMethodFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm text-foreground outline-none" value={methodFilter} onChange={(event) => { setMethodFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tümü</option>
                   {methods.map((method) => <option key={method} value={method}>{decodeText(method)}</option>)}
                 </select>
               </label>
               <label className="space-y-2 text-xs font-semibold text-slate-400">Tarih Aralığı
-                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm text-white outline-none" value={rangeFilter} onChange={(event) => { setRangeFilter(event.target.value); setPage(1); }}>
+                <select className="h-11 w-full rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm text-foreground outline-none" value={rangeFilter} onChange={(event) => { setRangeFilter(event.target.value); setPage(1); }}>
                   <option value="all">Tüm Tarihler</option>
                   <option value="30">Son 30 Gün</option>
                   <option value="90">Son 3 Ay</option>
@@ -374,7 +374,7 @@ export default function ParentReceipts() {
       </div>
 
       <Dialog open={!!selectedReceipt} onOpenChange={(open) => !open && setSelectedReceipt(null)}>
-        <DialogContent className="border-foreground/[0.08] bg-[#07162A] text-white">
+        <DialogContent className="border-foreground/[0.08] bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader>
             <DialogTitle>Makbuz Detayı</DialogTitle>
           </DialogHeader>

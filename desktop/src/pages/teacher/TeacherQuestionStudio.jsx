@@ -581,7 +581,7 @@ export default function TeacherQuestionStudio() {
   };
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[34px] border border-foreground/10 bg-[#060b14] text-white shadow-2xl shadow-slate-950/30">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[34px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] text-foreground shadow-2xl shadow-slate-950/30">
       <div className="grid min-h-[calc(100vh-2rem)] grid-cols-[minmax(620px,1fr)_360px]">
         <main className="min-w-0 overflow-y-auto p-6">
           <div className="mb-5 flex items-center justify-between gap-4">
@@ -847,7 +847,7 @@ export default function TeacherQuestionStudio() {
       </div>
 
       <Dialog open={bankPickerOpen} onOpenChange={setBankPickerOpen}>
-        <DialogContent className="max-w-4xl border-foreground/10 bg-[#09111f] text-white">
+        <DialogContent className="max-w-4xl border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader>
             <DialogTitle>Pasif Testlerden Soru Seç</DialogTitle>
           </DialogHeader>
@@ -928,7 +928,7 @@ export default function TeacherQuestionStudio() {
       </Dialog>
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[#08111f] text-white">
+        <DialogContent className="max-h-[90vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader><DialogTitle>Soru Önizleme</DialogTitle></DialogHeader>
           <div className="rounded-3xl border border-foreground/10 bg-slate-950/60 p-6">
             <p className="mb-3 text-xs font-bold uppercase tracking-wider text-orange-300">{settings.subject} / {settings.topic || 'Konu seçilmedi'} / {settings.difficulty}</p>
@@ -947,7 +947,7 @@ export default function TeacherQuestionStudio() {
       </Dialog>
 
       <Dialog open={canvasOpen} onOpenChange={setCanvasOpen}>
-        <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto border-foreground/10 bg-[#08111f] text-white">
+        <DialogContent className="max-h-[92vh] max-w-6xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader><DialogTitle>Çözüm Çizim Alanı</DialogTitle></DialogHeader>
           <DrawingCanvas questionAttemptId="question-studio-live" onSnapshot={(dataUrl) => { canvasSnapshotRef.current = dataUrl; setAutosave('Çizim kaydedilmeyi bekliyor'); }} onStrokeComplete={(stroke) => { setCanvasStrokes((items) => [...items, stroke]); touch(); }} />
           <div className="flex justify-end gap-3"><Button variant="outline" onClick={() => setCanvasOpen(false)} className="border-foreground/10 text-white">Kapat</Button><Button onClick={async () => { await uploadCanvasSnapshot(); setCanvasOpen(false); }} className="bg-orange-500 text-white"><Upload className="mr-2 h-4 w-4" />Çizimi Kaydet</Button></div>

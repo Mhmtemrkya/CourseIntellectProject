@@ -730,7 +730,7 @@ export default function StudentQuestions() {
                 </>
               ) : (
                 <div className="space-y-4">
-                  <div className="overflow-hidden rounded-[28px] border border-emerald-200/70 bg-gradient-to-br from-emerald-500 via-teal-500 to-cyan-600 p-6 text-white shadow-[0_24px_60px_-28px_rgba(16,185,129,0.6)]">
+                  <div className="overflow-hidden rounded-[28px] border border-emerald-200/70 p-6 text-white shadow-[0_24px_60px_-28px_rgba(16,185,129,0.6)] ci-hero">
                     <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
                       <div className="min-w-0">
                         <div className="inline-flex rounded-full border border-foreground/20 bg-foreground/14 px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] text-foreground/80">
@@ -776,7 +776,7 @@ export default function StudentQuestions() {
                   {resultSummary?.bonuses?.length ? (
                     <div className="grid gap-3 md:grid-cols-2">
                       {resultSummary.bonuses.map((bonus) => (
-                        <div key={bonus} className="rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm dark:border-foreground/10 dark:bg-slate-950 dark:text-slate-300">
+                        <div key={bonus} className="rounded-2xl border border-slate-200/70 bg-white px-4 py-3 text-sm font-medium text-slate-600 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] dark:text-slate-300">
                           {bonus}
                         </div>
                       ))}

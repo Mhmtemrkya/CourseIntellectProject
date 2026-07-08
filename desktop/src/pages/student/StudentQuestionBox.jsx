@@ -160,7 +160,7 @@ export default function StudentQuestionBox() {
             </SelectContent>
           </Select>
           <Textarea value={questionText} onChange={(e) => setQuestionText(e.target.value)} className="min-h-[140px]" placeholder="Sorunu ayrıntılı yaz..." />
-          <div className="rounded-3xl border bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm dark:from-slate-950/40 dark:to-slate-900/40">
+          <div className="rounded-3xl border bg-gradient-to-br from-slate-50 to-white p-4 shadow-sm dark:from-[hsl(var(--ci-card)/0.4)] dark:to-[hsl(var(--ci-card-muted)/0.4)]">
             <div className="flex items-start gap-3">
               <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary">
                 <Paperclip className="h-5 w-5" />
@@ -171,7 +171,7 @@ export default function StudentQuestionBox() {
               </div>
             </div>
             <div className="mt-4 flex flex-wrap gap-3">
-              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:-translate-y-0.5 hover:bg-muted dark:bg-slate-950">
+              <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border bg-white px-4 py-2 text-sm font-medium shadow-sm transition hover:-translate-y-0.5 hover:bg-muted dark:bg-[hsl(var(--ci-card))]">
                 <Paperclip className="h-4 w-4" />
                 Resim / PDF / Video
                 <input type="file" accept="image/*,application/pdf,video/*" className="hidden" onChange={handleAttachmentPick} />
@@ -181,7 +181,7 @@ export default function StudentQuestionBox() {
             {attachments.length > 0 ? (
               <div className="mt-4 space-y-2">
                 {attachments.map((attachment, index) => (
-                  <div key={`${attachment.fileName}-${index}`} className="flex items-center gap-3 rounded-2xl border bg-white px-3 py-3 shadow-sm dark:bg-slate-950">
+                  <div key={`${attachment.fileName}-${index}`} className="flex items-center gap-3 rounded-2xl border bg-white px-3 py-3 shadow-sm dark:bg-[hsl(var(--ci-card))]">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
                       attachment.fileType === 'image'
                         ? 'bg-sky-500/10 text-sky-500'

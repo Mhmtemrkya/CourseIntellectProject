@@ -104,7 +104,7 @@ function SelectBox({ label, value, options, onChange }) {
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none transition focus:border-orange-400 dark:border-foreground/10 dark:bg-[#0B1728] dark:text-white"
+        className="h-11 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm font-bold text-slate-900 outline-none transition focus:border-orange-400 dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] dark:text-foreground"
       >
         {options.map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
@@ -123,7 +123,7 @@ function DetailPanel({ row, rows, subject, onClose }) {
     ['0 - 49', rows.filter((item) => item.finalGrade < 50).length, '#EF4444'],
   ];
   return (
-    <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-foreground/10 dark:bg-[#0E1A2F] dark:shadow-black/30">
+    <aside className="h-fit rounded-3xl border border-slate-200 bg-white p-5 shadow-xl shadow-slate-200/70 dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] dark:shadow-black/30">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-orange-500/15 text-xl font-black text-orange-500">{initials(row.fullName)}</div>
@@ -399,7 +399,7 @@ export default function TeacherGradeEntry() {
         </div>
       </div>
 
-      <div className="mt-5 grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[#0E1A2F] lg:grid-cols-5">
+      <div className="mt-5 grid gap-4 rounded-3xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] lg:grid-cols-5">
         <SelectBox label="Sınıf" value={selectedClass} options={classOptions} onChange={setSelectedClass} />
         <SelectBox label="Ders" value={selectedSubject} options={subjectOptions} onChange={setSelectedSubject} />
         <SelectBox label="Dönem" value={period} options={['2024 - 2025 / 1. Dönem', '2024 - 2025 / 2. Dönem', '2025 - 2026 / 1. Dönem']} onChange={setPeriod} />
@@ -424,7 +424,7 @@ export default function TeacherGradeEntry() {
           <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Öğrenciler sınavı tamamladı. Onayladığınızda sonuç, sınavı oluştururken yazdığınız tür etiketiyle ({pendingApprovals[0]?.assessmentLabel || '1. Yazılı'} gibi) not girişine otomatik işlenir.</p>
           <div className="mt-3 space-y-2">
             {pendingApprovals.map((item) => (
-              <div key={item.sessionId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-foreground/10 dark:bg-[#0E1A2F]">
+              <div key={item.sessionId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-3 dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))]">
                 <div className="flex items-center gap-3">
                   <span className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-500/15 text-xs font-black text-orange-500">{initials(item.studentName)}</span>
                   <div>
@@ -453,7 +453,7 @@ export default function TeacherGradeEntry() {
       ) : null}
 
       <div className="mt-5 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
-        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-foreground/10 dark:bg-[#0E1A2F] dark:shadow-black/20">
+        <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] dark:shadow-black/20">
           <div className="flex flex-col gap-3 border-b border-slate-200 p-4 dark:border-foreground/10 md:flex-row md:items-center">
             <label className="relative flex-1">
               <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -534,7 +534,7 @@ export default function TeacherGradeEntry() {
           [stats.missing, 'Notu Girilmeyen', FileText, 'text-purple-500'],
           [stats.total, 'Toplam Öğrenci', Users, 'text-cyan-500'],
         ].map(([value, label, Icon, color]) => (
-          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[#0E1A2F]">
+          <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))]">
             <Icon className={`h-5 w-5 ${color}`} />
             <p className="mt-3 text-2xl font-black">{value}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>

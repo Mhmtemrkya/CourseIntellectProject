@@ -71,7 +71,7 @@ function StatCard({ icon, tone, label, value, sub, donut }) {
     <motion.div variants={itemVariants} className={`${panel} flex min-h-[104px] items-center gap-4 p-4`}>
       {donut ? (
         <div className="relative grid h-16 w-16 place-items-center rounded-full" style={{ background: `conic-gradient(#a855f7 ${Number(value || 0) * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
-          <div className="h-11 w-11 rounded-full bg-[#06152A]" />
+          <div className="h-11 w-11 rounded-full bg-[hsl(var(--ci-card))]" />
         </div>
       ) : (
         <IconBox icon={icon} tone={tone} />
@@ -184,7 +184,7 @@ function AttendanceCircle({ name, className, value }) {
       <p className="text-sm font-bold text-white">{name}</p>
       <p className="text-xs text-slate-400">{className || 'Sınıf'}</p>
       <div className="mx-auto mt-3 grid h-24 w-24 place-items-center rounded-full" style={{ background: `conic-gradient(#4ade80 ${Number(value || 0) * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
-        <div className="grid h-[70px] w-[70px] place-items-center rounded-full bg-[#06152A]">
+        <div className="grid h-[70px] w-[70px] place-items-center rounded-full bg-[hsl(var(--ci-card))]">
           <div>
             <p className="text-2xl font-black text-white">{value}%</p>
             <p className="text-[10px] text-slate-400">Devam Oranı</p>

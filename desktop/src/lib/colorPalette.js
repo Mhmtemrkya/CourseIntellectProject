@@ -153,6 +153,51 @@ export function generateBrandCSSVariables(primaryHex, accentHex, theme = 'dark')
     vars['--sidebar-hover-bg'] = primaryPalette[800];
   }
 
+  // İçerik yüzeyleri de sidebar gibi marka renginin hue'sunu takip eder.
+  // index.css'teki sabit lacivert token'lar burada kurum rengine göre ezilir;
+  // shadcn token'ları (--background/--card/--border...) bu ci- değişkenlerine
+  // bağlı olduğu için tüm sayfalar/kartlar otomatik uyumlanır.
+  {
+    const { h, s } = hexToHSL(primaryHex);
+    const surfaceS = Math.min(s, 70);           // yüzeyler için yumuşatılmış doygunluk
+    const borderS = Math.min(s, 45);
+    const hslStr = (sat, l) => `${h} ${sat}% ${l}%`;
+
+    if (light) {
+      vars['--ci-background'] = hslStr(Math.min(s, 40), 97);
+      vars['--ci-card'] = '0 0% 100%';
+      vars['--ci-card-muted'] = hslStr(Math.min(s, 38), 95);
+      vars['--ci-border'] = hslStr(Math.min(s, 26), 85);
+      vars['--ci-field'] = '0 0% 100%';
+      vars['--ci-surface-1'] = hslStr(Math.min(s, 40), 98);
+      vars['--ci-app-background'] = [
+        `radial-gradient(circle at 86% 7%, hsl(${hslStr(Math.min(s, 92), 52)} / 0.06), transparent 24%)`,
+        'radial-gradient(circle at 16% 90%, hsl(var(--brand-accent) / 0.06), transparent 28%)',
+        `linear-gradient(135deg, ${hslToHex(h, Math.min(s, 35), 96)} 0%, ${hslToHex(h, Math.min(s, 35), 95)} 45%, ${hslToHex(h, Math.min(s, 35), 97)} 100%)`,
+      ].join(', ');
+      vars['--ci-panel-background'] = [
+        'radial-gradient(circle at 12% 0%, hsl(var(--brand-accent) / 0.05), transparent 28%)',
+        'linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(248, 250, 253, 0.94))',
+      ].join(', ');
+    } else {
+      vars['--ci-background'] = hslStr(surfaceS, 6);
+      vars['--ci-card'] = hslStr(surfaceS, 12);
+      vars['--ci-card-muted'] = hslStr(surfaceS, 10);
+      vars['--ci-border'] = hslStr(borderS, 24);
+      vars['--ci-field'] = hslStr(surfaceS, 11);
+      vars['--ci-surface-1'] = hslStr(surfaceS, 12);
+      vars['--ci-app-background'] = [
+        'radial-gradient(circle at 8% 0%, hsl(var(--brand-accent) / 0.09), transparent 24%)',
+        `radial-gradient(circle at 91% 7%, hsl(${hslStr(Math.min(s, 90), 54)} / 0.13), transparent 27%)`,
+        `linear-gradient(135deg, ${hslToHex(h, surfaceS, 5)} 0%, ${hslToHex(h, surfaceS, 8)} 48%, ${hslToHex(h, surfaceS, 4)} 100%)`,
+      ].join(', ');
+      vars['--ci-panel-background'] = [
+        'radial-gradient(circle at 12% 0%, hsl(var(--brand-accent) / 0.075), transparent 28%)',
+        `linear-gradient(180deg, hsl(${hslStr(surfaceS, 12)} / 0.92), hsl(${hslStr(surfaceS, 9)} / 0.88))`,
+      ].join(', ');
+    }
+  }
+
   // Accent tonu (butonlar, badge'ler)
   vars['--accent-from'] = accentPalette[500];
   vars['--accent-to'] = accentPalette[400];

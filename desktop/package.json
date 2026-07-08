@@ -2,7 +2,7 @@
   "name": "courseintellect-desktop",
   "version": "1.0.0",
   "private": true,
-  "homepage": ".",
+  "homepage": "/",
   "description": "CourseIntellect desktop workspace for admin, teacher, student, parent, finance, and platform operations.",
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -70,7 +70,7 @@
     "zod": "^3.24.4"
   },
   "scripts": {
-    "build": "GENERATE_SOURCEMAP=false node ./node_modules/@craco/craco/dist/bin/craco.js build",
+    "build": "node ./node_modules/@craco/craco/dist/bin/craco.js build",
     "test": "node ./node_modules/@craco/craco/dist/bin/craco.js test",
     "start": "node ./node_modules/@craco/craco/dist/bin/craco.js start",
     "start:prod": "REACT_APP_COURSE_INTELLECT_ENV=production node ./node_modules/@craco/craco/dist/bin/craco.js start",

@@ -447,7 +447,7 @@ export default function ServiceTrackingPage() {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="overflow-hidden rounded-[28px] border border-slate-200/70 bg-white shadow-sm dark:border-foreground/10 dark:bg-[#08111F] dark:shadow-2xl">
+      <div className="overflow-hidden rounded-[28px] border border-slate-200/70 bg-white shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))] dark:shadow-2xl">
         <div className="relative p-5 sm:p-7">
           <div className="absolute inset-0 opacity-80 dark:opacity-100">
             <div className="absolute right-[-10%] top-[-35%] h-72 w-72 rounded-full bg-orange-500/20 blur-3xl" />
@@ -494,7 +494,7 @@ export default function ServiceTrackingPage() {
         </div>
       ) : null}
 
-      <Card className="overflow-hidden border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
+      <Card className="overflow-hidden border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card)/0.9)]">
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Navigation className="h-5 w-5 text-orange-500" />
@@ -571,7 +571,7 @@ export default function ServiceTrackingPage() {
       </Card>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="overflow-hidden border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
+        <Card className="overflow-hidden border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card)/0.9)]">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <UserRoundCheck className="h-5 w-5 text-orange-500" />
@@ -626,7 +626,7 @@ export default function ServiceTrackingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/70 bg-white shadow-sm dark:border-foreground/10 dark:bg-gradient-to-br dark:from-[#08111F] dark:via-[#0B1628] dark:to-orange-950/30">
+        <Card className="border-slate-200/70 bg-white shadow-sm dark:border-foreground/10 dark:bg-gradient-to-br dark:from-[hsl(var(--ci-card))] dark:via-[hsl(var(--ci-card))] dark:to-orange-950/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <MapPinned className="h-5 w-5 text-orange-500" />
@@ -677,7 +677,7 @@ export default function ServiceTrackingPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
-        <Card className="border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
+        <Card className="border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card)/0.9)]">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <BusFront className="h-5 w-5 text-orange-500" />
@@ -703,7 +703,7 @@ export default function ServiceTrackingPage() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[#0B1628]/90">
+        <Card className="border-slate-200/70 bg-foreground/90 shadow-sm dark:border-foreground/10 dark:bg-[hsl(var(--ci-card)/0.9)]">
           <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <Route className="h-5 w-5 text-orange-500" />

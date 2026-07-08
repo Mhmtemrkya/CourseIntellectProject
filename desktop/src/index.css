@@ -377,7 +377,7 @@ code {
 
 .desktop-panel {
     border-radius: 10px;
-    border: 1px solid rgba(76, 122, 166, 0.18);
+    border: 1px solid hsl(var(--ci-border) / 0.55);
     background: var(--ci-panel-background);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
@@ -410,12 +410,23 @@ code {
     color: hsl(var(--muted-foreground));
 }
 
+/* Sayfa üstü banner/hero kartları — kurum paletinin KOYU tonlarından üretilir.
+   Palet shade'lerinin açıklığı sabit (900≈%17) olduğundan hangi marka rengi
+   seçilirse seçilsin beyaz metin okunur kalır; accent parlaması alpha'lıdır. */
+.ci-hero {
+    position: relative;
+    background:
+        radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 30%),
+        linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #13233f) 52%, var(--brand-p-950, #0a1120) 100%) !important;
+    color: #fff !important;
+}
+
 .ci-card {
     position: relative;
     isolation: isolate;
     overflow: hidden;
     background: var(--ci-panel-background) !important;
-    border-color: rgba(76, 122, 166, 0.18) !important;
+    border-color: hsl(var(--ci-border) / 0.55) !important;
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
     box-shadow:
@@ -429,9 +440,9 @@ code {
     isolation: isolate;
     background:
         radial-gradient(circle at 12% 0%, hsl(var(--brand-accent) / 0.10), transparent 24%),
-        radial-gradient(circle at 94% 10%, hsl(211 100% 50% / 0.13), transparent 28%),
-        linear-gradient(180deg, rgba(7, 31, 57, 0.95), rgba(5, 24, 45, 0.90)) !important;
-    border-color: rgba(76, 122, 166, 0.18) !important;
+        radial-gradient(circle at 94% 10%, hsl(var(--brand-primary-text) / 0.13), transparent 28%),
+        linear-gradient(180deg, hsl(var(--ci-card) / 0.95), hsl(var(--ci-card-muted) / 0.90)) !important;
+    border-color: hsl(var(--ci-border) / 0.55) !important;
     box-shadow:
         inset 0 1px 0 hsl(0 0% 100% / 0.055),
         0 16px 46px rgba(0, 0, 0, 0.28);
@@ -793,7 +804,7 @@ code {
 .ci-page .ci-card [class*="via-"] {
     background-image:
         radial-gradient(circle at 14% 0%, hsl(var(--brand-accent) / 0.10), transparent 25%),
-        linear-gradient(180deg, rgba(7, 31, 57, 0.94), rgba(5, 24, 45, 0.90)) !important;
+        linear-gradient(180deg, hsl(var(--ci-card) / 0.94), hsl(var(--ci-card-muted) / 0.90)) !important;
     color: hsl(210 40% 98%) !important;
 }
 
@@ -811,7 +822,7 @@ code {
 .ci-page .ci-card .bg-muted\/40,
 .ci-page .ci-card .bg-muted\/50,
 .ci-page .ci-card .bg-muted\/70 {
-    background-color: rgba(9, 37, 69, 0.72) !important;
+    background-color: hsl(var(--ci-card-muted) / 0.72) !important;
 }
 
 .light .ci-page .ci-card .bg-muted,
@@ -823,7 +834,7 @@ code {
 
 .ci-page .ci-card .border,
 .ci-page .ci-dashboard-panel .border {
-    border-color: rgba(76, 122, 166, 0.18) !important;
+    border-color: hsl(var(--ci-border) / 0.55) !important;
 }
 
 .light .ci-page .ci-card .border,
@@ -854,8 +865,8 @@ code {
 .ci-dialog select {
     height: 36px;
     border-radius: 8px;
-    border-color: rgba(76, 122, 166, 0.20) !important;
-    background: rgba(5, 22, 42, 0.82) !important;
+    border-color: hsl(var(--ci-border) / 0.60) !important;
+    background: hsl(var(--ci-field) / 0.82) !important;
     color: hsl(210 40% 98%) !important;
     box-shadow: inset 0 1px 0 rgba(255,255,255,0.035);
 }
@@ -890,7 +901,7 @@ code {
 
 .ci-page table:not(.ci-table) thead,
 .ci-table-wrap thead {
-    background: rgba(7, 31, 57, 0.96) !important;
+    background: hsl(var(--ci-card) / 0.96) !important;
 }
 
 .light .ci-page table:not(.ci-table) thead,
@@ -910,7 +921,7 @@ code {
 .ci-page table:not(.ci-table) td,
 .ci-table td {
     padding-block: 9px !important;
-    border-color: rgba(76, 122, 166, 0.15) !important;
+    border-color: hsl(var(--ci-border) / 0.45) !important;
     font-size: 12px;
 }
 
@@ -923,10 +934,10 @@ code {
 .ci-drawer,
 [role="dialog"].ci-dialog {
     border-radius: 12px !important;
-    border-color: rgba(76, 122, 166, 0.22) !important;
+    border-color: hsl(var(--ci-border) / 0.65) !important;
     background:
         radial-gradient(circle at 8% 0%, hsl(var(--brand-accent) / 0.09), transparent 26%),
-        linear-gradient(180deg, rgba(7, 31, 57, 0.98), rgba(4, 18, 35, 0.98)) !important;
+        linear-gradient(180deg, hsl(var(--ci-card) / 0.98), hsl(var(--ci-card-muted) / 0.98)) !important;
 }
 
 .light .ci-dialog,
@@ -952,10 +963,10 @@ code {
 .ci-table-wrap,
 .ci-page [class*="overflow-auto"]:has(table) {
     border-radius: 10px !important;
-    border-color: rgba(76, 122, 166, 0.18) !important;
+    border-color: hsl(var(--ci-border) / 0.55) !important;
     background:
         radial-gradient(circle at 10% 0%, hsl(var(--brand-accent) / 0.06), transparent 22%),
-        linear-gradient(180deg, rgba(7,31,57,0.82), rgba(5,24,45,0.78)) !important;
+        linear-gradient(180deg, hsl(var(--ci-card) / 0.82), hsl(var(--ci-card-muted) / 0.78)) !important;
 }
 
 .light .ci-table-wrap,

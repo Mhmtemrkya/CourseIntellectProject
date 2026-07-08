@@ -432,7 +432,7 @@ export default function StudentContent() {
 
       {/* Hero + İstatistik */}
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-gradient-to-br from-[#0b2a4a] to-[#06182d] p-6">
+        <div className="relative overflow-hidden rounded-2xl border border-foreground/10 bg-gradient-to-br from-[#0b2a4a] to-[hsl(var(--ci-card))] p-6">
           <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-[hsl(var(--brand-accent)/0.18)] blur-3xl" />
           <div className="relative flex items-center gap-5">
             <div className="grid h-24 w-24 shrink-0 place-items-center rounded-full bg-[hsl(var(--brand-accent)/0.14)]">
@@ -546,8 +546,8 @@ export default function StudentContent() {
 
       <Dialog open={!!selectedItem} onOpenChange={() => { setSelectedItem(null); setVideoImmersiveMode(false); }}>
         <DialogContent className={normalizeType(selectedItem?.fileType) === 'video'
-          ? `${videoImmersiveMode ? 'h-screen w-screen max-w-none rounded-none border-0 p-0' : 'max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[#07111f] p-3 text-white sm:w-[calc(100vw-2rem)]'}`
-          : 'max-h-[94vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[#07111f] text-white'}
+          ? `${videoImmersiveMode ? 'h-screen w-screen max-w-none rounded-none border-0 p-0' : 'max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] p-3 text-white sm:w-[calc(100vw-2rem)]'}`
+          : 'max-h-[94vh] max-w-4xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] text-white'}
         >
           {normalizeType(selectedItem?.fileType) === 'video' ? null : (
             <DialogHeader>
@@ -752,7 +752,7 @@ export default function StudentContent() {
                 <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                   <div className="space-y-4 rounded-[28px] border border-foreground/10 bg-foreground/[0.035] p-4 shadow-2xl">
                     {selectedItem.playlistTitle ? (
-                      <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] px-4 py-3 text-sm">
+                      <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] px-4 py-3 text-sm">
                         <p className="font-semibold text-white">{selectedItem.playlistTitle}</p>
                         <p className="mt-1 text-slate-400">
                           {selectedPlaylist.length} videoluk seri
@@ -760,7 +760,7 @@ export default function StudentContent() {
                       </div>
                     ) : null}
                     <Tabs defaultValue="summary" className="w-full">
-                      <TabsList className="grid w-full grid-cols-4 border border-foreground/10 bg-[#0b1626]">
+                      <TabsList className="grid w-full grid-cols-4 border border-foreground/10 bg-[hsl(var(--ci-card))]">
                         <TabsTrigger value="summary" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Konu Özeti</TabsTrigger>
                         <TabsTrigger value="notes" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Ders Notları</TabsTrigger>
                         <TabsTrigger value="practice" className="data-[state=active]:bg-orange-500 data-[state=active]:text-white">Alıştırmalar</TabsTrigger>
@@ -768,13 +768,13 @@ export default function StudentContent() {
                       </TabsList>
                       <TabsContent value="summary" className="mt-4">
                         <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-                          <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-5">
+                          <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-5">
                             <h3 className="text-lg font-bold text-white">{selectedItem.title}</h3>
                             <p className="mt-3 leading-7 text-slate-300">
                               {selectedItem.description || selectedItem.info || 'Bu içerik için öğretmen açıklaması henüz eklenmedi.'}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-5">
+                          <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-5">
                             <h3 className="mb-3 flex items-center gap-2 font-bold text-white">
                               <ListChecks className="h-5 w-5 text-orange-300" />
                               Bu Derste Öğreneceklerin
@@ -789,7 +789,7 @@ export default function StudentContent() {
                         </div>
                       </TabsContent>
                       <TabsContent value="notes" className="mt-4">
-                        <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-4">
+                        <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-4">
                           <Label className="mb-2 block text-slate-300">Bu içerik için notun</Label>
                           <Textarea
                             className="min-h-[130px] border-foreground/10 bg-foreground/[0.05] text-white placeholder:text-slate-500"
@@ -814,7 +814,7 @@ export default function StudentContent() {
                         </div>
                       </TabsContent>
                       <TabsContent value="practice" className="mt-4">
-                        <div className="space-y-3 rounded-2xl border border-foreground/10 bg-[#0b1626] p-5 text-sm text-slate-300">
+                        <div className="space-y-3 rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-5 text-sm text-slate-300">
                           {contentExercises.length === 0 ? (
                             <p>Bu içerikle ilişkili alıştırma henüz eklenmedi.</p>
                           ) : contentExercises.map((exercise) => (
@@ -832,7 +832,7 @@ export default function StudentContent() {
                         </div>
                       </TabsContent>
                       <TabsContent value="comments" className="mt-4">
-                        <div className="space-y-4 rounded-2xl border border-foreground/10 bg-[#0b1626] p-5 text-sm text-slate-300">
+                        <div className="space-y-4 rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-5 text-sm text-slate-300">
                           <div className="flex items-center gap-2 font-semibold text-white">
                             <MessageCircle className="h-5 w-5 text-orange-300" />
                             Yorumlar
@@ -927,7 +927,7 @@ export default function StudentContent() {
                               type="button"
                               onClick={() => openPlaylistItem(item)}
                               className={`flex w-full items-start gap-3 rounded-2xl border px-2 py-2 text-left transition ${
-                                active ? 'border-orange-400/40 bg-orange-500/10' : 'border-foreground/10 bg-[#0b1626] hover:bg-foreground/[0.07]'
+                                active ? 'border-orange-400/40 bg-orange-500/10' : 'border-foreground/10 bg-[hsl(var(--ci-card))] hover:bg-foreground/[0.07]'
                               }`}
                             >
                               <div className={`mt-0.5 overflow-hidden rounded-xl ${active ? 'ring-2 ring-brand-primary/30' : ''}`}>

@@ -31,6 +31,7 @@ import {
 } from "../components/ui/dialog";
 import { useToast } from "../hooks/use-toast";
 import emblem from "../assets/brand/emblem.png";
+import loginBackground from "../assets/brand/loginbackground.jpeg";
 
 // SchoolAsist marka renkleri — giriş ekranı kurum temasından bağımsız,
 // sabit marka paletiyle çizilir (mockup: lacivert + turuncu).
@@ -203,7 +204,7 @@ export default function Login() {
           height: "175vh",
           transform: "translateY(-50%)",
           borderRadius: "50%",
-          background: `radial-gradient(circle at 30% 40%, ${NAVY_SOFT} 0%, ${NAVY} 55%, #0E1D38 100%)`,
+          background: `linear-gradient(rgba(21, 41, 75, 0.88), rgba(14, 29, 56, 0.93)), url(${loginBackground}) center / cover no-repeat`,
         }}
       />
 
@@ -286,8 +287,8 @@ export default function Login() {
                 className="flex items-start gap-4"
               >
                 <span
-                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white shadow-md"
-                  style={{ color: NAVY }}
+                  className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full shadow-md"
+                  style={{ color: NAVY, backgroundColor: "#FFFFFF" }}
                 >
                   <feature.icon className="h-5 w-5" />
                 </span>
@@ -311,7 +312,12 @@ export default function Login() {
           transition={{ duration: 0.7, ease: "easeOut", delay: 0.15 }}
           className="mx-auto w-full max-w-md"
         >
-          <div className="rounded-3xl bg-white p-8 shadow-2xl sm:p-10">
+          {/* Login kurumsal temadan bağımsız — koyu temadaki .bg-white ezmesine
+              takılmamak için kart ve alanlar inline stille beyaz sabitlenir. */}
+          <div
+            className="rounded-3xl p-8 shadow-2xl sm:p-10"
+            style={{ backgroundColor: "#FFFFFF" }}
+          >
             <div className="flex flex-col items-center text-center">
               <BrandMark />
               <h2
@@ -341,16 +347,17 @@ export default function Login() {
 
               <div className="relative">
                 <Mail
-                  className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2"
+                  className="absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2"
                   style={{ color: "#8A97AC" }}
                 />
                 <Input
                   id="username"
                   type="text"
-                  placeholder="Kullanıcı adı veya e-posta"
+                  placeholder="E-posta adresiniz"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="h-12 rounded-xl border-slate-200 bg-white pl-11 text-slate-900 placeholder:text-slate-400"
+                  className="h-12 rounded-xl pl-11 placeholder:text-slate-400"
+                  style={{ backgroundColor: "#FFFFFF", color: "#0F172A", borderColor: "#E2E8F0" }}
                   data-testid="username-input"
                   required
                 />
@@ -358,7 +365,7 @@ export default function Login() {
 
               <div className="relative">
                 <Lock
-                  className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2"
+                  className="absolute left-4 top-1/2 z-10 h-4 w-4 -translate-y-1/2"
                   style={{ color: "#8A97AC" }}
                 />
                 <Input
@@ -367,7 +374,8 @@ export default function Login() {
                   placeholder="Şifreniz"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-12 rounded-xl border-slate-200 bg-white pl-11 pr-11 text-slate-900 placeholder:text-slate-400"
+                  className="h-12 rounded-xl pl-11 pr-11 placeholder:text-slate-400"
+                  style={{ backgroundColor: "#FFFFFF", color: "#0F172A", borderColor: "#E2E8F0" }}
                   data-testid="password-input"
                   required
                 />
@@ -412,7 +420,7 @@ export default function Login() {
 
               <Button
                 type="submit"
-                className="relative h-12 w-full rounded-xl text-base font-bold text-white shadow-lg transition-all hover:brightness-105"
+                className="relative h-12 w-full rounded-xl text-base font-bold normal-case tracking-normal text-white shadow-lg transition-all hover:brightness-105"
                 style={{ backgroundColor: ORANGE }}
                 disabled={loading}
                 data-testid="login-button"

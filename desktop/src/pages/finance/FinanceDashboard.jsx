@@ -644,7 +644,7 @@ export default function FinanceDashboard() {
           </DialogHeader>
           {selectedCollection ? (
             <div className="space-y-6">
-              <div className="rounded-3xl border border-emerald-200/60 bg-gradient-to-br from-emerald-500 via-emerald-600 to-teal-700 p-6 text-white shadow-lg">
+              <div className="rounded-3xl border border-emerald-200/60 p-6 text-white shadow-lg ci-hero">
                 <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.22em] text-foreground/70">Tahsilat Özeti</div>

@@ -5,20 +5,20 @@ import { Button } from '../components/ui/button';
 export default function MaintenancePage({ message, since, onRetry, onLogout }) {
   const sinceDate = since ? new Date(since) : null;
   return (
-    <div className="min-h-screen w-full bg-gradient-to-br from-[#021622] via-[#0a2535] to-[#021622] flex items-center justify-center px-6">
+    <div className="min-h-screen w-full bg-gradient-to-br from-[hsl(var(--ci-card))] via-[hsl(var(--ci-card))] to-[hsl(var(--ci-card))] flex items-center justify-center px-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
         className="max-w-xl w-full"
       >
-        <div className="rounded-3xl border border-[#D9790B]/25 bg-[#021622]/90 p-10 backdrop-blur-md shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
+        <div className="rounded-3xl border border-[hsl(var(--brand-accent)/0.25)] bg-[hsl(var(--ci-card)/0.9)] p-10 backdrop-blur-md shadow-[0_30px_80px_-30px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-3 text-[11px] font-mono uppercase tracking-[0.32em] text-[#FBB971]/85">
-            <span aria-hidden className="inline-block h-px w-8 bg-[#D9790B]" />
+            <span aria-hidden className="inline-block h-px w-8 bg-[hsl(var(--brand-accent))]" />
             <span>Sistem · Bakım</span>
           </div>
 
-          <div className="mt-6 grid h-16 w-16 place-items-center rounded-2xl bg-[#D9790B]/15 ring-1 ring-[#D9790B]/35">
+          <div className="mt-6 grid h-16 w-16 place-items-center rounded-2xl bg-[hsl(var(--brand-accent)/0.15)] ring-1 ring-[hsl(var(--brand-accent)/0.35)]">
             <Wrench className="h-7 w-7 text-[#FBB971]" />
           </div>
 
@@ -39,7 +39,7 @@ export default function MaintenancePage({ message, since, onRetry, onLogout }) {
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             <Button
               onClick={onRetry}
-              className="h-11 bg-[#D9790B] font-semibold text-[#00354F] hover:bg-[#F08C1E]"
+              className="h-11 bg-[hsl(var(--brand-accent))] font-semibold text-[hsl(var(--ci-card))] hover:bg-[hsl(var(--brand-accent))]"
             >
               <RefreshCw className="mr-2 h-4 w-4" />
               Yeniden dene

@@ -369,7 +369,7 @@ export default function Schedule() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="schedule-page">
-      <div className="rounded-[30px] border border-border p-7 text-white shadow-xl" style={{ background: `radial-gradient(circle at top left, var(--brand-a-400, #D9790B33) 0%, transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 52%, var(--brand-p-700, #0f766e) 100%)` }}>
+      <div className="rounded-[30px] border border-border p-7 text-white shadow-xl" style={{ background: `radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16) 0%, transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 52%, var(--brand-p-700, #0f766e) 100%)` }}>
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-foreground/20 bg-foreground/10 text-white">{roleTitle(window.location.pathname)}</Badge>
@@ -685,7 +685,7 @@ export default function Schedule() {
           </DialogHeader>
           {selectedLesson ? (
             <div className="space-y-4">
-              <div className={`rounded-[26px] bg-gradient-to-br ${subjectColors[selectedLesson.subject] || 'from-slate-600 to-slate-800'} p-6 text-white`}>
+              <div className="rounded-[26px] p-6 text-white ci-hero">
                 <Badge className="border-foreground/20 bg-foreground/12 text-white">{selectedLesson.className}</Badge>
                 <h3 className="mt-4 text-2xl font-semibold">{selectedLesson.subject}</h3>
                 <p className="mt-2 text-sm text-foreground/80">{selectedLesson.day} • {selectedLesson.time}</p>

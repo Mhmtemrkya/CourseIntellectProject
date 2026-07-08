@@ -121,7 +121,7 @@ export default function DriverPanel() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="border-b border-slate-200 bg-foreground/90 dark:border-foreground/10 dark:bg-[#0B1628]/90">
+      <header className="border-b border-slate-200 bg-foreground/90 dark:border-foreground/10 dark:bg-[hsl(var(--ci-card)/0.9)]">
         <div className="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-4">
           <div className="flex items-center gap-3">
             <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-500">

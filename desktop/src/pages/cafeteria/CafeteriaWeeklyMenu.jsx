@@ -156,7 +156,7 @@ export default function CafeteriaWeeklyMenu({ editable = false }) {
     <motion.main
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="min-h-[calc(100vh-2rem)] rounded-[30px] border border-foreground/10 bg-[#070e19] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 md:p-7"
+      className="min-h-[calc(100vh-2rem)] rounded-[30px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] p-5 text-slate-100 shadow-2xl shadow-slate-950/30 md:p-7"
     >
       <header className="mb-7 flex flex-wrap items-start justify-between gap-5">
         <div>
@@ -345,7 +345,7 @@ function Summary({ icon: Icon, label, value, color }) {
     emerald: 'bg-emerald-500/12 text-emerald-400',
   };
   return (
-    <div className="rounded-xl border border-foreground/5 bg-slate-950/25 p-3">
+    <div className="rounded-xl border border-foreground/5 bg-[hsl(var(--ci-card)/0.35)] p-3">
       <span className={`mb-2 inline-flex rounded-lg p-2 ${tones[color]}`}><Icon className="h-4 w-4" /></span>
       <p className="text-xs text-slate-400">{label}</p>
       <p className="mt-1 font-semibold">{value}</p>

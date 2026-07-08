@@ -222,7 +222,7 @@ export default function TeacherExams() {
             const theme = getResourceTheme(exam.subject);
             return (
               <motion.div key={`${exam.title}-${index}`} variants={itemVariants}>
-                <Card className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
+                <Card className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
                   <CardContent className="p-0">
                     <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
                       <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>
@@ -290,7 +290,7 @@ export default function TeacherExams() {
             const theme = getResourceTheme(decodeText(exam.subject));
             return (
               <motion.div key={exam.key || `${exam.title}-${index}`} variants={itemVariants}>
-                <Card className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
+                <Card className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
                   <CardContent className="p-0">
                     <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
                       <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>

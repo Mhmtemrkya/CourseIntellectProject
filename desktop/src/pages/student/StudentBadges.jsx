@@ -77,7 +77,7 @@ export default function StudentBadges() {
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
         <Card className="border-0 shadow-lg overflow-hidden">
-          <div className="bg-gradient-to-br from-[#08111F] to-[#FF7A1A] p-6 text-white">
+          <div className="bg-gradient-to-br from-[hsl(var(--ci-card))] to-[hsl(var(--brand-accent))] p-6 text-foreground">
             <h1 className="text-2xl lg:text-3xl font-black">300 BAŞARI ROZETİ</h1>
             <p className="text-foreground/85 mt-1">Her soru, her ödev, her adım seni zirveye taşır.</p>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-5 max-w-xl">

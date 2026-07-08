@@ -238,6 +238,9 @@ export function MiniDonut({ value = 0, label = "Oran", className }) {
 
 // Yumuşak (cubic) alan grafiği — turuncu gradyan dolgu + animasyonlu çizgi.
 export function PremiumAreaChart({ values = [], className, height = 150 }) {
+  // Hook her render'da koşulsuz çağrılmalı; erken return'den önce durursa
+  // veri geldiğinde "Rendered more hooks" hatası sayfayı beyaza düşürür.
+  const gid = React.useId();
   const safe = values.map(coerceNumber).filter((value) => Number.isFinite(value));
   if (!safe.length) return <EmptyChart className={cn("h-[150px]", className)} label="Grafik verisi yok" />;
 
@@ -250,7 +253,6 @@ export function PremiumAreaChart({ values = [], className, height = 150 }) {
   const line = buildSmoothPath(points);
   const area = `${line} L ${width},${height} L 0,${height} Z`;
   const last = points[points.length - 1];
-  const gid = React.useId();
 
   return (
     <svg className={cn("w-full", className)} viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none" style={{ height }} aria-hidden="true">

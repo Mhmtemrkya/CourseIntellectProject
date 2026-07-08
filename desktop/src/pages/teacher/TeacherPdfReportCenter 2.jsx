@@ -42,7 +42,7 @@ function FilterSelect({ value, options, onChange, wide = false }) {
         onChange={(event) => onChange(event.target.value)}
         className="h-11 w-full appearance-none rounded-xl border border-foreground/10 bg-foreground/[0.045] px-4 pr-9 text-sm font-semibold text-slate-100 outline-none transition hover:border-orange-400/45 focus:border-orange-400/80"
       >
-        {options.map((option) => <option key={option} className="bg-[#08111F]" value={option}>{option}</option>)}
+        {options.map((option) => <option key={option} className="bg-[hsl(var(--ci-card))]" value={option}>{option}</option>)}
       </select>
       <ChevronDown className="pointer-events-none absolute right-3 top-3 h-4 w-4 text-slate-400 transition group-focus-within:text-orange-300" />
     </label>
@@ -265,7 +265,7 @@ function EmptyPdfSection({ title, detail }) {
 function PdfPageShell({ children, className = '' }) {
   return (
     <div
-      className={`relative overflow-hidden rounded-[4px] border border-foreground/10 bg-[#08111F] text-white shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)] ${className}`}
+      className={`relative overflow-hidden rounded-[4px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_30px_90px_-50px_rgba(0,0,0,0.9)] ${className}`}
       style={{ width: PDF_PAGE_WIDTH, height: PDF_PAGE_HEIGHT }}
     >
       {children}
@@ -509,12 +509,12 @@ function GrowthPage({ selectedReport }) {
 }
 
 function ThumbnailContent({ page }) {
-  if (page === 1) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="h-4 w-10 rounded bg-orange-400" /><div className="mt-9 h-16 rounded-full bg-slate-400" /><div className="mt-3 h-3 rounded bg-foreground/70" /><div className="mt-1 h-3 w-3/4 rounded bg-orange-400" /></div>;
-  if (page === 2) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div><div className="mt-3 h-12 rounded-full border-8 border-orange-400" /></div>;
-  if (page === 3) return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 rounded bg-foreground/10" />)}</div></div>;
-  if (page === 4) return <div className="h-full rounded-lg bg-[#08111F] p-2">{Array.from({ length: 7 }).map((_, i) => <div key={i} className="mb-2 h-2 rounded bg-orange-400/70" />)}</div>;
-  if (page === 5) return <div className="h-full rounded-lg bg-[#08111F] p-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="mb-2 h-5 rounded bg-foreground/10" />)}</div>;
-  return <div className="h-full rounded-lg bg-[#08111F] p-2"><div className="flex h-20 items-end gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="flex-1 rounded bg-orange-400" style={{ height: `${35 + i * 7}%` }} />)}</div><div className="mt-4 grid grid-cols-2 gap-1">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div></div>;
+  if (page === 1) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="h-4 w-10 rounded bg-orange-400" /><div className="mt-9 h-16 rounded-full bg-slate-400" /><div className="mt-3 h-3 rounded bg-foreground/70" /><div className="mt-1 h-3 w-3/4 rounded bg-orange-400" /></div>;
+  if (page === 2) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div><div className="mt-3 h-12 rounded-full border-8 border-orange-400" /></div>;
+  if (page === 3) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="grid grid-cols-2 gap-1">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-8 rounded bg-foreground/10" />)}</div></div>;
+  if (page === 4) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2">{Array.from({ length: 7 }).map((_, i) => <div key={i} className="mb-2 h-2 rounded bg-orange-400/70" />)}</div>;
+  if (page === 5) return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2">{Array.from({ length: 5 }).map((_, i) => <div key={i} className="mb-2 h-5 rounded bg-foreground/10" />)}</div>;
+  return <div className="h-full rounded-lg bg-[hsl(var(--ci-card))] p-2"><div className="flex h-20 items-end gap-1">{Array.from({ length: 8 }).map((_, i) => <div key={i} className="flex-1 rounded bg-orange-400" style={{ height: `${35 + i * 7}%` }} />)}</div><div className="mt-4 grid grid-cols-2 gap-1">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-5 rounded bg-foreground/10" />)}</div></div>;
 }
 
 function PreviewPage({ page, selectedReport, analytics }) {
@@ -577,11 +577,11 @@ function StudentDetailModal({
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#020817]/70 p-6 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[hsl(var(--ci-background)/0.7)] p-6 backdrop-blur-md">
       <motion.div
         initial={{ opacity: 0, y: 22, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-foreground/10 bg-[#08111F] text-white shadow-[0_35px_110px_-45px_rgba(0,0,0,0.95)]"
+        className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-[28px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_35px_110px_-45px_rgba(0,0,0,0.95)]"
       >
         <div className="flex items-start gap-5 border-b border-foreground/10 bg-[radial-gradient(circle_at_20%_0%,rgba(255,157,46,0.13),transparent_35%),linear-gradient(135deg,rgba(255,255,255,0.07),rgba(255,255,255,0.025))] p-6">
           <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-orange-400/35 bg-foreground/10 text-2xl font-black text-orange-200">
@@ -730,7 +730,7 @@ function StudentReportMode({
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-[calc(100vh-2rem)] rounded-[28px] border border-foreground/10 bg-[#08111F] p-6 text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
+      className="min-h-[calc(100vh-2rem)] rounded-[28px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-6 text-foreground shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
       data-testid="teacher-student-report-mode"
     >
       <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
@@ -762,7 +762,7 @@ function StudentReportMode({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Öğrenci ara..."
-              className="h-12 w-full rounded-2xl border border-foreground/10 bg-[#0B1728] pl-11 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-orange-400/70"
+              className="h-12 w-full rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] pl-11 pr-4 text-sm text-foreground outline-none transition placeholder:text-slate-500 focus:border-orange-400/70"
             />
           </label>
           <FilterSelect value={classFilter} options={classesFromStudents} onChange={setClassFilter} wide />
@@ -1075,7 +1075,7 @@ export default function TeacherPdfReportCenter() {
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[28px] border border-foreground/10 bg-[#08111F] text-white shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
+      className="min-h-[calc(100vh-2rem)] overflow-hidden rounded-[28px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_35px_110px_-55px_rgba(0,0,0,0.9)]"
       data-testid="teacher-pdf-report-center-page"
     >
       <div className="grid min-h-[calc(100vh-2rem)] grid-cols-1 xl:grid-cols-[minmax(380px,0.92fr)_minmax(0,1.45fr)]">
@@ -1161,7 +1161,7 @@ export default function TeacherPdfReportCenter() {
 
         <main className="min-w-0 bg-[radial-gradient(circle_at_20%_0%,rgba(77,163,255,0.12),transparent_25%),radial-gradient(circle_at_90%_8%,rgba(123,97,255,0.13),transparent_28%)] p-6">
           <div className="flex h-full flex-col rounded-[24px] border border-foreground/10 bg-foreground/[0.035] p-5 backdrop-blur-xl">
-            <div className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-[#0B1728]/90 px-4 py-3">
+            <div className="flex items-center justify-between rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card)/0.9)] px-4 py-3">
               <div className="flex items-center gap-2">
                 <ToolbarButton icon={ZoomIn} label="Zoom In" onClick={() => setZoom((value) => Math.min(160, value + 10))} />
                 <ToolbarButton icon={Minus} label="Zoom Out" onClick={() => setZoom((value) => Math.max(70, value - 10))} />
@@ -1191,7 +1191,7 @@ export default function TeacherPdfReportCenter() {
                   ))}
                 </div>
               </div>
-              <div className="min-h-0 overflow-auto rounded-[18px] border border-foreground/10 bg-[#111827] p-4">
+              <div className="min-h-0 overflow-auto rounded-[18px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-4">
                 <motion.div
                   key={`${selectedReport.id}-${activePage}`}
                   initial={{ opacity: 0 }}
@@ -1212,7 +1212,7 @@ export default function TeacherPdfReportCenter() {
 
       <div ref={exportRef} aria-hidden className="pointer-events-none fixed left-[-12000px] top-0">
         {[1, 2, 3, 4, 5, 6].map((page) => (
-          <div key={page} data-export-page className="overflow-hidden bg-[#08111F]" style={{ width: `${PDF_PAGE_WIDTH}px`, height: `${PDF_PAGE_HEIGHT}px` }}>
+          <div key={page} data-export-page className="overflow-hidden bg-[hsl(var(--ci-card))]" style={{ width: `${PDF_PAGE_WIDTH}px`, height: `${PDF_PAGE_HEIGHT}px` }}>
             <PreviewPage page={page} selectedReport={selectedReport} analytics={analytics} />
           </div>
         ))}

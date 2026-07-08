@@ -148,7 +148,7 @@ export default function PasswordResetRequests() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="password-reset-requests-page">
-      <div className="overflow-hidden rounded-[28px] border border-border bg-slate-950 p-7 text-white shadow-xl">
+      <div className="overflow-hidden rounded-[28px] border border-border p-7 text-white shadow-xl ci-hero">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-foreground/20 bg-foreground/10 text-white">
@@ -182,7 +182,7 @@ export default function PasswordResetRequests() {
                 <p className="text-sm text-muted-foreground">{label}</p>
                 <p className="mt-1 text-2xl font-bold">{value}</p>
               </div>
-              <Icon className="h-5 w-5 text-[#D9790B]" />
+              <Icon className="h-5 w-5 text-[hsl(var(--brand-accent))]" />
             </CardContent>
           </Card>
         ))}

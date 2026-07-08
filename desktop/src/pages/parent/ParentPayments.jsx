@@ -175,7 +175,7 @@ export default function ParentPayments() {
               title="Ödeme Planı"
               action={(
                 <div className="flex flex-wrap gap-3">
-                  <select className="h-10 rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)}>
+                  <select className="h-10 rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm font-semibold text-foreground outline-none" value={selectedStudent} onChange={(event) => setSelectedStudent(event.target.value)}>
                     {accounts.map((account) => <option key={account.studentName} value={account.studentName}>{decodeText(account.studentName)}</option>)}
                   </select>
                   <SmallButton><CalendarDays className="mr-2 h-4 w-4" />2025 - 2026 Eğitim Yılı</SmallButton>
@@ -306,7 +306,7 @@ export default function ParentPayments() {
       )}
 
       <Dialog open={!!payFor} onOpenChange={(open) => { if (!open) setPayFor(null); }}>
-        <DialogContent className="border-foreground/[0.08] bg-[#07162A] text-white">
+        <DialogContent className="border-foreground/[0.08] bg-[hsl(var(--ci-card))] text-foreground">
           <DialogHeader>
             <DialogTitle>Online Ödeme — {decodeText(payFor?.account?.studentName || '')}</DialogTitle>
           </DialogHeader>

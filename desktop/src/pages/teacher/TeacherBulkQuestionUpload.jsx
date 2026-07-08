@@ -462,7 +462,7 @@ export default function TeacherBulkQuestionUpload() {
     <motion.div
       initial={{ opacity: 0, y: 14 }}
       animate={{ opacity: 1, y: 0 }}
-      className="min-h-screen space-y-5 bg-[#08111F] p-4 text-white md:p-6"
+      className="min-h-screen space-y-5 bg-[hsl(var(--ci-card))] p-4 text-foreground md:p-6"
       data-testid="teacher-bulk-question-upload-page"
     >
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_18%_6%,rgba(255,157,46,0.16),transparent_28%),radial-gradient(circle_at_70%_10%,rgba(77,163,255,0.14),transparent_26%)]" />
@@ -493,7 +493,7 @@ export default function TeacherBulkQuestionUpload() {
         <StepRail currentStep={currentStep} />
 
         {historyOpen ? (
-          <div className="rounded-2xl border border-foreground/10 bg-[#0B1628]/95 p-4 shadow-2xl">
+          <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card)/0.95)] p-4 shadow-2xl">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm font-bold text-white">Yükleme Geçmişi</p>
@@ -564,7 +564,7 @@ export default function TeacherBulkQuestionUpload() {
                   className="hidden"
                   onChange={(event) => handleFile(event.target.files?.[0])}
                 />
-                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-foreground/10 bg-[#101D33]">
+                <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))]">
                   {uploading ? <Loader2 className="h-8 w-8 animate-spin text-orange-300" /> : <UploadCloud className="h-8 w-8 text-blue-300" />}
                 </div>
                 <p className="text-lg font-black text-white">Dosyanızı yükleyin</p>
@@ -632,9 +632,9 @@ export default function TeacherBulkQuestionUpload() {
                 <div className="flex flex-wrap gap-2">
                   <div className="relative">
                     <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Sorularda ara..." className="h-10 w-full border-foreground/10 bg-[#0B1628] pl-9 text-white placeholder:text-slate-500 md:w-64" />
+                    <Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Sorularda ara..." className="h-10 w-full border-foreground/10 bg-[hsl(var(--ci-card))] pl-9 text-foreground placeholder:text-slate-500 md:w-64" />
                   </div>
-                  <select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
+                  <select value={difficultyFilter} onChange={(event) => setDifficultyFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
                     <option value="all">Tüm Zorluklar</option>
                     {difficultyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
@@ -654,7 +654,7 @@ export default function TeacherBulkQuestionUpload() {
                 ) : filteredQuestions.map((question) => {
                   const selected = selectedIds.includes(question.id);
                   return (
-                    <div key={question.id} className={`rounded-2xl border p-4 transition ${selected ? 'border-orange-400 bg-orange-500/5 shadow-[0_0_30px_rgba(255,157,46,0.08)]' : 'border-foreground/10 bg-[#0B1628]/70'}`}>
+                    <div key={question.id} className={`rounded-2xl border p-4 transition ${selected ? 'border-orange-400 bg-orange-500/5 shadow-[0_0_30px_rgba(255,157,46,0.08)]' : 'border-foreground/10 bg-[hsl(var(--ci-card)/0.7)]'}`}>
                       <div className="flex flex-col gap-4 md:flex-row md:items-start">
                         <button type="button" onClick={() => toggleQuestion(question.id)} className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border ${selected ? 'border-orange-400 bg-orange-500 text-white' : 'border-foreground/20 text-transparent'}`}>
                           <Check className="h-4 w-4" />
@@ -704,7 +704,7 @@ export default function TeacherBulkQuestionUpload() {
               <h3 className="font-black text-white">Yükleme Özeti</h3>
               <div className="mt-5 flex items-center gap-4">
                 <div className="relative flex h-28 w-28 items-center justify-center rounded-full bg-[conic-gradient(#30D158_0_72%,#FF9D2E_72%_88%,#ef4444_88%_100%)]">
-                  <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[#0B1628]">
+                  <div className="flex h-20 w-20 flex-col items-center justify-center rounded-full bg-[hsl(var(--ci-card))]">
                     <span className="text-2xl font-black text-white">{job?.totalQuestions || 0}</span>
                     <span className="text-xs text-slate-400">Toplam</span>
                   </div>
@@ -730,19 +730,19 @@ export default function TeacherBulkQuestionUpload() {
                 ].map(([key, label, placeholder]) => (
                   <label key={key} className="block">
                     <span className="mb-1 block text-xs text-slate-400">{label}</span>
-                    <Input value={bulkDraft[key]} onChange={(event) => setBulkDraft((prev) => ({ ...prev, [key]: event.target.value }))} placeholder={placeholder} className="border-foreground/10 bg-[#0B1628] text-white placeholder:text-slate-600" />
+                    <Input value={bulkDraft[key]} onChange={(event) => setBulkDraft((prev) => ({ ...prev, [key]: event.target.value }))} placeholder={placeholder} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground placeholder:text-slate-600" />
                   </label>
                 ))}
                 <label className="block">
                   <span className="mb-1 block text-xs text-slate-400">Zorluk</span>
-                  <select value={bulkDraft.difficulty} onChange={(event) => setBulkDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
+                  <select value={bulkDraft.difficulty} onChange={(event) => setBulkDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
                     <option value="">Değiştirme</option>
                     {difficultyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
                 </label>
                 <label className="block">
                   <span className="mb-1 block text-xs text-slate-400">Soru Tipi</span>
-                  <select value={bulkDraft.type} onChange={(event) => setBulkDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
+                  <select value={bulkDraft.type} onChange={(event) => setBulkDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
                     <option value="">Değiştirme</option>
                     {typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                   </select>
@@ -758,7 +758,7 @@ export default function TeacherBulkQuestionUpload() {
               <h3 className="font-black text-white">Aktarım</h3>
               <label className="mt-4 block">
                 <span className="mb-1 block text-xs text-slate-400">Aktarım Hedefi</span>
-                <select value={target} onChange={(event) => setTarget(event.target.value)} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#0B1628] px-3 text-sm text-white">
+                <select value={target} onChange={(event) => setTarget(event.target.value)} className="h-10 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
                   {targetOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
@@ -790,7 +790,7 @@ export default function TeacherBulkQuestionUpload() {
 
       {editingQuestion ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/65 p-4">
-          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-foreground/10 bg-[#0B1628] p-5 shadow-2xl">
+          <div className="max-h-[92vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-5 shadow-2xl">
             <div className="mb-5 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-black text-white">Soru Düzenle</h2>
@@ -804,7 +804,7 @@ export default function TeacherBulkQuestionUpload() {
             <div className="grid gap-4 md:grid-cols-2">
               <label className="md:col-span-2">
                 <span className="mb-1 block text-xs text-slate-400">Soru Metni</span>
-                <Textarea value={editDraft.questionText} onChange={(event) => setEditDraft((prev) => ({ ...prev, questionText: event.target.value }))} className="min-h-[120px] border-foreground/10 bg-[#08111F] text-white" />
+                <Textarea value={editDraft.questionText} onChange={(event) => setEditDraft((prev) => ({ ...prev, questionText: event.target.value }))} className="min-h-[120px] border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
               </label>
               {[
                 ['subject', 'Ders'],
@@ -817,24 +817,24 @@ export default function TeacherBulkQuestionUpload() {
               ].map(([key, label]) => (
                 <label key={key}>
                   <span className="mb-1 block text-xs text-slate-400">{label}</span>
-                  <Input value={editDraft[key]} onChange={(event) => setEditDraft((prev) => ({ ...prev, [key]: key === 'points' ? Number(event.target.value || 0) : event.target.value }))} className="border-foreground/10 bg-[#08111F] text-white" />
+                  <Input value={editDraft[key]} onChange={(event) => setEditDraft((prev) => ({ ...prev, [key]: key === 'points' ? Number(event.target.value || 0) : event.target.value }))} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
                 </label>
               ))}
               <label>
                 <span className="mb-1 block text-xs text-slate-400">Zorluk</span>
-                <select value={editDraft.difficulty} onChange={(event) => setEditDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#08111F] px-3 text-sm text-white">
+                <select value={editDraft.difficulty} onChange={(event) => setEditDraft((prev) => ({ ...prev, difficulty: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
                   {difficultyOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
               <label>
                 <span className="mb-1 block text-xs text-slate-400">Soru Tipi</span>
-                <select value={editDraft.type} onChange={(event) => setEditDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[#08111F] px-3 text-sm text-white">
+                <select value={editDraft.type} onChange={(event) => setEditDraft((prev) => ({ ...prev, type: event.target.value }))} className="h-10 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
                   {typeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
               </label>
               <label className="md:col-span-2">
                 <span className="mb-1 block text-xs text-slate-400">Açıklama / Çözüm</span>
-                <Textarea value={editDraft.explanation || ''} onChange={(event) => setEditDraft((prev) => ({ ...prev, explanation: event.target.value }))} className="border-foreground/10 bg-[#08111F] text-white" />
+                <Textarea value={editDraft.explanation || ''} onChange={(event) => setEditDraft((prev) => ({ ...prev, explanation: event.target.value }))} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
               </label>
             </div>
 
@@ -842,8 +842,8 @@ export default function TeacherBulkQuestionUpload() {
               <p className="text-sm font-bold text-white">Şıklar</p>
               {editDraft.options.map((option, index) => (
                 <div key={`${option.label}-${index}`} className="grid gap-2 md:grid-cols-[80px_minmax(0,1fr)_120px]">
-                  <Input value={option.label} onChange={(event) => updateOption(index, 'label', event.target.value)} className="border-foreground/10 bg-[#08111F] text-white" />
-                  <Input value={option.text} onChange={(event) => updateOption(index, 'text', event.target.value)} className="border-foreground/10 bg-[#08111F] text-white" />
+                  <Input value={option.label} onChange={(event) => updateOption(index, 'label', event.target.value)} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
+                  <Input value={option.text} onChange={(event) => updateOption(index, 'text', event.target.value)} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
                   <Button variant="outline" className={`${option.isCorrect ? 'border-emerald-400/40 bg-emerald-500/20 text-emerald-100' : 'border-foreground/10 bg-foreground/5 text-white'} hover:bg-foreground/10 hover:text-white`} onClick={() => {
                     setEditDraft((prev) => ({
                       ...prev,

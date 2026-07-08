@@ -295,7 +295,7 @@ export default function StudentExams({ mockOnly = false }) {
         ) : upcomingExams.map((exam) => {
           const theme = getResourceTheme(exam.subject);
           return (
-            <Card key={exam.id} className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
+            <Card key={exam.id} className="overflow-hidden rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition hover:border-foreground/20">
               <CardContent className="p-0">
                 <div className="relative overflow-hidden p-6" style={{ background: `radial-gradient(circle at 88% -20%, ${theme.hue}2e, transparent 50%), radial-gradient(circle at 0% 120%, rgba(255,157,46,0.08), transparent 40%)` }}>
                   <div className="absolute -right-3 -top-5 text-[88px] font-black leading-none" style={{ color: `${theme.hue}16` }}>{theme.mark}</div>
@@ -357,7 +357,7 @@ export default function StudentExams({ mockOnly = false }) {
       }}>
         <DialogContent className="w-[min(96vw,1100px)] max-w-[1100px] max-h-[92vh] overflow-y-auto">
           {deliveryState ? (
-            <div className="rounded-[28px] bg-gradient-to-br from-emerald-500 to-teal-600 p-10 text-white">
+            <div className="rounded-[28px] p-10 text-white ci-hero">
               <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-foreground/15">
                 <Send className="h-10 w-10" />
               </div>
@@ -373,7 +373,7 @@ export default function StudentExams({ mockOnly = false }) {
               </DialogHeader>
               <div className="grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
                 <div className="space-y-5">
-                  <div className="rounded-[28px] bg-slate-950 p-6 text-white">
+                  <div className="rounded-[28px] p-6 text-white ci-hero">
                     <div className="mb-5 flex items-center justify-between">
                       <div>
                         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-foreground/60">{session?.subject}</div>

@@ -31,6 +31,20 @@ fn keychain_delete(account: String) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+  // WebView2'nin HTTP disk önbelleğini kapat: eski sürümün cache'lenmiş
+  // index.html'i yeni build'de olmayan chunk'ları isteyip beyaz sayfaya
+  // yol açıyordu (asset fallback -> "Unexpected token '<'").
+  #[cfg(windows)]
+  {
+    let existing = std::env::var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").unwrap_or_default();
+    if !existing.contains("--disable-http-cache") {
+      std::env::set_var(
+        "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+        format!("{existing} --disable-http-cache").trim(),
+      );
+    }
+  }
+
   tauri::Builder::default()
     .plugin(tauri_plugin_deep_link::init())
     .plugin(tauri_plugin_shell::init())

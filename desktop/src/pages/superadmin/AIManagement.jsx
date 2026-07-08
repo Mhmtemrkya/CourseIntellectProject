@@ -166,9 +166,9 @@ export default function AIManagement() {
             style={{ background: 'linear-gradient(to bottom right, var(--brand-accent-hex, #D9790B), var(--brand-p-500, #6b21a8))' }}
             animate={{
               boxShadow: [
-                '0 10px 30px var(--brand-a-500, rgba(217, 121, 11, 0.3))',
-                '0 10px 40px var(--brand-a-500, rgba(217, 121, 11, 0.5))',
-                '0 10px 30px var(--brand-a-500, rgba(217, 121, 11, 0.3))'
+                '0 10px 30px hsl(var(--brand-accent) / 0.3)',
+                '0 10px 40px hsl(var(--brand-accent) / 0.5)',
+                '0 10px 30px hsl(var(--brand-accent) / 0.3)'
               ]
             }}
             transition={{ duration: 2, repeat: Infinity }}

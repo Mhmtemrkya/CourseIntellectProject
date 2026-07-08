@@ -64,7 +64,7 @@ export default function TeacherMockExams() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="teacher-mock-exams-page">
-      <header className="flex flex-col gap-4 rounded-[30px] border border-foreground/10 bg-[#070f1c] p-6 text-white lg:flex-row lg:items-end lg:justify-between">
+      <header className="flex flex-col gap-4 rounded-[30px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] p-6 text-foreground lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs font-bold uppercase tracking-[0.24em] text-orange-300">Öğretmen</p>
           <h1 className="mt-2 text-3xl font-black">Deneme Sınavları</h1>
@@ -81,7 +81,7 @@ export default function TeacherMockExams() {
           ['Yaklaşan', stats.upcoming, CalendarDays],
           ['Toplam Soru', stats.questions, Clock3],
         ].map(([label, value, Icon]) => (
-          <Card key={label} className="border-foreground/10 bg-[#0a1323] text-white">
+          <Card key={label} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground">
             <CardContent className="flex items-center justify-between p-5">
               <div><p className="text-sm text-slate-400">{label}</p><p className="mt-2 text-3xl font-black">{value}</p></div>
               <div className="rounded-2xl bg-orange-500/15 p-3 text-orange-300"><Icon className="h-6 w-6" /></div>
@@ -95,7 +95,7 @@ export default function TeacherMockExams() {
       {loading ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 text-slate-400"><LoadingDots /><p>Canlı deneme kayıtları yükleniyor...</p></div>
       ) : records.length === 0 ? (
-        <div className="flex min-h-[330px] flex-col items-center justify-center rounded-[30px] border border-dashed border-foreground/10 bg-[#070f1c] p-8 text-center text-white">
+        <div className="flex min-h-[330px] flex-col items-center justify-center rounded-[30px] border border-dashed border-foreground/10 bg-[hsl(var(--ci-card-muted))] p-8 text-center text-foreground">
           <div className="mb-5 rounded-3xl bg-orange-500/15 p-5 text-orange-300"><FileQuestion className="h-10 w-10" /></div>
           <h2 className="text-xl font-black">Henüz deneme sınavı oluşturulmadı</h2>
           <p className="mt-2 max-w-md text-sm text-slate-400">Yeni deneme oluşturduğunuzda sorular ve planlama bilgileri canlı olarak burada listelenir.</p>

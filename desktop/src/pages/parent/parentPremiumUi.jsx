@@ -201,7 +201,7 @@ export function DonutChart({ items, center, size = 168 }) {
 
   return (
     <div className="grid place-items-center rounded-full" style={{ width: size, height: size, background: `conic-gradient(${gradient})` }}>
-      <div className="grid place-items-center rounded-full bg-[#06162B]" style={{ width: size * 0.62, height: size * 0.62 }}>
+      <div className="grid place-items-center rounded-full bg-[hsl(var(--ci-card))]" style={{ width: size * 0.62, height: size * 0.62 }}>
         {center}
       </div>
     </div>

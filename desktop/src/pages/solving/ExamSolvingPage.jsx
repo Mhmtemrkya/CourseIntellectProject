@@ -386,7 +386,7 @@ export default function ExamSolvingPage() {
           </div>
         </div>
       ) : null}
-    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-h-[82vh] overflow-hidden rounded-[36px] border border-foreground/10 bg-[#06101f] text-white shadow-2xl shadow-slate-950/20">
+    <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="min-h-[82vh] overflow-hidden rounded-[36px] border border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground shadow-2xl shadow-slate-950/20">
       <div className="grid min-h-[82vh] grid-cols-[86px_minmax(0,1fr)_300px]">
         <aside className="border-r border-foreground/10 bg-slate-950/80 p-4">
           <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 shadow-lg shadow-orange-500/25">
@@ -613,7 +613,7 @@ export default function ExamSolvingPage() {
 function SubmissionSuccessModal({ summary, onBackToExams, onResults }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-md">
-      <div className="relative w-full max-w-xl overflow-hidden rounded-[36px] border border-emerald-300/25 bg-[#071426] p-8 text-center text-white shadow-2xl shadow-emerald-950/40">
+      <div className="relative w-full max-w-xl overflow-hidden rounded-[36px] border border-emerald-300/25 bg-[hsl(var(--ci-card))] p-8 text-center text-foreground shadow-2xl shadow-emerald-950/40">
         <div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="absolute -bottom-20 -left-12 h-48 w-48 rounded-full bg-orange-400/15 blur-3xl" />
         <div className="relative">

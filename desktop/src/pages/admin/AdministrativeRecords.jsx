@@ -132,7 +132,7 @@ export default function AdministrativeRecords() {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6" data-testid="administrative-records-page">
-      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(14,165,233,0.16)), transparent 36%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 55%, var(--brand-p-700, #1d4d63) 100%)' }}>
+      <div className="rounded-[28px] border border-border p-7 text-white shadow-xl" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 36%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 55%, var(--brand-p-700, #1d4d63) 100%)' }}>
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <Badge className="border-foreground/20 bg-foreground/10 text-white">İdari Operasyon</Badge>
@@ -228,7 +228,7 @@ export default function AdministrativeRecords() {
           </DialogHeader>
           {selectedRecord && selectedPayload ? (
             <div className="space-y-5">
-              <div className="rounded-[28px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, var(--brand-a-400, rgba(251,191,36,0.18)), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 45%, var(--brand-p-700, #115e59) 100%)' }}>
+              <div className="rounded-[28px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 45%, var(--brand-p-700, #115e59) 100%)' }}>
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <Badge className="border-foreground/10 bg-foreground/15 text-white">{selectedRecord.type}</Badge>

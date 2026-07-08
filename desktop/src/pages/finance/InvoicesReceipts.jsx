@@ -690,7 +690,7 @@ export default function InvoicesReceipts() {
           </DialogHeader>
           {selectedRecord ? (
             <div className="space-y-5 py-2">
-              <div className={`rounded-3xl p-6 text-white shadow-xl ${selectedRecord.type === 'invoice' ? 'bg-gradient-to-br from-sky-600 via-blue-700 to-slate-900' : 'bg-gradient-to-br from-emerald-500 via-teal-600 to-cyan-700'}`}>
+              <div className={`rounded-3xl p-6 text-white shadow-xl ${selectedRecord.type === 'invoice' ? ' ' : ' '} ci-hero`}>
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="text-xs uppercase tracking-[0.24em] text-foreground/70">{selectedRecord.type === 'invoice' ? 'Fatura Belgesi' : 'Makbuz Belgesi'}</div>

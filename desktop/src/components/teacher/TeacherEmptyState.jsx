@@ -87,15 +87,15 @@ export function TeacherEmptyState({
   const tone = accentClass[accent] || accentClass.orange;
 
   return (
-    <div className={`relative overflow-hidden rounded-[28px] border border-foreground/10 bg-[#07101c] ${large ? 'p-10 md:p-14' : 'p-8'} text-white shadow-2xl`}>
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(249,115,22,0.14),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent)]" />
+    <div className={`relative overflow-hidden rounded-[28px] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] ${large ? 'p-10 md:p-14' : 'p-8'} text-foreground shadow-2xl`}>
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,hsl(var(--brand-accent)/0.14),transparent_35%),linear-gradient(180deg,rgba(255,255,255,0.035),transparent)]" />
       <div className="pointer-events-none absolute inset-5 rounded-[24px] border border-dashed border-foreground/10" />
 
       <div className="relative mx-auto flex max-w-3xl flex-col items-center text-center">
         <div className="relative mb-7 h-56 w-full max-w-md">
           <div className="absolute left-1/2 top-1/2 h-24 w-[78%] -translate-x-1/2 -translate-y-1/2 rounded-[50%] border border-dashed border-foreground/15" />
           <CloudUpload className={`absolute left-1/2 top-3 h-16 w-16 -translate-x-1/2 ${tone.text} drop-shadow-[0_0_18px_rgba(249,115,22,0.55)]`} />
-          <div className={`absolute left-1/2 top-24 h-20 w-36 -translate-x-1/2 rounded-b-[42px] border border-foreground/10 bg-slate-800/80 shadow-2xl ${tone.glow}`}>
+          <div className={`absolute left-1/2 top-24 h-20 w-36 -translate-x-1/2 rounded-b-[42px] border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.8)] shadow-2xl ${tone.glow}`}>
             <div className={`absolute left-1/2 top-0 h-20 w-3 -translate-x-1/2 bg-gradient-to-b from-orange-400 to-transparent ${tone.glow}`} />
             <div className="absolute -left-8 top-0 h-12 w-24 rotate-12 rounded-lg border border-foreground/10 bg-slate-700/80" />
             <div className="absolute -right-8 top-0 h-12 w-24 -rotate-12 rounded-lg border border-foreground/10 bg-slate-700/80" />

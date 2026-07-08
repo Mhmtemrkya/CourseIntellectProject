@@ -158,7 +158,7 @@ export function Sidebar() {
       initial={false}
       animate={{ width: sidebarCollapsed ? 76 : 280 }}
       transition={{ duration: 0.3, ease: 'easeInOut' }}
-      className="h-screen bg-brand-primary text-white flex flex-col border-r border-[#00283B] relative z-30"
+      className="h-screen bg-brand-primary text-foreground flex flex-col border-r border-[hsl(var(--ci-card))] relative z-30"
     >
       {/* Logo Section */}
       <div className="h-16 flex items-center px-4 border-b border-foreground/10">

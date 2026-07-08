@@ -575,8 +575,8 @@ export default function TeacherContent() {
               Yeni İçerik Ekle
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[#07111f] p-0 text-white shadow-2xl sm:w-[calc(100vw-2rem)]">
-            <div className="border-b border-foreground/10 bg-gradient-to-r from-[#091424] via-[#0d1628] to-[#160f08] px-6 py-5">
+          <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] p-0 text-foreground shadow-2xl sm:w-[calc(100vw-2rem)]">
+            <div className="border-b border-foreground/10 bg-gradient-to-r from-[hsl(var(--ci-card))] via-[hsl(var(--ci-card))] to-[#160f08] px-6 py-5">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-3 text-2xl text-white">
                   <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300 ring-1 ring-orange-400/30">
@@ -667,7 +667,7 @@ export default function TeacherContent() {
                     ) : null}
                   </div>
                   {selectedFile ? (
-                    <div className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-[#0b1626] p-4 md:flex-row md:items-center">
+                    <div className="flex flex-col gap-3 rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-4 md:flex-row md:items-center">
                       <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-500/15 text-orange-300">
                         {form.fileType === 'Video' ? <Video className="h-6 w-6" /> : <FileText className="h-6 w-6" />}
                       </div>
@@ -681,7 +681,7 @@ export default function TeacherContent() {
                       <CheckCircle2 className="h-5 w-5 text-emerald-400" />
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-foreground/10 bg-[#0b1626] p-5 text-sm text-slate-400">
+                    <div className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-5 text-sm text-slate-400">
                       Henüz dosya seçilmedi. Canlı içerik oluşturmak için bir dosya ekleyin.
                     </div>
                   )}
@@ -693,7 +693,7 @@ export default function TeacherContent() {
                       <Eye className="h-5 w-5 text-orange-300" />
                       İçerik Önizleme
                     </h3>
-                    <div className="relative flex min-h-[210px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#151f32] via-[#0b1424] to-[#261305]">
+                    <div className="relative flex min-h-[210px] items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-[hsl(var(--ci-card))] via-[hsl(var(--ci-card))] to-[#261305]">
                       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_40%,rgba(249,115,22,0.28),transparent_42%)]" />
                       <div className="relative text-center">
                         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-foreground/10 text-orange-300 ring-1 ring-foreground/10">
@@ -717,7 +717,7 @@ export default function TeacherContent() {
                         ['Ders / Sınıf', form.subject && form.grade ? 'Tamam' : 'Zorunlu'],
                         ['Açıklama', form.description ? 'Tamam' : 'Zorunlu'],
                       ].map(([label, value]) => (
-                        <div key={label} className="flex items-center justify-between rounded-2xl bg-[#0b1626] px-4 py-3">
+                        <div key={label} className="flex items-center justify-between rounded-2xl bg-[hsl(var(--ci-card))] px-4 py-3">
                           <span className="text-slate-300">{label}</span>
                           <span className={value === 'Tamam' || value === 'Hazır' ? 'text-emerald-300' : 'text-amber-300'}>{value}</span>
                         </div>
@@ -728,7 +728,7 @@ export default function TeacherContent() {
               </div>
 
               <aside className="space-y-4 border-t border-foreground/10 bg-foreground/[0.025] p-5 lg:border-l lg:border-t-0 lg:p-6">
-                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-5">
                   <h3 className="mb-4 text-lg font-bold text-white">İçerik Bilgileri</h3>
                   <div className="space-y-4">
                     <div className="space-y-2">
@@ -879,7 +879,7 @@ export default function TeacherContent() {
                 </div>
               ) : null}
 
-                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-5">
                   <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
                     <Settings2 className="h-5 w-5 text-orange-300" />
                     İçerik Ayarları
@@ -905,7 +905,7 @@ export default function TeacherContent() {
                   </div>
                 </div>
 
-                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-5">
                   <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-white">
                     <ImageIcon className="h-5 w-5 text-purple-300" />
                     Kapak Görseli
@@ -920,7 +920,7 @@ export default function TeacherContent() {
                   <button
                     type="button"
                     onClick={() => coverInputRef.current?.click()}
-                    className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/30 via-[#101b2c] to-orange-500/25 p-4 text-left"
+                    className="w-full overflow-hidden rounded-2xl bg-gradient-to-br from-purple-500/30 via-[hsl(var(--ci-card))] to-orange-500/25 p-4 text-left"
                   >
                     <div className="flex h-24 items-center justify-center rounded-xl border border-foreground/10 bg-black/20">
                       <span className="text-sm font-semibold text-slate-200">{coverFile?.name || form.subject || 'Kapak seç / otomatik kapak'}</span>
@@ -929,7 +929,7 @@ export default function TeacherContent() {
                   <p className="mt-3 text-xs text-slate-400">Kapak yüklenirse öğrenci izleme ekranında canlı olarak kullanılır.</p>
                 </div>
 
-                <div className="rounded-[24px] border border-foreground/10 bg-[#0b1626] p-5">
+                <div className="rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-5">
                   <h3 className="mb-4 text-lg font-bold text-white">Alıştırmalar</h3>
                   <div className="space-y-3">
                     {exerciseDrafts.map((exercise, index) => (
@@ -968,7 +968,7 @@ export default function TeacherContent() {
               </aside>
             </div>
 
-            <DialogFooter className="sticky bottom-0 border-t border-foreground/10 bg-[#07111f]/95 px-6 py-4 backdrop-blur">
+            <DialogFooter className="sticky bottom-0 border-t border-foreground/10 bg-[hsl(var(--ci-card)/0.95)] px-6 py-4 backdrop-blur">
               <Button variant="outline" className="border-foreground/10 bg-foreground/[0.04] text-slate-200 hover:bg-foreground/[0.08]" onClick={() => { resetUploadForm(); setUploadOpen(false); }}>İptal</Button>
               <Button
                 onClick={handleCreate}
@@ -1235,7 +1235,7 @@ export default function TeacherContent() {
                   />
                 </div>
               ) : (
-                <div className={`relative overflow-hidden rounded-2xl bg-gradient-to-br ${buildCoverStyle(selectedContent)} p-6 text-white`}>
+                <div className={`relative overflow-hidden rounded-2xl ${buildCoverStyle(selectedContent)} p-6 text-white ci-hero`}>
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.24),transparent_42%)]" />
                   <div className="relative flex items-start justify-between gap-4">
                     <div>

@@ -195,11 +195,11 @@ export default function StudentAI() {
 
       <motion.div className="mb-6">
         <div className="flex items-center gap-4">
-          <motion.div className="p-4 rounded-2xl bg-gradient-to-br from-[#D9790B] to-[#f59e0b] shadow-lg shadow-orange-500/30">
+          <motion.div className="p-4 rounded-2xl bg-gradient-to-br from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-accent))] shadow-lg shadow-orange-500/30">
             <Sparkles className="h-8 w-8 text-white" />
           </motion.div>
           <div>
-            <h1 className="text-3xl font-bold font-heading bg-gradient-to-r from-[#D9790B] to-[#f59e0b] bg-clip-text text-transparent">SchoolAsist AI</h1>
+            <h1 className="text-3xl font-bold font-heading bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-accent))] bg-clip-text text-transparent">SchoolAsist AI</h1>
             <p className="text-muted-foreground">Gerçek verilerinle çalışan akıllı çalışma merkezi</p>
           </div>
           <Badge className="ml-auto bg-gradient-to-r from-purple-500 to-pink-500 text-white border-0 px-3 py-1">
@@ -215,7 +215,7 @@ export default function StudentAI() {
               <AnimatePresence>
                 {messages.map((message) => (
                   <motion.div key={message.id} initial={{ opacity: 0, y: 20, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${message.role === 'user' ? 'bg-gradient-to-br from-blue-500 to-cyan-500' : 'bg-gradient-to-br from-[#D9790B] to-[#f59e0b]'}`}>
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${message.role === 'user' ? 'bg-gradient-to-br from-blue-500 to-cyan-500' : 'bg-gradient-to-br from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-accent))]'}`}>
                       {message.role === 'user' ? <User className="h-5 w-5 text-white" /> : <Bot className="h-5 w-5 text-white" />}
                     </div>
                     <div className={`flex-1 max-w-[80%] p-4 rounded-2xl ${message.role === 'user' ? 'bg-gradient-to-br from-blue-500 to-cyan-500 text-white ml-auto' : 'bg-muted/50 border'}`}>
@@ -227,7 +227,7 @@ export default function StudentAI() {
 
               {isLoading ? (
                 <motion.div className="flex gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D9790B] to-[#f59e0b] flex items-center justify-center"><Bot className="h-5 w-5 text-white" /></div>
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-accent))] flex items-center justify-center"><Bot className="h-5 w-5 text-white" /></div>
                   <div className="bg-muted/50 border rounded-2xl p-4"><LoadingDots color="#D9790B" /></div>
                 </motion.div>
               ) : null}
@@ -237,10 +237,10 @@ export default function StudentAI() {
           <div className="p-4 border-t bg-background/50 backdrop-blur-sm">
             <div className="flex gap-3">
               <div className="flex-1 relative">
-                <Input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()} placeholder="Bir soru sor veya yardım iste..." className="pr-12 h-12 text-base rounded-xl border-2 focus:border-[#D9790B] transition-colors" />
+                <Input ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()} placeholder="Bir soru sor veya yardım iste..." className="pr-12 h-12 text-base rounded-xl border-2 focus:border-[hsl(var(--brand-accent))] transition-colors" />
                 <div className="absolute right-2 top-1/2 -translate-y-1/2"><Wand2 className="h-5 w-5 text-muted-foreground" /></div>
               </div>
-              <Button onClick={handleSend} disabled={!input.trim() || isLoading} className="h-12 px-6 bg-gradient-to-r from-[#D9790B] to-[#f59e0b] hover:from-[#c66a09] hover:to-[#d97706] rounded-xl">
+              <Button onClick={handleSend} disabled={!input.trim() || isLoading} className="h-12 px-6 bg-gradient-to-r from-[hsl(var(--brand-accent))] to-[hsl(var(--brand-accent))] hover:from-[hsl(var(--brand-accent))] hover:to-[hsl(var(--brand-accent))] rounded-xl">
                 {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               </Button>
             </div>
@@ -254,9 +254,9 @@ export default function StudentAI() {
             </CardHeader>
             <CardContent className="space-y-2">
               {suggestedPrompts.map((prompt) => (
-                <button key={prompt.text} className="w-full p-3 rounded-xl text-left bg-muted/50 hover:bg-muted border border-transparent hover:border-[#D9790B]/30 transition-all group" onClick={() => handlePromptClick(prompt.text)}>
+                <button key={prompt.text} className="w-full p-3 rounded-xl text-left bg-muted/50 hover:bg-muted border border-transparent hover:border-[hsl(var(--brand-accent)/0.3)] transition-all group" onClick={() => handlePromptClick(prompt.text)}>
                   <div className="flex items-start gap-2">
-                    <Brain className="h-4 w-4 mt-0.5 text-[#D9790B]" />
+                    <Brain className="h-4 w-4 mt-0.5 text-[hsl(var(--brand-accent))]" />
                     <div>
                       <p className="text-sm font-medium">{prompt.text}</p>
                       <p className="text-xs text-muted-foreground mt-1">{prompt.category}</p>

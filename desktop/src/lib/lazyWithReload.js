@@ -21,6 +21,9 @@ function isChunkLoadError(error) {
     || /Loading CSS chunk [\w-]+ failed/i.test(message)
     || /error loading dynamically imported module/i.test(message)
     || /Failed to fetch dynamically imported module/i.test(message)
+    // Bayat cache'lenmiş index.html eski chunk adını ister; Tauri fallback
+    // olarak index.html döndürür ve JS parser "Unexpected token '<'" üretir.
+    || (error.name === 'SyntaxError' && /Unexpected token/i.test(message))
   );
 }
 

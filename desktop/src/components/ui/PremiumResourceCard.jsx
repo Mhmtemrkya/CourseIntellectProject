@@ -63,7 +63,7 @@ export default function PremiumResourceCard({
       <Wrapper
         type={clickable ? 'button' : undefined}
         onClick={onClick}
-        className={`group relative flex h-full w-full flex-col overflow-hidden rounded-[24px] border border-foreground/10 bg-[#0B1728] p-5 text-left text-white shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition duration-300 hover:-translate-y-0.5 hover:border-foreground/20 ${clickable ? 'cursor-pointer' : ''}`}
+        className={`group relative flex h-full w-full flex-col overflow-hidden rounded-[24px] border border-foreground/10 bg-[hsl(var(--ci-card))] p-5 text-left text-foreground shadow-[0_24px_60px_-40px_rgba(0,0,0,0.9)] transition duration-300 hover:-translate-y-0.5 hover:border-foreground/20 ${clickable ? 'cursor-pointer' : ''}`}
         style={{ '--hue': theme.hue }}
       >
         <div

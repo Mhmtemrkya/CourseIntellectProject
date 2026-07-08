@@ -209,7 +209,7 @@ function EmptyQuestionBankState({ onCreate, onImport }) {
 
   return (
     <motion.div variants={itemVariants} className="flex justify-center">
-      <div className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-foreground/10 bg-[#070c16] px-6 py-9 text-center shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)] dark:bg-[#070c16]">
+      <div className="relative w-full max-w-5xl overflow-hidden rounded-[2rem] border border-foreground/10 bg-[hsl(var(--ci-card-muted))] px-6 py-9 text-center shadow-[0_30px_90px_-45px_rgba(0,0,0,0.8)] dark:bg-[hsl(var(--ci-card-muted))]">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_29%,rgba(249,115,22,0.16),transparent_25%),radial-gradient(circle_at_50%_45%,rgba(59,130,246,0.10),transparent_32%)]" />
         <div className="relative mx-auto h-[245px] max-w-3xl">
           <div className="absolute left-[13%] right-[13%] top-[106px] h-[90px] rounded-[50%] border border-dashed border-foreground/20" />
@@ -993,7 +993,7 @@ export default function TeacherQuestionBank() {
       <motion.div variants={itemVariants}>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredQuestionSets.length === 0 ? (
-            <Card className="col-span-full border border-slate-200/80 bg-white dark:border-foreground/10 dark:bg-slate-950">
+            <Card className="col-span-full border border-slate-200/80 bg-white dark:border-foreground/10 dark:bg-[hsl(var(--ci-card))]">
               <CardContent className="p-8 text-center text-muted-foreground">
                 Bu filtrelere uygun soru bulunamadı.
               </CardContent>

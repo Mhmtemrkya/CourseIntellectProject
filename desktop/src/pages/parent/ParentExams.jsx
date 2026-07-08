@@ -182,7 +182,7 @@ export default function ParentExams() {
         icon={<IconTile icon={TrendingUp} tone="purple" className="h-14 w-14" />}
         actions={(
           <>
-            <select className="h-11 min-w-[190px] rounded-[10px] border border-foreground/[0.08] bg-[#06162B] px-4 text-sm font-semibold text-white outline-none" value={selectedChild} onChange={(event) => setSelectedChild(event.target.value)}>
+            <select className="h-11 min-w-[190px] rounded-[10px] border border-foreground/[0.08] bg-[hsl(var(--ci-card))] px-4 text-sm font-semibold text-foreground outline-none" value={selectedChild} onChange={(event) => setSelectedChild(event.target.value)}>
               {children.length === 0 ? <option value="">Çocuk bulunamadı</option> : null}
               {children.map((child) => (
                 <option key={child.id || child.fullName} value={child.fullName}>{decodeText(child.fullName)}</option>
