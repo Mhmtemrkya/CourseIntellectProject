@@ -31,6 +31,8 @@ export function mapBackendRoleToDesktopRole(role) {
     case "institutionadmin":
     case "institutionadministrator":
     case "developer":
+    // Şube müdürü admin UI'ını kullanır; verisi backend'de Branch grant ile şubesine kilitli.
+    case "branchmanager":
       return "admin";
     case "accounting":
       return "finance";

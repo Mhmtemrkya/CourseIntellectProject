@@ -39,6 +39,9 @@ public static class DependencyInjection
 
         services.AddScoped<DatabaseSeeder>();
         services.AddHostedService<RejectedTenantCleanupService>();
+        services.AddScoped<ITenantContext, HttpTenantContext>();
+        services.AddScoped<IActiveScope, ActiveScope>();
+        services.AddScoped<IUserScopeService, UserScopeService>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
         services.AddScoped<UsernameGenerator>();
         services.AddScoped<IJwtTokenService, JwtTokenService>();

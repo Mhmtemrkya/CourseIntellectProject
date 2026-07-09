@@ -107,7 +107,7 @@ class ReportsAnalyticsApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/reports/exam-analytics',
       ).replace(queryParameters: {'studentName': studentName}),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -148,7 +148,7 @@ class ReportsAnalyticsApiService {
             ? null
             : {'className': className.trim()},
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

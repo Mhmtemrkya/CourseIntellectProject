@@ -14,5 +14,8 @@ public sealed record CreateStaffRequest(
     IReadOnlyList<string> AssignedClasses,
     string MaritalStatus,
     int ChildCount,
-    string Note
+    string Note,
+    // Şube müdürü (BranchManager) rolünde zorunlu: atanacağı şubenin (OrgUnit) kimliği.
+    // Diğer rollerde opsiyonel; verilmezse şube otomatik-stamp ile belirlenir.
+    Guid? BranchId = null
 );

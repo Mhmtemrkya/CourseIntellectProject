@@ -53,6 +53,7 @@ const itemVariants = {
 
 const roles = [
   { value: 'Teacher', label: 'Öğretmen' },
+  { value: 'BranchManager', label: 'Şube Müdürü' },
   { value: 'Administrative', label: 'İdari Personel' },
   { value: 'ServiceDriver', label: 'Servis Şoförü' },
   { value: 'Cafeteria', label: 'Yemekhaneci' },
@@ -140,7 +141,7 @@ export default function AdminStaffRegistration() {
       ...prev,
       [field]: value,
       ...(field === 'role'
-        ? { departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane' : value === 'ServiceDriver' ? 'Servis Şoförü' : '' }
+        ? { departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane' : value === 'ServiceDriver' ? 'Servis Şoförü' : value === 'BranchManager' ? 'Şube Yönetimi' : '' }
         : {}),
     }));
   };
@@ -152,6 +153,10 @@ export default function AdminStaffRegistration() {
     }
     if (!form.departmentOrBranch.trim()) {
       toast({ title: 'Branş / bölüm seçimi zorunludur.', variant: 'destructive' });
+      return;
+    }
+    if (form.role === 'BranchManager' && !branchId) {
+      toast({ title: 'Şube müdürü için şube seçimi zorunludur.', variant: 'destructive' });
       return;
     }
     if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
@@ -200,6 +205,7 @@ export default function AdminStaffRegistration() {
         maritalStatus: form.maritalStatus,
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
+        branchId: branchId || undefined,
       }, branchId || undefined);
       createdStaffUserId = response?.userId || null;
       let serviceSummary = '';

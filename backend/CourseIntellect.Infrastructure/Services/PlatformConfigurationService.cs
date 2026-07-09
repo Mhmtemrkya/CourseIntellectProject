@@ -97,13 +97,12 @@ public sealed class PlatformConfigurationService(
 
     private async Task<Guid?> ResolveTenantIdAsync(CancellationToken cancellationToken)
     {
-        var user = httpContextAccessor.HttpContext?.User;
-        var tenantRaw = user?.FindFirstValue("tenant_id");
-        if (Guid.TryParse(tenantRaw, out var tenantId))
+        if (dbContext.CurrentTenantId is Guid tenantId)
         {
             return tenantId;
         }
 
+        var user = httpContextAccessor.HttpContext?.User;
         var userRaw = user?.FindFirstValue("user_id") ?? user?.FindFirstValue(ClaimTypes.NameIdentifier);
         if (!Guid.TryParse(userRaw, out var userId))
         {

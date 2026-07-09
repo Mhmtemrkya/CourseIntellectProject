@@ -541,6 +541,16 @@ export async function fetchOrgUnits() {
   return Array.isArray(response) ? response : [];
 }
 
+// Context switcher verisi: kullanıcının erişebildiği kurum/şube ağacı + aktif bağlam.
+export async function fetchMyScope() {
+  return api.get('/api/my-scope');
+}
+
+// Konsolide roll-up: erişilebilir tüm kurumların özet metrikleri + genel toplam.
+export async function fetchMyScopeRollup() {
+  return api.get('/api/my-scope/rollup');
+}
+
 export async function createOrgUnit(payload) {
   const response = await api.post('/api/org-units', payload);
   return response;

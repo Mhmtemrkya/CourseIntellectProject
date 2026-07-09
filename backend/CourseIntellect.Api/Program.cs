@@ -395,6 +395,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseAuthorization();
+// Kimlik + yetki sonrası aktif kurum/şube bağlamını istek başına bir kez çöz.
+app.UseMiddleware<CourseIntellect.Api.Middleware.ActiveScopeMiddleware>();
 app.MapControllers();
 app.MapHub<MessagesHub>("/hubs/messages");
 app.MapHub<ServiceTrackingHub>("/hubs/service-tracking");

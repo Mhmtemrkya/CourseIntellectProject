@@ -14,7 +14,7 @@ public sealed class StaffManagementService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
     UsernameGenerator usernameGenerator,
-    IHttpContextAccessor httpContextAccessor) : IStaffManagementService
+    ITenantContext tenantContext) : IStaffManagementService
 {
     public async Task<IReadOnlyList<StaffSummaryDto>> GetStaffAsync(string? role, CancellationToken cancellationToken = default)
     {
@@ -70,13 +70,26 @@ public sealed class StaffManagementService(
     public async Task<StaffCredentialsDto> CreateStaffAsync(CreateStaffRequest request, CancellationToken cancellationToken = default)
     {
         if (!Enum.TryParse<UserRole>(request.Role, true, out var parsedRole) ||
-            parsedRole is not UserRole.Teacher and not UserRole.Administrative and not UserRole.Cafeteria)
+            parsedRole is not UserRole.Teacher and not UserRole.Administrative and not UserRole.Cafeteria and not UserRole.BranchManager)
         {
-            throw new InvalidOperationException("Bu endpoint sadece Ogretmen, Administrative veya Cafeteria kaydi icindir.");
+            throw new InvalidOperationException("Bu endpoint sadece Ogretmen, Administrative, Cafeteria veya BranchManager kaydi icindir.");
         }
 
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+
+        // Şube müdürü mutlaka bir şubeye (OrgUnit) atanır; o şubeye kilitli Branch grant üretilir.
+        if (parsedRole == UserRole.BranchManager)
+        {
+            if (request.BranchId is not Guid branchId)
+            {
+                throw new InvalidOperationException("Şube müdürü için şube seçimi zorunludur.");
+            }
+            if (!await dbContext.OrgUnits.AnyAsync(x => x.Id == branchId, cancellationToken))
+            {
+                throw new InvalidOperationException("Seçilen şube bu kuruma ait değil.");
+            }
+        }
         var email = (request.Email ?? string.Empty).Trim().ToLowerInvariant();
         var isServiceDriverProfile = string.Equals(request.DepartmentOrBranch?.Trim(), "Servis Şoförü", StringComparison.OrdinalIgnoreCase);
         if (!string.IsNullOrWhiteSpace(email))
@@ -127,6 +140,7 @@ public sealed class StaffManagementService(
         {
             UserRole.Teacher => "Teacher",
             UserRole.Cafeteria => "Cafeteria",
+            UserRole.BranchManager => "BranchManager",
             _ => "Administrative"
         };
         var departmentOrBranch = parsedRole == UserRole.Cafeteria
@@ -144,6 +158,7 @@ public sealed class StaffManagementService(
         var user = new AppUser
         {
             TenantId = tenantId,
+            BranchId = request.BranchId,
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
@@ -329,9 +344,5 @@ public sealed class StaffManagementService(
         return true;
     }
 
-    private Guid? ResolveCurrentTenantId()
-    {
-        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("tenant_id");
-        return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
-    }
+    private Guid? ResolveCurrentTenantId() => tenantContext.CurrentTenantId;
 }

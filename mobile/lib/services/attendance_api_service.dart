@@ -41,7 +41,7 @@ class AttendanceApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/attendance',
       ).replace(queryParameters: query.isEmpty ? null : query),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -63,7 +63,7 @@ class AttendanceApiService {
     }
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/attendance/$id'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AttendanceApiException('Kayıt silinemedi (${response.statusCode}).');
@@ -116,7 +116,7 @@ class AttendanceApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/attendance-qr-sessions',
       ).replace(queryParameters: query.isEmpty ? null : query),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AttendanceApiException(
@@ -145,7 +145,7 @@ class AttendanceApiService {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: {
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
         'Content-Type': 'application/json',
       },
       body: body == null ? null : jsonEncode(body),
@@ -178,7 +178,7 @@ class AttendanceApiService {
     final response = await http.post(
       Uri.parse('${ApiConfig.baseUrl}/api/attendance'),
       headers: {
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
         'Content-Type': 'application/json',
       },
       body: jsonEncode({

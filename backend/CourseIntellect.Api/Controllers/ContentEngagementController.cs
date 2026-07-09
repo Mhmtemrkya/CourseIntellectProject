@@ -195,10 +195,8 @@ public sealed class ContentEngagementController(CourseIntellectDbContext dbConte
     private (Guid? UserId, Guid? TenantId) ResolveContext()
     {
         var userIdClaim = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var tenantIdClaim = User.FindFirstValue("tenant_id");
         if (!Guid.TryParse(userIdClaim, out var userId)) return (null, null);
-        if (!Guid.TryParse(tenantIdClaim, out var tenantId)) return (userId, null);
-        return (userId, tenantId);
+        return (userId, dbContext.CurrentTenantId);
     }
 }
 

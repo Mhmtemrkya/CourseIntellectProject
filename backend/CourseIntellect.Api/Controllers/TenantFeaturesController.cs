@@ -101,8 +101,7 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
     [HttpGet("my")]
     public async Task<IActionResult> GetMyFeatures(CancellationToken cancellationToken)
     {
-        var tenantRaw = User.FindFirstValue("tenant_id");
-        if (!Guid.TryParse(tenantRaw, out var tenantId))
+        if (dbContext.CurrentTenantId is not Guid tenantId)
         {
             return Ok(BuildResponse(new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase)));
         }

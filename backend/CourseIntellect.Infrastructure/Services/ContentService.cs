@@ -15,10 +15,11 @@ public sealed class ContentService(CourseIntellectDbContext dbContext) : IConten
         var tenantId = dbContext.CurrentTenantId;
         var query = dbContext.ContentItems.IgnoreQueryFilters().AsQueryable();
 
-        if (tenantId.HasValue)
-        {
-            query = query.Where(x => x.TenantId == tenantId.Value || x.TenantId == null);
-        }
+        // Güvenlik: aktif kurum varsa kendi içeriği + global; kurum bağlamı yoksa YALNIZCA
+        // global içerik (TenantId == null) döner — önceki "hepsini dök" davranışı cross-tenant sızıntısıydı.
+        query = tenantId.HasValue
+            ? query.Where(x => x.TenantId == tenantId.Value || x.TenantId == null)
+            : query.Where(x => x.TenantId == null);
 
         if (visibleOnly)
         {

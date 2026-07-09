@@ -16,7 +16,7 @@ public sealed class AcademicQueryService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
     UsernameGenerator usernameGenerator,
-    IHttpContextAccessor httpContextAccessor,
+    ITenantContext tenantContext,
     IParentNotifier parentNotifier) : IAcademicQueryService
 {
     public async Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default)
@@ -411,9 +411,5 @@ public sealed class AcademicQueryService(
         };
     }
 
-    private Guid? ResolveCurrentTenantId()
-    {
-        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("tenant_id");
-        return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
-    }
+    private Guid? ResolveCurrentTenantId() => tenantContext.CurrentTenantId;
 }

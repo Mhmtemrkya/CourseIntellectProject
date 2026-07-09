@@ -108,10 +108,9 @@ public sealed class SupportTicketsController(
         var actorRaw = User.FindFirstValue("nameid")
             ?? User.FindFirstValue("sub")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var tenantRaw = User.FindFirstValue("tenant_id");
         var role = User.FindFirstValue(ClaimTypes.Role) ?? User.FindFirstValue("role") ?? string.Empty;
         Guid.TryParse(actorRaw, out var userId);
-        Guid.TryParse(tenantRaw, out var tenantId);
+        var tenantId = dbContext.CurrentTenantId ?? Guid.Empty;
         return (userId, tenantId, role);
     }
 

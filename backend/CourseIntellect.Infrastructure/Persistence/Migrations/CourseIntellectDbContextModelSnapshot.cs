@@ -4604,6 +4604,49 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.ToTable("TeacherTimetableSlots");
                 });
 
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.TenantGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("name");
+
+                    b.Property<string>("Note")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid?>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<string>("Slug")
+                        .IsRequired()
+                        .HasMaxLength(180)
+                        .HasColumnType("character varying(180)")
+                        .HasColumnName("slug");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId");
+
+                    b.HasIndex("Slug")
+                        .IsUnique();
+
+                    b.ToTable("tenant_groups", (string)null);
+                });
+
             modelBuilder.Entity("CourseIntellect.Domain.Entities.TenantWorkspace", b =>
                 {
                     b.Property<Guid>("Id")
@@ -4647,6 +4690,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at_utc");
+
+                    b.Property<Guid?>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
 
                     b.Property<decimal>("MonthlyFee")
                         .HasColumnType("numeric(18,2)")
@@ -4703,6 +4750,8 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("AdminUserId");
 
+                    b.HasIndex("GroupId");
+
                     b.HasIndex("Slug")
                         .IsUnique();
 
@@ -4744,6 +4793,50 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("translation_items", (string)null);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.UserScopeGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AccessMode")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("access_mode");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at_utc");
+
+                    b.Property<bool>("IsHome")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_home");
+
+                    b.Property<string>("Level")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("level");
+
+                    b.Property<Guid?>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Level");
+
+                    b.HasIndex("UserId", "TargetId");
+
+                    b.ToTable("user_scope_grants", (string)null);
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.AccountingApproval", b =>
@@ -5491,6 +5584,20 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("AdminUserId")
                         .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("CourseIntellect.Domain.Entities.TenantGroup", null)
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
+                });
+
+            modelBuilder.Entity("CourseIntellect.Domain.Entities.UserScopeGrant", b =>
+                {
+                    b.HasOne("CourseIntellect.Domain.Entities.AppUser", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

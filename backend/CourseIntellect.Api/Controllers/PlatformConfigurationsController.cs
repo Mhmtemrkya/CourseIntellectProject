@@ -11,6 +11,7 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class PlatformConfigurationsController(
     IPlatformConfigurationService platformConfigurationService,
+    ITenantContext tenantContext,
     ILogger<PlatformConfigurationsController> logger) : ControllerBase
 {
     [HttpGet]
@@ -47,10 +48,9 @@ public sealed class PlatformConfigurationsController(
     [HttpGet("branding")]
     public async Task<IActionResult> GetBranding([FromQuery] Guid? tenantId, CancellationToken cancellationToken)
     {
-        var tenantClaim = User.FindFirstValue("tenant_id");
-        if (!tenantId.HasValue && Guid.TryParse(tenantClaim, out var claimTenantId))
+        if (!tenantId.HasValue)
         {
-            tenantId = claimTenantId;
+            tenantId = tenantContext.CurrentTenantId;
         }
 
         var items = await platformConfigurationService.GetAsync("tenant-customization", cancellationToken);

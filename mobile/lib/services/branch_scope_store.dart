@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'tenant_scope_store.dart';
+
 /// Kurum yöneticisinin seçtiği aktif şube. Seçim ilk girişte yapılır ve tüm
 /// şubeye-bağlı API çağrılarına `X-Branch-Filter` header'ı olarak eklenir.
 /// (Desktop'taki `ci-branch-filter` ile aynı backend mekanizması.)
@@ -50,4 +52,15 @@ class BranchScopeStore {
     await prefs.remove(_branchKey);
     await prefs.remove(_selectedKey);
   }
+}
+
+/// Kurum (X-Tenant-Context) + şube (X-Branch-Filter) header'larını tek yerde birleştirir.
+/// Tüm servisler API çağrılarında `...ScopeHeaders.merged` ile bu ikisini birden gönderir.
+class ScopeHeaders {
+  const ScopeHeaders._();
+
+  static Map<String, String> get merged => {
+        ...TenantScopeStore.instance.headers,
+        ...BranchScopeStore.instance.headers,
+      };
 }

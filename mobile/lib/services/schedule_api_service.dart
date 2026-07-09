@@ -65,7 +65,7 @@ class ScheduleApiService {
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/schedule'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -102,7 +102,7 @@ class ScheduleApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/schedule'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
       },
       body: jsonEncode({
         'className': className,
@@ -145,7 +145,7 @@ class ScheduleApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/schedule/$id'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
       },
       body: jsonEncode({
         'className': className,
@@ -178,7 +178,7 @@ class ScheduleApiService {
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/schedule/$id'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

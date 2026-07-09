@@ -14,7 +14,7 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class UserDirectoryService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
-    IHttpContextAccessor httpContextAccessor) : IUserDirectoryService
+    ITenantContext tenantContext) : IUserDirectoryService
 {
     public async Task<IReadOnlyList<UserSummaryDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -136,6 +136,7 @@ public sealed class UserDirectoryService(
         [
             CreateRole(UserRole.Developer, false, "Platform", ["Platform", "Kurumlar", "Icerik", "Ayarlar"], users, policies),
             CreateRole(UserRole.Admin, false, "Tum roller", ["Akademik", "Finans", "Operasyon", "Onaylar"], users, policies),
+            CreateRole(UserRole.BranchManager, false, "Sube ekibi", ["Akademik", "Finans", "Operasyon", "Onaylar"], users, policies),
             CreateRole(UserRole.Teacher, false, "Ogrenci, veli, yonetici", ["Akademik", "Icerik", "Sinavlar"], users, policies),
             CreateRole(UserRole.Accounting, true, "Veli, yonetici", ["Finans", "Tahsilatlar", "Taksitler"], users, policies),
             CreateRole(UserRole.Administrative, false, "Veli, yonetici, muhasebe", ["Kayit", "Evrak", "Duyurular"], users, policies),
@@ -315,9 +316,5 @@ public sealed class UserDirectoryService(
         return tenantId.HasValue ? query.Where(x => x.TenantId == tenantId.Value) : query;
     }
 
-    private Guid? ResolveCurrentTenantId()
-    {
-        var raw = httpContextAccessor.HttpContext?.User?.FindFirstValue("tenant_id");
-        return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
-    }
+    private Guid? ResolveCurrentTenantId() => tenantContext.CurrentTenantId;
 }

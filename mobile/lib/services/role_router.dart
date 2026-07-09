@@ -7,7 +7,7 @@ import '../navigation/cafeteria_bottom_nav.dart';
 import '../navigation/counselor_bottom_nav.dart';
 import '../navigation/teacher_bottom_nav.dart';
 import '../navigation/veli_bottom_nav.dart';
-import '../pages/branch_select_page.dart';
+import '../pages/tenant_select_page.dart';
 import '../pages/driver_route_students_page.dart';
 import 'auth_session_store.dart';
 import 'service_tracking_api_service.dart';
@@ -67,7 +67,8 @@ class RoleRouter {
       case 'Accounting':
         return const AccountingBottomNav();
       case 'Admin':
-        return const BranchSelectPage();
+        // Önce kurum seçimi (sahip/MEB); tek kurumluda otomatik şube seçimine geçer.
+        return const TenantSelectPage();
       case 'Administrative':
         // Servis şoförleri Administrative rolüyle açılır; aktif şoför
         // kaydı olan kullanıcı yalnızca kendi şoför ekranını görür.
@@ -85,6 +86,8 @@ class RoleRouter {
       case 'admin':
       case 'institutionadmin':
       case 'institutionadministrator':
+      // Şube müdürü admin panelini kullanır; verisi backend'de Branch grant ile şubesine kilitli.
+      case 'branchmanager':
         return 'Admin';
       case 'administrative':
       case 'idare':

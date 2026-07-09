@@ -174,6 +174,7 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
             await AssignLegacyUsersToDemoTenantAsync(demoTenant, cancellationToken);
             await AssignLegacyTenantDataToDemoTenantAsync(demoTenant, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+            await BackfillUserScopeGrantsAsync(cancellationToken);
             return;
         }
 
@@ -687,6 +688,31 @@ public sealed class DatabaseSeeder(CourseIntellectDbContext dbContext, IPassword
 
         AssignTrackedTenantScopedEntitiesToDemoTenant(demoTenant.Id);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await BackfillUserScopeGrantsAsync(cancellationToken);
+    }
+
+    // Home-grant backfill: her kullanıcıya mevcut TenantId/BranchId + rolüne göre TEK
+    // "ev" grant'ı yazar. İdempotent — zaten ev grant'ı olan kullanıcı atlanır. Eşleme
+    // bugünkü EffectiveBranchId davranışını birebir yansıtır, yani Faz 2 resolver'ı
+    // grant'lara geçtiğinde mevcut kullanıcılar hiçbir fark görmez.
+    private async Task BackfillUserScopeGrantsAsync(CancellationToken cancellationToken)
+    {
+        var haveHome = (await dbContext.UserScopeGrants
+                .Where(g => g.IsHome)
+                .Select(g => g.UserId)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
+
+        var newGrants = (await dbContext.Users.AsNoTracking().ToListAsync(cancellationToken))
+            .Where(user => !haveHome.Contains(user.Id))
+            .Select(UserScopeGrant.CreateHome)
+            .ToList();
+
+        if (newGrants.Count > 0)
+        {
+            await dbContext.UserScopeGrants.AddRangeAsync(newGrants, cancellationToken);
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
     }
 
     private async Task<TenantWorkspace> EnsureDemoTenantAsync(CancellationToken cancellationToken)

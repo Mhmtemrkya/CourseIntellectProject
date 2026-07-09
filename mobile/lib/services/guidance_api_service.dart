@@ -30,7 +30,7 @@ class GuidanceApiService {
     return {
       'Authorization': 'Bearer ${session.accessToken}',
       if (json) 'Content-Type': 'application/json',
-      ...BranchScopeStore.instance.headers,
+      ...ScopeHeaders.merged,
     };
   }
 

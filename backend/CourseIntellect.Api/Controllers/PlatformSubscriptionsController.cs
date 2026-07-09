@@ -9,7 +9,7 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize]
 [Route("api/platformsubscriptions")]
-public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService service) : ControllerBase
+public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService service, ITenantContext tenantContext) : ControllerBase
 {
     /// <summary>
     /// Marketing site checkout: kullanıcı giriş yapmış kurum, paket satın alır.
@@ -104,9 +104,8 @@ public sealed class PlatformSubscriptionsController(IPlatformSubscriptionService
     private (Guid actorId, Guid tenantId) GetClaims()
     {
         var actorRaw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var tenantRaw = User.FindFirstValue("tenant_id");
         Guid.TryParse(actorRaw, out var actorId);
-        Guid.TryParse(tenantRaw, out var tenantId);
+        var tenantId = tenantContext.CurrentTenantId ?? Guid.Empty;
         return (actorId, tenantId);
     }
 }

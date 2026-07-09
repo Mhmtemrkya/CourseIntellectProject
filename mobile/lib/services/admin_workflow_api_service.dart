@@ -31,7 +31,7 @@ class AdminWorkflowApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path').replace(queryParameters: query);
     final response = await http.get(uri, headers: {
       'Authorization': 'Bearer ${session.accessToken}',
-      ...BranchScopeStore.instance.headers,
+      ...ScopeHeaders.merged,
     });
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AdminWorkflowApiException('İstek başarısız (${response.statusCode}).');
@@ -47,7 +47,7 @@ class AdminWorkflowApiService {
       headers: {
         'Authorization': 'Bearer ${session.accessToken}',
         'Content-Type': 'application/json',
-        ...BranchScopeStore.instance.headers,
+        ...ScopeHeaders.merged,
       },
       body: jsonEncode(body),
     );
@@ -62,7 +62,7 @@ class AdminWorkflowApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final response = await http.delete(uri, headers: {
       'Authorization': 'Bearer ${session.accessToken}',
-      ...BranchScopeStore.instance.headers,
+      ...ScopeHeaders.merged,
     });
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AdminWorkflowApiException('Silme başarısız (${response.statusCode}).');
@@ -75,6 +75,18 @@ class AdminWorkflowApiService {
   // ---- Organizasyon birimleri ----
   Future<List<Map<String, dynamic>>> getOrgUnits() async =>
       _list(await _get('/api/org-units'));
+
+  // ---- Context switcher: erişilebilir kurum/şube ağacı + aktif bağlam ----
+  Future<Map<String, dynamic>?> getMyScope() async {
+    final raw = await _get('/api/my-scope');
+    return raw == null ? null : Map<String, dynamic>.from(raw as Map);
+  }
+
+  // ---- Konsolide roll-up: erişilebilir tüm kurumların özet metrikleri + toplam ----
+  Future<Map<String, dynamic>?> getMyScopeRollup() async {
+    final raw = await _get('/api/my-scope/rollup');
+    return raw == null ? null : Map<String, dynamic>.from(raw as Map);
+  }
 
   Future<Map<String, dynamic>> createOrgUnit({
     required String name,

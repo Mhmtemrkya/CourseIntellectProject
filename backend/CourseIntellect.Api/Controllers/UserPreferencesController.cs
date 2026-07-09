@@ -103,9 +103,7 @@ public sealed class UserPreferencesController(CourseIntellectDbContext dbContext
     private (Guid? UserId, Guid? TenantId) ResolveContext()
     {
         var userIdClaim = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub");
-        var tenantIdClaim = User.FindFirstValue("tenant_id");
         if (!Guid.TryParse(userIdClaim, out var userId)) return (null, null);
-        if (!Guid.TryParse(tenantIdClaim, out var tenantId)) return (userId, null);
-        return (userId, tenantId);
+        return (userId, dbContext.CurrentTenantId);
     }
 }

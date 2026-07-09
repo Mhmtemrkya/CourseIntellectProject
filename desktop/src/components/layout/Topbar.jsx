@@ -18,8 +18,8 @@ import {
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
-import { fetchNotifications, fetchOrgUnits } from "../../lib/api/modules";
-import { setActiveBranchFilter } from "../../lib/api/client";
+import { fetchMyScope, fetchNotifications, fetchOrgUnits } from "../../lib/api/modules";
+import { setActiveBranchFilter, setActiveTenantContext } from "../../lib/api/client";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,6 +102,8 @@ export function Topbar() {
   const isOwner = (user?.role || "").toLowerCase() === "admin";
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState(() => (typeof localStorage !== "undefined" ? localStorage.getItem("ci-branch-filter") || "" : ""));
+  const [scope, setScope] = useState(null);
+  const [selectedTenant, setSelectedTenant] = useState("");
   const [showNotifications, setShowNotifications] = useState(false);
 
   useEffect(() => {
@@ -116,10 +118,27 @@ export function Topbar() {
       .catch(() => setBranches([]));
   }, [isOwner]);
 
+  // Erişilebilir kurum/şube ağacı: sahip/MEB için kurum seçici bu veriyle beslenir.
+  useEffect(() => {
+    fetchMyScope()
+      .then((data) => {
+        setScope(data || null);
+        setSelectedTenant(data?.active?.tenantId || "");
+      })
+      .catch(() => setScope(null));
+  }, []);
+
   const handleBranchChange = (value) => {
     setSelectedBranch(value);
     setActiveBranchFilter(value || null);
     // Tüm modüllerin yeni şube filtresiyle yeniden yüklenmesi için sayfayı tazele.
+    window.location.reload();
+  };
+
+  const handleTenantChange = (value) => {
+    setSelectedTenant(value);
+    // Kurum değişince şube filtresi client'ta otomatik sıfırlanır; sayfayı tazele.
+    setActiveTenantContext(value || null);
     window.location.reload();
   };
   const [notifications, setNotifications] = useState([]);
@@ -216,6 +235,35 @@ export function Topbar() {
 
       {/* Right: Actions */}
       <div className="flex items-center gap-2">
+        {/* Kurum seçici (sahip/MEB — birden çok kurum erişimi varsa) */}
+        {scope?.canSwitchTenant ? (
+          <select
+            value={selectedTenant}
+            onChange={(e) => handleTenantChange(e.target.value)}
+            title="Kurum bağlamı"
+            className="hidden h-8 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground md:block"
+          >
+            <option value="">Kurum seçin</option>
+            {scope.tenants.map((t) => (
+              <option key={t.id} value={t.id}>{t.name}</option>
+            ))}
+          </select>
+        ) : null}
+        {/* Salt-okunur bağlam rozeti (MEB/denetçi) */}
+        {scope?.readOnly ? (
+          <span title="Salt-okunur (denetim)" className="hidden select-none text-sm md:inline">🔒</span>
+        ) : null}
+        {/* Konsolide görünüm (tüm kurumların toplamı) */}
+        {scope?.canSwitchTenant ? (
+          <button
+            type="button"
+            onClick={() => navigate('/consolidated')}
+            title="Konsolide görünüm — tüm kurumların toplamı"
+            className="hidden h-8 items-center gap-1 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground md:flex"
+          >
+            📊 Konsolide
+          </button>
+        ) : null}
         {/* Şube seçici (yalnızca kurum yöneticisi) */}
         {isOwner && branches.length > 0 ? (
           <select

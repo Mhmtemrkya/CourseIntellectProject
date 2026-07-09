@@ -27,10 +27,12 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
     {
         if (branchId == Guid.Empty) return BadRequest(new { message = "Şube (branchId) zorunludur." });
         var tenantId = dbContext.CurrentTenantId;
+        // Güvenlik: aktif kurum bağlamı yoksa toplu yazma TÜM kurumlara sızardı; reddet.
+        if (tenantId is null) return BadRequest(new { message = "Aktif kurum bağlamı yok; toplu şube ataması reddedildi." });
 
         async Task<int> Fill<T>(DbSet<T> set) where T : class, IBranchScopedEntity =>
             await set.IgnoreQueryFilters()
-                .Where(x => x.BranchId == null && (tenantId == null || x.TenantId == tenantId))
+                .Where(x => x.BranchId == null && x.TenantId == tenantId)
                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.BranchId, branchId), cancellationToken);
 
         var updated = 0;

@@ -1,6 +1,23 @@
 // TR→EN sözlüğü (desktop sözlüğünden üretildi + mobil ekleri).
 // Otomatik üretim: desktop/src/lib/i18n/dictionary*.js kaynak alınır.
 const Map<String, String> kTrEn = {
+  'Kurum Seçin': 'Select Institution',
+  'Yönetmek istediğiniz kurumu seçin': 'Select the institution you want to manage',
+  'Tüm ekranlar seçtiğiniz kuruma göre görüntülenir.': 'All screens are shown for the selected institution.',
+  '{n} şube': '{n} branches',
+  'Şube Müdürü': 'Branch Manager',
+  'Şube Yönetimi': 'Branch Management',
+  'Şube müdürü için şube seçimi zorunludur.': 'Branch selection is required for a branch manager.',
+  'Konsolide Görünüm': 'Consolidated View',
+  'Tüm kurumların toplamı': 'Total across all institutions',
+  'kurumun toplamı': 'institutions total',
+  'Kurum Karşılaştırması': 'Institution Comparison',
+  'Görüntülenecek kurum yok.': 'No institutions to display.',
+  'Salt-okunur': 'Read-only',
+  'Tahsilat': 'Collected',
+  'öğrenci': 'students',
+  'personel': 'staff',
+  'şube': 'branches',
   'Ogrenci': 'Student',
   'Kullanici Adi': 'Username',
   'Sinif': 'Class',

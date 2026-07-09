@@ -167,7 +167,7 @@ class SchoolFeedApiService {
                 .join(','),
         },
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -226,7 +226,7 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/examresults').replace(
         queryParameters: queryParameters.isEmpty ? null : queryParameters,
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -268,7 +268,7 @@ class SchoolFeedApiService {
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/examresults/class-ranking'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -307,7 +307,7 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/announcements'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
       },
       body: jsonEncode({
         'title': title.trim(),
@@ -359,7 +359,7 @@ class SchoolFeedApiService {
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/announcements/$id'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -454,7 +454,7 @@ class SchoolFeedApiService {
       Uri.parse('${ApiConfig.baseUrl}/api/examresults'),
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
       },
       body: jsonEncode({
         'examTitle': examTitle.trim(),

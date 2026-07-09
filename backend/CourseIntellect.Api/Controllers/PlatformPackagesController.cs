@@ -129,8 +129,7 @@ public sealed class PlatformPackagesController(CourseIntellectDbContext dbContex
     [HttpGet("my-entitlements")]
     public async Task<IActionResult> GetMyEntitlements(CancellationToken cancellationToken)
     {
-        var tenantRaw = User.FindFirstValue("tenant_id");
-        if (!Guid.TryParse(tenantRaw, out var tenantId))
+        if (dbContext.CurrentTenantId is not Guid tenantId)
         {
             return Ok(new { unrestricted = true });
         }

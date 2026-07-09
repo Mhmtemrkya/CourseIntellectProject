@@ -405,7 +405,7 @@ class AdminDirectoryApiService {
       Uri.parse('${ApiConfig.baseUrl}$path'),
       headers: {
         'Authorization': 'Bearer ${session.accessToken}',
-        ...BranchScopeStore.instance.headers,
+        ...ScopeHeaders.merged,
       },
     );
 
@@ -440,7 +440,7 @@ class AdminDirectoryApiService {
       ..headers.addAll({
         'Authorization': 'Bearer ${session.accessToken}',
         'Content-Type': 'application/json',
-        ...BranchScopeStore.instance.headers,
+        ...ScopeHeaders.merged,
       });
 
     if (body != null) {

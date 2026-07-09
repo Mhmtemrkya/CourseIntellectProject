@@ -53,9 +53,12 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
         // Rol claim'leri — tek rol varsa string, birden fazla varsa array olarak ekle
         var allRoles = new List<string> { user.PrimaryRole.ToString() };
         allRoles.AddRange(user.ExtraRoles.Select(r => r.ToString()));
-        if (user.PrimaryRole == Domain.Enums.UserRole.Developer)
+        if (user.PrimaryRole == Domain.Enums.UserRole.Developer
+            || user.PrimaryRole == Domain.Enums.UserRole.BranchManager)
         {
-            // Developer ayrı primary role'dür; mevcut Admin korumalı platform endpointleriyle uyum için yetki alias'ı taşır.
+            // Developer ve BranchManager ayrı primary role'lerdir ama Admin gücündedir;
+            // mevcut Admin korumalı endpoint'lerle uyum için yetki alias'ı taşırlar.
+            // (BranchManager'ın verisi ayrıca Branch grant ile şubesine kilitlidir.)
             allRoles.Add(Domain.Enums.UserRole.Admin.ToString());
         }
         allRoles = allRoles.Distinct(StringComparer.OrdinalIgnoreCase).ToList();

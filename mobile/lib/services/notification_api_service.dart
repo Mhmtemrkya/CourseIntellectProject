@@ -117,7 +117,7 @@ class NotificationApiService {
 
     final request = http.Request(method, Uri.parse('${ApiConfig.baseUrl}$path'))
       ..headers.addAll({
-        'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+        'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
         'Content-Type': 'application/json',
       });
     if (body != null) {

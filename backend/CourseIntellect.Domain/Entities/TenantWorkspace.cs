@@ -3,6 +3,11 @@ namespace CourseIntellect.Domain.Entities;
 public sealed class TenantWorkspace
 {
     public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>Bağlı olduğu kurum grubu / marka (opsiyonel). Sahip, gruba verilen
+    /// grant ile altındaki tüm kurumları tek ekrandan görür.</summary>
+    public Guid? GroupId { get; set; }
+
     public string Name { get; set; } = string.Empty;
     public string Slug { get; set; } = string.Empty;
     public string ContactEmail { get; set; } = string.Empty;

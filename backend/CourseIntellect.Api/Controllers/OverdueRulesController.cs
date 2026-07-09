@@ -103,9 +103,5 @@ public sealed class OverdueRulesController(CourseIntellectDbContext dbContext) :
         }
     }
 
-    private Guid? ResolveTenantId()
-    {
-        var tenantIdClaim = User.FindFirstValue("tenant_id");
-        return Guid.TryParse(tenantIdClaim, out var tenantId) ? tenantId : null;
-    }
+    private Guid? ResolveTenantId() => dbContext.CurrentTenantId;
 }

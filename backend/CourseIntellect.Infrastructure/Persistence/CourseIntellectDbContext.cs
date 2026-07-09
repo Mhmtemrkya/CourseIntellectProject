@@ -1,3 +1,4 @@
+using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
@@ -9,14 +10,20 @@ namespace CourseIntellect.Infrastructure.Persistence;
 public sealed class CourseIntellectDbContext : DbContext
 {
     private readonly IHttpContextAccessor? httpContextAccessor;
+    private readonly ITenantContext? tenantContext;
+    private readonly IActiveScope? activeScope;
 
     private Guid? tenantOverride;
 
     public CourseIntellectDbContext(
         DbContextOptions<CourseIntellectDbContext> options,
-        IHttpContextAccessor? httpContextAccessor = null) : base(options)
+        IHttpContextAccessor? httpContextAccessor = null,
+        ITenantContext? tenantContext = null,
+        IActiveScope? activeScope = null) : base(options)
     {
         this.httpContextAccessor = httpContextAccessor;
+        this.tenantContext = tenantContext;
+        this.activeScope = activeScope;
     }
 
     /// <summary>Arka plan işleri (Hangfire) gibi HttpContext'in olmadığı akışlarda
@@ -30,6 +37,9 @@ public sealed class CourseIntellectDbContext : DbContext
         get
         {
             if (tenantOverride is Guid overridden) return overridden;
+            // Aktif tenant tek kaynaktan (ITenantContext) okunur; claim okuması yalnızca
+            // context enjekte edilmemişse (ör. testlerdeki elle kurulan DbContext) fallback'tir.
+            if (tenantContext is not null) return tenantContext.CurrentTenantId;
             var raw = httpContextAccessor?.HttpContext?.User?.FindFirstValue("tenant_id");
             return Guid.TryParse(raw, out var tenantId) ? tenantId : null;
         }
@@ -42,6 +52,11 @@ public sealed class CourseIntellectDbContext : DbContext
     {
         get
         {
+            // Middleware istek başına şubeyi çözdüyse (grant + header doğrulaması dahil)
+            // onu kullan. Çözülmemişse (HTTP dışı akış / middleware öncesi) eski rol/claim
+            // mantığına fallback — geriye tam uyum.
+            if (activeScope?.IsResolved == true) return activeScope.BranchId;
+
             var ctx = httpContextAccessor?.HttpContext;
             var user = ctx?.User;
             if (user?.Identity?.IsAuthenticated != true) return null;
@@ -106,6 +121,8 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<NotificationItem> Notifications => Set<NotificationItem>();
     public DbSet<PlatformConfiguration> PlatformConfigurations => Set<PlatformConfiguration>();
     public DbSet<TenantWorkspace> TenantWorkspaces => Set<TenantWorkspace>();
+    public DbSet<TenantGroup> TenantGroups => Set<TenantGroup>();
+    public DbSet<UserScopeGrant> UserScopeGrants => Set<UserScopeGrant>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<RefreshTokenSession> RefreshTokenSessions => Set<RefreshTokenSession>();
     public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
@@ -785,12 +802,53 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.StorageUsedGb).HasColumnName("storage_used_gb").HasColumnType("numeric(18,2)");
             entity.Property(x => x.ApiUsage).HasColumnName("api_usage");
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.Property(x => x.GroupId).HasColumnName("group_id");
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.HasIndex(x => x.AdminUserId);
+            entity.HasIndex(x => x.GroupId);
             entity.HasOne<AppUser>()
                 .WithMany()
                 .HasForeignKey(x => x.AdminUserId)
                 .OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<TenantGroup>()
+                .WithMany()
+                .HasForeignKey(x => x.GroupId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<TenantGroup>(entity =>
+        {
+            entity.ToTable("tenant_groups");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.OwnerUserId).HasColumnName("owner_user_id");
+            entity.Property(x => x.Note).HasColumnName("note").HasMaxLength(1000);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => x.Slug).IsUnique();
+            entity.HasIndex(x => x.OwnerUserId);
+        });
+
+        // Cross-cutting erişim tablosu: KASITLI olarak tenant query filter'sız.
+        // Platform/Group grant'ları birden çok kuruma yayıldığından filtrelenmemeli.
+        modelBuilder.Entity<UserScopeGrant>(entity =>
+        {
+            entity.ToTable("user_scope_grants");
+            entity.HasKey(x => x.Id);
+            entity.Property(x => x.Id).HasColumnName("id");
+            entity.Property(x => x.UserId).HasColumnName("user_id").IsRequired();
+            entity.Property(x => x.Level).HasColumnName("level").HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.TargetId).HasColumnName("target_id");
+            entity.Property(x => x.AccessMode).HasColumnName("access_mode").HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.IsHome).HasColumnName("is_home");
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.UserId, x.Level });
+            entity.HasIndex(x => new { x.UserId, x.TargetId });
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PlatformSubscriptionInvoice>(entity =>
@@ -1523,6 +1581,18 @@ public sealed class CourseIntellectDbContext : DbContext
                     entry.Entity.BranchId = branchId;
                 }
             }
+        }
+
+        // Home-grant: yeni eklenen her kullanıcıya (TenantId/BranchId stamp'lendikten SONRA)
+        // otomatik "ev" grant'ı. Tüm oluşturma yollarını tek noktadan kapsar. İdempotent:
+        // yalnız Added durumundaki kullanıcı için üretilir.
+        var addedUsers = ChangeTracker.Entries<AppUser>()
+            .Where(e => e.State == EntityState.Added)
+            .Select(e => e.Entity)
+            .ToList();
+        foreach (var user in addedUsers)
+        {
+            UserScopeGrants.Add(UserScopeGrant.CreateHome(user));
         }
     }
 }

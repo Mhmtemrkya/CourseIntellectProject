@@ -57,7 +57,7 @@ class CoursesApiService {
 
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}/api/courses$query'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Kurslar alınamadı (${response.statusCode}).');
@@ -123,7 +123,7 @@ class CoursesApiService {
     if (session == null) throw Exception('Oturum bulunamadı.');
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/courses/$id'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('Kurs silinemedi (${response.statusCode}).');
@@ -140,7 +140,7 @@ class CoursesApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+      'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
     };
     final encoded = jsonEncode(body);
     final response = method == 'POST'

@@ -140,6 +140,8 @@ class RegistrationApiService {
         'maritalStatus': maritalStatus,
         'childCount': childCount,
         'note': note,
+        // Şube müdürü için zorunlu; backend body'den açık BranchId okur (header ayrıca auto-stamp).
+        if (branchId != null && branchId.isNotEmpty) 'branchId': branchId,
       },
     );
 
@@ -163,7 +165,7 @@ class RegistrationApiService {
 
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/staff/users/$userId'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers},
+      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
     );
 
     if (response.statusCode == 404) return;
@@ -250,7 +252,7 @@ class RegistrationApiService {
 
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${session.accessToken}', ...BranchScopeStore.instance.headers,
+      'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
     };
     // Seçilen şube: backend yetkiye göre dikkate alır (owner ise damgalar).
     if (branchId != null && branchId.isNotEmpty) {

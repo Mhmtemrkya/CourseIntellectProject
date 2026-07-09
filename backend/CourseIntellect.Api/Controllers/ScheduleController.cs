@@ -329,8 +329,7 @@ public sealed class ScheduleController(CourseIntellectDbContext dbContext) : Con
 
     private async Task<Guid?> ResolveTenantIdAsync(CancellationToken cancellationToken)
     {
-        var tenantRaw = User.FindFirstValue("tenant_id");
-        if (Guid.TryParse(tenantRaw, out var tenantId))
+        if (dbContext.CurrentTenantId is Guid tenantId)
         {
             return tenantId;
         }

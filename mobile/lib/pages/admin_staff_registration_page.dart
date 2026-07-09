@@ -461,6 +461,10 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
               ),
               items: [
                 DropdownMenuItem(
+                  value: 'BranchManager',
+                  child: Text('Şube Müdürü'.tr),
+                ),
+                DropdownMenuItem(
                   value: 'Administrative',
                   child: Text('İdari Personel'.tr),
                 ),
@@ -481,6 +485,8 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       ? 'Yemekhane'
                       : value == 'ServiceDriver'
                       ? 'Servis Şoförü'
+                      : value == 'BranchManager'
+                      ? 'Şube Yönetimi'
                       : 'Öğrenci Isleri';
                 });
               },
@@ -507,7 +513,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       labelText: 'Departman',
                       border: OutlineInputBorder(),
                     ),
-                    items: _personnelRole == 'Cafeteria'
+                    items: _personnelRole == 'BranchManager'
+                        ? [
+                            DropdownMenuItem(
+                              value: 'Şube Yönetimi',
+                              child: Text('Şube Yönetimi'.tr),
+                            ),
+                          ]
+                        : _personnelRole == 'Cafeteria'
                         ? const [
                             DropdownMenuItem(
                               value: 'Yemekhane',
@@ -963,6 +976,13 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
         );
         return;
       }
+    }
+    if (_personnelRole == 'BranchManager' &&
+        (_branchId == null || _branchId!.isEmpty)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Şube müdürü için şube seçimi zorunludur.'.tr)),
+      );
+      return;
     }
 
     setState(() => _saving = true);

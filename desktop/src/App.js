@@ -151,6 +151,7 @@ import AdministrativeDocuments from "./pages/admin/AdministrativeDocuments";
 import AdministrativeAnnouncements from "./pages/admin/AdministrativeAnnouncements";
 import AdminStudentRegistration from "./pages/admin/AdminStudentRegistration";
 import AdminStaffRegistration from "./pages/admin/AdminStaffRegistration";
+import ConsolidatedOverview from "./pages/admin/ConsolidatedOverview";
 import AdminBranchRegistration from "./pages/admin/AdminBranchRegistration";
 import SelectBranch from "./pages/SelectBranch";
 import AdminBranchComparison from "./pages/admin/AdminBranchComparison";
@@ -305,6 +306,7 @@ function App() {
               <Route path="/admin/student-registration" element={<AdminStudentRegistration />} />
               <Route path="/admin/branch-registration" element={<AdminBranchRegistration />} />
               <Route path="/admin/staff-registration" element={<AdminStaffRegistration />} />
+              <Route path="/consolidated" element={<ConsolidatedOverview />} />
               <Route path="/admin/accounting-registration" element={<AdminAccountingRegistration />} />
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />

@@ -14,6 +14,25 @@ export function setActiveBranchFilter(branchId) {
   } catch { /* yoksa yoksay */ }
 }
 
+// Sahip/MEB tarafından seçilen aktif kurum bağlamı (X-Tenant-Context header'ı).
+// null = ev kurumu (header gönderilmez). Şubenin bir üst seviyesi; kurum değişince
+// şube filtresi SIFIRLANIR (A'nın şubesi B'de geçersiz). Yetkisiz değer backend'de 403.
+let activeTenantContext = (typeof localStorage !== 'undefined' && localStorage.getItem('ci-tenant-context')) || null;
+export function getActiveTenantContext() {
+  return activeTenantContext;
+}
+export function setActiveTenantContext(tenantId) {
+  activeTenantContext = tenantId || null;
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (tenantId) localStorage.setItem('ci-tenant-context', tenantId);
+      else localStorage.removeItem('ci-tenant-context');
+    }
+  } catch { /* yoksa yoksay */ }
+  // Kurum değişti → şube seçimi artık geçersiz, temizle.
+  setActiveBranchFilter(null);
+}
+
 // Lazy singleton: Tauri HTTP plugin import'unu ilk kullanımda await eder
 let _tauriFetchPromise = null;
 async function getTauriFetch() {
@@ -48,6 +67,11 @@ async function request(method, url, data, config = {}) {
   const headers = { ...(config.headers || {}) };
   if (session?.accessToken) {
     headers['Authorization'] = `Bearer ${session.accessToken}`;
+  }
+  // Kurum bağlamı: sahip/MEB drill-down yaptığında gönderilir; backend grant'a göre
+  // doğrular (yetkisizse 403). Şubeden önce, çünkü şube bu kurumun içinde çözülür.
+  if (activeTenantContext && !headers['X-Tenant-Context']) {
+    headers['X-Tenant-Context'] = activeTenantContext;
   }
   // Şube filtresi: yalnızca owner/admin seçtiğinde gönderilir; backend yetkiye
   // göre dikkate alır (scoped kullanıcılarda yok sayılır).

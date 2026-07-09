@@ -26,8 +26,8 @@ public sealed class MyContentEngagementController(CourseIntellectDbContext dbCon
             ?? User.FindFirstValue("sub")
             ?? User.FindFirstValue("user_id")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
-        var tenantIdClaim = User.FindFirstValue("tenant_id");
-        if (!Guid.TryParse(userIdClaim, out var userId) || !Guid.TryParse(tenantIdClaim, out var tenantId))
+        var tenantId = dbContext.CurrentTenantId ?? Guid.Empty;
+        if (!Guid.TryParse(userIdClaim, out var userId) || tenantId == Guid.Empty)
         {
             return Unauthorized();
         }
