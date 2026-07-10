@@ -6,6 +6,7 @@ public sealed record MyScopeResponse(
     bool CanSwitchTenant,
     bool CanSwitchBranch,
     bool ReadOnly,
+    bool CanManageScopes,
     ScopeActiveDto Active,
     IReadOnlyList<ScopeTenantDto> Tenants);
 

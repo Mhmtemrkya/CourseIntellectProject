@@ -32,4 +32,17 @@ public interface IUserScopeService
     /// <summary>Konsolide roll-up: erişilebilir kurumların özet metrikleri + genel toplam.
     /// Kurum sahibi/MEB'in tüm kurumlarını tek ekranda göstermek için.</summary>
     Task<ScopeRollupResponse> GetRollupAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    // ── Delege yönetim: kullanıcının MANAGE yetkisiyle yönetebildiği alt ağaç ──
+    /// <summary>Kullanıcının Manage grant'larıyla yönetebildiği grup kimlikleri (alt ağaç dahil).
+    /// Platform Manage → tüm gruplar.</summary>
+    Task<IReadOnlyCollection<Guid>> GetManageableGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Kullanıcının yönetebildiği kurum kimlikleri (Manage grant'ları + yönetilebilir
+    /// grupların altındaki kurumlar). Platform Manage → tüm kurumlar.</summary>
+    Task<IReadOnlyCollection<Guid>> GetManageableTenantIdsAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    Task<bool> CanManageGroupAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default);
+
+    Task<bool> CanManageTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default);
 }

@@ -303,4 +303,47 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
         }
         return result;
     }
+
+    public async Task<IReadOnlyCollection<Guid>> GetManageableGroupIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var grants = await GetGrantsAsync(userId, cancellationToken);
+        if (grants.Any(g => g.Level == ScopeLevel.Platform && g.AccessMode == ScopeAccessMode.Manage))
+        {
+            return (await dbContext.TenantGroups.AsNoTracking().Select(g => g.Id).ToListAsync(cancellationToken)).ToHashSet();
+        }
+        var roots = grants
+            .Where(g => g.Level == ScopeLevel.Group && g.AccessMode == ScopeAccessMode.Manage && g.TargetId is not null)
+            .Select(g => g.TargetId!.Value).ToHashSet();
+        return await ResolveGroupSubtreeAsync(roots, cancellationToken);
+    }
+
+    public async Task<IReadOnlyCollection<Guid>> GetManageableTenantIdsAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        var grants = await GetGrantsAsync(userId, cancellationToken);
+        if (grants.Any(g => g.Level == ScopeLevel.Platform && g.AccessMode == ScopeAccessMode.Manage))
+        {
+            return (await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+                .Select(t => t.Id).ToListAsync(cancellationToken)).ToHashSet();
+        }
+
+        var result = grants
+            .Where(g => g.Level == ScopeLevel.Tenant && g.AccessMode == ScopeAccessMode.Manage && g.TargetId is not null)
+            .Select(g => g.TargetId!.Value).ToHashSet();
+
+        var manageGroups = (await GetManageableGroupIdsAsync(userId, cancellationToken)).ToHashSet();
+        if (manageGroups.Count > 0)
+        {
+            var groupTenants = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+                .Where(t => t.GroupId != null && manageGroups.Contains(t.GroupId.Value))
+                .Select(t => t.Id).ToListAsync(cancellationToken);
+            result.UnionWith(groupTenants);
+        }
+        return result;
+    }
+
+    public async Task<bool> CanManageGroupAsync(Guid userId, Guid groupId, CancellationToken cancellationToken = default) =>
+        (await GetManageableGroupIdsAsync(userId, cancellationToken)).Contains(groupId);
+
+    public async Task<bool> CanManageTenantAsync(Guid userId, Guid tenantId, CancellationToken cancellationToken = default) =>
+        (await GetManageableTenantIdsAsync(userId, cancellationToken)).Contains(tenantId);
 }

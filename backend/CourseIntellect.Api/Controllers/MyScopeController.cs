@@ -35,10 +35,20 @@ public sealed class MyScopeController(
             ? options.Tenants.FirstOrDefault(t => t.Id == tid)
             : null;
 
+        // Kapsam Yönetimi konsolunu kim görsün: platform admin VEYA bir grup/platform
+        // seviyesinde Manage yetkisi olan (delege yönetici).
+        var isPlatformAdmin = string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
+            || User.IsInRole("Developer");
+        var grants = await userScopeService.GetGrantsAsync(userId, cancellationToken);
+        var canManageScopes = isPlatformAdmin
+            || grants.Any(g => (g.Level == Domain.Enums.ScopeLevel.Group || g.Level == Domain.Enums.ScopeLevel.Platform)
+                && g.AccessMode == Domain.Enums.ScopeAccessMode.Manage);
+
         var response = new MyScopeResponse(
             CanSwitchTenant: options.Tenants.Count > 1,
             CanSwitchBranch: activeTenant is { Branches.Count: > 1 },
             ReadOnly: options.ReadOnly,
+            CanManageScopes: canManageScopes,
             Active: new ScopeActiveDto(activeTenantId, activeBranchId),
             Tenants: options.Tenants);
 

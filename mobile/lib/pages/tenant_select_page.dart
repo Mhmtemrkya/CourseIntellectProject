@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/admin_workflow_api_service.dart';
-import '../services/auth_session_store.dart';
 import '../services/branch_scope_store.dart';
 import '../services/tenant_scope_store.dart';
 import 'branch_select_page.dart';
@@ -21,7 +20,7 @@ class TenantSelectPage extends StatefulWidget {
 
 class _TenantSelectPageState extends State<TenantSelectPage> {
   bool _loading = true;
-  bool _isPlatformAdmin = false;
+  bool _canManageScopes = false;
   List<Map<String, dynamic>> _tenants = const [];
 
   @override
@@ -50,11 +49,10 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
       _toBranch();
       return;
     }
-    final session = await AuthSessionStore.instance.load();
     if (!mounted) return;
     setState(() {
       _tenants = tenants;
-      _isPlatformAdmin = session?.isPlatformAdmin ?? false;
+      _canManageScopes = scope?['canManageScopes'] == true;
       _loading = false;
     });
   }
@@ -110,8 +108,8 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
               ),
             ),
           ),
-          // Kapsam yönetimi — yalnız platform admin (grup + yetki atama).
-          if (_isPlatformAdmin)
+          // Kapsam yönetimi — platform admin veya delege yönetici (grup + yetki atama).
+          if (_canManageScopes)
             Card(
               margin: const EdgeInsets.only(bottom: 12),
               child: ListTile(

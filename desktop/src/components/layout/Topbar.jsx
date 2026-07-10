@@ -264,8 +264,8 @@ export function Topbar() {
             📊 Konsolide
           </button>
         ) : null}
-        {/* Kapsam yönetimi (yalnızca platform admin) */}
-        {user?.isPlatformAdmin ? (
+        {/* Kapsam yönetimi (platform admin veya delege yönetici) */}
+        {scope?.canManageScopes ? (
           <button
             type="button"
             onClick={() => navigate('/scope-management')}
