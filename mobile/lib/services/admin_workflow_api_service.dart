@@ -69,8 +69,58 @@ class AdminWorkflowApiService {
     }
   }
 
+  Future<dynamic> _put(String path, Map<String, dynamic> body) async {
+    final session = await _session();
+    final uri = Uri.parse('${ApiConfig.baseUrl}$path');
+    final response = await http.put(
+      uri,
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        'Content-Type': 'application/json',
+        ...ScopeHeaders.merged,
+      },
+      body: jsonEncode(body),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AdminWorkflowApiException('İşlem başarısız (${response.statusCode}).');
+    }
+    return response.body.isEmpty ? null : jsonDecode(response.body);
+  }
+
   List<Map<String, dynamic>> _list(dynamic raw) =>
       (raw as List<dynamic>? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+
+  // ---- Kapsam yönetimi (platform admin): grup + kurum→grup + kullanıcı grant'ları ----
+  Future<List<Map<String, dynamic>>> getScopeGroups() async => _list(await _get('/api/scope-admin/groups'));
+
+  Future<void> createScopeGroup({required String name, String? parentGroupId}) async =>
+      _post('/api/scope-admin/groups', {
+        'name': name,
+        'parentGroupId': ?parentGroupId,
+      });
+
+  Future<void> deleteScopeGroup(String id) async => _delete('/api/scope-admin/groups/$id');
+
+  Future<List<Map<String, dynamic>>> getScopeTenants() async => _list(await _get('/api/scope-admin/tenants'));
+
+  Future<void> assignTenantGroup(String tenantId, String? groupId) async =>
+      _put('/api/scope-admin/tenants/$tenantId/group', {'groupId': groupId});
+
+  Future<List<Map<String, dynamic>>> searchScopeUsers(String? search) async => _list(
+        await _get('/api/scope-admin/users', (search != null && search.isNotEmpty) ? {'search': search} : null),
+      );
+
+  Future<List<Map<String, dynamic>>> getUserGrants(String userId) async =>
+      _list(await _get('/api/scope-admin/users/$userId/grants'));
+
+  Future<void> addUserGrant(String userId, {required String level, String? targetId, required String accessMode}) async =>
+      _post('/api/scope-admin/users/$userId/grants', {
+        'level': level,
+        'targetId': targetId,
+        'accessMode': accessMode,
+      });
+
+  Future<void> removeUserGrant(String grantId) async => _delete('/api/scope-admin/grants/$grantId');
 
   // ---- Organizasyon birimleri ----
   Future<List<Map<String, dynamic>>> getOrgUnits() async =>

@@ -823,11 +823,17 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Id).HasColumnName("id");
             entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(180).IsRequired();
             entity.Property(x => x.Slug).HasColumnName("slug").HasMaxLength(180).IsRequired();
+            entity.Property(x => x.ParentGroupId).HasColumnName("parent_group_id");
             entity.Property(x => x.OwnerUserId).HasColumnName("owner_user_id");
             entity.Property(x => x.Note).HasColumnName("note").HasMaxLength(1000);
             entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
             entity.HasIndex(x => x.Slug).IsUnique();
             entity.HasIndex(x => x.OwnerUserId);
+            entity.HasIndex(x => x.ParentGroupId);
+            entity.HasOne<TenantGroup>()
+                .WithMany()
+                .HasForeignKey(x => x.ParentGroupId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         // Cross-cutting erişim tablosu: KASITLI olarak tenant query filter'sız.

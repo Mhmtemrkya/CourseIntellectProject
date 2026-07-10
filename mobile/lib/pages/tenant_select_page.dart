@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import '../services/admin_workflow_api_service.dart';
+import '../services/auth_session_store.dart';
 import '../services/branch_scope_store.dart';
 import '../services/tenant_scope_store.dart';
 import 'branch_select_page.dart';
 import 'consolidated_overview_page.dart';
+import 'scope_management_page.dart';
 
 /// Sahip/MEB ilk girişte yönetmek istediği kurumu seçer. Tek kurumlu (veya kurum
 /// geçiş yetkisi olmayan) kullanıcıda otomatik olarak şube seçimine devam edilir.
@@ -19,6 +21,7 @@ class TenantSelectPage extends StatefulWidget {
 
 class _TenantSelectPageState extends State<TenantSelectPage> {
   bool _loading = true;
+  bool _isPlatformAdmin = false;
   List<Map<String, dynamic>> _tenants = const [];
 
   @override
@@ -47,9 +50,11 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
       _toBranch();
       return;
     }
+    final session = await AuthSessionStore.instance.load();
     if (!mounted) return;
     setState(() {
       _tenants = tenants;
+      _isPlatformAdmin = session?.isPlatformAdmin ?? false;
       _loading = false;
     });
   }
@@ -105,6 +110,23 @@ class _TenantSelectPageState extends State<TenantSelectPage> {
               ),
             ),
           ),
+          // Kapsam yönetimi — yalnız platform admin (grup + yetki atama).
+          if (_isPlatformAdmin)
+            Card(
+              margin: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const CircleAvatar(child: Icon(Icons.hub_outlined)),
+                title: Text(
+                  'Kapsam Yönetimi'.tr,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                subtitle: Text('Grup hiyerarşisi + yetki atama'.tr),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ScopeManagementPage()),
+                ),
+              ),
+            ),
           ..._tenants.map(
             (tenant) => Card(
               margin: const EdgeInsets.only(bottom: 12),

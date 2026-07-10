@@ -73,8 +73,9 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
             .Select(g => g.TargetId!.Value).ToHashSet();
         if (groupIds.Count > 0)
         {
+            var subtreeGroupIds = await ResolveGroupSubtreeAsync(groupIds, cancellationToken);
             var groupTenantIds = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
-                .Where(t => t.GroupId != null && groupIds.Contains(t.GroupId.Value))
+                .Where(t => t.GroupId != null && subtreeGroupIds.Contains(t.GroupId.Value))
                 .Select(t => t.Id).ToListAsync(cancellationToken);
             fullTenantIds.UnionWith(groupTenantIds);
         }
@@ -203,8 +204,9 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
             .Select(g => g.TargetId!.Value).ToHashSet();
         if (groupIds.Count > 0)
         {
+            var subtreeGroupIds = await ResolveGroupSubtreeAsync(groupIds, cancellationToken);
             var groupTenantIds = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
-                .Where(t => t.GroupId != null && groupIds.Contains(t.GroupId.Value))
+                .Where(t => t.GroupId != null && subtreeGroupIds.Contains(t.GroupId.Value))
                 .Select(t => t.Id).ToListAsync(cancellationToken);
             tenantIds.UnionWith(groupTenantIds);
         }
@@ -259,6 +261,7 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
             .Select(g => g.TargetId!.Value)
             .ToHashSet();
         if (groupIds.Count == 0) return false;
+        var subtreeGroupIds = await ResolveGroupSubtreeAsync(groupIds, cancellationToken);
 
         var tenantGroupId = await dbContext.TenantWorkspaces
             .IgnoreQueryFilters()
@@ -266,6 +269,38 @@ public sealed class UserScopeService(CourseIntellectDbContext dbContext) : IUser
             .Where(t => t.Id == tenantId)
             .Select(t => t.GroupId)
             .FirstOrDefaultAsync(cancellationToken);
-        return tenantGroupId is Guid gid && groupIds.Contains(gid);
+        return tenantGroupId is Guid gid && subtreeGroupIds.Contains(gid);
+    }
+
+    // Verilen grup düğümlerinin ALT AĞACINI (kendileri + tüm torunları) döner. Bir gruba
+    // verilen grant, o düğümün altındaki tüm kurumları kapsar — böylece İl grant'ı ilçeleri,
+    // İlçe grant'ı okulları otomatik içerir. Grup tablosu küçük (İl/İlçe/marka) olduğundan
+    // tümü bir kez yüklenip bellekte gezilir. Düz (parent'sız) gruplar için alt ağaç = kendisi.
+    private async Task<HashSet<Guid>> ResolveGroupSubtreeAsync(HashSet<Guid> rootGroupIds, CancellationToken cancellationToken)
+    {
+        if (rootGroupIds.Count == 0) return rootGroupIds;
+
+        var edges = await dbContext.TenantGroups
+            .AsNoTracking()
+            .Where(g => g.ParentGroupId != null)
+            .Select(g => new { g.Id, ParentId = g.ParentGroupId!.Value })
+            .ToListAsync(cancellationToken);
+        var childrenByParent = edges
+            .GroupBy(e => e.ParentId)
+            .ToDictionary(x => x.Key, x => x.Select(e => e.Id).ToList());
+
+        var result = new HashSet<Guid>(rootGroupIds);
+        var queue = new Queue<Guid>(rootGroupIds);
+        while (queue.Count > 0)
+        {
+            if (childrenByParent.TryGetValue(queue.Dequeue(), out var children))
+            {
+                foreach (var child in children)
+                {
+                    if (result.Add(child)) queue.Enqueue(child);
+                }
+            }
+        }
+        return result;
     }
 }

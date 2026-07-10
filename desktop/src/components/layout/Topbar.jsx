@@ -264,6 +264,17 @@ export function Topbar() {
             📊 Konsolide
           </button>
         ) : null}
+        {/* Kapsam yönetimi (yalnızca platform admin) */}
+        {user?.isPlatformAdmin ? (
+          <button
+            type="button"
+            onClick={() => navigate('/scope-management')}
+            title="Kapsam yönetimi — grup hiyerarşisi + yetki atama"
+            className="hidden h-8 items-center gap-1 rounded-lg border border-foreground/[0.10] bg-foreground/[0.04] px-2 text-xs font-semibold text-foreground md:flex"
+          >
+            ⚙️ Kapsam
+          </button>
+        ) : null}
         {/* Şube seçici (yalnızca kurum yöneticisi) */}
         {isOwner && branches.length > 0 ? (
           <select

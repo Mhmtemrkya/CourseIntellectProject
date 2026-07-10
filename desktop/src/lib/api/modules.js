@@ -551,6 +551,21 @@ export async function fetchMyScopeRollup() {
   return api.get('/api/my-scope/rollup');
 }
 
+// ── Kapsam yönetimi (platform admin): grup ağacı + kurum→grup + kullanıcı grant'ları ──
+export async function fetchScopeGroups() { return api.get('/api/scope-admin/groups'); }
+export async function createScopeGroup(payload) { return api.post('/api/scope-admin/groups', payload); }
+export async function deleteScopeGroup(id) { return api.delete(`/api/scope-admin/groups/${id}`); }
+export async function fetchScopeTenants() { return api.get('/api/scope-admin/tenants'); }
+export async function assignTenantGroup(tenantId, groupId) {
+  return api.put(`/api/scope-admin/tenants/${tenantId}/group`, { groupId: groupId || null });
+}
+export async function searchScopeUsers(search) {
+  return api.get('/api/scope-admin/users', { params: search ? { search } : undefined });
+}
+export async function fetchUserGrants(userId) { return api.get(`/api/scope-admin/users/${userId}/grants`); }
+export async function addUserGrant(userId, payload) { return api.post(`/api/scope-admin/users/${userId}/grants`, payload); }
+export async function removeUserGrant(grantId) { return api.delete(`/api/scope-admin/grants/${grantId}`); }
+
 export async function createOrgUnit(payload) {
   const response = await api.post('/api/org-units', payload);
   return response;
