@@ -21,6 +21,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import CustomRolesSection from './CustomRolesSection';
 import {
   Dialog,
   DialogContent,
@@ -512,6 +513,9 @@ export default function AdminRoleManagement() {
         </div>
       </div>
       {error ? <ErrorBanner title="Rol yönetimi alınamadı" message={error} onRetry={loadRoles} /> : null}
+
+      {/* Kuruma özgü özel roller (ad + taban rol + modül kısıtı) */}
+      <CustomRolesSection />
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 2xl:grid-cols-4">
         {Object.entries(grouped).map(([role, count]) => {

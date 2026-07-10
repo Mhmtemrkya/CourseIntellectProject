@@ -61,8 +61,11 @@ public sealed class CourseIntellectDbContext : DbContext
             var user = ctx?.User;
             if (user?.Identity?.IsAuthenticated != true) return null;
 
-            var unrestricted = user.IsInRole("Admin") || user.IsInRole("SuperAdmin") || user.IsInRole("Developer")
-                || string.Equals(user.FindFirstValue("role"), "admin", StringComparison.OrdinalIgnoreCase);
+            // BranchManager JWT'de Admin alias'ı taşır ama şubesine KİLİTLİDİR; grant'ı
+            // eksik olsa bile yedek yol onu kısıtsız saymamalı (fail-closed).
+            var unrestricted = (user.IsInRole("Admin") || user.IsInRole("SuperAdmin") || user.IsInRole("Developer")
+                || string.Equals(user.FindFirstValue("role"), "admin", StringComparison.OrdinalIgnoreCase))
+                && !user.IsInRole("BranchManager");
             if (unrestricted)
             {
                 var overrideRaw = ctx?.Request?.Headers["X-Branch-Filter"].ToString();
@@ -123,6 +126,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<TenantWorkspace> TenantWorkspaces => Set<TenantWorkspace>();
     public DbSet<TenantGroup> TenantGroups => Set<TenantGroup>();
     public DbSet<UserScopeGrant> UserScopeGrants => Set<UserScopeGrant>();
+    public DbSet<CustomRole> CustomRoles => Set<CustomRole>();
     public DbSet<SupportTicket> SupportTickets => Set<SupportTicket>();
     public DbSet<RefreshTokenSession> RefreshTokenSessions => Set<RefreshTokenSession>();
     public DbSet<PasswordResetRequest> PasswordResetRequests => Set<PasswordResetRequest>();
@@ -198,6 +202,24 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ExtraRolesSerialized).HasColumnName("extra_roles").HasMaxLength(400);
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
             entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
+            entity.Property(x => x.CustomRoleId).HasColumnName("custom_role_id");
+            entity.HasIndex(x => x.CustomRoleId);
+            entity.HasOne<CustomRole>()
+                .WithMany()
+                .HasForeignKey(x => x.CustomRoleId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<CustomRole>(entity =>
+        {
+            entity.ToTable("custom_roles");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Name).HasColumnName("name").HasMaxLength(80).IsRequired();
+            entity.Property(x => x.BaseRole).HasColumnName("base_role").HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.ModulesSerialized).HasColumnName("modules").HasMaxLength(4000);
+            entity.Property(x => x.CreatedAtUtc).HasColumnName("created_at_utc");
+            entity.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
         });
 
         modelBuilder.Entity<StudentProfile>(entity =>
@@ -604,6 +626,13 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Name).HasMaxLength(150).IsRequired();
             entity.Property(x => x.UnitType).HasMaxLength(40).IsRequired();
             entity.Property(x => x.ManagerName).HasMaxLength(150);
+            entity.Property(x => x.ManagerUserId).HasColumnName("manager_user_id");
+            entity.HasIndex(x => x.ManagerUserId);
+            entity.Property(x => x.IsActive).HasColumnName("is_active").HasDefaultValue(true);
+            entity.HasOne<AppUser>()
+                .WithMany()
+                .HasForeignKey(x => x.ManagerUserId)
+                .OnDelete(DeleteBehavior.SetNull);
             entity.Property(x => x.Note).HasMaxLength(1000);
             entity.HasIndex(x => new { x.TenantId, x.ParentUnitId });
         });

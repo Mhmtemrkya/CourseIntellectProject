@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'admin_accounting_registration_page.dart';
 import 'admin_staff_registration_page.dart';
+import 'custom_roles_page.dart';
 import '../services/admin_directory_api_service.dart';
 import '../widgets/admin_ui.dart';
 
@@ -206,6 +207,19 @@ class _AdminRoleManagementPageState extends State<AdminRoleManagementPage> {
               AdminHeroMetric(label: 'Giriş Açık'.tr, value: '$loginEnabledCount'),
               AdminHeroMetric(label: 'Onaylı Rol'.tr, value: '$approvalCount'),
             ],
+          ),
+          const SizedBox(height: 16),
+          // Kuruma özgü özel roller (ad + taban rol + modül kısıtı).
+          Card(
+            child: ListTile(
+              leading: const CircleAvatar(child: Icon(Icons.badge_outlined)),
+              title: Text('Özel Roller'.tr, style: const TextStyle(fontWeight: FontWeight.w800)),
+              subtitle: Text('Kuruma özgü rol tanımlayın (ör. Kayıt Sorumlusu)'.tr),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const CustomRolesPage()),
+              ),
+            ),
           ),
           const SizedBox(height: 16),
           AdminPanel(

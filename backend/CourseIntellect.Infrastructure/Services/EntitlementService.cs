@@ -22,12 +22,49 @@ public sealed class EntitlementService(CourseIntellectDbContext dbContext, IMemo
     // Kurumun paketi yoksa/tanımsızsa kullanılan sentinel: her şeye izin ver.
     private static readonly ResolvedPackage Unrestricted = new(true, new());
 
+    /// <summary>Kullanıcının özel rolü varsa modül izin listesine bakar; özel rol yoksa
+    /// veya liste boşsa (kısıtsız) geçer. Rol modülleri 60 sn önbelleklenir.</summary>
+    private async Task<bool> IsAllowedByCustomRoleAsync(ClaimsPrincipal user, string module, CancellationToken cancellationToken)
+    {
+        var raw = user.FindFirstValue("custom_role_id");
+        if (!Guid.TryParse(raw, out var customRoleId))
+        {
+            return true;
+        }
+
+        var cacheKey = $"custom-role-modules:{customRoleId:N}";
+        if (!cache.TryGetValue(cacheKey, out List<string>? modules) || modules is null)
+        {
+            var serialized = await dbContext.CustomRoles
+                .IgnoreQueryFilters()
+                .AsNoTracking()
+                .Where(x => x.Id == customRoleId)
+                .Select(x => x.ModulesSerialized)
+                .FirstOrDefaultAsync(cancellationToken);
+            modules = string.IsNullOrWhiteSpace(serialized)
+                ? []
+                : JsonSerializer.Deserialize<List<string>>(serialized) ?? [];
+            cache.Set(cacheKey, modules, CacheTtl);
+        }
+
+        // Boş liste = kısıt tanımlanmamış (tam taban rol).
+        return modules.Count == 0 || modules.Contains(module, StringComparer.OrdinalIgnoreCase);
+    }
+
     public async Task<bool> IsAllowedAsync(
         ClaimsPrincipal user,
         string module,
         string? action,
         CancellationToken cancellationToken = default)
     {
+        // Özel rol kısıtı: kullanıcıya özel rol atanmışsa, modül o rolün izin listesinde
+        // olmalı. Paket kontrolünden BAĞIMSIZ uygulanır (paket kurum-geneli, özel rol
+        // kullanıcı-özeli daraltmadır).
+        if (!await IsAllowedByCustomRoleAsync(user, module, cancellationToken))
+        {
+            return false;
+        }
+
         // Tenant bağlamı yoksa (platform yöneticisi) hiçbir kısıt uygulanmaz.
         var tenantRaw = user.FindFirstValue("tenant_id");
         if (!Guid.TryParse(tenantRaw, out var tenantId))

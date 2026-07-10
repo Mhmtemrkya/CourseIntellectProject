@@ -143,6 +143,7 @@ class AdminWorkflowApiService {
     required String unitType,
     String? parentUnitId,
     String? managerName,
+    String? managerUserId,
     String? note,
   }) async =>
       Map<String, dynamic>.from(await _post('/api/org-units', {
@@ -150,8 +151,40 @@ class AdminWorkflowApiService {
         'unitType': unitType,
         'parentUnitId': ?parentUnitId,
         'managerName': ?managerName,
+        'managerUserId': ?managerUserId,
         'note': ?note,
       }) as Map);
+
+  // Şube sorumlusu adayları (personel + kurum yöneticileri, yalnız aktifler).
+  Future<List<Map<String, dynamic>>> getManagerCandidates() async =>
+      _list(await _get('/api/org-units/manager-candidates'));
+
+  // Birimi pasif/aktif yapar (pasif birim seçim listelerinde görünmez, veri silinmez).
+  Future<void> setOrgUnitActive(String id, bool isActive) async =>
+      _put('/api/org-units/$id/active', {'isActive': isActive});
+
+  // Var olan kullanıcının rol/şube/özel rol atamasını günceller (ev grant'ı yenilenir).
+  Future<void> updateStaffAssignment(
+    String userId, {
+    String? role,
+    String? branchId,
+    String? customRoleId,
+    bool clearCustomRole = false,
+  }) async =>
+      _put('/api/staff/users/$userId/assignment', {
+        'role': role,
+        'branchId': branchId,
+        'customRoleId': customRoleId,
+        'clearCustomRole': clearCustomRole,
+      });
+
+  // ---- Özel roller (kurum yöneticisi tanımlar; modül kısıtı API'de zorlanır) ----
+  Future<List<Map<String, dynamic>>> getCustomRoles() async => _list(await _get('/api/custom-roles'));
+
+  Future<void> createCustomRole({required String name, required String baseRole, required List<String> modules}) async =>
+      _post('/api/custom-roles', {'name': name, 'baseRole': baseRole, 'modules': modules});
+
+  Future<void> deleteCustomRole(String id) async => _delete('/api/custom-roles/$id');
 
   Future<void> deleteOrgUnit(String id) async => _delete('/api/org-units/$id');
 

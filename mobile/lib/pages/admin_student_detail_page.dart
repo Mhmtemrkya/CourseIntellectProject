@@ -17,6 +17,41 @@ class AdminStudentDetailPage extends StatefulWidget {
 class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
   late StudentRegistryRecord _student = widget.student;
   bool _deleting = false;
+  bool _togglingStatus = false;
+
+  bool get _isActive =>
+      _student.status == 'Aktif' || _student.status == 'Active';
+
+  /// Öğrenciyi pasif/aktif yapar: pasif öğrenci giriş yapamaz, kaydı silinmez.
+  Future<void> _toggleStatus() async {
+    final makePassive = _isActive;
+    setState(() => _togglingStatus = true);
+    try {
+      await StudentRegistryStore.instance.updateStatus(
+        username: _student.username,
+        isActive: !makePassive,
+      );
+      final refreshed = StudentRegistryStore.instance.students.firstWhere(
+        (item) => item.id == _student.id,
+        orElse: () => _student,
+      );
+      if (!mounted) return;
+      setState(() {
+        _student = refreshed;
+        _togglingStatus = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text(makePassive
+            ? 'Öğrenci pasife alındı (giriş yapamaz).'.tr
+            : 'Öğrenci aktifleştirildi.'.tr),
+      ));
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _togglingStatus = false);
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Durum değiştirilemedi: $error')));
+    }
+  }
 
   Future<void> _openEdit() async {
     final result = await Navigator.push<bool>(
@@ -97,6 +132,20 @@ class _AdminStudentDetailPageState extends State<AdminStudentDetailPage> {
             tooltip: 'Düzenle'.tr,
             icon: const Icon(Icons.edit_outlined),
             onPressed: _deleting ? null : _openEdit,
+          ),
+          IconButton(
+            tooltip: _isActive ? 'Pasife Al' : 'Aktifleştir',
+            icon: _togglingStatus
+                ? const SizedBox(
+                    height: 18,
+                    width: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(
+                    _isActive ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                    color: _isActive ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                  ),
+            onPressed: _togglingStatus ? null : _toggleStatus,
           ),
           IconButton(
             tooltip: 'Sil',

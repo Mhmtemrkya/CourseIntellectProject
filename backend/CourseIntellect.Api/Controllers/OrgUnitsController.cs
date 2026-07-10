@@ -19,6 +19,38 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
     public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
         Ok(await orgUnitService.GetAsync(cancellationToken));
 
+    /// <summary>Şube sorumlusu seçiminde listelenecek AKTİF kullanıcılar. Personelin yanı
+    /// sıra kurum yöneticilerini de içerir — böylece yeni kurumda hiç personel yokken de
+    /// ilk şube açılabilir (sorumlu = kurum admini).</summary>
+    [HttpGet("manager-candidates")]
+    public async Task<IActionResult> GetManagerCandidates(CancellationToken cancellationToken)
+    {
+        var roles = new[]
+        {
+            Domain.Enums.UserRole.Admin, Domain.Enums.UserRole.BranchManager,
+            Domain.Enums.UserRole.Administrative, Domain.Enums.UserRole.Teacher,
+            Domain.Enums.UserRole.Accounting, Domain.Enums.UserRole.Cafeteria,
+        };
+        var candidates = await dbContext.Users.AsNoTracking()
+            .Where(u => u.Status == Domain.Enums.UserStatus.Active && roles.Contains(u.PrimaryRole))
+            .OrderBy(u => u.FullName)
+            .Select(u => new ManagerCandidateDto(u.Id, u.FullName, u.PrimaryRole.ToString()))
+            .ToListAsync(cancellationToken);
+        return Ok(candidates);
+    }
+
+    /// <summary>Birimi pasif/aktif yapar. Pasif birim seçim listelerinde görünmez; veri silinmez.</summary>
+    [HttpPut("{id:guid}/active")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> SetActive(Guid id, [FromBody] SetOrgUnitActiveRequest request, CancellationToken cancellationToken)
+    {
+        var unit = await dbContext.OrgUnits.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
+        if (unit is null) return NotFound();
+        unit.IsActive = request.IsActive;
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Ok(new { unit.Id, unit.IsActive });
+    }
+
     // Şube atanmamış (BranchId=null) mevcut kayıtları seçilen şubeye taşır.
     // Tenant-güvenli: yalnızca aktif tenant'ın satırları güncellenir.
     [HttpPost("backfill-branch")]
@@ -55,6 +87,14 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
         if (string.IsNullOrWhiteSpace(request.Name))
         {
             return BadRequest(new { message = "Birim adı zorunludur." });
+        }
+
+        // Şube/kampüs biriminde sorumlu zorunlu ve personel listesinden seçilir.
+        var isBranchType = new[] { "şube", "sube", "kampüs", "kampus" }
+            .Contains((request.UnitType ?? string.Empty).Trim().ToLowerInvariant());
+        if (isBranchType && request.ManagerUserId is null)
+        {
+            return BadRequest(new { message = "Şube için sorumlu seçimi zorunludur." });
         }
 
         return Ok(await orgUnitService.CreateAsync(request, CurrentUserId(), CurrentUserName(), cancellationToken));

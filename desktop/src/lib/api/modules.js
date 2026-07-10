@@ -551,6 +551,29 @@ export async function fetchMyScopeRollup() {
   return api.get('/api/my-scope/rollup');
 }
 
+// Şube sorumlusu adayları (personel + kurum yöneticileri, yalnız aktifler).
+export async function fetchManagerCandidates() {
+  const response = await api.get('/api/org-units/manager-candidates');
+  return Array.isArray(response) ? response : [];
+}
+
+// Birimi pasif/aktif yapar (pasif birim seçim listelerinde görünmez, veri silinmez).
+export async function setOrgUnitActive(id, isActive) {
+  return api.put(`/api/org-units/${id}/active`, { isActive });
+}
+
+// Var olan kullanıcının rol/şube/özel rol atamasını günceller (ev grant'ı yenilenir).
+export async function updateStaffAssignment(userId, payload) {
+  return api.put(`/api/staff/users/${userId}/assignment`, payload);
+}
+
+// ── Özel roller (kurum yöneticisi tanımlar; modül erişimi API'de zorlanır) ──
+export async function fetchCustomRoles() { return api.get('/api/custom-roles'); }
+export async function fetchMyCustomRole() { return api.get('/api/custom-roles/my'); }
+export async function createCustomRole(payload) { return api.post('/api/custom-roles', payload); }
+export async function updateCustomRole(id, payload) { return api.put(`/api/custom-roles/${id}`, payload); }
+export async function deleteCustomRole(id) { return api.delete(`/api/custom-roles/${id}`); }
+
 // ── Kapsam yönetimi (platform admin): grup ağacı + kurum→grup + kullanıcı grant'ları ──
 export async function fetchScopeGroups() { return api.get('/api/scope-admin/groups'); }
 export async function createScopeGroup(payload) { return api.post('/api/scope-admin/groups', payload); }

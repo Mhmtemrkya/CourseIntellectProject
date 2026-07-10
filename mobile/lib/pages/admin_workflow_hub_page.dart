@@ -536,17 +536,42 @@ class _OrgUnitsTabState extends State<_OrgUnitsTab> {
                 itemBuilder: (context, i) {
                   final it = _items[i];
                   final parent = _parentName(it['parentUnitId'] as String?);
+                  final isActive = it['isActive'] != false;
                   return ListTile(
-                    leading: const Icon(Icons.account_tree_outlined),
-                    title: Text('${it['name']}'),
+                    leading: Icon(
+                      Icons.account_tree_outlined,
+                      color: isActive ? null : Colors.grey,
+                    ),
+                    title: Text(
+                      '${it['name']}${isActive ? '' : ' · Pasif'}',
+                      style: isActive ? null : const TextStyle(color: Colors.grey),
+                    ),
                     subtitle: Text([
                       '${it['unitType']}',
                       if (parent.isNotEmpty) '↳ $parent',
                       if ('${it['managerName'] ?? ''}'.isNotEmpty) '• ${it['managerName']}',
                     ].join('  ')),
-                    trailing: IconButton(
-                      icon: const Icon(Icons.delete_outline, color: Colors.red),
-                      onPressed: () => _delete(it),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          tooltip: isActive ? 'Pasife Al' : 'Aktifleştir',
+                          icon: Icon(
+                            isActive ? Icons.pause_circle_outline : Icons.play_circle_outline,
+                            color: isActive ? const Color(0xFFB45309) : const Color(0xFF15803D),
+                          ),
+                          onPressed: () async {
+                            try {
+                              await widget.api.setOrgUnitActive('${it['id']}', !isActive);
+                              await _load();
+                            } catch (_) {}
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, color: Colors.red),
+                          onPressed: () => _delete(it),
+                        ),
+                      ],
                     ),
                   );
                 },

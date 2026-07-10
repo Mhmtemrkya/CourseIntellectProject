@@ -88,6 +88,7 @@ class AdminStaffRecord {
   final int childCount;
   final String note;
   final String startDate;
+  final String userId;
 
   const AdminStaffRecord({
     required this.id,
@@ -109,6 +110,7 @@ class AdminStaffRecord {
     this.childCount = 0,
     this.note = '',
     this.startDate = '',
+    this.userId = '',
   });
 
   factory AdminStaffRecord.fromMap(Map<String, dynamic> map) {
@@ -134,6 +136,7 @@ class AdminStaffRecord {
       childCount: map['childCount'] as int? ?? 0,
       note: map['note'] as String? ?? '',
       startDate: map['startDate'] as String? ?? '',
+      userId: map['userId'] as String? ?? '',
     );
   }
 }

@@ -10,15 +10,16 @@ import { Label } from '../../components/ui/label';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchOrgUnits, createOrgUnit, deleteOrgUnit } from '../../lib/api/modules';
+import { fetchOrgUnits, createOrgUnit, deleteOrgUnit, fetchManagerCandidates, setOrgUnitActive } from '../../lib/api/modules';
 
 const BRANCH_TYPES = ['şube', 'sube', 'kampüs', 'kampus'];
 
-const emptyForm = { name: '', unitType: 'Şube', managerName: '', note: '' };
+const emptyForm = { name: '', unitType: 'Şube', managerUserId: '', note: '' };
 
 export default function AdminBranchRegistration() {
   const { toast } = useToast();
   const [units, setUnits] = useState([]);
+  const [staff, setStaff] = useState([]);
   const [form, setForm] = useState(emptyForm);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -28,7 +29,13 @@ export default function AdminBranchRegistration() {
     try {
       setLoading(true);
       setError('');
-      setUnits(await fetchOrgUnits());
+      const [unitList, candidates] = await Promise.all([
+        fetchOrgUnits(),
+        // Personel + kurum yöneticileri: yeni kurumda personel yokken de ilk şube açılabilsin.
+        fetchManagerCandidates().catch(() => []),
+      ]);
+      setUnits(unitList);
+      setStaff(Array.isArray(candidates) ? candidates : []);
     } catch (err) {
       setError(err.message || 'Şubeler alınamadı.');
     } finally {
@@ -48,13 +55,19 @@ export default function AdminBranchRegistration() {
       toast({ title: 'Şube adı zorunludur.', variant: 'destructive' });
       return;
     }
+    if (!form.managerUserId) {
+      toast({ title: 'Sorumlu seçimi zorunludur.', variant: 'destructive' });
+      return;
+    }
+    const manager = staff.find((s) => s.userId === form.managerUserId);
     try {
       setSaving(true);
       await createOrgUnit({
         name: form.name.trim(),
         unitType: form.unitType,
         parentUnitId: null,
-        managerName: form.managerName.trim() || null,
+        managerUserId: form.managerUserId,
+        managerName: manager?.fullName || null,
         note: form.note.trim() || null,
       });
       toast({ title: 'Şube oluşturuldu', description: `${form.name.trim()} kaydedildi.` });
@@ -106,8 +119,17 @@ export default function AdminBranchRegistration() {
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Sorumlu (opsiyonel)</Label>
-              <Input value={form.managerName} onChange={(e) => setForm((f) => ({ ...f, managerName: e.target.value }))} />
+              <Label>Sorumlu (zorunlu)</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={form.managerUserId}
+                onChange={(e) => setForm((f) => ({ ...f, managerUserId: e.target.value }))}
+              >
+                <option value="">— Personel seçin —</option>
+                {staff.map((s) => (
+                  <option key={s.userId} value={s.userId}>{s.fullName} · {s.role}</option>
+                ))}
+              </select>
             </div>
             <div className="space-y-2 md:col-span-2">
               <Label>Not (opsiyonel)</Label>
@@ -125,13 +147,27 @@ export default function AdminBranchRegistration() {
             {branches.length === 0 ? (
               <p className="text-sm text-muted-foreground">Henüz şube kaydı yok.</p>
             ) : branches.map((unit) => (
-              <div key={unit.id} className="flex items-center justify-between gap-3 rounded-xl border bg-muted/20 p-3">
+              <div key={unit.id} className={`flex items-center justify-between gap-3 rounded-xl border p-3 ${unit.isActive === false ? 'bg-muted/40 opacity-70' : 'bg-muted/20'}`}>
                 <div className="min-w-0">
                   <p className="font-semibold">{unit.name}</p>
                   <p className="text-xs text-muted-foreground">{unit.managerName || 'Sorumlu atanmadı'}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="outline">{unit.unitType}</Badge>
+                  {unit.isActive === false ? <Badge className="bg-red-100 text-red-700">Pasif</Badge> : null}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        await setOrgUnitActive(unit.id, unit.isActive === false);
+                        toast({ title: unit.isActive === false ? 'Şube aktifleştirildi.' : 'Şube pasife alındı.' });
+                        await load();
+                      } catch (err) { toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' }); }
+                    }}
+                  >
+                    {unit.isActive === false ? 'Aktifleştir' : 'Pasife Al'}
+                  </Button>
                   <Button size="icon" variant="ghost" className="text-red-600" onClick={() => remove(unit)}><Trash2 className="h-4 w-4" /></Button>
                 </div>
               </div>

@@ -34,9 +34,52 @@ public sealed class ActiveScopeMiddleware(RequestDelegate next)
             {
                 return; // 403 yazıldı, isteği sonlandır.
             }
+
+            // Salt-okunur bağlam zorlaması (MEB/denetçi): aktif bağlamı YÖNETME yetkisi
+            // yoksa yazma istekleri reddedilir. Auth uçları (login/refresh/logout) muaf.
+            if (grants.Count > 0
+                && IsWriteMethod(context.Request.Method)
+                && !context.Request.Path.StartsWithSegments("/api/auth")
+                && !await CanManageActiveContextAsync(context, userId, grants, scopeService))
+            {
+                await ForbidAsync(context, "Bu bağlamda salt-okunur erişiminiz var; değişiklik yapılamaz.");
+                return;
+            }
         }
 
         await next(context);
+    }
+
+    private static bool IsWriteMethod(string method) =>
+        !HttpMethods.IsGet(method) && !HttpMethods.IsHead(method) && !HttpMethods.IsOptions(method);
+
+    // Aktif bağlam (kurum ya da platform) Manage yetkisiyle mi kapsanıyor?
+    private static async Task<bool> CanManageActiveContextAsync(
+        HttpContext context, Guid userId, IReadOnlyList<CourseIntellect.Domain.Entities.UserScopeGrant> grants, IUserScopeService scopeService)
+    {
+        var activeScope = context.RequestServices.GetRequiredService<IActiveScope>();
+        if (activeScope.IsResolved && activeScope.TenantId is Guid tenant)
+        {
+            // Kurum bağlamı: Tenant/Group/Platform Manage kapsıyorsa yazabilir.
+            if (await scopeService.CanManageTenantAsync(userId, tenant, context.RequestAborted)) return true;
+
+            // Şubeye kilitli Manage (şube müdürü): şubesi bu kuruma aitse yazabilir.
+            var branchManage = grants
+                .Where(g => g.Level == CourseIntellect.Domain.Enums.ScopeLevel.Branch
+                    && g.AccessMode == CourseIntellect.Domain.Enums.ScopeAccessMode.Manage
+                    && g.TargetId is not null)
+                .Select(g => g.TargetId!.Value)
+                .ToList();
+            foreach (var branchId in branchManage)
+            {
+                if (await scopeService.BranchBelongsToTenantAsync(branchId, tenant, context.RequestAborted)) return true;
+            }
+            return false;
+        }
+
+        // Platform bağlamı: Platform seviyesinde Manage grant gerekir.
+        return grants.Any(g => g.Level == CourseIntellect.Domain.Enums.ScopeLevel.Platform
+            && g.AccessMode == CourseIntellect.Domain.Enums.ScopeAccessMode.Manage);
     }
 
     /// <returns><c>false</c> ise 403 yazıldı ve istek sonlandırılmalı.</returns>

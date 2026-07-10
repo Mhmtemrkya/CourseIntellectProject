@@ -27,7 +27,7 @@ export default function SelectBranch() {
       setLoading(true);
       const units = await fetchOrgUnits().catch(() => []);
       const all = Array.isArray(units) ? units : [];
-      const branchUnits = all.filter((u) => BRANCH_TYPES.includes(String(u.unitType || '').toLowerCase()));
+      const branchUnits = all.filter((u) => u.isActive !== false && BRANCH_TYPES.includes(String(u.unitType || '').toLowerCase()));
       // Tek şube (veya hiç şube yoksa) seçim ekranına gerek yok: doğrudan devam.
       if (branchUnits.length <= 1) {
         proceed(branchUnits[0]?.id || null);

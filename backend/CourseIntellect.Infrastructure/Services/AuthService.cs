@@ -48,6 +48,12 @@ public sealed class AuthService(
             }
         }
 
+        // Pasif hesap giriş yapamaz (durum /api/users/{username}/status ile yönetilir).
+        if (user is not null && user.Status != UserStatus.Active)
+        {
+            user = null;
+        }
+
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {
             await loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
@@ -116,7 +122,9 @@ public sealed class AuthService(
         }
 
         var user = await dbContext.Users.FirstOrDefaultAsync(x => x.Id == session.UserId, cancellationToken);
-        if (user is null)
+        // Pasif kullanıcı refresh ile de yeni token alamaz — yoksa pasifleştirme
+        // refresh token ömrü boyunca (günler) etkisiz kalırdı.
+        if (user is null || user.Status != UserStatus.Active)
         {
             return null;
         }

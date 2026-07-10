@@ -225,7 +225,14 @@ class _AdminAdministrativeUnitsPageState
 
   Future<void> _openBranchDialog() async {
     final nameController = TextEditingController();
-    final managerController = TextEditingController();
+    // Sorumlu listeden seçilir (zorunlu). Liste personel + kurum yöneticilerini içerir —
+    // yeni kurumda hiç personel yokken de ilk şube açılabilir (sorumlu = kurum admini).
+    List<Map<String, dynamic>> candidates = const [];
+    try {
+      candidates = await AdminWorkflowApiService.instance.getManagerCandidates();
+    } catch (_) {}
+    if (!mounted) return;
+    String? managerUserId;
     String unitType = 'Şube';
     final created = await showDialog<bool>(
       context: context,
@@ -251,9 +258,18 @@ class _AdminAdministrativeUnitsPageState
                   onChanged: (v) => setDialogState(() => unitType = v ?? 'Şube'),
                 ),
                 const SizedBox(height: 10),
-                TextField(
-                  controller: managerController,
-                  decoration: const InputDecoration(labelText: 'Sorumlu (opsiyonel)'),
+                DropdownButtonFormField<String>(
+                  initialValue: managerUserId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: 'Sorumlu (zorunlu)'.tr),
+                  hint: Text('Personel seçin'.tr),
+                  items: candidates
+                      .map((s) => DropdownMenuItem(
+                            value: s['userId']?.toString(),
+                            child: Text('${s['fullName']} · ${s['role']}', overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() => managerUserId = v),
                 ),
               ],
             ),
@@ -263,11 +279,19 @@ class _AdminAdministrativeUnitsPageState
             FilledButton(
               onPressed: () async {
                 if (nameController.text.trim().isEmpty) return;
+                if (managerUserId == null || managerUserId!.isEmpty) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text('Şube için sorumlu seçimi zorunludur.'.tr)),
+                  );
+                  return;
+                }
+                final manager = candidates.where((s) => s['userId']?.toString() == managerUserId).firstOrNull;
                 try {
                   await AdminWorkflowApiService.instance.createOrgUnit(
                     name: nameController.text.trim(),
                     unitType: unitType,
-                    managerName: managerController.text.trim().isEmpty ? null : managerController.text.trim(),
+                    managerName: manager?['fullName']?.toString(),
+                    managerUserId: managerUserId,
                   );
                   if (dialogContext.mounted) Navigator.pop(dialogContext, true);
                 } catch (error) {

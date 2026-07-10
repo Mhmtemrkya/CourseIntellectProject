@@ -50,6 +50,12 @@ public sealed class JwtTokenService(IOptions<JwtOptions> options) : IJwtTokenSer
             claims[BranchIdClaim] = user.BranchId.Value.ToString();
         }
 
+        if (user.CustomRoleId.HasValue)
+        {
+            // Özel rol: modül kısıtı EntitlementService'te bu claim üzerinden zorlanır.
+            claims["custom_role_id"] = user.CustomRoleId.Value.ToString();
+        }
+
         // Rol claim'leri — tek rol varsa string, birden fazla varsa array olarak ekle
         var allRoles = new List<string> { user.PrimaryRole.ToString() };
         allRoles.AddRange(user.ExtraRoles.Select(r => r.ToString()));

@@ -33,6 +33,19 @@ public sealed class ScopeAdminController(
             ?? User.FindFirstValue("sub")
             ?? User.FindFirstValue(ClaimTypes.NameIdentifier), out var id) ? id : null;
 
+    // Konsol kapısı: ev grant'ları HER kullanıcıya Manage verdiğinden (görünürlük semantiği),
+    // salt Manage-grant kontrolü öğrenci/veliyi bile içeri alırdı. Konsola yalnız:
+    // platform admin, Admin-katmanı rol (kurum admin/şube müdürü) veya AÇIKÇA verilmiş
+    // Group/Platform Manage grant'ı olan (İl/İlçe müdürü) girer.
+    private async Task<bool> HasConsoleAccessAsync(Guid callerId, CancellationToken ct)
+    {
+        if (IsPlatformAdmin() || User.IsInRole("Admin")) return true;
+        var grants = await scopeService.GetGrantsAsync(callerId, ct);
+        return grants.Any(g =>
+            (g.Level == ScopeLevel.Group || g.Level == ScopeLevel.Platform)
+            && g.AccessMode == ScopeAccessMode.Manage);
+    }
+
     // ── Delege yetki yardımcıları (platform admin = tam yetki kısayolu) ──
     private async Task<bool> CanManageGroup(Guid callerId, Guid groupId, CancellationToken ct) =>
         IsPlatformAdmin() || await scopeService.CanManageGroupAsync(callerId, groupId, ct);
@@ -70,6 +83,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> GetGroups(CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         HashSet<Guid>? allowed = IsPlatformAdmin()
             ? null
             : (await scopeService.GetManageableGroupIdsAsync(callerId, cancellationToken)).ToHashSet();
@@ -95,6 +109,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> CreateGroup([FromBody] CreateScopeGroupRequest request, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         if (string.IsNullOrWhiteSpace(request.Name)) return BadRequest(new { message = "Grup adı zorunludur." });
 
         if (request.ParentGroupId is Guid parentId)
@@ -126,6 +141,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> DeleteGroup(Guid id, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         if (!await CanManageGroup(callerId, id, cancellationToken)) return Forbid();
         if (await dbContext.TenantGroups.AnyAsync(g => g.ParentGroupId == id, cancellationToken))
             return BadRequest(new { message = "Alt grubu olan bir grup silinemez." });
@@ -143,6 +159,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> GetTenants(CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         HashSet<Guid>? allowed = IsPlatformAdmin()
             ? null
             : (await scopeService.GetManageableTenantIdsAsync(callerId, cancellationToken)).ToHashSet();
@@ -158,6 +175,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> AssignTenantGroup(Guid tenantId, [FromBody] AssignTenantGroupRequest request, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         if (!await CanManageTenant(callerId, tenantId, cancellationToken)) return Forbid();
         if (request.GroupId is Guid groupId)
         {
@@ -168,6 +186,14 @@ public sealed class ScopeAdminController(
         var tenant = await dbContext.TenantWorkspaces.IgnoreQueryFilters()
             .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
         if (tenant is null) return NotFound();
+
+        // Kurum zaten bir gruba bağlıysa, gruptan koparma/taşıma o grubu da yönetmeyi
+        // gerektirir — kurum admin'i kendini MEB/marka hiyerarşisinden çıkaramaz.
+        if (tenant.GroupId is Guid currentGroupId && currentGroupId != request.GroupId
+            && !await CanManageGroup(callerId, currentGroupId, cancellationToken))
+        {
+            return Forbid();
+        }
         tenant.GroupId = request.GroupId;
         await dbContext.SaveChangesAsync(cancellationToken);
         return NoContent();
@@ -178,6 +204,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> GetUsers([FromQuery] string? search, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         var query = dbContext.Users.IgnoreQueryFilters().AsNoTracking();
         if (!IsPlatformAdmin())
         {
@@ -199,6 +226,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> GetUserGrants(Guid userId, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         if (!await CanSeeUser(callerId, userId, cancellationToken)) return Forbid();
         var grants = await dbContext.UserScopeGrants.AsNoTracking()
             .Where(g => g.UserId == userId).ToListAsync(cancellationToken);
@@ -209,6 +237,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> AddGrant(Guid userId, [FromBody] AddGrantRequest request, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         if (!Enum.TryParse<ScopeLevel>(request.Level, true, out var level))
             return BadRequest(new { message = "Geçersiz kapsam seviyesi." });
         if (!Enum.TryParse<ScopeAccessMode>(request.AccessMode, true, out var accessMode))
@@ -255,6 +284,7 @@ public sealed class ScopeAdminController(
     public async Task<IActionResult> RemoveGrant(Guid id, CancellationToken cancellationToken)
     {
         if (CallerId() is not Guid callerId) return Unauthorized();
+        if (!await HasConsoleAccessAsync(callerId, cancellationToken)) return Forbid();
         var grant = await dbContext.UserScopeGrants.FirstOrDefaultAsync(g => g.Id == id, cancellationToken);
         if (grant is null) return NotFound();
         if (grant.IsHome) return BadRequest(new { message = "Kullanıcının ev kapsamı silinemez." });

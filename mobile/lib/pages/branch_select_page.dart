@@ -37,7 +37,9 @@ class _BranchSelectPageState extends State<BranchSelectPage> {
       units = await AdminWorkflowApiService.instance.getOrgUnits();
     } catch (_) {}
     final branches = units
-        .where((u) => _branchTypes.contains((u['unitType'] ?? '').toString().toLowerCase()))
+        .where((u) =>
+            u['isActive'] != false &&
+            _branchTypes.contains((u['unitType'] ?? '').toString().toLowerCase()))
         .toList();
     if (branches.length <= 1) {
       await BranchScopeStore.instance.select(

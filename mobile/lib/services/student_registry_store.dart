@@ -71,6 +71,18 @@ class StudentRegistryStore extends ChangeNotifier {
     await _restore();
   }
 
+  /// Öğrenciyi pasif/aktif yapar (pasif giriş yapamaz; kayıt silinmez).
+  Future<void> updateStatus({
+    required String username,
+    required bool isActive,
+  }) async {
+    await AdminDirectoryApiService.instance.updateUserStatus(
+      username: username,
+      isActive: isActive,
+    );
+    await _restore();
+  }
+
   Future<void> _restore() async {
     final items = await AdminDirectoryApiService.instance.fetchStudents();
     _students

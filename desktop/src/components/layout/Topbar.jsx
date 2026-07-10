@@ -112,8 +112,10 @@ export function Topbar() {
       .then((list) => {
         const all = Array.isArray(list) ? list : [];
         // Şube filtresi yalnızca "Şube"/"Kampüs" türü birimleri kapsar (departman vb. hariç).
-        const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
-        setBranches(branchUnits.length > 0 ? branchUnits : all);
+        // Pasif birimler seçim listesinde görünmez.
+        const active = all.filter((u) => u.isActive !== false);
+        const branchUnits = active.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
+        setBranches(branchUnits.length > 0 ? branchUnits : active);
       })
       .catch(() => setBranches([]));
   }, [isOwner]);
@@ -275,8 +277,8 @@ export function Topbar() {
             ⚙️ Kapsam
           </button>
         ) : null}
-        {/* Şube seçici (yalnızca kurum yöneticisi) */}
-        {isOwner && branches.length > 0 ? (
+        {/* Şube seçici (yalnızca kurum yöneticisi; şubeye kilitli müdürde gizli) */}
+        {isOwner && branches.length > 0 && scope?.canSwitchBranch !== false ? (
           <select
             value={selectedBranch}
             onChange={(e) => handleBranchChange(e.target.value)}

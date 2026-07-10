@@ -19,5 +19,7 @@ public sealed record StaffSummaryDto(
     string MaritalStatus,
     int ChildCount,
     string Note,
-    string StartDate
+    string StartDate,
+    // Kullanıcı hesabının kimliği (şube sorumlusu seçimi vb. kullanıcı-bazlı atamalar için).
+    Guid UserId = default
 );

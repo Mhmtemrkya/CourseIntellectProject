@@ -24,8 +24,11 @@ import {
   deleteServiceDriver,
   deleteServiceVehicle,
   deleteStaffUser,
+  fetchCustomRoles,
   fetchStaff,
   fetchOrgUnits,
+  updateStaffAssignment,
+  updateUserStatus,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
@@ -115,20 +118,27 @@ export default function AdminStaffRegistration() {
   const [roleFilter, setRoleFilter] = useState('Teacher');
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState('');
+  const [customRoles, setCustomRoles] = useState([]);
+  const [editStaff, setEditStaff] = useState(null);
+  const [editForm, setEditForm] = useState({ role: '', branchId: '', customRoleId: '' });
   const [loading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState(null);
 
   const loadRecent = useCallback(async () => {
     try {
       setLoading(true);
-      const [data, orgUnits] = await Promise.all([
+      const [data, orgUnits, customRoleList] = await Promise.all([
         fetchStaff().catch(() => []),
         fetchOrgUnits().catch(() => []),
+        fetchCustomRoles().catch(() => []),
       ]);
       setAllStaff(Array.isArray(data) ? data : []);
+      setCustomRoles(Array.isArray(customRoleList) ? customRoleList : []);
       const all = Array.isArray(orgUnits) ? orgUnits : [];
-      const branchUnits = all.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
-      setBranches(branchUnits.length > 0 ? branchUnits : all);
+      // Pasif birimler seçim listesinde görünmez.
+      const activeUnits = all.filter((u) => u.isActive !== false);
+      const branchUnits = activeUnits.filter((u) => ['şube', 'sube', 'kampüs', 'kampus'].includes(String(u.unitType || '').toLowerCase()));
+      setBranches(branchUnits.length > 0 ? branchUnits : activeUnits);
     } catch { /* ignore */ } finally {
       setLoading(false);
     }
@@ -141,7 +151,14 @@ export default function AdminStaffRegistration() {
       ...prev,
       [field]: value,
       ...(field === 'role'
-        ? { departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane' : value === 'ServiceDriver' ? 'Servis Şoförü' : value === 'BranchManager' ? 'Şube Yönetimi' : '' }
+        ? {
+            departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane'
+              : value === 'ServiceDriver' ? 'Servis Şoförü'
+              : value === 'BranchManager' ? 'Şube Yönetimi'
+              : String(value).startsWith('custom:')
+                ? (customRoles.find((r) => `custom:${r.id}` === value)?.name || 'Özel Rol')
+                : '',
+          }
         : {}),
     }));
   };
@@ -188,7 +205,13 @@ export default function AdminStaffRegistration() {
     let createdDriverId = null;
     try {
       setSaving(true);
-      const backendRole = form.role === 'ServiceDriver' ? 'Administrative' : form.role;
+      // Özel rol: taban rolü backend'e, kimliği customRoleId olarak gider.
+      const selectedCustomRole = form.role.startsWith('custom:')
+        ? customRoles.find((r) => `custom:${r.id}` === form.role)
+        : null;
+      const backendRole = selectedCustomRole
+        ? selectedCustomRole.baseRole
+        : form.role === 'ServiceDriver' ? 'Administrative' : form.role;
       const departmentOrBranch = form.role === 'ServiceDriver' ? 'Servis Şoförü' : form.departmentOrBranch;
       const response = await createStaff({
         fullName: form.fullName.trim(),
@@ -206,6 +229,7 @@ export default function AdminStaffRegistration() {
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
         branchId: branchId || undefined,
+        customRoleId: selectedCustomRole?.id || undefined,
       }, branchId || undefined);
       createdStaffUserId = response?.userId || null;
       let serviceSummary = '';
@@ -363,6 +387,9 @@ export default function AdminStaffRegistration() {
                     <SelectContent>
                       {roles.map((r) => (
                         <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                      ))}
+                      {customRoles.map((r) => (
+                        <SelectItem key={r.id} value={`custom:${r.id}`}>{r.name} (özel rol)</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -567,17 +594,44 @@ export default function AdminStaffRegistration() {
                       <p className="text-sm text-muted-foreground text-center py-4">Bu rolde kayıtlı personel yok.</p>
                     ) : (
                       <div className="space-y-2 max-h-[360px] overflow-y-auto">
-                        {filtered.map((s, i) => (
-                          <div key={s.id || i} className="flex items-center gap-3 p-2 rounded-lg bg-muted/40">
-                            <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">
-                              {(s.fullName || '?')[0]}
+                        {filtered.map((s, i) => {
+                          const isPassive = String(s.status || '').toLowerCase() === 'passive';
+                          return (
+                            <div key={s.id || i} className={`flex items-center gap-3 p-2 rounded-lg bg-muted/40 ${isPassive ? 'opacity-60' : ''}`}>
+                              <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">
+                                {(s.fullName || '?')[0]}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium truncate">{s.fullName}{isPassive ? ' · Pasif' : ''}</p>
+                                <p className="text-xs text-muted-foreground">{s.departmentOrBranch || selectedRole?.label}</p>
+                              </div>
+                              <button
+                                type="button"
+                                className="text-xs font-semibold text-muted-foreground hover:text-foreground"
+                                title="Rol / şube / özel rol atamasını düzenle"
+                                onClick={() => {
+                                  setEditStaff(s);
+                                  setEditForm({ role: s.role || '', branchId: '', customRoleId: '' });
+                                }}
+                              >
+                                Atama
+                              </button>
+                              <button
+                                type="button"
+                                className={`text-xs font-semibold ${isPassive ? 'text-green-600' : 'text-red-500'}`}
+                                onClick={async () => {
+                                  try {
+                                    await updateUserStatus(s.username, isPassive ? 'Active' : 'Passive');
+                                    toast({ title: isPassive ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
+                                    await loadRecent();
+                                  } catch (err) { toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' }); }
+                                }}
+                              >
+                                {isPassive ? 'Aktifleştir' : 'Pasife Al'}
+                              </button>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{s.fullName}</p>
-                              <p className="text-xs text-muted-foreground">{s.departmentOrBranch || selectedRole?.label}</p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </>
@@ -630,6 +684,80 @@ export default function AdminStaffRegistration() {
             </Button>
             <Button onClick={downloadAgain}>PDF İndir</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Var olan personelin rol / şube / özel rol atamasını düzenleme */}
+      <Dialog open={!!editStaff} onOpenChange={(open) => !open && setEditStaff(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Atama Düzenle — {editStaff?.fullName}</DialogTitle>
+            <DialogDescription>Rol, şube ve özel rol ataması; kaydedince görünürlük kapsamı da güncellenir.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Rol</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={editForm.role}
+                onChange={(e) => setEditForm((f) => ({ ...f, role: e.target.value, customRoleId: '' }))}
+              >
+                <option value="">— Değiştirme —</option>
+                <option value="Teacher">Öğretmen</option>
+                <option value="BranchManager">Şube Müdürü</option>
+                <option value="Administrative">İdari Personel</option>
+                <option value="Accounting">Muhasebe</option>
+                <option value="Cafeteria">Yemekhaneci</option>
+              </select>
+            </div>
+            <div>
+              <Label>Şube {editForm.role === 'BranchManager' ? '(zorunlu)' : '(opsiyonel)'}</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={editForm.branchId}
+                onChange={(e) => setEditForm((f) => ({ ...f, branchId: e.target.value }))}
+              >
+                <option value="">— Değiştirme —</option>
+                {branches.filter((b) => b.isActive !== false).map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label>Özel rol</Label>
+              <select
+                className="h-10 w-full rounded-md border bg-background px-3 text-sm"
+                value={editForm.customRoleId}
+                onChange={(e) => setEditForm((f) => ({ ...f, customRoleId: e.target.value }))}
+              >
+                <option value="">— Değiştirme —</option>
+                <option value="__clear__">(özel rolü kaldır)</option>
+                {customRoles
+                  .filter((r) => !editForm.role || r.baseRole === editForm.role)
+                  .map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
+              </select>
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setEditStaff(null)}>Vazgeç</Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await updateStaffAssignment(editStaff.userId, {
+                      role: editForm.role || null,
+                      branchId: editForm.branchId || null,
+                      customRoleId: editForm.customRoleId && editForm.customRoleId !== '__clear__' ? editForm.customRoleId : null,
+                      clearCustomRole: editForm.customRoleId === '__clear__',
+                    });
+                    toast({ title: 'Atama güncellendi.' });
+                    setEditStaff(null);
+                    await loadRecent();
+                  } catch (err) { toast({ title: err.message || 'Atama güncellenemedi.', variant: 'destructive' }); }
+                }}
+              >
+                Kaydet
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </motion.div>

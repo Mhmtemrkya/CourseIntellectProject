@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:student/i18n/app_locale.dart';
+import '../services/admin_workflow_api_service.dart';
 import '../services/staff_registry_store.dart';
 import 'admin_staff_edit_page.dart';
 
@@ -101,6 +102,122 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
     );
   }
 
+  /// Rol / şube / özel rol atamasını düzenler (ev grant'ı backend'de yenilenir).
+  Future<void> _openAssignment(StaffRegistryRecord record) async {
+    if (record.userId.isEmpty) return;
+    final api = AdminWorkflowApiService.instance;
+    List<Map<String, dynamic>> branches = const [];
+    List<Map<String, dynamic>> customRoles = const [];
+    try {
+      final results = await Future.wait([api.getOrgUnits(), api.getCustomRoles()]);
+      branches = results[0]
+          .where((u) =>
+              u['isActive'] != false &&
+              ['şube', 'sube', 'kampüs', 'kampus']
+                  .contains((u['unitType'] ?? '').toString().toLowerCase()))
+          .toList();
+      customRoles = results[1];
+    } catch (_) {}
+    if (!mounted) return;
+
+    String? role;
+    String? branchId;
+    String? customSelection; // rol id ya da '__clear__'
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text('Atama Düzenle'.tr),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: role,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: 'Rol'.tr),
+                  hint: Text('— Değiştirme —'.tr),
+                  items: [
+                    DropdownMenuItem(value: 'Teacher', child: Text('Öğretmen'.tr)),
+                    DropdownMenuItem(value: 'BranchManager', child: Text('Şube Müdürü'.tr)),
+                    DropdownMenuItem(value: 'Administrative', child: Text('İdari Personel'.tr)),
+                    DropdownMenuItem(value: 'Accounting', child: Text('Muhasebe')),
+                    DropdownMenuItem(value: 'Cafeteria', child: Text('Yemekhaneci')),
+                  ],
+                  onChanged: (v) => setDialogState(() {
+                    role = v;
+                    customSelection = null;
+                  }),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: branchId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: 'Şube'.tr),
+                  hint: Text('— Değiştirme —'.tr),
+                  items: branches
+                      .map((b) => DropdownMenuItem(
+                            value: b['id']?.toString(),
+                            child: Text('${b['name']}', overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) => setDialogState(() => branchId = v),
+                ),
+                const SizedBox(height: 10),
+                DropdownButtonFormField<String>(
+                  initialValue: customSelection,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: 'Özel rol'.tr),
+                  hint: Text('— Değiştirme —'.tr),
+                  items: [
+                    DropdownMenuItem(value: '__clear__', child: Text('(özel rolü kaldır)'.tr)),
+                    ...customRoles
+                        .where((r) => role == null || r['baseRole'] == role)
+                        .map((r) => DropdownMenuItem(
+                              value: r['id']?.toString(),
+                              child: Text('${r['name']}', overflow: TextOverflow.ellipsis),
+                            )),
+                  ],
+                  onChanged: (v) => setDialogState(() => customSelection = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text('Vazgeç'.tr),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(dialogContext, true),
+              child: const Text('Kaydet'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved != true || !mounted) return;
+
+    try {
+      await AdminWorkflowApiService.instance.updateStaffAssignment(
+        record.userId,
+        role: role,
+        branchId: branchId,
+        customRoleId: customSelection == '__clear__' ? null : customSelection,
+        clearCustomRole: customSelection == '__clear__',
+      );
+      await _store.refresh();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Atama güncellendi.'.tr)));
+      setState(() {});
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Atama güncellenemedi: $error')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -119,6 +236,11 @@ class _AdminStaffDetailPageState extends State<AdminStaffDetailPage> {
       appBar: AppBar(
         title: Text('Personel Detayı'.tr),
         actions: [
+          IconButton(
+            tooltip: 'Atama'.tr,
+            onPressed: () => _openAssignment(record),
+            icon: const Icon(Icons.swap_horiz_rounded),
+          ),
           IconButton(
             tooltip: 'Düzenle'.tr,
             onPressed: () => _openEdit(record),

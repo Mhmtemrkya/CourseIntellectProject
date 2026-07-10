@@ -121,6 +121,7 @@ class RegistrationApiService {
     required int childCount,
     required String note,
     String? branchId,
+    String? customRoleId,
   }) async {
     final response = await _authorizedPost(
       '/api/staff',
@@ -142,6 +143,8 @@ class RegistrationApiService {
         'note': note,
         // Şube müdürü için zorunlu; backend body'den açık BranchId okur (header ayrıca auto-stamp).
         if (branchId != null && branchId.isNotEmpty) 'branchId': branchId,
+        // Özel rol ataması (opsiyonel); modül kısıtı backend'de zorlanır.
+        if (customRoleId != null && customRoleId.isNotEmpty) 'customRoleId': customRoleId,
       },
     );
 

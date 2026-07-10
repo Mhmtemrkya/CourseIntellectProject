@@ -63,7 +63,8 @@ public sealed class StaffManagementService(
                 staff.MaritalStatus,
                 staff.ChildCount,
                 staff.Note,
-                staff.StartDate))
+                staff.StartDate,
+                staff.UserId))
             .ToList();
     }
 
@@ -77,6 +78,19 @@ public sealed class StaffManagementService(
 
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+
+        // Özel rol: kuruma ait olmalı; taban rolü istek rolüyle uyuşmalı.
+        if (request.CustomRoleId is Guid customRoleId)
+        {
+            var customRole = await dbContext.CustomRoles
+                .AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == customRoleId, cancellationToken)
+                ?? throw new InvalidOperationException("Özel rol bulunamadı.");
+            if (customRole.BaseRole != parsedRole)
+            {
+                throw new InvalidOperationException("Özel rolün taban rolü ile seçilen rol uyuşmuyor.");
+            }
+        }
 
         // Şube müdürü mutlaka bir şubeye (OrgUnit) atanır; o şubeye kilitli Branch grant üretilir.
         if (parsedRole == UserRole.BranchManager)
@@ -159,6 +173,7 @@ public sealed class StaffManagementService(
         {
             TenantId = tenantId,
             BranchId = request.BranchId,
+            CustomRoleId = request.CustomRoleId,
             FullName = request.FullName,
             Username = username,
             PasswordHash = passwordHasher.Hash(password),
@@ -319,7 +334,8 @@ public sealed class StaffManagementService(
             staff.MaritalStatus,
             staff.ChildCount,
             staff.Note,
-            staff.StartDate);
+            staff.StartDate,
+            staff.UserId);
     }
 
     public async Task<bool> DeleteStaffByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -340,6 +356,76 @@ public sealed class StaffManagementService(
         }
 
         dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    public async Task<bool> UpdateAssignmentAsync(Guid userId, UpdateStaffAssignmentRequest request, CancellationToken cancellationToken = default)
+    {
+        var tenantId = ResolveCurrentTenantId()
+            ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var user = await dbContext.Users
+            .FirstOrDefaultAsync(x => x.Id == userId && x.TenantId == tenantId, cancellationToken);
+        if (user is null) return false;
+
+        // Rol değişimi (opsiyonel) — yalnız personel rolleri. Staff profili de senkronlanır
+        // (yoksa personel listesi eski rolü göstermeye devam ederdi).
+        if (!string.IsNullOrWhiteSpace(request.Role))
+        {
+            if (!Enum.TryParse<UserRole>(request.Role, true, out var newRole) ||
+                newRole is not UserRole.Teacher and not UserRole.Administrative
+                    and not UserRole.Cafeteria and not UserRole.BranchManager and not UserRole.Accounting)
+            {
+                throw new InvalidOperationException("Gecersiz rol.");
+            }
+            user.PrimaryRole = newRole;
+
+            var staffProfile = await dbContext.Staff
+                .FirstOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+            if (staffProfile is not null)
+            {
+                staffProfile.Role = newRole;
+            }
+        }
+
+        // Şube değişimi (opsiyonel) — kuruma ait olmalı. Şube müdürü şubesiz kalamaz.
+        if (request.BranchId is Guid branchId)
+        {
+            if (!await dbContext.OrgUnits.AnyAsync(x => x.Id == branchId, cancellationToken))
+            {
+                throw new InvalidOperationException("Secilen sube bu kuruma ait degil.");
+            }
+            user.BranchId = branchId;
+        }
+        if (user.PrimaryRole == UserRole.BranchManager && user.BranchId is null)
+        {
+            throw new InvalidOperationException("Sube muduru icin sube secimi zorunludur.");
+        }
+
+        // Özel rol değişimi (opsiyonel) — taban rol uyumlu olmalı.
+        if (request.ClearCustomRole)
+        {
+            user.CustomRoleId = null;
+        }
+        else if (request.CustomRoleId is Guid customRoleId)
+        {
+            var customRole = await dbContext.CustomRoles.AsNoTracking()
+                .FirstOrDefaultAsync(x => x.Id == customRoleId, cancellationToken)
+                ?? throw new InvalidOperationException("Ozel rol bulunamadi.");
+            if (customRole.BaseRole != user.PrimaryRole)
+            {
+                throw new InvalidOperationException("Ozel rolun taban rolu ile kullanicinin rolu uyusmuyor.");
+            }
+            user.CustomRoleId = customRoleId;
+        }
+
+        // Ev grant'ını yeni atamaya göre yenile — kapsam (görünürlük) atamayla tutarlı kalsın.
+        var homeGrants = await dbContext.UserScopeGrants
+            .Where(g => g.UserId == userId && g.IsHome)
+            .ToListAsync(cancellationToken);
+        dbContext.UserScopeGrants.RemoveRange(homeGrants);
+        dbContext.UserScopeGrants.Add(UserScopeGrant.CreateHome(user));
+
         await dbContext.SaveChangesAsync(cancellationToken);
         return true;
     }

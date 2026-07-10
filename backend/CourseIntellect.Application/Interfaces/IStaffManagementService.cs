@@ -9,4 +9,7 @@ public interface IStaffManagementService
     Task<StaffCredentialsDto> CreateAccountingStaffAsync(CreateAccountingStaffRequest request, CancellationToken cancellationToken = default);
     Task<StaffSummaryDto> UpdateStaffAsync(Guid staffId, UpdateStaffRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteStaffByUserIdAsync(Guid userId, CancellationToken cancellationToken = default);
+
+    /// <summary>Var olan kullanıcının rol/şube/özel rol atamasını günceller ve ev grant'ını yeniler.</summary>
+    Task<bool> UpdateAssignmentAsync(Guid userId, UpdateStaffAssignmentRequest request, CancellationToken cancellationToken = default);
 }

@@ -79,12 +79,14 @@ class _AdminStudentRegistrationPageState
   Future<void> _loadBranches() async {
     try {
       final units = await AdminWorkflowApiService.instance.getOrgUnits();
-      final branchUnits = units.where((u) {
+      // Pasif birimler seçim listesinde görünmez.
+      final activeUnits = units.where((u) => u['isActive'] != false).toList();
+      final branchUnits = activeUnits.where((u) {
         final t = (u['unitType'] as String? ?? '').toLowerCase();
         return t == 'şube' || t == 'sube' || t == 'kampüs' || t == 'kampus';
       }).toList();
       if (!mounted) return;
-      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : units);
+      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : activeUnits);
     } catch (_) {
       /* şube yoksa alan gizli kalır */
     }

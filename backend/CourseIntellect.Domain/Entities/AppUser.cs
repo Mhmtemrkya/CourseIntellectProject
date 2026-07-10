@@ -9,6 +9,11 @@ public sealed class AppUser : IBranchScopedEntity
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid? TenantId { get; set; }
     public Guid? BranchId { get; set; }
+
+    /// <summary>Atandığı özel rol (opsiyonel). PrimaryRole = özel rolün BaseRole'üdür;
+    /// modül erişimi özel rolün listesiyle sınırlanır (EntitlementService).</summary>
+    public Guid? CustomRoleId { get; set; }
+
     public string FullName { get; set; } = string.Empty;
     public string Username { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;

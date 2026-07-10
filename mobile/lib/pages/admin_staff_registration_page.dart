@@ -67,6 +67,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   final Set<String> _teacherAssignedClasses = {};
   List<String> _classOptions = const [];
   List<Map<String, dynamic>> _branches = const [];
+  List<Map<String, dynamic>> _customRoles = const [];
   List<AdminStaffRecord> _allStaff = const [];
   String _staffRoleFilter = 'Teacher';
   String? _branchId;
@@ -81,6 +82,17 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     _loadClassOptions();
     _loadBranches();
     _loadStaff();
+    _loadCustomRoles();
+  }
+
+  Future<void> _loadCustomRoles() async {
+    try {
+      final roles = await AdminWorkflowApiService.instance.getCustomRoles();
+      if (!mounted) return;
+      setState(() => _customRoles = roles);
+    } catch (_) {
+      /* özel rol yoksa dropdown sabit rollerle kalır */
+    }
   }
 
   Future<void> _loadStaff() async {
@@ -96,12 +108,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
   Future<void> _loadBranches() async {
     try {
       final units = await AdminWorkflowApiService.instance.getOrgUnits();
-      final branchUnits = units.where((u) {
+      // Pasif birimler seçim listesinde görünmez.
+      final activeUnits = units.where((u) => u['isActive'] != false).toList();
+      final branchUnits = activeUnits.where((u) {
         final t = (u['unitType'] as String? ?? '').toLowerCase();
         return t == 'şube' || t == 'sube' || t == 'kampüs' || t == 'kampus';
       }).toList();
       if (!mounted) return;
-      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : units);
+      setState(() => _branches = branchUnits.isNotEmpty ? branchUnits : activeUnits);
     } catch (_) {
       /* şube yoksa alan gizli kalır */
     }
@@ -476,6 +490,12 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                   value: 'ServiceDriver',
                   child: Text('Servis Şoförü'.tr),
                 ),
+                ..._customRoles.map(
+                  (r) => DropdownMenuItem(
+                    value: 'custom:${r['id']}',
+                    child: Text('${r['name']} (${'özel rol'.tr})'),
+                  ),
+                ),
               ],
               onChanged: (value) {
                 if (value == null) return;
@@ -487,6 +507,12 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       ? 'Servis Şoförü'
                       : value == 'BranchManager'
                       ? 'Şube Yönetimi'
+                      : value.startsWith('custom:')
+                      ? (_customRoles
+                              .where((r) => 'custom:${r['id']}' == value)
+                              .firstOrNull?['name']
+                              ?.toString() ??
+                          'Özel Rol')
                       : 'Öğrenci Isleri';
                 });
               },
@@ -513,7 +539,14 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
                       labelText: 'Departman',
                       border: OutlineInputBorder(),
                     ),
-                    items: _personnelRole == 'BranchManager'
+                    items: _personnelRole.startsWith('custom:')
+                        ? [
+                            DropdownMenuItem(
+                              value: _personnelDepartment,
+                              child: Text(_personnelDepartment),
+                            ),
+                          ]
+                        : _personnelRole == 'BranchManager'
                         ? [
                             DropdownMenuItem(
                               value: 'Şube Yönetimi',
@@ -991,7 +1024,15 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
     String? createdDriverId;
     try {
       final isServiceDriver = _personnelRole == 'ServiceDriver';
-      final backendRole = isServiceDriver ? 'Administrative' : _personnelRole;
+      // Özel rol: taban rolü backend'e, kimliği customRoleId olarak gider.
+      final customRole = _personnelRole.startsWith('custom:')
+          ? _customRoles.where((r) => 'custom:${r['id']}' == _personnelRole).firstOrNull
+          : null;
+      final backendRole = customRole != null
+          ? customRole['baseRole'].toString()
+          : isServiceDriver
+          ? 'Administrative'
+          : _personnelRole;
       final department = isServiceDriver
           ? 'Servis Şoförü'
           : _personnelDepartment;
@@ -1012,6 +1053,7 @@ class _AdminStaffRegistrationPageState extends State<AdminStaffRegistrationPage>
             int.tryParse(_personnelChildCountController.text.trim()) ?? 0,
         note: _personnelNoteController.text.trim(),
         branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
+        customRoleId: customRole?['id']?.toString(),
       );
       createdStaffUserId = credentials.userId;
       String serviceSummary = '';

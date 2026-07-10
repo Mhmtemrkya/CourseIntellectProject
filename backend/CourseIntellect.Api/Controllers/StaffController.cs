@@ -50,6 +50,27 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
         return Ok(result);
     }
 
+    /// <summary>Var olan kullanıcının rol/şube/özel rol atamasını günceller (ev grant'ı yenilenir).
+    /// Örn. mevcut bir öğretmeni şube müdürü yapmak için kişiyi silip yeniden açmak GEREKMEZ.</summary>
+    [HttpPut("users/{userId:guid}/assignment")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> UpdateAssignment(
+        Guid userId,
+        [FromBody] UpdateStaffAssignmentRequest request,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            return await staffManagementService.UpdateAssignmentAsync(userId, request, cancellationToken)
+                ? Ok(new { message = "Atama güncellendi." })
+                : NotFound(new { message = "Kullanıcı bulunamadı." });
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpDelete("users/{userId:guid}")]
     [Authorize(Roles = "Admin,Administrative")]
     [RequireEntitlement("teachers")]

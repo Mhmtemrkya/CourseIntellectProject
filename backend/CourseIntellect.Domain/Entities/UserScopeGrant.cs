@@ -43,12 +43,19 @@ public sealed class UserScopeGrant
     public static UserScopeGrant CreateHome(AppUser user)
     {
         var (level, target) = ResolveHomeScope(user);
+
+        // Fail-safe: Platform-genişliğinde YÖNETİM yalnız Developer'a. Tenantsız başka bir
+        // kullanıcı (olağan akışta oluşmaz) salt-okunur kalır — tüm kurumlara yazamaz.
+        var accessMode = level == ScopeLevel.Platform && user.PrimaryRole != UserRole.Developer
+            ? ScopeAccessMode.ReadOnly
+            : ScopeAccessMode.Manage;
+
         return new UserScopeGrant
         {
             UserId = user.Id,
             Level = level,
             TargetId = target,
-            AccessMode = ScopeAccessMode.Manage,
+            AccessMode = accessMode,
             IsHome = true
         };
     }

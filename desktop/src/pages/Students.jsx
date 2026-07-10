@@ -53,7 +53,7 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents } from '../lib/api/modules';
+import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
@@ -69,7 +69,7 @@ function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
 }
 
-function StudentDetailDrawer({ student }) {
+function StudentDetailDrawer({ student, onToggleStatus }) {
   if (!student) return null;
 
   return (
@@ -92,6 +92,16 @@ function StudentDetailDrawer({ student }) {
             {student.status}
           </Badge>
         </div>
+        {onToggleStatus ? (
+          <Button
+            size="sm"
+            variant="outline"
+            className="ml-auto"
+            onClick={() => onToggleStatus(student)}
+          >
+            {student.status === 'Aktif' ? 'Pasife Al' : 'Aktifleştir'}
+          </Button>
+        ) : null}
       </div>
 
       <div className="space-y-3">
@@ -418,6 +428,7 @@ function AddStudentDialog({
 }
 
 export default function Students() {
+  const { toast } = useToast();
   const navigate = useNavigate();
   const { openDrawer } = useApp();
   const [search, setSearch] = useState('');
@@ -457,6 +468,22 @@ export default function Students() {
   useEffect(() => {
     loadStudents();
   }, [loadStudents]);
+
+  // Öğrenciyi pasif/aktif yapar: pasif öğrenci giriş yapamaz; kaydı silinmez.
+  const handleToggleStudentStatus = useCallback(async (student) => {
+    if (!student?.username) {
+      toast({ title: 'Kullanıcı adı bulunamadı.', variant: 'destructive' });
+      return;
+    }
+    const makePassive = student.status === 'Aktif';
+    try {
+      await updateUserStatus(student.username, makePassive ? 'Passive' : 'Active');
+      toast({ title: makePassive ? 'Öğrenci pasife alındı (giriş yapamaz).' : 'Öğrenci aktifleştirildi.' });
+      await loadStudents();
+    } catch (err) {
+      toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+    }
+  }, [loadStudents, toast]);
 
   const classes = useMemo(
     () => [...new Set((classNames || []).filter(Boolean))],
@@ -589,7 +616,7 @@ export default function Students() {
             </TableHeader>
             <TableBody>
               {filteredStudents.map((student) => (
-                <TableRow key={student.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(<StudentDetailDrawer student={student} />)}>
+                <TableRow key={student.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} />)}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
@@ -619,7 +646,7 @@ export default function Students() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openDrawer(<StudentDetailDrawer student={student} />)}>
+                        <DropdownMenuItem onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} />)}>
                           <Eye className="h-4 w-4 mr-2" /> Detay
                         </DropdownMenuItem>
                       </DropdownMenuContent>

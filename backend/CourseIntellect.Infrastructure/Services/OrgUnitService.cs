@@ -25,12 +25,23 @@ public sealed class OrgUnitService(
         string actorName,
         CancellationToken cancellationToken = default)
     {
+        // Sorumlu listeden seçildiyse adı kullanıcı kaydından türet (görüntüleme kopyası).
+        var managerName = request.ManagerName?.Trim() ?? string.Empty;
+        if (request.ManagerUserId is Guid managerUserId)
+        {
+            managerName = await dbContext.Users.AsNoTracking()
+                .Where(u => u.Id == managerUserId)
+                .Select(u => u.FullName)
+                .FirstOrDefaultAsync(cancellationToken) ?? managerName;
+        }
+
         var unit = new OrgUnit
         {
             Name = request.Name.Trim(),
             UnitType = string.IsNullOrWhiteSpace(request.UnitType) ? "Birim" : request.UnitType.Trim(),
             ParentUnitId = request.ParentUnitId,
-            ManagerName = request.ManagerName?.Trim() ?? string.Empty,
+            ManagerName = managerName,
+            ManagerUserId = request.ManagerUserId,
             Note = request.Note?.Trim() ?? string.Empty,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -82,5 +93,6 @@ public sealed class OrgUnitService(
         item.ParentUnitId,
         item.ManagerName,
         item.Note,
-        item.CreatedAtUtc);
+        item.CreatedAtUtc,
+        item.IsActive);
 }
