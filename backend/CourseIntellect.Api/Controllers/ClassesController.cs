@@ -8,6 +8,7 @@ using System.Globalization;
 using System.Security.Claims;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace CourseIntellect.Api.Controllers;
 
@@ -226,6 +227,171 @@ public sealed class ClassesController(
         }
     }
 
+    [HttpPut("{name}/assignments")]
+    [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("classes", "edit")]
+    public async Task<ActionResult<object>> UpdateAssignments(string name, [FromBody] UpdateClassAssignmentsRequest request, CancellationToken cancellationToken)
+    {
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
+
+        var className = CompatibilitySnapshotStore.NormalizeClassName(name);
+        if (string.IsNullOrWhiteSpace(className))
+        {
+            return BadRequest(new { message = "Sınıf adı zorunludur." });
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var existingClasses = await LoadClassListAsync(tenantId.Value, cancellationToken);
+            if (!existingClasses.Any(item => string.Equals(item, className, StringComparison.OrdinalIgnoreCase)))
+            {
+                await dbContext.PlatformConfigurations.AddAsync(new PlatformConfiguration
+                {
+                    TenantId = tenantId.Value,
+                    ConfigurationType = ClassRegistryConfigurationType,
+                    ScopeKey = Guid.NewGuid().ToString("N"),
+                    DisplayName = className,
+                    PayloadJson = JsonSerializer.Serialize(new { name = className }),
+                    UpdatedAtUtc = DateTime.UtcNow,
+                }, cancellationToken);
+            }
+
+            var selectedStudentIds = (request.StudentIds ?? [])
+                .Where(id => id != Guid.Empty)
+                .Distinct()
+                .ToHashSet();
+
+            List<StudentProfile> selectedStudents = selectedStudentIds.Count == 0
+                ? []
+                : await dbContext.Students
+                    .Where(item => item.TenantId == tenantId.Value && selectedStudentIds.Contains(item.Id))
+                    .ToListAsync(cancellationToken);
+
+            var currentClassStudents = await dbContext.Students
+                .Where(item => item.TenantId == tenantId.Value && item.ClassName == className)
+                .ToListAsync(cancellationToken);
+
+            var usersToUpdate = selectedStudents
+                .Concat(currentClassStudents)
+                .Select(item => item.UserId)
+                .Distinct()
+                .ToHashSet();
+
+            Dictionary<Guid, AppUser> users = usersToUpdate.Count == 0
+                ? []
+                : await dbContext.Users
+                    .Where(item => item.TenantId == tenantId.Value && usersToUpdate.Contains(item.Id))
+                    .ToDictionaryAsync(item => item.Id, cancellationToken);
+
+            foreach (var student in currentClassStudents.Where(item => !selectedStudentIds.Contains(item.Id)))
+            {
+                student.ClassName = string.Empty;
+                if (users.TryGetValue(student.UserId, out var user))
+                {
+                    user.DepartmentOrBranch = student.ClassName;
+                }
+            }
+
+            foreach (var student in selectedStudents)
+            {
+                student.ClassName = className;
+                if (users.TryGetValue(student.UserId, out var user))
+                {
+                    user.DepartmentOrBranch = className;
+                }
+            }
+
+            var currentAdvisors = await dbContext.Staff
+                .Where(item => item.TenantId == tenantId.Value && item.HomeroomClass == className)
+                .ToListAsync(cancellationToken);
+
+            foreach (var teacher in currentAdvisors)
+            {
+                teacher.HomeroomClass = string.Empty;
+            }
+
+            if (request.AdvisorTeacherId.HasValue)
+            {
+                var advisor = await dbContext.Staff
+                    .FirstOrDefaultAsync(item => item.TenantId == tenantId.Value && item.Id == request.AdvisorTeacherId.Value, cancellationToken);
+
+                if (advisor is null)
+                {
+                    return BadRequest(new { message = "Seçilen danışman öğretmen bulunamadı." });
+                }
+
+                advisor.HomeroomClass = className;
+                if (!advisor.AssignedClasses.Contains(className, StringComparer.OrdinalIgnoreCase))
+                {
+                    advisor.AssignedClasses = advisor.AssignedClasses.Append(className).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                }
+            }
+
+            var managementConfigs = await dbContext.PlatformConfigurations
+                .Where(item => item.TenantId == tenantId.Value && item.ConfigurationType == ClassManagementConfigurationType)
+                .ToListAsync(cancellationToken);
+
+            var management = managementConfigs.FirstOrDefault(item =>
+                string.Equals(ReadSavedClassName(item), className, StringComparison.OrdinalIgnoreCase));
+
+            var payload = management is null ? [] : ReadPayloadObject(management.PayloadJson);
+            payload["id"] = (management?.Id ?? Guid.NewGuid()).ToString();
+            payload["name"] = className;
+            payload["code"] = payload.TryGetPropertyValue("code", out var codeNode) && codeNode is not null
+                ? codeNode.GetValue<string>()
+                : className;
+            payload["advisorTeacherId"] = request.AdvisorTeacherId?.ToString();
+            var studentIdNodes = new JsonArray();
+            foreach (var student in selectedStudents)
+            {
+                studentIdNodes.Add(student.Id.ToString());
+            }
+            payload["studentIds"] = studentIdNodes;
+            payload["updatedAtUtc"] = DateTime.UtcNow.ToString("O");
+
+            if (management is null)
+            {
+                management = new PlatformConfiguration
+                {
+                    TenantId = tenantId.Value,
+                    ConfigurationType = ClassManagementConfigurationType,
+                    ScopeKey = className,
+                    DisplayName = $"CLASS_MANAGEMENT::{className}",
+                    PayloadJson = payload.ToJsonString(),
+                    UpdatedAtUtc = DateTime.UtcNow,
+                };
+                await dbContext.PlatformConfigurations.AddAsync(management, cancellationToken);
+            }
+            else
+            {
+                management.DisplayName = $"CLASS_MANAGEMENT::{className}";
+                management.PayloadJson = payload.ToJsonString();
+                management.UpdatedAtUtc = DateTime.UtcNow;
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Ok(new
+            {
+                name = className,
+                studentCount = selectedStudents.Count,
+                advisorTeacherId = request.AdvisorTeacherId,
+            });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Class assignment update failed for {ClassName}", className);
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     private async Task<List<string>> LoadClassListAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var classes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -320,6 +486,18 @@ public sealed class ClassesController(
             : item.ScopeKey;
     }
 
+    private static JsonObject ReadPayloadObject(string payloadJson)
+    {
+        try
+        {
+            return JsonNode.Parse(payloadJson)?.AsObject() ?? [];
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
     private static StringComparer CreateClassNameComparer()
     {
         try
@@ -347,6 +525,7 @@ public sealed class ClassesController(
     }
 
     public sealed record CreateClassRequest(string Name);
+    public sealed record UpdateClassAssignmentsRequest(IReadOnlyList<Guid>? StudentIds, Guid? AdvisorTeacherId);
     public sealed record CreateCompleteClassRequest(
         string Name,
         string? Code,

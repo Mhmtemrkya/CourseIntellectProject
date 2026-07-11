@@ -57,6 +57,7 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStaff, updateStaff, fetchStaff, fetchClasses, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
+import { isUserPassive } from '../lib/userStatus';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
@@ -533,7 +534,7 @@ export default function Teachers() {
       .filter((teacher) => {
         const matchesSearch = `${teacher.fullName} ${teacher.email}`.toLowerCase().includes(search.toLowerCase());
         const matchesBranch = branchFilter === 'all' || teacher.departmentOrBranch === branchFilter;
-        const isPassive = (teacher.status || '').toLowerCase() === 'passive';
+        const isPassive = isUserPassive(teacher.status);
         const matchesStatus = statusFilter === 'all'
           || (statusFilter === 'active' && !isPassive)
           || (statusFilter === 'passive' && isPassive);
@@ -555,7 +556,7 @@ export default function Teachers() {
       toast({ title: 'İşlem yapılamadı', description: 'Bu kayıt için kullanıcı adı bulunamadı.', variant: 'destructive' });
       return;
     }
-    const isPassive = (teacher.status || '').toLowerCase() === 'passive';
+    const isPassive = isUserPassive(teacher.status);
     const nextStatus = isPassive ? 'Active' : 'Passive';
     try {
       await updateUserStatus(teacher.username, nextStatus);
@@ -703,7 +704,7 @@ export default function Teachers() {
                       : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
-                    {(teacher.status || '').toLowerCase() === 'passive'
+                    {isUserPassive(teacher.status)
                       ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
                       : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
                   </TableCell>
@@ -723,7 +724,7 @@ export default function Teachers() {
                         </DropdownMenuItem>
                         <FeatureGate module="teachers" action="update">
                           <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(teacher); }}>
-                            {(teacher.status || '').toLowerCase() === 'passive'
+                            {isUserPassive(teacher.status)
                               ? <><UserCheck className="h-4 w-4 mr-2 text-green-600" /> Aktifleştir</>
                               : <><UserX className="h-4 w-4 mr-2 text-red-600" /> Pasife Al</>}
                           </DropdownMenuItem>

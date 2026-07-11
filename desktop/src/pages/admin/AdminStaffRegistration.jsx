@@ -31,6 +31,7 @@ import {
   updateUserStatus,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
+import { isUserPassive } from '../../lib/userStatus';
 import {
   isValidEmail,
   isValidTcKimlik,
@@ -595,7 +596,7 @@ export default function AdminStaffRegistration() {
                     ) : (
                       <div className="space-y-2 max-h-[360px] overflow-y-auto">
                         {filtered.map((s, i) => {
-                          const isPassive = String(s.status || '').toLowerCase() === 'passive';
+                          const isPassive = isUserPassive(s.status);
                           return (
                             <div key={s.id || i} className={`flex items-center gap-3 p-2 rounded-lg bg-muted/40 ${isPassive ? 'opacity-60' : ''}`}>
                               <div className="h-8 w-8 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-xs font-bold text-purple-600">

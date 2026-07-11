@@ -22,6 +22,7 @@ import {
   fetchPlatformConfigurations,
   fetchStaff,
   fetchStudents,
+  updateClassAssignments,
 } from '../lib/api/modules';
 
 const steps = [
@@ -164,8 +165,13 @@ export default function Classes() {
   const [classConfigs, setClassConfigs] = useState([]);
   const [teacherQuery, setTeacherQuery] = useState('');
   const [studentQuery, setStudentQuery] = useState('');
+  const [managementStudentQuery, setManagementStudentQuery] = useState('');
   const [teacherBranchFilter, setTeacherBranchFilter] = useState('all');
   const [studentFilter, setStudentFilter] = useState('all');
+  const [managementClassName, setManagementClassName] = useState('');
+  const [managementStudentIds, setManagementStudentIds] = useState([]);
+  const [managementAdvisorId, setManagementAdvisorId] = useState('');
+  const [managementSaving, setManagementSaving] = useState(false);
   const [form, setForm] = useState({
     name: '',
     code: '',
@@ -232,6 +238,16 @@ export default function Classes() {
   const branches = useMemo(() => [...new Set(teachers.map((item) => item.departmentOrBranch).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'tr')), [teachers]);
   const selectedTeachers = useMemo(() => teachers.filter((item) => selectedTeacherIds.includes(item.id)), [selectedTeacherIds, teachers]);
   const selectedStudents = useMemo(() => students.filter((item) => selectedStudentIds.includes(item.id)), [selectedStudentIds, students]);
+  const classNames = useMemo(() => {
+    const names = new Set();
+    classConfigs.forEach((item) => {
+      if (item?.name) names.add(item.name);
+    });
+    students.forEach((student) => {
+      if (student.className && !normalize(student.className).includes('bekleyen')) names.add(student.className);
+    });
+    return [...names].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [classConfigs, students]);
 
   const filteredTeachers = useMemo(() => teachers.filter((teacher) => {
     const matchesSearch = !teacherQuery || `${teacher.fullName} ${teacher.departmentOrBranch}`.toLowerCase().includes(teacherQuery.toLowerCase());
@@ -267,6 +283,47 @@ export default function Classes() {
     };
   }), [classConfigs, students, teachers]);
 
+  const selectedManagementClassStudents = useMemo(
+    () => students.filter((student) => normalize(student.className) === normalize(managementClassName)),
+    [managementClassName, students],
+  );
+
+  const filteredManagementStudents = useMemo(() => {
+    const query = managementStudentQuery.trim().toLowerCase();
+    return students.filter((student) => {
+      if (!query) return true;
+      return `${student.fullName} ${student.schoolNumber} ${student.className}`.toLowerCase().includes(query);
+    });
+  }, [managementStudentQuery, students]);
+
+  const managementAdvisor = useMemo(
+    () => teachers.find((teacher) => teacher.id === managementAdvisorId),
+    [managementAdvisorId, teachers],
+  );
+
+  useEffect(() => {
+    if (classNames.length === 0) {
+      setManagementClassName('');
+      return;
+    }
+    if (!managementClassName || !classNames.some((item) => normalize(item) === normalize(managementClassName))) {
+      setManagementClassName(classNames[0]);
+    }
+  }, [classNames, managementClassName]);
+
+  useEffect(() => {
+    if (!managementClassName) {
+      setManagementStudentIds([]);
+      setManagementAdvisorId('');
+      return;
+    }
+    setManagementStudentIds(students
+      .filter((student) => normalize(student.className) === normalize(managementClassName))
+      .map((student) => student.id));
+    const advisor = teachers.find((teacher) => normalize(teacher.homeroomClass) === normalize(managementClassName));
+    setManagementAdvisorId(advisor?.id || '');
+  }, [managementClassName, students, teachers]);
+
   const updateForm = (key, value) => {
     setForm((prev) => ({
       ...prev,
@@ -285,6 +342,35 @@ export default function Classes() {
     setSelectedStudentIds((prev) => (
       prev.includes(student.id) ? prev.filter((id) => id !== student.id) : [...prev, student.id]
     ));
+  };
+
+  const toggleManagementStudent = (student) => {
+    setManagementStudentIds((prev) => (
+      prev.includes(student.id) ? prev.filter((id) => id !== student.id) : [...prev, student.id]
+    ));
+  };
+
+  const saveClassAssignments = async () => {
+    if (!managementClassName) {
+      toast({ title: 'Sınıf seçin', description: 'Öğrenci veya danışman atamak için önce sınıf seçmelisiniz.', variant: 'destructive' });
+      return;
+    }
+    try {
+      setManagementSaving(true);
+      const result = await updateClassAssignments(managementClassName, {
+        studentIds: managementStudentIds,
+        advisorTeacherId: managementAdvisorId || null,
+      });
+      toast({
+        title: 'Sınıf atamaları güncellendi',
+        description: `${result.name || managementClassName} için ${result.studentCount ?? managementStudentIds.length} öğrenci kaydedildi.`,
+      });
+      await load();
+    } catch (err) {
+      toast({ title: 'Atamalar kaydedilemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setManagementSaving(false);
+    }
   };
 
   const addCourse = () => {
@@ -372,6 +458,71 @@ export default function Classes() {
 
       {error ? <ErrorBanner title="Sınıf verisi alınamadı" message={error} onRetry={load} /> : null}
       <StepRail step={step} />
+
+      <section className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card)/0.8)] p-5 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-xl font-black">Mevcut Sınıf Atamaları</h2>
+            <p className="text-sm text-slate-400">Sınıf seçip öğrencileri ve sınıf danışmanını sonradan güncelleyin.</p>
+          </div>
+          <FeatureGate module="classes" action="edit">
+            <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={saveClassAssignments} disabled={managementSaving || !managementClassName}>
+              <Save className="mr-2 h-4 w-4" /> {managementSaving ? 'Kaydediliyor...' : 'Atamaları Kaydet'}
+            </Button>
+          </FeatureGate>
+        </div>
+
+        {classNames.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-foreground/15 p-5 text-center text-sm text-slate-400">Atama yapılabilecek kayıtlı sınıf bulunmuyor.</p>
+        ) : (
+          <div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
+            <div className="space-y-4 rounded-xl border border-foreground/10 bg-foreground/5 p-4">
+              <Field label="Sınıf">
+                <select value={managementClassName} onChange={(event) => setManagementClassName(event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
+                  {classNames.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </Field>
+              <Field label="Sınıf Danışmanı">
+                <select value={managementAdvisorId} onChange={(event) => setManagementAdvisorId(event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
+                  <option value="">Danışman yok</option>
+                  {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName} • {teacher.departmentOrBranch || 'Branş yok'}</option>)}
+                </select>
+              </Field>
+              <div className="grid grid-cols-2 gap-2">
+                <Detail label="Öğrenci" value={`${managementStudentIds.length}`} />
+                <Detail label="Mevcut" value={`${selectedManagementClassStudents.length}`} />
+              </div>
+              <div className="rounded-xl border border-foreground/10 bg-[hsl(var(--ci-card))] p-3">
+                <p className="text-xs uppercase text-slate-400">Danışman</p>
+                <p className="mt-1 font-semibold">{managementAdvisor?.fullName || 'Atanmadı'}</p>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <Input value={managementStudentQuery} onChange={(event) => setManagementStudentQuery(event.target.value)} placeholder="Atanacak öğrenci ara..." className="border-foreground/10 bg-[hsl(var(--ci-card))] pl-9 text-foreground" />
+              </div>
+              <div className="max-h-[330px] overflow-y-auto rounded-xl border border-foreground/10">
+                {filteredManagementStudents.map((student) => {
+                  const selected = managementStudentIds.includes(student.id);
+                  const inAnotherClass = student.className && normalize(student.className) !== normalize(managementClassName) && !normalize(student.className).includes('bekleyen');
+                  return (
+                    <button key={student.id} type="button" onClick={() => toggleManagementStudent(student)} className={`grid w-full grid-cols-[28px_1fr_auto] items-center gap-3 border-b border-foreground/5 p-3 text-left last:border-b-0 ${selected ? 'bg-blue-500/15' : 'hover:bg-foreground/5'}`}>
+                      <span className={`flex h-5 w-5 items-center justify-center rounded border ${selected ? 'border-blue-400 bg-blue-500' : 'border-foreground/20'}`}>{selected ? <Check className="h-3 w-3" /> : null}</span>
+                      <span className="min-w-0">
+                        <b className="block truncate">{student.fullName}</b>
+                        <small className="block truncate text-slate-400">{student.schoolNumber || '-'} • {student.className || 'Sınıf bekliyor'}</small>
+                      </span>
+                      {inAnotherClass ? <Badge variant="outline" className="text-xs">Taşınır</Badge> : null}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </section>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
         <main className="rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-card)/0.8)] p-5 shadow-sm">

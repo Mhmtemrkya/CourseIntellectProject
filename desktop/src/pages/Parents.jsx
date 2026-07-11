@@ -36,6 +36,7 @@ import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { fetchMeetingRequests, fetchParentAccounts, fetchStudents, updateUserStatus } from '../lib/api/modules';
+import { isUserPassive } from '../lib/userStatus';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -218,7 +219,7 @@ export default function Parents() {
 
   // Veli hesabını pasife alma / aktifleştirme: hesap silinmez, girişi engellenir.
   const handleToggleAccountStatus = useCallback(async (account) => {
-    const isPassive = (account.status || '').toLowerCase() === 'passive';
+    const isPassive = isUserPassive(account.status);
     const nextStatus = isPassive ? 'Active' : 'Passive';
     try {
       await updateUserStatus(account.username, nextStatus);
@@ -404,7 +405,7 @@ export default function Parents() {
               </TableHeader>
               <TableBody>
                 {filteredAccounts.map((account) => {
-                  const isPassive = (account.status || '').toLowerCase() === 'passive';
+                  const isPassive = isUserPassive(account.status);
                   return (
                     <TableRow key={account.userId}>
                       <TableCell>

@@ -211,6 +211,11 @@ export async function createCompleteClass(payload) {
   return response;
 }
 
+export async function updateClassAssignments(className, payload) {
+  const response = await api.put(`/api/classes/${encodeURIComponent(className)}/assignments`, payload);
+  return response;
+}
+
 export async function fetchScheduleEntries() {
   const response = await api.get('/api/schedule');
   return response;

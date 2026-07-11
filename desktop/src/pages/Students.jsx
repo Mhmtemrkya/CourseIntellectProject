@@ -10,6 +10,8 @@ import {
   Phone,
   ChevronUp,
   ChevronDown,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
@@ -55,6 +57,7 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
+import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
@@ -71,6 +74,7 @@ function normalizeText(value = '') {
 
 function StudentDetailDrawer({ student, onToggleStatus }) {
   if (!student) return null;
+  const passive = isUserPassive(student.status);
 
   return (
     <div className="space-y-6">
@@ -88,8 +92,8 @@ function StudentDetailDrawer({ student, onToggleStatus }) {
         <div>
           <h3 className="text-lg font-semibold">{student.fullName}</h3>
           <p className="text-sm text-muted-foreground">{student.className} • {student.programType}</p>
-          <Badge className={student.status === 'Aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-            {student.status}
+          <Badge className={passive ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}>
+            {userStatusLabel(student.status)}
           </Badge>
         </div>
         {onToggleStatus ? (
@@ -99,7 +103,7 @@ function StudentDetailDrawer({ student, onToggleStatus }) {
             className="ml-auto"
             onClick={() => onToggleStatus(student)}
           >
-            {student.status === 'Aktif' ? 'Pasife Al' : 'Aktifleştir'}
+            {passive ? 'Aktifleştir' : 'Pasife Al'}
           </Button>
         ) : null}
       </div>
@@ -475,7 +479,7 @@ export default function Students() {
       toast({ title: 'Kullanıcı adı bulunamadı.', variant: 'destructive' });
       return;
     }
-    const makePassive = student.status === 'Aktif';
+    const makePassive = !isUserPassive(student.status);
     try {
       await updateUserStatus(student.username, makePassive ? 'Passive' : 'Active');
       toast({ title: makePassive ? 'Öğrenci pasife alındı (giriş yapamaz).' : 'Öğrenci aktifleştirildi.' });
@@ -509,7 +513,7 @@ export default function Students() {
       .filter((student) => {
         const matchesSearch = `${student.fullName} ${student.parentEmail}`.toLowerCase().includes(search.toLowerCase());
         const matchesClass = classFilter === 'all' || student.className === classFilter;
-        const matchesStatus = statusFilter === 'all' || normalizeText(student.status) === normalizeText(statusFilter);
+        const matchesStatus = statusFilter === 'all' || normalizeUserStatus(student.status) === normalizeUserStatus(statusFilter);
         return matchesSearch && matchesClass && matchesStatus;
       })
       .sort((a, b) => {
@@ -634,8 +638,8 @@ export default function Students() {
                   <TableCell>{student.attendanceRate}%</TableCell>
                   <TableCell>{student.lastExamScore}</TableCell>
                   <TableCell>
-                    <Badge className={normalizeText(student.status) === 'aktif' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}>
-                      {student.status}
+                    <Badge className={isUserPassive(student.status) ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}>
+                      {userStatusLabel(student.status)}
                     </Badge>
                   </TableCell>
                   <TableCell>
@@ -649,6 +653,13 @@ export default function Students() {
                         <DropdownMenuItem onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} />)}>
                           <Eye className="h-4 w-4 mr-2" /> Detay
                         </DropdownMenuItem>
+                        <FeatureGate module="students" action="edit">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStudentStatus(student); }}>
+                            {isUserPassive(student.status)
+                              ? <><UserCheck className="h-4 w-4 mr-2 text-green-600" /> Aktifleştir</>
+                              : <><UserX className="h-4 w-4 mr-2 text-red-600" /> Pasife Al</>}
+                          </DropdownMenuItem>
+                        </FeatureGate>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
