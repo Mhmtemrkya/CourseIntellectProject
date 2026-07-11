@@ -608,7 +608,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("audit_log_entries");
             entity.HasKey(x => x.Id);
-            ConfigureTenantScope(entity);
+            ConfigureBranchScope(entity);
             entity.Property(x => x.ActorName).HasMaxLength(150);
             entity.Property(x => x.Action).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Category).HasMaxLength(60).IsRequired();

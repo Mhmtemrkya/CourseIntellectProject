@@ -17,7 +17,8 @@ public sealed class AcademicQueryService(
     IPasswordHasher passwordHasher,
     UsernameGenerator usernameGenerator,
     ITenantContext tenantContext,
-    IParentNotifier parentNotifier) : IAcademicQueryService
+    IParentNotifier parentNotifier,
+    IAuditLogService auditLogService) : IAcademicQueryService
 {
     public async Task<IReadOnlyList<StudentSummaryDto>> GetStudentsAsync(CancellationToken cancellationToken = default)
     {
@@ -266,6 +267,14 @@ public sealed class AcademicQueryService(
                 parentPlainPassword);
         }
 
+        await auditLogService.LogAsync(
+            "Öğrenci kaydedildi",
+            "Registration",
+            "StudentProfile",
+            student.Id.ToString(),
+            $"{student.FullName} ({user.Username}) — sınıf: {student.ClassName}{(parentUser is not null ? $"; veli hesabı da açıldı: {parentUser.FullName} ({parentUser.Username})" : string.Empty)}.",
+            cancellationToken);
+
         return new StudentCredentialsDto(user.Id, user.FullName, user.Username, password, student.ClassName, parentCreds);
     }
 
@@ -333,6 +342,13 @@ public sealed class AcademicQueryService(
         dbContext.Students.Remove(student);
         dbContext.Users.Remove(user);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Öğrenci silindi",
+            "Registration",
+            "StudentProfile",
+            student.Id.ToString(),
+            $"{student.FullName} ({user.Username}) — sınıf: {student.ClassName} kaydı kalıcı olarak silindi.",
+            cancellationToken);
         return true;
     }
 
@@ -362,7 +378,64 @@ public sealed class AcademicQueryService(
         await dbContext.Users.AddAsync(user, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await auditLogService.LogAsync(
+            "Veli hesabı oluşturuldu",
+            "Registration",
+            "AppUser",
+            user.Id.ToString(),
+            $"{user.FullName} ({user.Username}) veli hesabı açıldı.",
+            cancellationToken);
+
         return new ParentCredentialsDto(user.Id, user.FullName, user.Username, password);
+    }
+
+    public async Task<IReadOnlyList<ParentAccountDto>> GetParentAccountsAsync(CancellationToken cancellationToken = default)
+    {
+        var currentTenantId = ResolveCurrentTenantId();
+        var usersQuery = dbContext.Users.AsNoTracking().Where(x => x.PrimaryRole == UserRole.Parent);
+        if (currentTenantId.HasValue)
+        {
+            usersQuery = usersQuery.Where(x => x.TenantId == currentTenantId.Value);
+        }
+
+        var parents = await usersQuery.OrderBy(x => x.FullName).ToListAsync(cancellationToken);
+        if (parents.Count == 0) return [];
+
+        // Bağlı öğrenciler: öncelik ParentUserId; eski kayıtlar için veli adı eşleşmesi (fallback).
+        var studentsQuery = dbContext.Students.AsNoTracking().AsQueryable();
+        if (currentTenantId.HasValue)
+        {
+            studentsQuery = studentsQuery.Where(x => x.TenantId == currentTenantId.Value);
+        }
+        var students = await studentsQuery
+            .Select(x => new { x.FullName, x.ClassName, x.ParentUserId, x.ParentName })
+            .ToListAsync(cancellationToken);
+
+        var byParentId = students
+            .Where(x => x.ParentUserId.HasValue)
+            .ToLookup(x => x.ParentUserId!.Value);
+        var byParentName = students
+            .Where(x => !x.ParentUserId.HasValue && !string.IsNullOrWhiteSpace(x.ParentName))
+            .ToLookup(x => x.ParentName.Trim().ToLowerInvariant());
+
+        return parents
+            .Select(parent =>
+            {
+                var linked = byParentId[parent.Id]
+                    .Concat(byParentName[parent.FullName.Trim().ToLowerInvariant()])
+                    .Select(x => string.IsNullOrWhiteSpace(x.ClassName) ? x.FullName : $"{x.FullName} ({x.ClassName})")
+                    .Distinct()
+                    .ToList();
+                return new ParentAccountDto(
+                    parent.Id,
+                    parent.FullName,
+                    parent.Username,
+                    parent.Phone,
+                    parent.Status.ToString(),
+                    parent.LastLoginAtUtc,
+                    linked);
+            })
+            .ToList();
     }
 
     private async Task<string> GenerateUniqueUsernameAsync(string fullName, string className, CancellationToken cancellationToken)

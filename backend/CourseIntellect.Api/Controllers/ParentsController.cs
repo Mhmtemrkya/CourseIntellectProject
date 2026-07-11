@@ -22,4 +22,13 @@ public sealed class ParentsController(IAcademicQueryService academicQueryService
         var result = await academicQueryService.CreateParentAsync(request, cancellationToken);
         return Created(string.Empty, result);
     }
+
+    /// <summary>Veli hesapları: durum (aktif/pasif) ve bağlı öğrencilerle birlikte. Pasifleştirme yönetimi için.</summary>
+    [HttpGet("accounts")]
+    [Authorize(Roles = "Admin,Administrative")]
+    [ProducesResponseType(typeof(IReadOnlyList<ParentAccountDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetParentAccounts(CancellationToken cancellationToken)
+    {
+        return Ok(await academicQueryService.GetParentAccountsAsync(cancellationToken));
+    }
 }

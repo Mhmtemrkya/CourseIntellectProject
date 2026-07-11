@@ -15,8 +15,10 @@ import {
   Users,
   GraduationCap,
   Wallet,
+  HelpCircle,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
+import { useOnboarding } from "../../onboarding/OnboardingProvider";
 import { useTheme } from "../../context/ThemeContext";
 import { fetchMyScope, fetchNotifications, fetchOrgUnits } from "../../lib/api/modules";
 import { setActiveBranchFilter, setActiveTenantContext } from "../../lib/api/client";
@@ -96,6 +98,7 @@ const roleLabels = {
 
 export function Topbar() {
   const { user, logout, setCommandPaletteOpen, setUserRole } = useApp();
+  const { startPageTour, startWelcomeTour, hasPageTour } = useOnboarding();
   const { theme, setTheme } = useTheme();
   const location = useLocation();
   const navigate = useNavigate();
@@ -335,6 +338,30 @@ export function Topbar() {
                 </DropdownMenuItem>
               );
             })}
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {/* Onboarding / Yardım Turu */}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              data-testid="tour-help-button"
+              variant="ghost"
+              size="icon"
+              title="Yardım turu"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>Yardım</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={startPageTour} disabled={!hasPageTour}>
+              <HelpCircle className="h-4 w-4 mr-2" /> Bu sayfanın turu
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={startWelcomeTour}>
+              <GraduationCap className="h-4 w-4 mr-2" /> Genel tanıtım turu
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 

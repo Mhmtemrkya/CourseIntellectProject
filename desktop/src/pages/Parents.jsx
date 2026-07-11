@@ -12,6 +12,9 @@ import {
   Info,
   ChevronUp,
   ChevronDown,
+  KeyRound,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
@@ -32,7 +35,7 @@ import { SheetDescription, SheetHeader, SheetTitle } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { fetchMeetingRequests, fetchStudents } from '../lib/api/modules';
+import { fetchMeetingRequests, fetchParentAccounts, fetchStudents, updateUserStatus } from '../lib/api/modules';
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -155,6 +158,8 @@ export default function Parents() {
   const { openDrawer } = useApp();
   const { toast } = useToast();
   const [parents, setParents] = useState([]);
+  const [accounts, setAccounts] = useState([]);
+  const [accountSearch, setAccountSearch] = useState('');
   const [search, setSearch] = useState('');
   const [sortField, setSortField] = useState('name');
   const [sortDirection, setSortDirection] = useState('asc');
@@ -165,11 +170,13 @@ export default function Parents() {
     try {
       setLoading(true);
       setError('');
-      const [students, meetings] = await Promise.all([
+      const [students, meetings, parentAccounts] = await Promise.all([
         fetchStudents(),
         fetchMeetingRequests().catch(() => []),
+        fetchParentAccounts().catch(() => []),
       ]);
       setParents(groupParents(students, meetings));
+      setAccounts(parentAccounts);
     } catch (err) {
       setError(err.message || 'Veli listesi alınamadı.');
     } finally {
@@ -208,6 +215,30 @@ export default function Parents() {
     if (sortField !== field) return null;
     return sortDirection === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
   };
+
+  // Veli hesabını pasife alma / aktifleştirme: hesap silinmez, girişi engellenir.
+  const handleToggleAccountStatus = useCallback(async (account) => {
+    const isPassive = (account.status || '').toLowerCase() === 'passive';
+    const nextStatus = isPassive ? 'Active' : 'Passive';
+    try {
+      await updateUserStatus(account.username, nextStatus);
+      setAccounts((prev) => prev.map((item) => (item.userId === account.userId ? { ...item, status: nextStatus } : item)));
+      toast({
+        title: isPassive ? 'Veli hesabı aktifleştirildi' : 'Veli hesabı pasife alındı',
+        description: isPassive
+          ? `${account.fullName} yeniden giriş yapabilir.`
+          : `${account.fullName} artık giriş yapamaz; açık oturumları sonlandırıldı.`,
+      });
+    } catch (err) {
+      toast({ title: 'Durum güncellenemedi', description: err.message, variant: 'destructive' });
+    }
+  }, [toast]);
+
+  const filteredAccounts = useMemo(() => {
+    const q = accountSearch.trim().toLowerCase();
+    if (!q) return accounts;
+    return accounts.filter((account) => `${account.fullName} ${account.username} ${(account.children || []).join(' ')}`.toLowerCase().includes(q));
+  }, [accounts, accountSearch]);
 
   if (loading) {
     return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
@@ -342,6 +373,82 @@ export default function Parents() {
           </Table>
         </CardContent>
       </Card>
+
+      {accounts.length > 0 ? (
+        <Card data-tour="parent-accounts">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <KeyRound className="h-5 w-5 text-brand-primary" /> Veli Hesapları
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                  Giriş hesapları: kurumdan ayrılan velileri pasife alın; hesap silinmez, giriş engellenir.
+                </p>
+              </div>
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Hesap ara..." value={accountSearch} onChange={(e) => setAccountSearch(e.target.value)} className="pl-10" />
+              </div>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Veli</TableHead>
+                  <TableHead>Kullanıcı Adı</TableHead>
+                  <TableHead>Bağlı Öğrenciler</TableHead>
+                  <TableHead>Son Giriş</TableHead>
+                  <TableHead>Durum</TableHead>
+                  <TableHead className="w-32" />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredAccounts.map((account) => {
+                  const isPassive = (account.status || '').toLowerCase() === 'passive';
+                  return (
+                    <TableRow key={account.userId}>
+                      <TableCell>
+                        <p className="font-medium">{account.fullName}</p>
+                        <p className="text-xs text-muted-foreground">{account.phone || 'Telefon yok'}</p>
+                      </TableCell>
+                      <TableCell className="font-mono text-sm">{account.username}</TableCell>
+                      <TableCell>
+                        <div className="flex flex-wrap gap-1">
+                          {(account.children || []).length > 0
+                            ? account.children.map((child) => <Badge key={child} variant="outline">{child}</Badge>)
+                            : <span className="text-xs text-muted-foreground">Bağlantı yok</span>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {account.lastLoginAtUtc ? new Date(account.lastLoginAtUtc).toLocaleString('tr-TR') : 'Hiç girmedi'}
+                      </TableCell>
+                      <TableCell>
+                        {isPassive
+                          ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+                          : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
+                      </TableCell>
+                      <TableCell>
+                        <FeatureGate module="parents" action="update">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className={isPassive ? 'text-green-600' : 'text-red-600'}
+                            onClick={() => handleToggleAccountStatus(account)}
+                          >
+                            {isPassive
+                              ? <><UserCheck className="h-4 w-4 mr-1" /> Aktifleştir</>
+                              : <><UserX className="h-4 w-4 mr-1" /> Pasife Al</>}
+                          </Button>
+                        </FeatureGate>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      ) : null}
     </motion.div>
   );
 }

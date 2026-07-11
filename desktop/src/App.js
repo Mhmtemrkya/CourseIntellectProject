@@ -51,6 +51,7 @@ const Limits = lazyWithReload(() => import("./pages/superadmin/Limits"));
 const Support = lazyWithReload(() => import("./pages/superadmin/Support"));
 const AIManagement = lazyWithReload(() => import("./pages/superadmin/AIManagement"));
 const TenantCustomization = lazyWithReload(() => import("./pages/superadmin/TenantCustomization"));
+const PlatformLogs = lazyWithReload(() => import("./pages/superadmin/PlatformLogs"));
 
 // Teacher Pages
 import GuidanceDashboard from "./pages/guidance/GuidanceDashboard";
@@ -347,6 +348,7 @@ function App() {
               <Route path="/sa/support" element={<Support />} />
               <Route path="/sa/ai" element={<AIManagement />} />
               <Route path="/sa/customization" element={<TenantCustomization />} />
+              <Route path="/sa/logs" element={<PlatformLogs />} />
 
               {/* Guidance (Rehberlik) Routes */}
               <Route path="/g/dashboard" element={<GuidanceDashboard />} />

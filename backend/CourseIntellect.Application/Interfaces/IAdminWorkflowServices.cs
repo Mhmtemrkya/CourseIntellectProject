@@ -39,8 +39,26 @@ public interface IAuditLogService
         string detail,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Aktörü mevcut HTTP bağlamındaki kimlikten otomatik çözerek kayıt yazar.</summary>
+    Task LogAsync(
+        string action,
+        string category,
+        string entityType,
+        string entityId,
+        string detail,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<AuditLogDto>> GetAsync(
         string? category,
         int take,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Gelişmiş filtreli + sayfalanmış sorgu. Şube izolasyonu query filter ile otomatik uygulanır.</summary>
+    Task<AuditLogPageDto> GetPagedAsync(
+        AuditLogQuery query,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>Aktif kurum için şube bazında kayıt özetleri (kurum yöneticisi şube şube görebilsin).</summary>
+    Task<IReadOnlyList<AuditBranchSummaryDto>> GetBranchSummaryAsync(
         CancellationToken cancellationToken = default);
 }

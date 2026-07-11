@@ -521,6 +521,44 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
+// Gelişmiş denetim görünümü: kategori/şube/tarih/arama + sayfalama.
+export async function fetchAuditLogsPaged(params) {
+  const response = await api.get('/api/audit-logs/paged', { params });
+  return response && Array.isArray(response.items)
+    ? response
+    : { items: [], totalCount: 0, skip: 0, take: 0 };
+}
+
+// Kurum yöneticisi için şube bazında log özeti.
+export async function fetchAuditBranchSummary() {
+  const response = await api.get('/api/audit-logs/branch-summary');
+  return Array.isArray(response) ? response : [];
+}
+
+// Platform (geliştirici) denetim merkezi.
+export async function fetchPlatformAuditOverview() {
+  const response = await api.get('/api/platformops/audit/overview');
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchPlatformAuditTenantBranches(tenantId) {
+  const response = await api.get(`/api/platformops/audit/tenants/${tenantId}/branches`);
+  return Array.isArray(response) ? response : [];
+}
+
+export async function fetchPlatformAuditLogs(params) {
+  const response = await api.get('/api/platformops/audit/logs', { params });
+  return response && Array.isArray(response.items)
+    ? response
+    : { items: [], totalCount: 0, skip: 0, take: 0 };
+}
+
+// Veli hesapları (durum + bağlı öğrenciler) — pasifleştirme yönetimi.
+export async function fetchParentAccounts() {
+  const response = await api.get('/api/parents/accounts');
+  return Array.isArray(response) ? response : [];
+}
+
 export async function fetchParentAcademic() {
   const response = await api.get('/api/parent/academic/children');
   return Array.isArray(response) ? response : [];

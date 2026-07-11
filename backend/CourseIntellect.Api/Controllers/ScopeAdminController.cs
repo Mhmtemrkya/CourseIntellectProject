@@ -21,7 +21,8 @@ namespace CourseIntellect.Api.Controllers;
 [Route("api/scope-admin")]
 public sealed class ScopeAdminController(
     CourseIntellectDbContext dbContext,
-    IUserScopeService scopeService) : ControllerBase
+    IUserScopeService scopeService,
+    IAuditLogService auditLogService) : ControllerBase
 {
     private bool IsPlatformAdmin() =>
         string.Equals(User.FindFirstValue("platform_admin"), "true", StringComparison.OrdinalIgnoreCase)
@@ -276,6 +277,13 @@ public sealed class ScopeAdminController(
         };
         dbContext.UserScopeGrants.Add(grant);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Kapsam yetkisi verildi",
+            "Permission",
+            "UserScopeGrant",
+            grant.Id.ToString(),
+            $"Kullanıcı {userId} için {level} kapsamı ({accessMode}) tanımlandı.",
+            cancellationToken);
         var dtos = await ToDtosAsync([grant], cancellationToken);
         return Ok(dtos[0]);
     }
@@ -292,6 +300,13 @@ public sealed class ScopeAdminController(
         if (!await CanGovernTarget(callerId, grant.Level, grant.TargetId, cancellationToken)) return Forbid();
         dbContext.UserScopeGrants.Remove(grant);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Kapsam yetkisi kaldırıldı",
+            "Permission",
+            "UserScopeGrant",
+            grant.Id.ToString(),
+            $"Kullanıcı {grant.UserId} üzerindeki {grant.Level} kapsamı kaldırıldı.",
+            cancellationToken);
         return NoContent();
     }
 

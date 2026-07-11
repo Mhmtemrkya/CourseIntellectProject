@@ -11,6 +11,8 @@ import {
   ChevronDown,
   School,
   Pencil,
+  UserCheck,
+  UserX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
@@ -53,7 +55,7 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStaff, updateStaff, fetchStaff, fetchClasses } from '../lib/api/modules';
+import { createStaff, updateStaff, fetchStaff, fetchClasses, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
@@ -481,8 +483,10 @@ function EditTeacherDialog({
 
 export default function Teachers() {
   const { openDrawer } = useApp();
+  const { toast } = useToast();
   const [search, setSearch] = useState('');
   const [branchFilter, setBranchFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [sortField, setSortField] = useState('fullName');
   const [sortDirection, setSortDirection] = useState('asc');
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -529,7 +533,11 @@ export default function Teachers() {
       .filter((teacher) => {
         const matchesSearch = `${teacher.fullName} ${teacher.email}`.toLowerCase().includes(search.toLowerCase());
         const matchesBranch = branchFilter === 'all' || teacher.departmentOrBranch === branchFilter;
-        return matchesSearch && matchesBranch;
+        const isPassive = (teacher.status || '').toLowerCase() === 'passive';
+        const matchesStatus = statusFilter === 'all'
+          || (statusFilter === 'active' && !isPassive)
+          || (statusFilter === 'passive' && isPassive);
+        return matchesSearch && matchesBranch && matchesStatus;
       })
       .sort((a, b) => {
         const aValue = a[sortField];
@@ -539,7 +547,29 @@ export default function Teachers() {
         }
         return aValue < bValue ? 1 : -1;
       });
-  }, [staff, search, branchFilter, sortField, sortDirection]);
+  }, [staff, search, branchFilter, statusFilter, sortField, sortDirection]);
+
+  // Öğretmeni pasife alma / aktifleştirme: hesap kapatılmaz, girişi engellenir.
+  const handleToggleStatus = useCallback(async (teacher) => {
+    if (!teacher?.username) {
+      toast({ title: 'İşlem yapılamadı', description: 'Bu kayıt için kullanıcı adı bulunamadı.', variant: 'destructive' });
+      return;
+    }
+    const isPassive = (teacher.status || '').toLowerCase() === 'passive';
+    const nextStatus = isPassive ? 'Active' : 'Passive';
+    try {
+      await updateUserStatus(teacher.username, nextStatus);
+      setStaff((prev) => prev.map((t) => (t.id === teacher.id ? { ...t, status: nextStatus } : t)));
+      toast({
+        title: isPassive ? 'Öğretmen aktifleştirildi' : 'Öğretmen pasife alındı',
+        description: isPassive
+          ? `${teacher.fullName} yeniden giriş yapabilir.`
+          : `${teacher.fullName} artık giriş yapamaz; açık oturumları sonlandırıldı.`,
+      });
+    } catch (err) {
+      toast({ title: 'Durum güncellenemedi', description: err.message, variant: 'destructive' });
+    }
+  }, [toast]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -617,6 +647,14 @@ export default function Teachers() {
                 {branches.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
               </SelectContent>
             </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-full md:w-36"><SelectValue placeholder="Durum" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Tüm Durumlar</SelectItem>
+                <SelectItem value="active">Aktif</SelectItem>
+                <SelectItem value="passive">Pasif</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -632,6 +670,7 @@ export default function Teachers() {
                 <TableHead>Branş</TableHead>
                 <TableHead>Sınıflar</TableHead>
                 <TableHead>Sınıf Öğretmeni</TableHead>
+                <TableHead>Durum</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -664,6 +703,11 @@ export default function Teachers() {
                       : <span className="text-xs text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell>
+                    {(teacher.status || '').toLowerCase() === 'passive'
+                      ? <Badge className="bg-red-100 text-red-700">Pasif</Badge>
+                      : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
+                  </TableCell>
+                  <TableCell>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                         <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
@@ -677,6 +721,13 @@ export default function Teachers() {
                         <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(teacher); }}>
                           <Pencil className="h-4 w-4 mr-2" /> Düzenle
                         </DropdownMenuItem>
+                        <FeatureGate module="teachers" action="update">
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(teacher); }}>
+                            {(teacher.status || '').toLowerCase() === 'passive'
+                              ? <><UserCheck className="h-4 w-4 mr-2 text-green-600" /> Aktifleştir</>
+                              : <><UserX className="h-4 w-4 mr-2 text-red-600" /> Pasife Al</>}
+                          </DropdownMenuItem>
+                        </FeatureGate>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

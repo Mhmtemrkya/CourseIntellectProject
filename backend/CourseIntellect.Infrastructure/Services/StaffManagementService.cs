@@ -14,7 +14,8 @@ public sealed class StaffManagementService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
     UsernameGenerator usernameGenerator,
-    ITenantContext tenantContext) : IStaffManagementService
+    ITenantContext tenantContext,
+    IAuditLogService auditLogService) : IStaffManagementService
 {
     public async Task<IReadOnlyList<StaffSummaryDto>> GetStaffAsync(string? role, CancellationToken cancellationToken = default)
     {
@@ -208,6 +209,14 @@ public sealed class StaffManagementService(
         await dbContext.Staff.AddAsync(staff, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await auditLogService.LogAsync(
+            "Personel kaydedildi",
+            "Registration",
+            "StaffProfile",
+            staff.Id.ToString(),
+            $"{user.FullName} ({user.Username}) — rol: {parsedRole}, birim: {staff.DepartmentOrBranch}.",
+            cancellationToken);
+
         return new StaffCredentialsDto(user.Id, user.FullName, user.Username, password, parsedRole.ToString());
     }
 
@@ -357,6 +366,13 @@ public sealed class StaffManagementService(
 
         dbContext.Users.Remove(user);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Personel silindi",
+            "Registration",
+            "AppUser",
+            user.Id.ToString(),
+            $"{user.FullName} ({user.Username}, {user.PrimaryRole}) personel kaydı kalıcı olarak silindi.",
+            cancellationToken);
         return true;
     }
 
@@ -427,6 +443,13 @@ public sealed class StaffManagementService(
         dbContext.UserScopeGrants.Add(UserScopeGrant.CreateHome(user));
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Personel ataması güncellendi",
+            "Permission",
+            "AppUser",
+            user.Id.ToString(),
+            $"{user.FullName} ({user.Username}) — rol: {user.PrimaryRole}, şube: {(user.BranchId?.ToString() ?? "kurum geneli")}, özel rol: {(user.CustomRoleId is null ? "yok" : "atandı")}.",
+            cancellationToken);
         return true;
     }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../onboarding/onboarding_store.dart';
 import '../pages/login_page.dart';
 import '../services/auth_session_store.dart';
 import '../services/branch_scope_store.dart';
@@ -9,6 +10,8 @@ Future<void> logoutToRoleSelect(BuildContext context) async {
   await AuthSessionStore.instance.clear();
   await BranchScopeStore.instance.clear();
   await TenantScopeStore.instance.clear();
+  // Sonraki kullanıcı kendi onboarding durumunu yüklesin.
+  OnboardingStore.instance.resetCache();
   if (!context.mounted) return;
   Navigator.of(context).pushAndRemoveUntil(
     MaterialPageRoute(builder: (_) => const LoginPage()),

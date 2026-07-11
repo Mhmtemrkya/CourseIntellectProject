@@ -10,7 +10,8 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed class StudentFinanceService(
     CourseIntellectDbContext dbContext,
-    IParentNotifier parentNotifier) : IStudentFinanceService
+    IParentNotifier parentNotifier,
+    IAuditLogService auditLogService) : IStudentFinanceService
 {
     public async Task<EnrollmentContractDto> CreateEnrollmentAsync(
         CreateEnrollmentRequest request,
@@ -142,6 +143,13 @@ public sealed class StudentFinanceService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Kayıt sözleşmesi oluşturuldu",
+            "Finance",
+            "EnrollmentContract",
+            contract.Id.ToString(),
+            $"{contract.StudentName} — net tutar: {contract.NetAmount:0.##} {contract.Currency}, taksit sayısı: {installments.Count}.",
+            cancellationToken);
         return MapContract(contract, installments);
     }
 
@@ -351,6 +359,14 @@ public sealed class StudentFinanceService(
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        await auditLogService.LogAsync(
+            "Tahsilat kaydedildi",
+            "Finance",
+            "FinancePayment",
+            payment.Id.ToString(),
+            $"{payment.StudentName} — {payment.Amount:0.##} {payment.Currency} ({payment.Method}), makbuz: {payment.ReceiptNo}.",
+            cancellationToken);
+
         return MapPayment(payment);
     }
 
@@ -500,6 +516,13 @@ public sealed class StudentFinanceService(
         };
         await dbContext.FinancePayments.AddAsync(refund, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "İade yapıldı",
+            "Finance",
+            "FinancePayment",
+            refund.Id.ToString(),
+            $"{refund.StudentName} — {amount:0.##} TRY iade edildi. Gerekçe: {(string.IsNullOrWhiteSpace(request.Reason) ? "belirtilmedi" : request.Reason.Trim())}.",
+            cancellationToken);
         return MapPayment(refund);
     }
 

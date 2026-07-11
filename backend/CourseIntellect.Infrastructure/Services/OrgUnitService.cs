@@ -69,6 +69,8 @@ public sealed class OrgUnitService(
         unit.ManagerName = request.ManagerName?.Trim() ?? string.Empty;
         unit.Note = request.Note?.Trim() ?? string.Empty;
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync("Birim güncellendi", "OrgUnit", nameof(OrgUnit),
+            unit.Id.ToString(), $"{unit.UnitType}: {unit.Name}", cancellationToken);
         return Map(unit);
     }
 
@@ -83,6 +85,8 @@ public sealed class OrgUnitService(
 
         dbContext.OrgUnits.Remove(unit);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync("Birim silindi", "OrgUnit", nameof(OrgUnit),
+            unit.Id.ToString(), $"{unit.UnitType}: {unit.Name} silindi; alt birimler köke taşındı.", cancellationToken);
         return true;
     }
 

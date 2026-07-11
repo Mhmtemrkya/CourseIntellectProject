@@ -13,7 +13,10 @@ namespace CourseIntellect.Api.Controllers;
 [ApiController]
 [Authorize(Roles = "Admin,Administrative")]
 [Route("api/org-units")]
-public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class OrgUnitsController(
+    IOrgUnitService orgUnitService,
+    CourseIntellectDbContext dbContext,
+    IAuditLogService auditLogService) : ControllerBase
 {
     [HttpGet]
     public async Task<IActionResult> Get(CancellationToken cancellationToken) =>
@@ -48,6 +51,13 @@ public sealed class OrgUnitsController(IOrgUnitService orgUnitService, CourseInt
         if (unit is null) return NotFound();
         unit.IsActive = request.IsActive;
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            request.IsActive ? "Birim aktifleştirildi" : "Birim pasifleştirildi",
+            "OrgUnit",
+            nameof(OrgUnit),
+            unit.Id.ToString(),
+            $"{unit.UnitType}: {unit.Name} {(request.IsActive ? "yeniden aktif" : "pasif")} duruma alındı.",
+            cancellationToken);
         return Ok(new { unit.Id, unit.IsActive });
     }
 

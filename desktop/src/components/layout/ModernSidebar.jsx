@@ -49,7 +49,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange } from "lucide-react";
+import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -573,6 +573,7 @@ export const menuConfigs = {
       color: "#ec4899",
     },
     { path: "/sa/system", icon: Settings, label: "Sistem", color: "#06b6d4" },
+    { path: "/sa/logs", icon: ScrollText, label: "Log Merkezi", color: "#14b8a6" },
     { path: "/sa/support", icon: Ticket, label: "Destek", color: "#a855f7" },
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],

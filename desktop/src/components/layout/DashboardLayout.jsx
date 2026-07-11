@@ -10,6 +10,7 @@ import { CommandPalette } from './CommandPalette';
 import { PageErrorBoundary } from '../system/PageErrorBoundary';
 import { Sheet, SheetContent } from '../ui/sheet';
 import { gsap } from 'gsap';
+import { OnboardingProvider } from '../../onboarding/OnboardingProvider';
 
 const pageVariants = {
   initial: { opacity: 0, y: 10 },
@@ -78,6 +79,7 @@ export function DashboardLayout() {
   }
 
   return (
+    <OnboardingProvider>
     <div className="app-shell flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <PremiumSidebar />
@@ -132,5 +134,6 @@ export function DashboardLayout() {
       {/* Command Palette */}
       <CommandPalette />
     </div>
+    </OnboardingProvider>
   );
 }

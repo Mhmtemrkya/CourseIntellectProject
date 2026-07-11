@@ -1,0 +1,789 @@
+COURSEINTELLECT / SCHOOLASIST
+ROL ROL DETAYLI UYGULAMA ÖZELLİKLERİ
+
+Hazırlanma amacı:
+Bu doküman CourseIntellect / SchoolAsist uygulamasının rol bazlı özelliklerini sunum, teklif, ürün tanıtımı veya müşteri görüşmesi için metin olarak anlatmak üzere hazırlanmıştır.
+Metin; masaüstü uygulamadaki gerçek sayfa yapısı, rol bazlı menüler, mobil navigasyonlar, backend modülleri ve projede görünen iş akışları dikkate alınarak oluşturulmuştur.
+
+GENEL ÜRÜN TANIMI
+
+CourseIntellect / SchoolAsist; bir eğitim kurumunun akademik, idari, finansal, iletişim, rehberlik, kütüphane, yemekhane, servis ve raporlama süreçlerini tek platformda toplayan çok rollü okul yönetim sistemidir.
+Uygulama, her kullanıcı rolü için ayrı ekranlar, ayrı başlangıç sayfaları ve role uygun iş akışları sunar.
+Kurum yöneticisi tüm sistemi izleyebilirken, öğretmen yalnızca eğitim süreçlerine, öğrenci kendi akademik hayatına, veli çocuğunun durumuna, muhasebe finansal süreçlere, idari birimler operasyonel süreçlere odaklanır.
+
+Platform; React tabanlı masaüstü/web arayüzü, Flutter tabanlı mobil arayüz, ASP.NET Core backend, rol tabanlı yetkilendirme, JWT oturum sistemi, SignalR gerçek zamanlı iletişim altyapısı ve modüler sayfa yapısı üzerine kuruludur.
+
+Uygulamanın genel kabiliyetleri:
+- Rol bazlı giriş ve rol bazlı ana sayfa yönlendirme
+- Kurum, şube, sınıf, öğrenci, veli, öğretmen ve personel yönetimi
+- Akademik yönetim, ders programı, yoklama, sınav, içerik, soru bankası ve raporlama
+- Finans yönetimi, öğrenci hesapları, tahsilat, taksit, fatura, makbuz, gecikme, maaş ve kasa süreçleri
+- İdari kayıtlar, belge merkezi, duyurular, bildirimler, görev merkezi ve onay süreçleri
+- Servis takip, yemekhane menüsü, rehberlik, kütüphane ve mesajlaşma modülleri
+- Platform yöneticisi için kurum, paket, limit, faturalama, destek ve sistem yönetimi
+- Öğrenci ve öğretmen için sınav çözme, deneme sınavı, soru bankası, ödev ve canlı ders akışları
+- Veli için devamsızlık, sınav sonucu, ödeme, makbuz, servis, yemekhane, görüşme ve mazeret takibi
+- Güvenlik tarafında rol yönetimi, RBAC yetki matrisi, audit log, şifre talebi ve yöneticiye özel erişim kısıtları
+
+
+1. PLATFORM YÖNETİCİSİ / SUPERADMIN ROLÜ
+
+Rolün amacı:
+Platform yöneticisi, tek bir okulun operasyonundan daha üst seviyede, CourseIntellect platformunun tamamını yönetir. Bu rol kurumları, paketleri, platform faturalamasını, sistem limitlerini, destek süreçlerini ve platform genel ayarlarını takip eder.
+
+Ana ekranlar:
+- Platform Özet
+- Kurumlar
+- Paketler
+- Faturalama
+- Limitler
+- Sistem
+- Destek
+- AI Yönetimi
+- Kurum Özelleştirme
+- Ayarlar
+
+Detaylı özellikler:
+- Platform genelindeki kurumları tek panelden görüntüler.
+- Kurumların aktiflik durumunu, abonelik/paket bilgisini ve platform kullanımını takip eder.
+- Yeni kurum çalışma alanları oluşturma ve kurum bilgilerini yönetme altyapısına sahiptir.
+- Paket ve plan yönetimiyle hangi kurumun hangi özelliklere erişeceğini belirleyebilir.
+- Platform faturalama ekranı üzerinden kurum abonelik faturalarını ve ödeme süreçlerini izleyebilir.
+- Sistem limitleri ekranında kurumların kullanım sınırları, kapasite ve hizmet planı limitleri takip edilir.
+- Destek ekranı ile kurumlardan gelen destek talepleri izlenir.
+- AI yönetimi ekranı platformdaki yapay zeka özelliklerinin yönetim yüzeyidir.
+- Kurum özelleştirme ekranı kurum bazlı görünüm, yapılandırma ve platform deneyimi ayarlarını yönetmek için kullanılır.
+- Sistem ayarları, platform bakım ve genel sistem yapılandırma süreçleri için kullanılır.
+
+Sunum cümlesi:
+Platform yöneticisi, tüm CourseIntellect ekosistemini kurumlar, paketler, faturalama, destek ve sistem limitleri seviyesinde yöneten üst yönetim rolüdür.
+
+
+2. KURUM YÖNETİCİSİ ROLÜ
+
+Rolün amacı:
+Kurum yöneticisi, bir eğitim kurumunun akademik, finansal, idari ve operasyonel tüm süreçlerini uçtan uca yönetir. Bu rol uygulamanın en geniş kurum içi yetkisine sahiptir.
+
+Ana ekranlar:
+- Dashboard
+- Kurum KPI / Kurum Özeti
+- Akademik Yönetim
+- Operasyon
+- Servis Takip
+- Yemekhane
+- Finans Kontrolü
+- Öğrenciler
+- Veliler
+- Öğretmenler
+- Sınıflar & Gruplar
+- Ders Programı
+- Yoklama
+- İçerikler
+- Sorular
+- Sınavlar
+- Raporlar
+- Öğrenci Kaydı
+- Personel Kaydı
+- Muhasebe Kaydı
+- Şube Kaydı
+- Şube Karşılaştırma
+- Görüşme Akışı
+- Görev Merkezi
+- Nöbet Oluşturma
+- Tüm Nöbetler
+- Öğretmen Programı
+- Finans Onayları
+- Personel Onayları
+- Personel / İK
+- Organizasyon Birimleri
+- Yetki Matrisi
+- Rol Yönetimi
+- Denetim Kayıtları
+- Şifre Talepleri
+- Kurum İçi Arama
+- İdari Kayıtlar
+- İdari Birimler
+- Duyurular
+- Bildirimler
+- Belge Merkezi
+- Mesajlar
+- Destek
+- Profil
+- Ayarlar
+
+Kurum özeti ve yönetim paneli:
+- Kurum yöneticisi ana panelden kurumun genel performansını izler.
+- Toplam öğrenci, öğretmen, sınıf, devam durumu, sınav performansı ve finans özeti gibi göstergeleri takip eder.
+- KPI ekranı üzerinden akademik, finansal ve operasyonel metrikleri üst seviyede görür.
+- Yönetici, kuruma ait güncel iş akışlarını tek yerden kontrol eder.
+- Kurumun günlük, haftalık ve dönemsel durumunu karar almaya uygun şekilde görüntüler.
+
+Akademik yönetim:
+- Öğrenciler, öğretmenler, veliler, sınıflar ve gruplar yönetilir.
+- Ders programı oluşturma ve görüntüleme süreçleri yönetici erişimindedir.
+- Sınavlar, soru bankası, içerikler ve raporlar kurum çapında izlenebilir.
+- Öğretmen programı ve akademik planlama yönetici tarafından takip edilir.
+- Kurs yönetimi ekranı ile kurum içindeki ders/kurs yapıları yönetilir.
+- Sınıf, grup, öğretmen ve öğrenci bağlantıları akademik süreçlerin temelini oluşturur.
+
+Kayıt ve kullanıcı yönetimi:
+- Öğrenci kaydı ekranı ile yeni öğrenci oluşturma, veli bilgisi ve sınıf bağlantısı yönetilir.
+- Personel kaydı ekranı ile öğretmen veya idari personel oluşturulabilir.
+- Muhasebe kaydı ekranı ile finans rolüne sahip personel eklenebilir.
+- Şube kaydı ve şube seçimi süreçleri kurumun çok şubeli yapısını destekler.
+- Şube karşılaştırma ekranı farklı şubelerin akademik/operasyonel performanslarını karşılaştırmak için kullanılır.
+- Kullanıcı, rol, ek rol ve modül bazlı erişim yapısı kurum yöneticisinin kontrolündedir.
+
+Finans yönetimi:
+- Finans kontrolü ve muhasebe özet ekranlarıyla kurumun gelir, tahsilat ve ödeme akışı izlenir.
+- Öğrenci hesapları üzerinden öğrencilerin borç, ödeme ve taksit durumları takip edilir.
+- Tahsilatlar, taksitler, fatura & makbuz, tahsilat takvimi, mutabakat ve toplu işlemler yönetilebilir.
+- Geciken ödemeler, gecikme kuralları, indirim ve burs süreçleri takip edilir.
+- Maaş yönetimi, kasa raporu, hesap defteri ve finans dışa aktarım ekranlarına erişim vardır.
+- Finans onayları yalnızca yönetici/superadmin seviyesinde korunan kritik bir alandır.
+- Finans audit log ile finansal işlem geçmişi izlenebilir.
+
+Operasyon ve idari süreçler:
+- Operasyon ekranı günlük idari işleyişi yönetir.
+- Görev merkezi kurum içi görevlerin planlanması ve takibi için kullanılır.
+- Nöbet oluşturma ve tüm nöbetler ekranları öğretmen/personel görev planlamasını destekler.
+- Servis takip ekranı servis rotaları, duraklar, öğrenci atamaları ve canlı servis takibi için kullanılır.
+- Yemekhane ekranı haftalık menü yönetimini destekler.
+- İdari kayıtlar, belge merkezi ve idari birimler ekranları kurumun belge ve kayıt süreçlerini düzenler.
+- Organizasyon birimleri ekranı kurum içi bölüm ve birim yapısını yönetir.
+- Personel / İK ekranı personel bilgileri ve İK süreçleri için kullanılır.
+
+İletişim ve bildirim:
+- Duyurular ekranı kurum içi hedef kitlelere duyuru yayınlamak için kullanılır.
+- Bildirimler ekranı kullanıcıları bilgilendirme süreçlerini destekler.
+- Görüşme akışı ekranı veli/öğretmen/kurum görüşmelerinin yönetimi için kullanılır.
+- Mesajlar ekranı rol bazlı kurum içi iletişimi sağlar.
+- Destek ekranı kurumun destek süreçlerini takip etmesini sağlar.
+
+Güvenlik ve yetki:
+- RBAC yetki matrisi ile rollerin hangi modüllere erişebileceği yapılandırılır.
+- Rol yönetimi ekranı kullanıcıların rol ve ek rol yapısını yönetir.
+- Denetim kayıtları kritik işlemleri takip eder.
+- Şifre talepleri ekranı kullanıcı şifre yenileme süreçlerinin yönetimini sağlar.
+- Bazı sayfalar idari personele kapatılıp yalnızca kurum yöneticisi ve platform yöneticisine açık tutulur.
+
+Sunum cümlesi:
+Kurum yöneticisi, akademiden finansa, idari kayıtlardan yetki yönetimine kadar okulun tüm dijital operasyonunu tek merkezden kontrol eden ana yönetim rolüdür.
+
+
+3. ÖĞRETMEN ROLÜ
+
+Rolün amacı:
+Öğretmen rolü, eğitim süreçlerini yürütmek, öğrencilerle etkileşim kurmak, içerik üretmek, sınav ve ödev süreçlerini yönetmek, yoklama almak ve akademik performansı takip etmek için tasarlanmıştır.
+
+Ana ekranlar:
+- Öğretmen Dashboard
+- Ders Programı
+- Yoklama
+- Canlı Dersler
+- Canlı Ders Odası
+- İçerikler
+- Konu Anlatımı / İçerik Stüdyosu
+- Soru Kutusu
+- Soru Bankası
+- Toplu Soru Yükleme
+- Soru Stüdyosu
+- Soru İş Akışı
+- Sınavlar
+- Sınav Oluşturma
+- Deneme Sınavları
+- Sınav Çalışma Alanı
+- Öğrenci Sınavları
+- Öğrenci Gibi Çözüm Önizleme
+- Not Girişi
+- Ödevler
+- Teslim Merkezi
+- Raporlar
+- Görevlerim
+- Duyurular
+- Görüşme Onayları
+- Kütüphane Kullanıcı Ekranı
+- Mesajlar
+- Profil
+- Ayarlar
+
+Ders ve sınıf yönetimi:
+- Öğretmen kendi ders programını görüntüler.
+- Günlük ve haftalık ders akışını takip eder.
+- Hangi sınıfa, hangi derse, hangi saat aralığında gireceğini görür.
+- Ders programı öğrenciler, sınıflar ve içerik/sınav akışıyla bağlantılıdır.
+
+Yoklama:
+- Öğretmen sınıf bazlı yoklama alır.
+- Öğrencileri katıldı, geç, izinli veya devamsız gibi durumlarla işaretleyebilir.
+- Yoklama kayıtları öğrenci ve veli ekranlarına yansıyacak şekilde takip edilebilir.
+- QR yoklama altyapısı ile öğrencinin uygulamadan katılım bildirmesi desteklenir.
+
+Canlı ders:
+- Canlı dersler ekranı öğretmenin çevrim içi derslerini takip etmesini sağlar.
+- Canlı ders odası üzerinden ders oturumu yürütülebilir.
+- Öğrenci tarafında canlı derslere erişim, öğretmen tarafında ders yönetimi bulunur.
+
+İçerik üretimi:
+- Öğretmen konu anlatımı ve eğitim içerikleri oluşturabilir.
+- İçerik stüdyosu ile öğrenciye sunulacak materyaller hazırlanabilir.
+- İçerikler sınıf, ders veya hedef kitleye göre kullanılabilir.
+- Öğrenci içerikleri görüntüler, favorilere ekler ve not alabilir.
+
+Soru bankası ve soru üretimi:
+- Öğretmen soru bankası ekranında sorularını yönetir.
+- Soru stüdyosu ile yeni soru oluşturabilir.
+- Toplu soru yükleme ekranı ile daha fazla içeriği sisteme aktarabilir.
+- Soru kutusu, öğrencilerden gelen soruları yönetmek için kullanılır.
+- Öğretmen soru iş akışı ekranı ile soru hazırlama, düzenleme ve yayınlama sürecini takip eder.
+- Sorular pasif/aktif olarak yönetilebilir; öğrenciye gösterilecek sorular kontrollü şekilde açılır.
+
+Sınav ve deneme yönetimi:
+- Öğretmen sınavlar ekranından sınav oluşturma ve yönetme süreçlerini kullanır.
+- Deneme sınavları ekranı ayrı bir değerlendirme akışı sunar.
+- Sınav çalışma alanı öğretmenin sınavı hazırlama ve kontrol etme sürecine yardımcı olur.
+- Öğretmen, sınavı öğrenci gibi önizleyerek çözüm deneyimini test edebilir.
+- Bu önizleme öğretmenin kontrolü içindir ve öğrenci istatistiklerine karışmayacak şekilde tasarlanmıştır.
+
+Öğrenci sınavları ve çözüm inceleme:
+- Öğrenci sınavları ekranı öğretmenin öğrencilerin sınav performanslarını incelemesini sağlar.
+- Öğrenci cevapları, doğru/yanlış/boş durumları, süre ve sınav ilerlemesi takip edilebilir.
+- Soru çözme mimarisinde öğrenci cevapları, notlar, işaretlemeler ve çizimli çözüm verileri desteklenir.
+- Öğretmen öğrenci bazlı veya sınıf bazlı analiz yapabilecek rapor yüzeylerine sahiptir.
+
+Ödev yönetimi:
+- Öğretmen ödev oluşturur ve öğrencilere atar.
+- Teslim merkezi üzerinden öğrencilerin yüklediği ödevleri takip eder.
+- Teslim edilen ödevler sınıf, öğrenci, konu veya tarih bazlı incelenebilir.
+
+Not ve performans:
+- Not girişi ekranı öğretmenin öğrenci notlarını işlemesini sağlar.
+- Raporlar ekranı sınıf ve öğrenci performansını değerlendirmek için kullanılır.
+- Riskli öğrenciler, sınav sonuçları, devamsızlık ve ödev takibi öğretmenin akademik kararlarını destekler.
+
+İletişim ve görüşmeler:
+- Duyurular ekranı öğretmene kurum duyurularını takip etme yüzeyi sağlar.
+- Görüşme onayları ekranı veli/öğrenci görüşme taleplerinin öğretmen tarafından değerlendirilmesini destekler.
+- Mesajlar ekranı öğrenci, veli ve kurum içi paydaşlarla iletişim sağlar.
+
+Görevler ve profil:
+- Görevlerim ekranında öğretmene atanan nöbet veya kurum görevleri takip edilir.
+- Profil ekranı öğretmenin kişisel bilgilerini ve hesap bilgilerini görüntülediği alandır.
+- Kütüphane kullanıcı ekranı öğretmenin kütüphane kaynaklarını görüntüleyebilmesini sağlar.
+
+Sunum cümlesi:
+Öğretmen rolü, ders anlatımından sınav hazırlamaya, yoklamadan ödev teslimlerine kadar sınıf içi ve dijital eğitim süreçlerini uçtan uca yönetir.
+
+
+4. ÖĞRENCİ ROLÜ
+
+Rolün amacı:
+Öğrenci rolü, öğrencinin ders, sınav, ödev, içerik, canlı ders, yoklama, çalışma planı, soru sorma, akademik gelişim ve iletişim süreçlerini kişisel bir panel üzerinden yönetmesini sağlar.
+
+Ana ekranlar:
+- Öğrenci Dashboard
+- Ders Programı
+- Çalışma Planım
+- Canlı Dersler
+- Devamsızlık
+- QR Yoklama
+- İçerikler
+- İçerik Detayı
+- Favoriler
+- Notlar
+- Sınavlarım
+- Deneme Sınavları
+- Sınav Çözme
+- Sınav Sonuçlarım
+- Soru Bankası
+- Soru Pratiği
+- Soru Sor
+- Yanlışlarım
+- Ödevler
+- Rozetler
+- CourseIntellect AI
+- Yemekhane
+- Rehberlik Talebi
+- Kütüphane Kullanıcı Ekranı
+- Duyurular
+- Bildirimler
+- Mesajlar
+- Profil
+- Ayarlar
+
+Kişisel ana panel:
+- Öğrenci ana sayfası öğrencinin günlük akademik durumunu gösterir.
+- Bugünkü dersler, bekleyen ödevler, sınavlar, duyurular ve gelişim bilgileri özetlenir.
+- Mobil tarafta öğrenci için ana sayfa, içerikler, sınavlarım, deneme, mesajlar ve profil sekmeleri bulunur.
+
+Ders programı ve canlı ders:
+- Öğrenci kendi ders programını görüntüler.
+- Canlı dersler ekranından planlanan canlı derslere erişir.
+- Canlı ders akışı, öğretmen tarafındaki canlı ders yönetimiyle bağlantılıdır.
+
+Yoklama ve devamsızlık:
+- Öğrenci devamsızlık geçmişini görebilir.
+- QR yoklama ekranı ile derse katılımını bildirebilir.
+- Yoklama kayıtları öğretmen ve kurum tarafından oluşturulan devamsızlık sistemiyle bağlantılıdır.
+
+İçerik ve öğrenme materyalleri:
+- Öğrenci kendisine açık olan içerikleri görüntüler.
+- İçerik detay ekranında konu anlatımı ve materyallere ulaşır.
+- Favoriler ekranı ile önemli içerikleri saklayabilir.
+- Notlar ekranı ile öğrenme sürecine ait kişisel notlarını takip edebilir.
+
+Sınav ve deneme sınavı:
+- Sınavlarım ekranından kendisine atanmış sınavları görür.
+- Deneme sınavları ekranı ayrı bir deneme değerlendirme alanıdır.
+- Sınav çözme ekranı üzerinden cevaplama, ilerleme ve sınav tamamlama akışı yürütülür.
+- Soru çözme mimarisi; cevap seçme, boş bırakma, işaretleme, not alma ve çizim/çözüm alanını destekleyecek şekilde tasarlanmıştır.
+- Sınav sonucunda doğru, yanlış, boş, net ve başarı yüzdesi gibi değerlerin hesaplanması hedeflenir.
+
+Sınav sonuçları ve gelişim:
+- Sınav sonuçlarım ekranı öğrencinin akademik sonuçlarını takip etmesini sağlar.
+- Yanlışlarım ekranı öğrencinin hatalı yaptığı soruları tekrar çalışmasına yardımcı olur.
+- Soru pratiği ekranı soru bankası üzerinden konu bazlı çalışma sağlar.
+- Rozetler ekranı öğrencinin başarı ve ilerleme motivasyonunu destekler.
+- Çalışma planım ekranı öğrencinin hedef ve görev bazlı çalışma düzeni oluşturmasına yardım eder.
+
+Soru sorma ve iletişim:
+- Soru sor ekranı öğrencinin öğretmene soru iletmesini sağlar.
+- Mesajlar ekranı öğrenci ile öğretmen/kurum arasındaki iletişimi destekler.
+- Duyurular ve bildirimler öğrencinin kurum içi gelişmelerden haberdar olmasını sağlar.
+
+Ödev:
+- Öğrenci ödevlerini görüntüler.
+- Ödev teslim akışı üzerinden ödev yükleyebilir.
+- Teslim edilen ve bekleyen ödevler takip edilebilir.
+
+AI, rehberlik, kütüphane ve yemekhane:
+- CourseIntellect AI ekranı öğrenciye yapay zeka destekli öğrenme yüzeyi sunar.
+- Rehberlik talebi ekranı öğrencinin rehberlik birimine talep iletmesini sağlar.
+- Kütüphane kullanıcı ekranı kütüphane kaynaklarını görüntülemek için kullanılır.
+- Yemekhane ekranı haftalık yemek menüsünü öğrenciye gösterir.
+
+Sunum cümlesi:
+Öğrenci rolü, öğrencinin derslerini, sınavlarını, ödevlerini, içeriklerini ve gelişimini tek kişisel eğitim panelinden takip etmesini sağlar.
+
+
+5. VELİ ROLÜ
+
+Rolün amacı:
+Veli rolü, velinin çocuğunun akademik, finansal, devamsızlık, servis, yemekhane ve iletişim süreçlerini güvenli şekilde takip etmesini sağlar.
+
+Ana ekranlar:
+- Veli Dashboard
+- Çocuklarım
+- Devamsızlık
+- Sınav Sonuçları
+- Akademik Özet
+- Haftalık Rapor
+- Ödemeler
+- Makbuz Arşivi
+- Yemekhane
+- Servis Takip
+- Geri Bildirim
+- Görüşmeler
+- Mazeret Bildirimi
+- Taleplerim
+- Rehberlik Talebi
+- Kütüphane Kullanıcı Ekranı
+- Duyurular
+- Mesajlar
+- Profil
+- Ayarlar
+
+Veli ana paneli:
+- Veli ana sayfası çocuğa ait genel durum özetini sunar.
+- Çocuklarım ekranı bağlı öğrencileri görüntüler.
+- Birden fazla çocuk yapısında veli, her çocuğun bilgilerini ayrı ayrı takip edebilir.
+- Mobil tarafta veli için ana sayfa, devamsızlık, duyurular, ödemeler, mesajlar ve profil sekmeleri bulunur.
+
+Akademik takip:
+- Sınav sonuçları ekranı öğrencinin sınav performansını veliye gösterir.
+- Akademik özet ekranı öğrencinin genel başarı durumunu izlemek için kullanılır.
+- Haftalık rapor ekranı öğrencinin ders, sınav, devamsızlık ve genel ilerlemesini düzenli şekilde sunar.
+- Veli, öğrencinin gelişimini sadece sonuç olarak değil süreç olarak da takip edebilir.
+
+Devamsızlık:
+- Veli çocuğunun devamsızlık kayıtlarını görür.
+- Derse katılım, geç kalma, izinli olma veya devamsızlık durumları veli tarafından takip edilir.
+- Bu yapı öğretmen yoklama sistemiyle bağlantılıdır.
+
+Finans ve ödeme:
+- Ödemeler ekranı veliye öğrencinin finansal durumunu gösterir.
+- Makbuz arşivi geçmiş ödeme belgelerinin görüntülenmesini sağlar.
+- Veli ödeme/tahsilat sürecinin durumunu takip edebilir.
+- Muhasebe tarafındaki öğrenci hesabı ve tahsilat yapısı veli ekranına bilgi olarak yansır.
+
+Servis ve yemekhane:
+- Servis takip ekranı velinin çocuğunun servis durumunu takip etmesini sağlar.
+- Servis yoklama ve rota bilgileri veli tarafında canlı durum veya geçmiş olarak görüntülenebilir.
+- Yemekhane ekranı haftalık menü bilgisini veliye gösterir.
+
+Mazeret, talep ve görüşme:
+- Mazeret bildirimi ekranı velinin devamsızlık veya özel durum bildirmesini sağlar.
+- Taleplerim ekranı velinin oluşturduğu talepleri takip etmesini sağlar.
+- Görüşmeler ekranı veli/öğretmen/kurum görüşme sürecini yönetir.
+- Geri bildirim ekranı velinin kuruma geri bildirim iletmesini sağlar.
+
+İletişim ve bildirim:
+- Duyurular ekranı velinin kurum duyurularını takip etmesini sağlar.
+- Mesajlar ekranı veli ile öğretmen/kurum arasındaki iletişimi destekler.
+- Profil ekranı veli hesap bilgilerinin görüntülendiği alandır.
+
+Rehberlik ve kütüphane:
+- Rehberlik talebi ekranı veli tarafından öğrencisi için rehberlik desteği talep edilmesini sağlar.
+- Kütüphane kullanıcı ekranı veliye kütüphane kullanım bilgisini veya kaynak görünürlüğünü sunar.
+
+Sunum cümlesi:
+Veli rolü, velinin çocuğunun akademik gelişimini, devamsızlığını, ödemelerini, servis durumunu ve kurum iletişimini tek ekrandan takip etmesini sağlar.
+
+
+6. MUHASEBECİ / FİNANS ROLÜ
+
+Rolün amacı:
+Muhasebeci rolü, kurumun finansal operasyonlarını yönetir. Tahsilat, öğrenci hesabı, taksit, fatura, makbuz, gecikme, maaş, kasa ve dışa aktarım süreçleri bu rolün ana sorumluluğudur.
+
+Ana ekranlar:
+- Muhasebe Özet
+- Öğrenci Hesapları
+- Tahsilatlar
+- Taksitler
+- Fatura & Makbuz
+- Tahsilat Takvimi
+- Mutabakat
+- Toplu İşlemler
+- Finans Audit Log
+- İndirim & Burs
+- Gecikenler
+- Gecikme Kuralları
+- Maaş Yönetimi
+- Kasa Raporu
+- Hesap Defteri
+- Dışa Aktar
+- Mesajlar
+- Ayarlar
+
+Muhasebe özet:
+- Finans paneli kurumun gelir ve tahsilat durumunu özetler.
+- Toplam tahsilat, bekleyen ödemeler, geciken ödemeler ve finansal hareketler izlenir.
+- Finansal kararlar için kurum yöneticisi ve muhasebe rolü ortak veri üzerinden çalışır.
+
+Öğrenci hesapları:
+- Öğrencilerin borç, ödeme, taksit ve finansal durumları takip edilir.
+- Veli ödeme ekranında görünen bilgiler bu yapıdan beslenir.
+- Öğrenci bazlı finans hareketleri detaylandırılabilir.
+
+Tahsilatlar:
+- Tahsilat ekranı ödeme alma ve kayıt oluşturma süreçlerini destekler.
+- Ödeme yöntemi, tutar, öğrenci ve tarih bilgileriyle finans kaydı tutulur.
+- Tahsilatlar finans raporlarına ve öğrenci hesaplarına yansır.
+
+Taksit ve gecikme yönetimi:
+- Taksitler ekranı ödeme planlarının oluşturulması ve takibini sağlar.
+- Gecikenler ekranı vadesi geçmiş ödemeleri gösterir.
+- Gecikme kuralları ekranı gecikme senaryolarını yönetmek için kullanılır.
+- Tahsilat takvimi, yaklaşan ve geçmiş ödemelerin planlı şekilde görülmesini sağlar.
+
+Fatura, makbuz ve mutabakat:
+- Fatura & makbuz ekranı finansal belge süreçlerini yönetir.
+- Makbuz arşivi veli tarafında görüntülenebilir.
+- Mutabakat ekranı kurumun finans kayıtlarının kontrolünü destekler.
+- Hesap defteri finansal kayıtların defter düzeninde takip edilmesini sağlar.
+
+İndirim, burs ve maaş:
+- İndirim & burs ekranı öğrenci bazlı finansal desteklerin yönetilmesini sağlar.
+- Maaş yönetimi ekranı personel maaş süreçleri için kullanılır.
+- Kasa raporu kurumun nakit/finans hareketlerini özetler.
+
+Toplu işlemler, dışa aktarım ve audit:
+- Toplu işlemler ekranı birden fazla finans kaydında işlem yapmayı kolaylaştırır.
+- Dışa aktar ekranı finans verilerinin raporlanabilir formatlarda alınmasını sağlar.
+- Finans audit log ekranı finansal işlemlerin geçmişini ve denetimini destekler.
+
+Mobil finans:
+- Mobil muhasebe arayüzünde panel, tahsilatlar, taksitler, defter, mesajlar, dışa aktar ve profil sekmeleri bulunur.
+
+Sunum cümlesi:
+Muhasebeci rolü, kurumun tüm finansal hareketlerini öğrenci hesabından tahsilata, faturadan maaşa kadar düzenli ve denetlenebilir şekilde yönetir.
+
+
+7. İDARİ BİRİMLER ROLÜ
+
+Rolün amacı:
+İdari birimler rolü, okulun günlük operasyonlarını, kayıt süreçlerini, belge akışını, duyuruları, görevleri, görüşmeleri ve idari takip süreçlerini yönetir. Kurum yöneticisine göre daha operasyonel ve sınırlı bir rol olarak çalışır.
+
+Ana ekranlar:
+- Operasyon
+- Görev Merkezi
+- Ders Programı
+- İdari Kayıtlar
+- Duyurular
+- Belge Merkezi
+- Personel Onayları
+- Finans Onayları
+- Rol Yönetimi
+- Görüşme Akışı
+- Raporlar
+- Mesajlar
+- Ayarlar
+- Personel / İK
+- Organizasyon Birimleri
+- Şifre Talepleri
+- Personel Kaydı
+- Nöbet Oluşturma
+- Tüm Nöbetler
+- Öğretmen Programı
+- Servis Takip
+- Yemekhane
+
+Operasyon yönetimi:
+- İdari personel günlük okul operasyonlarını takip eder.
+- Görev merkezi üzerinden kurum içi işlerin planlanması ve takibi yapılır.
+- Operasyon ekranı okul işleyişinin hızlı görünümünü sunar.
+
+Kayıt ve belge süreçleri:
+- İdari kayıtlar ekranı öğrenci/personel/kayıt süreçlerini takip etmek için kullanılır.
+- Belge merkezi okul belgelerinin düzenlenmesini ve erişimini sağlar.
+- Personel kaydı ve bazı kayıt süreçlerinde idari birimler aktif görev alabilir.
+- Öğrenci işleri, veli iletişimi ve personel evrak süreçleri idari rolün doğal çalışma alanıdır.
+
+Duyuru, bildirim ve iletişim:
+- Duyurular ekranı kurum içi bilgilendirme süreçlerini destekler.
+- Mesajlar ekranı idari birimlerin öğretmen, veli, öğrenci veya yönetimle iletişim kurmasını sağlar.
+- Görüşme akışı ekranı randevu/görüşme süreçlerinin düzenlenmesine yardımcı olur.
+
+Program, nöbet ve görev:
+- Ders programı görüntülenebilir veya operasyonel takip için kullanılabilir.
+- Öğretmen programı ekranı öğretmenlerin haftalık planlarını izlemek için kullanılır.
+- Nöbet oluşturma ve tüm nöbetler ekranı okul içi görev planlamasını destekler.
+
+Servis, yemekhane ve rapor:
+- Servis takip ekranı servis operasyonlarının izlenmesine yardımcı olur.
+- Yemekhane ekranı haftalık menü ve yemek operasyonlarının takibinde kullanılabilir.
+- Raporlar ekranı kurum operasyonları hakkında veri görmeyi sağlar.
+
+Güvenlik sınırları:
+- Projede bazı kritik sayfalar idari personelden özellikle korunmuştur.
+- Personel onayları, finans onayları, rol yönetimi, audit log ve RBAC gibi kritik alanlar yönetici/superadmin koruması altında çalışır.
+- Böylece idari personel operasyonel işleri yaparken kurumun en kritik yetki ve finans kararları yönetici kontrolünde kalır.
+
+Mobil idari:
+- Mobil idari arayüzde panel, kayıtlar, duyurular, mesajlar, raporlar ve profil sekmeleri bulunur.
+
+Sunum cümlesi:
+İdari birimler rolü, okulun günlük işleyişini, kayıtlarını, belgelerini, duyurularını ve operasyonel görevlerini düzenli biçimde yöneten rol olarak çalışır.
+
+
+8. REHBERLİK ROLÜ / REHBERLİK MODÜLÜ
+
+Rolün amacı:
+Rehberlik modülü öğrenci gelişimini akademik sonuçların ötesinde takip etmek, öğrenci görüşmeleri, planlama, randevu, envanter ve rehberlik raporlarını yönetmek için tasarlanmıştır.
+
+Ana ekranlar:
+- Rehberlik Dashboard
+- Öğrenci Dosyası
+- Rehberlik Görüşmeleri
+- Planlayıcı
+- Randevular
+- Envanterler
+- Rehberlik Raporları
+- Öğrenci Rehberlik Talebi
+- Veli Rehberlik Talebi
+- Rehberlik Kütüphane Erişimi
+
+Detaylı özellikler:
+- Rehberlik dashboard ekranı rehberlik biriminin genel çalışma alanını sunar.
+- Öğrenci dosyası ekranı öğrenciye özel rehberlik kayıtlarını takip etmek için kullanılır.
+- Görüşmeler ekranı öğrenci/veli görüşmelerinin kaydını ve takibini sağlar.
+- Planlayıcı ekranı rehberlik çalışmalarının zamanlanmasına yardımcı olur.
+- Randevular ekranı görüşme taleplerinin planlanmasını destekler.
+- Envanterler ekranı öğrenci değerlendirme formları veya rehberlik ölçümleri için kullanılır.
+- Rehberlik raporları ekranı rehberlik çalışmalarının çıktısını izler.
+- Öğrenci ve veli tarafında rehberlik talebi oluşturma ekranları bulunur.
+- Rehberlik modülü akademik, sosyal ve psikolojik destek süreçlerini dijital kayıt altına almaya uygundur.
+
+Sunum cümlesi:
+Rehberlik modülü, öğrenci görüşmeleri, rehberlik planları, randevular, envanterler ve raporlarla okulun öğrenci destek süreçlerini dijital hale getirir.
+
+
+9. KÜTÜPHANE MODÜLÜ
+
+Rolün amacı:
+Kütüphane modülü okul kaynaklarının yönetilmesi ve öğrenciler, öğretmenler, veliler veya rehberlik kullanıcıları tarafından görüntülenmesi için kullanılan ortak bir modüldür.
+
+Ana ekranlar:
+- Kütüphane Yönetim Ekranı
+- Öğrenci Kütüphane Kullanıcı Ekranı
+- Veli Kütüphane Kullanıcı Ekranı
+- Öğretmen Kütüphane Kullanıcı Ekranı
+- Rehberlik Kütüphane Kullanıcı Ekranı
+
+Detaylı özellikler:
+- Kütüphane yönetim ekranı kurumun kütüphane kaynaklarını yönetmesi için kullanılır.
+- Kullanıcı ekranları farklı rollerin kütüphane kaynaklarına erişmesini sağlar.
+- Öğrenci, öğretmen, veli ve rehberlik için ayrı erişim yüzeyleri bulunur.
+- Kütüphane modülü eğitim materyalleri ve kaynak takibi için merkezi yapı sunar.
+
+Sunum cümlesi:
+Kütüphane modülü, okul kaynaklarını merkezi olarak yönetip farklı kullanıcı rollerine uygun şekilde erişilebilir hale getirir.
+
+
+10. YEMEKHANE ROLÜ / YEMEKHANE MODÜLÜ
+
+Rolün amacı:
+Yemekhane modülü haftalık yemek menüsünün yönetilmesi ve öğrenci/veli gibi kullanıcıların menüyü takip etmesi için kullanılır.
+
+Ana ekranlar:
+- Haftalık Yemekhane Menüsü
+- Yönetici/Yemekhane Düzenlenebilir Menü
+- Öğrenci Yemekhane Görünümü
+- Veli Yemekhane Görünümü
+
+Detaylı özellikler:
+- Yönetici veya yetkili kullanıcı haftalık menüyü düzenleyebilir.
+- Öğrenci kendi hesabından yemekhane menüsünü görüntüler.
+- Veli çocuğunun okul yemek planını takip eder.
+- Mobil tarafta yemekhane rolü doğrudan haftalık menü ekranına yönlendirilir.
+- Yemekhane modülü okulun günlük hizmetlerini akademik sistemle aynı uygulama içinde toplar.
+
+Sunum cümlesi:
+Yemekhane modülü, haftalık yemek planının yönetilmesini ve öğrenci/veli tarafından kolayca görüntülenmesini sağlar.
+
+
+11. SERVİS / ŞOFÖR ROLÜ VE SERVİS TAKİP MODÜLÜ
+
+Rolün amacı:
+Servis takip modülü öğrencilerin servis rotaları, durakları, servis yoklamaları, veli bilgilendirmeleri ve servis geçmişinin yönetilmesi için kullanılır. Şoför paneli servis üzerinde aktif operasyon yürütmek için tasarlanmıştır.
+
+Ana ekranlar:
+- Servis Takip
+- Şoför Paneli
+- Servis Rotaları
+- Duraklar
+- Öğrenci Servis Atamaları
+- Servis Yoklama
+- Veli Servis Durumu
+- Öğrenci Servis Durumu
+
+Detaylı özellikler:
+- Servis rotaları oluşturulabilir ve yönetilebilir.
+- Duraklar rota altında düzenlenebilir.
+- Öğrenciler servis rotalarına ve duraklara atanabilir.
+- Servis kapasitesi ve öğrenci atamaları takip edilebilir.
+- Şoför paneli üzerinden servis öğrencileri ve günlük servis durumu izlenebilir.
+- Servis yoklamasında öğrencinin servise binme/inme veya okula/eve varış durumu işlenebilir.
+- Veli servis durumunu kendi ekranından takip edebilir.
+- Öğrenci de kendi servis durumuna bağlı bilgileri görüntüleyebilir.
+- Servis hareketleri gerçek zamanlı bildirim ve SignalR altyapısıyla desteklenebilecek şekilde tasarlanmıştır.
+
+Sunum cümlesi:
+Servis takip modülü, rota, durak, öğrenci ataması, servis yoklaması ve veli bilgilendirmesini tek dijital akışta birleştirir.
+
+
+12. ORTAK SİSTEM ÖZELLİKLERİ
+
+Kimlik doğrulama ve güvenlik:
+- Kullanıcılar rol bazlı giriş yapar.
+- Backend tarafında JWT tabanlı kimlik doğrulama kullanılır.
+- Rol claim yapısı üzerinden rol bazlı erişim kontrolü sağlanır.
+- Kullanıcının ana sayfası rolüne göre otomatik belirlenir.
+- Şifre değiştirme zorunluluğu olan kullanıcılar önce zorunlu şifre değiştirme ekranına yönlendirilir.
+- Kurum yöneticisi için şube seçimi akışı bulunur.
+- Bakım modu ve yasal onay ekranları uygulama giriş akışında yer alır.
+
+Rol ve yetki yönetimi:
+- Admin, Teacher, Accounting, Administrative, Parent, Student, Developer ve Cafeteria gibi roller bulunur.
+- Masaüstü arayüzde backend rolleri kullanıcı dostu arayüz rollerine eşlenir.
+- Accounting rolü arayüzde finance/muhasebe olarak çalışır.
+- Developer veya platform admin kullanıcısı superadmin yüzeyine yönlendirilir.
+- Ek roller ve modül bazlı izin yapısı desteklenir.
+- RBAC yetki matrisi kurum içi yetkilendirmeyi detaylandırmak için kullanılır.
+
+İletişim:
+- Mesajlar modülü farklı roller arasında iletişim sağlar.
+- Duyurular modülü hedef kitlelere kurum duyurusu yayınlamak için kullanılır.
+- Bildirimler modülü kullanıcıların gelişmelerden haberdar edilmesini sağlar.
+- SignalR altyapısı mesajlar, sınav çözme ve servis takip gibi gerçek zamanlı ihtiyaçlar için kullanılır.
+
+Raporlama:
+- Yönetici raporları kurum genelini izler.
+- Öğretmen raporları sınıf ve öğrenci performansına odaklanır.
+- Veli haftalık rapor ile öğrencinin durumunu takip eder.
+- Finans raporları tahsilat, kasa, defter, gecikme ve dışa aktarım süreçlerini kapsar.
+- Rehberlik raporları öğrenci destek süreçlerini takip eder.
+
+Mobil destek:
+- Öğrenci, veli, öğretmen, muhasebe ve idari roller için mobil navigasyonlar bulunur.
+- Öğrenci mobil uygulamada ana sayfa, içerikler, sınavlarım, deneme, mesajlar ve profil sekmelerini kullanır.
+- Veli mobil uygulamada ana sayfa, devamsızlık, duyurular, ödemeler, mesajlar ve profil sekmelerini kullanır.
+- Öğretmen mobil uygulamada ana sayfa, program, onaylar, görevlerim, mesajlar ve profil sekmelerini kullanır.
+- Muhasebe mobil uygulamada panel, tahsilatlar, taksitler, defter, mesajlar, dışa aktar ve profil sekmelerini kullanır.
+- İdari mobil uygulamada panel, kayıtlar, duyurular, mesajlar, raporlar ve profil sekmeleri bulunur.
+
+
+13. ROLLER ARASI İŞ AKIŞI ÖRNEKLERİ
+
+Öğrenci kayıt akışı:
+1. Kurum yöneticisi veya yetkili idari kullanıcı öğrenci kaydını oluşturur.
+2. Öğrenci sınıf, veli ve kurum bilgileriyle ilişkilendirilir.
+3. Öğrenci kendi panelinden ders, sınav, ödev ve içeriklere erişir.
+4. Veli çocuğunu kendi panelinden takip eder.
+5. Muhasebe öğrenci hesabı ve ödeme planını yönetir.
+
+Sınav akışı:
+1. Öğretmen soru bankası veya soru stüdyosu ile soruları hazırlar.
+2. Sınav veya deneme sınavı oluşturulur.
+3. Öğrenci sınava kendi panelinden girer.
+4. Sınav çözme ekranında cevaplar ve ilerleme kaydedilir.
+5. Öğretmen öğrenci sınavlarını ve sonuçları inceler.
+6. Veli sınav sonuçlarını kendi ekranından takip eder.
+7. Yönetici kurum genelinde akademik raporları görür.
+
+Ödev akışı:
+1. Öğretmen ödev oluşturur.
+2. Öğrenci ödevi görüntüler ve teslim eder.
+3. Öğretmen teslim merkezinden ödevi inceler.
+4. Öğrenci ve veli süreçten haberdar olur.
+5. Raporlarda ödev durumu takip edilebilir.
+
+Yoklama akışı:
+1. Öğretmen ders sırasında yoklama alır.
+2. Öğrenci QR yoklama ile katılımını bildirebilir.
+3. Devamsızlık bilgisi öğrenci ve veli ekranlarına yansır.
+4. Yönetici kurum genelinde devamsızlık durumunu raporlar.
+
+Finans akışı:
+1. Muhasebe öğrenci hesabı ve ödeme planını oluşturur.
+2. Tahsilat veya taksit bilgileri işlenir.
+3. Fatura/makbuz oluşturulur.
+4. Veli ödeme ve makbuz bilgisini görür.
+5. Yönetici finans onayları, kasa, defter ve raporlarla süreci denetler.
+
+Servis akışı:
+1. Yönetici veya idari kullanıcı servis rotasını oluşturur.
+2. Duraklar ve öğrenci servis atamaları yapılır.
+3. Şoför paneli servis operasyonunu yürütür.
+4. Servis yoklamaları ve durum değişiklikleri işlenir.
+5. Veli servis durumunu takip eder.
+
+Rehberlik akışı:
+1. Öğrenci veya veli rehberlik talebi oluşturabilir.
+2. Rehberlik birimi öğrenci dosyası, görüşme ve randevu süreçlerini yönetir.
+3. Envanter ve raporlarla öğrencinin gelişim süreci takip edilir.
+4. Gerekli durumlarda öğretmen, veli ve yönetim bilgilendirilir.
+
+
+14. KISA SUNUM METNİ
+
+CourseIntellect / SchoolAsist, bir eğitim kurumunun tüm dijital operasyonlarını rol bazlı olarak yöneten kapsamlı bir okul yönetim platformudur.
+Kurum yöneticisi tüm akademik, finansal ve idari süreçleri tek merkezden kontrol eder.
+Öğretmen ders, yoklama, sınav, soru bankası, ödev ve raporlama süreçlerini yürütür.
+Öğrenci ders programı, içerikler, sınavlar, ödevler, canlı dersler ve gelişim takibini kendi panelinden yönetir.
+Veli çocuğunun devamsızlık, sınav sonucu, ödeme, servis, yemekhane ve iletişim süreçlerini güvenli şekilde izler.
+Muhasebeci tahsilat, taksit, fatura, makbuz, kasa, maaş ve finans raporlarını yönetir.
+İdari birimler kayıt, belge, duyuru, görev, görüşme ve operasyon süreçlerini takip eder.
+Platform yöneticisi ise kurumlar, paketler, faturalama, sistem limitleri ve destek süreçlerini üst seviyede yönetir.
+Rehberlik, kütüphane, yemekhane ve servis takip modülleriyle sistem yalnızca akademik yönetim değil, okulun tüm günlük işleyişini kapsayan bütünleşik bir yapıya dönüşür.
+

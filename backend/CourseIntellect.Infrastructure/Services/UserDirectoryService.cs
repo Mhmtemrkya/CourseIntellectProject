@@ -14,7 +14,8 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class UserDirectoryService(
     CourseIntellectDbContext dbContext,
     IPasswordHasher passwordHasher,
-    ITenantContext tenantContext) : IUserDirectoryService
+    ITenantContext tenantContext,
+    IAuditLogService auditLogService) : IUserDirectoryService
 {
     public async Task<IReadOnlyList<UserSummaryDto>> GetUsersAsync(CancellationToken cancellationToken = default)
     {
@@ -69,6 +70,13 @@ public sealed class UserDirectoryService(
 
         dbContext.Users.Add(user);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Kullanıcı oluşturuldu",
+            "Account",
+            "AppUser",
+            user.Id.ToString(),
+            $"{user.FullName} ({user.Username}) — rol: {user.PrimaryRole}.",
+            cancellationToken);
         return ToAdminListItem(user);
     }
 
@@ -100,6 +108,13 @@ public sealed class UserDirectoryService(
 
         dbContext.Users.Remove(user);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Kullanıcı silindi",
+            "Account",
+            "AppUser",
+            user.Id.ToString(),
+            $"{user.FullName} ({user.Username}, {user.PrimaryRole}) kalıcı olarak silindi.",
+            cancellationToken);
         return true;
     }
 
@@ -174,12 +189,36 @@ public sealed class UserDirectoryService(
         var user = await ApplyTenantScope(dbContext.Users).SingleOrDefaultAsync(x => x.Username == username, cancellationToken)
             ?? throw new InvalidOperationException("Kullanici bulunamadi.");
 
-        user.Status = request.Status.Equals("Passive", StringComparison.OrdinalIgnoreCase) ||
-                      request.Status.Equals("Pasif", StringComparison.OrdinalIgnoreCase)
-            ? UserStatus.Passive
-            : UserStatus.Active;
+        var makePassive = request.Status.Equals("Passive", StringComparison.OrdinalIgnoreCase) ||
+                          request.Status.Equals("Pasif", StringComparison.OrdinalIgnoreCase);
+        var previousStatus = user.Status;
+        user.Status = makePassive ? UserStatus.Passive : UserStatus.Active;
+
+        // Pasifleştirilen kullanıcının açık oturumları anında düşürülür:
+        // refresh token'ları iptal edilmezse mevcut oturum token süresi bitene dek çalışmaya devam ederdi.
+        if (makePassive)
+        {
+            var activeSessions = await dbContext.RefreshTokenSessions
+                .Where(x => x.UserId == user.Id && x.RevokedAtUtc == null)
+                .ToListAsync(cancellationToken);
+            foreach (var session in activeSessions)
+            {
+                session.RevokedAtUtc = DateTime.UtcNow;
+            }
+        }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        if (previousStatus != user.Status)
+        {
+            await auditLogService.LogAsync(
+                makePassive ? "Kullanıcı pasifleştirildi" : "Kullanıcı aktifleştirildi",
+                "Account",
+                "AppUser",
+                user.Id.ToString(),
+                $"{user.FullName} ({user.Username}, {user.PrimaryRole}) {(makePassive ? "pasif duruma alındı; açık oturumları sonlandırıldı" : "yeniden aktifleştirildi")}.",
+                cancellationToken);
+        }
     }
 
     public async Task AssignPrimaryRoleAsync(string username, UserRoleAssignmentRequest request, CancellationToken cancellationToken = default)
@@ -206,6 +245,13 @@ public sealed class UserDirectoryService(
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Ana rol değiştirildi",
+            "Permission",
+            "AppUser",
+            user.Id.ToString(),
+            $"{user.FullName} ({user.Username}) ana rolü {parsedRole} olarak güncellendi.",
+            cancellationToken);
     }
 
     public async Task AddExtraRoleAsync(string username, UserExtraRoleRequest request, CancellationToken cancellationToken = default)
@@ -226,6 +272,13 @@ public sealed class UserDirectoryService(
             history.Add($"EXTRA:{parsedRole}:{DateTime.UtcNow:O}");
             user.RoleHistory = history;
             await dbContext.SaveChangesAsync(cancellationToken);
+            await auditLogService.LogAsync(
+                "Ek rol atandı",
+                "Permission",
+                "AppUser",
+                user.Id.ToString(),
+                $"{user.FullName} ({user.Username}) kullanıcısına {parsedRole} ek rolü verildi.",
+                cancellationToken);
         }
     }
 

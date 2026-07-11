@@ -13,4 +13,5 @@ public interface IAcademicQueryService
     Task<StudentSummaryDto?> UpdateStudentAsync(Guid studentId, UpdateStudentRequest request, CancellationToken cancellationToken = default);
     Task<bool> DeleteStudentAsync(Guid studentId, CancellationToken cancellationToken = default);
     Task<ParentCredentialsDto> CreateParentAsync(CreateParentRequest request, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ParentAccountDto>> GetParentAccountsAsync(CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
 using CourseIntellect.Infrastructure.Persistence;
@@ -19,7 +20,9 @@ public sealed record UpsertCustomRoleRequest(string Name, string? BaseRole, IRea
 [ApiController]
 [Authorize(Roles = "Admin")]
 [Route("api/custom-roles")]
-public sealed class CustomRolesController(CourseIntellectDbContext dbContext) : ControllerBase
+public sealed class CustomRolesController(
+    CourseIntellectDbContext dbContext,
+    IAuditLogService auditLogService) : ControllerBase
 {
     // Özel rolün panel/yetki tabanı olabilecek roller (personel kaydı akışıyla uyumlu).
     private static readonly HashSet<UserRole> AllowedBaseRoles =
@@ -86,6 +89,13 @@ public sealed class CustomRolesController(CourseIntellectDbContext dbContext) : 
         };
         dbContext.CustomRoles.Add(role);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Özel rol oluşturuldu",
+            "Permission",
+            "CustomRole",
+            role.Id.ToString(),
+            $"\"{role.Name}\" (taban: {role.BaseRole}) — modüller: {(role.Modules.Count == 0 ? "tümü" : string.Join(", ", role.Modules))}.",
+            cancellationToken);
         return Ok(new CustomRoleDto(role.Id, role.Name, role.BaseRole.ToString(), role.Modules, 0));
     }
 
@@ -102,6 +112,13 @@ public sealed class CustomRolesController(CourseIntellectDbContext dbContext) : 
             role.Modules = request.Modules.Select(m => m.Trim()).Where(m => m.Length > 0).Distinct().ToList();
         }
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Özel rol güncellendi",
+            "Permission",
+            "CustomRole",
+            role.Id.ToString(),
+            $"\"{role.Name}\" — modüller: {(role.Modules.Count == 0 ? "tümü" : string.Join(", ", role.Modules))}.",
+            cancellationToken);
         return Ok(new CustomRoleDto(role.Id, role.Name, role.BaseRole.ToString(), role.Modules,
             await dbContext.Users.CountAsync(u => u.CustomRoleId == id, cancellationToken)));
     }
@@ -117,6 +134,13 @@ public sealed class CustomRolesController(CourseIntellectDbContext dbContext) : 
         }
         dbContext.CustomRoles.Remove(role);
         await dbContext.SaveChangesAsync(cancellationToken);
+        await auditLogService.LogAsync(
+            "Özel rol silindi",
+            "Permission",
+            "CustomRole",
+            role.Id.ToString(),
+            $"\"{role.Name}\" (taban: {role.BaseRole}) silindi.",
+            cancellationToken);
         return NoContent();
     }
 }

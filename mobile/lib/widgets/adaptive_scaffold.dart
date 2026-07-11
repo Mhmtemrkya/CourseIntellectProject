@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../onboarding/onboarding_store.dart';
+import '../onboarding/onboarding_ui.dart';
 import '../utils/session_navigation.dart';
 import 'app_sidebar.dart';
 import 'responsive_layout.dart';
@@ -53,10 +55,62 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
   void initState() {
     super.initState();
     _pages = List<Widget?>.filled(widget.destinations.length, null);
+    // Onboarding: ilk kare çizildikten sonra karşılama turu / sekme tanıtımı.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeShowOnboarding());
   }
 
   void _changePage(int index) {
     setState(() => _currentIndex = index);
+    _maybeShowTabIntro(index);
+  }
+
+  // ─── Onboarding ─────────────────────────────────────────────────────────
+
+  String get _welcomeTourId => 'welcome:${widget.userRole ?? 'genel'}';
+
+  String _tabTourId(int index) =>
+      'tab:${widget.userRole ?? 'genel'}:${widget.destinations[index].label}';
+
+  Future<void> _maybeShowOnboarding() async {
+    final store = OnboardingStore.instance;
+    if (!await store.hasSeen(_welcomeTourId)) {
+      if (!mounted) return;
+      await showWelcomeTour(
+        context,
+        userRole: widget.userRole,
+        destinations: widget.destinations,
+      );
+      await store.markSeen(_welcomeTourId);
+      // Karşılama turu tüm sekmeleri zaten anlattı; sekme tanıtımlarını
+      // tekrar tekrar açmamak için görüldü say.
+      for (var i = 0; i < widget.destinations.length; i++) {
+        await store.markSeen(_tabTourId(i));
+      }
+      return;
+    }
+    await _maybeShowTabIntro(_currentIndex);
+  }
+
+  Future<void> _maybeShowTabIntro(int index) async {
+    final store = OnboardingStore.instance;
+    final tourId = _tabTourId(index);
+    if (await store.hasSeen(tourId)) return;
+    if (!mounted || _currentIndex != index) return;
+    await showTabIntroSheet(
+      context,
+      userRole: widget.userRole,
+      destination: widget.destinations[index],
+    );
+    await store.markSeen(tourId);
+  }
+
+  // Alt menüye / kenar menüye uzun basış: bulunulan sekmenin tanıtımını yeniden açar.
+  void _replayCurrentTabIntro() {
+    showTabIntroSheet(
+      context,
+      userRole: widget.userRole,
+      destination: widget.destinations[_currentIndex],
+    );
   }
 
   Widget _buildPage(int index) {
@@ -106,7 +160,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     return Scaffold(
       body: Row(
         children: [
-          AppSidebar(
+          GestureDetector(
+            onLongPress: _replayCurrentTabIntro,
+            child: AppSidebar(
             destinations: widget.destinations
                 .map(
                   (d) => SidebarDestination(
@@ -120,6 +176,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
             onDestinationSelected: _changePage,
             userName: widget.userName,
             userRole: widget.userRole,
+            ),
           ),
           // Desktop app'teki gibi ince ayırıcı çizgi
           Container(
@@ -142,7 +199,9 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
 
     return Scaffold(
       body: _buildPageStack(),
-      bottomNavigationBar: DecoratedBox(
+      bottomNavigationBar: GestureDetector(
+        onLongPress: _replayCurrentTabIntro,
+        child: DecoratedBox(
         decoration: BoxDecoration(
           color: navTheme.backgroundColor,
           border: Border(
@@ -177,6 +236,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
                 )
                 .toList(),
           ),
+        ),
         ),
       ),
     );

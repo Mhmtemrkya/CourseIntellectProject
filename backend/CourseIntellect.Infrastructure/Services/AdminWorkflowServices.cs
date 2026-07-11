@@ -1,13 +1,43 @@
+using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 
 namespace CourseIntellect.Infrastructure.Services;
 
-public sealed class AuditLogService(CourseIntellectDbContext dbContext) : IAuditLogService
+public sealed class AuditLogService(
+    CourseIntellectDbContext dbContext,
+    IHttpContextAccessor httpContextAccessor) : IAuditLogService
 {
+    public Task LogAsync(
+        string action,
+        string category,
+        string entityType,
+        string entityId,
+        string detail,
+        CancellationToken cancellationToken = default)
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        Guid? actorId = null;
+        var actorName = "Sistem";
+        if (user?.Identity?.IsAuthenticated == true)
+        {
+            // Token sub/nameid/name kullanır (inbound claim map kapalı).
+            var rawId = user.FindFirstValue("nameid") ?? user.FindFirstValue("sub")
+                ?? user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (Guid.TryParse(rawId, out var parsed)) actorId = parsed;
+            actorName = user.FindFirstValue("name")
+                ?? user.FindFirstValue("unique_name")
+                ?? user.Identity?.Name
+                ?? "Bilinmiyor";
+        }
+
+        return LogAsync(actorId, actorName, action, category, entityType, entityId, detail, cancellationToken);
+    }
+
     public async Task LogAsync(
         Guid? actorUserId,
         string actorName,
@@ -62,8 +92,134 @@ public sealed class AuditLogService(CourseIntellectDbContext dbContext) : IAudit
                 item.EntityType,
                 item.EntityId,
                 item.Detail,
-                item.CreatedAtUtc))
+                item.CreatedAtUtc,
+                item.BranchId,
+                string.Empty))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<AuditLogPageDto> GetPagedAsync(
+        AuditLogQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        // Query filter tenant + şube izolasyonunu zaten uygular:
+        // şube müdürü yalnız kendi şubesini, kurum sahibi tüm şubeleri görür.
+        var logs = dbContext.AuditLogEntries.AsNoTracking().AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(query.Category))
+        {
+            var category = query.Category.Trim();
+            logs = logs.Where(item => item.Category == category);
+        }
+
+        if (query.BranchId.HasValue)
+        {
+            logs = logs.Where(item => item.BranchId == query.BranchId.Value);
+        }
+
+        if (query.FromUtc.HasValue)
+        {
+            logs = logs.Where(item => item.CreatedAtUtc >= query.FromUtc.Value);
+        }
+
+        if (query.ToUtc.HasValue)
+        {
+            logs = logs.Where(item => item.CreatedAtUtc <= query.ToUtc.Value);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var pattern = $"%{query.Search.Trim()}%";
+            logs = logs.Where(item =>
+                EF.Functions.ILike(item.ActorName, pattern)
+                || EF.Functions.ILike(item.Action, pattern)
+                || EF.Functions.ILike(item.Detail, pattern)
+                || EF.Functions.ILike(item.EntityType, pattern));
+        }
+
+        var totalCount = await logs.CountAsync(cancellationToken);
+        var skip = Math.Max(0, query.Skip);
+        var take = query.Take is <= 0 or > 500 ? 100 : query.Take;
+
+        var items = await logs
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Skip(skip)
+            .Take(take)
+            .Select(item => new AuditLogDto(
+                item.Id,
+                item.ActorName,
+                item.Action,
+                item.Category,
+                item.EntityType,
+                item.EntityId,
+                item.Detail,
+                item.CreatedAtUtc,
+                item.BranchId,
+                string.Empty))
+            .ToListAsync(cancellationToken);
+
+        var resolved = await AttachBranchNamesAsync(items, cancellationToken);
+        return new AuditLogPageDto(resolved, totalCount, skip, take);
+    }
+
+    public async Task<IReadOnlyList<AuditBranchSummaryDto>> GetBranchSummaryAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var sevenDaysAgo = DateTime.UtcNow.AddDays(-7);
+        var grouped = await dbContext.AuditLogEntries.AsNoTracking()
+            .GroupBy(item => item.BranchId)
+            .Select(group => new
+            {
+                BranchId = group.Key,
+                TotalCount = group.Count(),
+                Last7DaysCount = group.Count(item => item.CreatedAtUtc >= sevenDaysAgo),
+                LastActivityUtc = (DateTime?)group.Max(item => item.CreatedAtUtc),
+            })
+            .ToListAsync(cancellationToken);
+
+        var branchIds = grouped
+            .Where(item => item.BranchId.HasValue)
+            .Select(item => item.BranchId!.Value)
+            .ToList();
+        var branchNames = branchIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await dbContext.OrgUnits.AsNoTracking()
+                .Where(unit => branchIds.Contains(unit.Id))
+                .ToDictionaryAsync(unit => unit.Id, unit => unit.Name, cancellationToken);
+
+        return grouped
+            .Select(item => new AuditBranchSummaryDto(
+                item.BranchId,
+                item.BranchId.HasValue && branchNames.TryGetValue(item.BranchId.Value, out var name)
+                    ? name
+                    : "Kurum Geneli",
+                item.TotalCount,
+                item.Last7DaysCount,
+                item.LastActivityUtc))
+            .OrderByDescending(item => item.TotalCount)
+            .ToList();
+    }
+
+    private async Task<IReadOnlyList<AuditLogDto>> AttachBranchNamesAsync(
+        List<AuditLogDto> items,
+        CancellationToken cancellationToken)
+    {
+        var branchIds = items
+            .Where(item => item.BranchId.HasValue)
+            .Select(item => item.BranchId!.Value)
+            .Distinct()
+            .ToList();
+        if (branchIds.Count == 0) return items;
+
+        var names = await dbContext.OrgUnits.AsNoTracking()
+            .Where(unit => branchIds.Contains(unit.Id))
+            .ToDictionaryAsync(unit => unit.Id, unit => unit.Name, cancellationToken);
+
+        return items
+            .Select(item => item.BranchId.HasValue && names.TryGetValue(item.BranchId.Value, out var name)
+                ? item with { BranchName = name }
+                : item)
+            .ToList();
     }
 }
 

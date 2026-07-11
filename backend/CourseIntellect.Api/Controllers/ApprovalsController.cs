@@ -82,4 +82,30 @@ public sealed class AuditLogsController(IAuditLogService auditLogService) : Cont
     {
         return Ok(await auditLogService.GetAsync(category, take, cancellationToken));
     }
+
+    /// <summary>
+    /// Gelişmiş görünüm: kategori/şube/tarih/arama filtreleri + sayfalama.
+    /// Şube müdürü query filter sayesinde yalnız kendi şubesinin kayıtlarını görür.
+    /// </summary>
+    [HttpGet("paged")]
+    public async Task<IActionResult> GetPaged(
+        [FromQuery] string? category,
+        [FromQuery] Guid? branchId,
+        [FromQuery] string? search,
+        [FromQuery] DateTime? fromUtc,
+        [FromQuery] DateTime? toUtc,
+        [FromQuery] int skip = 0,
+        [FromQuery] int take = 100,
+        CancellationToken cancellationToken = default)
+    {
+        var query = new AuditLogQuery(category, branchId, search, fromUtc, toUtc, skip, take);
+        return Ok(await auditLogService.GetPagedAsync(query, cancellationToken));
+    }
+
+    /// <summary>Şube bazında kayıt özetleri: kurum yöneticisi logları şube şube izleyebilsin.</summary>
+    [HttpGet("branch-summary")]
+    public async Task<IActionResult> GetBranchSummary(CancellationToken cancellationToken = default)
+    {
+        return Ok(await auditLogService.GetBranchSummaryAsync(cancellationToken));
+    }
 }
