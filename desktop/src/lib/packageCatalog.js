@@ -20,10 +20,10 @@ export const MODULE_LIBRARY = {
   academics: { label: 'Akademik Yönetim', actions: { 'year-manage': 'Dönem/yıl yönetimi', 'curriculum-edit': 'Müfredat düzenle' } },
   students: {
     label: 'Öğrenciler',
-    actions: { create: 'Öğrenci ekle', edit: 'Öğrenci düzenle', delete: 'Öğrenci sil', export: 'Listeyi dışa aktar', 'detail-view': 'Detay görüntüle' },
+    actions: { create: 'Öğrenci ekle', edit: 'Öğrenci düzenle', status: 'Aktif/pasif durumunu yönet', delete: 'Öğrenci sil', export: 'Listeyi dışa aktar', 'detail-view': 'Detay görüntüle' },
   },
-  parents: { label: 'Veliler', actions: { create: 'Veli ekle', edit: 'Veli düzenle', link: 'Öğrenci eşleştir' } },
-  teachers: { label: 'Öğretmenler', actions: { create: 'Öğretmen ekle', edit: 'Öğretmen düzenle', 'branch-assign': 'Branş/sınıf ata' } },
+  parents: { label: 'Veliler', actions: { create: 'Veli ekle', edit: 'Veli düzenle', status: 'Aktif/pasif durumunu yönet', link: 'Öğrenci eşleştir' } },
+  teachers: { label: 'Öğretmenler', actions: { create: 'Öğretmen ekle', edit: 'Öğretmen düzenle', status: 'Aktif/pasif durumunu yönet', 'branch-assign': 'Branş/sınıf ata' } },
   classes: { label: 'Sınıflar & Gruplar', actions: { create: 'Sınıf oluştur', edit: 'Sınıf düzenle', delete: 'Sınıf sil', 'student-assign': 'Öğrenci ata' } },
   schedule: { label: 'Ders Programı', actions: { edit: 'Program düzenle', publish: 'Program yayınla', 'pdf-export': 'PDF çıktı' } },
   attendance: {
@@ -97,7 +97,7 @@ export const MODULE_LIBRARY = {
   },
   'staff-hr': {
     label: 'Personel / İK',
-    actions: { 'profile-edit': 'Personel dosyası düzenle', 'leave-approve': 'İzin onayla', 'asset-assign': 'Zimmet ata', export: 'Dışa aktar' },
+    actions: { 'profile-edit': 'Personel dosyası düzenle', status: 'Aktif/pasif durumunu yönet', 'leave-approve': 'İzin onayla', 'asset-assign': 'Zimmet ata', export: 'Dışa aktar' },
   },
   'audit-log': { label: 'Denetim Kayıtları', actions: { export: 'Dışa aktar' } },
   'org-units': { label: 'Organizasyon Birimleri', actions: { manage: 'Birim oluştur/düzenle' } },

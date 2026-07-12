@@ -13,11 +13,10 @@ import {
   ChevronUp,
   ChevronDown,
   KeyRound,
-  UserCheck,
-  UserX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
+import { UserStatusButton } from '../components/UserStatusButton';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -429,17 +428,11 @@ export default function Parents() {
                           : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
                       </TableCell>
                       <TableCell>
-                        <FeatureGate module="parents" action="update">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className={isPassive ? 'text-green-600' : 'text-red-600'}
-                            onClick={() => handleToggleAccountStatus(account)}
-                          >
-                            {isPassive
-                              ? <><UserCheck className="h-4 w-4 mr-1" /> Aktifleştir</>
-                              : <><UserX className="h-4 w-4 mr-1" /> Pasife Al</>}
-                          </Button>
+                        <FeatureGate module="parents" action="status">
+                          <UserStatusButton
+                            isPassive={isPassive}
+                            onToggle={() => handleToggleAccountStatus(account)}
+                          />
                         </FeatureGate>
                       </TableCell>
                     </TableRow>

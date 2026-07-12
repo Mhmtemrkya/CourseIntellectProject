@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Save, Briefcase, Copy, BusFront, Route } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
+import { UserStatusButton } from '../../components/UserStatusButton';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -61,6 +62,11 @@ const roles = [
   { value: 'Administrative', label: 'İdari Personel' },
   { value: 'ServiceDriver', label: 'Servis Şoförü' },
   { value: 'Cafeteria', label: 'Yemekhaneci' },
+];
+
+const staffRoleFilters = [
+  ...roles,
+  { value: 'Accounting', label: 'Muhasebe' },
 ];
 
 const branchOptions = [
@@ -572,12 +578,12 @@ export default function AdminStaffRegistration() {
               <Select value={roleFilter} onValueChange={setRoleFilter}>
                 <SelectTrigger><SelectValue placeholder="Rol seçin" /></SelectTrigger>
                 <SelectContent>
-                  {roles.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
+                  {staffRoleFilters.map((item) => <SelectItem key={item.value} value={item.value}>{item.label}</SelectItem>)}
                 </SelectContent>
               </Select>
 
               {(() => {
-                const selectedRole = roles.find((r) => r.value === roleFilter);
+                const selectedRole = staffRoleFilters.find((r) => r.value === roleFilter);
                 const norm = (v) => String(v || '').trim().toLocaleLowerCase('tr');
                 const filtered = allStaff.filter((s) => {
                   const role = norm(s.primaryRole || s.role);
@@ -617,19 +623,21 @@ export default function AdminStaffRegistration() {
                               >
                                 Atama
                               </button>
-                              <button
-                                type="button"
-                                className={`text-xs font-semibold ${isPassive ? 'text-green-600' : 'text-red-500'}`}
-                                onClick={async () => {
-                                  try {
-                                    await updateUserStatus(s.username, isPassive ? 'Active' : 'Passive');
-                                    toast({ title: isPassive ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
-                                    await loadRecent();
-                                  } catch (err) { toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' }); }
-                                }}
-                              >
-                                {isPassive ? 'Aktifleştir' : 'Pasife Al'}
-                              </button>
+                              <FeatureGate module="staff-hr" action="status">
+                                <UserStatusButton
+                                  isPassive={isPassive}
+                                  className="h-8 px-2 text-xs"
+                                  onToggle={async () => {
+                                    try {
+                                      await updateUserStatus(s.username, isPassive ? 'Active' : 'Passive');
+                                      toast({ title: isPassive ? 'Kullanıcı aktifleştirildi.' : 'Kullanıcı pasife alındı (giriş yapamaz).' });
+                                      await loadRecent();
+                                    } catch (err) {
+                                      toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
+                                    }
+                                  }}
+                                />
+                              </FeatureGate>
                             </div>
                           );
                         })}

@@ -11,11 +11,10 @@ import {
   ChevronDown,
   School,
   Pencil,
-  UserCheck,
-  UserX,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
+import { UserStatusButton } from '../components/UserStatusButton';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
@@ -672,7 +671,7 @@ export default function Teachers() {
                 <TableHead>Sınıflar</TableHead>
                 <TableHead>Sınıf Öğretmeni</TableHead>
                 <TableHead>Durum</TableHead>
-                <TableHead className="w-12" />
+                <TableHead className="w-48 text-right">İşlem</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -709,28 +708,29 @@ export default function Teachers() {
                       : <Badge className="bg-green-100 text-green-700">Aktif</Badge>}
                   </TableCell>
                   <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                        <Button variant="ghost" size="icon" className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
-                          <Eye className="h-4 w-4 mr-2" /> Detay
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(teacher); }}>
-                          <Pencil className="h-4 w-4 mr-2" /> Düzenle
-                        </DropdownMenuItem>
-                        <FeatureGate module="teachers" action="update">
-                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleToggleStatus(teacher); }}>
-                            {isUserPassive(teacher.status)
-                              ? <><UserCheck className="h-4 w-4 mr-2 text-green-600" /> Aktifleştir</>
-                              : <><UserX className="h-4 w-4 mr-2 text-red-600" /> Pasife Al</>}
+                    <div className="flex items-center justify-end gap-1">
+                      <FeatureGate module="teachers" action="status">
+                        <UserStatusButton
+                          isPassive={isUserPassive(teacher.status)}
+                          onToggle={() => handleToggleStatus(teacher)}
+                        />
+                      </FeatureGate>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => openDrawer(<TeacherDetailDrawer teacher={teacher} />)}>
+                            <Eye className="h-4 w-4 mr-2" /> Detay
                           </DropdownMenuItem>
-                        </FeatureGate>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                          <DropdownMenuItem onClick={(e) => { e.stopPropagation(); openEditDialog(teacher); }}>
+                            <Pencil className="h-4 w-4 mr-2" /> Düzenle
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
