@@ -234,6 +234,22 @@ class AuthApiService {
       throw AuthApiException(message, code: code ?? 'MAINTENANCE_MODE');
     }
 
+    // Çok fazla deneme — 429: hesap kilitleme (ACCOUNT_LOCKED) veya hız sınırı (RATE_LIMITED)
+    if (response.statusCode == 429) {
+      String message =
+          'Çok fazla giriş denemesi yapıldı. Lütfen bir süre sonra tekrar deneyin.';
+      String? code;
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          code = decoded['code']?.toString();
+          final m = decoded['message']?.toString();
+          if (m != null && m.isNotEmpty) message = m;
+        }
+      } catch (_) {}
+      throw AuthApiException(message, code: code ?? 'RATE_LIMITED');
+    }
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthApiException(
         'Giriş sırasında sunucu hatası oluştu (${response.statusCode}).',

@@ -301,6 +301,17 @@ export async function loginWithBackend(username, password) {
     throw new Error(body?.message || "Servis geçici olarak ulaşılamıyor.");
   }
 
+  // Çok fazla deneme — 429: hesap kilitleme (ACCOUNT_LOCKED) veya hız sınırı (RATE_LIMITED)
+  if (response.status === 429) {
+    let body = null;
+    try { body = await response.json(); } catch {}
+    const err = new Error(
+      body?.message || "Çok fazla giriş denemesi yapıldı. Lütfen bir süre sonra tekrar deneyin."
+    );
+    err.code = body?.code || "RATE_LIMITED";
+    throw err;
+  }
+
   if (!response.ok) {
     throw new Error(`Giriş sırasında sunucu hatası oluştu (${response.status}).`);
   }

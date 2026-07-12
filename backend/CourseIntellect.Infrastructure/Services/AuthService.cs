@@ -20,7 +20,8 @@ public sealed class AuthService(
     IPasswordHasher passwordHasher,
     ILoginAttemptService loginAttemptService,
     ISystemService systemService,
-    IHttpContextAccessor httpContextAccessor) : IAuthService
+    IHttpContextAccessor httpContextAccessor,
+    Microsoft.Extensions.Configuration.IConfiguration configuration) : IAuthService
 {
     private const string PasswordResetPending = "Pending";
     private const string PasswordResetApproved = "Approved";
@@ -28,9 +29,25 @@ public sealed class AuthService(
     private const string PasswordResetUsed = "Used";
     private const string PasswordResetExpired = "Expired";
 
+    // Hesap kilitleme: bir kullanıcı adı için pencere içinde eşik kadar başarısız
+    // deneme olursa geçici olarak kilitlenir. Son başarılı girişten sonrası sayılır.
+    private readonly int _lockoutMaxFailed =
+        int.TryParse(configuration["Auth:Lockout:MaxFailedAttempts"], out var m) ? m : 5;
+    private readonly int _lockoutWindowMinutes =
+        int.TryParse(configuration["Auth:Lockout:WindowMinutes"], out var w) ? w : 15;
+
     public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken cancellationToken = default)
     {
         var login = request.Username.Trim().ToLowerInvariant();
+
+        // ── Hesap kilitleme kontrolü (parola doğrulamadan ÖNCE) ──────────────
+        // Kilitliyse doğru parola bile reddedilir ve yeni başarısız kayıt EKLENMEZ
+        // (aksi halde kilit süresi sonsuza kadar uzardı; pencere zamanla iyileşir).
+        if (_lockoutMaxFailed > 0 && await IsLockedOutAsync(login, cancellationToken))
+        {
+            throw new AccountLockedException(_lockoutWindowMinutes);
+        }
+
         var user = await dbContext.Users
             .FirstOrDefaultAsync(x => x.Username.ToLower() == login, cancellationToken);
 
@@ -56,29 +73,13 @@ public sealed class AuthService(
 
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            await loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
-                user?.Id,
-                request.Username,
-                user?.PrimaryRole.ToString() ?? string.Empty,
-                false,
-                string.Empty,
-                string.Empty,
-                string.Empty), cancellationToken);
-
+            await RecordLoginAttemptAsync(login, user?.Id, user?.PrimaryRole.ToString() ?? string.Empty, false, cancellationToken);
             return null;
         }
 
         if (await ExpireApprovedPasswordResetIfNeededAsync(user, cancellationToken))
         {
-            await loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
-                user.Id,
-                user.Username,
-                user.PrimaryRole.ToString(),
-                false,
-                string.Empty,
-                string.Empty,
-                string.Empty), cancellationToken);
-
+            await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), false, cancellationToken);
             return null;
         }
 
@@ -94,20 +95,48 @@ public sealed class AuthService(
             }
         }
 
-        await loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
-            user.Id,
-            user.Username,
-            user.PrimaryRole.ToString(),
-            true,
-            string.Empty,
-            string.Empty,
-            string.Empty), cancellationToken);
+        await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), true, cancellationToken);
 
         user.LastLoginAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
 
         var response = await CreateLoginResponseAsync(user, cancellationToken);
         return response;
+    }
+
+    // Kilit anahtarı: denenen (normalize edilmiş) kullanıcı adı/e-posta.
+    // Politika: son pencere (dakika) içinde eşik kadar başarısız deneme olursa hesap
+    // kilitlidir; en eski başarısız deneme pencereden düştükçe kilit kendiliğinden açılır.
+    private async Task<bool> IsLockedOutAsync(string login, CancellationToken cancellationToken)
+    {
+        var windowStart = DateTimeOffset.UtcNow.AddMinutes(-_lockoutWindowMinutes);
+
+        // Zaman penceresi karşılaştırması bellekte yapılır: DateTimeOffset SQL çevirisi
+        // sağlayıcıya göre değişir (Postgres destekler, SQLite etmez). E-posta+başarısızlık
+        // filtresi SQL'de kalır; tek hesabın başarısız denemeleri pratikte küçük bir kümedir.
+        var failureTimes = await dbContext.LoginAttempts
+            .Where(x => x.Email.ToLower() == login && !x.Success)
+            .Select(x => x.Timestamp)
+            .ToListAsync(cancellationToken);
+
+        var recentFailures = failureTimes.Count(ts => ts > windowStart);
+        return recentFailures >= _lockoutMaxFailed;
+    }
+
+    private Task RecordLoginAttemptAsync(string login, Guid? userId, string role, bool success, CancellationToken cancellationToken)
+    {
+        var context = httpContextAccessor.HttpContext;
+        var ip = context?.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
+        var userAgent = context?.Request.Headers.UserAgent.ToString() ?? string.Empty;
+
+        return loginAttemptService.CreateAsync(new CreateLoginAttemptRequest(
+            userId,
+            login,
+            role,
+            success,
+            ip,
+            userAgent,
+            string.Empty), cancellationToken);
     }
 
     public async Task<LoginResponse?> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)
@@ -159,36 +188,6 @@ public sealed class AuthService(
             refreshToken,
             refreshTokenExpiresAtUtc,
             currentUser);
-    }
-
-    public async Task<LoginResponse?> RegisterAsync(RegisterRequest request, CancellationToken cancellationToken = default)
-    {
-        var exists = await dbContext.Users
-            .AnyAsync(x => x.Username.ToLower() == request.Username.ToLower(), cancellationToken);
-
-        if (exists) return null;
-
-        if (!Enum.TryParse<Domain.Enums.UserRole>(request.Role, true, out var role))
-            role = Domain.Enums.UserRole.Student;
-        if (role == Domain.Enums.UserRole.Developer)
-            role = Domain.Enums.UserRole.Student;
-
-        var user = new AppUser
-        {
-            FullName = request.FullName,
-            Username = request.Username,
-            PasswordHash = passwordHasher.Hash(request.Password),
-            PrimaryRole = role,
-            Campus = request.Campus,
-            Status = Domain.Enums.UserStatus.Active,
-            IsEmailVerified = false,
-            CreatedAtUtc = DateTime.UtcNow
-        };
-
-        dbContext.Users.Add(user);
-        await dbContext.SaveChangesAsync(cancellationToken);
-
-        return await CreateLoginResponseAsync(user, cancellationToken);
     }
 
     public async Task<CurrentUserDto?> GetCurrentUserAsync(Guid userId, CancellationToken cancellationToken = default)

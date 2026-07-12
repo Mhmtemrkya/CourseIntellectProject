@@ -95,6 +95,36 @@ builder.Services.AddSingleton<IMessageRealtimeNotifier, SignalRMessageRealtimeNo
 builder.Services.AddSingleton<IServiceTrackingRealtimeNotifier, SignalRServiceTrackingRealtimeNotifier>();
 builder.Services.AddSingleton<IExamSolvingRealtimeNotifier, SignalRExamSolvingRealtimeNotifier>();
 
+// ─── Hız sınırlama (auth uçları) ─────────────────────────────────────────
+// Kaba kuvvet / hacimsel saldırılara karşı istemci IP'si başına "auth" politikası.
+// Hedefli parola denemesini AuthService'teki hesap kilitleme durdurur; bu katman
+// altyapıyı ve toplu spray'i sınırlar. Okulların tek NAT IP'sinden aynı anda çok
+// sayıda meşru giriş olabildiği için sınır bilinçli olarak cömert (yapılandırılabilir).
+var authRateLimitPermit = builder.Configuration.GetValue<int?>("Auth:RateLimit:PermitPerMinute") ?? 60;
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.OnRejected = async (context, token) =>
+    {
+        context.HttpContext.Response.Headers.RetryAfter = "60";
+        context.HttpContext.Response.ContentType = "application/json";
+        await context.HttpContext.Response.WriteAsJsonAsync(new
+        {
+            code = "RATE_LIMITED",
+            message = "Çok fazla istek gönderildi. Lütfen bir dakika sonra tekrar deneyin.",
+        }, token);
+    };
+    options.AddPolicy("auth", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = authRateLimitPermit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+});
+
 var defaultCorsOrigins = new[]
 {
     // Production web/API domains
@@ -153,6 +183,10 @@ if (string.IsNullOrWhiteSpace(jwtKey) || Encoding.UTF8.GetByteCount(jwtKey) < 32
 var jwtIssuer = jwtSection["Issuer"] ?? "CourseIntellect";
 var jwtAudience = jwtSection["Audience"] ?? "CourseIntellectClients";
 
+// Ayrıntılı JWT/claim tanılaması yalnız geliştirmede; üretim loglarına
+// token claim'leri (kullanıcı id, rol, tenant) sızmasın.
+var jwtDiagnosticsVerbose = builder.Environment.IsDevelopment();
+
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -207,6 +241,11 @@ builder.Services
             },
             OnTokenValidated = context =>
             {
+                if (!jwtDiagnosticsVerbose)
+                {
+                    return Task.CompletedTask;
+                }
+
                 var logger = context.HttpContext
                     .RequestServices
                     .GetRequiredService<ILoggerFactory>()
@@ -317,6 +356,9 @@ if (!app.Environment.IsDevelopment())
     app.UseHttpsRedirection();
 }
 app.UseCors("ConfiguredOrigins");
+// Hız sınırlama; endpoint'e özel "auth" politikasını uygulayabilmesi için
+// (implicit) routing sonrası, kimlik doğrulamadan önce çalışır → gereksiz iş yapılmadan reddeder.
+app.UseRateLimiter();
 var staticFileContentTypes = new FileExtensionContentTypeProvider();
 staticFileContentTypes.Mappings[".mp4"] = "video/mp4";
 staticFileContentTypes.Mappings[".m4v"] = "video/mp4";

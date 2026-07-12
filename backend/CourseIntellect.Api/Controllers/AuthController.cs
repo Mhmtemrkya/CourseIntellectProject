@@ -3,6 +3,7 @@ using CourseIntellect.Application.Exceptions;
 using CourseIntellect.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace CourseIntellect.Api.Controllers;
@@ -12,8 +13,10 @@ namespace CourseIntellect.Api.Controllers;
 public sealed class AuthController(IAuthService authService) : ControllerBase
 {
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status429TooManyRequests)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Login([FromBody] LoginRequest request, CancellationToken cancellationToken)
     {
@@ -21,6 +24,16 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         {
             var result = await authService.LoginAsync(request, cancellationToken);
             return result is null ? Unauthorized(new { message = "Kullanici adi veya sifre hatali." }) : Ok(result);
+        }
+        catch (AccountLockedException ex)
+        {
+            Response.Headers.RetryAfter = (ex.RetryAfterMinutes * 60).ToString();
+            return StatusCode(StatusCodes.Status429TooManyRequests, new
+            {
+                code = "ACCOUNT_LOCKED",
+                message = ex.Message,
+                retryAfterMinutes = ex.RetryAfterMinutes,
+            });
         }
         catch (MaintenanceModeException ex)
         {
@@ -33,6 +46,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("refresh")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Refresh([FromBody] RefreshTokenRequest request, CancellationToken cancellationToken)
@@ -41,16 +55,8 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return result is null ? Unauthorized(new { message = "Refresh token gecersiz veya suresi dolmus." }) : Ok(result);
     }
 
-    [HttpPost("register")]
-    [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> Register([FromBody] RegisterRequest request, CancellationToken cancellationToken)
-    {
-        var result = await authService.RegisterAsync(request, cancellationToken);
-        return result is null ? Conflict(new { message = "Bu kullanici adi zaten kayitli." }) : Ok(result);
-    }
-
     [HttpPost("forgot-password")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request, CancellationToken cancellationToken)
     {
@@ -116,25 +122,6 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
         return user is null ? BadRequest(new { message = "Profil guncellenemedi." }) : Ok(user);
     }
 
-    /// <summary>Debug: JWT claim'leri ve IsInRole kontrolü</summary>
-    [Authorize]
-    [HttpGet("debug-claims")]
-    public IActionResult DebugClaims()
-    {
-        var identity = User.Identity as System.Security.Claims.ClaimsIdentity;
-        return Ok(new
-        {
-            IsAuthenticated = User.Identity?.IsAuthenticated,
-            RoleClaimType = identity?.RoleClaimType,
-            NameClaimType = identity?.NameClaimType,
-            IsInRoleAdmin = User.IsInRole("Admin"),
-            IsInRoleDeveloper = User.IsInRole("Developer"),
-            IsInRoleStudent = User.IsInRole("Student"),
-            IsInRoleTeacher = User.IsInRole("Teacher"),
-            Claims = identity?.Claims.Select(c => new { c.Type, c.Value }).ToList()
-        });
-    }
-
     [Authorize]
     [HttpPost("change-password")]
     [ProducesResponseType(typeof(CurrentUserDto), StatusCodes.Status200OK)]
@@ -166,6 +153,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("pkce/authorize")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(PkceAuthorizeResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> PkceAuthorize([FromBody] PkceAuthorizeRequest request, CancellationToken cancellationToken)
@@ -177,6 +165,7 @@ public sealed class AuthController(IAuthService authService) : ControllerBase
     }
 
     [HttpPost("pkce/token")]
+    [EnableRateLimiting("auth")]
     [ProducesResponseType(typeof(LoginResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> PkceToken([FromBody] PkceTokenRequest request, CancellationToken cancellationToken)
