@@ -188,7 +188,7 @@ function FlowChart({ buckets, period }) {
             const gy = y(value);
             return (
               <g key={value}>
-                <line x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="hsl(var(--foreground) / 0.08)" strokeDasharray={i === 0 ? '0' : '4 6'} />
+                <line x1={padL} x2={W - padR} y1={gy} y2={gy} stroke="hsl(var(--ci-chart-grid) / 0.38)" strokeDasharray={i === 0 ? '0' : '4 6'} />
                 <text x={padL - 8} y={gy + 3} textAnchor="end" className="fill-muted-foreground" style={{ fontSize: 10 }}>{formatTryShort(value)}</text>
               </g>
             );

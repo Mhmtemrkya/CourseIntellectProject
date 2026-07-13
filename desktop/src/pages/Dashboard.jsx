@@ -145,7 +145,7 @@ function FinancialChart({ buckets = [], loading = false }) {
 
       <div className="relative mt-5 h-64">
         {active ? (
-          <div className="pointer-events-none absolute -top-1 right-0 z-10 rounded-2xl border border-foreground/10 bg-[hsl(var(--ci-surface-1)/0.97)] px-4 py-3 text-xs shadow-xl backdrop-blur">
+          <div className="ci-chart-tooltip pointer-events-none absolute -top-1 right-0 z-10 rounded-2xl border px-4 py-3 text-xs shadow-xl backdrop-blur">
             <p className="mb-1 font-bold text-foreground">{active.label}</p>
             <p className="flex items-center justify-between gap-4 text-emerald-400"><span>Kazanç</span><span className="tabular-nums font-semibold">{formatMoney(active.revenue)}</span></p>
             <p className="flex items-center justify-between gap-4 text-rose-400"><span>Gider</span><span className="tabular-nums font-semibold">{formatMoney(active.expense)}</span></p>
@@ -173,8 +173,8 @@ function FinancialChart({ buckets = [], loading = false }) {
                   </span>
                 ) : null}
                 <div className={`flex w-full items-end justify-center gap-[3px] rounded-md px-0.5 pt-3 transition-colors ${isActive ? 'bg-foreground/[0.06]' : ''}`} style={{ height: '100%' }}>
-                  <div className="w-1/2 max-w-[18px] rounded-t bg-gradient-to-t from-emerald-500 to-emerald-300 shadow-[0_0_10px_hsl(152_76%_50%/0.45)] ring-1 ring-emerald-300/50 transition-all" style={{ height: `${revenueH}%` }} />
-                  <div className="w-1/2 max-w-[18px] rounded-t bg-gradient-to-t from-rose-500 to-rose-300 shadow-[0_0_10px_hsl(350_89%_60%/0.45)] ring-1 ring-rose-300/50 transition-all" style={{ height: `${expenseH}%` }} />
+                  <div className="ci-chart-fill w-1/2 max-w-[18px] rounded-t bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-[0_0_10px_hsl(152_76%_50%/0.35)] ring-1 ring-emerald-500/40 transition-all" style={{ height: `${revenueH}%` }} />
+                  <div className="ci-chart-fill w-1/2 max-w-[18px] rounded-t bg-gradient-to-t from-rose-600 to-rose-400 shadow-[0_0_10px_hsl(350_89%_60%/0.35)] ring-1 ring-rose-500/40 transition-all" style={{ height: `${expenseH}%` }} />
                 </div>
               </button>
             );

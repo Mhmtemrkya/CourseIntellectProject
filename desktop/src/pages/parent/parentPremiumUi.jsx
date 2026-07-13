@@ -13,7 +13,7 @@ export const itemMotion = {
 };
 
 export const panelClass =
-  'rounded-[14px] border border-foreground/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.86),rgba(5,22,42,0.78))] shadow-[0_18px_52px_rgba(0,0,0,0.24)] backdrop-blur-2xl';
+  'ci-dashboard-panel rounded-[14px] border border-foreground/[0.08] shadow-[0_18px_52px_rgba(0,0,0,0.16)] backdrop-blur-2xl';
 
 export const toneMap = {
   blue: 'from-blue-500/30 to-blue-600/10 text-blue-300 shadow-blue-500/20',
@@ -197,7 +197,7 @@ export function DonutChart({ items, center, size = 168 }) {
       offset = end;
       return `${item.color} ${start}deg ${end}deg`;
     }).join(', ')
-    : 'rgba(255,255,255,0.08) 0deg 360deg';
+    : 'hsl(var(--ci-chart-track)) 0deg 360deg';
 
   return (
     <div className="grid place-items-center rounded-full" style={{ width: size, height: size, background: `conic-gradient(${gradient})` }}>
@@ -249,7 +249,7 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
         </defs>
         {[0, 25, 50, 75, 100].map((tick) => {
           const y = height - (tick / 100) * (height - 26) - 12;
-          return <line key={tick} x1="0" x2={width} y1={y} y2={y} stroke="rgba(255,255,255,0.07)" strokeDasharray="5 8" />;
+          return <line key={tick} x1="0" x2={width} y1={y} y2={y} stroke="hsl(var(--ci-chart-grid) / 0.38)" strokeDasharray="5 8" />;
         })}
         {area ? <path d={area} fill={`url(#parentLineFill-${gid})`} /> : null}
         {path ? (
@@ -269,8 +269,8 @@ export function LineChart({ values, labels = [], color = '#a855f7', className = 
         {points.map((point, index) => (
           <g key={`${point.x}-${point.y}`}>
             <circle cx={point.x} cy={point.y} r="6" fill={color} stroke="hsl(var(--ci-card))" strokeWidth="3" />
-            <text x={point.x} y={point.y - 14} textAnchor="middle" className="fill-slate-200 text-[13px] font-bold">{point.value}</text>
-            {labels[index] ? <text x={point.x} y={height - 2} textAnchor="middle" className="fill-slate-500 text-[11px]">{labels[index]}</text> : null}
+            <text x={point.x} y={point.y - 14} textAnchor="middle" className="fill-foreground text-[13px] font-bold">{point.value}</text>
+            {labels[index] ? <text x={point.x} y={height - 2} textAnchor="middle" className="fill-muted-foreground text-[11px]">{labels[index]}</text> : null}
           </g>
         ))}
       </svg>
@@ -322,12 +322,12 @@ export function RadarChart({ items, className = 'h-[330px]' }) {
               return `${center + Math.cos(angle) * radius * scale},${center + Math.sin(angle) * radius * scale}`;
             }).join(' ')}
             fill="none"
-            stroke="rgba(255,255,255,0.08)"
+            stroke="hsl(var(--ci-chart-grid) / 0.42)"
           />
         ))}
         {values.map((_, index) => {
           const angle = (Math.PI * 2 * index) / Math.max(values.length, 1) - Math.PI / 2;
-          return <line key={index} x1={center} y1={center} x2={center + Math.cos(angle) * radius} y2={center + Math.sin(angle) * radius} stroke="rgba(255,255,255,0.06)" />;
+          return <line key={index} x1={center} y1={center} x2={center + Math.cos(angle) * radius} y2={center + Math.sin(angle) * radius} stroke="hsl(var(--ci-chart-grid) / 0.32)" />;
         })}
         {comparison ? <polygon points={comparison} fill="none" stroke="rgba(148,163,184,0.7)" strokeDasharray="6 8" strokeWidth="2" /> : null}
         {polygon ? <polygon points={polygon} fill="rgba(124,58,237,0.34)" stroke="#a855f7" strokeWidth="3" /> : null}

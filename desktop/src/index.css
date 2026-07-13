@@ -98,6 +98,10 @@ code {
         --chart-3: 142 76% 36%;
         --chart-4: 221 83% 53%;
         --chart-5: 262 80% 50%;
+        --ci-chart-grid: 214 24% 72%;
+        --ci-chart-track: 214 30% 88%;
+        --ci-chart-tooltip: 0 0% 100%;
+        --ci-chart-tooltip-border: 214 26% 82%;
         --radius: 0.875rem;
         --shell-shadow: 0 24px 80px hsl(200 100% 8% / 0.38);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.06);
@@ -141,6 +145,15 @@ code {
         --brand-accent-text: 26 100% 40%; /* beyaz zeminde okunur accent */
         --muted-foreground: 215 16% 42%;
         --primary-foreground: 0 0% 100%;
+        --chart-1: 217 91% 48%;
+        --chart-2: 24 94% 45%;
+        --chart-3: 142 72% 34%;
+        --chart-4: 262 76% 55%;
+        --chart-5: 188 86% 34%;
+        --ci-chart-grid: 215 24% 52%;
+        --ci-chart-track: 214 30% 89%;
+        --ci-chart-tooltip: 0 0% 100%;
+        --ci-chart-tooltip-border: 214 24% 78%;
         --shell-shadow: 0 24px 80px hsl(214 40% 60% / 0.20);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.7);
 
@@ -199,6 +212,10 @@ code {
         --chart-3: 142 76% 40%;
         --chart-4: 221 83% 60%;
         --chart-5: 262 80% 55%;
+        --ci-chart-grid: 212 24% 72%;
+        --ci-chart-track: 214 42% 18%;
+        --ci-chart-tooltip: 214 62% 10%;
+        --ci-chart-tooltip-border: 209 44% 30%;
         --shell-shadow: 0 26px 96px hsl(200 100% 2% / 0.55);
         --shell-outline: inset 0 1px 0 hsl(0 0% 100% / 0.06);
 
@@ -550,6 +567,25 @@ code {
 .ci-dot-pulse { animation: ci-dot-pulse 2.2s ease-in-out infinite; }
 .ci-bar-fill { transform-origin: left center; animation: ci-grow-x 0.9s cubic-bezier(.2,.8,.2,1) both; }
 
+.ci-chart-track {
+    background-color: hsl(var(--ci-chart-track)) !important;
+}
+
+.ci-chart-fill {
+    position: relative;
+    isolation: isolate;
+}
+
+.light .ci-chart-fill {
+    filter: saturate(1.08) contrast(1.03);
+}
+
+.ci-chart-tooltip {
+    border-color: hsl(var(--ci-chart-tooltip-border)) !important;
+    background: hsl(var(--ci-chart-tooltip) / 0.97) !important;
+    color: hsl(var(--foreground));
+}
+
 @media (prefers-reduced-motion: reduce) {
     .ci-float, .ci-dot-pulse, .ci-bar-fill, .ci-anim-fade-up, .ci-anim-pop { animation: none !important; }
     .ci-metric-card:hover, .ci-rise:hover { transform: none; }
@@ -798,25 +834,8 @@ code {
     border-radius: 10px !important;
 }
 
-.ci-page .ci-card [class*="bg-gradient"],
-.ci-page .ci-card [class*="from-"],
-.ci-page .ci-card [class*="to-"],
-.ci-page .ci-card [class*="via-"] {
-    background-image:
-        radial-gradient(circle at 14% 0%, hsl(var(--brand-accent) / 0.10), transparent 25%),
-        linear-gradient(180deg, hsl(var(--ci-card) / 0.94), hsl(var(--ci-card-muted) / 0.90)) !important;
-    color: hsl(210 40% 98%) !important;
-}
-
-.light .ci-page .ci-card [class*="bg-gradient"],
-.light .ci-page .ci-card [class*="from-"],
-.light .ci-page .ci-card [class*="to-"],
-.light .ci-page .ci-card [class*="via-"] {
-    background-image:
-        radial-gradient(circle at 14% 0%, hsl(var(--brand-accent) / 0.06), transparent 25%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(246, 249, 253, 0.94)) !important;
-    color: hsl(var(--ci-foreground)) !important;
-}
+/* Authored gradients inside cards include charts, progress bars and status icons.
+   Decorative panel treatments use the explicit theme surface classes instead. */
 
 .ci-page .ci-card .bg-muted,
 .ci-page .ci-card .bg-muted\/40,
@@ -1055,6 +1074,11 @@ code {
     color: #fff !important;
 }
 
+.light .ci-page .ci-hero,
+.light .ci-page .ci-hero .text-white {
+    color: #fff !important;
+}
+
 .light [data-ci-sidebar] .text-fuchsia-200 {
     color: #a21caf !important;
 }
@@ -1064,14 +1088,6 @@ code {
 .light :is(.ci-page, .ci-dialog, .ci-drawer, [data-ci-sidebar]) .text-brand-accent,
 .light :is(.ci-page, .ci-dialog, .ci-drawer, [data-ci-sidebar]) [class~="text-[hsl(var(--brand-accent))]"] {
     color: hsl(var(--brand-accent-text, var(--brand-accent))) !important;
-}
-
-/* Force-layer ci-card içindeki gradyanları açık panele çevirdiği için
-   içlerindeki beyaz metin de koyuya döner (yukarıdaki istisnayı ezer). */
-.light .ci-page .ci-card [class*="bg-gradient"] .text-white,
-.light .ci-page .ci-card [class*="from-"] .text-white,
-.light .ci-page .ci-card [class*="to-"] .text-white {
-    color: hsl(var(--ci-foreground)) !important;
 }
 
 .light .text-slate-400,

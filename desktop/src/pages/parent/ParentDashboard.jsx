@@ -38,7 +38,7 @@ const itemVariants = {
 };
 
 const panel =
-  'rounded-[12px] border border-foreground/[0.08] bg-[linear-gradient(180deg,rgba(7,31,57,0.84),rgba(5,23,43,0.78))] shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-2xl';
+  'ci-dashboard-panel rounded-[12px] border border-foreground/[0.08] shadow-[0_18px_50px_rgba(0,0,0,0.16)] backdrop-blur-2xl';
 
 const iconTones = {
   blue: 'from-blue-500/30 to-blue-600/10 text-blue-300 shadow-blue-500/20',
@@ -70,7 +70,7 @@ function StatCard({ icon, tone, label, value, sub, donut }) {
   return (
     <motion.div variants={itemVariants} className={`${panel} flex min-h-[104px] items-center gap-4 p-4`}>
       {donut ? (
-        <div className="relative grid h-16 w-16 place-items-center rounded-full" style={{ background: `conic-gradient(#a855f7 ${Number(value || 0) * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
+        <div className="relative grid h-16 w-16 place-items-center rounded-full" style={{ background: `conic-gradient(#9333ea ${Number(value || 0) * 3.6}deg, hsl(var(--ci-chart-track)) 0deg)` }}>
           <div className="h-11 w-11 rounded-full bg-[hsl(var(--ci-card))]" />
         </div>
       ) : (
@@ -183,7 +183,7 @@ function AttendanceCircle({ name, className, value }) {
     <div className="text-center">
       <p className="text-sm font-bold text-white">{name}</p>
       <p className="text-xs text-slate-400">{className || 'Sınıf'}</p>
-      <div className="mx-auto mt-3 grid h-24 w-24 place-items-center rounded-full" style={{ background: `conic-gradient(#4ade80 ${Number(value || 0) * 3.6}deg, rgba(255,255,255,0.08) 0deg)` }}>
+      <div className="mx-auto mt-3 grid h-24 w-24 place-items-center rounded-full" style={{ background: `conic-gradient(#16a34a ${Number(value || 0) * 3.6}deg, hsl(var(--ci-chart-track)) 0deg)` }}>
         <div className="grid h-[70px] w-[70px] place-items-center rounded-full bg-[hsl(var(--ci-card))]">
           <div>
             <p className="text-2xl font-black text-white">{value}%</p>
@@ -249,7 +249,7 @@ export default function ParentDashboard() {
       variants={containerVariants}
       initial="hidden"
       animate="visible"
-      className="parent-home-board space-y-4 text-slate-100"
+      className="parent-home-board space-y-4 text-foreground"
       data-testid="parent-dashboard-page"
     >
       <div className="flex items-start justify-between gap-4">

@@ -153,9 +153,9 @@ export default function AdminBranchComparison() {
                   <span className="font-medium">{b.name}</span>
                   <span className="text-muted-foreground">{b.students} ogrenci</span>
                 </div>
-                <div className="h-4 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                <div className="ci-chart-track h-4 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-cyan-500 rounded-full transition-all"
+                    className="ci-chart-fill h-full bg-gradient-to-r from-blue-600 to-cyan-500 rounded-full transition-all"
                     style={{ width: `${totals.students > 0 ? (b.students / totals.students) * 100 : 0}%` }}
                   />
                 </div>
