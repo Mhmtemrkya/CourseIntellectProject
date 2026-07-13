@@ -54,7 +54,7 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents, updateUserStatus } from '../lib/api/modules';
+import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents, updateStudent, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
 import {
@@ -66,6 +66,23 @@ const containerVariants = {
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } },
 };
 const FALLBACK_CLASSES = [];
+
+function buildStudentUpdatePayload(student) {
+  return {
+    fullName: student.fullName || '',
+    tcNo: student.tcNo || '',
+    className: student.className || '',
+    currentSchool: student.currentSchool || '',
+    schoolNumber: student.schoolNumber || '',
+    birthDate: student.birthDate || '',
+    programType: student.programType || '',
+    parentName: student.parentName || '',
+    parentPhone: student.parentPhone || '',
+    parentEmail: student.parentEmail || '',
+    address: student.address || '',
+    note: student.note || '',
+  };
+}
 
 function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
@@ -443,6 +460,9 @@ export default function Students() {
   const [attendance, setAttendance] = useState([]);
   const [examResults, setExamResults] = useState([]);
   const [classNames, setClassNames] = useState([]);
+  const [activationStudent, setActivationStudent] = useState(null);
+  const [activationClassName, setActivationClassName] = useState('');
+  const [activating, setActivating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -471,6 +491,31 @@ export default function Students() {
     loadStudents();
   }, [loadStudents]);
 
+  const classes = useMemo(
+    () => [...new Set((classNames || []).filter(Boolean))],
+    [classNames],
+  );
+
+  // Sınıfı silinen öğrenci sınıfsız kalır; tekrar aktifleştirilirken yeni sınıf seçilmesi zorunludur.
+  const needsClassAssignment = useCallback((student) => {
+    const current = normalizeText(student?.className || '');
+    if (!current) return true;
+    return !classes.some((item) => normalizeText(item) === current);
+  }, [classes]);
+
+  const activateStudent = useCallback(async (student, className = '') => {
+    if (className) {
+      await updateStudent(student.id, { ...buildStudentUpdatePayload(student), className });
+    }
+    await updateUserStatus(student.username, 'Active');
+    toast({
+      title: className
+        ? `Öğrenci aktifleştirildi ve ${className} sınıfına atandı.`
+        : 'Öğrenci aktifleştirildi.',
+    });
+    await loadStudents();
+  }, [loadStudents, toast]);
+
   // Öğrenciyi pasif/aktif yapar: pasif öğrenci giriş yapamaz; kaydı silinmez.
   const handleToggleStudentStatus = useCallback(async (student) => {
     if (!student?.username) {
@@ -479,18 +524,38 @@ export default function Students() {
     }
     const makePassive = !isUserPassive(student.status);
     try {
-      await updateUserStatus(student.username, makePassive ? 'Passive' : 'Active');
-      toast({ title: makePassive ? 'Öğrenci pasife alındı (giriş yapamaz).' : 'Öğrenci aktifleştirildi.' });
-      await loadStudents();
+      if (!makePassive && needsClassAssignment(student)) {
+        setActivationStudent(student);
+        setActivationClassName('');
+        return;
+      }
+
+      if (makePassive) {
+        await updateUserStatus(student.username, 'Passive');
+        toast({ title: 'Öğrenci pasife alındı (giriş yapamaz).' });
+        await loadStudents();
+        return;
+      }
+
+      await activateStudent(student);
     } catch (err) {
       toast({ title: err.message || 'Durum değiştirilemedi.', variant: 'destructive' });
     }
-  }, [loadStudents, toast]);
+  }, [activateStudent, loadStudents, needsClassAssignment, toast]);
 
-  const classes = useMemo(
-    () => [...new Set((classNames || []).filter(Boolean))],
-    [classNames],
-  );
+  const handleConfirmActivation = useCallback(async () => {
+    if (!activationStudent || !activationClassName) return;
+    try {
+      setActivating(true);
+      await activateStudent(activationStudent, activationClassName);
+      setActivationStudent(null);
+      setActivationClassName('');
+    } catch (err) {
+      toast({ title: err.message || 'Öğrenci aktifleştirilemedi.', variant: 'destructive' });
+    } finally {
+      setActivating(false);
+    }
+  }, [activateStudent, activationClassName, activationStudent, toast]);
 
   const enrichedStudents = useMemo(() => students.map((student) => {
     const studentAttendance = attendance.filter((item) => normalizeText(item.studentName) === normalizeText(student.fullName));
@@ -670,6 +735,54 @@ export default function Students() {
       </Card>
 
       <AddStudentDialog open={dialogOpen} onOpenChange={setDialogOpen} classes={classes} onCreated={handleCreated} />
+
+      <Dialog
+        open={Boolean(activationStudent)}
+        onOpenChange={(value) => {
+          if (activating || value) return;
+          setActivationStudent(null);
+          setActivationClassName('');
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{activationStudent?.fullName} için sınıf seçin</DialogTitle>
+            <DialogDescription>
+              Bu öğrencinin sınıfı kayıtlı değil (sınıfı silinmiş olabilir). Aktifleştirmek için yeni bir sınıfa atanması gerekiyor.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label>Yeni sınıf</Label>
+            <Select value={activationClassName} onValueChange={setActivationClassName} disabled={activating}>
+              <SelectTrigger>
+                <SelectValue placeholder="Sınıf seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                {classes.map((item) => (
+                  <SelectItem key={item} value={item}>{item}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {classes.length === 0 ? (
+              <p className="text-xs text-destructive">Kayıtlı sınıf yok. Önce Sınıflar sayfasından bir sınıf oluşturun.</p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => { setActivationStudent(null); setActivationClassName(''); }}
+              disabled={activating}
+            >
+              Vazgeç
+            </Button>
+            <Button onClick={handleConfirmActivation} disabled={activating || !activationClassName}>
+              {activating ? 'Aktifleştiriliyor...' : 'Sınıfa ata ve aktifleştir'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

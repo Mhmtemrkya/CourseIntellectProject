@@ -211,8 +211,10 @@ export async function createCompleteClass(payload) {
   return response;
 }
 
-export async function deleteClass(className) {
-  return api.delete(`/api/classes/${encodeURIComponent(className)}`);
+/** transferTo verilirse öğrenciler o sınıfa taşınır; verilmezse sınıfsız kalıp pasife alınır. */
+export async function deleteClass(className, transferTo = '') {
+  const query = transferTo ? `?transferTo=${encodeURIComponent(transferTo)}` : '';
+  return api.delete(`/api/classes/${encodeURIComponent(className)}${query}`);
 }
 
 export async function updateClassAssignments(className, payload) {

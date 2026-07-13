@@ -13,6 +13,9 @@ import {
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '../components/ui/dialog';
 import { Badge } from '../components/ui/badge';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '../components/ui/select';
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
@@ -32,6 +35,9 @@ const steps = [
   ['students', 'Öğrenciler', 'Öğrenci ekleyin veya davet gönderin'],
   ['settings', 'Ayarlar', 'Sınıf ayarlarını yapılandırın'],
 ];
+
+// Silme dialogunda "taşıma yok" seçeneği: Radix Select boş değer kabul etmediği için sentinel kullanılır.
+const DEACTIVATE_OPTION = '__deactivate__';
 
 const colorOptions = ['#2563EB', '#7B61FF', '#22C55E', '#FF8A00', '#EF4444', '#06B6D4'];
 const iconOptions = ['users', 'graduation', 'book', 'science', 'globe', 'palette', 'music', 'sport', 'code', 'star', 'target', 'spark'];
@@ -175,6 +181,7 @@ export default function Classes() {
   const [managementSaving, setManagementSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTargetName, setDeleteTargetName] = useState('');
+  const [deleteTransferTo, setDeleteTransferTo] = useState(DEACTIVATE_OPTION);
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -287,6 +294,28 @@ export default function Classes() {
     };
   }), [classConfigs, students, teachers]);
 
+  const deleteClassName = deleteTargetName || managementClassName;
+
+  const deleteStudentCount = useMemo(
+    () => students.filter((student) => normalize(student.className) === normalize(deleteClassName)).length,
+    [students, deleteClassName],
+  );
+
+  // Öğrencilerin taşınabileceği sınıflar: silinen sınıf hariç, kayıtlı ve öğrencide görünen tüm sınıflar.
+  const deleteTransferOptions = useMemo(() => {
+    const names = [
+      ...existingSummary.map((item) => item.name),
+      ...students.map((student) => student.className),
+    ];
+    const unique = new Map();
+    for (const name of names) {
+      const clean = String(name || '').trim();
+      if (!clean || normalize(clean) === normalize(deleteClassName)) continue;
+      if (!unique.has(normalize(clean))) unique.set(normalize(clean), clean);
+    }
+    return [...unique.values()].sort((a, b) => a.localeCompare(b, 'tr'));
+  }, [existingSummary, students, deleteClassName]);
+
   const selectedManagementClassStudents = useMemo(
     () => students.filter((student) => normalize(student.className) === normalize(managementClassName)),
     [managementClassName, students],
@@ -380,12 +409,15 @@ export default function Classes() {
   const handleDeleteClass = async () => {
     const className = deleteTargetName || managementClassName;
     if (!className) return;
+    const transferTo = deleteTransferTo === DEACTIVATE_OPTION ? '' : deleteTransferTo;
     try {
       setDeleting(true);
-      const result = await deleteClass(className);
+      const result = await deleteClass(className, transferTo);
       toast({
         title: 'Sınıf silindi',
-        description: `${result.studentCount || 0} öğrenci sınıfsız duruma alındı; geçmiş akademik kayıtlar korundu.`,
+        description: transferTo
+          ? `${result.transferredStudentCount || 0} öğrenci ${result.transferredTo || transferTo} sınıfına taşındı.`
+          : `${result.deactivatedStudentCount || 0} öğrenci pasife alındı; aktifleştirirken yeni sınıf seçilecek.`,
       });
       setDeleteDialogOpen(false);
       setDeleteTargetName('');
@@ -400,6 +432,7 @@ export default function Classes() {
 
   const openDeleteDialog = (className) => {
     setDeleteTargetName(className);
+    setDeleteTransferTo(DEACTIVATE_OPTION);
     setDeleteDialogOpen(true);
   };
 
@@ -796,9 +829,32 @@ export default function Classes() {
           <DialogHeader>
             <DialogTitle>{deleteTargetName || managementClassName || 'Sınıf'} silinsin mi?</DialogTitle>
             <DialogDescription>
-              Sınıf kaydı ve güncel ders programı kaldırılır. Sınıftaki {students.filter((student) => normalize(student.className) === normalize(deleteTargetName || managementClassName)).length} öğrenci sınıfsız duruma alınır; öğrenci hesapları, yoklama ve sınav geçmişi silinmez.
+              Sınıf kaydı ve güncel ders programı kaldırılır. Öğrenci hesapları, yoklama ve sınav geçmişi silinmez.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="space-y-2">
+            <p className="text-sm font-medium">
+              Sınıftaki {deleteStudentCount} öğrenci ne olsun?
+            </p>
+            <Select value={deleteTransferTo} onValueChange={setDeleteTransferTo} disabled={deleting}>
+              <SelectTrigger>
+                <SelectValue placeholder="Seçin" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={DEACTIVATE_OPTION}>Sınıfa taşıma — öğrencileri pasife al</SelectItem>
+                {deleteTransferOptions.map((item) => (
+                  <SelectItem key={item} value={item}>{item} sınıfına taşı</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {deleteTransferTo === DEACTIVATE_OPTION
+                ? 'Öğrenciler sınıfsız kalır ve pasife alınır; giriş yapamazlar. Aktifleştirirken yeni sınıf seçmeniz istenir.'
+                : `Öğrenciler ${deleteTransferTo} sınıfına aktarılır ve aktif kalır.`}
+            </p>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>Vazgeç</Button>
             <Button className="bg-red-600 text-white hover:bg-red-700" onClick={handleDeleteClass} disabled={deleting}>

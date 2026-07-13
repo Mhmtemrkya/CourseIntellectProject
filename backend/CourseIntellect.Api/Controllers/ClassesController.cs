@@ -1,6 +1,7 @@
 using CourseIntellect.Api.Authorization;
 using CourseIntellect.Infrastructure.Persistence;
 using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -397,7 +398,10 @@ public sealed class ClassesController(
     [HttpDelete("{name}")]
     [Authorize(Roles = "Admin,Administrative")]
     [RequireEntitlement("classes", "delete")]
-    public async Task<ActionResult<object>> Delete(string name, CancellationToken cancellationToken)
+    public async Task<ActionResult<object>> Delete(
+        string name,
+        [FromQuery] string? transferTo,
+        CancellationToken cancellationToken)
     {
         var tenantId = await ResolveTenantIdAsync(cancellationToken);
         if (!tenantId.HasValue)
@@ -417,6 +421,25 @@ public sealed class ClassesController(
             return NotFound(new { message = "Silinecek sınıf bulunamadı." });
         }
 
+        // Hedef sınıf verilirse öğrenciler oraya taşınır; verilmezse sınıfsız kalıp pasife alınırlar.
+        var targetClassName = CompatibilitySnapshotStore.NormalizeClassName(transferTo);
+        if (!string.IsNullOrWhiteSpace(targetClassName))
+        {
+            if (string.Equals(targetClassName, className, StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(new { message = "Öğrenciler silinen sınıfa taşınamaz. Farklı bir sınıf seçin." });
+            }
+
+            if (!existingClasses.Any(item => string.Equals(item, targetClassName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return BadRequest(new { message = "Öğrencilerin taşınacağı sınıf bulunamadı." });
+            }
+        }
+        else
+        {
+            targetClassName = string.Empty;
+        }
+
         await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
         try
         {
@@ -434,13 +457,36 @@ public sealed class ClassesController(
                     .Where(item => item.TenantId == tenantId.Value && studentUserIds.Contains(item.Id))
                     .ToListAsync(cancellationToken);
 
+            var transferred = !string.IsNullOrWhiteSpace(targetClassName);
             foreach (var student in classStudents)
             {
-                student.ClassName = string.Empty;
+                student.ClassName = targetClassName;
             }
+
+            var deactivatedCount = 0;
             foreach (var user in studentUsers)
             {
-                user.DepartmentOrBranch = string.Empty;
+                user.DepartmentOrBranch = targetClassName;
+                if (transferred || user.Status == UserStatus.Passive)
+                {
+                    continue;
+                }
+
+                // Sınıfsız kalan öğrenci giriş yapamamalı; yeniden aktifleştirilirken sınıf seçilecek.
+                user.Status = UserStatus.Passive;
+                deactivatedCount += 1;
+            }
+
+            if (!transferred && studentUserIds.Count > 0)
+            {
+                // Pasifleştirilen kullanıcının açık oturumu token süresi bitene dek çalışmaya devam ederdi.
+                var activeSessions = await dbContext.RefreshTokenSessions
+                    .Where(item => studentUserIds.Contains(item.UserId) && item.RevokedAtUtc == null)
+                    .ToListAsync(cancellationToken);
+                foreach (var session in activeSessions)
+                {
+                    session.RevokedAtUtc = DateTime.UtcNow;
+                }
             }
 
             var staff = await dbContext.Staff
@@ -529,6 +575,9 @@ public sealed class ClassesController(
                 studentCount = classStudents.Count,
                 staffCount = affectedStaff,
                 scheduleEntryCount = removedScheduleEntries,
+                transferredTo = transferred ? targetClassName : null,
+                transferredStudentCount = transferred ? classStudents.Count : 0,
+                deactivatedStudentCount = deactivatedCount,
             });
         }
         catch (Exception ex)
