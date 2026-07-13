@@ -10,7 +10,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import {
-  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle,
 } from '../components/ui/dialog';
 import { Badge } from '../components/ui/badge';
 import { ErrorBanner } from '../components/ui/AlertBanner';
@@ -18,6 +18,7 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import {
   createCompleteClass,
+  deleteClass,
   fetchCourses,
   fetchPlatformConfigurations,
   fetchStaff,
@@ -172,6 +173,8 @@ export default function Classes() {
   const [managementStudentIds, setManagementStudentIds] = useState([]);
   const [managementAdvisorId, setManagementAdvisorId] = useState('');
   const [managementSaving, setManagementSaving] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     name: '',
     code: '',
@@ -373,6 +376,25 @@ export default function Classes() {
     }
   };
 
+  const handleDeleteClass = async () => {
+    if (!managementClassName) return;
+    try {
+      setDeleting(true);
+      const result = await deleteClass(managementClassName);
+      toast({
+        title: 'Sınıf silindi',
+        description: `${result.studentCount || 0} öğrenci sınıfsız duruma alındı; geçmiş akademik kayıtlar korundu.`,
+      });
+      setDeleteDialogOpen(false);
+      setManagementClassName('');
+      await load();
+    } catch (err) {
+      toast({ title: 'Sınıf silinemedi', description: err.message || 'Tekrar deneyin.', variant: 'destructive' });
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   const addCourse = () => {
     const unused = courses.find((course) => !assignments.some((item) => item.courseName === (course.name || course.title || course.subject)));
     setAssignments((prev) => [...prev, {
@@ -465,11 +487,18 @@ export default function Classes() {
             <h2 className="text-xl font-black">Mevcut Sınıf Atamaları</h2>
             <p className="text-sm text-slate-400">Sınıf seçip öğrencileri ve sınıf danışmanını sonradan güncelleyin.</p>
           </div>
-          <FeatureGate module="classes" action="edit">
-            <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={saveClassAssignments} disabled={managementSaving || !managementClassName}>
-              <Save className="mr-2 h-4 w-4" /> {managementSaving ? 'Kaydediliyor...' : 'Atamaları Kaydet'}
-            </Button>
-          </FeatureGate>
+          <div className="flex flex-wrap gap-2">
+            <FeatureGate module="classes" action="delete">
+              <Button variant="outline" className="rounded-xl border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200" onClick={() => setDeleteDialogOpen(true)} disabled={!managementClassName}>
+                <Trash2 className="mr-2 h-4 w-4" /> Sınıfı Sil
+              </Button>
+            </FeatureGate>
+            <FeatureGate module="classes" action="edit">
+              <Button className="rounded-xl bg-emerald-600 text-white hover:bg-emerald-700" onClick={saveClassAssignments} disabled={managementSaving || !managementClassName}>
+                <Save className="mr-2 h-4 w-4" /> {managementSaving ? 'Kaydediliyor...' : 'Atamaları Kaydet'}
+              </Button>
+            </FeatureGate>
+          </div>
         </div>
 
         {classNames.length === 0 ? (
@@ -744,6 +773,23 @@ export default function Classes() {
               </div>
             ))}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !deleting && setDeleteDialogOpen(open)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>{managementClassName || 'Sınıf'} silinsin mi?</DialogTitle>
+            <DialogDescription>
+              Sınıf kaydı ve güncel ders programı kaldırılır. Sınıftaki {selectedManagementClassStudents.length} öğrenci sınıfsız duruma alınır; öğrenci hesapları, yoklama ve sınav geçmişi silinmez.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteDialogOpen(false)} disabled={deleting}>Vazgeç</Button>
+            <Button className="bg-red-600 text-white hover:bg-red-700" onClick={handleDeleteClass} disabled={deleting}>
+              <Trash2 className="mr-2 h-4 w-4" /> {deleting ? 'Siliniyor...' : 'Sınıfı Sil'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </motion.div>

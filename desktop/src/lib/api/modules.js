@@ -211,6 +211,10 @@ export async function createCompleteClass(payload) {
   return response;
 }
 
+export async function deleteClass(className) {
+  return api.delete(`/api/classes/${encodeURIComponent(className)}`);
+}
+
 export async function updateClassAssignments(className, payload) {
   const response = await api.put(`/api/classes/${encodeURIComponent(className)}/assignments`, payload);
   return response;

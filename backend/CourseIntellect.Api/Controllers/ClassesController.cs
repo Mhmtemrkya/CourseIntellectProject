@@ -21,6 +21,8 @@ public sealed class ClassesController(
 {
     private const string ClassRegistryConfigurationType = "class-registry";
     private const string ClassManagementConfigurationType = "class-management";
+    private const string LegacyScheduleConfigurationType = "class-schedule";
+    private const string ScheduleEntryConfigurationType = "class-schedule-entry";
     private static readonly StringComparer ClassNameComparer = CreateClassNameComparer();
 
     [HttpGet]
@@ -392,6 +394,151 @@ public sealed class ClassesController(
         }
     }
 
+    [HttpDelete("{name}")]
+    [Authorize(Roles = "Admin,Administrative")]
+    [RequireEntitlement("classes", "delete")]
+    public async Task<ActionResult<object>> Delete(string name, CancellationToken cancellationToken)
+    {
+        var tenantId = await ResolveTenantIdAsync(cancellationToken);
+        if (!tenantId.HasValue)
+        {
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "Kurum bağlamı bulunamadı. Lütfen kurum hesabıyla tekrar giriş yapın." });
+        }
+
+        var className = CompatibilitySnapshotStore.NormalizeClassName(name);
+        if (string.IsNullOrWhiteSpace(className))
+        {
+            return BadRequest(new { message = "Sınıf adı zorunludur." });
+        }
+
+        var existingClasses = await LoadClassListAsync(tenantId.Value, cancellationToken);
+        if (!existingClasses.Any(item => string.Equals(item, className, StringComparison.OrdinalIgnoreCase)))
+        {
+            return NotFound(new { message = "Silinecek sınıf bulunamadı." });
+        }
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
+        try
+        {
+            var students = await dbContext.Students
+                .Where(item => item.TenantId == tenantId.Value)
+                .ToListAsync(cancellationToken);
+            var classStudents = students
+                .Where(item => string.Equals(item.ClassName, className, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var studentUserIds = classStudents.Select(item => item.UserId).ToHashSet();
+            List<AppUser> studentUsers = studentUserIds.Count == 0
+                ? []
+                : await dbContext.Users
+                    .Where(item => item.TenantId == tenantId.Value && studentUserIds.Contains(item.Id))
+                    .ToListAsync(cancellationToken);
+
+            foreach (var student in classStudents)
+            {
+                student.ClassName = string.Empty;
+            }
+            foreach (var user in studentUsers)
+            {
+                user.DepartmentOrBranch = string.Empty;
+            }
+
+            var staff = await dbContext.Staff
+                .Where(item => item.TenantId == tenantId.Value)
+                .ToListAsync(cancellationToken);
+            var affectedStaff = 0;
+            foreach (var member in staff)
+            {
+                var changed = false;
+                if (string.Equals(member.HomeroomClass, className, StringComparison.OrdinalIgnoreCase))
+                {
+                    member.HomeroomClass = string.Empty;
+                    changed = true;
+                }
+
+                var remainingClasses = member.AssignedClasses
+                    .Where(item => !string.Equals(item, className, StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                if (remainingClasses.Count != member.AssignedClasses.Count)
+                {
+                    member.AssignedClasses = remainingClasses;
+                    changed = true;
+                }
+
+                if (changed)
+                {
+                    affectedStaff += 1;
+                }
+            }
+
+            var configurations = await dbContext.PlatformConfigurations
+                .IgnoreQueryFilters()
+                .Where(item => item.TenantId == tenantId.Value)
+                .Where(item =>
+                    item.ConfigurationType == ClassManagementConfigurationType ||
+                    item.ConfigurationType == ClassRegistryConfigurationType ||
+                    item.ConfigurationType == LegacyScheduleConfigurationType ||
+                    item.ConfigurationType == ScheduleEntryConfigurationType)
+                .ToListAsync(cancellationToken);
+
+            var classConfigurations = configurations
+                .Where(item =>
+                    (item.ConfigurationType == ClassManagementConfigurationType || item.ConfigurationType == ClassRegistryConfigurationType) &&
+                    string.Equals(ReadSavedClassName(item), className, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+            dbContext.PlatformConfigurations.RemoveRange(classConfigurations);
+
+            var removedScheduleEntries = 0;
+            foreach (var schedule in configurations.Where(item => item.ConfigurationType == ScheduleEntryConfigurationType))
+            {
+                if (!string.Equals(ReadPayloadClassName(schedule.PayloadJson), className, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                dbContext.PlatformConfigurations.Remove(schedule);
+                removedScheduleEntries += 1;
+            }
+
+            foreach (var legacySchedule in configurations.Where(item => item.ConfigurationType == LegacyScheduleConfigurationType))
+            {
+                var removed = RemoveClassFromLegacySchedule(legacySchedule.PayloadJson, className, out var updatedPayload);
+                if (removed == 0)
+                {
+                    continue;
+                }
+
+                removedScheduleEntries += removed;
+                if (string.IsNullOrWhiteSpace(updatedPayload))
+                {
+                    dbContext.PlatformConfigurations.Remove(legacySchedule);
+                }
+                else
+                {
+                    legacySchedule.PayloadJson = updatedPayload;
+                    legacySchedule.UpdatedAtUtc = DateTime.UtcNow;
+                }
+            }
+
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+
+            return Ok(new
+            {
+                name = className,
+                studentCount = classStudents.Count,
+                staffCount = affectedStaff,
+                scheduleEntryCount = removedScheduleEntries,
+            });
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            logger.LogError(ex, "Class deletion failed for {ClassName}", className);
+            return BadRequest(new { message = "Sınıf silinemedi. Bağlı kayıtlar temizlenirken bir hata oluştu." });
+        }
+    }
+
     private async Task<List<string>> LoadClassListAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         var classes = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
@@ -495,6 +642,57 @@ public sealed class ClassesController(
         catch
         {
             return [];
+        }
+    }
+
+    private static string? ReadPayloadClassName(string payloadJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(payloadJson);
+            return document.RootElement.TryGetProperty("className", out var classNameProperty)
+                ? classNameProperty.GetString()
+                : null;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static int RemoveClassFromLegacySchedule(string payloadJson, string className, out string? updatedPayload)
+    {
+        updatedPayload = null;
+        try
+        {
+            var entries = JsonNode.Parse(payloadJson) as JsonArray;
+            if (entries is null)
+            {
+                return 0;
+            }
+
+            var removed = 0;
+            for (var index = entries.Count - 1; index >= 0; index -= 1)
+            {
+                var entryClassName = entries[index]?["className"]?.GetValue<string>();
+                if (!string.Equals(entryClassName, className, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                entries.RemoveAt(index);
+                removed += 1;
+            }
+
+            if (removed > 0 && entries.Count > 0)
+            {
+                updatedPayload = entries.ToJsonString();
+            }
+            return removed;
+        }
+        catch
+        {
+            return 0;
         }
     }
 

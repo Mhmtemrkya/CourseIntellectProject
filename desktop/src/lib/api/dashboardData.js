@@ -1,4 +1,5 @@
 import { api } from './client';
+import { isUserPassive } from '../userStatus';
 
 function normalizeText(value = '') {
   return String(value)
@@ -196,8 +197,8 @@ export async function fetchAdminDashboardData() {
     api.get('/api/questionthreads'),
   ]);
 
-  const students = safeData(results[0], []);
-  const staff = safeData(results[1], []);
+  const students = safeData(results[0], []).filter((item) => !isUserPassive(item.status));
+  const staff = safeData(results[1], []).filter((item) => !isUserPassive(item.status));
   const attendance = safeData(results[2], []);
   const announcements = safeData(results[3], []);
   const threads = safeData(results[4], []);
