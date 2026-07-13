@@ -133,7 +133,7 @@ function ModuleCard({
         transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
         className="lg:[direction:ltr]"
       >
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-accent/10 px-4 py-1.5 text-sm font-semibold text-accent">
+        <div className="mb-4 inline-flex items-center gap-2 border-l-2 border-accent bg-accent/5 px-3 py-1.5 text-sm font-semibold text-accent">
           {index === 0 ? <HeartHandshake className="h-4 w-4" /> : index === 1 ? <BookOpen className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
           {module.name}
         </div>
@@ -150,7 +150,7 @@ function ModuleCard({
                 transition={{ delay: 0.25 + bulletIndex * 0.12, duration: 0.5 }}
                 className="flex items-center gap-3"
               >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/5 text-primary">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-primary/5 text-primary">
                   <Icon className="h-4 w-4" />
                 </span>
                 <span className="font-medium text-foreground/85">{bullet.text}</span>
@@ -178,7 +178,7 @@ function ModuleCard({
             backgroundSize: "18px 18px",
           }}
         />
-        <div className="overflow-hidden rounded-2xl border border-primary/10 bg-white shadow-[0_32px_80px_-24px_rgba(21,41,75,0.35)]">
+        <div className="overflow-hidden rounded-lg border border-primary/10 bg-white shadow-[0_32px_80px_-24px_rgba(21,41,75,0.35)]">
           <div className="flex items-center gap-1.5 border-b border-primary/5 bg-secondary/60 px-4 py-2.5">
             <span className="h-2.5 w-2.5 rounded-full bg-[#FF5F57]" />
             <span className="h-2.5 w-2.5 rounded-full bg-[#FEBC2E]" />
@@ -213,7 +213,7 @@ export function ModulesShowcase() {
           transition={{ duration: 0.7 }}
           className="mx-auto mb-20 max-w-2xl text-center"
         >
-          <span className="mb-4 inline-block rounded-full border border-accent/30 bg-accent/5 px-4 py-1.5 text-sm font-semibold uppercase tracking-wider text-accent">
+          <span className="mb-4 inline-block border-l-2 border-accent bg-accent/5 px-3 py-1.5 text-sm font-semibold uppercase tracking-wider text-accent">
             {copy.eyebrow}
           </span>
           <h2 className="text-3xl font-bold text-primary md:text-5xl">
@@ -231,7 +231,7 @@ export function ModulesShowcase() {
         <div className="mt-20 text-center">
           <Link
             href="/ozellikler"
-            className="group inline-flex items-center gap-2 rounded-full bg-primary px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-[0_16px_40px_-12px_rgba(21,41,75,0.5)]"
+            className="group inline-flex items-center gap-2 rounded-md bg-primary px-8 py-4 font-semibold text-white shadow-lg transition-all hover:shadow-[0_16px_40px_-12px_rgba(21,41,75,0.5)]"
           >
             {copy.cta}
             <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />

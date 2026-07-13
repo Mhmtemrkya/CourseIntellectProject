@@ -1,66 +1,63 @@
 "use client"
 
 import { motion } from "framer-motion"
+import { Building2, Check, Rocket, UsersRound } from "lucide-react"
 import { useSectionContent } from "@/context/content-context"
+import { useLanguage } from "@/context/language-context"
+
+const icons = [Building2, UsersRound, Rocket]
 
 export function HowItWorksSection() {
   const { howItWorks } = useSectionContent("homepage")
+  const { language } = useLanguage()
 
   return (
-    <section className="py-24 bg-background">
-      <div className="container mx-auto px-4 lg:px-8">
-        {/* Section Header */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          className="text-center mb-16"
-        >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">{howItWorks.sectionTitle}</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{howItWorks.sectionSubtitle}</p>
-        </motion.div>
-
-        {/* Steps */}
-        <div className="max-w-4xl mx-auto">
-          <div className="relative">
-            {/* Connection Line */}
-            <div className="absolute left-8 md:left-1/2 top-0 bottom-0 w-0.5 bg-border md:-translate-x-1/2" />
-
-            {/* Steps */}
-            <div className="space-y-12">
-              {howItWorks.steps.map((step, index) => (
-                <motion.div
-                  key={step.id}
-                  initial={{ opacity: 0, x: index % 2 === 0 ? -30 : 30 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true, margin: "-100px" }}
-                  transition={{ delay: index * 0.2 }}
-                  className={`relative flex items-center gap-8 ${index % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"}`}
-                >
-                  {/* Step Number */}
-                  <motion.div
-                    whileHover={{ scale: 1.1 }}
-                    className="absolute left-0 md:left-1/2 md:-translate-x-1/2 w-16 h-16 rounded-full bg-accent text-accent-foreground flex items-center justify-center text-2xl font-bold shadow-lg z-10"
-                  >
-                    {step.step}
-                  </motion.div>
-
-                  {/* Content Card */}
-                  <div
-                    className={`ml-24 md:ml-0 md:w-[calc(50%-4rem)] ${index % 2 === 0 ? "md:text-right md:pr-8" : "md:text-left md:pl-8"}`}
-                  >
-                    <div className="bg-card border border-border rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-                      <h3 className="text-xl font-bold text-foreground mb-2">{step.title}</h3>
-                      <p className="text-muted-foreground">{step.description}</p>
-                    </div>
-                  </div>
-
-                  {/* Empty space for alignment */}
-                  <div className="hidden md:block md:w-[calc(50%-4rem)]" />
-                </motion.div>
-              ))}
+    <section className="relative overflow-hidden bg-[#f6f8fa] py-24 md:py-32">
+      <div className="mx-auto max-w-7xl px-6 lg:px-10">
+        <div className="grid gap-12 lg:grid-cols-12 lg:items-end">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            className="lg:col-span-8"
+          >
+            <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#d26d00]">
+              <span className="h-px w-8 bg-[#F7941D]" />
+              {language === "tr" ? "Kurulum / 01-03" : "Onboarding / 01-03"}
             </div>
-          </div>
+            <h2 className="mt-5 max-w-3xl text-4xl font-semibold leading-[1.05] text-[#061a27] md:text-6xl">
+              {howItWorks.sectionTitle}
+            </h2>
+          </motion.div>
+          <p className="max-w-md text-base leading-7 text-[#53636d] lg:col-span-4 lg:justify-self-end">
+            {howItWorks.sectionSubtitle}. SchoolAsist ekibi veri aktarımı ve ilk yapılandırmada kurumunuzun yanında olur.
+          </p>
+        </div>
+
+        <div className="relative mt-16 grid gap-5 md:grid-cols-3 md:gap-0">
+          <div aria-hidden className="absolute left-[16.66%] right-[16.66%] top-10 hidden h-px bg-[#d6dde2] md:block" />
+          {howItWorks.steps.map((step, index) => {
+            const Icon = icons[index] ?? Check
+            return (
+              <motion.article
+                key={step.id}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ delay: index * 0.12, duration: 0.65, ease: [0.22, 1, 0.36, 1] }}
+                className="relative border border-[#dfe5e9] bg-white p-7 md:min-h-[270px] md:border-r-0 md:p-8 md:last:border-r"
+              >
+                <div className="relative z-10 flex items-center justify-between">
+                  <span className="grid h-20 w-20 place-items-center rounded-full border border-[#dfe5e9] bg-white shadow-[0_12px_28px_-20px_rgba(6,26,39,.35)]">
+                    <Icon className="h-6 w-6 text-[#F7941D]" />
+                  </span>
+                  <span className="font-mono text-xs text-[#91a0a9]">0{step.step}</span>
+                </div>
+                <h3 className="mt-8 text-xl font-semibold text-[#061a27]">{step.title}</h3>
+                <p className="mt-3 text-sm leading-7 text-[#5d6c75]">{step.description}</p>
+              </motion.article>
+            )
+          })}
         </div>
       </div>
     </section>

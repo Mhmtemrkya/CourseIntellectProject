@@ -174,14 +174,16 @@ export default function DownloadPage() {
         <div className="container mx-auto px-4 lg:px-8 text-center">
           <h2 className="text-2xl font-bold text-foreground mb-4">Kurulumda yardıma mı ihtiyacınız var?</h2>
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
-            Detaylı kurulum kılavuzlarımıza göz atın veya destek ekibimizle iletişime geçin.
+            Kurulum kılavuzunu inceleyin veya kurumunuza özel geçiş planı için bizimle iletişime geçin.
           </p>
           <div className="flex items-center justify-center gap-4">
             <Button variant="outline" className="bg-transparent">
               <ExternalLink className="w-4 h-4 mr-2" />
               Kurulum Kılavuzu
             </Button>
-            <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Destek Al</Button>
+            <Link href="/iletisim">
+              <Button className="bg-primary hover:bg-primary/90 text-primary-foreground">Bize Ulaşın</Button>
+            </Link>
           </div>
         </div>
       </section>

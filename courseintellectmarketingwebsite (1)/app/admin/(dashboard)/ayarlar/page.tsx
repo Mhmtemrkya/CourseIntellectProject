@@ -54,7 +54,7 @@ export default function SettingsPage() {
   // Profile state
   const [profile, setProfile] = useState({
     name: "Admin Kullanıcı",
-    email: "admin@courseintellect.com",
+    email: "admin@schoolasist.com",
     phone: "+90 555 123 4567",
     bio: "SchoolAsist sistem yöneticisi",
   })

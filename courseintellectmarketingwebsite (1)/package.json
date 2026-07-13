@@ -6,8 +6,7 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start",
-    "frames": "node scripts/extract-frames.js"
+    "start": "next start"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",

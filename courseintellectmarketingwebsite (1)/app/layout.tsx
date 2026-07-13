@@ -9,7 +9,7 @@ import { SmoothScrollProvider } from "@/components/layout/smooth-scroll-provider
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://www.courseintellect.com"),
+  metadataBase: new URL("https://www.schoolasist.com"),
   title: {
     default: "SchoolAsist — Eğitimi Kolaylaştıran Akıllı Çözümler",
     template: "%s | SchoolAsist",

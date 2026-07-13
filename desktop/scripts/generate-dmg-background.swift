@@ -87,7 +87,7 @@ logoImage.draw(
 )
 
 drawCenteredText(
-    "CourseIntellect'i Yükleyin",
+    "SchoolAsist'i Yükleyin",
     yFromTop: 92,
     font: .systemFont(ofSize: 22, weight: .semibold),
     color: .white
@@ -132,7 +132,7 @@ roundedRect(
     stroke: NSColor(calibratedWhite: 1, alpha: 0.10)
 )
 drawCenteredText(
-    "CourseIntellect  •  Güvenli macOS kurulumu",
+    "SchoolAsist  •  Güvenli macOS kurulumu",
     yFromTop: 355,
     font: .systemFont(ofSize: 11, weight: .medium),
     color: NSColor(calibratedWhite: 0.72, alpha: 1)

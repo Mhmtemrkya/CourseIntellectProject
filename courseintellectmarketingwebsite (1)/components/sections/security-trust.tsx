@@ -109,18 +109,13 @@ export function SecurityTrust() {
   const inView = useInView(ref, { once: true, margin: "-60px" })
 
   return (
-    <section className="relative overflow-hidden py-24 md:py-32" style={{ backgroundColor: "#15294B" }}>
-      {/* Dekor: turuncu daire konturu + nokta ızgarası */}
+    <section className="relative overflow-hidden bg-[#0c2a3c] py-24 md:py-32">
       <div
         aria-hidden
-        className="pointer-events-none absolute -right-40 -top-40 h-[480px] w-[480px] rounded-full border-[3px] border-accent/25"
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute bottom-16 left-10 h-24 w-32 opacity-40"
+        className="pointer-events-none absolute inset-0 opacity-[0.06]"
         style={{
-          backgroundImage: "radial-gradient(#F7941D 2px, transparent 2px)",
-          backgroundSize: "20px 20px",
+          backgroundImage: "linear-gradient(rgba(255,255,255,.3) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.3) 1px, transparent 1px)",
+          backgroundSize: "80px 80px",
         }}
       />
 
@@ -129,15 +124,18 @@ export function SecurityTrust() {
           initial={{ opacity: 0, y: 24 }}
           animate={inView ? { opacity: 1, y: 0 } : {}}
           transition={{ duration: 0.7 }}
-          className="mx-auto mb-16 max-w-2xl text-center"
+          className="mb-16 grid gap-8 md:grid-cols-12 md:items-end md:text-left"
         >
-          <span className="mb-4 inline-block rounded-full border border-accent/40 bg-accent/10 px-4 py-1.5 text-sm font-semibold uppercase tracking-wider text-accent">
-            {copy.eyebrow}
-          </span>
-          <h2 className="text-3xl font-bold text-white md:text-5xl">
-            {copy.title} <span className="text-accent">{copy.titleAccent}</span>
-          </h2>
-          <p className="mt-5 text-lg text-white/70">{copy.subtitle}</p>
+          <div className="md:col-span-8">
+            <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#FFB25A]">
+              <span className="h-px w-8 bg-[#F7941D]" />
+              {copy.eyebrow}
+            </div>
+            <h2 className="mt-5 text-4xl font-semibold leading-[1.05] text-white md:text-6xl">
+              {copy.title} <span className="text-[#FFB25A]">{copy.titleAccent}</span>
+            </h2>
+          </div>
+          <p className="text-base leading-7 text-white/65 md:col-span-4">{copy.subtitle}</p>
         </motion.div>
 
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3">
@@ -150,9 +148,9 @@ export function SecurityTrust() {
                 animate={inView ? { opacity: 1, y: 0 } : {}}
                 transition={{ delay: 0.15 + index * 0.08, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
                 whileHover={{ y: -6, transition: { duration: 0.25 } }}
-                className="rounded-2xl border border-white/10 bg-white/[0.05] p-6 backdrop-blur-sm transition-colors hover:border-accent/40"
+                className="rounded-lg border border-white/10 bg-white/[0.045] p-6 backdrop-blur-sm transition-colors hover:border-accent/40"
               >
-                <span className="mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                <span className="mb-5 flex h-11 w-11 items-center justify-center rounded-md bg-accent/15 text-accent">
                   <Icon className="h-5 w-5" />
                 </span>
                 <h3 className="mb-2 font-bold text-white">{card.title}</h3>

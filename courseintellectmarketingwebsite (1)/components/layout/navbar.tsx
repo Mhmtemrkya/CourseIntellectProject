@@ -24,12 +24,9 @@ export function Navbar() {
   const t = {
     login: { tr: "Giriş Yap", en: "Sign In" },
     logout: { tr: "Çıkış Yap", en: "Sign Out" },
-    support: { tr: "Destek", en: "Support" },
   }
 
-  const navLinks = navContent.links.some((link) => link.href === "/destek")
-    ? navContent.links
-    : [...navContent.links, { id: "support-ticket", label: t.support[language], href: "/destek" }]
+  const navLinks = navContent.links.filter((link) => link.href !== "/destek")
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,7 +87,7 @@ export function Navbar() {
           <div
             className={cn(
               "flex items-center justify-between transition-all duration-500",
-              isScrolled ? "h-16" : "mt-3 h-16 rounded-full border px-4",
+              isScrolled ? "h-16" : "mt-3 h-16 rounded-lg border px-4",
             )}
             style={
               !isScrolled
@@ -132,9 +129,7 @@ export function Navbar() {
                   isScrolled ? "text-lg" : "text-[17px]",
                 )}
               >
-                <span className={isScrolled ? "text-primary" : "text-white"}>
-                  {navContent.logoText.replace(/Asist$/, "")}
-                </span>
+                <span className={isScrolled ? "text-primary" : "text-white"}>School</span>
                 <span className="text-accent">Asist</span>
               </span>
             </Link>

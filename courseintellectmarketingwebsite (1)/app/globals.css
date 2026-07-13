@@ -1,15 +1,17 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@500;600;700;800&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* CourseIntellect Brand Colors */
+  /* SchoolAsist Brand Colors */
   --brand-primary: #15294B;
   --brand-accent: #F7941D;
   --brand-accent-light: #FFB25A;
+  --brand-ink: #061a27;
+  --brand-mint: #22a06b;
 
   /* Base colors */
   --background: #ffffff;
@@ -101,7 +103,7 @@
 
 @theme inline {
   --font-sans: "Inter", "Inter Fallback", system-ui, sans-serif;
-  --font-heading: "Poppins", "Poppins Fallback", system-ui, sans-serif;
+  --font-heading: "Manrope", "Manrope Fallback", system-ui, sans-serif;
   --font-mono: "Geist Mono", "Geist Mono Fallback", monospace;
 
   --color-background: var(--background);
@@ -153,6 +155,7 @@
   }
   body {
     @apply bg-background text-foreground;
+    text-rendering: optimizeLegibility;
   }
 
   /* Heading font family */
@@ -188,6 +191,91 @@
 /* Smooth scroll */
 html {
   scroll-behavior: smooth;
+  overflow-x: clip;
+}
+
+body {
+  overflow-x: clip;
+}
+
+/* Shared public-page hero. Product imagery keeps every route visibly connected
+   to the SchoolAsist application without duplicating markup in each page. */
+main > div.pt-20 > section:first-child {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding-block: clamp(5.5rem, 10vw, 8.5rem);
+  background-color: #061a27 !important;
+  background-image:
+    linear-gradient(90deg, rgba(6, 26, 39, 0.97) 0%, rgba(6, 26, 39, 0.9) 45%, rgba(6, 26, 39, 0.58) 100%),
+    url("/images/product/vaka-merkezi.png") !important;
+  background-position: center, center 18%;
+  background-size: cover;
+}
+
+main > div.pt-20 > section:first-child::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  opacity: 0.16;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.16) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.16) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to right, black, transparent 72%);
+}
+
+main > div.pt-20 > section:first-child h1 {
+  color: #fff !important;
+  font-size: clamp(2.5rem, 6vw, 5rem) !important;
+  line-height: 1.02;
+  letter-spacing: 0;
+  max-width: 860px;
+  margin-inline: auto;
+}
+
+main > div.pt-20 > section:first-child p {
+  color: rgba(255, 255, 255, 0.7) !important;
+  max-width: 680px;
+  margin-inline: auto;
+  line-height: 1.75;
+}
+
+main > div.pt-20 > section:first-child h1::before {
+  content: "SCHOOLASIST / EĞİTİM OPERASYON SİSTEMİ";
+  display: block;
+  margin-bottom: 1.25rem;
+  color: #ffb25a;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  main > div.pt-20 > section:first-child {
+    padding-block: 4.5rem;
+    background-position: center, 58% center;
+  }
+
+  main > div.pt-20 > section:first-child h1::before {
+    font-size: 0.58rem;
+    letter-spacing: 0.16em;
+  }
+}
+
+main > div.pt-20 > section:not(:first-child) [data-slot="card"] {
+  border-color: #dfe5e9;
+  box-shadow: 0 20px 55px -38px rgba(6, 26, 39, 0.42);
+  transition: border-color 220ms ease, box-shadow 220ms ease, transform 220ms ease;
+}
+
+main > div.pt-20 > section:not(:first-child) [data-slot="card"]:hover {
+  border-color: rgba(247, 148, 29, 0.52);
+  box-shadow: 0 28px 65px -38px rgba(6, 26, 39, 0.52);
+  transform: translateY(-2px);
 }
 
 /* Selection color */

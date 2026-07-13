@@ -38,7 +38,7 @@ export default function GeneralContentPage() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `courseintellect-content-${new Date().toISOString().split("T")[0]}.json`
+    a.download = `schoolasist-content-${new Date().toISOString().split("T")[0]}.json`
     a.click()
     URL.revokeObjectURL(url)
   }

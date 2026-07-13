@@ -8,64 +8,71 @@ import { Button } from "@/components/ui/button"
 import { useSectionContent } from "@/context/content-context"
 import { useLanguage } from "@/context/language-context"
 
-type FrameManifest = {
-  fps: number
-  width: number
-  videos: { dir: string; count: number; duration: number }[]
-}
-
-const MANIFEST_URL = "/frames/manifest.json"
-const FRAMES_BASE = "/frames"
-const FALLBACK_VIDEO_URL = "/hero-dimensional-portal.mp4"
-// Extracted frames are not included in the static deployment; use the bundled video.
-const FRAME_SEQUENCE_ENABLED = false
-const PRIMING_BATCH = 24 // first batch to load before dismissing loader (1 second of video)
+const STAGE_VISUALS = [
+  { src: "/images/product/vaka-merkezi.png", position: "center center" },
+  { src: "/images/product/kutuphane.png", position: "center center" },
+  { src: "/images/product/giris.png", position: "center center" },
+] as const
 
 const ANNOTATIONS_BY_LANGUAGE = {
   tr: [
     {
-      at: [0.18, 0.32] as const,
-      eyebrow: "01 / Bilgi evreni",
-      title: "Hepsi tek platformda",
-      body: "Öğretmen, öğrenci, veli — üçünün de ihtiyacı aynı ekosistemde buluşuyor.",
+      at: [0.17, 0.31] as const,
+      eyebrow: "01 / Yönetim merkezi",
+      title: "Kurumun nabzı, canlı.",
+      body: "Şubeler, öğrenciler, ekipler ve kritik göstergeler tek bakışta önünüzde.",
       side: "right" as const,
     },
     {
-      at: [0.45, 0.6] as const,
-      eyebrow: "02 / Entegre deneyim",
-      title: "Veriniz hep birbirine bağlı",
-      body: "Ders, ödev, sınav, rapor, bildirim — hiçbir adım tekrar etmiyor.",
+      at: [0.37, 0.51] as const,
+      eyebrow: "02 / Akademik akış",
+      title: "Her süreç aynı ritimde.",
+      body: "Ders programından sınava, yoklamadan rapora kadar bütün akademik akış bağlantılı.",
       side: "left" as const,
     },
     {
-      at: [0.7, 0.85] as const,
-      eyebrow: "03 / Ölçeklenebilir",
-      title: "Tek kurum, binlerce kullanıcı",
-      body: "Türkiye sunucularında KVKK uyumlu, güvenli altyapı.",
+      at: [0.57, 0.71] as const,
+      eyebrow: "03 / Rol bazlı deneyim",
+      title: "Herkes için doğru ekran.",
+      body: "Yönetici, öğretmen, öğrenci, veli ve ekipler yalnızca ihtiyaç duyduğu araçlarla çalışır.",
       side: "right" as const,
+    },
+    {
+      at: [0.77, 0.89] as const,
+      eyebrow: "04 / Akıllı karar",
+      title: "Veriden karara, saniyeler içinde.",
+      body: "Finansal görünüm, performans eğilimleri ve operasyonel içgörüler daima güncel.",
+      side: "left" as const,
     },
   ],
   en: [
     {
-      at: [0.18, 0.32] as const,
-      eyebrow: "01 / One universe",
-      title: "Everything on one platform",
-      body: "Teachers, students, parents — all three meet in the same ecosystem.",
+      at: [0.17, 0.31] as const,
+      eyebrow: "01 / Command center",
+      title: "Your institution, live.",
+      body: "Branches, students, teams and critical indicators are visible at a glance.",
       side: "right" as const,
     },
     {
-      at: [0.45, 0.6] as const,
-      eyebrow: "02 / Integrated experience",
-      title: "Your data stays connected",
-      body: "Lessons, homework, exams, reports, notifications — nothing is entered twice.",
+      at: [0.37, 0.51] as const,
+      eyebrow: "02 / Academic flow",
+      title: "Every process, in rhythm.",
+      body: "Schedules, exams, attendance and reports move together in one connected flow.",
       side: "left" as const,
     },
     {
-      at: [0.7, 0.85] as const,
-      eyebrow: "03 / Built to scale",
-      title: "One institution, thousands of users",
-      body: "Secure infrastructure hosted in Türkiye, KVKK compliant.",
+      at: [0.57, 0.71] as const,
+      eyebrow: "03 / Role-based experience",
+      title: "The right workspace for everyone.",
+      body: "Leaders, teachers, students, parents and teams see only the tools they need.",
       side: "right" as const,
+    },
+    {
+      at: [0.77, 0.89] as const,
+      eyebrow: "04 / Intelligent decisions",
+      title: "From data to decision, instantly.",
+      body: "Financial visibility, performance trends and operational insights stay current.",
+      side: "left" as const,
     },
   ],
 }
@@ -81,35 +88,19 @@ function fadeRange(p: number, start: number, end: number, fade = 0.04) {
   return 1
 }
 
-function buildFrameUrls(manifest: FrameManifest): string[] {
-  const urls: string[] = []
-  for (const v of manifest.videos) {
-    for (let i = 1; i <= v.count; i++) {
-      const idx = String(i).padStart(4, "0")
-      urls.push(`${FRAMES_BASE}/${v.dir}/frame_${idx}.jpg`)
-    }
+function visualOpacity(index: number, progress: number) {
+  const segment = 1 / STAGE_VISUALS.length
+  const start = index * segment
+  const end = (index + 1) * segment
+  const blend = 0.025
+  if (progress < start - blend || progress > end + blend) return 0
+  if (index > 0 && progress < start + blend) {
+    return clamp((progress - (start - blend)) / (blend * 2))
   }
-  return urls
-}
-
-function loadImage(src: string, signal?: AbortSignal): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image()
-    img.decoding = "async"
-    img.loading = "eager"
-    img.crossOrigin = "anonymous"
-    const onAbort = () => {
-      img.src = ""
-      reject(new Error("aborted"))
-    }
-    if (signal) {
-      if (signal.aborted) return onAbort()
-      signal.addEventListener("abort", onAbort, { once: true })
-    }
-    img.onload = () => resolve(img)
-    img.onerror = () => reject(new Error(`failed: ${src}`))
-    img.src = src
-  })
+  if (index < STAGE_VISUALS.length - 1 && progress > end - blend) {
+    return clamp(((end + blend) - progress) / (blend * 2))
+  }
+  return 1
 }
 
 export function ScrollVideoStage() {
@@ -117,190 +108,34 @@ export function ScrollVideoStage() {
   const ANNOTATIONS = ANNOTATIONS_BY_LANGUAGE[language]
   const { hero } = useSectionContent("homepage")
   const sectionRef = useRef<HTMLElement>(null)
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const framesRef = useRef<(HTMLImageElement | null)[]>([])
-  const totalFramesRef = useRef(0)
-  const targetIdxRef = useRef(0)
-  const currentIdxRef = useRef(0)
-  const lastDrawnRef = useRef(-1)
-  const dprRef = useRef(typeof window !== "undefined" ? Math.min(window.devicePixelRatio || 1, 2) : 1)
 
   const [progress, setProgress] = useState(0)
-  const [loaded, setLoaded] = useState(0)
-  const [ready, setReady] = useState(false)
   const [primed, setPrimed] = useState(false)
-  const [useFallbackVideo, setUseFallbackVideo] = useState(!FRAME_SEQUENCE_ENABLED)
+  const [reducedMotion, setReducedMotion] = useState(false)
+  const [stageActive, setStageActive] = useState(true)
 
-  // Preload frames (priming batch first, rest in background)
   useEffect(() => {
-    if (!FRAME_SEQUENCE_ENABLED) {
-      setReady(true)
-      return
-    }
-
-    let aborted = false
-    const ac = new AbortController()
-    ;(async () => {
-      try {
-        const res = await fetch(MANIFEST_URL, { cache: "force-cache" })
-        if (!res.ok) throw new Error("manifest fetch failed")
-        const manifest: FrameManifest = await res.json()
-        const urls = buildFrameUrls(manifest)
-        totalFramesRef.current = urls.length
-        framesRef.current = new Array(urls.length).fill(null)
-
-        // Prime first batch (in order) — so we can show the canvas ASAP
-        const primeCount = Math.min(PRIMING_BATCH, urls.length)
-        for (let i = 0; i < primeCount; i++) {
-          if (aborted) return
-          const img = await loadImage(urls[i], ac.signal).catch(() => null)
-          if (img) framesRef.current[i] = img
-          setLoaded((i + 1) / urls.length)
-        }
-        if (aborted) return
-        setPrimed(true)
-
-        // Background-load the rest, in parallel batches of 8
-        const remaining = urls.slice(primeCount)
-        let loadedCount = primeCount
-        const PARALLEL = 8
-        for (let i = 0; i < remaining.length; i += PARALLEL) {
-          if (aborted) return
-          const slice = remaining.slice(i, i + PARALLEL)
-          await Promise.all(
-            slice.map(async (url, k) => {
-              const idx = primeCount + i + k
-              const img = await loadImage(url, ac.signal).catch(() => null)
-              if (img) framesRef.current[idx] = img
-              loadedCount += 1
-              setLoaded(loadedCount / urls.length)
-            })
-          )
-        }
-        if (!aborted) setReady(true)
-      } catch {
-        // The exported site ships an MP4 fallback when extracted frames are absent.
-        if (!aborted) {
-          setUseFallbackVideo(true)
-          setReady(true)
-        }
-      }
-    })()
-
-    // Safety: dismiss loader after 8s no matter what
-    const safety = setTimeout(() => {
-      if (!aborted && !ready) {
-        setPrimed(true)
-        setReady(true)
-      }
-    }, 8000)
-
-    return () => {
-      aborted = true
-      ac.abort()
-      clearTimeout(safety)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
-  // Canvas sizing (Retina-aware)
-  const sizeCanvas = useCallback(() => {
-    const c = canvasRef.current
-    if (!c) return
-    const dpr = dprRef.current
-    const w = window.innerWidth
-    const h = window.innerHeight
-    c.width = Math.round(w * dpr)
-    c.height = Math.round(h * dpr)
-    c.style.width = `${w}px`
-    c.style.height = `${h}px`
-    lastDrawnRef.current = -1 // force redraw
+    const frame = window.requestAnimationFrame(() => setPrimed(true))
+    return () => window.cancelAnimationFrame(frame)
   }, [])
 
   useEffect(() => {
-    sizeCanvas()
-    window.addEventListener("resize", sizeCanvas)
-    return () => window.removeEventListener("resize", sizeCanvas)
-  }, [sizeCanvas])
-
-  // Draw a frame cover-fit
-  const drawFrame = useCallback((idx: number) => {
-    const c = canvasRef.current
-    if (!c) return
-    const ctx = c.getContext("2d")
-    if (!ctx) return
-    const img = framesRef.current[idx]
-    if (!img) return
-    const cw = c.width
-    const ch = c.height
-    const iw = img.naturalWidth
-    const ih = img.naturalHeight
-    if (!iw || !ih) return
-    const scale = Math.max(cw / iw, ch / ih)
-    const dw = iw * scale
-    const dh = ih * scale
-    const dx = (cw - dw) / 2
-    const dy = (ch - dh) / 2
-    ctx.fillStyle = "#021E2E"
-    ctx.fillRect(0, 0, cw, ch)
-    ctx.drawImage(img, dx, dy, dw, dh)
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const sync = () => setReducedMotion(media.matches)
+    sync()
+    media.addEventListener("change", sync)
+    return () => media.removeEventListener("change", sync)
   }, [])
 
-  // Scroll → target frame index
   const updateScroll = useCallback(() => {
     const sec = sectionRef.current
     if (!sec) return
     const rect = sec.getBoundingClientRect()
-    const scrollable = sec.offsetHeight - window.innerHeight
-    const scrolled = clamp(-rect.top / scrollable)
+    const scrollable = Math.max(1, sec.offsetHeight - window.innerHeight)
+    const scrolled = reducedMotion ? 0 : clamp(-rect.top / scrollable)
     setProgress(scrolled)
-    const total = totalFramesRef.current
-    if (!total) return
-    targetIdxRef.current = Math.round(scrolled * (total - 1))
-  }, [])
-
-  // rAF loop: ease current → target, draw frame when changed
-  useEffect(() => {
-    let raf = 0
-    const loop = () => {
-      const total = totalFramesRef.current
-      if (total > 0) {
-        const target = targetIdxRef.current
-        // Lerp index for smoothness; snap when close
-        const cur = currentIdxRef.current
-        const diff = target - cur
-        if (Math.abs(diff) < 0.5) {
-          currentIdxRef.current = target
-        } else {
-          currentIdxRef.current = cur + diff * 0.22
-        }
-        const idx = Math.max(0, Math.min(total - 1, Math.round(currentIdxRef.current)))
-        // Find nearest loaded frame (in case of partial preload)
-        let drawIdx = idx
-        if (!framesRef.current[drawIdx]) {
-          for (let off = 1; off < total && off < 30; off++) {
-            const a = drawIdx - off
-            const b = drawIdx + off
-            if (a >= 0 && framesRef.current[a]) {
-              drawIdx = a
-              break
-            }
-            if (b < total && framesRef.current[b]) {
-              drawIdx = b
-              break
-            }
-          }
-        }
-        if (drawIdx !== lastDrawnRef.current) {
-          drawFrame(drawIdx)
-          lastDrawnRef.current = drawIdx
-        }
-      }
-      raf = requestAnimationFrame(loop)
-    }
-    raf = requestAnimationFrame(loop)
-    return () => cancelAnimationFrame(raf)
-  }, [drawFrame])
+    setStageActive(rect.bottom > 0 && rect.top < window.innerHeight)
+  }, [reducedMotion])
 
   useEffect(() => {
     updateScroll()
@@ -314,102 +149,56 @@ export function ScrollVideoStage() {
   }, [updateScroll])
 
   const heroOpacity = fadeRange(progress, 0.0, 0.13, 0.05)
-  const approachOpacity = fadeRange(progress, 0.34, 0.42, 0.04)
   const ctaStripOpacity = fadeRange(progress, 0.91, 1.0, 0.05)
+  const activeChapter = Math.min(STAGE_VISUALS.length - 1, Math.floor(progress * STAGE_VISUALS.length))
 
   return (
     <>
-      {/* Loader */}
-      <div
-        aria-hidden={primed}
-        className={`fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#021E2E] transition-opacity duration-500 ${
-          primed ? "pointer-events-none opacity-0" : "opacity-100"
-        }`}
-      >
-        <div
-          className="h-16 w-16"
-          style={{
-            filter: "drop-shadow(0 0 26px rgba(247,148,29,0.55))",
-            animation: "ci-pulse 2.2s ease-in-out infinite",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/logo.png" alt="" className="h-full w-full object-contain" />
-        </div>
-        <div className="mt-6 text-[11px] uppercase tracking-[0.32em] text-[#8FA4AE]">
-          Yükleniyor
-        </div>
-        <div className="mt-6 h-[2px] w-[220px] overflow-hidden rounded-full bg-white/[0.06]">
-          <div
-            className="h-full bg-gradient-to-r from-[#F7941D] via-[#F08C1E] to-[#FBB971] transition-[width] duration-200"
-            style={{ width: `${Math.max(loaded, 0.05) * 100}%` }}
-          />
-        </div>
-        <div className="mt-3 text-[10px] uppercase tracking-[0.24em] text-[#8FA4AE]/70 font-mono tabular-nums">
-          {Math.round(loaded * 100)}%
-        </div>
-      </div>
-
       {/* Top scroll progress bar */}
       <div
         aria-hidden
         className="fixed left-0 top-0 z-[60] h-[3px] origin-left bg-gradient-to-r from-[#F7941D] via-[#F08C1E] to-[#FBB971]"
         style={{
           width: `${progress * 100}%`,
+          opacity: stageActive ? 1 : 0,
           boxShadow: "0 0 12px rgba(247,148,29,0.6)",
+          transition: "opacity 220ms ease",
         }}
       />
-
-      {/* Background-load progress (subtle, after loader dismissed) */}
-      {primed && !ready && (
-        <div
-          aria-hidden
-          className="fixed bottom-4 right-4 z-[55] flex items-center gap-2 rounded-full border border-white/10 bg-[#021E2E]/80 px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.2em] text-[#8FA4AE] backdrop-blur"
-        >
-          <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-[#F7941D]" />
-          {Math.round(loaded * 100)}%
-        </div>
-      )}
 
       {/* The big sticky scroll stage */}
       <section
         ref={sectionRef}
-        className="relative z-[2] -mt-20 h-[420vh] md:h-[460vh]"
+        className={`relative z-[2] -mt-20 ${reducedMotion ? "h-[100svh]" : "h-[360vh] md:h-[520vh]"}`}
       >
         <div
           className="sticky top-0 h-screen w-full overflow-hidden bg-[#021E2E]"
           style={{ contain: "paint" }}
         >
-          {useFallbackVideo && (
-            <video
-              aria-hidden
-              autoPlay
-              loop
-              muted
-              playsInline
-              preload="auto"
-              src={FALLBACK_VIDEO_URL}
-              onCanPlay={() => {
-                setLoaded(1)
-                setPrimed(true)
-              }}
-              className="absolute inset-0 h-full w-full object-cover"
-              style={{
-                filter: "brightness(0.6) saturate(0.95) contrast(1.05)",
-              }}
-            />
-          )}
+          {STAGE_VISUALS.map((visual, index) => {
+            const segment = 1 / STAGE_VISUALS.length
+            const localProgress = clamp((progress - index * segment) / segment)
 
-          {/* Canvas (frame sequence renderer) */}
-          <canvas
-            ref={canvasRef}
-            aria-hidden
-            className={`absolute inset-0 h-full w-full ${useFallbackVideo ? "hidden" : ""}`}
-            style={{
-              filter: "brightness(0.6) saturate(0.95) contrast(1.05)",
-              willChange: "contents",
-            }}
-          />
+            return (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={visual.src}
+                src={visual.src}
+                alt=""
+                aria-hidden
+                loading={index === 0 ? "eager" : "lazy"}
+                className="absolute inset-0 h-full w-full object-cover"
+                style={{
+                  objectPosition: visual.position,
+                  opacity: reducedMotion ? (index === 0 ? 1 : 0) : visualOpacity(index, progress),
+                  transform: `scale(${1.02 + localProgress * 0.035}) translate3d(0, ${(localProgress - 0.5) * -1.5}%, 0)`,
+                  filter: "brightness(0.58) saturate(0.9) contrast(1.04)",
+                  transition: "opacity 220ms linear",
+                  willChange: "opacity, transform",
+                }}
+              />
+            )
+          })}
 
           {/* Base tint (very subtle, keeps the video readable) */}
           <div
@@ -420,6 +209,23 @@ export function ScrollVideoStage() {
                 "linear-gradient(to bottom, rgba(2,30,46,0.18) 0%, rgba(2,30,46,0.28) 70%, rgba(2,30,46,0.55) 100%)",
             }}
           />
+
+          {/* Film chapter indicator */}
+          {!reducedMotion && (
+            <div className="pointer-events-none absolute right-6 top-24 z-10 hidden items-center gap-3 md:flex md:right-12">
+              <span className="font-mono text-[10px] uppercase tracking-[0.26em] text-white/45">
+                Sahne {String(activeChapter + 1).padStart(2, "0")}
+              </span>
+              <div className="flex gap-1.5">
+                {STAGE_VISUALS.map((visual, index) => (
+                  <span
+                    key={visual.src}
+                    className={`h-px transition-all duration-300 ${index === activeChapter ? "w-10 bg-[#F7941D]" : "w-5 bg-white/20"}`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Subtle vignette */}
           <div
@@ -456,52 +262,42 @@ export function ScrollVideoStage() {
           {/* === Overlay 1: HERO (premium editorial) === */}
           <HeroOverlay hero={hero} opacity={heroOpacity} primed={primed} />
 
-
-          {/* === Overlay 2: APPROACH === */}
-          <div
-            className="pointer-events-none absolute inset-x-0 bottom-[18%] flex justify-center px-6"
-            style={{ opacity: approachOpacity }}
-          >
-            <div className="text-center">
-              <h2
-                className="font-medium tracking-[-0.01em] text-white/90"
-                style={{ fontSize: "clamp(26px, 4.8vw, 60px)" }}
-              >
-                Eğitime yakından bak.
-              </h2>
-              <div className="mt-3 text-[11px] uppercase tracking-[0.32em] text-[#8FA4AE]">
-                Bir portaldan geç
-              </div>
-            </div>
-          </div>
-
           {/* === Annotation cards === */}
           {ANNOTATIONS.map((ann, i) => {
             const op = fadeRange(progress, ann.at[0], ann.at[1], 0.04)
             return (
               <div
                 key={i}
-                className={`pointer-events-none absolute bottom-[8%] max-w-[380px] px-6 transition-opacity duration-300 md:bottom-[12%] ${
-                  ann.side === "right" ? "right-0 md:right-12" : "left-0 md:left-12"
+                className={`pointer-events-none absolute bottom-[10%] max-w-[440px] px-6 transition-opacity duration-300 md:bottom-auto md:top-1/2 md:-translate-y-1/2 ${
+                  ann.side === "right" ? "right-0 md:right-16 lg:right-24" : "left-0 md:left-16 lg:left-24"
                 }`}
                 style={{
                   opacity: op,
-                  transform: `translateY(${(1 - op) * 16}px)`,
                 }}
               >
-                <div
-                  className="relative rounded-[20px] border border-[#F7941D]/25 px-7 py-6 shadow-[0_30px_60px_-30px_rgba(0,0,0,0.85)] backdrop-blur-md"
-                  style={{ background: "rgba(2,30,46,0.62)" }}
-                >
-                  <span className="absolute left-0 top-5 bottom-5 w-[3px] rounded-full bg-[#F7941D]" />
-                  <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.18em] text-[#FBB971]">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#F7941D] shadow-[0_0_8px_#F7941D]" />
+                <div className="relative isolate border-l border-[#F7941D]/65 py-2 pl-6 md:pl-8">
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -inset-x-6 -inset-y-20 -z-10 md:hidden"
+                    style={{ background: "linear-gradient(to top, rgba(2,22,34,0.94) 12%, rgba(2,22,34,0.70) 58%, transparent 100%)" }}
+                  />
+                  <span
+                    aria-hidden
+                    className="pointer-events-none absolute -inset-x-20 -inset-y-24 -z-10 hidden md:block"
+                    style={{
+                      background: ann.side === "right"
+                        ? "linear-gradient(to left, rgba(2,22,34,0.90) 22%, rgba(2,22,34,0.56) 62%, transparent 100%)"
+                        : "linear-gradient(to right, rgba(2,22,34,0.90) 22%, rgba(2,22,34,0.56) 62%, transparent 100%)",
+                    }}
+                  />
+                  <div className="flex items-center gap-3 text-[10px] font-mono uppercase tracking-[0.24em] text-[#FBB971]">
+                    <span className="h-px w-8 bg-[#F7941D]" />
                     {ann.eyebrow}
                   </div>
-                  <h4 className="mt-2.5 text-[19px] font-semibold leading-snug text-white">
+                  <h3 className="mt-5 max-w-[420px] font-display text-[34px] font-medium leading-[1.05] tracking-[-0.03em] text-white md:text-[46px]">
                     {ann.title}
-                  </h4>
-                  <p className="mt-1.5 text-[14px] leading-relaxed text-[#B8C4CA]">
+                  </h3>
+                  <p className="mt-5 max-w-[390px] text-[14px] leading-[1.75] text-white/65 md:text-[15px]">
                     {ann.body}
                   </p>
                 </div>
@@ -516,16 +312,16 @@ export function ScrollVideoStage() {
           >
             <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
               <Link href={hero.primaryCTA.href}>
-                <Button className="rounded-full bg-[#F7941D] px-7 font-semibold text-[#15294B] hover:bg-[#F08C1E]">
-                  Hemen Başla
+                <Button className="rounded-md bg-[#F7941D] px-7 font-semibold text-[#15294B] hover:bg-[#F08C1E]">
+                  {hero.primaryCTA.text}
                 </Button>
               </Link>
               <Link href={hero.secondaryCTA.href}>
                 <Button
                   variant="outline"
-                  className="rounded-full border-white/25 bg-transparent text-white hover:border-[#F7941D]/60 hover:text-[#FBB971]"
+                  className="rounded-md border-white/25 bg-transparent text-white hover:border-[#F7941D]/60 hover:text-[#FBB971]"
                 >
-                  Demo İzle
+                  {hero.secondaryCTA.text}
                 </Button>
               </Link>
             </div>
@@ -719,7 +515,7 @@ function HeroOverlay({ hero, opacity, primed }: { hero: HeroData; opacity: numbe
             <Link href={hero.primaryCTA.href}>
               <Button
                 size="lg"
-                className="group h-12 rounded-full bg-[#F7941D] px-7 text-[14px] font-semibold tracking-tight text-[#15294B] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]"
+                className="group h-12 rounded-md bg-[#F7941D] px-7 text-[14px] font-semibold tracking-tight text-[#15294B] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]"
               >
                 {hero.primaryCTA.text}
                 <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />

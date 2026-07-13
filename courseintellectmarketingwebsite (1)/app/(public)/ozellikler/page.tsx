@@ -1,228 +1,214 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useMemo, useState } from "react"
+import Link from "next/link"
+import { AnimatePresence, motion } from "framer-motion"
 import {
-  BookOpen,
-  Bell,
-  BarChart3,
-  Users,
-  Calendar,
-  MessageSquare,
-  FileText,
-  Award,
-  Shield,
-  Zap,
-  Globe,
-  Lock,
-  type LucideIcon,
+  ArrowRight,
+  BookOpenCheck,
+  Building2,
+  Check,
+  ClipboardList,
+  GraduationCap,
+  HeartHandshake,
+  Network,
+  ShieldCheck,
+  Utensils,
+  UsersRound,
+  WalletCards,
 } from "lucide-react"
-import { Card, CardContent } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { useSectionContent } from "@/context/content-context"
-import type { FeatureItem } from "@/types/content"
+import {
+  MODULE_CATALOG,
+  MODULE_GROUPS,
+  ROLE_CATALOG,
+  type RoleKey,
+} from "@/data/role-feature-catalog"
 
-const iconMap: Record<string, LucideIcon> = {
-  BookOpen,
-  Bell,
-  BarChart3,
-  Users,
-  Calendar,
-  MessageSquare,
-  FileText,
-  Award,
-  Shield,
-  Zap,
-  Globe,
-  Lock,
-}
-
-// Genişletilmiş özellik listesi
-const allFeatures: FeatureItem[] = [
-  {
-    id: "1",
-    icon: "BookOpen",
-    title: "Akıllı Ders Takibi",
-    description:
-      "Derslerinizi planlayın, takip edin ve öğrenci ilerlemesini anlık izleyin. Yapay zeka destekli önerilerle eğitim kalitesini artırın.",
-    category: "teacher",
-  },
-  {
-    id: "2",
-    icon: "Bell",
-    title: "Anlık Bildirimler",
-    description: "Ödev, sınav ve duyurulardan anında haberdar olun. Push bildirimleri ile hiçbir şeyi kaçırmayın.",
-    category: "all",
-  },
-  {
-    id: "3",
-    icon: "BarChart3",
-    title: "Detaylı Raporlar",
-    description:
-      "Performans analizleri ve özelleştirilebilir raporlar oluşturun. Grafik ve tablolarla verileri görselleştirin.",
-    category: "admin",
-  },
-  {
-    id: "4",
-    icon: "Users",
-    title: "Veli Portalı",
-    description:
-      "Veliler çocuklarının eğitim sürecini yakından takip edebilir. Öğretmenlerle doğrudan iletişim kurabilirler.",
-    category: "parent",
-  },
-  {
-    id: "5",
-    icon: "Calendar",
-    title: "Takvim Yönetimi",
-    description: "Sınav, ödev ve etkinlik takvimini kolayca yönetin. Otomatik hatırlatmalar ile organize kalın.",
-    category: "all",
-  },
-  {
-    id: "6",
-    icon: "MessageSquare",
-    title: "Anlık Mesajlaşma",
-    description: "Öğretmen, öğrenci ve veliler arasında güvenli iletişim. Grup sohbetleri ve dosya paylaşımı.",
-    category: "all",
-  },
-  {
-    id: "7",
-    icon: "FileText",
-    title: "Ödev Yönetimi",
-    description: "Ödevleri oluşturun, dağıtın ve değerlendirin. Online teslim ve otomatik değerlendirme özellikleri.",
-    category: "teacher",
-  },
-  {
-    id: "8",
-    icon: "Award",
-    title: "Başarı Rozetleri",
-    description: "Öğrencileri motive eden gamification özellikleri. Rozetler, puanlar ve liderlik tabloları.",
-    category: "student",
-  },
-  {
-    id: "9",
-    icon: "Shield",
-    title: "Güvenli Altyapı",
-    description: "256-bit SSL şifreleme ve KVKK uyumlu altyapı. Verileriniz her zaman güvende.",
-    category: "admin",
-  },
-  {
-    id: "10",
-    icon: "Zap",
-    title: "Hızlı Performans",
-    description: "Optimize edilmiş altyapı ile anlık yanıt süreleri. Her cihazda akıcı deneyim.",
-    category: "all",
-  },
-  {
-    id: "11",
-    icon: "Globe",
-    title: "Çoklu Dil Desteği",
-    description: "Türkçe, İngilizce ve daha fazla dil seçeneği. Uluslararası okullar için ideal.",
-    category: "admin",
-  },
-  {
-    id: "12",
-    icon: "Lock",
-    title: "Rol Bazlı Erişim",
-    description: "Öğretmen, öğrenci, veli ve yönetici için özelleştirilmiş erişim hakları.",
-    category: "admin",
-  },
-]
+const roleIcons = {
+  admin: Building2,
+  "branch-manager": Network,
+  administrative: ClipboardList,
+  finance: WalletCards,
+  counselor: HeartHandshake,
+  teacher: GraduationCap,
+  student: BookOpenCheck,
+  parent: UsersRound,
+  cafeteria: Utensils,
+} satisfies Record<RoleKey, typeof Building2>
 
 export default function FeaturesPage() {
-  const featuresContent = useSectionContent("features")
-  const initialCategory =
-    featuresContent.categories.some((category) => category.id === "all")
-      ? "all"
-      : (featuresContent.categories[0]?.id ?? "all")
-  const [activeCategory, setActiveCategory] = useState(initialCategory)
+  const [activeRole, setActiveRole] = useState<RoleKey>("admin")
+  const role = ROLE_CATALOG.find((item) => item.key === activeRole) ?? ROLE_CATALOG[0]
+  const RoleIcon = roleIcons[role.key]
 
-  useEffect(() => {
-    if (!featuresContent.categories.some((category) => category.id === activeCategory)) {
-      setActiveCategory(initialCategory)
-    }
-  }, [activeCategory, featuresContent.categories, initialCategory])
+  const groupedModules = useMemo(
+    () => MODULE_GROUPS.map((group) => ({
+      ...group,
+      items: group.modules
+        .filter((key) => role.modules.includes(key))
+        .map((key) => ({ key, ...MODULE_CATALOG[key] })),
+    })).filter((group) => group.items.length > 0),
+    [role],
+  )
 
-  const sourceFeatures = featuresContent.items.length > 0 ? featuresContent.items : allFeatures
-
-  const filteredFeatures =
-    activeCategory === "all" ? sourceFeatures : sourceFeatures.filter((feature) => feature.category === activeCategory)
+  const actionCount = role.modules.reduce(
+    (total, moduleKey) => total + (MODULE_CATALOG[moduleKey]?.actions.length ?? 0),
+    0,
+  )
 
   return (
     <div className="pt-20">
-      {/* Hero Section */}
-      <section className="py-20 bg-gradient-to-b from-secondary/50 to-background">
-        <div className="container mx-auto px-4 lg:px-8">
+      <section className="py-20">
+        <div className="mx-auto max-w-7xl px-6 lg:px-10">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 22 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center max-w-3xl mx-auto"
+            className="mx-auto max-w-5xl text-center"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-6">{featuresContent.hero.title}</h1>
-            <p className="text-lg text-muted-foreground">{featuresContent.hero.subtitle}</p>
+            <h1 className="font-semibold">Her rol için doğru yetki, doğru çalışma alanı.</h1>
+            <p className="mt-6 text-lg">
+              SchoolAsist, kurumun tüm rollerini aynı veri modeli üzerinde buluşturur. Her kullanıcı yalnızca görevine ve veri kapsamına uygun modülleri görür.
+            </p>
+            <div className="mt-10 flex flex-wrap justify-center gap-x-10 gap-y-4 text-left">
+              <div>
+                <div className="font-mono text-2xl font-semibold text-white">09</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">Ayrı rol deneyimi</div>
+              </div>
+              <div>
+                <div className="font-mono text-2xl font-semibold text-white">60+</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">Yönetilebilir modül</div>
+              </div>
+              <div>
+                <div className="font-mono text-2xl font-semibold text-white">RBAC</div>
+                <div className="mt-1 text-xs uppercase tracking-[0.16em] text-white/45">Rol bazlı erişim</div>
+              </div>
+            </div>
           </motion.div>
         </div>
       </section>
 
-      {/* Category Filter */}
-      <section className="py-8 border-b border-border sticky top-16 bg-background/95 backdrop-blur-sm z-30">
-        <div className="container mx-auto px-4 lg:px-8">
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            {featuresContent.categories.map((category) => (
-              <Button
-                key={category.id}
-                variant={activeCategory === category.id ? "default" : "outline"}
-                size="sm"
-                onClick={() => setActiveCategory(category.id)}
-                className={
-                  activeCategory === category.id
-                    ? "bg-accent hover:bg-accent/90 text-accent-foreground"
-                    : "bg-transparent"
-                }
-              >
-                {category.name}
-              </Button>
-            ))}
+      <section className="sticky top-16 z-30 border-b border-[#dfe5e9] bg-white/95 backdrop-blur-xl">
+        <div className="mx-auto max-w-7xl overflow-x-auto px-4 lg:px-10">
+          <div className="flex min-w-max items-center py-3">
+            {ROLE_CATALOG.map((item) => {
+              const Icon = roleIcons[item.key]
+              const active = item.key === activeRole
+              return (
+                <button
+                  key={item.key}
+                  type="button"
+                  onClick={() => setActiveRole(item.key)}
+                  className={`relative flex h-11 items-center gap-2 rounded-md px-4 text-sm font-semibold transition ${
+                    active ? "bg-[#061a27] text-white" : "text-[#5c6b74] hover:bg-[#f2f5f7] hover:text-[#061a27]"
+                  }`}
+                >
+                  <Icon className={`h-4 w-4 ${active ? "text-[#FFB25A]" : "text-[#8b989f]"}`} />
+                  {item.shortLabel}
+                </button>
+              )
+            })}
           </div>
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-16">
-        <div className="container mx-auto px-4 lg:px-8">
-          <motion.div layout className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <AnimatePresence mode="popLayout">
-              {filteredFeatures.map((feature, index) => {
-                const Icon = iconMap[feature.icon] || BookOpen
-                return (
-                  <motion.div
-                    key={feature.id}
-                    layout
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Card className="h-full border-border hover:border-accent/50 transition-all group hover:shadow-lg">
-                      <CardContent className="p-6">
-                        <motion.div
-                          whileHover={{ scale: 1.1, rotate: 5 }}
-                          className="w-14 h-14 rounded-xl bg-accent/10 flex items-center justify-center mb-4 group-hover:bg-accent/20 transition-colors"
-                        >
-                          <Icon className="w-7 h-7 text-accent" />
-                        </motion.div>
-                        <h3 className="text-xl font-semibold text-foreground mb-3 group-hover:text-accent transition-colors">
-                          {feature.title}
-                        </h3>
-                        <p className="text-muted-foreground leading-relaxed">{feature.description}</p>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )
-              })}
-            </AnimatePresence>
-          </motion.div>
-        </div>
-      </section>
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={role.key}
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -12 }}
+          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <section className="border-b border-[#dfe5e9] bg-[#f6f8fa] py-16 md:py-20">
+            <div className="mx-auto grid max-w-7xl gap-10 px-6 lg:grid-cols-12 lg:px-10">
+              <div className="lg:col-span-8">
+                <div className="flex items-center gap-4">
+                  <span className="grid h-14 w-14 place-items-center rounded-lg bg-[#061a27] text-[#FFB25A]">
+                    <RoleIcon className="h-6 w-6" />
+                  </span>
+                  <div>
+                    <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#d26d00]">Rol çalışma alanı</div>
+                    <h2 className="mt-1 text-3xl font-semibold text-[#061a27] md:text-5xl">{role.label}</h2>
+                  </div>
+                </div>
+                <p className="mt-7 max-w-3xl text-lg leading-8 text-[#52636d]">{role.description}</p>
+                <div className="mt-7 inline-flex items-center gap-2 border-l-2 border-emerald-500 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                  <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                  {role.scope}
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-px bg-[#dfe5e9] lg:col-span-4 lg:self-stretch">
+                <div className="bg-white p-6">
+                  <div className="font-mono text-4xl font-semibold text-[#061a27]">{String(role.modules.length).padStart(2, "0")}</div>
+                  <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#7b8991]">Modül</div>
+                </div>
+                <div className="bg-white p-6">
+                  <div className="font-mono text-4xl font-semibold text-[#061a27]">{actionCount}</div>
+                  <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[#7b8991]">İşlem ve yetenek</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section className="bg-white py-20 md:py-28">
+            <div className="mx-auto max-w-7xl space-y-20 px-6 lg:px-10">
+              {groupedModules.map((group, groupIndex) => (
+                <section key={group.key}>
+                  <div className="mb-8 flex items-end justify-between gap-6 border-b border-[#dfe5e9] pb-5">
+                    <div>
+                      <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#d26d00]">
+                        {String(groupIndex + 1).padStart(2, "0")} / {String(groupedModules.length).padStart(2, "0")}
+                      </div>
+                      <h3 className="mt-2 text-2xl font-semibold text-[#061a27] md:text-3xl">{group.label}</h3>
+                    </div>
+                    <span className="font-mono text-xs text-[#8b989f]">{group.items.length} modül</span>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                    {group.items.map((module, index) => (
+                      <motion.article
+                        key={module.key}
+                        initial={{ opacity: 0, y: 18 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ delay: Math.min(index * 0.035, 0.22), duration: 0.5 }}
+                        className="group rounded-lg border border-[#dfe5e9] bg-white p-6 transition hover:border-[#F7941D]/55 hover:shadow-[0_24px_55px_-40px_rgba(6,26,39,.55)]"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <h4 className="text-lg font-semibold text-[#061a27]">{module.label}</h4>
+                          <span className="font-mono text-[10px] text-[#a2adb3]">{String(index + 1).padStart(2, "0")}</span>
+                        </div>
+                        <ul className="mt-5 space-y-3">
+                          {module.actions.map((action) => (
+                            <li key={action} className="flex items-start gap-3 text-sm leading-6 text-[#607079]">
+                              <Check className="mt-1 h-3.5 w-3.5 shrink-0 text-emerald-600" />
+                              {action}
+                            </li>
+                          ))}
+                        </ul>
+                      </motion.article>
+                    ))}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </section>
+
+          <section className="bg-[#0c2a3c] py-16 text-white">
+            <div className="mx-auto flex max-w-7xl flex-col gap-8 px-6 md:flex-row md:items-center md:justify-between lg:px-10">
+              <div>
+                <div className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#FFB25A]">Yetki mimarisi</div>
+                <h3 className="mt-3 max-w-2xl text-2xl font-semibold md:text-4xl">Paket, rol, modül ve işlem düzeyinde kontrol.</h3>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-white/58">Kurum yöneticisi özel roller oluşturabilir; kullanıcı menüsü ve işlemleri atanan yetkiye göre otomatik sadeleşir.</p>
+              </div>
+              <Link href="/iletisim" className="group inline-flex h-12 shrink-0 items-center justify-center gap-3 rounded-md bg-[#F7941D] px-6 text-sm font-bold text-[#15294B] hover:bg-[#FFB25A]">
+                Kurumunuz için görüşelim
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
+              </Link>
+            </div>
+          </section>
+        </motion.div>
+      </AnimatePresence>
     </div>
   )
 }

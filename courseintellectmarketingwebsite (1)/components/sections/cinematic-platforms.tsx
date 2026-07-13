@@ -132,7 +132,7 @@ export function CinematicPlatforms() {
                       initial={{ opacity: 0, y: 14 }}
                       animate={specsOpacity > 0.2 ? { opacity: 1, y: 0 } : {}}
                       transition={{ delay: 0.05 * i, duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-                      className="rounded-2xl border border-white/[0.08] bg-white/[0.025] p-4 backdrop-blur-md"
+                      className="rounded-lg border border-white/[0.08] bg-white/[0.025] p-4 backdrop-blur-md"
                     >
                       <div className="flex items-center gap-2.5">
                         <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#F7941D]/15">
@@ -156,7 +156,7 @@ export function CinematicPlatforms() {
                 className="mt-6 flex items-center gap-5"
               >
                 <Link href="/indir">
-                  <button className="group inline-flex h-12 items-center gap-2 rounded-full bg-[#F7941D] px-7 text-[14px] font-semibold tracking-tight text-[#15294B] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]">
+                  <button className="group inline-flex h-12 items-center gap-2 rounded-md bg-[#F7941D] px-7 text-[14px] font-semibold tracking-tight text-[#15294B] transition-all hover:-translate-y-[1px] hover:bg-[#F08C1E]">
                     İndir
                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                   </button>

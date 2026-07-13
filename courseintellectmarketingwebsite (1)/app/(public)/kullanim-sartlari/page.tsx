@@ -136,7 +136,7 @@ Uyuşmazlıkların çözümünde İstanbul Mahkemeleri ve İcra Daireleri yetkil
     title: "12. İletişim",
     content: `Bu Kullanım Şartları hakkında sorularınız için:
 
-E-posta: legal@courseintellect.com
+E-posta: legal@schoolasist.com
 Adres: Levent, Büyükdere Cad. No:123, 34330 Beşiktaş/İstanbul
 Telefon: +90 (212) 555 0123
 

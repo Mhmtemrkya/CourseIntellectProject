@@ -1,56 +1,73 @@
 "use client"
 
+import { useEffect, useState } from "react"
 import { motion } from "framer-motion"
+import { ArrowUpRight } from "lucide-react"
+import Link from "next/link"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { useSectionContent } from "@/context/content-context"
+import { useLanguage } from "@/context/language-context"
 
 export function FAQSection() {
   const { faq } = useSectionContent("homepage")
+  const { language } = useLanguage()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   return (
-    <section id="sss" className="py-24 bg-secondary/30">
-      <div className="container mx-auto px-4 lg:px-8">
-        {/* Section Header */}
+    <section id="sss" className="bg-white py-24 md:py-32">
+      <div className="mx-auto grid max-w-7xl gap-14 px-6 lg:grid-cols-12 lg:px-10">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          className="text-center mb-16"
+          viewport={{ once: true, margin: "-80px" }}
+          className="lg:col-span-5"
         >
-          <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">{faq.sectionTitle}</h2>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">{faq.sectionSubtitle}</p>
+          <div className="flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-[#d26d00]">
+            <span className="h-px w-8 bg-[#F7941D]" />
+            {language === "tr" ? "Bilgi merkezi" : "Knowledge center"}
+          </div>
+          <h2 className="mt-5 max-w-lg text-4xl font-semibold leading-[1.05] text-[#061a27] md:text-6xl">{faq.sectionTitle}</h2>
+          <p className="mt-6 max-w-md text-base leading-7 text-[#5c6b74]">{faq.sectionSubtitle}</p>
+          <Link href="/iletisim" className="mt-8 inline-flex items-center gap-2 text-sm font-semibold text-[#15294B] hover:text-[#d26d00]">
+            {language === "tr" ? "Ekibimizle iletişime geçin" : "Contact our team"}
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
         </motion.div>
 
-        {/* FAQ Accordion */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          className="max-w-3xl mx-auto"
+          viewport={{ once: true, margin: "-80px" }}
+          className="lg:col-span-7"
         >
-          <Accordion type="single" collapsible className="space-y-4">
-            {faq.items.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-              >
-                <AccordionItem
-                  value={item.id}
-                  className="bg-card border border-border rounded-xl px-6 data-[state=open]:border-accent/50"
-                >
-                  <AccordionTrigger className="text-left font-semibold text-foreground hover:text-accent py-5">
-                    {item.question}
+          {mounted ? (
+            <Accordion type="single" collapsible defaultValue={faq.items[0]?.id}>
+              {faq.items.map((item, index) => (
+                <AccordionItem key={item.id} value={item.id} className="border-b border-[#dfe5e9] py-1 first:border-t">
+                  <AccordionTrigger className="gap-5 py-6 text-left text-base font-semibold text-[#061a27] hover:no-underline hover:text-[#d26d00] md:text-lg">
+                    <span className="flex items-center gap-4">
+                      <span className="font-mono text-[10px] font-normal text-[#9aa6ad]">{String(index + 1).padStart(2, "0")}</span>
+                      {item.question}
+                    </span>
                   </AccordionTrigger>
-                  <AccordionContent className="text-muted-foreground pb-5 leading-relaxed">
+                  <AccordionContent className="pl-10 pr-8 pb-6 text-sm leading-7 text-[#5c6b74] md:text-base">
                     {item.answer}
                   </AccordionContent>
                 </AccordionItem>
-              </motion.div>
-            ))}
-          </Accordion>
+              ))}
+            </Accordion>
+          ) : (
+            <div aria-hidden>
+              {faq.items.map((item, index) => (
+                <div key={item.id} className="flex items-center gap-4 border-b border-[#dfe5e9] py-6 first:border-t">
+                  <span className="font-mono text-[10px] text-[#9aa6ad]">{String(index + 1).padStart(2, "0")}</span>
+                  <span className="text-base font-semibold text-[#061a27] md:text-lg">{item.question}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </motion.div>
       </div>
     </section>

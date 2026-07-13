@@ -23,7 +23,7 @@ Bu politika, SchoolAsist platformunu (web sitesi, masaüstü ve mobil uygulamala
     content: `Veri sorumlusu olarak SchoolAsist Eğitim Teknolojileri A.Ş. aşağıdaki iletişim bilgileri üzerinden ulaşılabilirdir:
 
 • Adres: Levent, Büyükdere Cad. No:123, 34330 Beşiktaş/İstanbul
-• E-posta: kvkk@courseintellect.com
+• E-posta: kvkk@schoolasist.com
 • Telefon: +90 (212) 555 0123`,
   },
   {
@@ -140,7 +140,7 @@ Son güncelleme: 15 Ocak 2026`,
     title: "10. İletişim",
     content: `KVKK kapsamındaki haklarınızı kullanmak veya sorularınız için bizimle iletişime geçebilirsiniz:
 
-E-posta: kvkk@courseintellect.com
+E-posta: kvkk@schoolasist.com
 Adres: Levent, Büyükdere Cad. No:123, 34330 Beşiktaş/İstanbul
 Telefon: +90 (212) 555 0123
 
