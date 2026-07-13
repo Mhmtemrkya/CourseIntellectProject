@@ -174,6 +174,7 @@ export default function Classes() {
   const [managementAdvisorId, setManagementAdvisorId] = useState('');
   const [managementSaving, setManagementSaving] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteTargetName, setDeleteTargetName] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     name: '',
@@ -377,15 +378,17 @@ export default function Classes() {
   };
 
   const handleDeleteClass = async () => {
-    if (!managementClassName) return;
+    const className = deleteTargetName || managementClassName;
+    if (!className) return;
     try {
       setDeleting(true);
-      const result = await deleteClass(managementClassName);
+      const result = await deleteClass(className);
       toast({
         title: 'Sınıf silindi',
         description: `${result.studentCount || 0} öğrenci sınıfsız duruma alındı; geçmiş akademik kayıtlar korundu.`,
       });
       setDeleteDialogOpen(false);
+      setDeleteTargetName('');
       setManagementClassName('');
       await load();
     } catch (err) {
@@ -393,6 +396,11 @@ export default function Classes() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const openDeleteDialog = (className) => {
+    setDeleteTargetName(className);
+    setDeleteDialogOpen(true);
   };
 
   const addCourse = () => {
@@ -489,7 +497,7 @@ export default function Classes() {
           </div>
           <div className="flex flex-wrap gap-2">
             <FeatureGate module="classes" action="delete">
-              <Button variant="outline" className="rounded-xl border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200" onClick={() => setDeleteDialogOpen(true)} disabled={!managementClassName}>
+              <Button variant="outline" className="rounded-xl border-red-500/40 bg-red-500/10 text-red-300 hover:bg-red-500/20 hover:text-red-200" onClick={() => openDeleteDialog(managementClassName)} disabled={!managementClassName}>
                 <Trash2 className="mr-2 h-4 w-4" /> Sınıfı Sil
               </Button>
             </FeatureGate>
@@ -726,7 +734,7 @@ export default function Classes() {
                 <Eye className="mr-1.5 h-4 w-4" /> Gör ({existingSummary.length})
               </Button>
             </div>
-            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-foreground/10 p-3"><div className="flex items-center justify-between"><b>{item.name}</b><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
+            <div className="mt-4 space-y-2">{existingSummary.length === 0 ? <p className="text-sm text-slate-400">Henüz kayıtlı sınıf yönetim kaydı yok.</p> : existingSummary.slice(0, 6).map((item) => <div key={item.code || item.name} className="rounded-xl border border-foreground/10 p-3"><div className="flex items-center justify-between gap-2"><b>{item.name}</b><div className="flex items-center gap-2"><span className="h-3 w-3 rounded-full" style={{ background: item.color }} /><FeatureGate module="classes" action="delete"><Button type="button" variant="ghost" size="icon" title={`${item.name} sınıfını sil`} className="h-8 w-8 text-red-400 hover:bg-red-500/10 hover:text-red-300" onClick={() => openDeleteDialog(item.name)}><Trash2 className="h-4 w-4" /></Button></FeatureGate></div></div><p className="mt-1 text-xs text-slate-400">{item.studentCount} öğrenci • {item.teacherCount} öğretmen • {item.courseCount} ders</p></div>)}</div>
           </div>
         </aside>
       </div>
@@ -750,7 +758,14 @@ export default function Classes() {
                       <p className="text-xs text-muted-foreground">{item.code || 'Kod yok'} • {item.academicYear || 'Dönem yok'}</p>
                     </div>
                   </div>
-                  <Badge variant="outline">{item.institutionUnit || 'Birim yok'}</Badge>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline">{item.institutionUnit || 'Birim yok'}</Badge>
+                    <FeatureGate module="classes" action="delete">
+                      <Button type="button" variant="outline" size="icon" title={`${item.name} sınıfını sil`} className="h-9 w-9 border-red-500/30 text-red-500 hover:bg-red-500/10 hover:text-red-500" onClick={() => openDeleteDialog(item.name)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </FeatureGate>
+                  </div>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
                   <Detail label="Seviye" value={item.grade || '-'} />
@@ -776,12 +791,12 @@ export default function Classes() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => !deleting && setDeleteDialogOpen(open)}>
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => { if (!deleting) { setDeleteDialogOpen(open); if (!open) setDeleteTargetName(''); } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>{managementClassName || 'Sınıf'} silinsin mi?</DialogTitle>
+            <DialogTitle>{deleteTargetName || managementClassName || 'Sınıf'} silinsin mi?</DialogTitle>
             <DialogDescription>
-              Sınıf kaydı ve güncel ders programı kaldırılır. Sınıftaki {selectedManagementClassStudents.length} öğrenci sınıfsız duruma alınır; öğrenci hesapları, yoklama ve sınav geçmişi silinmez.
+              Sınıf kaydı ve güncel ders programı kaldırılır. Sınıftaki {students.filter((student) => normalize(student.className) === normalize(deleteTargetName || managementClassName)).length} öğrenci sınıfsız duruma alınır; öğrenci hesapları, yoklama ve sınav geçmişi silinmez.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
