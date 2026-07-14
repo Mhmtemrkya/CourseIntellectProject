@@ -407,7 +407,7 @@ export function PremiumPanel({ title, description, action, children, className, 
         <div>
           <div className="flex items-center gap-2">
             <span className="ci-dot-pulse h-2 w-2 rounded-full bg-[hsl(var(--brand-accent))] shadow-[0_0_18px_hsl(var(--brand-accent)/0.8)]" />
-            <CardTitle className="text-base font-black uppercase tracking-[0.05em] text-[hsl(var(--brand-accent))]">{title}</CardTitle>
+            <CardTitle className="text-base font-black uppercase tracking-[0.05em] text-[hsl(var(--brand-accent-text,var(--brand-accent)))]">{title}</CardTitle>
           </div>
           {description ? <CardDescription className="mt-1">{description}</CardDescription> : null}
         </div>

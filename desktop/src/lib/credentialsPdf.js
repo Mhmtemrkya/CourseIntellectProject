@@ -29,6 +29,30 @@ function tintTowardWhite([r, g, b], ratio) {
   ];
 }
 
+// Kurum logosu tek yerden bildirilir (ThemeContext), böylece PDF üreten her
+// çağrı yerinin ayrıca logo geçirmesi gerekmez.
+let tenantBrandLogoUrl = '';
+export function setCredentialsBrandLogo(url) {
+  tenantBrandLogoUrl = url || '';
+}
+
+async function loadImageDataUrl(url) {
+  if (!url) return null;
+  try {
+    const response = await fetch(url, { credentials: 'include' });
+    if (!response.ok) return null;
+    const blob = await response.blob();
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(String(reader.result || ''));
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
 async function loadLogoDataUrl() {
   try {
     const response = await fetch(logoUrl);
@@ -75,6 +99,7 @@ async function ensureUnicodeFont(doc) {
 
 export async function downloadCredentialsPdf({
   tenantName,
+  tenantLogoUrl,
   fullName,
   role,
   username,
@@ -94,7 +119,8 @@ export async function downloadCredentialsPdf({
   doc.setFillColor(...brandPrimary);
   doc.rect(0, 0, pageWidth, 110, 'F');
 
-  const logoData = await loadLogoDataUrl();
+  // Kurumun kendi logosu varsa onu kullan; yoksa ürün logosuna düş.
+  const logoData = (await loadImageDataUrl(tenantLogoUrl || tenantBrandLogoUrl)) || (await loadLogoDataUrl());
   if (logoData) {
     try {
       doc.addImage(logoData, 'PNG', 36, 30, 50, 50);
@@ -106,7 +132,7 @@ export async function downloadCredentialsPdf({
   doc.setFont(fontFamily, 'bold');
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
-  doc.text('SchoolAsist', 100, 55);
+  doc.text(tenantName || 'SchoolAsist', 100, 55);
 
   doc.setFont(fontFamily, 'normal');
   doc.setFontSize(11);

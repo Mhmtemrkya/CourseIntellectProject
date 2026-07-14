@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  ExternalLink, FileArchive, Files, Search, Upload, AlertTriangle, Clock3,
+  ExternalLink, FileArchive, Files, Search, Upload, AlertTriangle, Clock3, Printer, Download,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
@@ -23,6 +23,54 @@ function fileUrl(path) {
   if (!path) return null;
   if (/^https?:\/\//i.test(path)) return path;
   return `${desktopApiBaseUrl}/${String(path).replace(/^\/+/, '')}`;
+}
+
+function safeName(value) {
+  return String(value || 'belge').replace(/[^\w\-.]+/g, '-').replace(/-+/g, '-').slice(0, 80);
+}
+
+// Belgeyi diske indirir. Sunucudan blob olarak çekilir; doğrudan <a download>
+// çapraz kaynak (farklı origin) dosyalarda tarayıcı tarafından yok sayılıyordu.
+async function downloadDocument(url, title) {
+  try {
+    const response = await fetch(url, { credentials: 'include' });
+    const blob = await response.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = objectUrl;
+    const extension = (url.split('.').pop() || '').split('?')[0].slice(0, 5);
+    anchor.download = `${safeName(title)}${extension ? `.${extension}` : ''}`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 4000);
+  } catch {
+    window.open(url, '_blank', 'noopener,noreferrer');
+  }
+}
+
+// Gizli iframe'e yükleyip yazdırma diyaloğunu açar (PDF ve görseller için çalışır).
+function printDocument(url, title) {
+  const frame = document.createElement('iframe');
+  frame.style.position = 'fixed';
+  frame.style.right = '0';
+  frame.style.bottom = '0';
+  frame.style.width = '0';
+  frame.style.height = '0';
+  frame.style.border = '0';
+  frame.title = safeName(title);
+  frame.src = url;
+  frame.onload = () => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch {
+      // Farklı origin'deki dosyaya iframe'den erişilemiyorsa yeni sekmede aç.
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+    setTimeout(() => frame.remove(), 60000);
+  };
+  document.body.appendChild(frame);
 }
 
 function expiryInfo(value) {
@@ -175,8 +223,14 @@ export default function AdministrativeDocuments() {
                       {exp ? <span className={`ml-2 inline-flex items-center gap-1 ${exp.tone}`}><exp.icon className="h-3.5 w-3.5" />{exp.label}</span> : null}
                     </p>
                   </div>
-                  <div className="flex gap-2">
-                    {url ? <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary/10"><ExternalLink className="h-4 w-4" />Aç</a> : null}
+                  <div className="flex flex-wrap gap-2">
+                    {url ? (
+                      <>
+                        <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold text-brand-primary hover:bg-brand-primary/10"><ExternalLink className="h-4 w-4" />Aç</a>
+                        <Button size="sm" variant="outline" onClick={() => printDocument(url, item.title)}><Printer className="mr-1 h-4 w-4" />Yazdır</Button>
+                        <Button size="sm" variant="outline" onClick={() => downloadDocument(url, item.title)}><Download className="mr-1 h-4 w-4" />İndir</Button>
+                      </>
+                    ) : null}
                     {item.status !== 'Archived' ? <Button size="sm" variant="outline" disabled={busy} onClick={() => archive(item)}><FileArchive className="mr-1 h-4 w-4" />Arşivle</Button> : null}
                   </div>
                 </CardContent>

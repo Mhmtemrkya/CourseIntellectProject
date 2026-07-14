@@ -289,6 +289,9 @@ function App() {
               <Route path="/kiosk-qr" element={<KioskQR />} />
               <Route path="/content" element={<Content />} />
               <Route path="/questions" element={<Questions />} />
+              {/* Toplu soru yükleme (Excel/PDF) öğretmen ekranıyla AYNI bileşen —
+                  kopyalanmadı; backend zaten Teacher,Admin'e açık. */}
+              <Route path="/questions/import" element={<TeacherBulkQuestionUpload />} />
               <Route path="/exams" element={<Exams />} />
               <Route path="/reports" element={<Reports />} />
               <Route path="/settings" element={<Settings />} />

@@ -129,8 +129,11 @@ export function generateBrandCSSVariables(primaryHex, accentHex, theme = 'dark')
   vars['--brand-accent-soft'] = `${hexToHSLString(accentHex)} / ${light ? '0.12' : '0.14'}`;
   vars['--brand-accent-glow'] = `${hexToHSLString(accentHex)} / ${light ? '0.24' : '0.35'}`;
   vars['--brand-accent-border'] = `${hexToHSLString(accentHex)} / ${light ? '0.34' : '0.42'}`;
-  // Metin olarak kullanılan accent tonu (başlıklar, tablo başlıkları, linkler)
-  vars['--brand-accent-text'] = hexToHSLString(light ? accentPalette[600] : accentPalette[500]);
+  // Metin olarak kullanılan accent tonu (başlıklar, tablo başlıkları, linkler).
+  // Ham accent (500) kart zemininde okunmuyordu — özellikle mavi/lacivert
+  // paletlerde. Açık temada koyulaştırıp (700), koyu temada açıyoruz (300) ki
+  // başlık her iki zeminde de net okunsun.
+  vars['--brand-accent-text'] = hexToHSLString(light ? accentPalette[700] : accentPalette[300]);
   vars['--brand-gradient-start'] = hexToHSLString(accentPalette[500]);
   vars['--brand-gradient-end'] = hexToHSLString(primaryPalette[600]);
 

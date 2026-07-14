@@ -16,6 +16,7 @@ import {
   Image as ImageIcon,
   FileText,
   Film,
+  Upload,
 } from 'lucide-react';
 import { FeatureGate } from '../components/FeatureGate';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -398,6 +399,12 @@ export default function Questions() {
           <h1 className="text-3xl font-bold font-heading">Sorular</h1>
           <p className="text-muted-foreground mt-1">Soru thread ve yanıt akışı</p>
         </div>
+        {!isStudent ? (
+          <Button variant="outline" onClick={() => navigate('/questions/import')}>
+            <Upload className="h-4 w-4 mr-2" />
+            Toplu Soru Yükle (Excel / PDF)
+          </Button>
+        ) : null}
         {isStudent ? (
           <FeatureGate module="questions" action="ask">
             <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>

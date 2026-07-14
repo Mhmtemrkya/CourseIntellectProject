@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -6,6 +6,7 @@ import {
   ShieldCheck, Users, Wrench, ChevronRight,
 } from 'lucide-react';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
+import { Input } from '../../components/ui/input';
 import {
   PremiumAreaChart,
   PremiumPanel,
@@ -21,18 +22,68 @@ import {
   itemVariants,
 } from './_shared';
 
+// Aralığa bağlı KPI'lar (ders, tahsilat) seçilen döneme göre değişir; yapısal
+// olanlar (aktif kursiyer, filo) her zaman "şu an"ın fotoğrafıdır.
 const KPI_META = [
   ['activeStudents', 'Aktif Kursiyer', Users, 'brand', 'Eğitimi süren adaylar'],
-  ['todayDrivingLessons', 'Bugünkü Direksiyon', CarFront, 'amber', 'Planlanan direksiyon dersi'],
-  ['todayTheoryLessons', 'Bugünkü Teorik', GraduationCap, 'violet', 'Planlanan teorik ders'],
+  ['todayDrivingLessons', 'Direksiyon Dersi', CarFront, 'amber', null],
+  ['todayTheoryLessons', 'Teorik Ders', GraduationCap, 'violet', null],
   ['activeInstructors', 'Aktif Eğitmen', Users, 'emerald', 'Derse çıkabilen eğitmen'],
   ['activeVehicles', 'Aktif Araç', CarFront, 'cyan', 'Kullanıma hazır filo'],
   ['vehiclesInMaintenance', 'Bakımdaki Araç', Wrench, 'rose', 'Servisteki araç'],
   ['missingDocuments', 'Eksik Evrak', AlertTriangle, 'amber', 'Dosyası tamamlanmamış'],
   ['expiringDocuments', 'Süresi Dolan Evrak', ShieldCheck, 'amber', 'Yakında geçersiz olacak'],
   ['upcomingExams', 'Yaklaşan Sınav', CalendarClock, 'blue', 'Planlanmış sınav'],
-  ['todayCollections', 'Bugünkü Tahsilat', Banknote, 'emerald', 'Kasaya giren tutar'],
+  ['todayCollections', 'Tahsilat', Banknote, 'emerald', null],
 ];
+
+// Aralıkla değişen KPI'lar — açıklamalarına seçili dönem yazılır.
+const RANGE_KPIS = new Set(['todayDrivingLessons', 'todayTheoryLessons', 'todayCollections']);
+
+const PERIODS = [
+  ['day', 'Günlük'],
+  ['week', 'Haftalık'],
+  ['month', 'Aylık'],
+  ['year', 'Yıllık'],
+  ['custom', 'Özel'],
+];
+
+const isoDay = (date) => date.toISOString().slice(0, 10);
+
+// Seçilen dönemi [from, to) aralığına çevirir. Bitiş HARİÇTİR (backend böyle bekler).
+function rangeFor(period, custom) {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const end = new Date(start);
+
+  if (period === 'day') {
+    end.setDate(end.getDate() + 1);
+  } else if (period === 'week') {
+    start.setDate(start.getDate() - 6);
+    end.setDate(end.getDate() + 1);
+  } else if (period === 'month') {
+    start.setMonth(start.getMonth() - 1);
+    end.setDate(end.getDate() + 1);
+  } else if (period === 'year') {
+    start.setFullYear(start.getFullYear() - 1);
+    end.setDate(end.getDate() + 1);
+  } else {
+    const from = new Date(`${custom.from}T00:00:00`);
+    const to = new Date(`${custom.to}T00:00:00`);
+    to.setDate(to.getDate() + 1);
+    return { from: from.toISOString(), to: to.toISOString() };
+  }
+
+  return { from: start.toISOString(), to: end.toISOString() };
+}
+
+const PERIOD_CAPTION = {
+  day: 'Bugün',
+  week: 'Son 7 gün',
+  month: 'Son 1 ay',
+  year: 'Son 1 yıl',
+  custom: 'Seçili aralık',
+};
 
 const SHORTCUTS = [
   ['Konu Anlatımı', 'Video, PDF ve ders içeriklerini yönet', BookOpen, 'violet', '/content'],
@@ -45,19 +96,27 @@ export default function DrivingSchoolDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
+  const [period, setPeriod] = useState('day');
+  const today = new Date();
+  const [custom, setCustom] = useState({
+    from: isoDay(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 29)),
+    to: isoDay(today),
+  });
+
+  const range = useMemo(() => rangeFor(period, custom), [period, custom]);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     setError('');
     try {
-      setData(await fetchDrivingSchoolDashboard());
+      setData(await fetchDrivingSchoolDashboard(range));
     } catch (err) {
       setError(err.message || 'Sürücü kursu paneli yüklenemedi.');
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [range]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -74,6 +133,38 @@ export default function DrivingSchoolDashboard() {
         icon={CarFront}
         onRefresh={() => load(true)}
         refreshing={refreshing}
+        actions={(
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex rounded-xl border border-foreground/10 bg-foreground/[0.035] p-1">
+              {PERIODS.map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setPeriod(key)}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-bold transition-colors ${
+                    period === key
+                      ? 'bg-[hsl(var(--brand-accent))] text-white'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {period === 'custom' ? (
+              <>
+                <label className="space-y-1 text-xs font-bold">
+                  <span>Başlangıç</span>
+                  <Input type="date" value={custom.from} max={custom.to} onChange={(e) => setCustom((x) => ({ ...x, from: e.target.value }))} />
+                </label>
+                <label className="space-y-1 text-xs font-bold">
+                  <span>Bitiş</span>
+                  <Input type="date" value={custom.to} min={custom.from} onChange={(e) => setCustom((x) => ({ ...x, to: e.target.value }))} />
+                </label>
+              </>
+            ) : null}
+          </div>
+        )}
       />
 
       {error ? <ErrorBanner title="Panel açılamadı" message={error} onRetry={() => load(true)} /> : null}
@@ -86,7 +177,8 @@ export default function DrivingSchoolDashboard() {
               const value = key === 'todayCollections'
                 ? `₺${Number(raw).toLocaleString('tr-TR')}`
                 : raw;
-              return <DrivingStatCard key={key} label={label} value={value} caption={caption} icon={Icon} tone={tone} />;
+              const cardCaption = RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
+              return <DrivingStatCard key={key} label={label} value={value} caption={cardCaption} icon={Icon} tone={tone} />;
             })}
           </div>
 

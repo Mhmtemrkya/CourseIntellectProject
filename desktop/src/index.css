@@ -51,7 +51,7 @@ code {
         /* Brand Colors */
         --brand-primary: 219 74% 10%; /* #07152E */
         --brand-accent: 29 100% 50%; /* #FF7A00 */
-        --brand-accent-text: 29 100% 50%; /* metin olarak kullanılan accent tonu */
+        --brand-accent-text: 29 100% 63%; /* koyu zeminde okunur accent (başlıklar) */
         --brand-primary-hover: 218 68% 17%;
         --brand-primary-soft: 219 74% 10% / 0.12;
         --brand-primary-glow: 219 74% 10% / 0.28;
@@ -142,7 +142,7 @@ code {
         --ci-panel-shadow: 0 16px 40px hsl(220 40% 45% / 0.12);
 
         --brand-primary-text: 219 74% 32%;
-        --brand-accent-text: 26 100% 40%; /* beyaz zeminde okunur accent */
+        --brand-accent-text: 26 100% 34%; /* beyaz zeminde okunur accent (başlıklar) */
         --muted-foreground: 215 16% 42%;
         --primary-foreground: 0 0% 100%;
         --chart-1: 217 91% 48%;

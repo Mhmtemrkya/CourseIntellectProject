@@ -43,6 +43,8 @@ export default function DrivingEducation() {
   const [examStudents, setExamStudents] = useState({});
   const [examFees, setExamFees] = useState({});
   const [attendance, setAttendance] = useState(null);
+  // { candidate, passed, score, failureReason } — açıkken not girişi paneli görünür.
+  const [resultForm, setResultForm] = useState(null);
 
   const canTheoryManage = can(DRIVING.theoryManage);
   const canAttendance = can(DRIVING.theoryAttendance);
@@ -85,12 +87,29 @@ export default function DrivingEducation() {
     const ok = await run(() => saveDrivingTheoryAttendance(attendance.session.id, attendance.rows.map((row) => ({ studentProfileId: row.studentDrivingProfileId, status: row.status, note: row.note || '' }))), 'Yoklama kaydedildi');
     if (ok) setAttendance(null);
   }
-  async function result(candidate, passed) {
-    const scoreRaw = window.prompt('Puan (0-100, boş bırakılabilir):', passed ? '70' : '50');
-    if (scoreRaw === null) return;
-    const failureReason = passed ? '' : window.prompt('Başarısızlık nedeni:');
-    if (!passed && (!failureReason || failureReason.trim().length < 3)) return;
-    await run(() => enterDrivingExamResult(candidate.id, { passed, score: scoreRaw === '' ? null : Number(scoreRaw), failureReason, note: '' }), passed ? 'Sınav sonucu geçti olarak işlendi' : 'Sınav sonucu kaldı olarak işlendi');
+  // Sonuç girişi: e-sınav / direksiyon sınavı notu. Eskiden window.prompt ile
+  // alınıyordu — puan doğrulaması yapılamıyor ve iptal/geri alma net değildi.
+  async function submitResult() {
+    const { candidate, passed, score, failureReason } = resultForm;
+    const numeric = score === '' ? null : Number(score);
+    if (numeric !== null && (!Number.isFinite(numeric) || numeric < 0 || numeric > 100)) {
+      toast({ title: 'Puan 0-100 aralığında olmalı', variant: 'destructive' });
+      return;
+    }
+    if (!passed && failureReason.trim().length < 3) {
+      toast({ title: 'Başarısızlık nedeni en az 3 karakter olmalı', variant: 'destructive' });
+      return;
+    }
+    await run(
+      () => enterDrivingExamResult(candidate.id, {
+        passed,
+        score: numeric,
+        failureReason: passed ? '' : failureReason.trim(),
+        note: '',
+      }),
+      passed ? 'Sınav sonucu geçti olarak işlendi' : 'Sınav sonucu kaldı olarak işlendi',
+    );
+    setResultForm(null);
   }
   async function retry(candidate, type) {
     const alternatives = (data.exams || []).filter((exam) => exam.examType === type && exam.status === 'Planned' && exam.id !== candidate.examSessionId);
@@ -127,8 +146,43 @@ export default function DrivingEducation() {
         <div className="grid gap-3 lg:grid-cols-2">{data.sessions.map((session) => <Card key={session.id}><CardContent className="p-5"><div className="flex justify-between"><div><b>{session.subject}</b><p className="text-sm text-muted-foreground">{session.topic}</p></div><Badge className={statusTone(session.status)}>{session.status}</Badge></div><p className="mt-3 text-sm">{dateTime(session.startsAtUtc)} • {session.className} • {session.instructorName} • {session.room}</p>{canAttendance && <Button size="sm" variant="outline" className="mt-3" onClick={() => openAttendance(session)}><ClipboardCheck className="mr-2 h-4 w-4" />Yoklama</Button>}</CardContent></Card>)}</div>
       </TabsContent>
       <TabsContent value="exams" className="mt-5 space-y-5">
+        {resultForm ? (
+          <Card className="border-[hsl(var(--brand-accent)/0.4)]">
+            <CardHeader>
+              <CardTitle>
+                {resultForm.candidate.studentName} — sınav notu
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 md:grid-cols-[160px_1fr_auto_auto]">
+              <label className="space-y-1.5 text-sm font-semibold">
+                <span>Puan (0-100)</span>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  placeholder="Boş bırakılabilir"
+                  value={resultForm.score}
+                  onChange={(e) => setResultForm((x) => ({ ...x, score: e.target.value }))}
+                />
+              </label>
+              <label className="space-y-1.5 text-sm font-semibold">
+                <span>{resultForm.passed ? 'Not (opsiyonel)' : 'Başarısızlık nedeni'}</span>
+                <Input
+                  disabled={resultForm.passed}
+                  placeholder={resultForm.passed ? 'Geçti olarak işlenecek' : 'Nedenini yazın'}
+                  value={resultForm.failureReason}
+                  onChange={(e) => setResultForm((x) => ({ ...x, failureReason: e.target.value }))}
+                />
+              </label>
+              <Button className="self-end" disabled={busy} onClick={submitResult}>
+                {resultForm.passed ? 'Geçti Olarak Kaydet' : 'Kaldı Olarak Kaydet'}
+              </Button>
+              <Button className="self-end" variant="outline" onClick={() => setResultForm(null)}>Vazgeç</Button>
+            </CardContent>
+          </Card>
+        ) : null}
         {canExamManage && <Card><CardHeader><CardTitle>Yeni sınav ve komisyon</CardTitle></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={saveExam}><select className="h-10 rounded-md border bg-background px-3" value={examForm.examType} onChange={(e) => setExamForm({ ...examForm, examType: e.target.value })}><option value="TheoryEExam">E-sınav</option><option value="DrivingPractice">Direksiyon sınavı</option></select><Input required placeholder="Sınav adı" value={examForm.title} onChange={(e) => setExamForm({ ...examForm, title: e.target.value })} /><Input required placeholder="Sınav yeri" value={examForm.location} onChange={(e) => setExamForm({ ...examForm, location: e.target.value })} /><Input required type="datetime-local" value={examForm.startsAtUtc} onChange={(e) => setExamForm({ ...examForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={examForm.endsAtUtc} onChange={(e) => setExamForm({ ...examForm, endsAtUtc: e.target.value })} /><Input required type="number" min="1" max="100" value={examForm.capacity} onChange={(e) => setExamForm({ ...examForm, capacity: e.target.value })} /><Input required placeholder="Komisyon üyesi" value={examForm.commissionName} onChange={(e) => setExamForm({ ...examForm, commissionName: e.target.value })} /><Input required placeholder="Komisyon görevi" value={examForm.commissionRole} onChange={(e) => setExamForm({ ...examForm, commissionRole: e.target.value })} /><Input placeholder="Kurum" value={examForm.commissionOrganization} onChange={(e) => setExamForm({ ...examForm, commissionOrganization: e.target.value })} /><Button disabled={busy} className="md:col-span-3"><GraduationCap className="mr-2 h-4 w-4" />Sınavı Oluştur</Button></form></CardContent></Card>}
-        {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => <div key={candidate.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div><b>{candidate.studentName}</b><p className="text-xs text-muted-foreground">{candidate.attemptNo}. deneme {candidate.score != null ? `• ${candidate.score} puan` : ''} {candidate.failureReason ? `• ${candidate.failureReason}` : ''}</p></div><div className="flex gap-2"><Badge className={statusTone(candidate.status)}>{candidate.status}</Badge>{canResult && candidate.status === 'Planned' && <><Button size="sm" className="bg-emerald-600" onClick={() => result(candidate, true)}><CheckCircle2 className="mr-1 h-3 w-3" />Geçti</Button><Button size="sm" variant="destructive" onClick={() => result(candidate, false)}>Kaldı</Button></>}{canExamManage && candidate.status === 'Failed' && <Button size="sm" variant="outline" onClick={() => retry(candidate, exam.examType)}><RotateCcw className="mr-1 h-3 w-3" />Tekrar</Button>}</div></div>)}</div></CardContent></Card>)}
+        {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => <div key={candidate.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div><b>{candidate.studentName}</b><p className="text-xs text-muted-foreground">{candidate.attemptNo}. deneme {candidate.score != null ? `• ${candidate.score} puan` : ''} {candidate.failureReason ? `• ${candidate.failureReason}` : ''}</p></div><div className="flex gap-2"><Badge className={statusTone(candidate.status)}>{candidate.status}</Badge>{canResult && candidate.status === 'Planned' && <><Button size="sm" className="bg-emerald-600" onClick={() => setResultForm({ candidate, passed: true, score: '70', failureReason: '' })}><CheckCircle2 className="mr-1 h-3 w-3" />Geçti</Button><Button size="sm" variant="destructive" onClick={() => setResultForm({ candidate, passed: false, score: '', failureReason: '' })}>Kaldı</Button></>}{canExamManage && candidate.status === 'Failed' && <Button size="sm" variant="outline" onClick={() => retry(candidate, exam.examType)}><RotateCcw className="mr-1 h-3 w-3" />Tekrar</Button>}</div></div>)}</div></CardContent></Card>)}
       </TabsContent>
     </Tabs>
   </DrivingPage>;

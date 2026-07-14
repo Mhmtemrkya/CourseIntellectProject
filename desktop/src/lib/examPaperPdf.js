@@ -131,14 +131,33 @@ function pageShell(innerHtml, withWaves = true) {
   return page;
 }
 
+// PDF'in üzerindeki kurum kimliği. Çağıran (rapor merkezi) oturumdaki kurumun
+// adını ve logosunu verir; verilmezse ürün adına düşeriz.
+let brand = { name: '', logoUrl: '' };
+
+export function setExamPaperBrand(next) {
+  brand = { name: (next?.name || '').trim(), logoUrl: next?.logoUrl || '' };
+}
+
+function brandName() {
+  return escapeHtml(brand.name || 'SchoolAsist');
+}
+
+function brandMarkHtml() {
+  if (brand.logoUrl) {
+    return `<img src="${escapeHtml(brand.logoUrl)}" crossorigin="anonymous" style="width:42px;height:42px;object-fit:contain;border-radius:10px;" />`;
+  }
+  return brainSvg();
+}
+
 function brandedHeaderHtml() {
   return `
     <div style="display:flex;align-items:center;justify-content:space-between;padding:28px 40px 0;">
       <div style="display:flex;align-items:center;gap:12px;">
-        ${brainSvg()}
+        ${brandMarkHtml()}
         <div>
-          <div style="font-size:22px;font-weight:800;color:${C.navy};">Course<span style="color:${C.violet};">Intellecte</span></div>
-          <div style="font-size:11px;color:${C.slateSoft};">Akıllı Sorular, Güçlü Yarınlar</div>
+          <div style="font-size:22px;font-weight:800;color:${C.navy};">${brandName()}</div>
+          <div style="font-size:11px;color:${C.slateSoft};">Sınav Kağıdı</div>
         </div>
       </div>
       <div style="background:${C.violet};color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;font-size:13px;">PDF</div>
@@ -202,8 +221,7 @@ function footerHtml(pageNo, totalPages) {
   return `
     <div style="position:absolute;left:0;right:0;bottom:24px;display:flex;align-items:center;justify-content:center;padding:0 40px;">
       <div style="text-align:center;">
-        <div style="font-size:13px;font-weight:700;color:${C.violet};">SchoolAsist</div>
-        <div style="font-size:11px;color:${C.slateSoft};">courseintellect.com</div>
+        <div style="font-size:13px;font-weight:700;color:${C.violet};">${brandName()}</div>
       </div>
       <div style="position:absolute;right:40px;background:${C.violet};color:#fff;border-radius:14px;padding:7px 16px;font-size:12px;font-weight:700;">Sayfa ${pageNo} / ${totalPages}</div>
     </div>`;

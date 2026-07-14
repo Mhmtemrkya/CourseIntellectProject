@@ -3,6 +3,7 @@ import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
 import { getDrivingPermissions, isDrivingPathAllowed } from "../../lib/drivingPermissions";
+import { getInstitutionType, isPathHiddenForInstitution } from "../../lib/institutionType";
 import {
   LayoutDashboard,
   Clock,
@@ -1637,12 +1638,31 @@ export function ModernSidebar() {
     };
   }, [user]);
 
+  // Kurum türü: sürücü kursunda okula özgü menüler (servis, yemekhane, nöbet,
+  // veliler, kurs yönetimi, okul sınavları) gizlenir.
+  const [institutionType, setInstitutionType] = useState(null);
+  useEffect(() => {
+    let active = true;
+    if (user?.isPlatformAdmin) {
+      setInstitutionType(null);
+    } else {
+      getInstitutionType().then((resolved) => {
+        if (active) setInstitutionType(resolved);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
   const featureFilteredItems = disabledFeatures && disabledFeatures.size > 0
     ? moduleAwareItems.filter((item) => !isPathDisabled(item.path, disabledFeatures))
     : moduleAwareItems;
+  const institutionFilteredItems = featureFilteredItems
+    .filter((item) => !isPathHiddenForInstitution(item.path, institutionType));
   const menuItems = user?.isPlatformAdmin
     ? featureFilteredItems
-    : featureFilteredItems.filter((item) => isDrivingPathAllowed(item.path, drivingPermissions));
+    : institutionFilteredItems.filter((item) => isDrivingPathAllowed(item.path, drivingPermissions));
   const groupedMenuItems = buildGroupedMenuItems(menuItems, primaryRole);
   const [openGroups, setOpenGroups] = useState(() => new Set());
   const isStudent = userRoles.includes("student");

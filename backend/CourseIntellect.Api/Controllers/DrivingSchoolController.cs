@@ -107,15 +107,23 @@ public sealed class DrivingSchoolController(
                 x => x.Value.OrderBy(p => p, StringComparer.Ordinal).ToList()),
         });
 
+    /// <summary>
+    /// Kurs paneli. <paramref name="from"/>/<paramref name="to"/> verilirse ders, tahsilat
+    /// ve kayıt KPI'ları O ARALIK için hesaplanır (günlük/haftalık/aylık/yıllık/özel filtre);
+    /// verilmezse "bugün" davranışı korunur. Aktif kursiyer/araç gibi YAPISAL sayımlar
+    /// aralıktan bağımsızdır — onlar "şu an"ın fotoğrafıdır.
+    /// </summary>
     [HttpGet("dashboard")]
     [RequireDrivingPermission(DrivingPermissions.DashboardView)]
-    public async Task<IActionResult> GetDashboard(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetDashboard([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken cancellationToken)
     {
         if (!await CanUseModuleAsync(cancellationToken)) return Forbid();
 
         var canSeeFinance = await permissionService.HasAsync(User, DrivingPermissions.FinanceView, cancellationToken);
-        var today = DateTime.UtcNow.Date;
-        var tomorrow = today.AddDays(1);
+        var today = from?.ToUniversalTime() ?? DateTime.UtcNow.Date;
+        var tomorrow = to?.ToUniversalTime() ?? today.AddDays(1);
+        if (tomorrow <= today || tomorrow - today > TimeSpan.FromDays(400))
+            return BadRequest(new { message = "Tarih aralığı geçersiz." });
         var openStatuses = DrivingStudentStatuses.Open.ToArray();
         var activeStudents = await dbContext.StudentDrivingProfiles.AsNoTracking().CountAsync(x => openStatuses.Contains(x.Status), cancellationToken);
         var activeInstructors = await dbContext.DrivingInstructorProfiles.AsNoTracking().CountAsync(x => x.IsActive, cancellationToken);
@@ -161,6 +169,8 @@ public sealed class DrivingSchoolController(
         return Ok(new
         {
             generatedAtUtc = DateTime.UtcNow,
+            rangeFromUtc = today,
+            rangeToUtc = tomorrow,
             kpis = new
             {
                 activeStudents,

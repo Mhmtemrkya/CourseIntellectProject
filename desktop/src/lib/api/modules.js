@@ -82,8 +82,9 @@ export async function fetchDrivingSchoolStatus() {
   return api.get('/api/driving-school/status');
 }
 
-export async function fetchDrivingSchoolDashboard() {
-  return api.get('/api/driving-school/dashboard');
+// params: { from, to } (ISO). Verilmezse backend "bugün" davranışına düşer.
+export async function fetchDrivingSchoolDashboard(params = {}) {
+  return api.get('/api/driving-school/dashboard', { params });
 }
 
 export const fetchDrivingPermissions = () => api.get('/api/driving-school/permissions/me');

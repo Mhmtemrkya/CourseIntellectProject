@@ -13,7 +13,9 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Progress } from '../../components/ui/progress';
 import { fetchReportStudents, fetchSolutionSession, fetchTeacherPdfReports, fetchTeacherReportAnalytics } from '../../lib/api/modules';
-import { downloadExamPaperPdf } from '../../lib/examPaperPdf';
+import { downloadExamPaperPdf, setExamPaperBrand } from '../../lib/examPaperPdf';
+import { useTheme } from '../../context/ThemeContext';
+import { useApp } from '../../context/AppContext';
 
 const reportTypes = ['Tümü', 'Sınav Raporları', 'Ödev Raporları', 'Gelişim Raporları', 'Devamsızlık Raporları', 'Karne Raporları'];
 const PDF_PAGE_WIDTH = 794;
@@ -852,6 +854,13 @@ function StudentReportMode({
 }
 
 export default function TeacherPdfReportCenter() {
+  // Üretilen PDF'lerin başlığında ürün adı değil KURUMUN adı ve logosu görünür.
+  const { tenantLogo } = useTheme();
+  const { user } = useApp();
+  useEffect(() => {
+    setExamPaperBrand({ name: user?.tenant || '', logoUrl: tenantLogo || '' });
+  }, [user?.tenant, tenantLogo]);
+
   const [viewMode, setViewMode] = useState('students');
   const [studentsData, setStudentsData] = useState([]);
   const [analytics, setAnalytics] = useState({ classReports: [], topics: [] });
