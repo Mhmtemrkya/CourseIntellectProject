@@ -55,7 +55,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText } from "lucide-react";
+import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
