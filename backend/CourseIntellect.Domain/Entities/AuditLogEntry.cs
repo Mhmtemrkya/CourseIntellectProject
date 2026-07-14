@@ -18,5 +18,18 @@ public sealed class AuditLogEntry : IBranchScopedEntity
     public string EntityType { get; set; } = string.Empty;
     public string EntityId { get; set; } = string.Empty;
     public string Detail { get; set; } = string.Empty;
+
+    /// <summary>Değişiklik öncesi durum (JSON). Yalnızca güncelleme kayıtlarında dolar.</summary>
+    public string? BeforeValue { get; set; }
+
+    /// <summary>Değişiklik sonrası durum (JSON).</summary>
+    public string? AfterValue { get; set; }
+
+    /// <summary>İsteğin geldiği IP (proxy arkasında X-Forwarded-For'un ilk adresi).</summary>
+    public string? IpAddress { get; set; }
+
+    /// <summary>İstemci tanımı (User-Agent) — hangi cihaz/uygulama.</summary>
+    public string? UserAgent { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

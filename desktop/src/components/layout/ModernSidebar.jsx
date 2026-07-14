@@ -2,16 +2,21 @@ import { useState, useEffect } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
+import { getDrivingPermissions, isDrivingPathAllowed } from "../../lib/drivingPermissions";
 import {
   LayoutDashboard,
   Clock,
   HeartHandshake,
   Library,
   Users,
+  UserPlus,
   UserCheck,
   GraduationCap,
+  Award,
   School,
   Calendar,
+  CalendarClock,
+  CalendarDays,
   ClipboardCheck,
   QrCode,
   HelpCircle,
@@ -45,6 +50,7 @@ import {
   Bot,
   LifeBuoy,
   BusFront,
+  CarFront,
   UtensilsCrossed,
   KeyRound,
   ChevronDown,
@@ -96,6 +102,16 @@ export const menuConfigs = {
       label: "Dashboard",
       color: "#3b82f6",
     },
+    { path: "/driving/dashboard", icon: CarFront, label: "Sürücü Kursu", color: "#f97316", special: true },
+    { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true },
+    { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true },
+    { path: "/driving/scheduling", icon: CalendarClock, label: "Öğrenci & Randevu", color: "#f59e0b", special: true },
+    { path: "/driving/calendar", icon: CalendarDays, label: "Takvim", color: "#6366f1", special: true },
+    { path: "/driving/lessons", icon: Activity, label: "Direksiyon Dersleri", color: "#10b981", special: true },
+    { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
+    { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
+    { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
+    { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true },
     {
       path: "/admin/kpi",
       icon: BarChart3,
@@ -641,6 +657,13 @@ export const menuConfigs = {
       color: "#3b82f6",
     },
     {
+      path: "/driving/education",
+      icon: GraduationCap,
+      label: "Teorik Eğitim & Sınav",
+      color: "#7c3aed",
+      special: true,
+    },
+    {
       path: "/t/schedule",
       icon: Calendar,
       label: "Ders Programı",
@@ -765,6 +788,20 @@ export const menuConfigs = {
       icon: LayoutDashboard,
       label: "Ana Sayfa",
       color: "#3b82f6",
+      special: true,
+    },
+    {
+      path: "/driving/education",
+      icon: GraduationCap,
+      label: "Sürücü Eğitimi & Sınav",
+      color: "#7c3aed",
+      special: true,
+    },
+    {
+      path: "/driving/graduation",
+      icon: Award,
+      label: "Mezuniyet & Belgeler",
+      color: "#16a34a",
       special: true,
     },
     {
@@ -1025,7 +1062,7 @@ export const ROLE_LABELS = {
 
 const ROLE_MENU_GROUPS = {
   admin: [
-    { id: "main", title: "Ana Panel", modules: ["dashboard", "kpi", "operations", "global-search", "tasks"] },
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "kpi", "operations", "global-search", "tasks"] },
     { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library"] },
@@ -1094,6 +1131,14 @@ const ROLE_MENU_GROUPS = {
 };
 
 const MODULE_MENU_REGISTRY = {
+  "driving-school": { default: { path: "/driving/dashboard", icon: CarFront, label: "Sürücü Kursu", color: "#f97316", special: true } },
+  "driving-registration": { default: { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true } },
+  "driving-operations": { default: { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true } },
+  "driving-scheduling": { default: { path: "/driving/scheduling", icon: CalendarClock, label: "Öğrenci & Randevu", color: "#f59e0b", special: true } },
+  "driving-calendar": { default: { path: "/driving/calendar", icon: CalendarDays, label: "Takvim", color: "#6366f1", special: true } },
+  "driving-lessons": { default: { path: "/driving/lessons", icon: Activity, label: "Direksiyon Dersleri", color: "#10b981", special: true } },
+  "driving-fleet-compliance": { default: { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true } },
+  "driving-assignments": { default: { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true } },
   dashboard: {
     default: { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
     administrative: { path: "/admin/operations", icon: Activity, label: "Operasyon", color: "#14b8a6" },
@@ -1247,6 +1292,14 @@ export function inferModuleKey(item) {
 
   const exactPathMap = {
     "/dashboard": "dashboard",
+    "/driving/dashboard": "driving-school",
+    "/driving/students/new": "driving-registration",
+    "/driving/operations": "driving-operations",
+    "/driving/scheduling": "driving-scheduling",
+    "/driving/calendar": "driving-calendar",
+    "/driving/lessons": "driving-lessons",
+    "/driving/fleet-compliance": "driving-fleet-compliance",
+    "/driving/assignments": "driving-assignments",
     "/t/dashboard": "dashboard",
     "/s/dashboard": "dashboard",
     "/p/dashboard": "dashboard",
@@ -1566,9 +1619,29 @@ export function ModernSidebar() {
     };
   }, [user]);
 
-  const menuItems = disabledFeatures && disabledFeatures.size > 0
+  // Sürücü kursu menüleri ayrıca ince taneli izne bağlıdır: filo sorumlusu
+  // "Evrak & Bakım"ı görür ama "Öğrenci & Randevu"yu görmez, muhasebe tersini.
+  const [drivingPermissions, setDrivingPermissions] = useState(null);
+  useEffect(() => {
+    let active = true;
+    if (user?.isPlatformAdmin) {
+      setDrivingPermissions(null);
+    } else {
+      getDrivingPermissions().then((resolved) => {
+        if (active) setDrivingPermissions(resolved);
+      });
+    }
+    return () => {
+      active = false;
+    };
+  }, [user]);
+
+  const featureFilteredItems = disabledFeatures && disabledFeatures.size > 0
     ? moduleAwareItems.filter((item) => !isPathDisabled(item.path, disabledFeatures))
     : moduleAwareItems;
+  const menuItems = user?.isPlatformAdmin
+    ? featureFilteredItems
+    : featureFilteredItems.filter((item) => isDrivingPathAllowed(item.path, drivingPermissions));
   const groupedMenuItems = buildGroupedMenuItems(menuItems, primaryRole);
   const [openGroups, setOpenGroups] = useState(() => new Set());
   const isStudent = userRoles.includes("student");

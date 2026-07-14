@@ -48,6 +48,20 @@ public interface IAuditLogService
         string detail,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// Önceki/yeni değeri de saklayan kayıt. <paramref name="before"/> ve <paramref name="after"/>
+    /// serileştirilerek yazılır; oluşturmada before, silmede after null bırakılır.
+    /// </summary>
+    Task LogChangeAsync(
+        string action,
+        string category,
+        string entityType,
+        string entityId,
+        string detail,
+        object? before,
+        object? after,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<AuditLogDto>> GetAsync(
         string? category,
         int take,

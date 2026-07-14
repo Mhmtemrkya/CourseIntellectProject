@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using CourseIntellect.Application.DTOs.Admin;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -12,12 +13,25 @@ public sealed class AuditLogService(
     CourseIntellectDbContext dbContext,
     IHttpContextAccessor httpContextAccessor) : IAuditLogService
 {
+    private const int MaxSnapshotLength = 4000;
+
     public Task LogAsync(
         string action,
         string category,
         string entityType,
         string entityId,
         string detail,
+        CancellationToken cancellationToken = default)
+        => LogChangeAsync(action, category, entityType, entityId, detail, null, null, cancellationToken);
+
+    public Task LogChangeAsync(
+        string action,
+        string category,
+        string entityType,
+        string entityId,
+        string detail,
+        object? before,
+        object? after,
         CancellationToken cancellationToken = default)
     {
         var user = httpContextAccessor.HttpContext?.User;
@@ -35,10 +49,11 @@ public sealed class AuditLogService(
                 ?? "Bilinmiyor";
         }
 
-        return LogAsync(actorId, actorName, action, category, entityType, entityId, detail, cancellationToken);
+        return WriteAsync(actorId, actorName, action, category, entityType, entityId, detail,
+            Serialize(before), Serialize(after), cancellationToken);
     }
 
-    public async Task LogAsync(
+    public Task LogAsync(
         Guid? actorUserId,
         string actorName,
         string action,
@@ -47,6 +62,19 @@ public sealed class AuditLogService(
         string entityId,
         string detail,
         CancellationToken cancellationToken = default)
+        => WriteAsync(actorUserId, actorName, action, category, entityType, entityId, detail, null, null, cancellationToken);
+
+    private async Task WriteAsync(
+        Guid? actorUserId,
+        string actorName,
+        string action,
+        string category,
+        string entityType,
+        string entityId,
+        string detail,
+        string? beforeValue,
+        string? afterValue,
+        CancellationToken cancellationToken)
     {
         try
         {
@@ -59,6 +87,10 @@ public sealed class AuditLogService(
                 EntityType = entityType?.Trim() ?? string.Empty,
                 EntityId = entityId?.Trim() ?? string.Empty,
                 Detail = detail?.Trim() ?? string.Empty,
+                BeforeValue = beforeValue,
+                AfterValue = afterValue,
+                IpAddress = ResolveIpAddress(),
+                UserAgent = Truncate(httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString(), 300),
                 CreatedAtUtc = DateTime.UtcNow,
             }, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -67,6 +99,31 @@ public sealed class AuditLogService(
         {
             // Denetim kaydı asıl işlemi bloklamamalı.
         }
+    }
+
+    /// <summary>Proxy arkasında gerçek istemci X-Forwarded-For'un ilk adresidir.</summary>
+    private string? ResolveIpAddress()
+    {
+        var context = httpContextAccessor.HttpContext;
+        if (context is null) return null;
+
+        var forwarded = context.Request.Headers["X-Forwarded-For"].ToString();
+        if (!string.IsNullOrWhiteSpace(forwarded))
+        {
+            var first = forwarded.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).FirstOrDefault();
+            if (!string.IsNullOrWhiteSpace(first)) return Truncate(first, 64);
+        }
+
+        return Truncate(context.Connection.RemoteIpAddress?.ToString(), 64);
+    }
+
+    private static string? Serialize(object? value)
+        => value is null ? null : Truncate(JsonSerializer.Serialize(value), MaxSnapshotLength);
+
+    private static string? Truncate(string? value, int max)
+    {
+        if (string.IsNullOrWhiteSpace(value)) return null;
+        return value.Length <= max ? value : value[..max];
     }
 
     public async Task<IReadOnlyList<AuditLogDto>> GetAsync(

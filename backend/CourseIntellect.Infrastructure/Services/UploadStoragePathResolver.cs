@@ -6,10 +6,36 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public static class UploadStoragePathResolver
 {
+    public static void ValidateProductionStorage(IHostEnvironment environment, IConfiguration configuration)
+    {
+        if (!environment.IsProduction()) return;
+        var configuredRoot = Environment.GetEnvironmentVariable("COURSE_INTELLECT_UPLOADS_ROOT");
+        if (string.IsNullOrWhiteSpace(configuredRoot)) configuredRoot = configuration["Uploads:RootPath"];
+        if (string.IsNullOrWhiteSpace(configuredRoot) || !Path.IsPathRooted(configuredRoot))
+            throw new InvalidOperationException("Production ortamında COURSE_INTELLECT_UPLOADS_ROOT mutlak ve kalıcı bir disk yolu olarak tanımlanmalıdır.");
+
+        var root = Path.GetFullPath(configuredRoot);
+        var contentRoot = Path.GetFullPath(environment.ContentRootPath);
+        if (root.StartsWith(Path.TrimEndingDirectorySeparator(contentRoot) + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Production yükleme alanı uygulama release/content dizininin dışında olmalıdır.");
+
+        Directory.CreateDirectory(root);
+        var probe = Path.Combine(root, $".storage-probe-{Guid.NewGuid():N}");
+        try
+        {
+            File.WriteAllText(probe, DateTime.UtcNow.ToString("O"));
+            File.Delete(probe);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"Production yükleme alanı yazılabilir değil: {root}", ex);
+        }
+    }
+
     public static string ResolveUploadsRoot(IHostEnvironment environment, IConfiguration configuration)
     {
-        var configuredRoot = configuration["Uploads:RootPath"]
-            ?? Environment.GetEnvironmentVariable("COURSE_INTELLECT_UPLOADS_ROOT");
+        var configuredRoot = Environment.GetEnvironmentVariable("COURSE_INTELLECT_UPLOADS_ROOT");
+        if (string.IsNullOrWhiteSpace(configuredRoot)) configuredRoot = configuration["Uploads:RootPath"];
 
         if (!string.IsNullOrWhiteSpace(configuredRoot))
         {

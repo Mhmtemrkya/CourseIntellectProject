@@ -40,6 +40,7 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
         new("finance", "Finans / Muhasebe", "Tahsilat, fatura ve muhasebe modülleri"),
         new("reports", "Raporlar", "Analiz ve PDF raporları"),
         new("ai", "AI Asistan", "Yapay zeka destekli özellikler"),
+        new("drivingSchool", "Sürücü Kursu", "Öğrenci, araç, öğretmen, randevu ve sürüş operasyonları"),
     ];
 
     private bool HasTenantContext() => !string.IsNullOrWhiteSpace(User.FindFirstValue("tenant_id"));
@@ -68,6 +69,18 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
         var flags = (request.Features ?? new Dictionary<string, bool>())
             .Where(pair => knownKeys.Contains(pair.Key))
             .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.OrdinalIgnoreCase);
+
+        var tenant = await dbContext.TenantWorkspaces
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(x => x.Id == tenantId, cancellationToken);
+        if (tenant is null) return NotFound(new { message = "Kurum bulunamadı." });
+
+        var drivingEnabled = flags.TryGetValue("drivingSchool", out var requestedDriving) && requestedDriving;
+        if (drivingEnabled && tenant.InstitutionType != CourseIntellect.Domain.Enums.InstitutionType.DrivingSchool)
+        {
+            return BadRequest(new { message = "Sürücü kursu modülü yalnızca Sürücü Kursu türündeki kurumlarda açılabilir." });
+        }
+        tenant.DrivingSchoolModuleEnabled = drivingEnabled;
 
         var entity = await dbContext.PlatformConfigurations
             .IgnoreQueryFilters()
@@ -120,6 +133,13 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
             .FirstOrDefaultAsync(cancellationToken);
 
         var flags = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
+        var drivingEnabled = await dbContext.TenantWorkspaces
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(x => x.Id == tenantId)
+            .Select(x => x.DrivingSchoolModuleEnabled)
+            .SingleOrDefaultAsync(cancellationToken);
+        flags["drivingSchool"] = drivingEnabled;
         if (string.IsNullOrWhiteSpace(payload))
         {
             return flags;
@@ -158,7 +178,9 @@ public sealed class TenantFeaturesController(CourseIntellectDbContext dbContext)
                 key = item.Key,
                 label = item.Label,
                 description = item.Description,
-                enabled = !flags.TryGetValue(item.Key, out var enabled) || enabled,
+                enabled = flags.TryGetValue(item.Key, out var enabled)
+                    ? enabled
+                    : !string.Equals(item.Key, "drivingSchool", StringComparison.OrdinalIgnoreCase),
             }).ToList(),
         };
     }

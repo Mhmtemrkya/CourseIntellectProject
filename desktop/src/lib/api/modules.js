@@ -78,6 +78,108 @@ export async function fetchStudents() {
   return response;
 }
 
+export async function fetchDrivingSchoolStatus() {
+  return api.get('/api/driving-school/status');
+}
+
+export async function fetchDrivingSchoolDashboard() {
+  return api.get('/api/driving-school/dashboard');
+}
+
+export const fetchDrivingPermissions = () => api.get('/api/driving-school/permissions/me');
+export const fetchDrivingPermissionCatalog = () => api.get('/api/driving-school/permissions/catalog');
+export const fetchDrivingPackages = () => api.get('/api/driving-school/packages');
+export const createDrivingPackage = (payload) => api.post('/api/driving-school/packages', payload);
+export const fetchDrivingVehicles = () => api.get('/api/driving-school/vehicles');
+export const createDrivingVehicle = (payload) => api.post('/api/driving-school/vehicles', payload);
+export const fetchDrivingInstructors = () => api.get('/api/driving-school/instructors');
+export const createDrivingInstructor = (payload) => api.post('/api/driving-school/instructors', payload);
+export const fetchDrivingStudents = () => api.get('/api/driving-school/students');
+export const createDrivingStudent = (payload) => api.post('/api/driving-school/students', payload);
+export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
+export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
+export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });
+export const fetchDrivingCalendar = (params) => api.get('/api/driving-school/calendar', { params });
+export const fetchDrivingEducationOverview = (params = {}) => api.get('/api/driving-school/education/overview', { params });
+export const createDrivingTheoryClass = (payload) => api.post('/api/driving-school/theory/classes', payload);
+export const enrollDrivingTheoryStudents = (id, studentProfileIds) => api.post(`/api/driving-school/theory/classes/${id}/students`, { studentProfileIds });
+export const createDrivingTheorySession = (payload) => api.post('/api/driving-school/theory/sessions', payload);
+export const fetchDrivingTheoryAttendance = (id) => api.get(`/api/driving-school/theory/sessions/${id}/attendance`);
+export const saveDrivingTheoryAttendance = (id, items) => api.put(`/api/driving-school/theory/sessions/${id}/attendance`, { items });
+export const createDrivingExamSession = (payload) => api.post('/api/driving-school/exams/sessions', payload);
+export const addDrivingExamCandidates = (id, payload) => api.post(`/api/driving-school/exams/sessions/${id}/candidates`, payload);
+export const enterDrivingExamResult = (id, payload) => api.post(`/api/driving-school/exams/candidates/${id}/result`, payload);
+export const scheduleDrivingExamRetry = (id, payload) => api.post(`/api/driving-school/exams/candidates/${id}/retry`, payload);
+export const fetchDrivingGraduationOverview = () => api.get('/api/driving-school/graduation/overview');
+export const fetchDrivingGraduationChecklist = (profileId) => api.get(`/api/driving-school/graduation/students/${profileId}/checklist`);
+export const graduateDrivingStudent = (profileId, note = '') => api.post(`/api/driving-school/graduation/students/${profileId}/graduate`, { note });
+export const issueDrivingCertificate = (profileId, type) => api.post(`/api/driving-school/graduation/students/${profileId}/certificates`, { type });
+export const updateDrivingCertificateDelivery = (id, payload) => api.put(`/api/driving-school/graduation/certificates/${id}/delivery`, payload);
+export const downloadDrivingCertificate = (id) => api.get(`/api/driving-school/graduation/certificates/${id}/download`, { responseType: 'blob' });
+export const fetchDrivingCertificateSettings = () => api.get('/api/driving-school/graduation/certificate-settings');
+export const updateDrivingCertificateSettings = (payload) => api.put('/api/driving-school/graduation/certificate-settings', payload);
+export const downloadDrivingCertificatePreview = () => api.get('/api/driving-school/graduation/certificate-settings/preview', { responseType: 'blob' });
+export const approveDrivingCertificateSettings = (payload) => api.post('/api/driving-school/graduation/certificate-settings/approve', payload);
+export const requestDrivingGraduationOverride = (profileId, payload) => api.post(`/api/driving-school/graduation/students/${profileId}/override-requests`, payload);
+export const requestDrivingGraduationRevocation = (profileId, reason) => api.post(`/api/driving-school/graduation/students/${profileId}/revocation-requests`, { reason, checklistKeys: [] });
+export const approveDrivingGraduationAction = (id, note = '') => api.post(`/api/driving-school/graduation/action-requests/${id}/approve`, { note });
+export const rejectDrivingGraduationAction = (id, note) => api.post(`/api/driving-school/graduation/action-requests/${id}/reject`, { note });
+export const reissueDrivingCertificate = (id, reason) => api.post(`/api/driving-school/graduation/certificates/${id}/reissue`, { reason });
+export const revokeDrivingCertificate = (id, reason) => api.post(`/api/driving-school/graduation/certificates/${id}/revoke`, { reason });
+export const fetchDrivingAppointmentRequests = (params = {}) => api.get('/api/driving-school/appointment-requests', { params });
+export const decideDrivingAppointmentRequest = (id, payload) => api.put(`/api/driving-school/appointment-requests/${id}/decision`, payload);
+
+// ─── Sürücü kursu finans işlemleri ────────────────────────────────────────────
+export const fetchDrivingCharges = (profileId) => api.get(`/api/driving-school/students/${profileId}/charges`);
+export const createDrivingCharge = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/charges`, payload);
+export const recordDrivingPayment = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/payments`, payload);
+export const refundDrivingCharge = (chargeId, payload) => api.post(`/api/driving-school/charges/${chargeId}/refund`, payload);
+export const fetchDrivingFinanceSummary = (params = {}) => api.get('/api/driving-school/finance/summary', { params });
+
+// ─── Öğretmen-araç ataması, izinler ve uygunluk öneri motoru ──────────────────
+export const fetchDrivingAssignments = (params = {}) => api.get('/api/driving-school/instructor-vehicle-assignments', { params });
+export const createDrivingAssignment = (payload) => api.post('/api/driving-school/instructor-vehicle-assignments', payload);
+export const deactivateDrivingAssignment = (id) => api.delete(`/api/driving-school/instructor-vehicle-assignments/${id}`);
+export const fetchDrivingWorkingHours = (instructorProfileId) => api.get(`/api/driving-school/instructors/${instructorProfileId}/working-hours`);
+export const setDrivingWorkingHours = (instructorProfileId, payload) => api.put(`/api/driving-school/instructors/${instructorProfileId}/working-hours`, payload);
+export const fetchDrivingLeaves = (params = {}) => api.get('/api/driving-school/instructor-leaves', { params });
+export const createDrivingLeave = (payload) => api.post('/api/driving-school/instructor-leaves', payload);
+export const deleteDrivingLeave = (id) => api.delete(`/api/driving-school/instructor-leaves/${id}`);
+export const suggestDrivingInstructors = (params) => api.get('/api/driving-school/availability/instructors', { params });
+export const suggestDrivingVehicles = (params) => api.get('/api/driving-school/availability/vehicles', { params });
+export const checkDrivingAvailability = (payload) => api.post('/api/driving-school/availability/check', payload);
+
+// ─── Randevu durum makinesi ve ders hakkı defteri ─────────────────────────────
+export const approveDrivingAppointment = (id) => api.post(`/api/driving-school/appointments/${id}/approve`, {});
+export const checkInDrivingAppointment = (id) => api.post(`/api/driving-school/appointments/${id}/check-in`, {});
+export const cancelDrivingAppointment = (id, reason) => api.post(`/api/driving-school/appointments/${id}/cancel`, { reason });
+export const markDrivingAppointmentNoShow = (id, note) => api.post(`/api/driving-school/appointments/${id}/no-show`, { note });
+export const rescheduleDrivingAppointment = (id, payload) => api.post(`/api/driving-school/appointments/${id}/reschedule`, payload);
+export const fetchDrivingAppointmentHistory = (id) => api.get(`/api/driving-school/appointments/${id}/history`);
+export const fetchDrivingLedger = (profileId) => api.get(`/api/driving-school/students/${profileId}/ledger`);
+export const adjustDrivingLedger = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/ledger/adjust`, payload);
+export const addDrivingExtraMinutes = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/ledger/extra-minutes`, payload);
+export const fetchDrivingSettings = () => api.get('/api/driving-school/settings');
+export const updateDrivingSettings = (payload) => api.put('/api/driving-school/settings', payload);
+
+// ─── Kayıt sihirbazı, kurs dosyası ve öğrenci detay merkezi ───────────────────
+export const checkDrivingIdentity = (identityNumber) => api.get('/api/driving-school/students/check-identity', { params: { identityNumber } });
+export const registerDrivingStudent = (payload) => api.post('/api/driving-school/students/wizard', payload);
+export const fetchDrivingStudentDetail = (profileId) => api.get(`/api/driving-school/students/${profileId}/detail`);
+export const updateDrivingStudentStatus = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/status`, payload);
+export const fetchDrivingStudentDocuments = (profileId) => api.get(`/api/driving-school/students/${profileId}/documents`);
+export const uploadDrivingStudentDocument = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/documents`, payload);
+export const reviewDrivingStudentDocument = (documentId, payload) => api.post(`/api/driving-school/student-documents/${documentId}/review`, payload);
+export const fetchDrivingRegistrationDrafts = () => api.get('/api/driving-school/registration-drafts');
+export const saveDrivingRegistrationDraft = (payload) => api.put('/api/driving-school/registration-drafts', payload);
+export const deleteDrivingRegistrationDraft = (id) => api.delete(`/api/driving-school/registration-drafts/${id}`);
+
+export const fetchDrivingVehicleDocuments = (params = {}) => api.get('/api/driving-school/vehicle-documents', { params });
+export const createDrivingVehicleDocument = (payload) => api.post('/api/driving-school/vehicle-documents', payload);
+export const fetchDrivingVehicleServiceRecords = (params = {}) => api.get('/api/driving-school/vehicle-service-records', { params });
+export const createDrivingVehicleServiceRecord = (payload) => api.post('/api/driving-school/vehicle-service-records', payload);
+export const completeDrivingVehicleServiceRecord = (id, resolution) => api.post(`/api/driving-school/vehicle-service-records/${id}/complete`, { resolution });
+
 function normalizeForMatch(value = '') {
   return String(value)
     .trim()

@@ -22,14 +22,29 @@ public sealed class CustomRole : ITenantScopedEntity
     /// <summary>İzinli modül anahtarları (JSON dizi). Boş = kısıt yok (tam taban rol).</summary>
     public string ModulesSerialized { get; set; } = "[]";
 
+    /// <summary>
+    /// İnce taneli izin kodları (JSON dizi, ör. <c>driving.vehicle.update</c>). Boş = taban
+    /// rolün varsayılan seti geçerli. Doluysa liste, taban rolün tavanıyla kesiştirilerek
+    /// uygulanır — kurum admini bir role tavanının üstünde yetki veremez.
+    /// </summary>
+    public string PermissionsSerialized { get; set; } = "[]";
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     [NotMapped]
     public List<string> Modules
     {
-        get => string.IsNullOrWhiteSpace(ModulesSerialized)
-            ? []
-            : JsonSerializer.Deserialize<List<string>>(ModulesSerialized) ?? [];
+        get => Deserialize(ModulesSerialized);
         set => ModulesSerialized = JsonSerializer.Serialize(value);
     }
+
+    [NotMapped]
+    public List<string> Permissions
+    {
+        get => Deserialize(PermissionsSerialized);
+        set => PermissionsSerialized = JsonSerializer.Serialize(value);
+    }
+
+    private static List<string> Deserialize(string? serialized) =>
+        string.IsNullOrWhiteSpace(serialized) ? [] : JsonSerializer.Deserialize<List<string>>(serialized) ?? [];
 }

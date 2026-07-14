@@ -12,5 +12,7 @@ public sealed record UpsertTenantWorkspaceRequest(
     decimal MonthlyFee,
     decimal Collected,
     decimal Storage,
-    int Api
+    int Api,
+    string InstitutionType = "PrivateSchool",
+    bool DrivingSchoolModuleEnabled = false
 );

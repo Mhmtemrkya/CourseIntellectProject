@@ -7,6 +7,11 @@ node_modules/
 build/
 dist/
 out/
+
+# Deploy artifacts: regenerable via dotnet publish, and backend-production/
+# carries a copy of the live server's wwwroot/uploads (real user files).
+outputs/*
+!outputs/CourseIntellect_Rol_Rol_Detayli_Ozellikler.txt
 *.exe
 *.dll
 *.so

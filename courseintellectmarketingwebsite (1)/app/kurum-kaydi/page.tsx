@@ -52,6 +52,7 @@ export default function KurumKaydiPage() {
     phone: "",
     plan: "Starter",
     estimatedStudents: 50,
+    institutionType: "PrivateSchool",
   })
 
   const t = {
@@ -71,6 +72,7 @@ export default function KurumKaydiPage() {
     phone: { tr: "Telefon", en: "Phone" },
     plan: { tr: "İlgilendiğiniz Plan", en: "Plan of Interest" },
     students: { tr: "Tahmini Öğrenci Sayısı", en: "Estimated Student Count" },
+    institutionType: { tr: "Kurum Türü", en: "Institution Type" },
     submit: { tr: "Başvuruyu Gönder", en: "Submit Application" },
     successTitle: { tr: "Başvurunuz Alındı!", en: "Application Received!" },
     successDesc: {
@@ -105,6 +107,7 @@ export default function KurumKaydiPage() {
           phone: form.phone,
           plan: form.plan,
           estimatedStudents: Number(form.estimatedStudents),
+          institutionType: form.institutionType,
         },
       })
       setSubmitted(true)
@@ -313,6 +316,20 @@ export default function KurumKaydiPage() {
                         />
                       </div>
                     </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>{t.institutionType[language]}</Label>
+                    <Select value={form.institutionType} onValueChange={(v) => setForm((p) => ({ ...p, institutionType: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="PrivateSchool">{language === "tr" ? "Özel Okul" : "Private School"}</SelectItem>
+                        <SelectItem value="CourseCenter">{language === "tr" ? "Kurs Merkezi" : "Course Center"}</SelectItem>
+                        <SelectItem value="DrivingSchool">{language === "tr" ? "Sürücü Kursu" : "Driving School"}</SelectItem>
+                        <SelectItem value="StudyCenter">{language === "tr" ? "Etüt Merkezi" : "Study Center"}</SelectItem>
+                        <SelectItem value="Other">{language === "tr" ? "Diğer" : "Other"}</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-2">

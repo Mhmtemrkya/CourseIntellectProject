@@ -115,10 +115,17 @@ async function request(method, url, data, config = {}) {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
-    throw new Error(errorBody?.message || `Request failed (${response.status})`);
+    const error = new Error(errorBody?.message || `Request failed (${response.status})`);
+    // Gövdeyi taşı: bazı uçlar hatanın yanında makine-okunur ipucu döner
+    // (ör. randevu kuralını hangi override koduyla ezebileceğin).
+    error.status = response.status;
+    error.body = errorBody;
+    throw error;
   }
 
   if (response.status === 204) return null;
+
+  if (config.responseType === 'blob') return response.blob();
 
   const contentType = response.headers.get('content-type');
   if (contentType && contentType.includes('application/json')) {

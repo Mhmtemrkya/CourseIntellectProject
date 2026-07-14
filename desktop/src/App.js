@@ -108,6 +108,17 @@ import StudentQuestionBox from "./pages/student/StudentQuestionBox";
 import StudentBadges from "./pages/student/StudentBadges";
 import TeacherStudentExams from "./pages/teacher/TeacherStudentExams";
 import DriverPanel from "./pages/DriverPanel";
+const DrivingSchoolDashboard = lazyWithReload(() => import("./pages/driving/DrivingSchoolDashboard"));
+const DrivingOperations = lazyWithReload(() => import("./pages/driving/DrivingOperations"));
+const DrivingScheduling = lazyWithReload(() => import("./pages/driving/DrivingScheduling"));
+const DrivingLessons = lazyWithReload(() => import("./pages/driving/DrivingLessons"));
+const DrivingFleetCompliance = lazyWithReload(() => import("./pages/driving/DrivingFleetCompliance"));
+const DrivingStudentWizard = lazyWithReload(() => import("./pages/driving/DrivingStudentWizard"));
+const DrivingAssignments = lazyWithReload(() => import("./pages/driving/DrivingAssignments"));
+const DrivingCalendar = lazyWithReload(() => import("./pages/driving/DrivingCalendar"));
+const DrivingStudentDetail = lazyWithReload(() => import("./pages/driving/DrivingStudentDetail"));
+const DrivingEducation = lazyWithReload(() => import("./pages/driving/DrivingEducation"));
+const DrivingGraduation = lazyWithReload(() => import("./pages/driving/DrivingGraduation"));
 
 // Parent Pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -314,6 +325,17 @@ function App() {
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
               <Route path="/admin/service-tracking" element={<ServiceTrackingPage />} />
+              <Route path="/driving/dashboard" element={<DrivingSchoolDashboard />} />
+              <Route path="/driving/operations" element={<DrivingOperations />} />
+              <Route path="/driving/scheduling" element={<DrivingScheduling />} />
+              <Route path="/driving/lessons" element={<DrivingLessons />} />
+              <Route path="/driving/fleet-compliance" element={<DrivingFleetCompliance />} />
+              <Route path="/driving/calendar" element={<DrivingCalendar />} />
+              <Route path="/driving/assignments" element={<DrivingAssignments />} />
+              <Route path="/driving/students/new" element={<DrivingStudentWizard />} />
+              <Route path="/driving/students/:profileId" element={<DrivingStudentDetail />} />
+              <Route path="/driving/education" element={<DrivingEducation />} />
+              <Route path="/driving/graduation" element={<DrivingGraduation />} />
               <Route path="/admin/password-reset-requests" element={<PasswordResetRequests />} />
               <Route path="/cafeteria/menu" element={<CafeteriaWeeklyMenu editable />} />
               <Route path="/admin/destek" element={<Destek />} />

@@ -71,6 +71,25 @@ const Map<String, RoleIntro> roleIntros = {
 };
 
 const Map<String, Map<String, String>> tabDetails = {
+  'Sürücü Adayı': {
+    'Programım':
+        'Direksiyon randevularınız, kalan ders hakkınız ve öğretmen '
+        'değerlendirmeleriniz burada. Yaklaşan dersinizin saatini, aracını ve '
+        'buluşma noktasını buradan görürsünüz.',
+    'Ödemelerim':
+        'Taksit planınız, kalan borcunuz ve makbuzlarınız burada.\n\n'
+        '• Gecikmiş taksitiniz varsa en üstte uyarı çıkar.\n'
+        '• Ek direksiyon dersi, sınav ücreti gibi ek kalemler ayrı listelenir.\n'
+        '• Borcunuz kurumun belirlediği eşiği aşarsa yeni randevu alamayabilirsiniz.',
+    'Evraklarım':
+        'Kurs dosyanız: kimlik, sağlık raporu, adli sicil ve diğer zorunlu '
+        'belgeler.\n\n'
+        '• Eksik ve reddedilen belgeler en üstte listelenir.\n'
+        '• Bir belge reddedildiyse nedeni burada yazar; doğrusunu yükleyin.\n'
+        '• Sağlık raporu ve adli sicil gibi süreli belgelerde geçerlilik '
+        'tarihi sorulur.\n'
+        '• Dosyanız tamamlanmadan direksiyon eğitimine başlayamazsınız.',
+  },
   'Yönetici': {
     'Panel':
         'Kurumunuzun günlük nabzı: öğrenci sayıları, yoklama durumu, tahsilat '

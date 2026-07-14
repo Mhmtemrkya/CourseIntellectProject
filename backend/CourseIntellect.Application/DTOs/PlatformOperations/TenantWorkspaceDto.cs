@@ -21,5 +21,7 @@ public sealed record TenantWorkspaceDto(
     Guid? AdminUserId,
     string? AdminUsername,
     string? TemporaryPassword,
-    DateTime? ApprovedAtUtc
+    DateTime? ApprovedAtUtc,
+    string InstitutionType,
+    bool DrivingSchoolModuleEnabled
 );

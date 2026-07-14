@@ -43,6 +43,7 @@ const FEATURE_PATHS = {
   finance: ['/finance'],
   reports: ['/reports', '/t/reports', '/p/reports'],
   ai: ['/s/ai', '/ai'],
+  drivingSchool: ['/driving'],
 };
 
 export function isPathDisabled(path, disabledKeys) {

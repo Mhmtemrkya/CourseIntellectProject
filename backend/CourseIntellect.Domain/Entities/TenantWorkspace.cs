@@ -1,3 +1,5 @@
+using CourseIntellect.Domain.Enums;
+
 namespace CourseIntellect.Domain.Entities;
 
 public sealed class TenantWorkspace
@@ -16,6 +18,8 @@ public sealed class TenantWorkspace
     public string? PendingAdminPasswordHash { get; set; }
     public string Plan { get; set; } = string.Empty;
     public string Status { get; set; } = string.Empty;
+    public InstitutionType InstitutionType { get; set; } = InstitutionType.PrivateSchool;
+    public bool DrivingSchoolModuleEnabled { get; set; }
     public Guid? AdminUserId { get; set; }
     public int UserCount { get; set; }
     public int BranchCount { get; set; }

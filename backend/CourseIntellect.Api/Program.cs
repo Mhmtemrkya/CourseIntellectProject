@@ -123,6 +123,15 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+    options.AddPolicy("certificate-verification", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 var defaultCorsOrigins = new[]
@@ -289,6 +298,13 @@ builder.Services
 
 var app = builder.Build();
 
+if (app.Environment.IsProduction())
+{
+    var publicCertificateBaseUrl = app.Configuration["CertificateVerification:PublicBaseUrl"];
+    if (!Uri.TryCreate(publicCertificateBaseUrl, UriKind.Absolute, out var certificateUri) || certificateUri.Scheme != Uri.UriSchemeHttps)
+        throw new InvalidOperationException("Production ortamında CertificateVerification:PublicBaseUrl geçerli bir HTTPS adresi olmalıdır.");
+}
+
 var autoMigrateDatabase = builder.Configuration.GetValue<bool?>("Database:AutoMigrate") ?? true;
 var seedDatabase = builder.Configuration.GetValue<bool?>("Database:Seed") ?? true;
 
@@ -324,6 +340,14 @@ if (autoMigrateDatabase || seedDatabase)
     {
         var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();
         await seeder.SeedAsync();
+
+        // Sürücü kursu demo verisi YALNIZCA geliştirme ortamında üretilir —
+        // canlıda gerçek kurumların yanına sahte bir kurum düşmemeli.
+        if (app.Environment.IsDevelopment())
+        {
+            var drivingSeeder = scope.ServiceProvider.GetRequiredService<DrivingSchoolSeeder>();
+            await drivingSeeder.SeedAsync();
+        }
     }
     else
     {
@@ -348,6 +372,26 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
     // Ölü push token temizliği: Pazar 03:00 UTC
     recurringJobs.AddOrUpdate<IReminderJobService>(
         "stale-push-token-cleanup", x => x.CleanupStalePushTokensAsync(CancellationToken.None), "0 3 * * 0", utc);
+
+    // ─── Sürücü kursu hatırlatmaları ──────────────────────────────────────
+    // Tüm bildirimler dedupe anahtarlı; iş tekrar çalışsa da kimse iki kez rahatsız edilmez.
+
+    // Araç evrakı, muayene/sigorta ve bakım kilometresi: her gün 07:00 TR.
+    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
+        "driving-vehicle-compliance", x => x.RunVehicleComplianceRemindersAsync(CancellationToken.None), "0 4 * * *", utc);
+
+    // Yarınki dersler için öğrenci/öğretmen hatırlatması: her gün 15:00 TR
+    // (akşam üstü, ertesi güne hazırlanabilecekleri saatte).
+    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
+        "driving-appointment-reminders", x => x.RunAppointmentRemindersAsync(CancellationToken.None), "0 12 * * *", utc);
+
+    // Eksik evrak, azalan ders hakkı, gecikmiş ödeme: Pazartesi & Perşembe 09:00 TR.
+    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
+        "driving-student-reminders", x => x.RunStudentRemindersAsync(CancellationToken.None), "0 6 * * 1,4", utc);
+
+    // Yöneticiye günlük operasyon özeti: her gün 07:30 TR.
+    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
+        "driving-daily-summary", x => x.RunDailyOperationsSummaryAsync(CancellationToken.None), "30 4 * * *", utc);
 }
 
 app.UseForwardedHeaders();
@@ -366,11 +410,27 @@ staticFileContentTypes.Mappings[".mov"] = "video/quicktime";
 staticFileContentTypes.Mappings[".webm"] = "video/webm";
 staticFileContentTypes.Mappings[".pdf"] = "application/pdf";
 var uploadsRoot = UploadStoragePathResolver.ResolveUploadsRoot(app.Environment, app.Configuration);
+UploadStoragePathResolver.ValidateProductionStorage(app.Environment, app.Configuration);
 Directory.CreateDirectory(uploadsRoot);
 UploadStoragePathResolver.CopyReleaseUploadsToShared(
     app.Environment,
     app.Configuration,
     app.Services.GetRequiredService<ILoggerFactory>().CreateLogger("UploadStorage"));
+// Müdür imzası, kurum logosunun belge kaynağı ve oluşturulan sertifikalar genel
+// statik dosya uçlarından yayınlanmaz. Bunlara yalnız yetki/tenant kontrolü yapan
+// sürücü kursu API'leri erişebilir. Dosya adının tahmin edilemez olması tek başına
+// bir erişim kontrolü değildir.
+app.Use(async (context, next) =>
+{
+    var path = context.Request.Path.Value ?? string.Empty;
+    if (path.StartsWith("/uploads/driving-certificate-assets/", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/uploads/driving-certificates/", StringComparison.OrdinalIgnoreCase))
+    {
+        context.Response.StatusCode = StatusCodes.Status404NotFound;
+        return;
+    }
+    await next();
+});
 app.UseStaticFiles(new StaticFileOptions
 {
     FileProvider = new PhysicalFileProvider(uploadsRoot),

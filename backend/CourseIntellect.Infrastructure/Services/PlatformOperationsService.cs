@@ -115,7 +115,9 @@ public sealed class PlatformOperationsService(
                 null,
                 null,
                 null,
-                null);
+                null,
+                InstitutionType.PrivateSchool.ToString(),
+                false);
         }).ToList();
     }
 
@@ -144,6 +146,9 @@ public sealed class PlatformOperationsService(
         entity.CollectedAmount = request.Collected;
         entity.StorageUsedGb = request.Storage;
         entity.ApiUsage = request.Api;
+        entity.InstitutionType = ParseInstitutionType(request.InstitutionType);
+        entity.DrivingSchoolModuleEnabled = entity.InstitutionType == InstitutionType.DrivingSchool
+            && request.DrivingSchoolModuleEnabled;
 
         await dbContext.SaveChangesAsync(cancellationToken);
         return ToTenantDto(entity);
@@ -254,6 +259,7 @@ public sealed class PlatformOperationsService(
 
     public async Task<TenantWorkspaceDto> RegisterTenantAsync(RegisterTenantRequest request, CancellationToken cancellationToken = default)
     {
+        var institutionType = ParseInstitutionType(request.InstitutionType);
         var entity = new TenantWorkspace
         {
             Name = request.InstitutionName.Trim(),
@@ -272,6 +278,8 @@ public sealed class PlatformOperationsService(
             CollectedAmount = 0,
             StorageUsedGb = 0,
             ApiUsage = 0,
+            InstitutionType = institutionType,
+            DrivingSchoolModuleEnabled = institutionType == InstitutionType.DrivingSchool,
             CreatedAtUtc = DateTime.UtcNow,
         };
 
@@ -535,7 +543,18 @@ public sealed class PlatformOperationsService(
         entity.AdminUserId,
         adminUsername,
         temporaryPassword,
-        entity.ApprovedAtUtc);
+        entity.ApprovedAtUtc,
+        entity.InstitutionType.ToString(),
+        entity.DrivingSchoolModuleEnabled);
+
+    private static InstitutionType ParseInstitutionType(string? value)
+    {
+        if (!Enum.TryParse<InstitutionType>(value, true, out var type) || !Enum.IsDefined(type))
+        {
+            throw new ArgumentException("Geçersiz kurum türü.", nameof(value));
+        }
+        return type;
+    }
 
     private static SupportTicketDto ToTicketDto(SupportTicket entity) => new(
         entity.Id,

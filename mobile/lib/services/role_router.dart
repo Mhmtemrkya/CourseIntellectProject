@@ -5,11 +5,14 @@ import '../navigation/administrative_bottom_nav.dart';
 import '../navigation/bottom_nav.dart';
 import '../navigation/cafeteria_bottom_nav.dart';
 import '../navigation/counselor_bottom_nav.dart';
+import '../navigation/driving_instructor_bottom_nav.dart';
+import '../navigation/driving_student_bottom_nav.dart';
 import '../navigation/teacher_bottom_nav.dart';
 import '../navigation/veli_bottom_nav.dart';
 import '../pages/tenant_select_page.dart';
 import '../pages/driver_route_students_page.dart';
 import 'auth_session_store.dart';
+import 'driving_school_api_service.dart';
 import 'service_tracking_api_service.dart';
 
 class RoleRouter {
@@ -59,11 +62,11 @@ class RoleRouter {
   static Widget? _pageFor(String role) {
     switch (_normalizeRole(role)) {
       case 'Student':
-        return const BottomNav();
+        return const _StudentDrivingGate();
       case 'Parent':
         return const VeliBottomNav();
       case 'Teacher':
-        return const TeacherBottomNav();
+        return const _TeacherDrivingGate();
       case 'Accounting':
         return const AccountingBottomNav();
       case 'Admin':
@@ -110,6 +113,42 @@ class RoleRouter {
         return role;
     }
   }
+}
+
+class _TeacherDrivingGate extends StatelessWidget {
+  const _TeacherDrivingGate();
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
+    future: DrivingSchoolApiService.instance.me().catchError(
+      (_) => <String, dynamic>{'kind': 'None'},
+    ),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return snapshot.data?['kind'] == 'Instructor'
+          ? const DrivingInstructorBottomNav()
+          : const TeacherBottomNav();
+    },
+  );
+}
+
+class _StudentDrivingGate extends StatelessWidget {
+  const _StudentDrivingGate();
+  @override
+  Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>?>(
+    future: DrivingSchoolApiService.instance.me().catchError(
+      (_) => <String, dynamic>{'kind': 'None'},
+    ),
+    builder: (context, snapshot) {
+      if (snapshot.connectionState != ConnectionState.done) {
+        return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      }
+      return snapshot.data?['kind'] == 'Student'
+          ? const DrivingStudentBottomNav()
+          : const BottomNav();
+    },
+  );
 }
 
 /// Girişte şoför kontrolü: aktif şoför kaydı varsa kullanıcıyı yalnızca

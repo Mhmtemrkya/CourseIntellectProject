@@ -7,5 +7,6 @@ public sealed record RegisterTenantRequest(
     string Phone,
     string? Password,
     string Plan,
-    int EstimatedStudents
+    int EstimatedStudents,
+    string InstitutionType = "PrivateSchool"
 );

@@ -27,7 +27,7 @@ import {
   PremiumMetricCard,
   PremiumPanel,
 } from '../components/ui/premium-dashboard';
-import { fetchScheduleEntries, fetchAdminAnalytics } from '../lib/api/modules';
+import { fetchScheduleEntries, fetchAdminAnalytics, fetchDrivingSchoolStatus } from '../lib/api/modules';
 import { fetchAdminDashboardData } from '../lib/api/dashboardData';
 
 const containerVariants = {
@@ -205,6 +205,14 @@ export default function Dashboard() {
   const [customTo, setCustomTo] = useState(() => new Date().toISOString().slice(0, 10));
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    fetchDrivingSchoolStatus()
+      .then((status) => { if (active && status?.available) navigate('/driving/dashboard', { replace: true }); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [navigate]);
 
   const statRoutes = useMemo(() => ({
     'Toplam Öğrenci': '/students',

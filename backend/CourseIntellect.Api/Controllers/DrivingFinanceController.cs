@@ -1,0 +1,472 @@
+using CourseIntellect.Api.Authorization;
+using CourseIntellect.Application.DTOs.StudentFinance;
+using CourseIntellect.Application.Interfaces;
+using CourseIntellect.Domain.Entities;
+using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Permissions;
+using CourseIntellect.Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using System.Data;
+using System.Security.Claims;
+
+namespace CourseIntellect.Api.Controllers;
+
+/// <summary>
+/// Sürücü kursuna özel finans işlemleri: ek ders satışı, sınav/dosya ücreti,
+/// ek hizmet, tahsilat, iade ve kurs finans özeti.
+///
+/// <para>Borç, taksit, gecikme ve makbuz mekanizması YENİDEN YAZILMAZ — her ücret
+/// kalemi mevcut sözleşmeye bir taksit olarak düşer, tahsilat mevcut finans
+/// servisinden geçer. Böylece kasa ve gecikmiş ödeme ekranları kendiliğinden çalışır.</para>
+/// </summary>
+[ApiController]
+[Authorize]
+[Route("api/driving-school")]
+public sealed class DrivingFinanceController(
+    CourseIntellectDbContext dbContext,
+    IStudentFinanceService financeService,
+    IDrivingLedgerService ledgerService,
+    IDrivingNotifier notifier,
+    IAuditLogService auditLogService) : ControllerBase
+{
+    private const string AuditCategory = "DrivingSchool";
+
+    // ─── Ücret kalemleri ──────────────────────────────────────────────────────
+
+    [HttpGet("students/{profileId:guid}/charges")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    public async Task<IActionResult> GetCharges(Guid profileId, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var rows = await dbContext.DrivingCharges.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Select(x => new
+            {
+                x.Id,
+                chargeType = x.ChargeType.ToString(),
+                x.Description,
+                x.GrossAmount,
+                x.DiscountAmount,
+                x.NetAmount,
+                x.DiscountReason,
+                x.Minutes,
+                x.RefundedAmount,
+                x.RefundReason,
+                x.RefundedAtUtc,
+                x.CreatedAtUtc,
+            })
+            .ToListAsync(ct);
+
+        return Ok(rows);
+    }
+
+    /// <summary>
+    /// Ücret kalemi açar. Ek direksiyon dersi ise ders hakkına dakikayı da ekler —
+    /// para ve dakika tek işlemde, ayrı ayrı unutulamaz.
+    /// </summary>
+    [HttpPost("students/{profileId:guid}/charges")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceCollect)]
+    public async Task<IActionResult> CreateCharge(Guid profileId, [FromBody] CreateDrivingChargeRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var actorId = CurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        if (request.ParsedType is not { } chargeType) return BadRequest(new { message = $"Ücret türü geçersiz: {request.ChargeType}." });
+        if (request.GrossAmount <= 0 || request.GrossAmount > 1_000_000) return BadRequest(new { message = "Tutar 0'dan büyük olmalıdır." });
+        if (request.DiscountAmount < 0 || request.DiscountAmount > request.GrossAmount) return BadRequest(new { message = "İndirim, brüt tutardan büyük olamaz." });
+        if (DrivingChargeTypes.AddsLessonMinutes(chargeType) && request.Minutes is < 1 or > 10000)
+            return BadRequest(new { message = "Ek direksiyon dersinde süre 1-10000 dakika arasında olmalıdır." });
+
+        // İndirim vermek ayrı bir yetkidir: tahsilat alan herkes indirim yapamaz.
+        if (request.DiscountAmount > 0 && !await HasPermissionAsync(DrivingPermissions.FinanceDiscount, ct))
+            return StatusCode(StatusCodes.Status403Forbidden, new { message = "İndirim uygulamak için yetkiniz yok." });
+
+        var profile = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == profileId, ct);
+        if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+        if (profile.EnrollmentContractId is not Guid contractId)
+            return BadRequest(new { message = "Kursiyerin sözleşmesi yok; önce kayıt finansalını oluşturun." });
+
+        var contract = await dbContext.EnrollmentContracts.SingleOrDefaultAsync(x => x.Id == contractId, ct);
+        if (contract is null) return BadRequest(new { message = "Sözleşme bulunamadı." });
+
+        var net = request.GrossAmount - request.DiscountAmount;
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
+        // Kalem, sözleşmenin son taksitinden sonraki sıraya eklenir ve hemen vadesi gelir.
+        var nextSeq = await dbContext.FinanceInstallments
+            .Where(x => x.EnrollmentContractId == contractId)
+            .Select(x => (int?)x.SeqNo)
+            .MaxAsync(ct) ?? 0;
+
+        var installment = new FinanceInstallment
+        {
+            EnrollmentContractId = contractId,
+            StudentUserId = contract.StudentUserId,
+            StudentName = contract.StudentName,
+            SeqNo = nextSeq + 1,
+            Label = DrivingChargeTypes.Label(chargeType),
+            DueDateUtc = (request.DueDateUtc ?? DateTime.UtcNow).Date,
+            Amount = net,
+            PaidAmount = 0,
+            Status = "Pending",
+        };
+        dbContext.FinanceInstallments.Add(installment);
+
+        var charge = new DrivingCharge
+        {
+            StudentDrivingProfileId = profileId,
+            ChargeType = chargeType,
+            Description = request.Description?.Trim() ?? DrivingChargeTypes.Label(chargeType),
+            GrossAmount = request.GrossAmount,
+            DiscountAmount = request.DiscountAmount,
+            DiscountReason = request.DiscountReason?.Trim() ?? string.Empty,
+            NetAmount = net,
+            Minutes = DrivingChargeTypes.AddsLessonMinutes(chargeType) ? request.Minutes : 0,
+            FinanceInstallmentId = installment.Id,
+            EnrollmentContractId = contractId,
+            CreatedByUserId = actorId,
+        };
+        dbContext.DrivingCharges.Add(charge);
+
+        // Sözleşmenin toplamı da büyür; aksi hâlde "net tutar" ile taksitler tutmaz.
+        contract.GrossAmount += request.GrossAmount;
+        contract.DiscountAmount += request.DiscountAmount;
+        contract.NetAmount += net;
+
+        if (charge.Minutes > 0)
+        {
+            await ledgerService.AddAsync(profileId, DrivingLedgerEntryType.ExtraPurchasedMinutes, charge.Minutes,
+                $"Ek direksiyon dersi satın alındı ({net:N2} ₺)", reason: charge.Description, cancellationToken: ct);
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+        if (charge.Minutes > 0) await ledgerService.SyncProfileCacheAsync(profileId, ct);
+        await dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        await auditLogService.LogChangeAsync("Ücret kalemi eklendi", AuditCategory, "DrivingCharge", charge.Id.ToString(),
+            $"{DrivingChargeTypes.Label(chargeType)} — {net:N2} ₺"
+                + (charge.Minutes > 0 ? $", {charge.Minutes} dk ders hakkı eklendi." : ".")
+                + (request.DiscountAmount > 0 ? $" İndirim: {request.DiscountAmount:N2} ₺ ({charge.DiscountReason})." : string.Empty),
+            null,
+            new { chargeType = chargeType.ToString(), charge.GrossAmount, charge.DiscountAmount, charge.NetAmount, charge.Minutes },
+            ct);
+
+        await notifier.NotifyStudentAsync(profileId,
+            $"{DrivingChargeTypes.Label(chargeType)} eklendi",
+            $"Hesabınıza {net:N2} ₺ tutarında {DrivingChargeTypes.Label(chargeType).ToLowerInvariant()} işlendi."
+                + (charge.Minutes > 0 ? $" {charge.Minutes} dakika ders hakkı tanımlandı." : string.Empty),
+            DrivingNotificationCategories.Finance,
+            dedupeKey: $"charge-created:{charge.Id}",
+            relatedEntityType: "DrivingCharge",
+            relatedEntityId: charge.Id.ToString(),
+            cancellationToken: ct);
+
+        return Ok(new { charge.Id, charge.NetAmount, charge.Minutes, installmentId = installment.Id });
+    }
+
+    /// <summary>Tahsilat. Makbuz numarası ve taksit mahsubu mevcut finans servisinden gelir.</summary>
+    [HttpPost("students/{profileId:guid}/payments")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceCollect)]
+    public async Task<IActionResult> RecordPayment(Guid profileId, [FromBody] DrivingPaymentRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        if (request.Amount <= 0 || request.Amount > 1_000_000) return BadRequest(new { message = "Tahsilat tutarı 0'dan büyük olmalıdır." });
+
+        var row = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId)
+            .Join(dbContext.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (profile, student) => new { profile.EnrollmentContractId, student.FullName, student.UserId })
+            .SingleOrDefaultAsync(ct);
+        if (row is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+        if (row.EnrollmentContractId is null) return BadRequest(new { message = "Kursiyerin sözleşmesi yok." });
+
+        var payment = await financeService.RecordPaymentAsync(
+            new RecordPaymentRequest(
+                StudentUserId: row.UserId,
+                StudentName: row.FullName,
+                EnrollmentContractId: row.EnrollmentContractId,
+                FinanceInstallmentId: request.FinanceInstallmentId,
+                Amount: request.Amount,
+                Method: request.Method,
+                Note: request.Note),
+            CurrentUserId(),
+            ct);
+
+        await auditLogService.LogChangeAsync("Tahsilat alındı", AuditCategory, "FinancePayment", payment.Id.ToString(),
+            $"{row.FullName} — {request.Amount:N2} ₺ ({request.Method ?? "Nakit"}), makbuz {payment.ReceiptNo}.",
+            null, new { request.Amount, request.Method, payment.ReceiptNo }, ct);
+
+        await notifier.NotifyStudentAsync(profileId,
+            "Ödemeniz alındı",
+            $"{request.Amount:N2} ₺ tutarındaki ödemeniz tahsil edildi. Makbuz no: {payment.ReceiptNo}.",
+            DrivingNotificationCategories.Finance,
+            dedupeKey: $"payment:{payment.Id}",
+            relatedEntityType: "FinancePayment",
+            relatedEntityId: payment.Id.ToString(),
+            cancellationToken: ct);
+
+        return Ok(payment);
+    }
+
+    /// <summary>
+    /// İade. Para iadesi negatif tahsilat olarak yazılır; ek ders iadesinde
+    /// satın alınan dakikalar da geri alınır.
+    /// </summary>
+    [HttpPost("charges/{chargeId:guid}/refund")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceRefund)]
+    public async Task<IActionResult> RefundCharge(Guid chargeId, [FromBody] RefundChargeRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var actorId = CurrentUserId();
+        if (actorId is null) return Unauthorized();
+
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        if (reason.Length is < 5 or > 500) return BadRequest(new { message = "İade nedeni 5-500 karakter olmalıdır." });
+
+        var charge = await dbContext.DrivingCharges.SingleOrDefaultAsync(x => x.Id == chargeId, ct);
+        if (charge is null) return NotFound(new { message = "Ücret kalemi bulunamadı." });
+        if (charge.RefundedAtUtc is not null) return Conflict(new { message = "Bu kalem zaten iade edilmiş." });
+
+        var refund = request.Amount ?? charge.NetAmount;
+        if (refund <= 0 || refund > charge.NetAmount)
+            return BadRequest(new { message = $"İade tutarı 0 ile {charge.NetAmount:N2} ₺ arasında olmalıdır." });
+
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
+        charge.RefundedAmount = refund;
+        charge.RefundReason = reason;
+        charge.RefundedAtUtc = DateTime.UtcNow;
+
+        // Borcu düşür: kalemin taksiti iade oranında küçülür.
+        if (charge.FinanceInstallmentId is Guid installmentId)
+        {
+            var installment = await dbContext.FinanceInstallments.SingleOrDefaultAsync(x => x.Id == installmentId, ct);
+            if (installment is not null)
+            {
+                installment.Amount = Math.Max(0, installment.Amount - refund);
+                installment.Status = installment.PaidAmount >= installment.Amount ? "Paid" : installment.Status;
+            }
+        }
+
+        if (charge.EnrollmentContractId is Guid contractId)
+        {
+            var contract = await dbContext.EnrollmentContracts.SingleOrDefaultAsync(x => x.Id == contractId, ct);
+            if (contract is not null) contract.NetAmount = Math.Max(0, contract.NetAmount - refund);
+        }
+
+        // Ek ders iadesinde dakikalar da geri alınır — para geri gidiyorsa hak da gitmeli.
+        var minutesTaken = 0;
+        if (charge.Minutes > 0)
+        {
+            var balance = await ledgerService.GetBalanceAsync(charge.StudentDrivingProfileId, ct);
+            minutesTaken = Math.Min(charge.Minutes, Math.Max(0, balance.AvailableMinutes));
+            if (minutesTaken > 0)
+            {
+                await ledgerService.AddAsync(charge.StudentDrivingProfileId, DrivingLedgerEntryType.ManualAdjustmentMinutes, -minutesTaken,
+                    "Ek ders iadesi", reason: reason, cancellationToken: ct);
+            }
+        }
+
+        await dbContext.SaveChangesAsync(ct);
+        if (minutesTaken > 0) await ledgerService.SyncProfileCacheAsync(charge.StudentDrivingProfileId, ct);
+        await dbContext.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+
+        await auditLogService.LogChangeAsync("Ücret iadesi yapıldı", AuditCategory, "DrivingCharge", charge.Id.ToString(),
+            $"{DrivingChargeTypes.Label(charge.ChargeType)} — {refund:N2} ₺ iade edildi. Gerekçe: {reason}."
+                + (minutesTaken > 0 ? $" {minutesTaken} dk ders hakkı geri alındı." : string.Empty),
+            new { charge.NetAmount, refundedAmount = 0m },
+            new { charge.NetAmount, refundedAmount = refund, minutesReclaimed = minutesTaken, reason }, ct);
+
+        await notifier.NotifyStudentAsync(charge.StudentDrivingProfileId,
+            "İade işlendi",
+            $"{DrivingChargeTypes.Label(charge.ChargeType)} için {refund:N2} ₺ iade edildi."
+                + (minutesTaken > 0 ? $" {minutesTaken} dakika ders hakkı geri alındı." : string.Empty),
+            DrivingNotificationCategories.Finance,
+            dedupeKey: $"charge-refund:{charge.Id}",
+            relatedEntityType: "DrivingCharge",
+            relatedEntityId: charge.Id.ToString(),
+            cancellationToken: ct);
+
+        return Ok(new { charge.Id, refundedAmount = refund, minutesReclaimed = minutesTaken });
+    }
+
+    // ─── Kurs finans özeti ────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Kurumun sürücü kursu finans özeti. Sekreterde bilerek YOKTUR —
+    /// <see cref="DrivingPermissions.FinanceReportView"/> ister.
+    /// </summary>
+    [HttpGet("finance/summary")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceReportView)]
+    public async Task<IActionResult> GetSummary([FromQuery] DateTime? from, [FromQuery] DateTime? to, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var start = from ?? DateTime.UtcNow.Date.AddDays(-30);
+        var end = to ?? DateTime.UtcNow.Date.AddDays(1);
+        if (end <= start || end - start > TimeSpan.FromDays(400)) return BadRequest(new { message = "Tarih aralığı geçersiz." });
+
+        // Yalnızca sürücü adaylarının sözleşmeleri — okul tarafıyla karışmasın.
+        var contractIds = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.EnrollmentContractId != null)
+            .Select(x => x.EnrollmentContractId!.Value)
+            .ToListAsync(ct);
+
+        var contracts = await dbContext.EnrollmentContracts.AsNoTracking()
+            .Where(x => contractIds.Contains(x.Id))
+            .Select(x => new { x.NetAmount, x.DiscountAmount })
+            .ToListAsync(ct);
+
+        var payments = await dbContext.FinancePayments.AsNoTracking()
+            .Where(x => x.EnrollmentContractId != null && contractIds.Contains(x.EnrollmentContractId!.Value))
+            .Where(x => x.PaidAtUtc >= start && x.PaidAtUtc < end)
+            .Select(x => new { x.Amount, x.Method, x.PaidAtUtc })
+            .ToListAsync(ct);
+
+        var now = DateTime.UtcNow;
+        var installments = await dbContext.FinanceInstallments.AsNoTracking()
+            .Where(x => contractIds.Contains(x.EnrollmentContractId))
+            .Select(x => new { x.Amount, x.PaidAmount, x.DueDateUtc })
+            .ToListAsync(ct);
+
+        var charges = await dbContext.DrivingCharges.AsNoTracking()
+            .Where(x => x.CreatedAtUtc >= start && x.CreatedAtUtc < end)
+            .GroupBy(x => x.ChargeType)
+            .Select(x => new { ChargeType = x.Key, Count = x.Count(), Total = x.Sum(c => c.NetAmount) })
+            .ToListAsync(ct);
+
+        var refunded = await dbContext.DrivingCharges.AsNoTracking()
+            .Where(x => x.RefundedAtUtc >= start && x.RefundedAtUtc < end)
+            .SumAsync(x => (decimal?)x.RefundedAmount, ct) ?? 0;
+
+        var overdue = installments.Where(x => x.PaidAmount < x.Amount && x.DueDateUtc < now).ToList();
+
+        return Ok(new
+        {
+            period = new { start, end },
+            totals = new
+            {
+                contractedNet = contracts.Sum(x => x.NetAmount),
+                totalDiscount = contracts.Sum(x => x.DiscountAmount),
+                collectedInPeriod = payments.Sum(x => x.Amount),
+                refundedInPeriod = refunded,
+                outstanding = installments.Sum(x => x.Amount - x.PaidAmount),
+                overdueAmount = overdue.Sum(x => x.Amount - x.PaidAmount),
+                overdueCount = overdue.Count,
+                studentCount = contractIds.Count,
+            },
+            collectionsByMethod = payments
+                .GroupBy(x => x.Method)
+                .Select(x => new { method = x.Key, total = x.Sum(p => p.Amount), count = x.Count() })
+                .OrderByDescending(x => x.total),
+            chargesByType = charges
+                .Select(x => new { chargeType = x.ChargeType.ToString(), label = DrivingChargeTypes.Label(x.ChargeType), x.Count, x.Total })
+                .OrderByDescending(x => x.Total),
+        });
+    }
+
+    /// <summary>Öğrencinin kendi ödeme planı — mobil "Ödemelerim" ekranı bunu okur.</summary>
+    [HttpGet("student/my-payments")]
+    [Authorize(Roles = "Student")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    public async Task<IActionResult> GetMyPayments(CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var userId = CurrentUserId();
+        var profile = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Join(dbContext.Students.AsNoTracking().Where(x => x.UserId == userId), x => x.StudentId, x => x.Id, (profile, _) => profile)
+            .SingleOrDefaultAsync(ct);
+        if (profile is null) return Forbid();
+        if (profile.EnrollmentContractId is not Guid contractId)
+            return Ok(new { hasContract = false });
+
+        var contract = await dbContext.EnrollmentContracts.AsNoTracking().SingleOrDefaultAsync(x => x.Id == contractId, ct);
+        var installments = await dbContext.FinanceInstallments.AsNoTracking()
+            .Where(x => x.EnrollmentContractId == contractId)
+            .OrderBy(x => x.SeqNo)
+            .Select(x => new { x.Id, x.SeqNo, x.Label, x.DueDateUtc, x.Amount, x.PaidAmount, x.Status })
+            .ToListAsync(ct);
+        var payments = await dbContext.FinancePayments.AsNoTracking()
+            .Where(x => x.EnrollmentContractId == contractId)
+            .OrderByDescending(x => x.PaidAtUtc)
+            .Select(x => new { x.Id, x.Amount, x.Method, x.ReceiptNo, x.PaidAtUtc })
+            .ToListAsync(ct);
+        var charges = await dbContext.DrivingCharges.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id)
+            .OrderByDescending(x => x.CreatedAtUtc)
+            .Select(x => new { x.Id, chargeType = x.ChargeType.ToString(), x.Description, x.NetAmount, x.RefundedAmount, x.CreatedAtUtc })
+            .ToListAsync(ct);
+
+        var now = DateTime.UtcNow;
+        var paid = payments.Sum(x => x.Amount);
+
+        return Ok(new
+        {
+            hasContract = true,
+            netAmount = contract?.NetAmount ?? 0,
+            paidTotal = paid,
+            remaining = (contract?.NetAmount ?? 0) - paid,
+            overdueCount = installments.Count(x => x.PaidAmount < x.Amount && x.DueDateUtc < now),
+            nextInstallment = installments
+                .Where(x => x.PaidAmount < x.Amount)
+                .OrderBy(x => x.DueDateUtc)
+                .Select(x => new { x.Label, x.DueDateUtc, remaining = x.Amount - x.PaidAmount })
+                .FirstOrDefault(),
+            installments,
+            payments,
+            charges,
+        });
+    }
+
+    // ─── Yardımcılar ──────────────────────────────────────────────────────────
+
+    private async Task<bool> HasPermissionAsync(string permission, CancellationToken ct)
+    {
+        var service = HttpContext.RequestServices.GetRequiredService<IDrivingPermissionService>();
+        return await service.HasAsync(User, permission, ct);
+    }
+
+    private Guid? CurrentUserId()
+    {
+        var raw = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        return Guid.TryParse(raw, out var parsed) ? parsed : null;
+    }
+
+    private async Task<bool> CanUseModuleAsync(CancellationToken ct)
+    {
+        if (dbContext.CurrentTenantId is not Guid tenantId) return false;
+        var tenant = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == tenantId, ct);
+        return tenant is not null
+            && tenant.InstitutionType == InstitutionType.DrivingSchool
+            && tenant.DrivingSchoolModuleEnabled
+            && string.Equals(tenant.Status, "active", StringComparison.OrdinalIgnoreCase);
+    }
+}
+
+public sealed record CreateDrivingChargeRequest(
+    string ChargeType,
+    string? Description,
+    decimal GrossAmount,
+    decimal DiscountAmount,
+    string? DiscountReason,
+    int Minutes,
+    DateTime? DueDateUtc)
+{
+    public DrivingChargeType? ParsedType =>
+        Enum.TryParse<DrivingChargeType>(ChargeType, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
+            ? parsed
+            : null;
+}
+
+public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid? FinanceInstallmentId, string? Note);
+
+public sealed record RefundChargeRequest(decimal? Amount, string? Reason);
