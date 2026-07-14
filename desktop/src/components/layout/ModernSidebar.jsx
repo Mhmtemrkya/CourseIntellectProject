@@ -1064,7 +1064,7 @@ export const ROLE_LABELS = {
 
 const ROLE_MENU_GROUPS = {
   admin: [
-    { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "kpi", "operations", "global-search", "tasks"] },
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "driving-education", "driving-graduation", "driving-reports", "kpi", "operations", "global-search", "tasks"] },
     { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library"] },
@@ -1302,6 +1302,9 @@ export function inferModuleKey(item) {
     "/driving/lessons": "driving-lessons",
     "/driving/fleet-compliance": "driving-fleet-compliance",
     "/driving/assignments": "driving-assignments",
+    "/driving/education": "driving-education",
+    "/driving/graduation": "driving-graduation",
+    "/driving/reports": "driving-reports",
     "/t/dashboard": "dashboard",
     "/s/dashboard": "dashboard",
     "/p/dashboard": "dashboard",

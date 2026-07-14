@@ -18,6 +18,7 @@ import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
+import { getInstitutionType, isPathHiddenForInstitution } from "../../lib/institutionType";
 import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
@@ -141,6 +142,9 @@ export function PremiumSidebar() {
   const [mobile, setMobile] = useState(() => window.innerWidth < 1024);
   const [disabledFeatures, setDisabledFeatures] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
+  // Kurum türü: sürücü kursunda okula özgü menüler (servis, yemekhane, nöbet,
+  // veliler, kurs yönetimi, okul sınavları) gizlenir.
+  const [institutionType, setInstitutionType] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
   useEffect(() => {
@@ -160,12 +164,16 @@ export function PremiumSidebar() {
     if (user?.isPlatformAdmin) {
       setDisabledFeatures(new Set());
       setEntitlements({ unrestricted: true, roles: {} });
+      setInstitutionType(null);
     } else {
       getDisabledFeatureKeys().then((keys) => {
         if (active) setDisabledFeatures(keys);
       });
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
+      });
+      getInstitutionType().then((value) => {
+        if (active) setInstitutionType(value);
       });
     }
     return () => {
@@ -204,19 +212,25 @@ export function PremiumSidebar() {
             (item) => !isPathDisabled(item.path, disabledFeatures),
           )
         : roleFilteredItems;
+    // Kurum türü: sürücü kursunda okula özgü menüler gizlenir (silinmez —
+    // okul kurumları kullanmaya devam eder).
+    const institutionFilteredItems = featureFilteredItems.filter(
+      (item) => !isPathHiddenForInstitution(item.path, institutionType),
+    );
     // Paket yetkisi: kurumun paketi bu rol için modülü içermiyorsa menüden gizle.
     const visibleItems =
       entitlements && !entitlements.unrestricted
-        ? featureFilteredItems.filter((item) => {
+        ? institutionFilteredItems.filter((item) => {
             const moduleKey = inferModuleKey(item);
             if (!moduleKey || moduleKey === "profile" || moduleKey === "system") return true;
             return isModuleAllowed(entitlements, primaryRole, moduleKey);
           })
-        : featureFilteredItems;
+        : institutionFilteredItems;
     return buildGroupedMenuItems(visibleItems, primaryRole);
   }, [
     disabledFeatures,
     entitlements,
+    institutionType,
     enabledModules,
     primaryRole,
     roles,
