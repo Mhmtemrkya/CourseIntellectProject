@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_school_api_service.dart';
 import 'driving_appointment_request_page.dart';
 
@@ -51,7 +53,7 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
                   FilledButton.icon(
                     onPressed: _reload,
                     icon: const Icon(Icons.refresh),
-                    label: const Text('Tekrar Dene'),
+                    label: Text('Tekrar Dene'.tr),
                   ),
                 ],
               ),
@@ -98,7 +100,7 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
               ),
               const SizedBox(height: 10),
               if (appointments.isEmpty)
-                const Card(
+                Card(
                   child: Padding(
                     padding: EdgeInsets.all(28),
                     child: Column(
@@ -109,7 +111,7 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
                           color: Color(0xFF06B6D4),
                         ),
                         SizedBox(height: 10),
-                        Text('Henüz planlanmış direksiyon dersiniz yok.'),
+                        Text('Henüz planlanmış direksiyon dersiniz yok.'.tr),
                       ],
                     ),
                   ),
@@ -145,7 +147,7 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Randevuyu iptal et'),
+        title: Text('Randevuyu iptal et'.tr),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -166,11 +168,11 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('İptal Et'),
+            child: Text('İptal Et'.tr),
           ),
         ],
       ),
@@ -275,7 +277,7 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
                 child: OutlinedButton.icon(
                   onPressed: () => _cancel(row),
                   icon: const Icon(Icons.event_busy_rounded),
-                  label: const Text('Randevuyu İptal Et'),
+                  label: Text('Randevuyu İptal Et'.tr),
                 ),
               ),
               const SizedBox(height: 8),
@@ -290,7 +292,7 @@ class _DrivingStudentHomePageState extends State<DrivingStudentHomePage> {
                     ),
                   ).then((_) => _reload()),
                   icon: const Icon(Icons.edit_calendar_rounded),
-                  label: const Text('Yeniden Planlama Talebi'),
+                  label: Text('Yeniden Planlama Talebi'.tr),
                 ),
               ),
             ],
@@ -474,72 +476,86 @@ class _ProfileHero extends StatelessWidget {
   final int purchased, remaining;
   final double progress;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF1D4ED8), Color(0xFF06B6D4)],
+  Widget build(BuildContext context) {
+    // Hero rengi tema vurgusundan türer (okul tarafındaki AdminHeroCard ile aynı
+    // geometri); sabit mavi/turuncu marka paleti değişince ekranda kalıyordu.
+    final accent = Theme.of(context).colorScheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF08111F),
+            Color.lerp(const Color(0xFF08111F), accent, 0.32) ??
+                const Color(0xFF08111F),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.24),
+            blurRadius: 34,
+            offset: const Offset(0, 18),
+          ),
+        ],
       ),
-      borderRadius: BorderRadius.circular(26),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x331D4ED8),
-          blurRadius: 24,
-          offset: Offset(0, 10),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(
-          Icons.directions_car_filled_rounded,
-          color: Colors.white,
-          size: 34,
-        ),
-        const SizedBox(height: 16),
-        Text(
-          '${profile['fullName'] ?? 'Sürücü Adayı'}',
-          style: const TextStyle(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.directions_car_filled_rounded,
             color: Colors.white,
-            fontSize: 25,
-            fontWeight: FontWeight.w900,
+            size: 34,
           ),
-        ),
-        Text(
-          '${profile['packageName'] ?? '-'} • ${profile['licenseClass'] ?? '-'} • ${profile['transmissionType'] ?? '-'}',
-          style: const TextStyle(
-            color: Color(0xFFCFFAFE),
-            fontWeight: FontWeight.w600,
+          const SizedBox(height: 16),
+          Text(
+            '${profile['fullName'] ?? 'Sürücü Adayı'}',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 25,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-        const SizedBox(height: 20),
-        Row(
-          children: [
-            Expanded(
-              child: Text(
-                '$remaining dk kaldı',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w800,
+          Text(
+            '${profile['packageName'] ?? '-'} • ${profile['licenseClass'] ?? '-'} • ${profile['transmissionType'] ?? '-'}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.84),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '$remaining dk kaldı',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ),
-            ),
-            Text(
-              '$purchased dk',
-              style: const TextStyle(color: Color(0xFFCFFAFE)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        LinearProgressIndicator(
-          value: progress,
-          minHeight: 9,
-          borderRadius: BorderRadius.circular(20),
-          backgroundColor: Colors.white.withValues(alpha: .2),
-          color: Colors.white,
-        ),
-      ],
-    ),
-  );
+              Text(
+                '$purchased dk',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.78),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          LinearProgressIndicator(
+            value: progress,
+            minHeight: 9,
+            borderRadius: BorderRadius.circular(20),
+            backgroundColor: Colors.white.withValues(alpha: .2),
+            color: Colors.white,
+          ),
+        ],
+      ),
+    );
+  }
 }

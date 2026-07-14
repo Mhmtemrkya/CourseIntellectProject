@@ -221,7 +221,7 @@ export default function DrivingScheduling() {
   if (permissionsLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
 
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-black">Öğrenci, Öğretmen ve Randevu</h1><p className="text-muted-foreground">Uyumluluk ve çakışma kontrolleri backend tarafından zorunlu uygulanır.</p></div><Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-bold font-heading tracking-tight">Öğrenci, Öğretmen ve Randevu</h1><p className="text-muted-foreground">Uyumluluk ve çakışma kontrolleri backend tarafından zorunlu uygulanır.</p></div><Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button></div>
 
     <div className="grid gap-5 xl:grid-cols-2">
       {canViewStudents && <Card><CardHeader><CardTitle className="flex gap-2"><GraduationCap className="text-violet-500" />Öğrenci Sürücü Profili</CardTitle></CardHeader><CardContent>
@@ -239,7 +239,7 @@ export default function DrivingScheduling() {
       </CardContent></Card>}
     </div>
 
-    {canViewAppointments && <Card><CardHeader><CardTitle className="flex gap-2"><CalendarClock className="text-orange-500" />Direksiyon Randevusu</CardTitle></CardHeader><CardContent>
+    {canViewAppointments && <Card><CardHeader><CardTitle className="flex gap-2"><CalendarClock className="text-[hsl(var(--brand-accent))]" />Direksiyon Randevusu</CardTitle></CardHeader><CardContent>
       {canCreateAppointment
         ? <form onSubmit={saveAppointment} className="grid gap-3 md:grid-cols-3">
             <Field label="Öğrenci"><select required className={selectClass} value={appointmentForm.studentDrivingProfileId} onChange={(e) => setAppointmentForm({ ...appointmentForm, studentDrivingProfileId: e.target.value })}><option value="">Seçin</option>{data.profiles.map((p) => <option key={p.id} value={p.id}>{p.fullName} • {p.licenseClass}</option>)}</select></Field>
@@ -294,7 +294,7 @@ export default function DrivingScheduling() {
                 onConfirm={() => submitAppointment(blockedOverrides, overrideReason)}
               />
             )}
-            <Button disabled={saving} className="md:col-span-3 bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" />Randevu Oluştur</Button>
+            <Button disabled={saving} className="md:col-span-3 bg-brand-primary text-white hover:bg-brand-primary/90"><Plus className="mr-2 h-4 w-4" />Randevu Oluştur</Button>
           </form>
         : <ReadOnlyNotice message="Randevuları görüntüleyebilirsiniz; randevu oluşturmak için yetkiniz yok." />}
       {data.requests.some((x) => x.status === 'Pending') && <div className="mt-6 space-y-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
@@ -338,7 +338,7 @@ const APPOINTMENT_STATUS = {
   Planned: { label: 'Planlandı', tone: 'bg-blue-500' },
   Approved: { label: 'Onaylandı', tone: 'bg-emerald-500' },
   CheckedIn: { label: 'Buluşuldu', tone: 'bg-violet-500' },
-  InProgress: { label: 'Ders sürüyor', tone: 'bg-orange-500' },
+  InProgress: { label: 'Ders sürüyor', tone: 'bg-[hsl(var(--brand-accent))]' },
   Completed: { label: 'Tamamlandı', tone: 'bg-emerald-600' },
   Cancelled: { label: 'İptal', tone: 'bg-red-500' },
   CancelledByStudent: { label: 'Öğrenci iptal etti', tone: 'bg-red-500' },

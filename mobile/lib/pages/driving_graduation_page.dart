@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import 'package:student/i18n/app_locale.dart';
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -6,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 import '../services/uploads_api_service.dart';
 
 class DrivingGraduationPage extends StatefulWidget {
@@ -140,9 +143,9 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => DrivingScaffold(
     appBar: AppBar(
-      title: const Text('Mezuniyet & Belgeler'),
+      title: Text('Mezuniyet & Belgeler'.tr),
       actions: [
         if (_permissions.can(DrivingPermissions.settingsManage))
           IconButton(
@@ -167,7 +170,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
           ),
       ],
     ),
-    body: _loading
+    child: _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
         ? Center(
@@ -271,7 +274,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                           OutlinedButton.icon(
                             onPressed: _saving ? null : () => _check(id),
                             icon: const Icon(Icons.fact_check_rounded),
-                            label: const Text('Kontrol Listesini Çalıştır'),
+                            label: Text('Kontrol Listesini Çalıştır'.tr),
                           ),
                           if (items.isNotEmpty) ...[
                             const Divider(),
@@ -316,7 +319,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                         'Kursiyer mezun edildi.',
                                       ),
                                 icon: const Icon(Icons.school_rounded),
-                                label: const Text('Kursiyeri Mezun Et'),
+                                label: Text('Kursiyeri Mezun Et'.tr),
                               ),
                             ),
                           if (_permissions.can(
@@ -329,7 +332,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                   ? null
                                   : () => _requestOverride(id, items),
                               icon: const Icon(Icons.rule_rounded),
-                              label: const Text('İki Onaylı İstisna Talebi'),
+                              label: Text('İki Onaylı İstisna Talebi'.tr),
                             ),
                           if (graduation?['graduatedAtUtc'] != null)
                             Row(
@@ -366,7 +369,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                         .issueCertificate(id, 'Completion'),
                                     'Tamamlama belgesi oluşturuldu.',
                                   ),
-                                  child: const Text('Tamamlama Belgesi'),
+                                  child: Text('Tamamlama Belgesi'.tr),
                                 ),
                                 OutlinedButton(
                                   onPressed: () => _run(
@@ -374,7 +377,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                         .issueCertificate(id, 'Achievement'),
                                     'Başarı belgesi oluşturuldu.',
                                   ),
-                                  child: const Text('Başarı Belgesi'),
+                                  child: Text('Başarı Belgesi'.tr),
                                 ),
                               ],
                             ),
@@ -406,14 +409,14 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                           '${request['id']}',
                                           value == 'approve',
                                         ),
-                                        itemBuilder: (_) => const [
+                                        itemBuilder: (_) => [
                                           PopupMenuItem(
                                             value: 'approve',
-                                            child: Text('Onayla'),
+                                            child: Text('Onayla'.tr),
                                           ),
                                           PopupMenuItem(
                                             value: 'reject',
-                                            child: Text('Reddet'),
+                                            child: Text('Reddet'.tr),
                                           ),
                                         ],
                                       )
@@ -445,34 +448,34 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                   }
                                 },
                                 itemBuilder: (_) => [
-                                  const PopupMenuItem(
+                                  PopupMenuItem(
                                     value: 'share',
-                                    child: Text('PDF indir / paylaş'),
+                                    child: Text('PDF indir / paylaş'.tr),
                                   ),
                                   if (_permissions.can(
                                         DrivingPermissions.certificateDeliver,
                                       ) &&
                                       certificate['deliveryStatus'] !=
                                           'Delivered')
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'deliver',
-                                      child: Text('Teslim edildi'),
+                                      child: Text('Teslim edildi'.tr),
                                     ),
                                   if (_permissions.can(
                                         DrivingPermissions.certificateIssue,
                                       ) &&
                                       certificate['status'] == 'Active')
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'reissue',
-                                      child: Text('Yeniden bas'),
+                                      child: Text('Yeniden bas'.tr),
                                     ),
                                   if (_permissions.can(
                                         DrivingPermissions.certificateRevoke,
                                       ) &&
                                       certificate['status'] == 'Active')
-                                    const PopupMenuItem(
+                                    PopupMenuItem(
                                       value: 'revoke',
-                                      child: Text('İptal et'),
+                                      child: Text('İptal et'.tr),
                                     ),
                                 ],
                               ),
@@ -493,7 +496,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
-        title: const Text('Belge teslimi'),
+        title: Text('Belge teslimi'.tr),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(labelText: 'Teslim alan kişi'),
@@ -501,11 +504,11 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Teslim Et'),
+            child: Text('Teslim Et'.tr),
           ),
         ],
       ),
@@ -537,11 +540,11 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Devam'),
+            child: Text('Devam'.tr),
           ),
         ],
       ),
@@ -690,18 +693,18 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
-        title: const Text('Sertifika tasarımını onayla'),
+        title: Text('Sertifika tasarımını onayla'.tr),
         content: const Text(
           'PDF önizlemesini, kurum logosunu, müdür adı/unvanını ve imzayı kontrol ettiğinizi onaylıyor musunuz?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Kontrol Ettim, Onayla'),
+            child: Text('Kontrol Ettim, Onayla'.tr),
           ),
         ],
       ),
@@ -752,7 +755,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: const Text('Mezuniyet & belge ayarları'),
+          title: Text('Mezuniyet & belge ayarları'.tr),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -771,18 +774,18 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                     decoration: const InputDecoration(
                       labelText: 'Mazeretli devamsızlık',
                     ),
-                    items: const [
+                    items: [
                       DropdownMenuItem(
                         value: 'ExcludeFromCalculation',
-                        child: Text('Hesaplamadan çıkar'),
+                        child: Text('Hesaplamadan çıkar'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'CountsAsPresent',
-                        child: Text('Katıldı say'),
+                        child: Text('Katıldı say'.tr),
                       ),
                       DropdownMenuItem(
                         value: 'CountsAsAbsent',
-                        child: Text('Devamsız say'),
+                        child: Text('Devamsız say'.tr),
                       ),
                     ],
                     onChanged: (value) => policy = value ?? policy,
@@ -809,7 +812,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.business_rounded),
-                    title: const Text('Kurum logosu'),
+                    title: Text('Kurum logosu'.tr),
                     subtitle: Text(logoUrl.isEmpty ? 'Seçilmedi' : 'Yüklendi'),
                     trailing: OutlinedButton(
                       onPressed: () async {
@@ -818,13 +821,13 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                           setDialogState(() => logoUrl = url);
                         }
                       },
-                      child: const Text('Seç'),
+                      child: Text('Seç'.tr),
                     ),
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     leading: const Icon(Icons.draw_rounded),
-                    title: const Text('Müdür imzası'),
+                    title: Text('Müdür imzası'.tr),
                     subtitle: Text(
                       signatureUrl.isEmpty ? 'Seçilmedi' : 'Yüklendi',
                     ),
@@ -835,7 +838,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                           setDialogState(() => signatureUrl = url);
                         }
                       },
-                      child: const Text('Seç'),
+                      child: Text('Seç'.tr),
                     ),
                   ),
                 ],
@@ -845,11 +848,11 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Kaydet'),
+              child: Text('Kaydet'.tr),
             ),
           ],
         ),

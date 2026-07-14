@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 class _EvaluationCriterion {
   const _EvaluationCriterion(
@@ -264,7 +267,7 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
                 child: OutlinedButton.icon(
                   onPressed: () => _markNoShow(row),
                   icon: const Icon(Icons.person_off_rounded),
-                  label: const Text('Öğrenci Gelmedi'),
+                  label: Text('Öğrenci Gelmedi'.tr),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFFE11D48),
                   ),
@@ -296,7 +299,7 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
                 contentPadding: EdgeInsets.zero,
               );
           return AlertDialog(
-            title: const Text('Araç ön kontrolü'),
+            title: Text('Araç ön kontrolü'.tr),
             content: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -344,7 +347,7 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Vazgeç'),
+                child: Text('Vazgeç'.tr),
               ),
               FilledButton(
                 onPressed:
@@ -355,7 +358,7 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
                         int.tryParse(kilometer.text) != null
                     ? () => Navigator.pop(dialogContext, true)
                     : null,
-                child: const Text('Dersi Başlat'),
+                child: Text('Dersi Başlat'.tr),
               ),
             ],
           );
@@ -383,7 +386,7 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (dialogContext) => AlertDialog(
-        title: const Text('Öğrenci gelmedi'),
+        title: Text('Öğrenci gelmedi'.tr),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -404,14 +407,14 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
             style: FilledButton.styleFrom(
               backgroundColor: const Color(0xFFE11D48),
             ),
-            child: const Text('Devamsızlık Yaz'),
+            child: Text('Devamsızlık Yaz'.tr),
           ),
         ],
       ),
@@ -461,7 +464,7 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
             title: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Dersi tamamla ve değerlendir'),
+                Text('Dersi tamamla ve değerlendir'.tr),
                 const SizedBox(height: 4),
                 Text(
                   automatic
@@ -538,13 +541,13 @@ class _DrivingInstructorHomePageState extends State<DrivingInstructorHomePage> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(dialogContext, false),
-                child: const Text('Vazgeç'),
+                child: Text('Vazgeç'.tr),
               ),
               FilledButton(
                 onPressed: int.tryParse(kilometer.text) != null
                     ? () => Navigator.pop(dialogContext, true)
                     : null,
-                child: const Text('Tamamla'),
+                child: Text('Tamamla'.tr),
               ),
             ],
           );
@@ -587,77 +590,15 @@ class _Hero extends StatelessWidget {
   const _Hero({required this.todayCount, required this.totalCount});
   final int todayCount, totalCount;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(22),
-    decoration: BoxDecoration(
-      gradient: const LinearGradient(
-        colors: [Color(0xFF0F766E), Color(0xFF14B8A6)],
-      ),
-      borderRadius: BorderRadius.circular(26),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x3314B8A6),
-          blurRadius: 24,
-          offset: Offset(0, 10),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Icon(Icons.badge_rounded, color: Colors.white, size: 34),
-        const SizedBox(height: 18),
-        const Text(
-          'Direksiyon Öğretmeni',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 25,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const Text(
-          'Güvenli ders yönetimi ve değerlendirme',
-          style: TextStyle(
-            color: Color(0xFFCCFBF1),
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-        const SizedBox(height: 18),
-        Row(
-          children: [
-            _heroMetric('$todayCount', 'Bugünkü ders'),
-            const SizedBox(width: 12),
-            _heroMetric('$totalCount', 'Programda'),
-          ],
-        ),
-      ],
-    ),
-  );
-  Widget _heroMetric(String value, String label) => Expanded(
-    child: Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .14),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            value,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 22,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          Text(
-            label,
-            style: const TextStyle(color: Color(0xFFCCFBF1), fontSize: 12),
-          ),
-        ],
-      ),
-    ),
+  Widget build(BuildContext context) => DrivingHero(
+    eyebrow: 'Eğitmen',
+    title: 'Direksiyon Öğretmeni',
+    description: 'Güvenli ders yönetimi ve değerlendirme.',
+    icon: Icons.badge_rounded,
+    metrics: [
+      DrivingHeroMetric(label: 'Bugünkü ders', value: '$todayCount'),
+      DrivingHeroMetric(label: 'Programda', value: '$totalCount'),
+    ],
   );
 }
 
@@ -748,7 +689,7 @@ class _Message extends StatelessWidget {
           FilledButton.icon(
             onPressed: onRetry,
             icon: const Icon(Icons.refresh),
-            label: const Text('Tekrar Dene'),
+            label: Text('Tekrar Dene'.tr),
           ),
         ],
       ),

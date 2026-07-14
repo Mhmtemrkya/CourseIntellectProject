@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 class DrivingEducationPage extends StatefulWidget {
   const DrivingEducationPage({super.key});
@@ -58,9 +61,9 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
               students = _list(reference, 'students');
           return DefaultTabController(
             length: 3,
-            child: Scaffold(
+            child: DrivingScaffold(
               appBar: AppBar(
-                title: const Text('Teorik Eğitim ve Sınav'),
+                title: Text('Teorik Eğitim ve Sınav'.tr),
                 bottom: const TabBar(
                   tabs: [
                     Tab(text: 'Sınıflar'),
@@ -69,7 +72,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   ],
                 ),
               ),
-              body: TabBarView(
+              child: TabBarView(
                 children: [
                   _classes(classes, instructors, students, permissions),
                   _sessions(sessions, classes, instructors, permissions),
@@ -145,7 +148,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                           theory: true,
                         ),
                         icon: const Icon(Icons.group_add_rounded),
-                        label: const Text('Öğrenci Ata'),
+                        label: Text('Öğrenci Ata'.tr),
                       ),
                     ),
                 ],
@@ -266,7 +269,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                           theory: false,
                         ),
                         icon: const Icon(Icons.person_add_alt_1),
-                        label: const Text('Aday Ekle'),
+                        label: Text('Aday Ekle'.tr),
                       ),
                     ),
                   if (examCandidates.isNotEmpty) const Divider(),
@@ -342,7 +345,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           FilledButton.icon(
             onPressed: _reload,
             icon: const Icon(Icons.refresh),
-            label: const Text('Tekrar Dene'),
+            label: Text('Tekrar Dene'.tr),
           ),
         ],
       ),
@@ -397,7 +400,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (_, setState) => AlertDialog(
-          title: const Text('Yeni teorik sınıf'),
+          title: Text('Yeni teorik sınıf'.tr),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -435,7 +438,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   decoration: const InputDecoration(labelText: 'Derslik'),
                 ),
                 ListTile(
-                  title: const Text('Başlangıç'),
+                  title: Text('Başlangıç'.tr),
                   subtitle: Text(_date(start.toIso8601String())),
                   onTap: () async {
                     final v = await _pickDateTime(start);
@@ -443,7 +446,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   },
                 ),
                 ListTile(
-                  title: const Text('Bitiş'),
+                  title: Text('Bitiş'.tr),
                   subtitle: Text(_date(end.toIso8601String())),
                   onTap: () async {
                     final v = await _pickDateTime(end);
@@ -456,11 +459,11 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Oluştur'),
+              child: Text('Oluştur'.tr),
             ),
           ],
         ),
@@ -497,7 +500,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (_, setState) => AlertDialog(
-          title: const Text('Teorik ders planla'),
+          title: Text('Teorik ders planla'.tr),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -528,7 +531,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   decoration: const InputDecoration(labelText: 'Derslik'),
                 ),
                 ListTile(
-                  title: const Text('Başlangıç'),
+                  title: Text('Başlangıç'.tr),
                   subtitle: Text(_date(start.toIso8601String())),
                   onTap: () async {
                     final v = await _pickDateTime(start);
@@ -541,7 +544,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   },
                 ),
                 ListTile(
-                  title: const Text('Bitiş'),
+                  title: Text('Bitiş'.tr),
                   subtitle: Text(_date(end.toIso8601String())),
                   onTap: () async {
                     final v = await _pickDateTime(end);
@@ -554,11 +557,11 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Planla'),
+              child: Text('Planla'.tr),
             ),
           ],
         ),
@@ -594,7 +597,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (_, setState) => AlertDialog(
-          title: const Text('Sınav ve komisyon'),
+          title: Text('Sınav ve komisyon'.tr),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -602,14 +605,14 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                 DropdownButtonFormField<String>(
                   initialValue: type,
                   decoration: const InputDecoration(labelText: 'Sınav türü'),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
                       value: 'TheoryEExam',
-                      child: Text('E-sınav'),
+                      child: Text('E-sınav'.tr),
                     ),
                     DropdownMenuItem(
                       value: 'DrivingPractice',
-                      child: Text('Direksiyon sınavı'),
+                      child: Text('Direksiyon sınavı'.tr),
                     ),
                   ],
                   onChanged: (v) => type = v!,
@@ -643,7 +646,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   decoration: const InputDecoration(labelText: 'Kurumu'),
                 ),
                 ListTile(
-                  title: const Text('Başlangıç'),
+                  title: Text('Başlangıç'.tr),
                   subtitle: Text(_date(start.toIso8601String())),
                   onTap: () async {
                     final v = await _pickDateTime(start);
@@ -656,7 +659,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                   },
                 ),
                 ListTile(
-                  title: const Text('Bitiş'),
+                  title: Text('Bitiş'.tr),
                   subtitle: Text(_date(end.toIso8601String())),
                   onTap: () async {
                     final v = await _pickDateTime(end);
@@ -669,11 +672,11 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Oluştur'),
+              child: Text('Oluştur'.tr),
             ),
           ],
         ),
@@ -752,13 +755,13 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: selected.isEmpty
                   ? null
                   : () => Navigator.pop(dialog, true),
-              child: const Text('Ekle'),
+              child: Text('Ekle'.tr),
             ),
           ],
         ),
@@ -810,22 +813,22 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
                             ),
                             DropdownButtonFormField<String>(
                               initialValue: '${row['status']}',
-                              items: const [
+                              items: [
                                 DropdownMenuItem(
                                   value: 'Present',
-                                  child: Text('Katıldı'),
+                                  child: Text('Katıldı'.tr),
                                 ),
                                 DropdownMenuItem(
                                   value: 'Late',
-                                  child: Text('Geç kaldı'),
+                                  child: Text('Geç kaldı'.tr),
                                 ),
                                 DropdownMenuItem(
                                   value: 'Absent',
-                                  child: Text('Katılmadı'),
+                                  child: Text('Katılmadı'.tr),
                                 ),
                                 DropdownMenuItem(
                                   value: 'Excused',
-                                  child: Text('Mazeretli'),
+                                  child: Text('Mazeretli'.tr),
                                 ),
                               ],
                               onChanged: (v) => row['status'] = v,
@@ -848,11 +851,11 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Kaydet'),
+              child: Text('Kaydet'.tr),
             ),
           ],
         ),
@@ -886,7 +889,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
       context: context,
       builder: (dialog) => StatefulBuilder(
         builder: (_, setState) => AlertDialog(
-          title: const Text('Sınav sonucu'),
+          title: Text('Sınav sonucu'.tr),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -916,11 +919,11 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialog, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: () => Navigator.pop(dialog, true),
-              child: const Text('Sonucu Kaydet'),
+              child: Text('Sonucu Kaydet'.tr),
             ),
           ],
         ),
@@ -955,7 +958,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
         .toList();
     if (alternatives.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Önce aynı türde yeni sınav oluşturun.')),
+        SnackBar(content: Text('Önce aynı türde yeni sınav oluşturun.'.tr)),
       );
       return;
     }
@@ -964,7 +967,7 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (dialog) => AlertDialog(
-        title: const Text('Tekrar sınavı planla'),
+        title: Text('Tekrar sınavı planla'.tr),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -992,11 +995,11 @@ class _DrivingEducationPageState extends State<DrivingEducationPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialog, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(dialog, true),
-            child: const Text('Planla'),
+            child: Text('Planla'.tr),
           ),
         ],
       ),

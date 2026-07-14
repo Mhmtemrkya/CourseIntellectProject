@@ -255,7 +255,7 @@ export default function DrivingAssignments() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Badge className="mb-2 border-0 bg-blue-500/15 text-blue-600"><UserRoundCheck className="mr-1 h-3.5 w-3.5" />Uygunluk kuralları</Badge>
-          <h1 className="text-3xl font-black">Atama, Çalışma Saatleri ve Kurallar</h1>
+          <h1 className="text-3xl font-bold font-heading tracking-tight">Atama, Çalışma Saatleri ve Kurallar</h1>
           <p className="text-muted-foreground">
             Bir öğretmene araç atandığı andan itibaren, atanmamış araçla randevu verilemez.
           </p>
@@ -273,7 +273,7 @@ export default function DrivingAssignments() {
 
         <TabsContent value="assignments" className="mt-5 space-y-5">
           <Card>
-            <CardHeader><CardTitle className="flex gap-2"><CarFront className="text-orange-500" />Yeni atama</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex gap-2"><CarFront className="text-[hsl(var(--brand-accent))]" />Yeni atama</CardTitle></CardHeader>
             <CardContent>
               {canManageAssignments ? (
                 <form onSubmit={saveAssignment} className="grid gap-3 md:grid-cols-3">
@@ -326,7 +326,7 @@ export default function DrivingAssignments() {
 
                   <Field label="Öncelik" hint="Küçük değer önce önerilir."><Input type="number" min="0" max="1000" value={assignmentForm.priority} onChange={(e) => setAssignmentForm({ ...assignmentForm, priority: e.target.value })} /></Field>
                   <Field label="Not"><Input maxLength={500} value={assignmentForm.note} onChange={(e) => setAssignmentForm({ ...assignmentForm, note: e.target.value })} /></Field>
-                  <Button disabled={saving} className="md:col-span-3 bg-orange-600 text-white"><Plus className="mr-2 h-4 w-4" />Atamayı Kaydet</Button>
+                  <Button disabled={saving} className="md:col-span-3 bg-brand-primary text-white hover:bg-brand-primary/90"><Plus className="mr-2 h-4 w-4" />Atamayı Kaydet</Button>
                 </form>
               ) : (
                 <ReadOnlyNotice message="Araç ataması yapmak filo sorumlusunun veya yöneticinin yetkisindedir." />

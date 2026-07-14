@@ -55,7 +55,7 @@ const DOCUMENT_STATUS = {
   PendingApproval: { label: 'Onay bekliyor', tone: 'bg-amber-500' },
   Approved: { label: 'Onaylı', tone: 'bg-emerald-500' },
   Rejected: { label: 'Reddedildi', tone: 'bg-red-500' },
-  Expired: { label: 'Süresi doldu', tone: 'bg-orange-500' },
+  Expired: { label: 'Süresi doldu', tone: 'bg-[hsl(var(--brand-accent))]' },
 };
 
 const minutes = (value) => `${Math.round(Number(value || 0))} dk`;
@@ -251,7 +251,7 @@ export default function DrivingStudentDetail() {
             ? <img src={overview.photoUrl} alt={overview.fullName} className="h-16 w-16 rounded-2xl object-cover" />
             : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-xl font-black">{overview.fullName?.[0]}</div>}
           <div>
-            <h1 className="text-3xl font-black">{overview.fullName}</h1>
+            <h1 className="text-3xl font-bold font-heading tracking-tight">{overview.fullName}</h1>
             <p className="text-muted-foreground">
               {overview.packageName} • {overview.licenseClass} • {overview.transmissionType === 'Manual' ? 'Manuel' : 'Otomatik'}
             </p>
@@ -261,7 +261,7 @@ export default function DrivingStudentDetail() {
                 <Badge className="border-0 bg-red-500/15 text-red-600"><AlertTriangle className="mr-1 h-3 w-3" />{documents.missingCount} eksik evrak</Badge>
               )}
               {finance?.overdueCount > 0 && (
-                <Badge className="border-0 bg-orange-500/15 text-orange-600"><CreditCard className="mr-1 h-3 w-3" />{finance.overdueCount} gecikmiş taksit</Badge>
+                <Badge className="border-0 bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent))]"><CreditCard className="mr-1 h-3 w-3" />{finance.overdueCount} gecikmiş taksit</Badge>
               )}
             </div>
           </div>
@@ -373,7 +373,7 @@ export default function DrivingStudentDetail() {
                     <YAxis domain={[1, 5]} ticks={[1, 2, 3, 4, 5]} />
                     <Tooltip formatter={(value, name) => [`${value} / 5`, name]} labelFormatter={(_, payload) => payload?.[0] ? `${payload[0].payload.ders}. ders • ${payload[0].payload.tarih}` : ''} />
                     <Legend />
-                    <Line type="monotone" dataKey="genel" name="Genel" stroke="#111827" strokeWidth={3} />
+                    <Line type="monotone" dataKey="genel" name="Genel" stroke="hsl(var(--foreground))" strokeWidth={3} />
                     {DRIVING_EVALUATION_CATEGORIES.map((category) => <Line key={category.key} type="monotone" dataKey={category.scoreKey} name={category.label} stroke={category.color} strokeWidth={2} />)}
                   </LineChart>
                 </ResponsiveContainer>
@@ -466,7 +466,7 @@ export default function DrivingStudentDetail() {
 
         <TabsContent value="appointments" className="mt-5">
           <Card>
-            <CardHeader><CardTitle className="flex gap-2"><CalendarClock className="text-orange-500" />Randevular</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="flex gap-2"><CalendarClock className="text-[hsl(var(--brand-accent))]" />Randevular</CardTitle></CardHeader>
             <CardContent className="space-y-2">
               {appointments.length === 0 && <p className="py-6 text-center text-muted-foreground">Randevu yok.</p>}
               {appointments.map((item) => (
@@ -580,7 +580,7 @@ export default function DrivingStudentDetail() {
               <Stat label="Net tutar" value={money(finance.netAmount)} />
               <Stat label="Tahsil edilen" value={money(finance.paidTotal)} tone="text-emerald-600" />
               <Stat label="Kalan borç" value={money(finance.remaining)} tone={finance.remaining > 0 ? 'text-red-600' : 'text-emerald-600'} />
-              <Stat label="Gecikmiş taksit" value={finance.overdueCount} tone={finance.overdueCount > 0 ? 'text-orange-600' : undefined} />
+              <Stat label="Gecikmiş taksit" value={finance.overdueCount} tone={finance.overdueCount > 0 ? 'text-[hsl(var(--brand-accent))]' : undefined} />
             </div>
 
             {canCollect && (

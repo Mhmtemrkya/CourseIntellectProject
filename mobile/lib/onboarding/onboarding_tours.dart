@@ -68,6 +68,33 @@ const Map<String, RoleIntro> roleIntros = {
         'program ve raporlar alttaki sekmelerde.\n\nHer sekmeye ilk geçişte kısa '
         'bir tanıtım açılır; alt menüye uzun basarak tekrar izleyebilirsiniz.',
   ),
+  'Sürücü Adayı': RoleIntro(
+    title: 'Hoş geldin! 🚗',
+    body:
+        'Sürücü kursu uygulamana hoş geldin. Direksiyon randevuların, kurs '
+        'dosyan, ödemelerin ve sınavların alttaki sekmelerde.\n\n'
+        'Sırayla şunlar olur: evrakların onaylanır → direksiyon dersleri '
+        'başlar → e-sınav ve direksiyon sınavına girersin → mezun olursun.\n\n'
+        'Alt menüye uzun basarsan bulunduğun sekmenin tanıtımını tekrar '
+        'açabilirsin.',
+  ),
+  'Direksiyon Öğretmeni': RoleIntro(
+    title: 'Hoş geldiniz! 🚗',
+    body:
+        'Direksiyon eğitmeni uygulamanıza hoş geldiniz. Günlük ders '
+        'programınız, ders başlatma/bitirme ve kursiyer değerlendirmeleri '
+        'alttaki sekmelerde.\n\nHer sekmeye ilk geçişinizde kısa bir tanıtım '
+        'açılır; alt menüye uzun basarak tekrar izleyebilirsiniz.',
+  ),
+  'Sürücü Kursu': RoleIntro(
+    title: 'Hoş geldiniz! 👋',
+    body:
+        'Sürücü kursu yönetim uygulamanıza hoş geldiniz. Panel, operasyon, '
+        'planlama, eğitim/sınav, mezuniyet ve finans alttaki sekmelerde.\n\n'
+        'Bu kısa tanıtım her sekmenin ne işe yaradığını gösterir. Alt menüye '
+        'uzun basarak bulunduğunuz sekmenin tanıtımını istediğiniz zaman '
+        'yeniden açabilirsiniz.',
+  ),
 };
 
 const Map<String, Map<String, String>> tabDetails = {
@@ -89,6 +116,102 @@ const Map<String, Map<String, String>> tabDetails = {
         '• Sağlık raporu ve adli sicil gibi süreli belgelerde geçerlilik '
         'tarihi sorulur.\n'
         '• Dosyanız tamamlanmadan direksiyon eğitimine başlayamazsınız.',
+    'Randevu Talebi':
+        'Yeni direksiyon dersi ister veya mevcut randevunuzu erteletmek '
+        'istersiniz.\n\n'
+        '• Talebiniz doğrudan randevu açmaz; kurum onaylayınca kesinleşir.\n'
+        '• Uygun saatler, kalan ders hakkınıza ve eğitmen/araç uygunluğuna '
+        'göre listelenir.\n'
+        '• Onaylanan her talep ders hakkınızdan düşer.',
+    'Eğitim & Sınav':
+        'Teorik ders programınız, yoklamanız ve sınavlarınız burada.\n\n'
+        '• Devamsızlığınız kurumun belirlediği eşiği aşarsa mezun olamazsınız.\n'
+        '• Önce e-sınavı geçmeniz, sonra direksiyon sınavına girmeniz gerekir.\n'
+        '• Sınavdan kaldıysanız tekrar sınav hakkınız buradan planlanır.',
+    'Mezuniyet':
+        'Mezuniyet kontrol listeniz: evrak, teorik devam, direksiyon saati, '
+        'sınavlar ve finans.\n\n'
+        '• Tüm koşullar tamamlanınca kurum sizi mezun eder.\n'
+        '• Sertifikanız hazır olduğunda buradan görüntüleyip indirebilirsiniz.',
+    'Konu Anlatımı':
+        'Trafik ve ilk yardım konularının video ve doküman anlatımları. '
+        'Sınavlara buradan çalışabilirsiniz.',
+    'Soru Bankası':
+        'E-sınav hazırlığı için soru çözün. Yanlışlarınız kaydedilir; tekrar '
+        'çalışmanız gereken konular size önerilir.',
+    'Profil':
+        'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
+  },
+  'Direksiyon Öğretmeni': {
+    'Derslerim':
+        'Günlük direksiyon ders programınız. Güne buradan başlarsınız.\n\n'
+        '• Derse çıkmadan önce ARAÇ ÖN KONTROLÜNÜ yapın (fren, lastik, ışık, '
+        'sıvılar) ve başlangıç kilometresini girin.\n'
+        '• "Dersi Başlat" dediğiniz an ders sayacı işler; bitirdiğinizde '
+        'harcanan süre kursiyerin ders hakkından düşer.\n'
+        '• Kursiyer gelmediyse ders saati geçtikten sonra DEVAMSIZLIK '
+        'işaretleyin — hakkı kurum kuralına göre yanar.\n'
+        '• Ders sonunda 24 kriterli değerlendirmeyi doldurun; kursiyer bunu '
+        'kendi ekranında görür.',
+    'Teorik & Sınav':
+        'Teorik derslerin yoklaması ve sınav sonuçları.\n\n'
+        '• Yoklamada katıldı/geç kaldı/katılmadı/mazeretli seçebilirsiniz.\n'
+        '• Devamsızlık mezuniyet koşulunu doğrudan etkiler; dikkatli girin.',
+    'Konu Anlatımı':
+        'Kursiyerlerinizle paylaştığınız video ve doküman içerikleri. Okul '
+        'tarafındaki içerik altyapısının aynısını kullanır.',
+    'Soru Bankası':
+        'E-sınav hazırlığı için soru ekleyip kursiyerlere yönlendirebilirsiniz.',
+    'Profil':
+        'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
+  },
+  'Sürücü Kursu': {
+    'Panel':
+        'Kursunuzun günlük nabzı: aktif kursiyer, bugünkü dersler, filo '
+        'durumu ve tahsilat tek ekranda.\n\n'
+        '• Operasyon uyarıları bölümü kritik olanı öne çıkarır: süresi dolan '
+        'araç evrakı, eksik kursiyer belgesi, bakımdaki araç.',
+    'Operasyon':
+        'Eğitim paketleri ve filo yönetimi.\n\n'
+        '• Paket = direksiyon + teorik ders süresi ve fiyat. Kursiyer kaydında '
+        'seçilen paket, ders hakkını belirler.\n'
+        '• Araç eklerken muayene ve sigorta bitiş tarihi zorunludur; süresi '
+        'dolan araç randevuya OTOMATİK kapanır.\n'
+        '• Arıza/hasar bildirilen ve "güvenle kullanılamaz" işaretlenen araç '
+        'da kullanım dışına alınır.',
+    'Planlama':
+        'Randevu oluşturma, onaylama ve kursiyerlerden gelen talepler.\n\n'
+        '• Çakışma, ders hakkı, araç uygunluğu ve çalışma saati kuralları '
+        'sunucuda zorunlu denetlenir.\n'
+        '• Bir kural engel çıkarırsa yalnızca yetkili yönetici, GEREKÇE '
+        'yazarak kuralı aşabilir; bu işlem denetim kaydına yazılır.\n'
+        '• Randevu açıldığı anda ders dakikaları rezerve edilir.',
+    'Eğitim & Sınav':
+        'Teorik sınıflar, ders programı, yoklama ve sınav yönetimi.\n\n'
+        '• Sınıf açın, kursiyerleri atayın, dersleri planlayın ve yoklama alın.\n'
+        '• E-sınav ve direksiyon sınavı oturumları komisyonuyla birlikte '
+        'tanımlanır; sonuç girildiğinde kursiyere bildirim gider.\n'
+        '• Direksiyon sınavına yalnızca e-sınavı geçmiş kursiyer eklenebilir.',
+    'Mezuniyet':
+        'Mezuniyet kontrol listesi ve sertifika işlemleri.\n\n'
+        '• Evrak, teorik devam, direksiyon saati, sınav ve finans koşulları '
+        'tek listede kontrol edilir.\n'
+        '• Koşul eksikken mezun etmek için İKİ AYRI YÖNETİCİNİN onayladığı '
+        'istisna talebi gerekir.\n'
+        '• Sertifika PDF olarak üretilir; teslim edildiğinde işaretleyin.',
+    'Konu Anlatımı':
+        'Trafik ve ilk yardım içerikleri. Okul tarafındaki içerik yönetiminin '
+        'aynısını kullanır.',
+    'Soru Bankası':
+        'E-sınav hazırlığı için soru stüdyosu ve sınav altyapısı.',
+    'Finans':
+        'Sözleşmeler, taksitler ve tahsilatlar.\n\n'
+        '• Ek direksiyon dersi satışı hem ücreti hem ders dakikasını aynı '
+        'işlemde ekler.\n'
+        '• Borcu kurumun belirlediği eşiği aşan kursiyer yeni randevu alamaz.\n'
+        '• Tüm finansal hareketler denetim kaydına yazılır.',
+    'Profil':
+        'Hesap bilgileriniz, tema/dil ayarları ve çıkış.',
   },
   'Yönetici': {
     'Panel':

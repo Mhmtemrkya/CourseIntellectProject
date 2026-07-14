@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 class DrivingAppointmentRequestPage extends StatefulWidget {
   const DrivingAppointmentRequestPage({super.key, this.sourceAppointment});
@@ -81,7 +84,7 @@ class _DrivingAppointmentRequestPageState
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Randevu talebiniz kuruma iletildi.')),
+          SnackBar(content: Text('Randevu talebiniz kuruma iletildi.'.tr)),
         );
       }
       await _load();
@@ -97,7 +100,7 @@ class _DrivingAppointmentRequestPageState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => DrivingScaffold(
     appBar: AppBar(
       title: Text(
         widget.sourceAppointment == null
@@ -105,7 +108,7 @@ class _DrivingAppointmentRequestPageState
             : 'Yeniden Planlama Talebi',
       ),
     ),
-    body: _loading
+    child: _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
         ? Center(
@@ -175,9 +178,9 @@ class _DrivingAppointmentRequestPageState
                             labelText: 'Öğretmen tercihi (isteğe bağlı)',
                           ),
                           items: [
-                            const DropdownMenuItem<String>(
+                            DropdownMenuItem<String>(
                               value: null,
-                              child: Text('Kurum seçsin'),
+                              child: Text('Kurum seçsin'.tr),
                             ),
                             ..._list('instructors').map(
                               (x) => DropdownMenuItem(
@@ -197,9 +200,9 @@ class _DrivingAppointmentRequestPageState
                             labelText: 'Araç tercihi (isteğe bağlı)',
                           ),
                           items: [
-                            const DropdownMenuItem<String>(
+                            DropdownMenuItem<String>(
                               value: null,
-                              child: Text('Kurum seçsin'),
+                              child: Text('Kurum seçsin'.tr),
                             ),
                             ..._list('vehicles').map(
                               (x) => DropdownMenuItem(

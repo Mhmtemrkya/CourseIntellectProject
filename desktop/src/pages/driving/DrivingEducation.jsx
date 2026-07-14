@@ -5,8 +5,8 @@ import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import {
   addDrivingExamCandidates, createDrivingExamSession, createDrivingTheoryClass, createDrivingTheorySession,
   enrollDrivingTheoryStudents, enterDrivingExamResult, fetchDrivingEducationOverview, fetchDrivingTheoryAttendance,
@@ -101,10 +101,21 @@ export default function DrivingEducation() {
     await run(() => scheduleDrivingExamRetry(candidate.id, { examSessionId: targetId, feeAmount: fee }), 'Tekrar sınavı planlandı');
   }
 
-  if (permissionLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
+  if (permissionLoading || loading) return <DrivingLoading />;
   if (!data) return null;
-  return <div className="space-y-6">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div><h1 className="text-3xl font-black">Teorik Eğitim ve Sınav Yönetimi</h1><p className="text-muted-foreground">Sınıftan yoklamaya, komisyondan tekrar sınavı ve ücrete kadar tek akış.</p></div><Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button></div>
+  return <DrivingPage testId="driving-education-page">
+    <DrivingPageHeader
+      title="Teorik Eğitim ve Sınav Yönetimi"
+      description="Sınıftan yoklamaya, komisyondan tekrar sınavı ve ücrete kadar tek akış."
+      icon={GraduationCap}
+      onRefresh={load}
+    />
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <DrivingStatCard label="Teorik Sınıf" value={data.classes.length} caption="Açık sınıf" icon={Users} tone="violet" />
+      <DrivingStatCard label="Planlı Ders" value={data.sessions.length} caption="Ders programında" icon={CalendarPlus} tone="brand" />
+      <DrivingStatCard label="Sınav" value={data.exams.length} caption="Planlanan oturum" icon={GraduationCap} tone="blue" />
+      <DrivingStatCard label="Aday" value={data.candidates?.length || 0} caption="Sınava kayıtlı" icon={ClipboardCheck} tone="emerald" />
+    </div>
     <Tabs defaultValue="classes"><TabsList className="flex flex-wrap"><TabsTrigger value="classes">Sınıflar</TabsTrigger><TabsTrigger value="sessions">Ders Programı & Yoklama</TabsTrigger><TabsTrigger value="exams">Sınavlar</TabsTrigger></TabsList>
       <TabsContent value="classes" className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr]">
         {canTheoryManage && <Card><CardHeader><CardTitle>Yeni teorik sınıf</CardTitle></CardHeader><CardContent><form className="space-y-3" onSubmit={saveClass}><Input required placeholder="Sınıf adı" value={classForm.name} onChange={(e) => setClassForm({ ...classForm, name: e.target.value })} /><div className="grid grid-cols-2 gap-2"><Input required placeholder="Ehliyet sınıfı" value={classForm.licenseClass} onChange={(e) => setClassForm({ ...classForm, licenseClass: e.target.value })} /><Input required type="number" min="1" max="100" value={classForm.capacity} onChange={(e) => setClassForm({ ...classForm, capacity: e.target.value })} /></div><select required className="h-10 w-full rounded-md border bg-background px-3" value={classForm.instructorStaffId} onChange={(e) => setClassForm({ ...classForm, instructorStaffId: e.target.value })}><option value="">Öğretmen seçin</option>{instructors.map((x) => <option key={x.id} value={x.id}>{x.fullName}</option>)}</select><Input required type="datetime-local" value={classForm.startsAtUtc} onChange={(e) => setClassForm({ ...classForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={classForm.endsAtUtc} onChange={(e) => setClassForm({ ...classForm, endsAtUtc: e.target.value })} /><Input placeholder="Derslik" value={classForm.room} onChange={(e) => setClassForm({ ...classForm, room: e.target.value })} /><Button disabled={busy} className="w-full">Sınıfı Oluştur</Button></form></CardContent></Card>}
@@ -120,5 +131,5 @@ export default function DrivingEducation() {
         {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => <div key={candidate.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div><b>{candidate.studentName}</b><p className="text-xs text-muted-foreground">{candidate.attemptNo}. deneme {candidate.score != null ? `• ${candidate.score} puan` : ''} {candidate.failureReason ? `• ${candidate.failureReason}` : ''}</p></div><div className="flex gap-2"><Badge className={statusTone(candidate.status)}>{candidate.status}</Badge>{canResult && candidate.status === 'Planned' && <><Button size="sm" className="bg-emerald-600" onClick={() => result(candidate, true)}><CheckCircle2 className="mr-1 h-3 w-3" />Geçti</Button><Button size="sm" variant="destructive" onClick={() => result(candidate, false)}>Kaldı</Button></>}{canExamManage && candidate.status === 'Failed' && <Button size="sm" variant="outline" onClick={() => retry(candidate, exam.examType)}><RotateCcw className="mr-1 h-3 w-3" />Tekrar</Button>}</div></div>)}</div></CardContent></Card>)}
       </TabsContent>
     </Tabs>
-  </div>;
+  </DrivingPage>;
 }

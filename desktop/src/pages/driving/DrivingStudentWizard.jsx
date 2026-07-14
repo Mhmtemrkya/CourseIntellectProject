@@ -322,7 +322,7 @@ export default function DrivingStudentWizard() {
           <CardContent className="space-y-5 py-8 text-center">
             <CheckCircle2 className="mx-auto h-14 w-14 text-emerald-500" />
             <div>
-              <h1 className="text-2xl font-black">Kayıt tamamlandı</h1>
+              <h1 className="text-2xl font-bold font-heading tracking-tight">Kayıt tamamlandı</h1>
               <p className="text-muted-foreground">{form.fullName} kursiyer dosyası açıldı.</p>
             </div>
 
@@ -368,7 +368,7 @@ export default function DrivingStudentWizard() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Badge className="mb-2 border-0 bg-violet-500/15 text-violet-600"><BadgeCheck className="mr-1 h-3.5 w-3.5" />Kayıt sihirbazı</Badge>
-          <h1 className="text-3xl font-black">Yeni Kursiyer Kaydı</h1>
+          <h1 className="text-3xl font-bold font-heading tracking-tight">Yeni Kursiyer Kaydı</h1>
           <p className="text-muted-foreground">Adım adım kimlik, evrak, finans ve onay — taslak otomatik kaydedilir.</p>
         </div>
         {draftSavedAt && (

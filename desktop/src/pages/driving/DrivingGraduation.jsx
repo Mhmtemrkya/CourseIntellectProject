@@ -6,6 +6,7 @@ import { Badge } from '../../components/ui/badge';
 import { useToast } from '../../hooks/use-toast';
 import { fetchDrivingGraduationOverview, fetchDrivingGraduationChecklist, graduateDrivingStudent, issueDrivingCertificate, updateDrivingCertificateDelivery, downloadDrivingCertificate, requestDrivingGraduationOverride, requestDrivingGraduationRevocation, approveDrivingGraduationAction, rejectDrivingGraduationAction, reissueDrivingCertificate, revokeDrivingCertificate } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
 export default function DrivingGraduation() {
   const { toast } = useToast(); const { can } = useDrivingPermissions();
@@ -16,11 +17,23 @@ export default function DrivingGraduation() {
   async function check(id) { try { const value = await fetchDrivingGraduationChecklist(id); setChecklists((x) => ({ ...x, [id]: value })); } catch (e) { toast({ title: 'Kontrol yapılamadı', description: e.message, variant: 'destructive' }); } }
   async function run(action, success) { setSaving(true); try { await action(); toast({ title: success }); await load(); } catch (e) { toast({ title: 'İşlem tamamlanamadı', description: e.message, variant: 'destructive' }); } finally { setSaving(false); } }
   async function download(certificate) { try { const blob = await downloadDrivingCertificate(certificate.id); const url = URL.createObjectURL(blob); const anchor = document.createElement('a'); anchor.href = url; anchor.download = `${certificate.documentNumber}.pdf`; anchor.click(); URL.revokeObjectURL(url); } catch (e) { toast({ title: 'Belge indirilemedi', description: e.message, variant: 'destructive' }); } }
-  if (loading) return <div className="p-8 text-center">Yükleniyor…</div>;
+  if (loading) return <DrivingLoading />;
   const setup = data.certificateSetup;
   const missingLabels = { directorName: 'Müdür adı', directorTitle: 'Müdür unvanı', logoUrl: 'Kurum logosu', signatureUrl: 'İmza görseli', primaryColor: 'Sertifika rengi' };
-  return <div className="space-y-6 p-4 md:p-8">
-    <div className="flex items-center justify-between"><div><h1 className="text-3xl font-black">Mezuniyet & Sertifika</h1><p className="text-muted-foreground">Eğitim, sınav, evrak ve finans koşullarını tek kontrol listesinde kapatın.</p></div><Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button></div>
+  const graduatedCount = (data.graduations || []).filter((x) => x.status === 'Graduated').length;
+  return <DrivingPage testId="driving-graduation-page">
+    <DrivingPageHeader
+      title="Mezuniyet & Sertifika"
+      description="Eğitim, sınav, evrak ve finans koşullarını tek kontrol listesinde kapatın."
+      icon={Award}
+      onRefresh={load}
+    />
+    <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+      <DrivingStatCard label="Kursiyer" value={data.students.length} caption="Mezuniyet takibinde" icon={Award} tone="brand" />
+      <DrivingStatCard label="Mezun" value={graduatedCount} caption="Mezuniyeti onaylı" icon={CheckCircle2} tone="emerald" />
+      <DrivingStatCard label="Sertifika" value={(data.certificates || []).length} caption="Düzenlenen belge" icon={FileBadge2} tone="violet" />
+      <DrivingStatCard label="Bekleyen Talep" value={(data.actionRequests || []).filter((x) => x.status === 'Pending' || x.status === 'FirstApproved').length} caption="İki onaylı akış" icon={AlertTriangle} tone="amber" />
+    </div>
     {setup && <Card className={setup.complete ? 'border-emerald-500/40' : 'border-amber-500/50'}><CardContent className="flex flex-wrap items-center justify-between gap-4 p-4"><div className="flex items-start gap-3">{setup.complete ? <CheckCircle2 className="mt-0.5 h-6 w-6 text-emerald-600" /> : <AlertTriangle className="mt-0.5 h-6 w-6 text-amber-600" />}<div><b>{setup.complete ? 'Kurum ve sertifika bilgileri hazır' : 'Kurum bilgileri tamamlanmalı'}</b><p className="text-sm text-muted-foreground">{setup.complete ? `${setup.directorName} • ${setup.directorTitle} • Asgari devam %${setup.minimumTheoryAttendancePercent}` : (setup.missingFields || []).map((x) => missingLabels[x] || x).join(', ')}</p></div></div>{can(DRIVING.settingsManage) && <Button variant="outline" onClick={() => { window.location.href = '/driving/assignments?tab=rules'; }}><Settings2 className="mr-2 h-4 w-4" />Kurum Bilgilerini Düzenle</Button>}</CardContent></Card>}
     <div className="grid gap-4 xl:grid-cols-2">{data.students.map((student) => {
       const graduation = data.graduations.find((x) => x.studentDrivingProfileId === student.id);
@@ -42,5 +55,5 @@ export default function DrivingGraduation() {
         {certificates.map((certificate) => <div key={certificate.id} className="rounded-xl border p-3 text-sm"><div className="flex justify-between"><b>{certificate.documentNumber} <span className="text-muted-foreground">v{certificate.version}</span></b><div className="flex gap-1"><Badge>{certificate.status}</Badge><Badge>{certificate.deliveryStatus}</Badge></div></div><p>{certificate.type} • {new Date(certificate.issuedAtUtc).toLocaleDateString('tr-TR')}</p>{certificate.reissueReason && <p className="text-muted-foreground">Yeniden basım: {certificate.reissueReason}</p>}<div className="mt-2 flex flex-wrap gap-2"><Button size="sm" variant="outline" onClick={() => download(certificate)}>PDF İndir</Button>{can(DRIVING.certificateDeliver) && certificate.deliveryStatus !== 'Delivered' && <Button size="sm" variant="outline" onClick={() => { const deliveredTo = window.prompt('Teslim alan kişi:'); if (deliveredTo?.trim().length >= 3) run(() => updateDrivingCertificateDelivery(certificate.id, { status: 'Delivered', deliveredTo, note: '' }), 'Belge teslim edildi'); }}>Teslim Edildi İşaretle</Button>}{can(DRIVING.certificateIssue) && certificate.status === 'Active' && <Button size="sm" variant="outline" onClick={() => { const reason = window.prompt('Yeniden basım gerekçesi:'); if (reason?.trim().length >= 10) run(() => reissueDrivingCertificate(certificate.id, reason), 'Yeni belge sürümü oluşturuldu'); }}>Yeniden Bas</Button>}{can(DRIVING.certificateRevoke) && certificate.status === 'Active' && <Button size="sm" variant="destructive" onClick={() => { const reason = window.prompt('Sertifika iptal gerekçesi:'); if (reason?.trim().length >= 10) run(() => revokeDrivingCertificate(certificate.id, reason), 'Sertifika iptal edildi'); }}>İptal Et</Button>}</div></div>)}
       </CardContent></Card>;
     })}</div>
-  </div>;
+  </DrivingPage>;
 }

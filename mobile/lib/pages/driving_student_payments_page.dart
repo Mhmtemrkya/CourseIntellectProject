@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 /// Sürücü adayının ödeme planı: kalan borç, taksitler, makbuzlar ve ücret kalemleri.
 /// Gecikmiş taksit varsa en üstte açıkça uyarılır.
@@ -46,9 +49,9 @@ class _DrivingStudentPaymentsPageState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Ödemelerim')),
-    body: FutureBuilder<Map<String, dynamic>>(
+  Widget build(BuildContext context) => DrivingScaffold(
+    appBar: AppBar(title: Text('Ödemelerim'.tr)),
+    child: FutureBuilder<Map<String, dynamic>>(
       future: _future,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {

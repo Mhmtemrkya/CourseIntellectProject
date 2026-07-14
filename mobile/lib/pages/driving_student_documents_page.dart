@@ -1,7 +1,10 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 /// Sürücü adayının kurs dosyası. Eksik ve reddedilen belgeler en üstte durur;
 /// ret nedeni aynen gösterilir ki aday doğru belgeyi yeniden yüklesin.
@@ -114,8 +117,8 @@ class _DrivingStudentDocumentsPageState
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Belge yüklendi, kurum onayı bekleniyor.'),
+          SnackBar(
+            content: Text('Belge yüklendi, kurum onayı bekleniyor.'.tr),
           ),
         );
       }
@@ -142,9 +145,9 @@ class _DrivingStudentDocumentsPageState
     final missing = (_file['missingCount'] as num?)?.toInt() ?? 0;
     final complete = _file['complete'] == true;
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Evraklarım')),
-      body: _loading
+    return DrivingScaffold(
+      appBar: AppBar(title: Text('Evraklarım'.tr)),
+      child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? Center(

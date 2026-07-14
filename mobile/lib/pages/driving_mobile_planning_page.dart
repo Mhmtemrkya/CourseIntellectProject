@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import 'package:student/i18n/app_locale.dart';
+
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 class DrivingMobilePlanningPage extends StatefulWidget {
   const DrivingMobilePlanningPage({super.key});
@@ -89,9 +92,9 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => DrivingScaffold(
     appBar: AppBar(
-      title: const Text('Mobil Planlama'),
+      title: Text('Mobil Planlama'.tr),
       bottom: TabBar(
         controller: _tabs,
         isScrollable: true,
@@ -103,7 +106,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
         ],
       ),
     ),
-    body: _loading
+    child: _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
         ? Center(
@@ -200,14 +203,14 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                                         ),
                                     'Talep onaylandı.',
                                   ),
-                            child: const Text('Onayla'),
+                            child: Text('Onayla'.tr),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
                           child: OutlinedButton(
                             onPressed: _saving ? null : () => _reject(x),
-                            child: const Text('Reddet'),
+                            child: Text('Reddet'.tr),
                           ),
                         ),
                       ],
@@ -233,7 +236,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
               child: FilledButton.icon(
                 onPressed: _saving ? null : _createStudent,
                 icon: const Icon(Icons.person_add),
-                label: const Text('Kursiyer Kaydı'),
+                label: Text('Kursiyer Kaydı'.tr),
               ),
             ),
             const SizedBox(width: 8),
@@ -241,7 +244,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
               child: OutlinedButton.icon(
                 onPressed: _saving ? null : _createInstructor,
                 icon: const Icon(Icons.co_present),
-                label: const Text('Öğretmen Atama'),
+                label: Text('Öğretmen Atama'.tr),
               ),
             ),
           ],
@@ -296,7 +299,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
       FilledButton.icon(
         onPressed: _saving ? null : _planLesson,
         icon: const Icon(Icons.add_task_rounded),
-        label: const Text('Yeni Direksiyon Dersi Planla'),
+        label: Text('Yeni Direksiyon Dersi Planla'.tr),
       ),
     ],
   );
@@ -306,7 +309,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: const Text('Talebi reddet'),
+        title: Text('Talebi reddet'.tr),
         content: TextField(
           controller: c,
           decoration: const InputDecoration(labelText: 'Ret nedeni'),
@@ -314,11 +317,11 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(d, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(d, true),
-            child: const Text('Reddet'),
+            child: Text('Reddet'.tr),
           ),
         ],
       ),
@@ -341,7 +344,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (_, setLocal) => AlertDialog(
-          title: const Text('Kursiyer sürücü kaydı'),
+          title: Text('Kursiyer sürücü kaydı'.tr),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -374,13 +377,13 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(d, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: studentId == null || packageId == null
                   ? null
                   : () => Navigator.pop(d, true),
-              child: const Text('Kaydet'),
+              child: Text('Kaydet'.tr),
             ),
           ],
         ),
@@ -409,7 +412,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (_, setLocal) => AlertDialog(
-          title: const Text('Direksiyon öğretmeni atama'),
+          title: Text('Direksiyon öğretmeni atama'.tr),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -433,12 +436,12 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
               ),
               CheckboxListTile(
                 value: manual,
-                title: const Text('Manuel'),
+                title: Text('Manuel'.tr),
                 onChanged: (v) => setLocal(() => manual = v == true),
               ),
               CheckboxListTile(
                 value: automatic,
-                title: const Text('Otomatik'),
+                title: Text('Otomatik'.tr),
                 onChanged: (v) => setLocal(() => automatic = v == true),
               ),
             ],
@@ -446,11 +449,11 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(d, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed: staffId == null ? null : () => Navigator.pop(d, true),
-              child: const Text('Ata'),
+              child: Text('Ata'.tr),
             ),
           ],
         ),
@@ -485,7 +488,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
       context: context,
       builder: (d) => StatefulBuilder(
         builder: (_, setLocal) => AlertDialog(
-          title: const Text('Ayrıntılı ders planlama'),
+          title: Text('Ayrıntılı ders planlama'.tr),
           content: SizedBox(
             width: 520,
             child: SingleChildScrollView(
@@ -531,7 +534,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                     onChanged: (v) => setLocal(() => vehicleId = v),
                   ),
                   ListTile(
-                    title: const Text('Başlangıç'),
+                    title: Text('Başlangıç'.tr),
                     subtitle: Text(_date(start)),
                     onTap: () async {
                       final v = await _pickDateTime(start);
@@ -544,7 +547,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                     },
                   ),
                   ListTile(
-                    title: const Text('Bitiş'),
+                    title: Text('Bitiş'.tr),
                     subtitle: Text(_date(end)),
                     onTap: () async {
                       final v = await _pickDateTime(end);
@@ -568,14 +571,14 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(d, false),
-              child: const Text('Vazgeç'),
+              child: Text('Vazgeç'.tr),
             ),
             FilledButton(
               onPressed:
                   studentId == null || instructorId == null || vehicleId == null
                   ? null
                   : () => Navigator.pop(d, true),
-              child: const Text('Planla'),
+              child: Text('Planla'.tr),
             ),
           ],
         ),

@@ -25,7 +25,7 @@ const SLOT_HEIGHT = 56; // 1 saat = 56px
 const STATUS_TONE = {
   Draft: 'bg-slate-500', Requested: 'bg-sky-500', WaitingApproval: 'bg-amber-500',
   Planned: 'bg-blue-500', Approved: 'bg-emerald-500', CheckedIn: 'bg-violet-500',
-  InProgress: 'bg-orange-500', Completed: 'bg-emerald-700', NoShow: 'bg-rose-600',
+  InProgress: 'bg-[hsl(var(--brand-accent))]', Completed: 'bg-emerald-700', NoShow: 'bg-rose-600',
   Rescheduled: 'bg-indigo-500', Suspended: 'bg-slate-500',
   Cancelled: 'bg-red-500', CancelledByStudent: 'bg-red-500',
   CancelledByInstructor: 'bg-red-500', CancelledByInstitution: 'bg-red-500',
@@ -185,7 +185,7 @@ export default function DrivingCalendar() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-black">Randevu Takvimi</h1>
+          <h1 className="text-3xl font-bold font-heading tracking-tight">Randevu Takvimi</h1>
           <p className="text-muted-foreground">
             {canReschedule
               ? 'Randevuyu sürükleyip bırakarak taşıyın — tüm uygunluk kuralları backend’de yeniden denetlenir.'

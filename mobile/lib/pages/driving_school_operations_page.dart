@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+
+import 'package:student/i18n/app_locale.dart';
 import 'package:file_picker/file_picker.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
+import '../widgets/driving_ui.dart';
 
 class DrivingSchoolOperationsPage extends StatefulWidget {
   const DrivingSchoolOperationsPage({super.key});
@@ -89,9 +92,9 @@ class _DrivingSchoolOperationsPageState
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
+  Widget build(BuildContext context) => DrivingScaffold(
     appBar: AppBar(
-      title: const Text('Paket ve Filo'),
+      title: Text('Paket ve Filo'.tr),
       bottom: TabBar(
         controller: _tabs,
         tabs: const [
@@ -110,9 +113,9 @@ class _DrivingSchoolOperationsPageState
                 ? _vehicleSheet()
                 : _complianceActions(),
             icon: const Icon(Icons.add),
-            label: const Text('Yeni Kayıt'),
+            label: Text('Yeni Kayıt'.tr),
           ),
-    body: _loading
+    child: _loading
         ? const Center(child: CircularProgressIndicator())
         : _error != null
         ? Center(
@@ -239,7 +242,7 @@ class _DrivingSchoolOperationsPageState
           ),
           const SizedBox(height: 8),
           if (open.isEmpty)
-            const Card(
+            Card(
               child: Padding(
                 padding: EdgeInsets.all(22),
                 child: Row(
@@ -247,7 +250,7 @@ class _DrivingSchoolOperationsPageState
                   children: [
                     Icon(Icons.check_circle_rounded, color: Colors.green),
                     SizedBox(width: 8),
-                    Text('Açık servis kaydı yok.'),
+                    Text('Açık servis kaydı yok.'.tr),
                   ],
                 ),
               ),
@@ -322,9 +325,9 @@ class _DrivingSchoolOperationsPageState
             DropdownButtonFormField<int>(
               initialValue: transmission,
               decoration: const InputDecoration(labelText: 'Vites'),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('Manuel')),
-                DropdownMenuItem(value: 2, child: Text('Otomatik')),
+              items: [
+                DropdownMenuItem(value: 1, child: Text('Manuel'.tr)),
+                DropdownMenuItem(value: 2, child: Text('Otomatik'.tr)),
               ],
               onChanged: (v) => setLocal(() => transmission = v ?? 1),
             ),
@@ -404,9 +407,9 @@ class _DrivingSchoolOperationsPageState
             DropdownButtonFormField<int>(
               initialValue: transmission,
               decoration: const InputDecoration(labelText: 'Vites'),
-              items: const [
-                DropdownMenuItem(value: 1, child: Text('Manuel')),
-                DropdownMenuItem(value: 2, child: Text('Otomatik')),
+              items: [
+                DropdownMenuItem(value: 1, child: Text('Manuel'.tr)),
+                DropdownMenuItem(value: 2, child: Text('Otomatik'.tr)),
               ],
               onChanged: (v) => setLocal(() => transmission = v ?? 1),
             ),
@@ -494,7 +497,7 @@ class _DrivingSchoolOperationsPageState
             if (_permissions.can(DrivingPermissions.vehicleDocumentUpload))
               ListTile(
                 leading: const Icon(Icons.upload_file_rounded),
-                title: const Text('Araç evrakı yükle'),
+                title: Text('Araç evrakı yükle'.tr),
                 onTap: () => Navigator.pop(context, 'document'),
               ),
             if (_permissions.canAny([
@@ -549,23 +552,23 @@ class _DrivingSchoolOperationsPageState
             DropdownButtonFormField<String>(
               initialValue: type,
               decoration: const InputDecoration(labelText: 'Belge türü'),
-              items: const [
-                DropdownMenuItem(value: 'Inspection', child: Text('Muayene')),
+              items: [
+                DropdownMenuItem(value: 'Inspection', child: Text('Muayene'.tr)),
                 DropdownMenuItem(
                   value: 'TrafficInsurance',
-                  child: Text('Trafik Sigortası'),
+                  child: Text('Trafik Sigortası'.tr),
                 ),
-                DropdownMenuItem(value: 'Registration', child: Text('Ruhsat')),
-                DropdownMenuItem(value: 'Casco', child: Text('Kasko')),
+                DropdownMenuItem(value: 'Registration', child: Text('Ruhsat'.tr)),
+                DropdownMenuItem(value: 'Casco', child: Text('Kasko'.tr)),
                 DropdownMenuItem(
                   value: 'Emission',
-                  child: Text('Egzoz Emisyon'),
+                  child: Text('Egzoz Emisyon'.tr),
                 ),
                 DropdownMenuItem(
                   value: 'CourseUsage',
-                  child: Text('Kurs Kullanım Belgesi'),
+                  child: Text('Kurs Kullanım Belgesi'.tr),
                 ),
-                DropdownMenuItem(value: 'Other', child: Text('Diğer')),
+                DropdownMenuItem(value: 'Other', child: Text('Diğer'.tr)),
               ],
               onChanged: (v) => setLocal(() => type = v ?? type),
             ),
@@ -715,12 +718,12 @@ class _DrivingSchoolOperationsPageState
               decoration: const InputDecoration(labelText: 'Kayıt türü'),
               items: [
                 if (canManage)
-                  const DropdownMenuItem(
+                  DropdownMenuItem(
                     value: 'Maintenance',
-                    child: Text('Bakım'),
+                    child: Text('Bakım'.tr),
                   ),
-                const DropdownMenuItem(value: 'Fault', child: Text('Arıza')),
-                const DropdownMenuItem(value: 'Damage', child: Text('Hasar')),
+                DropdownMenuItem(value: 'Fault', child: Text('Arıza'.tr)),
+                DropdownMenuItem(value: 'Damage', child: Text('Hasar'.tr)),
               ],
               onChanged: (v) => setLocal(() => type = v ?? type),
             ),
@@ -740,11 +743,11 @@ class _DrivingSchoolOperationsPageState
             DropdownButtonFormField<String>(
               initialValue: priority,
               decoration: const InputDecoration(labelText: 'Öncelik'),
-              items: const [
-                DropdownMenuItem(value: 'Low', child: Text('Düşük')),
-                DropdownMenuItem(value: 'Normal', child: Text('Normal')),
-                DropdownMenuItem(value: 'High', child: Text('Yüksek')),
-                DropdownMenuItem(value: 'Critical', child: Text('Kritik')),
+              items: [
+                DropdownMenuItem(value: 'Low', child: Text('Düşük'.tr)),
+                DropdownMenuItem(value: 'Normal', child: Text('Normal'.tr)),
+                DropdownMenuItem(value: 'High', child: Text('Yüksek'.tr)),
+                DropdownMenuItem(value: 'Critical', child: Text('Kritik'.tr)),
               ],
               onChanged: (v) => setLocal(() => priority = v ?? priority),
             ),
@@ -776,7 +779,7 @@ class _DrivingSchoolOperationsPageState
             SwitchListTile(
               value: usable,
               onChanged: (v) => setLocal(() => usable = v),
-              title: const Text('Araç güvenle kullanılabilir'),
+              title: Text('Araç güvenle kullanılabilir'.tr),
               contentPadding: EdgeInsets.zero,
             ),
           ],
@@ -809,7 +812,7 @@ class _DrivingSchoolOperationsPageState
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Servis kaydını kapat'),
+        title: Text('Servis kaydını kapat'.tr),
         content: TextField(
           controller: controller,
           maxLength: 2000,
@@ -821,11 +824,11 @@ class _DrivingSchoolOperationsPageState
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Vazgeç'),
+            child: Text('Vazgeç'.tr),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Kapat'),
+            child: Text('Kapat'.tr),
           ),
         ],
       ),
@@ -864,7 +867,7 @@ class _DrivingSchoolOperationsPageState
           FilledButton.icon(
             onPressed: save,
             icon: const Icon(Icons.save_rounded),
-            label: const Text('Kaydet'),
+            label: Text('Kaydet'.tr),
           ),
         ],
       ),
