@@ -73,6 +73,7 @@ public static class DependencyInjection
         services.AddScoped<IHomeworkService, HomeworkService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
         services.AddSingleton<IDrivingCertificatePdfService, DrivingCertificatePdfService>();
+        services.AddSingleton<IDrivingReportPdfService, DrivingReportPdfService>();
         services.AddScoped<IAccountingService, AccountingService>();
         services.AddScoped<IStaffManagementService, StaffManagementService>();
         services.AddScoped<INotificationService, NotificationService>();

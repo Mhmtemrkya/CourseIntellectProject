@@ -119,6 +119,7 @@ const DrivingCalendar = lazyWithReload(() => import("./pages/driving/DrivingCale
 const DrivingStudentDetail = lazyWithReload(() => import("./pages/driving/DrivingStudentDetail"));
 const DrivingEducation = lazyWithReload(() => import("./pages/driving/DrivingEducation"));
 const DrivingGraduation = lazyWithReload(() => import("./pages/driving/DrivingGraduation"));
+const DrivingReports = lazyWithReload(() => import("./pages/driving/DrivingReports"));
 
 // Parent Pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -336,6 +337,7 @@ function App() {
               <Route path="/driving/students/:profileId" element={<DrivingStudentDetail />} />
               <Route path="/driving/education" element={<DrivingEducation />} />
               <Route path="/driving/graduation" element={<DrivingGraduation />} />
+              <Route path="/driving/reports" element={<DrivingReports />} />
               <Route path="/admin/password-reset-requests" element={<PasswordResetRequests />} />
               <Route path="/cafeteria/menu" element={<CafeteriaWeeklyMenu editable />} />
               <Route path="/admin/destek" element={<Destek />} />

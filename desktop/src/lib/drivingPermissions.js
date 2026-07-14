@@ -69,6 +69,7 @@ export const DRIVING = {
   financeReportView: 'driving.finance.report.view',
 
   reportView: 'driving.report.view',
+  reportExport: 'driving.report.export',
   permissionManage: 'driving.permission.manage',
 
   overrideVehicleCompliance: 'driving.override.vehicle_compliance',
@@ -123,6 +124,7 @@ const PATH_PERMISSIONS = {
   '/driving/fleet-compliance': [DRIVING.vehicleDocumentView, DRIVING.vehicleServiceView],
   '/driving/education': [DRIVING.theoryView, DRIVING.examView],
   '/driving/graduation': [DRIVING.graduationView],
+  '/driving/reports': [DRIVING.reportView],
 };
 
 export function isDrivingPathAllowed(path, state) {

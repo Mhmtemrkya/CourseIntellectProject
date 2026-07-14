@@ -112,6 +112,7 @@ export const menuConfigs = {
     { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
     { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
     { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true },
+    { path: "/driving/reports", icon: BarChart3, label: "Raporlar", color: "#0891b2", special: true },
     {
       path: "/admin/kpi",
       icon: BarChart3,

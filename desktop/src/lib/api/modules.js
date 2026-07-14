@@ -99,6 +99,13 @@ export const createDrivingStudent = (payload) => api.post('/api/driving-school/s
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
 export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
 export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });
+
+// Raporlar: ekran, CSV ve PDF sunucudaki AYNI belgeden üretilir — istemci tarafında
+// yeniden hesap yapma, yoksa üç çıktı ayrışır.
+export const fetchDrivingReport = (reportKey, params = {}) =>
+  api.get(`/api/driving-school/reports/${reportKey}`, { params });
+export const downloadDrivingReport = (reportKey, format, params = {}) =>
+  api.get(`/api/driving-school/reports/${reportKey}/export`, { params: { ...params, format }, responseType: 'blob' });
 export const fetchDrivingCalendar = (params) => api.get('/api/driving-school/calendar', { params });
 export const fetchDrivingEducationOverview = (params = {}) => api.get('/api/driving-school/education/overview', { params });
 export const createDrivingTheoryClass = (payload) => api.post('/api/driving-school/theory/classes', payload);
