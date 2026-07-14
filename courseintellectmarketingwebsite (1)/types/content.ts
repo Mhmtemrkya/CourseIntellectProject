@@ -56,6 +56,8 @@ export interface PricingPlan {
   priceYearly: number
   features: string[]
   isPopular?: boolean
+  /** Fiyat henüz belli değil / teklife bağlı: rakam yerine "Özel Fiyat" gösterilir. */
+  isCustomPrice?: boolean
   ctaText: string
 }
 

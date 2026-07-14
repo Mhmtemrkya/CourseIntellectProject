@@ -9,6 +9,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { Switch } from "@/components/ui/switch"
 import { useSectionContent } from "@/context/content-context"
 import { cn } from "@/lib/utils"
+import type { PricingPlan } from "@/types/content"
+
+// Fiyatı teklife bağlı plan: rakam yerine "Özel Fiyat", satın alma yerine iletişim.
+// Adı "Kurumsal" olan plan geriye dönük uyum için hâlâ kabul edilir — yönetim
+// panelinden gelen eski içerikte isCustomPrice bayrağı bulunmuyor.
+function isCustomPriced(plan: PricingPlan) {
+  return plan.isCustomPrice === true || plan.name === "Kurumsal"
+}
 
 export default function PricingPage() {
   const pricingContent = useSectionContent("pricing")
@@ -64,7 +72,7 @@ export default function PricingPage() {
       {/* Pricing Cards */}
       <section className="py-16">
         <div className="container mx-auto px-4 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid gap-8 max-w-7xl mx-auto md:grid-cols-2 xl:grid-cols-4">
             {pricingContent.plans.map((plan, index) => (
               <motion.div
                 key={plan.id}
@@ -95,7 +103,7 @@ export default function PricingPage() {
                     <div className="text-center py-4">
                       {plan.priceMonthly === 0 ? (
                         <div className="text-4xl font-bold text-foreground">
-                          {plan.name === "Kurumsal" ? "Özel Fiyat" : "Ücretsiz"}
+                          {isCustomPriced(plan) ? "Özel Fiyat" : "Ücretsiz"}
                         </div>
                       ) : (
                         <>
@@ -125,7 +133,7 @@ export default function PricingPage() {
                     {/* CTA */}
                     <Link
                       href={
-                        plan.name === "Kurumsal"
+                        isCustomPriced(plan)
                           ? "/iletisim"
                           : plan.priceMonthly === 0
                             ? "/kurum-kaydi"
@@ -141,7 +149,7 @@ export default function PricingPage() {
                             : "bg-primary hover:bg-primary/90 text-primary-foreground",
                         )}
                       >
-                        {plan.priceMonthly > 0 && plan.name !== "Kurumsal" ? "Satın Al" : plan.ctaText}
+                        {plan.priceMonthly > 0 && !isCustomPriced(plan) ? "Satın Al" : plan.ctaText}
                       </Button>
                     </Link>
                   </CardContent>
