@@ -5,7 +5,6 @@ import {
   ChevronDown,
   ChevronLeft,
   Command,
-  GraduationCap,
   Layers,
   LogOut,
   Menu,
@@ -22,6 +21,7 @@ import { getInstitutionType, isModuleAllowedForInstitution } from "../../lib/ins
 import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
+import brandLogo from "../../assets/brand/emblem.png";
 import { FloatingParticles, GlowingOrb } from "../animations/AnimatedBackground";
 import {
   ROLE_LABELS,
@@ -228,7 +228,19 @@ export function PremiumSidebar() {
             return isModuleAllowed(entitlements, primaryRole, moduleKey);
           })
         : institutionFilteredItems;
-    return buildGroupedMenuItems(visibleItems, primaryRole);
+    // Sürücü kursunda "Sorular" (öğrenci→öğretmen thread akışı) kullanılmıyor;
+    // menü ehliyet SORU BANKASINA yönlenir. Böylece bulk-yükleme ile eklenen
+    // sorular aynı yerde görünür ('questions' modülü her zaman açık olduğundan
+    // 'question-bank' modülü tenant pakette olmasa bile erişim garanti).
+    const routedItems =
+      institutionType === "DrivingSchool"
+        ? visibleItems.map((item) =>
+            item.path === "/questions"
+              ? { ...item, path: "/t/question-bank", label: "Soru Bankası" }
+              : item,
+          )
+        : visibleItems;
+    return buildGroupedMenuItems(routedItems, primaryRole);
   }, [
     disabledFeatures,
     entitlements,
@@ -353,20 +365,16 @@ export function PremiumSidebar() {
                 className="h-10 w-10 flex-shrink-0 rounded-xl object-contain shadow-lg"
               />
             ) : (
-              <div
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl shadow-lg"
-                style={{
-                  background:
-                    "linear-gradient(145deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)))",
-                }}
-              >
-                <GraduationCap className="h-5 w-5 text-white" />
-              </div>
+              <img
+                src={brandLogo}
+                alt="SchoolAsist"
+                className="h-10 w-10 flex-shrink-0 rounded-xl object-contain shadow-lg"
+              />
             )}
             {!compact && (
               <div className="min-w-0">
                 <p className={cn("truncate text-[16px] font-bold", light ? "text-slate-950" : "text-white")}>
-                  Course<span className="text-[hsl(var(--brand-accent))]">Intellect</span>
+                  School<span className="text-[hsl(var(--brand-accent))]">Asist</span>
                 </p>
                 <p className={cn("max-w-[154px] truncate text-[9px]", light ? "text-slate-500" : "text-foreground/38")}>
                   {tenantName || ROLE_LABELS[primaryRole]}

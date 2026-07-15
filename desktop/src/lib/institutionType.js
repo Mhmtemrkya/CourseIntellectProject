@@ -36,7 +36,11 @@ const DRIVING_SCHOOL_ALLOWED = new Set([
   'driving-fleet-compliance', 'driving-assignments', 'driving-reports',
   // Her kurum türünün ortak kullandığı altyapı
   'content',            // Konu Anlatımı (trafik/ilk yardım materyalleri)
-  'questions', 'question-bank', // e-sınav soru bankası + toplu yükleme
+  // Sürücü kursunda "Sorular" menüsü ehliyet SORU BANKASINA yönlenir (aşağıda
+  // PremiumSidebar'da /questions → /t/question-bank olarak yeniden yazılır).
+  // Bu yüzden yalnızca 'questions' anahtarı açık; 'question-bank' gizli tutulur
+  // ki menüde iki "soru" girişi (Sorular + Soru Bankası) çift görünmesin.
+  'questions',          // sürücü kursunda soru bankasına yönlenir
   'chat',               // mesajlaşma
   'notifications',      // bildirimler + duyurular
   'documents',          // belge merkezi
