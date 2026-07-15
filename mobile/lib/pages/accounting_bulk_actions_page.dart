@@ -9,8 +9,7 @@ class AccountingBulkActionsPage extends StatelessWidget {
   const AccountingBulkActionsPage({super.key});
 
   @override
-  Widget 
-  build(BuildContext context) {
+  Widget build(BuildContext context) {
     final store = AccountingFinanceStore.instance;
     final overdue = store.installments
         .where((item) => item.status == 'Geciken')
