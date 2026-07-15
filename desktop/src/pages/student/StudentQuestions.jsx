@@ -31,6 +31,7 @@ import {
 import { Textarea } from '../../components/ui/textarea';
 import { desktopApiBaseUrl } from '../../lib/auth';
 import { collectNewBadges } from '../../lib/badges';
+import { isImageValue, buildQuestionImageUrl, stripOptionPrefix } from '../../lib/questionMedia';
 import BadgeUnlockModal from '../../components/badges/BadgeUnlockModal';
 
 const containerVariants = {
@@ -705,7 +706,19 @@ export default function StudentQuestions() {
                           }`}
                           onClick={() => setSelectedOption(index)}
                         >
-                          {String.fromCharCode(65 + index)}. {option}
+                          {isImageValue(stripOptionPrefix(option)) ? (
+                            <span className="flex items-center gap-2">
+                              <span className="shrink-0 font-bold">{String.fromCharCode(65 + index)}.</span>
+                              <img
+                                src={buildQuestionImageUrl(stripOptionPrefix(option))}
+                                alt={`${String.fromCharCode(65 + index)} şıkkı`}
+                                loading="lazy"
+                                className="max-h-40 w-auto rounded-lg object-contain"
+                              />
+                            </span>
+                          ) : (
+                            <>{String.fromCharCode(65 + index)}. {option}</>
+                          )}
                         </button>
                       ))}
                     </div>

@@ -9,6 +9,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
+import { isImageValue, buildQuestionImageUrl, stripOptionPrefix } from '../../lib/questionMedia';
 import {
   addStudyPlanXp,
   fetchQuestionBank,
@@ -147,7 +148,16 @@ export default function StudentQuestionPractice() {
                           : 'hover:border-brand-primary/40'
                       }`}
                     >
-                      {option}
+                      {isImageValue(stripOptionPrefix(option)) ? (
+                        <img
+                          src={buildQuestionImageUrl(stripOptionPrefix(option))}
+                          alt={`${String.fromCharCode(65 + index)} şıkkı`}
+                          loading="lazy"
+                          className="max-h-40 w-auto rounded-lg object-contain"
+                        />
+                      ) : (
+                        option
+                      )}
                     </button>
                   ))}
                 </div>

@@ -25,6 +25,7 @@ import {
   submitExamSessionAnswer,
 } from '../../lib/api/modules';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { isImageValue, stripOptionPrefix } from '../../lib/questionMedia';
 
 const SUBJECT_COLORS = {
   Matematik: { gradient: 'from-sky-500 to-blue-600', tint: 'bg-sky-500/10 text-sky-700', mark: 'M', tagline: 'Sayısal akış ve hız kontrolü' },
@@ -417,7 +418,18 @@ export default function StudentExams({ mockOnly = false }) {
                           <div className={`flex h-12 w-12 items-center justify-center rounded-2xl text-sm font-black ${selected ? 'bg-brand-primary text-white' : 'bg-muted text-foreground'}`}>
                             {String.fromCharCode(65 + index)}
                           </div>
-                          <div className="flex-1 font-medium">{option}</div>
+                          <div className="flex-1 font-medium">
+                            {isImageValue(stripOptionPrefix(option)) ? (
+                              <img
+                                src={buildImageUrl(stripOptionPrefix(option))}
+                                alt={`${String.fromCharCode(65 + index)} şıkkı`}
+                                loading="lazy"
+                                className="max-h-40 w-auto rounded-lg object-contain"
+                              />
+                            ) : (
+                              option
+                            )}
+                          </div>
                           {selected ? <CheckCircle2 className="h-5 w-5 text-brand-primary" /> : null}
                         </button>
                       );

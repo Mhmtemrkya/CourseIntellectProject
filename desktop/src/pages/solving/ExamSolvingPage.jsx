@@ -9,6 +9,7 @@ import { DrawingCanvas } from '../../features/solving/canvas/DrawingCanvas';
 import CameraMonitor from '../../components/student/CameraMonitor';
 import { useApp } from '../../context/AppContext';
 import { desktopApiBaseUrl } from '../../lib/auth';
+import { isImageValue } from '../../lib/questionMedia';
 import {
   addSolutionTeacherReview,
   completeSolutionSession,
@@ -459,15 +460,26 @@ export default function ExamSolvingPage() {
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                 {question.options.map((option, index) => {
                   const selected = question?.answer?.selectedOptionIndex === index;
+                  const raw = String(option).replace(/^[A-F]\)\s*/i, '').trim();
+                  const optionImageUrl = isImageValue(raw) ? buildImageUrl(raw) : null;
                   return (
                     <button
                       key={`${option}-${index}`}
                       type="button"
                       onClick={() => handleAnswer(index)}
-                      className={`rounded-2xl border px-4 py-4 text-left text-sm font-bold transition ${selected ? 'border-orange-400 bg-orange-500/20 text-orange-100 shadow-lg shadow-orange-500/15' : 'border-foreground/10 bg-foreground/5 text-slate-100 hover:border-orange-400/60'}`}
+                      className={`flex items-center rounded-2xl border px-4 py-4 text-left text-sm font-bold transition ${selected ? 'border-orange-400 bg-orange-500/20 text-orange-100 shadow-lg shadow-orange-500/15' : 'border-foreground/10 bg-foreground/5 text-slate-100 hover:border-orange-400/60'}`}
                     >
-                      <span className="mr-3 text-orange-300">{optionLabels[index]})</span>
-                      {String(option).replace(/^[A-F]\)\s*/i, '')}
+                      <span className="mr-3 shrink-0 text-orange-300">{optionLabels[index]})</span>
+                      {optionImageUrl ? (
+                        <img
+                          src={optionImageUrl}
+                          alt={`${optionLabels[index]} şıkkı`}
+                          loading="lazy"
+                          className="max-h-40 w-auto rounded-xl border border-foreground/10 bg-white/5 object-contain"
+                        />
+                      ) : (
+                        <span>{raw}</span>
+                      )}
                     </button>
                   );
                 })}
