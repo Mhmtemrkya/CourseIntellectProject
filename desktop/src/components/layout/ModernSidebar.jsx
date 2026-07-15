@@ -1181,7 +1181,7 @@ const MODULE_MENU_REGISTRY = {
     student: { path: "/s/questions", icon: Brain, label: "Soru Bankası", color: "#14b8a6" },
   },
   "question-bank": {
-    default: { path: "/questions", icon: Brain, label: "Soru Bankası", color: "#8b5cf6" },
+    default: { path: "/t/question-bank", icon: Brain, label: "Soru Bankası", color: "#8b5cf6", special: true },
     teacher: { path: "/t/question-bank", icon: Brain, label: "Soru Bankası", color: "#8b5cf6", special: true },
     student: { path: "/s/questions", icon: Brain, label: "Soru Bankası", color: "#14b8a6" },
   },
