@@ -9,7 +9,7 @@ import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../../components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
@@ -570,14 +570,15 @@ export default function TeacherContent() {
           <p className="mt-1 text-sm text-muted-foreground">Derslerinize ait konu anlatımlarınızı oluşturun, düzenleyin ve paylaşın.</p>
         </div>
         <Dialog open={uploadOpen} onOpenChange={setUploadOpen}>
-          <DialogTrigger asChild>
-            <FeatureGate module="content" action="upload">
-              <Button className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
-                <Upload className="h-4 w-4 mr-2" />
-                Yeni İçerik Ekle
-              </Button>
-            </FeatureGate>
-          </DialogTrigger>
+          <FeatureGate module="content" action="upload">
+            {/* DialogTrigger+asChild, FeatureGate sarmalayıcısına onClick'i
+                iletmediği için buton tepkisiz kalıyordu; doğrudan setUploadOpen
+                ile açıyoruz (boş-durum butonuyla aynı davranış). */}
+            <Button onClick={() => setUploadOpen(true)} className="bg-[hsl(var(--brand-accent))] font-bold text-white hover:bg-[hsl(var(--brand-accent-hover))]">
+              <Upload className="h-4 w-4 mr-2" />
+              Yeni İçerik Ekle
+            </Button>
+          </FeatureGate>
           <DialogContent className="max-h-[94vh] w-[calc(100vw-1rem)] max-w-7xl overflow-y-auto border-foreground/10 bg-[hsl(var(--ci-card))] p-0 text-foreground shadow-2xl sm:w-[calc(100vw-2rem)]">
             <div className="border-b border-foreground/10 bg-gradient-to-r from-[hsl(var(--ci-card))] via-[hsl(var(--ci-card))] to-[#160f08] px-6 py-5">
               <DialogHeader>
