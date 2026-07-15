@@ -62,6 +62,18 @@ flutter_launcher_icons:
   adaptive_icon_background: "#FFFFFF"
   adaptive_icon_foreground: assets/logo/school_asist_adaptive_fg.png
   remove_alpha_ios: true
+  macos:
+    generate: true
+    image_path: assets/logo/school_asist_icon.png
+  windows:
+    generate: true
+    image_path: assets/logo/school_asist_icon.png
+    icon_size: 256
+  web:
+    generate: true
+    image_path: assets/logo/school_asist_icon.png
+    background_color: "#FFFFFF"
+    theme_color: "#F59E0B"
 
 flutter_native_splash:
   color: "#F4F6FA"
