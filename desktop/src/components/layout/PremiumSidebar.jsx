@@ -18,7 +18,7 @@ import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
-import { getInstitutionType, isPathHiddenForInstitution } from "../../lib/institutionType";
+import { getInstitutionType, isModuleAllowedForInstitution } from "../../lib/institutionType";
 import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
@@ -212,10 +212,12 @@ export function PremiumSidebar() {
             (item) => !isPathDisabled(item.path, disabledFeatures),
           )
         : roleFilteredItems;
-    // Kurum türü: sürücü kursunda okula özgü menüler gizlenir (silinmez —
-    // okul kurumları kullanmaya devam eder).
-    const institutionFilteredItems = featureFilteredItems.filter(
-      (item) => !isPathHiddenForInstitution(item.path, institutionType),
+    // Kurum türü: sürücü kursunda YALNIZCA sürücü kursuna ait + ortak modüller
+    // görünür (allowlist). Okula özgü modüller gizlenir — silinmez, okul
+    // kurumları kullanmaya devam eder. Modül anahtarı üzerinden çalışır ki
+    // /admin/exam-papers → "reports" gibi yol-eşleşme tuzaklarına takılmasın.
+    const institutionFilteredItems = featureFilteredItems.filter((item) =>
+      isModuleAllowedForInstitution(inferModuleKey(item), institutionType, item.path),
     );
     // Paket yetkisi: kurumun paketi bu rol için modülü içermiyorsa menüden gizle.
     const visibleItems =

@@ -21,39 +21,53 @@ export function resetInstitutionTypeCache() {
   pending = null;
 }
 
-// Sürücü kursunda anlamı olmayan, okula özgü menüler. Kurs yöneticisi bunları
-// görmemeli — sürücü kursunda servis/yemekhane/nöbet/veli/kurs yönetimi yok ve
-// sınav akışı kendi modülünde (Teorik Eğitim & Sınav) yürüyor.
+// Sürücü kursunda GÖRÜNECEK modül anahtarları (ALLOWLIST). Buraya yazılmayan her
+// modül — okula özgü olan academics, students, teachers, classes, attendance,
+// exams, parents, cafeteria, duties, kpi, operations, records, courses, library
+// vb. — sürücü kursunda gizlenir.
 //
-// SİLMİYORUZ, yalnızca gizliyoruz: okul kurumları bu özellikleri kullanmaya
-// devam ediyor.
-const SCHOOL_ONLY_PATHS = [
-  '/admin/service-tracking',
-  '/driver',
-  '/p/service',
-  '/s/service',
-  '/cafeteria',
-  '/admin/duty-create',
-  '/admin/duties',
-  '/parents',
-  '/p/children',
-  '/admin/courses',
-  // İçerik tarafında yalnızca "Sorular" kalır; okul sınav akışı gizlenir.
-  '/exams',
-  '/t/exams',
-  '/s/exams',
-  '/t/mock-exams',
-  '/s/mock-exams',
-  '/t/grade-entry',
-  '/s/exam-results',
-  '/t/student-exams',
-  '/t/exam-workbench',
-  '/p/exams',
-];
+// Neden allowlist? Denylist (gizlenecekleri saymak) kırılgan: yeni bir okul
+// modülü eklendiğinde listeye yazmayı unutursak sürücü kursunda sızıyordu.
+// Allowlist ile varsayılan "gizli"dir; bir modülün görünmesi bilinçli bir karar.
+const DRIVING_SCHOOL_ALLOWED = new Set([
+  // Sürücü kursunun kendi modülleri
+  'driving-school', 'driving-registration', 'driving-operations', 'driving-scheduling',
+  'driving-calendar', 'driving-lessons', 'driving-education', 'driving-graduation',
+  'driving-fleet-compliance', 'driving-assignments', 'driving-reports',
+  // Her kurum türünün ortak kullandığı altyapı
+  'content',            // Konu Anlatımı (trafik/ilk yardım materyalleri)
+  'questions', 'question-bank', // e-sınav soru bankası + toplu yükleme
+  'chat',               // mesajlaşma
+  'notifications',      // bildirimler + duyurular
+  'documents',          // belge merkezi
+  // Finans ailesi (sürücü kursunda tam finans var)
+  'finance', 'billing', 'collections', 'installments', 'late-payments',
+  'discounts-scholarships', 'collection-calendar', 'reconciliation', 'bulk-actions',
+  'overdue-rules', 'cash-report', 'ledger', 'finance-export', 'finance-audit-log',
+  'finance-detail-hub', 'student-accounts', 'salary', 'payments', 'receipts', 'approvals',
+  // Yönetim altyapısı
+  'audit-log', 'role-management', 'rbac', 'password-reset', 'staff-hr', 'registrations',
+  'customization', 'ai', 'ai-management', 'support',
+]);
 
-export function isPathHiddenForInstitution(path, institutionType) {
-  if (!path || institutionType !== 'DrivingSchool') return false;
-  return SCHOOL_ONLY_PATHS.some(
-    (prefix) => path === prefix || path.startsWith(`${prefix}/`),
-  );
+// Kurum türünden bağımsız her zaman görünür (profil, ayarlar, ve anahtarı
+// olmayan/genel öğeler).
+const ALWAYS_VISIBLE = new Set(['profile', 'system', '']);
+
+// Modül anahtarı izinli OLSA DA sürücü kursunda gizlenecek tekil yollar.
+// Gerekçe: "registrations" anahtarı hem personel/muhasebe kaydını (gerekli) hem
+// okul öğrenci kaydını (gereksiz — sürücü kursunda "Yeni Kursiyer" var) taşıyor.
+// Anahtar bunları ayıramadığı için yolu tek tek eliyoruz.
+const DRIVING_SCHOOL_HIDDEN_PATHS = new Set([
+  '/admin/student-registration',
+]);
+
+// Bir menü öğesi bu kurumda görünmeli mi? Yalnızca DrivingSchool'da filtreler;
+// diğer kurum türlerinde her şey görünür.
+export function isModuleAllowedForInstitution(moduleKey, institutionType, path) {
+  if (institutionType !== 'DrivingSchool') return true;
+  if (path && DRIVING_SCHOOL_HIDDEN_PATHS.has(path)) return false;
+  const key = moduleKey || '';
+  if (ALWAYS_VISIBLE.has(key)) return true;
+  return DRIVING_SCHOOL_ALLOWED.has(key);
 }
