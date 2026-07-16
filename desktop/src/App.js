@@ -114,6 +114,8 @@ const DrivingScheduling = lazyWithReload(() => import("./pages/driving/DrivingSc
 const DrivingLessons = lazyWithReload(() => import("./pages/driving/DrivingLessons"));
 const DrivingFleetCompliance = lazyWithReload(() => import("./pages/driving/DrivingFleetCompliance"));
 const DrivingStudentWizard = lazyWithReload(() => import("./pages/driving/DrivingStudentWizard"));
+const DrivingStudents = lazyWithReload(() => import("./pages/driving/DrivingStudents"));
+const DrivingVehicles = lazyWithReload(() => import("./pages/driving/DrivingVehicles"));
 const DrivingAssignments = lazyWithReload(() => import("./pages/driving/DrivingAssignments"));
 const DrivingCalendar = lazyWithReload(() => import("./pages/driving/DrivingCalendar"));
 const DrivingStudentDetail = lazyWithReload(() => import("./pages/driving/DrivingStudentDetail"));
@@ -336,6 +338,8 @@ function App() {
               <Route path="/driving/fleet-compliance" element={<DrivingFleetCompliance />} />
               <Route path="/driving/calendar" element={<DrivingCalendar />} />
               <Route path="/driving/assignments" element={<DrivingAssignments />} />
+              <Route path="/driving/students" element={<DrivingStudents />} />
+              <Route path="/driving/vehicles" element={<DrivingVehicles />} />
               <Route path="/driving/students/new" element={<DrivingStudentWizard />} />
               <Route path="/driving/students/:profileId" element={<DrivingStudentDetail />} />
               <Route path="/driving/education" element={<DrivingEducation />} />
