@@ -399,7 +399,10 @@ export default function DrivingStudents() {
                     {student.fullName?.[0] || '?'}
                   </div>
                   <div className="min-w-0">
-                    <p className="truncate font-bold">{student.fullName}</p>
+                    <p className="truncate font-bold">
+                      {student.studentNumber != null && <span className="mr-1 text-xs font-black text-muted-foreground">#{student.studentNumber}</span>}
+                      {student.fullName}
+                    </p>
                     <p className="truncate text-xs text-muted-foreground">
                       {student.licenseClass} • {transmissionLabel(student.transmissionType)}
                     </p>

@@ -2724,4 +2724,7 @@ const Map<String, String> kTrEn = {
   'gecikmiş': 'overdue',
   'Vade yok': 'No due date',
   'Tüm gruplar': 'All groups',
+  'Taksit': 'Installment',
+  'Otomatik (en eski vade)': 'Automatic (oldest due)',
+  'Seri no': 'Serial no',
 };

@@ -105,6 +105,14 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
     final noteCtrl = TextEditingController();
     var method = 'Nakit';
     String? branchId;
+    String? installmentId;
+    List<Map<String, dynamic>> installments;
+    try {
+      installments = await _service.installments('${row['profileId']}');
+    } catch (_) {
+      installments = <Map<String, dynamic>>[];
+    }
+    if (!mounted) return;
 
     final done = await showDialog<bool>(
       context: context,
@@ -121,6 +129,28 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
                     '${'Kalan'.tr}: ${_money(row['remaining'])}${overdue > 0 ? ' • ${'Gecikmiş'.tr}: ${_money(overdue)}' : ''}',
                     style: const TextStyle(fontSize: 12, color: Colors.grey),
                   ),
+                ),
+                DropdownButtonFormField<String?>(
+                  initialValue: installmentId,
+                  isExpanded: true,
+                  decoration: InputDecoration(labelText: 'Taksit'.tr),
+                  items: [
+                    DropdownMenuItem(value: null, child: Text('Otomatik (en eski vade)'.tr)),
+                    ...installments.map((i) => DropdownMenuItem(
+                          value: '${i['id']}',
+                          child: Text(
+                            '${i['label'] ?? '${i['seqNo']}. taksit'} • ${_dateOnly(i['dueDateUtc'])} • ${_money(i['remaining'])}',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        )),
+                  ],
+                  onChanged: (v) => setD(() {
+                    installmentId = v;
+                    final chosen = installments.where((i) => '${i['id']}' == v).toList();
+                    if (chosen.isNotEmpty) {
+                      amountCtrl.text = '${(chosen.first['remaining'] as num?)?.toInt() ?? amountCtrl.text}';
+                    }
+                  }),
                 ),
                 TextField(
                   controller: amountCtrl,
@@ -164,6 +194,7 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
                     amount: amount,
                     method: method,
                     branchId: branchId,
+                    financeInstallmentId: installmentId,
                     note: noteCtrl.text.trim(),
                   );
                   if (dialogContext.mounted) Navigator.pop(dialogContext, true);
@@ -277,6 +308,10 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
                 children: [
                   Row(
                     children: [
+                      if (r['studentNumber'] != null) ...[
+                        Text('#${r['studentNumber']}', style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 11, color: Colors.grey)),
+                        const SizedBox(width: 4),
+                      ],
                       Flexible(child: Text('${r['fullName']}', style: const TextStyle(fontWeight: FontWeight.w800))),
                       const SizedBox(width: 6),
                       DrivingStatusPill(label: _statusLabels['${r['status']}'] ?? '${r['status']}', tone: DrivingTone.accent),

@@ -180,6 +180,8 @@ export const updateDrivingSettings = (payload) => api.put('/api/driving-school/s
 
 // ─── Kayıt sihirbazı, kurs dosyası ve öğrenci detay merkezi ───────────────────
 export const checkDrivingIdentity = (identityNumber) => api.get('/api/driving-school/students/check-identity', { params: { identityNumber } });
+export const checkDrivingPhone = (phone) => api.get('/api/driving-school/students/check-phone', { params: { phone } });
+export const fetchDrivingInstallments = (profileId) => api.get(`/api/driving-school/students/${profileId}/installments`);
 export const registerDrivingStudent = (payload) => api.post('/api/driving-school/students/wizard', payload);
 export const fetchDrivingStudentDetail = (profileId) => api.get(`/api/driving-school/students/${profileId}/detail`);
 export const updateDrivingStudentStatus = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/status`, payload);

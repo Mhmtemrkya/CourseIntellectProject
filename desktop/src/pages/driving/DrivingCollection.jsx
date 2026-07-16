@@ -6,7 +6,7 @@ import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { useToast } from '../../hooks/use-toast';
 import {
-  fetchDrivingBranches, fetchDrivingCollectionList, fetchDrivingStudentGroups, recordDrivingPayment,
+  fetchDrivingBranches, fetchDrivingCollectionList, fetchDrivingInstallments, fetchDrivingStudentGroups, recordDrivingPayment,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -32,7 +32,23 @@ function CollectModal({ row, branches, onClose, onDone }) {
   const [method, setMethod] = useState('Nakit');
   const [branchId, setBranchId] = useState('');
   const [note, setNote] = useState('');
+  const [installments, setInstallments] = useState([]);
+  const [installmentId, setInstallmentId] = useState(''); // '' = otomatik (en eski vade)
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    fetchDrivingInstallments(row.profileId)
+      .then((list) => { if (active) setInstallments(list || []); })
+      .catch(() => { if (active) setInstallments([]); });
+    return () => { active = false; };
+  }, [row.profileId]);
+
+  const pickInstallment = (id) => {
+    setInstallmentId(id);
+    const chosen = installments.find((x) => x.id === id);
+    if (chosen) setAmount(String(chosen.remaining));
+  };
 
   const submit = async () => {
     const value = Number(amount);
@@ -43,6 +59,7 @@ function CollectModal({ row, branches, onClose, onDone }) {
         amount: value,
         method,
         branchId: branchId || null,
+        financeInstallmentId: installmentId || null,
         note: note.trim(),
       });
       toast({ title: 'Tahsilat alındı', description: `${money(value)} — makbuz ${payment.receiptNo}` });
@@ -63,6 +80,17 @@ function CollectModal({ row, branches, onClose, onDone }) {
             <div className="flex justify-between"><span className="text-muted-foreground">Kalan borç</span><b>{money(row.remaining)}</b></div>
             {row.overdueAmount > 0 && <div className="flex justify-between text-red-600"><span>Gecikmiş</span><b>{money(row.overdueAmount)}</b></div>}
             <div className="flex justify-between"><span className="text-muted-foreground">Kayıt şubesi</span><b>{row.registrationBranchName || '—'}</b></div>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground">Taksit</label>
+            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={installmentId} onChange={(e) => pickInstallment(e.target.value)}>
+              <option value="">Otomatik (en eski vadeden mahsup)</option>
+              {installments.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.label || `${i.seqNo}. taksit`} • {new Date(i.dueDateUtc).toLocaleDateString('tr-TR')} • {money(i.remaining)}{i.overdue ? ' (gecikmiş)' : ''}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
             <label className="text-xs font-bold text-muted-foreground">Tutar (₺)</label>
@@ -198,6 +226,7 @@ export default function DrivingCollection() {
             <div key={r.profileId} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4">
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
+                  {r.studentNumber != null && <span className="rounded bg-foreground/10 px-1.5 text-[11px] font-black text-muted-foreground">#{r.studentNumber}</span>}
                   <b className="truncate">{r.fullName}</b>
                   <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[r.status] || r.status}</Badge>
                   {r.groupName && <span className="rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[10px] font-bold text-[hsl(var(--brand-accent))]">{r.groupName}</span>}

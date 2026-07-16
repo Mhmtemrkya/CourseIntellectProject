@@ -668,7 +668,7 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
             children: [
               Text(
-                '${overview?['fullName'] ?? widget.fallbackName}',
+                '${overview?['studentNumber'] != null ? '#${overview!['studentNumber']} ' : ''}${overview?['fullName'] ?? widget.fallbackName}',
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
               ),
               if (overview != null) ...[
@@ -677,6 +677,16 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   '${overview['packageName'] != null ? '${overview['packageName']} • ' : ''}${overview['licenseClass'] ?? ''} • ${_transmission(overview['transmissionType'])} • ${_statusLabel(overview['status'])}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty || '${overview['studentPhone'] ?? ''}'.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty) '${'Seri no'.tr}: ${overview['identitySerialNo']}',
+                      if ('${overview['studentPhone'] ?? ''}'.isNotEmpty) '${'Telefon'.tr}: ${overview['studentPhone']}',
+                    ].join(' • '),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
                 if ('${overview['residenceAddress'] ?? ''}'.isNotEmpty) ...[
                   const SizedBox(height: 4),
                   Row(

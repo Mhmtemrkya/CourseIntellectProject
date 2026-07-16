@@ -388,16 +388,22 @@ class DrivingSchoolApiService {
     return (await _getList('/api/driving-school/collection-list$query')).cast<Map<String, dynamic>>();
   }
 
+  Future<List<Map<String, dynamic>>> installments(String profileId) async =>
+      (await _getList('/api/driving-school/students/$profileId/installments'))
+          .cast<Map<String, dynamic>>();
+
   Future<Map<String, dynamic>> recordPayment(
     String profileId, {
     required num amount,
     required String method,
     String? branchId,
+    String? financeInstallmentId,
     String? note,
   }) => _post('/api/driving-school/students/$profileId/payments', {
     'amount': amount,
     'method': method,
     'branchId': branchId,
+    'financeInstallmentId': financeInstallmentId,
     'note': note,
   });
 

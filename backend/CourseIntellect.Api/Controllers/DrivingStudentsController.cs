@@ -219,6 +219,7 @@ public sealed class DrivingStudentsController(
         return Ok(new
         {
             studentDrivingProfileId = profile.Id,
+            studentNumber = profile.StudentNumber,
             studentId = student.Id,
             status = profile.Status.ToString(),
             contractId = contract?.Id,

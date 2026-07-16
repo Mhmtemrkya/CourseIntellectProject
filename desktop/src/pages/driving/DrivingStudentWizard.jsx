@@ -11,7 +11,7 @@ import { Input } from '../../components/ui/input';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  checkDrivingIdentity, deleteDrivingRegistrationDraft, fetchDrivingInstructors, fetchDrivingPackages,
+  checkDrivingIdentity, checkDrivingPhone, deleteDrivingRegistrationDraft, fetchDrivingInstructors, fetchDrivingPackages,
   fetchDrivingRegistrationDrafts, fetchDrivingVehicles, registerDrivingStudent, saveDrivingRegistrationDraft,
   uploadFile,
 } from '../../lib/api/modules';
@@ -42,7 +42,7 @@ const DOCUMENT_TYPES = [
 ];
 
 const emptyForm = {
-  fullName: '', identityKind: 1, identityNumber: '', nationality: 'T.C.', birthDate: '',
+  fullName: '', identityKind: 1, identityNumber: '', identitySerialNo: '', nationality: 'T.C.', birthDate: '',
   gender: '', bloodType: '', occupation: '', educationLevel: '',
   city: '', district: '', address: '', residenceAddress: '', phone: '', email: '', whatsAppPhone: '',
   emergencyContactName: '', emergencyContactPhone: '', photoUrl: '', livePhotoUrl: '',
@@ -187,6 +187,7 @@ export default function DrivingStudentWizard() {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [identityState, setIdentityState] = useState({ checking: false, available: null, existingStudentName: null });
+  const [phoneState, setPhoneState] = useState({ checking: false, available: null, existingStudentName: null });
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [result, setResult] = useState(null);
@@ -319,6 +320,18 @@ export default function DrivingStudentWizard() {
     }
   }
 
+  async function checkPhone() {
+    const digits = (form.phone || '').replace(/\D/g, '');
+    if (digits.length < 10) { setPhoneState({ checking: false, available: null, existingStudentName: null }); return; }
+    setPhoneState({ checking: true, available: null, existingStudentName: null });
+    try {
+      const response = await checkDrivingPhone(form.phone);
+      setPhoneState({ checking: false, available: response.available, existingStudentName: response.existingStudentName });
+    } catch {
+      setPhoneState({ checking: false, available: null, existingStudentName: null });
+    }
+  }
+
   async function attachDocument(documentType, file, expiresAt) {
     if (!file) return;
     setUploading(true);
@@ -353,6 +366,7 @@ export default function DrivingStudentWizard() {
       if (identityState.available === false) return 'Bu kimlik numarasıyla kayıtlı bir kursiyer zaten var.';
       if (!form.birthDate) return 'Doğum tarihi zorunludur.';
     }
+    if (current === 2 && phoneState.available === false) return 'Bu telefon numarasıyla kayıtlı bir kursiyer zaten var.';
     if (current === 3) {
       if (!form.packageId) return 'Paket seçimi zorunludur.';
       if (!form.availableWeekdays && !form.availableWeekend) return 'En az bir zaman uygunluğu seçilmelidir.';
@@ -432,6 +446,11 @@ export default function DrivingStudentWizard() {
             <div>
               <h1 className="text-2xl font-bold font-heading tracking-tight">Kayıt tamamlandı</h1>
               <p className="text-muted-foreground">{form.fullName} kursiyer dosyası açıldı.</p>
+              {result.studentNumber != null && (
+                <p className="mt-2 inline-block rounded-full bg-brand-primary/10 px-3 py-1 text-sm font-black text-brand-primary">
+                  Kursiyer No: {result.studentNumber}
+                </p>
+              )}
             </div>
 
             <div className="rounded-2xl border bg-muted/40 p-4 text-left">
@@ -535,6 +554,9 @@ export default function DrivingStudentWizard() {
                   className={identityState.available === false ? 'border-red-500' : identityState.available === true ? 'border-emerald-500' : undefined}
                 />
               </Field>
+              <Field label="Kimlik seri no" hint="Kimlik kartının üzerindeki seri numarası (ör. A12 345678)">
+                <Input maxLength={20} value={form.identitySerialNo} onChange={(e) => set({ identitySerialNo: e.target.value })} />
+              </Field>
               <Field label="Uyruk"><Input value={form.nationality} onChange={(e) => set({ nationality: e.target.value })} /></Field>
               <Field label="Doğum tarihi" hint={isMinor ? '18 yaş altı: veli izin belgesi zorunlu olacak.' : undefined}>
                 <Input required type="date" value={form.birthDate} onChange={(e) => set({ birthDate: e.target.value })} />
@@ -562,7 +584,19 @@ export default function DrivingStudentWizard() {
 
           {step === 2 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Telefon"><Input value={form.phone} onChange={(e) => set({ phone: e.target.value })} /></Field>
+              <Field
+                label="Telefon"
+                hint={phoneState.checking ? 'Kontrol ediliyor…'
+                  : phoneState.available === false ? `Bu numara kayıtlı: ${phoneState.existingStudentName}`
+                  : phoneState.available === true ? 'Uygun — kurumda kayıtlı değil.' : 'Aynı numarayla mükerrer kayıt engellenir.'}
+              >
+                <Input
+                  value={form.phone}
+                  onChange={(e) => { set({ phone: e.target.value }); setPhoneState({ checking: false, available: null, existingStudentName: null }); }}
+                  onBlur={checkPhone}
+                  className={phoneState.available === false ? 'border-red-500' : phoneState.available === true ? 'border-emerald-500' : undefined}
+                />
+              </Field>
               <Field label="WhatsApp numarası"><Input value={form.whatsAppPhone} onChange={(e) => set({ whatsAppPhone: e.target.value })} /></Field>
               <Field label="E-posta"><Input type="email" value={form.email} onChange={(e) => set({ email: e.target.value })} /></Field>
               <Field label="İl"><Input value={form.city} onChange={(e) => set({ city: e.target.value })} /></Field>

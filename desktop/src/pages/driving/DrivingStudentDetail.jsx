@@ -14,7 +14,7 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
   addDrivingExtraMinutes, adjustDrivingLedger, createDrivingAppointment, createDrivingCharge,
-  fetchDrivingCharges, fetchDrivingLedger, fetchDrivingStudentDetail, recordDrivingPayment,
+  fetchDrivingBranches, fetchDrivingCharges, fetchDrivingLedger, fetchDrivingStudentDetail, recordDrivingPayment,
   refundDrivingCharge, reviewDrivingStudentDocument, suggestDrivingInstructors, suggestDrivingVehicles,
   updateDrivingExamFees, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
@@ -220,7 +220,8 @@ export default function DrivingStudentDetail() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [rejectReasons, setRejectReasons] = useState({});
-  const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'Nakit' });
+  const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'Nakit', financeInstallmentId: '', branchId: '' });
+  const [branches, setBranches] = useState([]);
   const [chargeForm, setChargeForm] = useState({ chargeType: 'ExtraLesson', grossAmount: '', minutes: '', description: '' });
   const [examFeeDraft, setExamFeeDraft] = useState(null); // null = görüntüleme, obje = düzenleme
   const [savingFees, setSavingFees] = useState(false);
@@ -257,8 +258,13 @@ export default function DrivingStudentDetail() {
     event.preventDefault();
     const amount = Number(paymentForm.amount);
     if (!amount || amount <= 0) return;
-    if (await run(() => recordDrivingPayment(profileId, { amount, method: paymentForm.method }), 'Tahsilat kaydedildi')) {
-      setPaymentForm({ amount: '', method: paymentForm.method });
+    if (await run(() => recordDrivingPayment(profileId, {
+      amount,
+      method: paymentForm.method,
+      financeInstallmentId: paymentForm.financeInstallmentId || null,
+      branchId: paymentForm.branchId || null,
+    }), 'Tahsilat kaydedildi')) {
+      setPaymentForm({ amount: '', method: paymentForm.method, financeInstallmentId: '', branchId: '' });
     }
   }
 
@@ -337,6 +343,7 @@ export default function DrivingStudentDetail() {
   }
 
   useEffect(() => { if (!permissionsLoading) load(); }, [load, permissionsLoading]);
+  useEffect(() => { if (canCollect) fetchDrivingBranches().then((b) => setBranches(b || [])).catch(() => {}); }, [canCollect]);
 
   async function run(action, success) {
     setBusy(true);
@@ -408,7 +415,10 @@ export default function DrivingStudentDetail() {
             )}
           </div>
           <div>
-            <h1 className="text-3xl font-bold font-heading tracking-tight">{overview.fullName}</h1>
+            <h1 className="flex items-center gap-2 text-3xl font-bold font-heading tracking-tight">
+              {overview.fullName}
+              {overview.studentNumber != null && <span className="rounded-full bg-brand-primary/10 px-2 py-0.5 text-sm font-black text-brand-primary">No: {overview.studentNumber}</span>}
+            </h1>
             <p className="text-muted-foreground">
               {overview.packageName} • {overview.licenseClass} • {overview.transmissionType === 'Manual' ? 'Manuel' : 'Otomatik'}
             </p>
@@ -459,6 +469,7 @@ export default function DrivingStudentDetail() {
             <CardContent>
               <Row label="Kimlik türü" value={overview.identityKind === 'TurkishId' ? 'T.C. Kimlik' : overview.identityKind === 'Passport' ? 'Pasaport' : 'Yabancı Kimlik'} />
               <Row label="Kimlik numarası" value={overview.identityNumber || overview.tcNo} />
+              <Row label="Kimlik seri no" value={overview.identitySerialNo} />
               <Row label="Doğum tarihi" value={overview.birthDate} />
               <Row label="Cinsiyet" value={overview.gender} />
               <Row label="Kan grubu" value={overview.bloodType} />
@@ -466,7 +477,7 @@ export default function DrivingStudentDetail() {
               <Row label="Öğrenim" value={overview.educationLevel} />
               <Row label="İl / İlçe" value={[overview.city, overview.district].filter(Boolean).join(' / ')} />
               <Row label="İkametgâh" value={overview.residenceAddress} />
-              <Row label="Telefon" value={overview.phone} />
+              <Row label="Telefon" value={overview.studentPhone || overview.phone} />
               <Row label="WhatsApp" value={overview.whatsAppPhone} />
               <Row label="E-posta" value={overview.email} />
               <Row label="Acil durum" value={[overview.emergencyContactName, overview.emergencyContactPhone].filter(Boolean).join(' • ')} />
@@ -848,9 +859,29 @@ export default function DrivingStudentDetail() {
                 <CardContent className="grid gap-3 md:grid-cols-2">
                   <form onSubmit={submitPayment} className="space-y-2 rounded-2xl border p-4">
                     <b className="text-sm">Tahsilat al</b>
+                    <select
+                      className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                      value={paymentForm.financeInstallmentId}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        const chosen = finance.installments.find((x) => x.id === id);
+                        setPaymentForm({ ...paymentForm, financeInstallmentId: id, amount: chosen ? String(chosen.amount - chosen.paidAmount) : paymentForm.amount });
+                      }}
+                    >
+                      <option value="">Taksit: Otomatik (en eski vade)</option>
+                      {finance.installments.filter((x) => x.amount - x.paidAmount > 0).map((x) => (
+                        <option key={x.id} value={x.id}>
+                          {x.label || `${x.seqNo}. taksit`} • {dateOnly(x.dueDateUtc)} • {money(x.amount - x.paidAmount)}
+                        </option>
+                      ))}
+                    </select>
                     <Input required type="number" min="1" placeholder="Tutar (₺)" value={paymentForm.amount} onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })} />
                     <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={paymentForm.method} onChange={(e) => setPaymentForm({ ...paymentForm, method: e.target.value })}>
                       <option value="Nakit">Nakit</option><option value="Kart">Kart</option><option value="Havale">Havale</option>
+                    </select>
+                    <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={paymentForm.branchId} onChange={(e) => setPaymentForm({ ...paymentForm, branchId: e.target.value })}>
+                      <option value="">{branches.length ? 'Tahsilat şubesi: Varsayılan (kendi şubem)' : 'Tahsilat şubesi: Varsayılan'}</option>
+                      {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                     <Button disabled={busy} className="w-full bg-emerald-600 text-white hover:bg-emerald-700">Tahsilatı Kaydet</Button>
                   </form>
