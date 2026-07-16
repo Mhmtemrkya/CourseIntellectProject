@@ -63,7 +63,20 @@ public sealed class DrivingStudentsController(
         if (duplicate is not null)
             return Conflict(new { message = $"Bu kimlik numarasıyla kayıtlı bir kursiyer var: {duplicate}." });
 
+        // Aynı telefon numarasıyla da ikinci kayıt açılamaz.
+        var phone = NormalizePhone(request.Phone);
+        if (phone.Length >= 10)
+        {
+            var phoneOwner = await FindDuplicateByPhoneAsync(phone, ct);
+            if (phoneOwner is not null)
+                return Conflict(new { message = $"Bu telefon numarasıyla kayıtlı bir kursiyer var: {phoneOwner}." });
+        }
+
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+
+        // Kursiyer numarası kurum içinde otomatik ve artan verilir (Serializable izolasyon
+        // yarış durumunu engeller).
+        var nextStudentNumber = (await dbContext.StudentDrivingProfiles.MaxAsync(x => (int?)x.StudentNumber, ct) ?? 0) + 1;
 
         // Öğrenci hesabı, veli hesabı ve kullanıcı adı üretimi mevcut kayıt akışından geçer;
         // aday mobil uygulamaya bu kimlikle girip evraklarını yükleyecek.
@@ -91,6 +104,7 @@ public sealed class DrivingStudentsController(
         {
             StudentId = student.Id,
             PackageId = package.Id,
+            StudentNumber = nextStudentNumber,
             LicenseClass = package.LicenseClass,
             TransmissionType = package.TransmissionType,
             PurchasedDrivingMinutes = package.DrivingLessonMinutes,
@@ -98,6 +112,8 @@ public sealed class DrivingStudentsController(
             Status = DrivingStudentStatus.DocumentsPending,
             IdentityKind = request.IdentityKind,
             IdentityNumber = identityNumber,
+            IdentitySerialNo = request.IdentitySerialNo?.Trim() ?? string.Empty,
+            Phone = phone,
             Nationality = request.Nationality?.Trim() ?? string.Empty,
             Gender = request.Gender?.Trim() ?? string.Empty,
             BloodType = request.BloodType?.Trim() ?? string.Empty,
@@ -226,6 +242,18 @@ public sealed class DrivingStudentsController(
         if (trimmed.Length < 5) return BadRequest(new { message = "Kimlik numarası en az 5 karakter olmalıdır." });
         var duplicate = await FindDuplicateAsync(trimmed, ct);
         return Ok(new { available = duplicate is null, existingStudentName = duplicate });
+    }
+
+    /// <summary>Telefon numarası kurumda zaten kayıtlı mı? (sihirbaz iletişim adımında).</summary>
+    [HttpGet("students/check-phone")]
+    [RequireDrivingPermission(DrivingPermissions.StudentCreate)]
+    public async Task<IActionResult> CheckPhone([FromQuery] string phone, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var normalized = NormalizePhone(phone);
+        if (normalized.Length < 10) return Ok(new { available = true, existingStudentName = (string?)null });
+        var owner = await FindDuplicateByPhoneAsync(normalized, ct);
+        return Ok(new { available = owner is null, existingStudentName = owner });
     }
 
     // ─── Taslak (autosave) ────────────────────────────────────────────────────
@@ -528,12 +556,15 @@ public sealed class DrivingStudentsController(
             overview = new
             {
                 profile.Id,
+                profile.StudentNumber,
                 row.student.FullName,
                 row.student.TcNo,
                 registrationBranchName,
                 registrarName,
                 identityKind = profile.IdentityKind.ToString(),
                 profile.IdentityNumber,
+                profile.IdentitySerialNo,
+                studentPhone = profile.Phone,
                 row.student.BirthDate,
                 profile.Gender,
                 profile.BloodType,
@@ -851,6 +882,16 @@ public sealed class DrivingStudentsController(
             .FirstOrDefaultAsync(ct);
     }
 
+    /// <summary>Telefon yalnız rakamlarla saklanır ki "0532 111 22 33" ve "05321112233" aynı sayılsın.</summary>
+    private static string NormalizePhone(string? value)
+        => new((value ?? string.Empty).Where(char.IsDigit).ToArray());
+
+    private async Task<string?> FindDuplicateByPhoneAsync(string normalizedPhone, CancellationToken ct)
+        => await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Phone == normalizedPhone && x.Phone != string.Empty)
+            .Join(dbContext.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (_, student) => student.FullName)
+            .FirstOrDefaultAsync(ct);
+
     private static string? Validate(DrivingStudentWizardRequest request)
     {
         if (request.FullName.Trim().Length is < 3 or > 150) return "Ad soyad 3-150 karakter olmalıdır.";
@@ -947,6 +988,7 @@ public sealed record DrivingStudentWizardRequest(
     string FullName,
     IdentityKind IdentityKind,
     string IdentityNumber,
+    string? IdentitySerialNo,
     string? Nationality,
     string? BirthDate,
     string? Gender,

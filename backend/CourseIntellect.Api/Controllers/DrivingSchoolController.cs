@@ -296,6 +296,7 @@ public sealed class DrivingSchoolController(
             {
                 x.p.Id,
                 x.p.StudentId,
+                x.p.StudentNumber,
                 x.FullName,
                 x.p.PackageId,
                 x.p.LicenseClass,
@@ -428,7 +429,8 @@ public sealed class DrivingSchoolController(
         var license = request.LicenseClass.Trim().ToUpperInvariant();
         if (!string.Equals(package.LicenseClass, license, StringComparison.OrdinalIgnoreCase) || package.TransmissionType != request.TransmissionType)
             return BadRequest(new { message = "Öğrencinin ehliyet sınıfı ve vites türü paketle uyumlu olmalıdır." });
-        var entity = new CourseIntellect.Domain.Entities.StudentDrivingProfile { StudentId = request.StudentId, PackageId = package.Id, LicenseClass = license, TransmissionType = request.TransmissionType, PurchasedDrivingMinutes = package.DrivingLessonMinutes };
+        var nextStudentNumber = (await dbContext.StudentDrivingProfiles.MaxAsync(x => (int?)x.StudentNumber, ct) ?? 0) + 1;
+        var entity = new CourseIntellect.Domain.Entities.StudentDrivingProfile { StudentId = request.StudentId, PackageId = package.Id, StudentNumber = nextStudentNumber, LicenseClass = license, TransmissionType = request.TransmissionType, PurchasedDrivingMinutes = package.DrivingLessonMinutes };
         dbContext.StudentDrivingProfiles.Add(entity);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Sürücü adayı kaydı oluşturuldu", AuditCategory, "StudentDrivingProfile", entity.Id.ToString(),

@@ -57,6 +57,8 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public Guid? TenantId { get; set; }
     public Guid StudentId { get; set; }
     public Guid PackageId { get; set; }
+    /// <summary>Kurum içinde otomatik verilen sıra numarası (kursiyer no). Kayıtta üretilir.</summary>
+    public int StudentNumber { get; set; }
     /// <summary>Atandığı kursiyer grubu (dönem). Boşsa gruba atanmamış.</summary>
     public Guid? StudentGroupId { get; set; }
     public string LicenseClass { get; set; } = "B";
@@ -70,6 +72,10 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public IdentityKind IdentityKind { get; set; } = IdentityKind.TurkishId;
     /// <summary>TC dışı kimlik/pasaport numarası. TC vatandaşında StudentProfile.TcNo kullanılır.</summary>
     public string IdentityNumber { get; set; } = string.Empty;
+    /// <summary>Kimlik kartı seri numarası (ör. "A12 345678").</summary>
+    public string IdentitySerialNo { get; set; } = string.Empty;
+    /// <summary>Kursiyerin birincil telefon numarası (mükerrer kayıt kontrolünde kullanılır).</summary>
+    public string Phone { get; set; } = string.Empty;
     public string Nationality { get; set; } = string.Empty;
     public string Gender { get; set; } = string.Empty;
     public string BloodType { get; set; } = string.Empty;

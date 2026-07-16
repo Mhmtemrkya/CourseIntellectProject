@@ -236,6 +236,30 @@ public sealed class DrivingFinanceController(
         return Ok(branches);
     }
 
+    /// <summary>Bir kursiyerin ödenmemiş taksitleri (Ödeme Al'da taksit seçmek için).</summary>
+    [HttpGet("students/{profileId:guid}/installments")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    public async Task<IActionResult> GetStudentInstallments(Guid profileId, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var contractId = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId).Select(x => x.EnrollmentContractId).SingleOrDefaultAsync(ct);
+        if (contractId is null) return Ok(Array.Empty<object>());
+
+        var now = DateTime.UtcNow;
+        var rows = await dbContext.FinanceInstallments.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.EnrollmentContractId == contractId && x.TenantId == dbContext.CurrentTenantId && x.Amount - x.PaidAmount > 0)
+            .OrderBy(x => x.DueDateUtc)
+            .Select(x => new
+            {
+                x.Id, x.SeqNo, x.Label, x.DueDateUtc, x.Amount, x.PaidAmount,
+                remaining = x.Amount - x.PaidAmount,
+                overdue = x.DueDateUtc < now,
+            })
+            .ToListAsync(ct);
+        return Ok(rows);
+    }
+
     /// <summary>
     /// "Ödeme Al" listesi: kurumun TÜM kursiyerleri finans özetiyle. Öncelik aktif
     /// (taksidi en önde olan başta) → mezun → pasif. Şube/grup filtrelenebilir.
@@ -258,7 +282,7 @@ public sealed class DrivingFinanceController(
             // yok say, tenant'ı elle uygula — yoksa yalnız aktörün şubesi görünürdü.
             .Join(dbContext.Students.IgnoreQueryFilters().Where(s => s.TenantId == tenantId),
                 p => p.StudentId, s => s.Id,
-                (p, s) => new { p.Id, s.FullName, p.Status, p.StudentGroupId, p.EnrollmentContractId, RegBranchId = s.BranchId, p.RegisteredByUserId })
+                (p, s) => new { p.Id, p.StudentNumber, s.FullName, p.Status, p.StudentGroupId, p.EnrollmentContractId, RegBranchId = s.BranchId, p.RegisteredByUserId })
             .ToListAsync(ct);
 
         var groups = await dbContext.DrivingStudentGroups.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name, ct);
@@ -286,6 +310,7 @@ public sealed class DrivingFinanceController(
             return new
             {
                 profileId = x.Id,
+                x.StudentNumber,
                 x.FullName,
                 status = x.Status.ToString(),
                 priority,

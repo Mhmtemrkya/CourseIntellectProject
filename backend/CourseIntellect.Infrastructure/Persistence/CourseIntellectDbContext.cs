@@ -1635,6 +1635,10 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.IdentityKind).HasConversion<string>().HasMaxLength(20);
             entity.Property(x => x.DrivingExperience).HasConversion<string>().HasMaxLength(20);
             entity.Property(x => x.IdentityNumber).HasMaxLength(40);
+            entity.Property(x => x.IdentitySerialNo).HasMaxLength(20);
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.HasIndex(x => new { x.TenantId, x.StudentNumber });
+            entity.HasIndex(x => new { x.TenantId, x.Phone });
             entity.Property(x => x.Nationality).HasMaxLength(60);
             entity.Property(x => x.Gender).HasMaxLength(20);
             entity.Property(x => x.BloodType).HasMaxLength(10);
