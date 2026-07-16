@@ -101,6 +101,16 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     /// <summary>Veren makam / yer (kartın 4c alanı).</summary>
     public string LicenseIssuePlace { get; set; } = string.Empty;
 
+    // ─── Sınav ücretleri (paket dışı, el ile girilir) ─────────────────────────
+    /// <summary>Teorik (e-sınav) sınav ücreti — ₺. 0 ise alınmıyor.</summary>
+    public decimal TheoryExamFee { get; set; }
+    /// <summary>Direksiyon (uygulama) sınav ücreti — ₺. 0 ise alınmıyor.</summary>
+    public decimal DrivingExamFee { get; set; }
+    /// <summary>Teorik sınav ücreti tahsil edildi mi? (el ile işaretlenir)</summary>
+    public bool TheoryExamFeePaid { get; set; }
+    /// <summary>Direksiyon sınav ücreti tahsil edildi mi? (sonradan da girilebilir)</summary>
+    public bool DrivingExamFeePaid { get; set; }
+
     // ─── Eğitim tercihleri ────────────────────────────────────────────────────
     public DateTime? CourseStartsAtUtc { get; set; }
     public Guid? PreferredInstructorProfileId { get; set; }

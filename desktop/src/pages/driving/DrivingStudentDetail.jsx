@@ -15,7 +15,7 @@ import { useToast } from '../../hooks/use-toast';
 import {
   addDrivingExtraMinutes, adjustDrivingLedger, createDrivingCharge, fetchDrivingCharges, fetchDrivingLedger,
   fetchDrivingStudentDetail, recordDrivingPayment, refundDrivingCharge, reviewDrivingStudentDocument,
-  updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
+  updateDrivingExamFees, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import {
@@ -95,6 +95,8 @@ export default function DrivingStudentDetail() {
   const [rejectReasons, setRejectReasons] = useState({});
   const [paymentForm, setPaymentForm] = useState({ amount: '', method: 'Nakit' });
   const [chargeForm, setChargeForm] = useState({ chargeType: 'ExtraLesson', grossAmount: '', minutes: '', description: '' });
+  const [examFeeDraft, setExamFeeDraft] = useState(null); // null = görüntüleme, obje = düzenleme
+  const [savingFees, setSavingFees] = useState(false);
 
   const canReview = can(DRIVING.studentDocumentReview);
   const canUpload = can(DRIVING.studentDocumentUpload);
@@ -182,6 +184,26 @@ export default function DrivingStudentDetail() {
       () => adjustDrivingLedger(profileId, { minutesDelta, reason: reason.trim(), isRefund: false }),
       'Ders hakkı düzeltildi',
     );
+  }
+
+  async function saveExamFees() {
+    if (!examFeeDraft) return;
+    setSavingFees(true);
+    try {
+      await updateDrivingExamFees(profileId, {
+        theoryExamFee: Number(examFeeDraft.theoryExamFee) || 0,
+        drivingExamFee: Number(examFeeDraft.drivingExamFee) || 0,
+        theoryExamFeePaid: !!examFeeDraft.theoryExamFeePaid,
+        drivingExamFeePaid: !!examFeeDraft.drivingExamFeePaid,
+      });
+      toast({ title: 'Sınav ücretleri güncellendi' });
+      setExamFeeDraft(null);
+      await load();
+    } catch (error) {
+      toast({ title: 'Güncellenemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingFees(false);
+    }
   }
 
   useEffect(() => { if (!permissionsLoading) load(); }, [load, permissionsLoading]);
@@ -325,14 +347,86 @@ export default function DrivingStudentDetail() {
             <Card>
               <CardHeader><CardTitle>Mevcut sürücü belgesi</CardTitle></CardHeader>
               <CardContent>
-                <Row label="Belge no" value={overview.existingLicenseNumber} />
-                <Row label="Sınıf(lar)" value={overview.existingLicenseClasses} />
+                <Row label="Geçmek istediği sınıf" value={overview.targetLicenseClass || overview.licenseClass} />
+                <Row label="Önceki belge no" value={overview.existingLicenseNumber} />
+                <Row label="Önceki sınıf(lar)" value={overview.existingLicenseClasses} />
                 <Row label="Veriliş" value={dateOnly(overview.licenseIssueDate)} />
                 <Row label="Son geçerlilik" value={dateOnly(overview.licenseExpiryDate)} />
                 <Row label="Veren makam" value={overview.licenseIssuePlace} />
               </CardContent>
             </Card>
           )}
+
+          <Card>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle>Sınav ücretleri</CardTitle>
+              {canCollect && examFeeDraft === null && (
+                <Button variant="outline" size="sm" onClick={() => setExamFeeDraft({
+                  theoryExamFee: overview.theoryExamFee || 0,
+                  drivingExamFee: overview.drivingExamFee || 0,
+                  theoryExamFeePaid: !!overview.theoryExamFeePaid,
+                  drivingExamFeePaid: !!overview.drivingExamFeePaid,
+                })}>Düzenle</Button>
+              )}
+            </CardHeader>
+            <CardContent>
+              {examFeeDraft === null ? (
+                <>
+                  <div className="flex items-center justify-between border-b py-2 text-sm">
+                    <span className="text-muted-foreground">Teorik (e-sınav)</span>
+                    <span className="flex items-center gap-2">
+                      <b>{money(overview.theoryExamFee)}</b>
+                      {overview.theoryExamFee > 0 && (
+                        <Badge className={`border-0 ${overview.theoryExamFeePaid ? 'bg-emerald-500/15 text-emerald-600' : 'bg-red-500/15 text-red-600'}`}>
+                          {overview.theoryExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-b py-2 text-sm">
+                    <span className="text-muted-foreground">Direksiyon sınavı</span>
+                    <span className="flex items-center gap-2">
+                      <b>{money(overview.drivingExamFee)}</b>
+                      {overview.drivingExamFee > 0 && (
+                        <Badge className={`border-0 ${overview.drivingExamFeePaid ? 'bg-emerald-500/15 text-emerald-600' : 'bg-red-500/15 text-red-600'}`}>
+                          {overview.drivingExamFeePaid ? 'Ödendi' : 'Ödenmedi'}
+                        </Badge>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between py-2 text-sm">
+                    <span className="text-muted-foreground">Toplam sınav ücreti</span>
+                    <b>{money((overview.theoryExamFee || 0) + (overview.drivingExamFee || 0))}</b>
+                  </div>
+                </>
+              ) : (
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground">Teorik (e-sınav) ücreti (₺)</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input type="number" min="0" value={examFeeDraft.theoryExamFee} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, theoryExamFee: e.target.value })} />
+                      <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+                        <input type="checkbox" checked={examFeeDraft.theoryExamFeePaid} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, theoryExamFeePaid: e.target.checked })} />Ödendi
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground">Direksiyon sınav ücreti (₺)</label>
+                    <div className="mt-1 flex items-center gap-2">
+                      <Input type="number" min="0" value={examFeeDraft.drivingExamFee} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, drivingExamFee: e.target.value })} />
+                      <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+                        <input type="checkbox" checked={examFeeDraft.drivingExamFeePaid} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, drivingExamFeePaid: e.target.checked })} />Ödendi
+                      </label>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={() => setExamFeeDraft(null)} disabled={savingFees}>Vazgeç</Button>
+                    <Button size="sm" onClick={saveExamFees} disabled={savingFees}>{savingFees ? 'Kaydediliyor…' : 'Kaydet'}</Button>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader><CardTitle>Kurs ve tercihler</CardTitle></CardHeader>

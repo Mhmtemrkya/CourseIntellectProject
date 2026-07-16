@@ -52,6 +52,7 @@ const emptyForm = {
   drivingExperience: 1, availableWeekdays: true, availableWeekend: false,
   prefersMorning: false, prefersMidday: false, prefersEvening: false, accessibilityNotes: '',
   kvkkConsent: false, communicationConsent: false, signatureUrl: '', note: '',
+  theoryExamFee: 0, drivingExamFee: 0, theoryExamFeePaid: false, drivingExamFeePaid: false,
   finance: { grossAmount: 0, discountAmount: 0, discountReason: '', downPayment: 0, installmentCount: 0, firstInstallmentDate: '', downPaymentMethod: 'Nakit' },
   documents: [],
 };
@@ -283,6 +284,8 @@ export default function DrivingStudentWizard() {
   }, [reference.vehicles, selectedPackage]);
 
   const netAmount = Math.max(0, Number(form.finance.grossAmount || 0) - Number(form.finance.discountAmount || 0));
+  const examFeesTotal = (Number(form.theoryExamFee) || 0) + (Number(form.drivingExamFee) || 0);
+  const grandTotal = netAmount + examFeesTotal;
   const remainingAfterDownPayment = Math.max(0, netAmount - Number(form.finance.downPayment || 0));
   const perInstallment = form.finance.installmentCount > 0
     ? remainingAfterDownPayment / Number(form.finance.installmentCount)
@@ -378,6 +381,8 @@ export default function DrivingStudentWizard() {
         courseStartsAtUtc: form.courseStartsAtUtc ? new Date(form.courseStartsAtUtc).toISOString() : null,
         licenseIssueDate: form.hasExistingLicense && form.licenseIssueDate ? new Date(form.licenseIssueDate).toISOString() : null,
         licenseExpiryDate: form.hasExistingLicense && form.licenseExpiryDate ? new Date(form.licenseExpiryDate).toISOString() : null,
+        theoryExamFee: Number(form.theoryExamFee) || 0,
+        drivingExamFee: Number(form.drivingExamFee) || 0,
         preferredInstructorProfileId: form.preferredInstructorProfileId || null,
         preferredVehicleId: form.preferredVehicleId || null,
         finance: Number(form.finance.grossAmount) > 0
@@ -722,12 +727,44 @@ export default function DrivingStudentWizard() {
                 <Field label="Taksit sayısı"><Input type="number" min="0" max="36" value={form.finance.installmentCount} onChange={(e) => set({ finance: { ...form.finance, installmentCount: e.target.value } })} /></Field>
                 <Field label="İlk taksit tarihi"><Input type="date" value={form.finance.firstInstallmentDate} onChange={(e) => set({ finance: { ...form.finance, firstInstallmentDate: e.target.value } })} /></Field>
 
+                {/* Sınav ücretleri: pakete dâhil değil; genel toplama eklenir, ödeme durumu ayrı takip edilir. */}
+                <div className="rounded-2xl border p-4 sm:col-span-2">
+                  <b className="text-sm">Sınav ücretleri (paket dışı)</b>
+                  <p className="mb-3 text-xs text-muted-foreground">İlgili sınavı işaretleyip ücreti girin. Genel toplama eklenir; ödeme durumu sonradan da güncellenebilir.</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-xl border p-3">
+                      <Check checked={Number(form.theoryExamFee) > 0} onChange={(v) => set({ theoryExamFee: v ? (Number(form.theoryExamFee) || 0) : 0, theoryExamFeePaid: v ? form.theoryExamFeePaid : false })}>
+                        Teorik (e-sınav) ücreti
+                      </Check>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Input type="number" min="0" placeholder="₺" value={form.theoryExamFee || ''} onChange={(e) => set({ theoryExamFee: e.target.value })} />
+                        <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+                          <input type="checkbox" checked={form.theoryExamFeePaid} onChange={(e) => set({ theoryExamFeePaid: e.target.checked })} />Ödendi
+                        </label>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border p-3">
+                      <Check checked={Number(form.drivingExamFee) > 0} onChange={(v) => set({ drivingExamFee: v ? (Number(form.drivingExamFee) || 0) : 0, drivingExamFeePaid: v ? form.drivingExamFeePaid : false })}>
+                        Direksiyon sınav ücreti
+                      </Check>
+                      <div className="mt-2 flex items-center gap-2">
+                        <Input type="number" min="0" placeholder="₺" value={form.drivingExamFee || ''} onChange={(e) => set({ drivingExamFee: e.target.value })} />
+                        <label className="flex shrink-0 items-center gap-1 text-xs font-semibold">
+                          <input type="checkbox" checked={form.drivingExamFeePaid} onChange={(e) => set({ drivingExamFeePaid: e.target.checked })} />Ödendi
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="rounded-2xl border bg-muted/40 p-4 sm:col-span-2">
-                  <div className="grid gap-2 sm:grid-cols-3">
+                  <div className="grid gap-2 sm:grid-cols-4">
                     <div><span className="text-xs text-muted-foreground">Net tutar</span><p className="text-xl font-black">₺{netAmount.toLocaleString('tr-TR')}</p></div>
-                    <div><span className="text-xs text-muted-foreground">Peşinat sonrası kalan</span><p className="text-xl font-black">₺{remainingAfterDownPayment.toLocaleString('tr-TR')}</p></div>
+                    <div><span className="text-xs text-muted-foreground">Sınav ücretleri</span><p className="text-xl font-black">₺{examFeesTotal.toLocaleString('tr-TR')}</p></div>
+                    <div><span className="text-xs text-muted-foreground">Genel toplam</span><p className="text-xl font-black text-brand-primary">₺{grandTotal.toLocaleString('tr-TR')}</p></div>
                     <div><span className="text-xs text-muted-foreground">Taksit tutarı</span><p className="text-xl font-black">{perInstallment > 0 ? `₺${perInstallment.toLocaleString('tr-TR', { maximumFractionDigits: 2 })}` : '—'}</p></div>
                   </div>
+                  <p className="mt-2 text-[11px] text-muted-foreground">Taksitlendirme yalnızca kurs ücreti (net tutar) üzerinden yapılır; sınav ücretleri ayrı takip edilir.</p>
                 </div>
               </div>
             ) : (

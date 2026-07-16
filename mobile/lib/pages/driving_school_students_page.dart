@@ -434,11 +434,21 @@ class _StudentDocumentsSheet extends StatefulWidget {
 
 class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
   late Future<Map<String, dynamic>> _future;
+  bool _canCollect = false;
 
   @override
   void initState() {
     super.initState();
     _future = DrivingSchoolApiService.instance.studentDetail(widget.profileId);
+    DrivingPermissionsStore.instance.load().then((p) {
+      if (mounted) setState(() => _canCollect = p.can(DrivingPermissions.financeCollect));
+    });
+  }
+
+  void _reload() {
+    setState(() {
+      _future = DrivingSchoolApiService.instance.studentDetail(widget.profileId);
+    });
   }
 
   Future<void> _openFile(String? url) async {
@@ -446,6 +456,101 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
     final resolved = ApiConfig.resolveAssetUrl(url);
     final uri = Uri.tryParse(resolved);
     if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  String _money(dynamic value) {
+    final n = value is num ? value : num.tryParse('${value ?? ''}') ?? 0;
+    return '₺${n.toStringAsFixed(0)}';
+  }
+
+  Future<void> _editExamFees(Map<String, dynamic> overview) async {
+    final theoryCtrl = TextEditingController(text: '${(overview['theoryExamFee'] as num?)?.toInt() ?? 0}');
+    final drivingCtrl = TextEditingController(text: '${(overview['drivingExamFee'] as num?)?.toInt() ?? 0}');
+    var theoryPaid = overview['theoryExamFeePaid'] == true;
+    var drivingPaid = overview['drivingExamFeePaid'] == true;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          title: Text('Sınav ücretleri'.tr),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: theoryCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: '${'Teorik (e-sınav)'.tr} (₺)'),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Teorik ödendi'.tr),
+                  value: theoryPaid,
+                  onChanged: (v) => setDialogState(() => theoryPaid = v),
+                ),
+                TextField(
+                  controller: drivingCtrl,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(labelText: '${'Direksiyon sınavı'.tr} (₺)'),
+                ),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Direksiyon ödendi'.tr),
+                  value: drivingPaid,
+                  onChanged: (v) => setDialogState(() => drivingPaid = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  await DrivingSchoolApiService.instance.updateExamFees(
+                    widget.profileId,
+                    theoryExamFee: num.tryParse(theoryCtrl.text.trim()) ?? 0,
+                    drivingExamFee: num.tryParse(drivingCtrl.text.trim()) ?? 0,
+                    theoryExamFeePaid: theoryPaid,
+                    drivingExamFeePaid: drivingPaid,
+                  );
+                  if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+                } catch (e) {
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                }
+              },
+              child: Text('Kaydet'.tr),
+            ),
+          ],
+        ),
+      ),
+    );
+    theoryCtrl.dispose();
+    drivingCtrl.dispose();
+    if (saved == true) _reload();
+  }
+
+  Widget _examFeeRow(String label, dynamic fee, bool paid) {
+    final amount = (fee as num?)?.toDouble() ?? 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+          Text(_money(fee), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          if (amount > 0) ...[
+            const SizedBox(width: 8),
+            DrivingStatusPill(
+              label: paid ? 'Ödendi'.tr : 'Ödenmedi'.tr,
+              tone: paid ? DrivingTone.success : DrivingTone.danger,
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   Widget _photoTile(dynamic url, String label) {
@@ -577,11 +682,29 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 const SizedBox(height: 12),
                 const DrivingSectionTitle(title: 'Mevcut sürücü belgesi'),
                 const SizedBox(height: 6),
-                _licenseLine('Belge no'.tr, overview!['existingLicenseNumber']),
-                _licenseLine('Sınıf(lar)'.tr, overview['existingLicenseClasses']),
+                _licenseLine('Geçmek istediği sınıf'.tr, overview!['targetLicenseClass'] ?? overview['licenseClass']),
+                _licenseLine('Önceki belge no'.tr, overview['existingLicenseNumber']),
+                _licenseLine('Önceki sınıf(lar)'.tr, overview['existingLicenseClasses']),
                 _licenseLine('Veriliş'.tr, _dateOnly(overview['licenseIssueDate'])),
                 _licenseLine('Son geçerlilik'.tr, _dateOnly(overview['licenseExpiryDate'])),
                 _licenseLine('Veren makam'.tr, overview['licenseIssuePlace']),
+              ],
+              // Sınav ücretleri
+              if (overview != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: DrivingSectionTitle(title: 'Sınav ücretleri'.tr)),
+                    if (_canCollect)
+                      TextButton.icon(
+                        onPressed: () => _editExamFees(overview),
+                        icon: const Icon(Icons.edit_rounded, size: 16),
+                        label: Text('Düzenle'.tr),
+                      ),
+                  ],
+                ),
+                _examFeeRow('Teorik (e-sınav)'.tr, overview['theoryExamFee'], overview['theoryExamFeePaid'] == true),
+                _examFeeRow('Direksiyon sınavı'.tr, overview['drivingExamFee'], overview['drivingExamFeePaid'] == true),
               ],
               const SizedBox(height: 14),
               Container(

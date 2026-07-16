@@ -356,6 +356,20 @@ class DrivingSchoolApiService {
     'groupId': groupId,
   });
 
+  // Sınav ücretleri + ödendi bilgisini günceller (kayıt sonrası da).
+  Future<Map<String, dynamic>> updateExamFees(
+    String profileId, {
+    required num theoryExamFee,
+    required num drivingExamFee,
+    required bool theoryExamFeePaid,
+    required bool drivingExamFeePaid,
+  }) => _put('/api/driving-school/students/$profileId/exam-fees', {
+    'theoryExamFee': theoryExamFee,
+    'drivingExamFee': drivingExamFee,
+    'theoryExamFeePaid': theoryExamFeePaid,
+    'drivingExamFeePaid': drivingExamFeePaid,
+  });
+
   // Kursiyer dosyası (belge modalı overview + documents alanlarını kullanır).
   Future<Map<String, dynamic>> studentDetail(String profileId) =>
       _get('/api/driving-school/students/$profileId/detail');

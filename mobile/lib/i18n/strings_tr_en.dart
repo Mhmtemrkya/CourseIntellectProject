@@ -2708,4 +2708,12 @@ const Map<String, String> kTrEn = {
   'Veriliş': 'Issued',
   'Son geçerlilik': 'Valid until',
   'Veren makam': 'Issuing authority',
+  'Geçmek istediği sınıf': 'Target class',
+  'Önceki belge no': 'Previous license no',
+  'Önceki sınıf(lar)': 'Previous class(es)',
+  'Sınav ücretleri': 'Exam fees',
+  'Teorik (e-sınav)': 'Theory (e-exam)',
+  'Teorik ödendi': 'Theory paid',
+  'Direksiyon ödendi': 'Practical paid',
+  'Ödenmedi': 'Unpaid',
 };

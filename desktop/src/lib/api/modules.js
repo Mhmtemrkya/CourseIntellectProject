@@ -143,6 +143,7 @@ export const fetchDrivingAppointmentRequests = (params = {}) => api.get('/api/dr
 export const decideDrivingAppointmentRequest = (id, payload) => api.put(`/api/driving-school/appointment-requests/${id}/decision`, payload);
 
 // ─── Sürücü kursu finans işlemleri ────────────────────────────────────────────
+export const updateDrivingExamFees = (profileId, payload) => api.put(`/api/driving-school/students/${profileId}/exam-fees`, payload);
 export const fetchDrivingCharges = (profileId) => api.get(`/api/driving-school/students/${profileId}/charges`);
 export const createDrivingCharge = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/charges`, payload);
 export const recordDrivingPayment = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/payments`, payload);

@@ -117,6 +117,10 @@ public sealed class DrivingStudentsController(
             LicenseIssueDate = request.HasExistingLicense ? request.LicenseIssueDate : null,
             LicenseExpiryDate = request.HasExistingLicense ? request.LicenseExpiryDate : null,
             LicenseIssuePlace = request.HasExistingLicense ? request.LicenseIssuePlace?.Trim() ?? string.Empty : string.Empty,
+            TheoryExamFee = Math.Max(0, request.TheoryExamFee),
+            DrivingExamFee = Math.Max(0, request.DrivingExamFee),
+            TheoryExamFeePaid = request.TheoryExamFeePaid,
+            DrivingExamFeePaid = request.DrivingExamFeePaid,
             CourseStartsAtUtc = request.CourseStartsAtUtc,
             PreferredInstructorProfileId = request.PreferredInstructorProfileId,
             PreferredVehicleId = request.PreferredVehicleId,
@@ -525,6 +529,11 @@ public sealed class DrivingStudentsController(
                 profile.LicenseIssueDate,
                 profile.LicenseExpiryDate,
                 profile.LicenseIssuePlace,
+                targetLicenseClass = profile.LicenseClass,
+                profile.TheoryExamFee,
+                profile.DrivingExamFee,
+                profile.TheoryExamFeePaid,
+                profile.DrivingExamFeePaid,
                 profile.AccessibilityNotes,
                 status = profile.Status.ToString(),
                 packageName = row.package.Name,
@@ -604,6 +613,37 @@ public sealed class DrivingStudentsController(
             ct);
 
         return Ok(new { status = profile.Status.ToString() });
+    }
+
+    /// <summary>
+    /// Sınav ücretlerini ve "ödendi" bilgisini günceller — kayıt sonrasında da
+    /// (direksiyon sınav harcı ödendiğinde) elle işaretlenebilir.
+    /// </summary>
+    [HttpPut("students/{profileId:guid}/exam-fees")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceCollect)]
+    public async Task<IActionResult> UpdateExamFees(Guid profileId, [FromBody] UpdateDrivingExamFeesRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var profile = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == profileId, ct);
+        if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+        if (request.TheoryExamFee < 0 || request.DrivingExamFee < 0) return BadRequest(new { message = "Ücret negatif olamaz." });
+        if (request.TheoryExamFee > 1_000_000 || request.DrivingExamFee > 1_000_000) return BadRequest(new { message = "Ücret makul aralıkta olmalıdır." });
+
+        var before = new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid };
+        profile.TheoryExamFee = request.TheoryExamFee;
+        profile.DrivingExamFee = request.DrivingExamFee;
+        profile.TheoryExamFeePaid = request.TheoryExamFeePaid;
+        profile.DrivingExamFeePaid = request.DrivingExamFeePaid;
+        await dbContext.SaveChangesAsync(ct);
+
+        await auditLogService.LogChangeAsync("Sınav ücretleri güncellendi", AuditCategory, "StudentDrivingProfile", profile.Id.ToString(),
+            $"Teorik: {profile.TheoryExamFee:N2}₺ ({(profile.TheoryExamFeePaid ? "ödendi" : "ödenmedi")}), "
+                + $"Direksiyon: {profile.DrivingExamFee:N2}₺ ({(profile.DrivingExamFeePaid ? "ödendi" : "ödenmedi")}).",
+            before,
+            new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid },
+            ct);
+
+        return Ok(new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid });
     }
 
     // ─── Yardımcılar ──────────────────────────────────────────────────────────
@@ -898,6 +938,10 @@ public sealed record DrivingStudentWizardRequest(
     DateTime? LicenseIssueDate,
     DateTime? LicenseExpiryDate,
     string? LicenseIssuePlace,
+    decimal TheoryExamFee,
+    decimal DrivingExamFee,
+    bool TheoryExamFeePaid,
+    bool DrivingExamFeePaid,
     Guid PackageId,
     DateTime? CourseStartsAtUtc,
     Guid? PreferredInstructorProfileId,
@@ -944,6 +988,8 @@ public sealed record UploadStudentDocumentRequest(
 }
 
 public sealed record ReviewStudentDocumentRequest(bool Approved, string? RejectionReason);
+
+public sealed record UpdateDrivingExamFeesRequest(decimal TheoryExamFee, decimal DrivingExamFee, bool TheoryExamFeePaid, bool DrivingExamFeePaid);
 
 public sealed record UpdateDrivingStudentStatusRequest(string Status, string? Reason)
 {
