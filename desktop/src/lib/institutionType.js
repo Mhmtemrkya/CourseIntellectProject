@@ -8,12 +8,32 @@ let pending = null;
 export async function getInstitutionType() {
   if (cached) return cached;
   if (!pending) {
-    pending = fetchDrivingSchoolStatus()
-      .then((payload) => payload?.institutionType || 'PrivateSchool')
-      .catch(() => 'PrivateSchool');
+    // ÖNEMLİ: Yalnızca kesin (başarılı) bir sonucu kalıcı önbelleğe al. Eski
+    // sürüm hatayı da cache'liyordu; login anında token henüz hazır değilken
+    // çağrı bir kez 401 alırsa tüm oturum boyunca 'PrivateSchool'a saplanıyor,
+    // institution filtresi devre dışı kalıp OKUL menüleri sürücü kursuna
+    // sızıyordu. Artık geçici hatada birkaç kez yeniden denenir; kesin sonuç
+    // alınamazsa güvenli varsayılan döner ama CACHE'LENMEZ (sonraki çağrı yine dener).
+    pending = (async () => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const payload = await fetchDrivingSchoolStatus();
+          const type = payload?.institutionType;
+          if (type) {
+            cached = type;
+            return type;
+          }
+        } catch {
+          // geçici hata — yeniden dene
+        }
+        await new Promise((resolve) => setTimeout(resolve, 400));
+      }
+      return 'PrivateSchool';
+    })().finally(() => {
+      pending = null;
+    });
   }
-  cached = await pending;
-  return cached;
+  return pending;
 }
 
 export function resetInstitutionTypeCache() {

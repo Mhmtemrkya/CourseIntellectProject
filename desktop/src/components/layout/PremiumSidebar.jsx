@@ -17,7 +17,7 @@ import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
-import { getInstitutionType, isModuleAllowedForInstitution } from "../../lib/institutionType";
+import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from "../../lib/institutionType";
 import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 import { cn } from "../../lib/utils";
@@ -172,6 +172,10 @@ export function PremiumSidebar() {
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
+      // Kurum türünü her oturum/kiracı değişiminde yeniden algıla; aksi halde
+      // önceki bir sekmedeki/oturumdaki sonuç saplanıp okul menüleri sürücü
+      // kursuna sızabiliyor.
+      resetInstitutionTypeCache();
       getInstitutionType().then((value) => {
         if (active) setInstitutionType(value);
       });
