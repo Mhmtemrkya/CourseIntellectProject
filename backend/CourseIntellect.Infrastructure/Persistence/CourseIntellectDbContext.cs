@@ -1642,6 +1642,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.EducationLevel).HasMaxLength(60);
             entity.Property(x => x.City).HasMaxLength(60);
             entity.Property(x => x.District).HasMaxLength(60);
+            entity.Property(x => x.ResidenceAddress).HasMaxLength(500);
             entity.Property(x => x.WhatsAppPhone).HasMaxLength(30);
             entity.Property(x => x.EmergencyContactName).HasMaxLength(120);
             entity.Property(x => x.EmergencyContactPhone).HasMaxLength(30);

@@ -77,6 +77,8 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public string EducationLevel { get; set; } = string.Empty;
     public string City { get; set; } = string.Empty;
     public string District { get; set; } = string.Empty;
+    /// <summary>El ile girilen ikametgâh (yerleşim yeri) adresi — MEB dosyası için.</summary>
+    public string ResidenceAddress { get; set; } = string.Empty;
     public string WhatsAppPhone { get; set; } = string.Empty;
     public string EmergencyContactName { get; set; } = string.Empty;
     public string EmergencyContactPhone { get; set; } = string.Empty;

@@ -2699,4 +2699,5 @@ const Map<String, String> kTrEn = {
   'Çıkar': 'Remove',
   'Kursiyerleri gruplara (dönemlere) ayırın; belgelerini inceleyin.':
       'Group students into cohorts; review their documents.',
+  'İkametgâh': 'Residence',
 };

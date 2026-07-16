@@ -308,6 +308,7 @@ export default function DrivingStudentDetail() {
               <Row label="Meslek" value={overview.occupation} />
               <Row label="Öğrenim" value={overview.educationLevel} />
               <Row label="İl / İlçe" value={[overview.city, overview.district].filter(Boolean).join(' / ')} />
+              <Row label="İkametgâh" value={overview.residenceAddress} />
               <Row label="Telefon" value={overview.phone} />
               <Row label="WhatsApp" value={overview.whatsAppPhone} />
               <Row label="E-posta" value={overview.email} />

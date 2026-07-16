@@ -105,6 +105,7 @@ public sealed class DrivingStudentsController(
             EducationLevel = request.EducationLevel?.Trim() ?? string.Empty,
             City = request.City?.Trim() ?? string.Empty,
             District = request.District?.Trim() ?? string.Empty,
+            ResidenceAddress = request.ResidenceAddress?.Trim() ?? string.Empty,
             WhatsAppPhone = request.WhatsAppPhone?.Trim() ?? string.Empty,
             EmergencyContactName = request.EmergencyContactName?.Trim() ?? string.Empty,
             EmergencyContactPhone = request.EmergencyContactPhone?.Trim() ?? string.Empty,
@@ -503,6 +504,7 @@ public sealed class DrivingStudentsController(
                 profile.EducationLevel,
                 profile.City,
                 profile.District,
+                profile.ResidenceAddress,
                 phone = row.student.ParentPhone,
                 email = row.student.ParentEmail,
                 profile.WhatsAppPhone,
@@ -783,6 +785,7 @@ public sealed class DrivingStudentsController(
             return "Doğum tarihi geçersiz (aday en az 16 yaşında olmalıdır).";
         if (!request.KvkkConsent) return "KVKK aydınlatma onayı olmadan kayıt tamamlanamaz.";
         if ((request.AccessibilityNotes?.Length ?? 0) > 1000) return "Erişilebilirlik notu en fazla 1000 karakter olabilir.";
+        if ((request.ResidenceAddress?.Length ?? 0) > 500) return "İkametgâh adresi en fazla 500 karakter olabilir.";
         if (!request.AvailableWeekdays && !request.AvailableWeekend) return "En az bir zaman uygunluğu (hafta içi / hafta sonu) seçilmelidir.";
 
         if (request.Finance is { } finance)
@@ -856,6 +859,7 @@ public sealed record DrivingStudentWizardRequest(
     string? EducationLevel,
     string? City,
     string? District,
+    string? ResidenceAddress,
     string? Address,
     string? Phone,
     string? Email,

@@ -486,6 +486,22 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   '${overview['packageName'] != null ? '${overview['packageName']} • ' : ''}${overview['licenseClass'] ?? ''} • ${_transmission(overview['transmissionType'])} • ${_statusLabel(overview['status'])}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
+                if ('${overview['residenceAddress'] ?? ''}'.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.home_rounded, size: 14),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          '${'İkametgâh'.tr}: ${overview['residenceAddress']}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
               const SizedBox(height: 14),
               Container(

@@ -44,7 +44,7 @@ const DOCUMENT_TYPES = [
 const emptyForm = {
   fullName: '', identityKind: 1, identityNumber: '', nationality: 'T.C.', birthDate: '',
   gender: '', bloodType: '', occupation: '', educationLevel: '',
-  city: '', district: '', address: '', phone: '', email: '', whatsAppPhone: '',
+  city: '', district: '', address: '', residenceAddress: '', phone: '', email: '', whatsAppPhone: '',
   emergencyContactName: '', emergencyContactPhone: '', photoUrl: '',
   packageId: '', courseStartsAtUtc: '', preferredInstructorProfileId: '', preferredVehicleId: '',
   drivingExperience: 1, availableWeekdays: true, availableWeekend: false,
@@ -460,6 +460,9 @@ export default function DrivingStudentWizard() {
               <Field label="İl"><Input value={form.city} onChange={(e) => set({ city: e.target.value })} /></Field>
               <Field label="İlçe"><Input value={form.district} onChange={(e) => set({ district: e.target.value })} /></Field>
               <Field label="Adres"><Input value={form.address} onChange={(e) => set({ address: e.target.value })} /></Field>
+              <Field label="İkametgâh adresi" hint="Nüfusa kayıtlı yerleşim yeri (MEB dosyası için)">
+                <Input maxLength={500} value={form.residenceAddress} onChange={(e) => set({ residenceAddress: e.target.value })} />
+              </Field>
               <Field label="Acil durum kişisi"><Input value={form.emergencyContactName} onChange={(e) => set({ emergencyContactName: e.target.value })} /></Field>
               <Field label="Acil durum telefonu"><Input value={form.emergencyContactPhone} onChange={(e) => set({ emergencyContactPhone: e.target.value })} /></Field>
               <Field label="Kursiyer fotoğrafı" hint={form.photoUrl ? 'Fotoğraf yüklendi.' : undefined}>
