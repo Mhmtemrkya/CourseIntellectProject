@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 import 'package:student/services/auth_session_store.dart';
+import 'package:student/services/api_config.dart';
 import 'package:student/services/question_bank_api_service.dart';
 import 'package:student/services/question_bank_store.dart';
+import 'package:student/utils/question_media.dart';
 import 'package:student/services/student_xp_service.dart';
 
 class TopicTestPage extends StatefulWidget {
@@ -285,13 +287,33 @@ class _TopicTestPageState extends State<TopicTestPage>
               children: [
                 CircleAvatar(child: Text(String.fromCharCode(65 + index))),
                 const SizedBox(width: 12),
-                Expanded(child: Text(options[index])),
+                Expanded(child: _optionContent(options[index])),
               ],
             ),
           ),
         );
       }),
     );
+  }
+
+  // Şık görselse (ehliyet vb.) metin yerine görseli göster.
+  Widget _optionContent(String option) {
+    final raw = stripOptionPrefix(option);
+    if (isImageOptionValue(raw)) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 160),
+          child: Image.network(
+            ApiConfig.resolveAssetUrl(raw),
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            errorBuilder: (context, error, stackTrace) => Text(option),
+          ),
+        ),
+      );
+    }
+    return Text(option);
   }
 
   Widget nextButton() {

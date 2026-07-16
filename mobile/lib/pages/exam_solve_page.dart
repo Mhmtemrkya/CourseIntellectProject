@@ -4,6 +4,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:flutter/material.dart';
 import 'package:student/services/api_config.dart';
 import 'package:student/services/solution_session_api_service.dart';
+import 'package:student/utils/question_media.dart';
 import 'package:student/widgets/exam_camera_monitor.dart';
 import 'package:student/widgets/solution_drawing_canvas.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1226,17 +1227,36 @@ class _OptionButton extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                text,
-                style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: colors.text,
-                ),
-              ),
+              child: _buildOptionContent(colors),
             ),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildOptionContent(_SolveColors colors) {
+    final raw = stripOptionPrefix(text);
+    if (isImageOptionValue(raw)) {
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 160),
+          child: Image.network(
+            ApiConfig.resolveAssetUrl(raw),
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            errorBuilder: (context, error, stackTrace) => Text(
+              text,
+              style: TextStyle(fontWeight: FontWeight.w700, color: colors.text),
+            ),
+          ),
+        ),
+      );
+    }
+    return Text(
+      text,
+      style: TextStyle(fontWeight: FontWeight.w700, color: colors.text),
     );
   }
 }
