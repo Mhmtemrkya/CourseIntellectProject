@@ -82,7 +82,24 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public string WhatsAppPhone { get; set; } = string.Empty;
     public string EmergencyContactName { get; set; } = string.Empty;
     public string EmergencyContactPhone { get; set; } = string.Empty;
+    /// <summary>Biyografik (biyometrik) fotoğraf — dosyadan yüklenen.</summary>
     public string PhotoUrl { get; set; } = string.Empty;
+    /// <summary>Kayıt masasında web kamerasından anlık çekilen fotoğraf.</summary>
+    public string LivePhotoUrl { get; set; } = string.Empty;
+
+    // ─── Mevcut sürücü belgesi (ehliyeti olan / sınıf yükselten aday) ──────────
+    /// <summary>Adayın hâlihazırda bir sürücü belgesi var mı?</summary>
+    public bool HasExistingLicense { get; set; }
+    /// <summary>Sürücü belgesi numarası (kartın üzerindeki 5 numaralı alan).</summary>
+    public string ExistingLicenseNumber { get; set; } = string.Empty;
+    /// <summary>Mevcut ehliyet sınıf(lar)ı — ör. "B" veya "B, A2".</summary>
+    public string ExistingLicenseClasses { get; set; } = string.Empty;
+    /// <summary>Veriliş tarihi (kartın 4a alanı).</summary>
+    public DateTime? LicenseIssueDate { get; set; }
+    /// <summary>Son geçerlilik tarihi (kartın 4b alanı).</summary>
+    public DateTime? LicenseExpiryDate { get; set; }
+    /// <summary>Veren makam / yer (kartın 4c alanı).</summary>
+    public string LicenseIssuePlace { get; set; } = string.Empty;
 
     // ─── Eğitim tercihleri ────────────────────────────────────────────────────
     public DateTime? CourseStartsAtUtc { get; set; }

@@ -110,6 +110,13 @@ public sealed class DrivingStudentsController(
             EmergencyContactName = request.EmergencyContactName?.Trim() ?? string.Empty,
             EmergencyContactPhone = request.EmergencyContactPhone?.Trim() ?? string.Empty,
             PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
+            LivePhotoUrl = request.LivePhotoUrl?.Trim() ?? string.Empty,
+            HasExistingLicense = request.HasExistingLicense,
+            ExistingLicenseNumber = request.HasExistingLicense ? request.ExistingLicenseNumber?.Trim() ?? string.Empty : string.Empty,
+            ExistingLicenseClasses = request.HasExistingLicense ? request.ExistingLicenseClasses?.Trim() ?? string.Empty : string.Empty,
+            LicenseIssueDate = request.HasExistingLicense ? request.LicenseIssueDate : null,
+            LicenseExpiryDate = request.HasExistingLicense ? request.LicenseExpiryDate : null,
+            LicenseIssuePlace = request.HasExistingLicense ? request.LicenseIssuePlace?.Trim() ?? string.Empty : string.Empty,
             CourseStartsAtUtc = request.CourseStartsAtUtc,
             PreferredInstructorProfileId = request.PreferredInstructorProfileId,
             PreferredVehicleId = request.PreferredVehicleId,
@@ -511,6 +518,13 @@ public sealed class DrivingStudentsController(
                 profile.EmergencyContactName,
                 profile.EmergencyContactPhone,
                 profile.PhotoUrl,
+                profile.LivePhotoUrl,
+                profile.HasExistingLicense,
+                profile.ExistingLicenseNumber,
+                profile.ExistingLicenseClasses,
+                profile.LicenseIssueDate,
+                profile.LicenseExpiryDate,
+                profile.LicenseIssuePlace,
                 profile.AccessibilityNotes,
                 status = profile.Status.ToString(),
                 packageName = row.package.Name,
@@ -786,6 +800,16 @@ public sealed class DrivingStudentsController(
         if (!request.KvkkConsent) return "KVKK aydınlatma onayı olmadan kayıt tamamlanamaz.";
         if ((request.AccessibilityNotes?.Length ?? 0) > 1000) return "Erişilebilirlik notu en fazla 1000 karakter olabilir.";
         if ((request.ResidenceAddress?.Length ?? 0) > 500) return "İkametgâh adresi en fazla 500 karakter olabilir.";
+        if (!string.IsNullOrWhiteSpace(request.PhotoUrl) && !IsSafeUploadUrl(request.PhotoUrl)) return "Fotoğraf güvenli yükleme alanından seçilmelidir.";
+        if (!string.IsNullOrWhiteSpace(request.LivePhotoUrl) && !IsSafeUploadUrl(request.LivePhotoUrl)) return "Anlık fotoğraf güvenli yükleme alanından seçilmelidir.";
+        if (request.HasExistingLicense)
+        {
+            if ((request.ExistingLicenseNumber?.Length ?? 0) > 40) return "Sürücü belgesi numarası en fazla 40 karakter olabilir.";
+            if ((request.ExistingLicenseClasses?.Length ?? 0) > 60) return "Ehliyet sınıfı en fazla 60 karakter olabilir.";
+            if ((request.LicenseIssuePlace?.Length ?? 0) > 120) return "Veren makam en fazla 120 karakter olabilir.";
+            if (request.LicenseIssueDate is { } issued && request.LicenseExpiryDate is { } expiry && expiry < issued)
+                return "Ehliyet son geçerlilik tarihi, veriliş tarihinden önce olamaz.";
+        }
         if (!request.AvailableWeekdays && !request.AvailableWeekend) return "En az bir zaman uygunluğu (hafta içi / hafta sonu) seçilmelidir.";
 
         if (request.Finance is { } finance)
@@ -867,6 +891,13 @@ public sealed record DrivingStudentWizardRequest(
     string? EmergencyContactName,
     string? EmergencyContactPhone,
     string? PhotoUrl,
+    string? LivePhotoUrl,
+    bool HasExistingLicense,
+    string? ExistingLicenseNumber,
+    string? ExistingLicenseClasses,
+    DateTime? LicenseIssueDate,
+    DateTime? LicenseExpiryDate,
+    string? LicenseIssuePlace,
     Guid PackageId,
     DateTime? CourseStartsAtUtc,
     Guid? PreferredInstructorProfileId,

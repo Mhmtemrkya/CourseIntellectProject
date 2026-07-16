@@ -2700,4 +2700,12 @@ const Map<String, String> kTrEn = {
   'Kursiyerleri gruplara (dönemlere) ayırın; belgelerini inceleyin.':
       'Group students into cohorts; review their documents.',
   'İkametgâh': 'Residence',
+  'Biyografik': 'Biographic',
+  'Anlık': 'Live',
+  'Mevcut sürücü belgesi': 'Existing driving license',
+  'Belge no': 'License no',
+  'Sınıf(lar)': 'Class(es)',
+  'Veriliş': 'Issued',
+  'Son geçerlilik': 'Valid until',
+  'Veren makam': 'Issuing authority',
 };

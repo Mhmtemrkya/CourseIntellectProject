@@ -247,9 +247,14 @@ export default function DrivingStudentDetail() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-4">
           <Button variant="outline" size="icon" onClick={() => navigate('/driving/scheduling')}><ArrowLeft className="h-4 w-4" /></Button>
-          {overview.photoUrl
-            ? <img src={overview.photoUrl} alt={overview.fullName} className="h-16 w-16 rounded-2xl object-cover" />
-            : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-xl font-black">{overview.fullName?.[0]}</div>}
+          <div className="flex gap-2">
+            {overview.photoUrl
+              ? <img src={overview.photoUrl} alt={`${overview.fullName} biyografik`} title="Biyografik fotoğraf" className="h-16 w-16 rounded-2xl object-cover" />
+              : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-xl font-black">{overview.fullName?.[0]}</div>}
+            {overview.livePhotoUrl && (
+              <img src={overview.livePhotoUrl} alt={`${overview.fullName} anlık`} title="Anlık fotoğraf (web kamera)" className="h-16 w-16 rounded-2xl object-cover" />
+            )}
+          </div>
           <div>
             <h1 className="text-3xl font-bold font-heading tracking-tight">{overview.fullName}</h1>
             <p className="text-muted-foreground">
@@ -315,6 +320,19 @@ export default function DrivingStudentDetail() {
               <Row label="Acil durum" value={[overview.emergencyContactName, overview.emergencyContactPhone].filter(Boolean).join(' • ')} />
             </CardContent>
           </Card>
+
+          {overview.hasExistingLicense && (
+            <Card>
+              <CardHeader><CardTitle>Mevcut sürücü belgesi</CardTitle></CardHeader>
+              <CardContent>
+                <Row label="Belge no" value={overview.existingLicenseNumber} />
+                <Row label="Sınıf(lar)" value={overview.existingLicenseClasses} />
+                <Row label="Veriliş" value={dateOnly(overview.licenseIssueDate)} />
+                <Row label="Son geçerlilik" value={dateOnly(overview.licenseExpiryDate)} />
+                <Row label="Veren makam" value={overview.licenseIssuePlace} />
+              </CardContent>
+            </Card>
+          )}
 
           <Card>
             <CardHeader><CardTitle>Kurs ve tercihler</CardTitle></CardHeader>

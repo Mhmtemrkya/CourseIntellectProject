@@ -6,7 +6,7 @@
          bu açıklamaları zorunlu tutar; eksikse erişim reddedilir/çöker. Tauri
          v2 bu dosyayı uygulama paketinin Info.plist'ine birleştirir. -->
     <key>NSCameraUsageDescription</key>
-    <string>Sınav gözetimi sırasında kimlik doğrulama ve güvenlik için kamera kullanılır.</string>
+    <string>Sınav gözetiminde kimlik doğrulama ve kursiyer kaydında anlık fotoğraf çekmek için kamera kullanılır.</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Canlı ders ve sesli özellikler için mikrofon kullanılabilir.</string>
 </dict>

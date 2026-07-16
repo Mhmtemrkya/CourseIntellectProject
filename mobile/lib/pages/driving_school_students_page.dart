@@ -448,6 +448,62 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
     if (uri != null) await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  Widget _photoTile(dynamic url, String label) {
+    final raw = '${url ?? ''}';
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: raw.isEmpty
+              ? Container(
+                  width: 92,
+                  height: 92,
+                  color: Colors.grey.withValues(alpha: 0.2),
+                  child: const Icon(Icons.person_rounded, size: 36),
+                )
+              : Image.network(
+                  ApiConfig.resolveAssetUrl(raw),
+                  width: 92,
+                  height: 92,
+                  fit: BoxFit.cover,
+                  errorBuilder: (_, _, _) => Container(
+                    width: 92,
+                    height: 92,
+                    color: Colors.grey.withValues(alpha: 0.2),
+                    child: const Icon(Icons.broken_image_rounded, size: 30),
+                  ),
+                ),
+        ),
+        const SizedBox(height: 3),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
+  }
+
+  Widget _licenseLine(String label, dynamic value) {
+    final text = '${value ?? ''}';
+    if (text.isEmpty || text == '—') return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+          ),
+          Expanded(
+            child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -502,6 +558,30 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                     ],
                   ),
                 ],
+              ],
+              // İki fotoğraf: biyografik + anlık (web kamera) — görüntü olarak.
+              if (overview != null &&
+                  ('${overview['photoUrl'] ?? ''}'.isNotEmpty ||
+                      '${overview['livePhotoUrl'] ?? ''}'.isNotEmpty)) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    _photoTile(overview['photoUrl'], 'Biyografik'.tr),
+                    const SizedBox(width: 12),
+                    _photoTile(overview['livePhotoUrl'], 'Anlık'.tr),
+                  ],
+                ),
+              ],
+              // Mevcut sürücü belgesi
+              if (overview?['hasExistingLicense'] == true) ...[
+                const SizedBox(height: 12),
+                const DrivingSectionTitle(title: 'Mevcut sürücü belgesi'),
+                const SizedBox(height: 6),
+                _licenseLine('Belge no'.tr, overview!['existingLicenseNumber']),
+                _licenseLine('Sınıf(lar)'.tr, overview['existingLicenseClasses']),
+                _licenseLine('Veriliş'.tr, _dateOnly(overview['licenseIssueDate'])),
+                _licenseLine('Son geçerlilik'.tr, _dateOnly(overview['licenseExpiryDate'])),
+                _licenseLine('Veren makam'.tr, overview['licenseIssuePlace']),
               ],
               const SizedBox(height: 14),
               Container(

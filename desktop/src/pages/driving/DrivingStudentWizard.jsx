@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, CheckCircle2, CreditCard,
-  FileCheck2, IdCard, KeyRound, Loader2, Save, ShieldCheck, Upload, UserRound,
+  AlertTriangle, ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, Camera, CheckCircle2, CreditCard,
+  FileCheck2, IdCard, KeyRound, Loader2, Save, ShieldCheck, Upload, UserRound, X,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -45,7 +45,9 @@ const emptyForm = {
   fullName: '', identityKind: 1, identityNumber: '', nationality: 'T.C.', birthDate: '',
   gender: '', bloodType: '', occupation: '', educationLevel: '',
   city: '', district: '', address: '', residenceAddress: '', phone: '', email: '', whatsAppPhone: '',
-  emergencyContactName: '', emergencyContactPhone: '', photoUrl: '',
+  emergencyContactName: '', emergencyContactPhone: '', photoUrl: '', livePhotoUrl: '',
+  hasExistingLicense: false, existingLicenseNumber: '', existingLicenseClasses: '',
+  licenseIssueDate: '', licenseExpiryDate: '', licenseIssuePlace: '',
   packageId: '', courseStartsAtUtc: '', preferredInstructorProfileId: '', preferredVehicleId: '',
   drivingExperience: 1, availableWeekdays: true, availableWeekend: false,
   prefersMorning: false, prefersMidday: false, prefersEvening: false, accessibilityNotes: '',
@@ -70,6 +72,105 @@ function Check({ checked, onChange, children }) {
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
       {children}
     </label>
+  );
+}
+
+// Web kameradan anlık fotoğraf çeker ve /uploads'a yükler. Çekilen görüntü
+// dosya olarak değil, doğrudan görüntü (livePhotoUrl) olarak saklanır.
+function WebcamCapture({ value, onCaptured, onClear, folder = 'driving-student-photos' }) {
+  const { toast } = useToast();
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [active, setActive] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const stop = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop());
+      streamRef.current = null;
+    }
+    setActive(false);
+  }, []);
+
+  // Bileşen kapanınca kamerayı serbest bırak (kamera ışığı açık kalmasın).
+  useEffect(() => () => stop(), [stop]);
+
+  // active true olunca <video> DOM'da; akışı o an bağla.
+  useEffect(() => {
+    if (active && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [active]);
+
+  const start = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
+        audio: false,
+      });
+      streamRef.current = stream;
+      setActive(true);
+    } catch {
+      toast({ title: 'Kamera açılamadı', description: 'Uygulamaya kamera izni verildiğinden emin olun.', variant: 'destructive' });
+    }
+  };
+
+  const capture = async () => {
+    const video = videoRef.current;
+    if (!video) return;
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    setBusy(true);
+    try {
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+      if (!blob) throw new Error('Görüntü alınamadı.');
+      const file = new File([blob], `webcam-${Date.now()}.jpg`, { type: 'image/jpeg' });
+      const data = new FormData(); data.set('file', file);
+      const upload = await uploadFile(data, folder);
+      onCaptured(upload.fileUrl);
+      stop();
+      toast({ title: 'Fotoğraf çekildi' });
+    } catch (error) {
+      toast({ title: 'Fotoğraf yüklenemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  if (value) {
+    return (
+      <div className="flex items-center gap-3">
+        <img src={value} alt="Anlık fotoğraf" className="h-24 w-24 rounded-xl border object-cover" />
+        <div className="flex flex-col gap-2">
+          <Button type="button" variant="outline" size="sm" onClick={start}><Camera className="mr-2 h-4 w-4" />Yeniden çek</Button>
+          <Button type="button" variant="ghost" size="sm" onClick={onClear}><X className="mr-2 h-4 w-4" />Kaldır</Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (active) {
+    return (
+      <div className="space-y-2">
+        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+        <video ref={videoRef} className="w-full max-w-xs rounded-xl border bg-black" playsInline muted />
+        <div className="flex gap-2">
+          <Button type="button" size="sm" onClick={capture} disabled={busy}>
+            {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Yükleniyor…</> : <><Camera className="mr-2 h-4 w-4" />Çek</>}
+          </Button>
+          <Button type="button" variant="ghost" size="sm" onClick={stop}>İptal</Button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <Button type="button" variant="outline" size="sm" onClick={start}>
+      <Camera className="mr-2 h-4 w-4" />Web kameradan çek
+    </Button>
   );
 }
 
@@ -275,6 +376,8 @@ export default function DrivingStudentWizard() {
         identityKind: Number(form.identityKind),
         drivingExperience: Number(form.drivingExperience),
         courseStartsAtUtc: form.courseStartsAtUtc ? new Date(form.courseStartsAtUtc).toISOString() : null,
+        licenseIssueDate: form.hasExistingLicense && form.licenseIssueDate ? new Date(form.licenseIssueDate).toISOString() : null,
+        licenseExpiryDate: form.hasExistingLicense && form.licenseExpiryDate ? new Date(form.licenseExpiryDate).toISOString() : null,
         preferredInstructorProfileId: form.preferredInstructorProfileId || null,
         preferredVehicleId: form.preferredVehicleId || null,
         finance: Number(form.finance.grossAmount) > 0
@@ -465,19 +568,29 @@ export default function DrivingStudentWizard() {
               </Field>
               <Field label="Acil durum kişisi"><Input value={form.emergencyContactName} onChange={(e) => set({ emergencyContactName: e.target.value })} /></Field>
               <Field label="Acil durum telefonu"><Input value={form.emergencyContactPhone} onChange={(e) => set({ emergencyContactPhone: e.target.value })} /></Field>
-              <Field label="Kursiyer fotoğrafı" hint={form.photoUrl ? 'Fotoğraf yüklendi.' : undefined}>
-                <Input type="file" accept=".jpg,.jpeg,.png" disabled={uploading} onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setUploading(true);
-                  try {
-                    const data = new FormData(); data.set('file', file);
-                    const upload = await uploadFile(data, 'driving-student-photos');
-                    set({ photoUrl: upload.fileUrl });
-                  } catch (error) {
-                    toast({ title: 'Fotoğraf yüklenemedi', description: error.message, variant: 'destructive' });
-                  } finally { setUploading(false); }
-                }} />
+              <Field label="Biyografik fotoğraf" hint="Dosyadan yüklenen vesikalık.">
+                <div className="flex items-center gap-3">
+                  {form.photoUrl && <img src={form.photoUrl} alt="Biyografik" className="h-24 w-24 rounded-xl border object-cover" />}
+                  <Input type="file" accept=".jpg,.jpeg,.png" disabled={uploading} onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    setUploading(true);
+                    try {
+                      const data = new FormData(); data.set('file', file);
+                      const upload = await uploadFile(data, 'driving-student-photos');
+                      set({ photoUrl: upload.fileUrl });
+                    } catch (error) {
+                      toast({ title: 'Fotoğraf yüklenemedi', description: error.message, variant: 'destructive' });
+                    } finally { setUploading(false); }
+                  }} />
+                </div>
+              </Field>
+              <Field label="Anlık fotoğraf (web kamera)" hint="Kayıt masasında çekilir; öğrenci detayında biyografik foto ile birlikte görünür.">
+                <WebcamCapture
+                  value={form.livePhotoUrl}
+                  onCaptured={(url) => set({ livePhotoUrl: url })}
+                  onClear={() => set({ livePhotoUrl: '' })}
+                />
               </Field>
               <Field label="Kurum içi not"><Input maxLength={500} value={form.note} onChange={(e) => set({ note: e.target.value })} /></Field>
             </div>
@@ -526,6 +639,22 @@ export default function DrivingStudentWizard() {
                   <Check checked={form.prefersMidday} onChange={(v) => set({ prefersMidday: v })}>Öğlen</Check>
                   <Check checked={form.prefersEvening} onChange={(v) => set({ prefersEvening: v })}>Akşam</Check>
                 </div>
+              </div>
+
+              {/* Sınıf yükselten / hâlihazırda ehliyeti olan aday için, kartın üzerindeki bilgiler. */}
+              <div>
+                <Check checked={form.hasExistingLicense} onChange={(v) => set({ hasExistingLicense: v })}>
+                  Adayın mevcut sürücü belgesi var (sınıf yükseltme)
+                </Check>
+                {form.hasExistingLicense && (
+                  <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                    <Field label="Sürücü belgesi no"><Input maxLength={40} value={form.existingLicenseNumber} onChange={(e) => set({ existingLicenseNumber: e.target.value })} /></Field>
+                    <Field label="Mevcut sınıf(lar)" hint="Örn. B veya B, A2"><Input maxLength={60} value={form.existingLicenseClasses} onChange={(e) => set({ existingLicenseClasses: e.target.value })} /></Field>
+                    <Field label="Veriliş tarihi (4a)"><Input type="date" value={form.licenseIssueDate} onChange={(e) => set({ licenseIssueDate: e.target.value })} /></Field>
+                    <Field label="Son geçerlilik (4b)"><Input type="date" value={form.licenseExpiryDate} onChange={(e) => set({ licenseExpiryDate: e.target.value })} /></Field>
+                    <Field label="Veren makam / yer (4c)"><Input maxLength={120} value={form.licenseIssuePlace} onChange={(e) => set({ licenseIssuePlace: e.target.value })} /></Field>
+                  </div>
+                )}
               </div>
             </div>
           )}

@@ -34,6 +34,28 @@ const transmissionLabel = (value) => (value === 'Manual' ? 'Manuel' : 'Otomatik'
 const dateTime = (value) => (value ? new Date(value).toLocaleString('tr-TR') : '—');
 const dateOnly = (value) => (value ? new Date(value).toLocaleDateString('tr-TR') : '—');
 
+// Fotoğraf karesi — görüntü olarak gösterilir (dosya bağlantısı değil).
+function PhotoTile({ url, label, fallback }) {
+  return (
+    <div className="flex flex-col items-center gap-1">
+      {url
+        ? <img src={url} alt={label} className="h-24 w-24 rounded-xl border object-cover" />
+        : <div className="flex h-24 w-24 items-center justify-center rounded-xl border bg-muted text-2xl font-black text-muted-foreground">{fallback || '?'}</div>}
+      <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+function Info({ label, value }) {
+  if (!value) return null;
+  return (
+    <div className="flex flex-col">
+      <span className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</span>
+      <span className="font-semibold">{value}</span>
+    </div>
+  );
+}
+
 function StudentDocumentsModal({ profileId, onClose }) {
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -73,10 +95,36 @@ function StudentDocumentsModal({ profileId, onClose }) {
         ) : (
           <div className="space-y-4">
             {overview && (
-              <p className="text-sm text-muted-foreground">
-                {overview.packageName ? `${overview.packageName} • ` : ''}{overview.licenseClass} • {transmissionLabel(overview.transmissionType)}
-                {' • '}<Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[overview.status] || overview.status}</Badge>
-              </p>
+              <div className="rounded-2xl border bg-foreground/[0.02] p-4">
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex gap-3">
+                    <PhotoTile url={overview.photoUrl} label="Biyografik" fallback={overview.fullName?.[0]} />
+                    <PhotoTile url={overview.livePhotoUrl} label="Anlık" fallback={overview.fullName?.[0]} />
+                  </div>
+                  <div className="min-w-[200px] flex-1 space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <b className="text-base">{overview.fullName}</b>
+                      <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[overview.status] || overview.status}</Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      {overview.packageName ? `${overview.packageName} • ` : ''}{overview.licenseClass} • {transmissionLabel(overview.transmissionType)}
+                    </p>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs sm:grid-cols-3">
+                      <Info label="Kimlik no" value={overview.identityNumber || overview.tcNo} />
+                      <Info label="Doğum" value={overview.birthDate} />
+                      <Info label="Telefon" value={overview.phone} />
+                      <Info label="İl / İlçe" value={[overview.city, overview.district].filter(Boolean).join(' / ')} />
+                      <Info label="İkametgâh" value={overview.residenceAddress} />
+                      {overview.hasExistingLicense && (
+                        <Info
+                          label="Mevcut ehliyet"
+                          value={[overview.existingLicenseClasses, overview.existingLicenseNumber].filter(Boolean).join(' • ')}
+                        />
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             )}
 
             <div className={`flex items-center gap-2 rounded-xl border p-3 text-sm ${documents.complete ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-amber-500/40 bg-amber-500/5'}`}>
