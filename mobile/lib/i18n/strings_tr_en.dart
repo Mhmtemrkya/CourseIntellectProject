@@ -2716,4 +2716,12 @@ const Map<String, String> kTrEn = {
   'Teorik ödendi': 'Theory paid',
   'Direksiyon ödendi': 'Practical paid',
   'Ödenmedi': 'Unpaid',
+  'Direksiyon sınav tarihi': 'Practical exam date',
+  'Tahsilat şubesi': 'Collection branch',
+  'Varsayılan (kendi şubem)': 'Default (my branch)',
+  'Tahsilat alındı': 'Payment collected',
+  'Yöntem': 'Method',
+  'gecikmiş': 'overdue',
+  'Vade yok': 'No due date',
+  'Tüm gruplar': 'All groups',
 };

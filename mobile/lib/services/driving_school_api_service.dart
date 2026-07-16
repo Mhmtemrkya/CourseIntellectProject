@@ -356,18 +356,49 @@ class DrivingSchoolApiService {
     'groupId': groupId,
   });
 
-  // Sınav ücretleri + ödendi bilgisini günceller (kayıt sonrası da).
+  // Sınav ücretleri + ödendi + direksiyon sınav tarihini günceller (kayıt sonrası da).
   Future<Map<String, dynamic>> updateExamFees(
     String profileId, {
     required num theoryExamFee,
     required num drivingExamFee,
     required bool theoryExamFeePaid,
     required bool drivingExamFeePaid,
+    String? drivingExamDate,
   }) => _put('/api/driving-school/students/$profileId/exam-fees', {
     'theoryExamFee': theoryExamFee,
     'drivingExamFee': drivingExamFee,
     'theoryExamFeePaid': theoryExamFeePaid,
     'drivingExamFeePaid': drivingExamFeePaid,
+    'drivingExamDate': drivingExamDate,
+  });
+
+  // Ödeme Al: kurumun şubeleri + tahsilat listesi + şube seçimli tahsilat.
+  Future<List<Map<String, dynamic>>> branches() async =>
+      (await _getList('/api/driving-school/branches')).cast<Map<String, dynamic>>();
+
+  Future<List<Map<String, dynamic>>> collectionList({String? bucket, String? groupId, bool? ungrouped}) async {
+    final q = <String, String>{};
+    if (bucket != null) q['bucket'] = bucket;
+    if (ungrouped == true) {
+      q['ungrouped'] = 'true';
+    } else if (groupId != null) {
+      q['groupId'] = groupId;
+    }
+    final query = q.isEmpty ? '' : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
+    return (await _getList('/api/driving-school/collection-list$query')).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> recordPayment(
+    String profileId, {
+    required num amount,
+    required String method,
+    String? branchId,
+    String? note,
+  }) => _post('/api/driving-school/students/$profileId/payments', {
+    'amount': amount,
+    'method': method,
+    'branchId': branchId,
+    'note': note,
   });
 
   // Kursiyer dosyası (belge modalı overview + documents alanlarını kullanır).

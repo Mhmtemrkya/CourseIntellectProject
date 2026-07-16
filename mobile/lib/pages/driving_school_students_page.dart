@@ -479,6 +479,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
     final drivingCtrl = TextEditingController(text: '${(overview['drivingExamFee'] as num?)?.toInt() ?? 0}');
     var theoryPaid = overview['theoryExamFeePaid'] == true;
     var drivingPaid = overview['drivingExamFeePaid'] == true;
+    DateTime? examDate = overview['drivingExamDate'] != null
+        ? DateTime.tryParse('${overview['drivingExamDate']}')
+        : null;
 
     final saved = await showDialog<bool>(
       context: context,
@@ -511,6 +514,21 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   value: drivingPaid,
                   onChanged: (v) => setDialogState(() => drivingPaid = v),
                 ),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text('Direksiyon sınav tarihi'.tr),
+                  subtitle: Text(examDate != null ? _dateOnly(examDate!.toIso8601String()) : '—'),
+                  trailing: const Icon(Icons.event_rounded),
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: dialogContext,
+                      initialDate: examDate ?? DateTime.now(),
+                      firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
+                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                    );
+                    if (picked != null) setDialogState(() => examDate = picked);
+                  },
+                ),
               ],
             ),
           ),
@@ -525,6 +543,7 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                     drivingExamFee: num.tryParse(drivingCtrl.text.trim()) ?? 0,
                     theoryExamFeePaid: theoryPaid,
                     drivingExamFeePaid: drivingPaid,
+                    drivingExamDate: examDate?.toUtc().toIso8601String(),
                   );
                   if (dialogContext.mounted) Navigator.pop(dialogContext, true);
                 } catch (e) {
@@ -716,6 +735,8 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 ),
                 _examFeeRow('Teorik (e-sınav)'.tr, overview['theoryExamFee'], overview['theoryExamFeePaid'] == true),
                 _examFeeRow('Direksiyon sınavı'.tr, overview['drivingExamFee'], overview['drivingExamFeePaid'] == true),
+                if (overview['drivingExamDate'] != null)
+                  _licenseLine('Direksiyon sınav tarihi'.tr, _dateOnly(overview['drivingExamDate'])),
               ],
               const SizedBox(height: 14),
               Container(

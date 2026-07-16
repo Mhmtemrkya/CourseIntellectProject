@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../pages/admin_finance_page.dart';
 import '../pages/admin_profile_page.dart';
+import '../pages/driving_collection_page.dart';
 import '../pages/driving_school_dashboard_page.dart';
 import '../pages/driving_school_operations_page.dart';
 import '../pages/driving_education_page.dart';
@@ -35,6 +36,12 @@ class DrivingSchoolBottomNav extends StatelessWidget {
         label: 'Öğrenciler',
         pageBuilder: (_) => const DrivingSchoolStudentsPage(),
         sidebarColor: const Color(0xFF8B5CF6),
+      ),
+      AdaptiveDestination(
+        icon: Icons.payments_rounded,
+        label: 'Ödeme Al',
+        pageBuilder: (_) => const DrivingCollectionPage(),
+        sidebarColor: const Color(0xFF059669),
       ),
       AdaptiveDestination(
         icon: Icons.directions_car_filled_rounded,
