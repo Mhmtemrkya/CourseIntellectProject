@@ -19,6 +19,17 @@ const _statusLabels = {
   'Cancelled': 'İptal',
 };
 
+const _trMonths = [
+  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
+  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+];
+
+// Gruplar aylık açılır; yeni grup adına bu ayı öner (ör. "Temmuz 2026").
+String _currentMonthGroupName() {
+  final now = DateTime.now();
+  return '${_trMonths[now.month - 1]} ${now.year}';
+}
+
 String _statusLabel(dynamic status) => _statusLabels['$status'] ?? '$status';
 String _transmission(dynamic v) => (v == 'Manual' || v == 1) ? 'Manuel' : 'Otomatik';
 
@@ -158,7 +169,7 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   }
 
   Future<void> _createGroupDialog() async {
-    final nameCtrl = TextEditingController();
+    final nameCtrl = TextEditingController(text: _currentMonthGroupName());
     final descCtrl = TextEditingController();
     final created = await showDialog<bool>(
       context: context,
@@ -326,7 +337,7 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     final chips = <Widget>[
       _filterChip('all', 'Tümü'.tr, _students.length),
       ..._activeGroups.map((g) => _filterChip('${g['id']}', '${g['name']}', (g['studentCount'] as num?)?.toInt() ?? 0)),
-      if (_ungroupedCount > 0) _filterChip('ungrouped', 'Grupsuz'.tr, _ungroupedCount),
+      if (_ungroupedCount > 0) _filterChip('ungrouped', 'Beklemede'.tr, _ungroupedCount),
     ];
     return SizedBox(
       height: 38,

@@ -34,6 +34,10 @@ const transmissionLabel = (value) => (value === 'Manual' ? 'Manuel' : 'Otomatik'
 const dateTime = (value) => (value ? new Date(value).toLocaleString('tr-TR') : '—');
 const dateOnly = (value) => (value ? new Date(value).toLocaleDateString('tr-TR') : '—');
 
+// Gruplar genelde aylık açılır (ör. "Temmuz 2026") — yeni grup adına bu ayı öner.
+const TR_MONTHS = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
+const currentMonthGroupName = () => { const d = new Date(); return `${TR_MONTHS[d.getMonth()]} ${d.getFullYear()}`; };
+
 // Fotoğraf karesi — görüntü olarak gösterilir (dosya bağlantısı değil).
 function PhotoTile({ url, label, fallback }) {
   return (
@@ -173,7 +177,7 @@ function StudentDocumentsModal({ profileId, onClose }) {
 // Grup oluşturma modalı — ad + kısa açıklama.
 function CreateGroupModal({ onClose, onCreated }) {
   const { toast } = useToast();
-  const [name, setName] = useState('');
+  const [name, setName] = useState(currentMonthGroupName());
   const [description, setDescription] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -364,7 +368,7 @@ export default function DrivingStudents() {
       <div className="flex flex-wrap items-center gap-2">
         {filterPill('all', 'Tümü', students.length)}
         {activeGroups.map((g) => filterPill(g.id, g.name, g.studentCount))}
-        {ungroupedCount > 0 && filterPill('ungrouped', 'Grupsuz', ungroupedCount)}
+        {ungroupedCount > 0 && filterPill('ungrouped', 'Beklemede', ungroupedCount)}
       </div>
 
       {filtered.length === 0 ? (
@@ -421,6 +425,16 @@ export default function DrivingStudents() {
         <div className="fixed inset-x-0 bottom-0 z-40 border-t border-foreground/10 bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
           <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-3">
             <span className="text-sm font-bold">{selectedIds.size} kursiyer seçili</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const ids = filtered.map((s) => s.id);
+                setSelectedIds((prev) => (prev.size === ids.length ? new Set() : new Set(ids)));
+              }}
+            >
+              {selectedIds.size === filtered.length && filtered.length > 0 ? 'Temizle' : `Tümünü seç (${filtered.length})`}
+            </Button>
             <select
               value={assignTarget}
               onChange={(e) => setAssignTarget(e.target.value)}
