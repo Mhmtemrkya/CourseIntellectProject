@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, CheckCircle2, Clock3, Download, Gauge, Route, ShieldCheck, Star } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
@@ -18,7 +18,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (days) => { const value = new Date(); value.setDate(value.getDate() - days); return value.toISOString().slice(0, 10); };
 const dateTime = (value) => value ? new Date(value).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' }) : '-';
 
-export default function DrivingLessons() {
+export default function DrivingLessons({ embedded = false }) {
   const { toast } = useToast();
   const [filters, setFilters] = useState({ from: daysAgo(30), to: today() });
   const [lessons, setLessons] = useState([]);
@@ -68,8 +68,11 @@ export default function DrivingLessons() {
     toast({ title: 'Ayrıntılı sürüş raporu indirildi', description: `${lessons.length} ders ve 24 kriter dışa aktarıldı.` });
   };
 
+  const Wrapper = embedded ? Fragment : DrivingPage;
+  const wrapperProps = embedded ? {} : { testId: 'driving-lessons-page' };
+
   return (
-    <DrivingPage testId="driving-lessons-page">
+    <Wrapper {...wrapperProps}>
       <DrivingPageHeader
         title="Direksiyon Dersleri"
         description="Ön kontrol, kilometre, değerlendirme ve harcanan ders süresini canlı izleyin."
@@ -193,6 +196,6 @@ export default function DrivingLessons() {
           )}
         </PremiumPanel>
       </motion.div>
-    </DrivingPage>
+    </Wrapper>
   );
 }

@@ -118,6 +118,7 @@ const PATH_PERMISSIONS = {
   '/driving/students/new': [DRIVING.studentCreate],
   '/driving/assignments': [DRIVING.instructorAssignmentManage, DRIVING.instructorUpdate, DRIVING.settingsManage],
   '/driving/operations': [DRIVING.packageView, DRIVING.vehicleView],
+  '/driving/hub': [DRIVING.appointmentView, DRIVING.studentView, DRIVING.lessonViewAll],
   '/driving/scheduling': [DRIVING.appointmentView, DRIVING.studentView],
   '/driving/calendar': [DRIVING.appointmentView],
   '/driving/lessons': [DRIVING.lessonViewAll],

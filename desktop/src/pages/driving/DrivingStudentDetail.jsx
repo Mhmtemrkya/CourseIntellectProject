@@ -268,7 +268,7 @@ export default function DrivingStudentDetail() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-4">
-          <Button variant="outline" size="icon" onClick={() => navigate('/driving/scheduling')}><ArrowLeft className="h-4 w-4" /></Button>
+          <Button variant="outline" size="icon" onClick={() => navigate('/driving/students')}><ArrowLeft className="h-4 w-4" /></Button>
           <div className="flex gap-2">
             {overview.photoUrl
               ? <img src={overview.photoUrl} alt={`${overview.fullName} biyografik`} title="Biyografik fotoğraf" className="h-16 w-16 rounded-2xl object-cover" />

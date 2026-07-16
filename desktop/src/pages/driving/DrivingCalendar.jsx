@@ -53,7 +53,7 @@ const addDays = (date, count) => { const d = new Date(date); d.setDate(d.getDate
 const sameDay = (a, b) => startOfDay(a).getTime() === startOfDay(b).getTime();
 const hhmm = (date) => date.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
 
-export default function DrivingCalendar() {
+export default function DrivingCalendar({ embedded = false }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { can, loading: permissionsLoading } = useDrivingPermissions();
@@ -183,20 +183,22 @@ export default function DrivingCalendar() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold font-heading tracking-tight">Randevu Takvimi</h1>
-          <p className="text-muted-foreground">
-            {canReschedule
-              ? 'Randevuyu sürükleyip bırakarak taşıyın — tüm uygunluk kuralları backend’de yeniden denetlenir.'
-              : 'Randevuları görüntüleyebilirsiniz; taşımak için yetkiniz yok.'}
-          </p>
+      {!embedded && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold font-heading tracking-tight">Randevu Takvimi</h1>
+            <p className="text-muted-foreground">
+              {canReschedule
+                ? 'Randevuyu sürükleyip bırakarak taşıyın — tüm uygunluk kuralları backend’de yeniden denetlenir.'
+                : 'Randevuları görüntüleyebilirsiniz; taşımak için yetkiniz yok.'}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            {moving && <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Taşınıyor…</span>}
+            <Button variant="outline" size="icon" onClick={load}><RefreshCw className="h-4 w-4" /></Button>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          {moving && <span className="flex items-center gap-1.5 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Taşınıyor…</span>}
-          <Button variant="outline" size="icon" onClick={load}><RefreshCw className="h-4 w-4" /></Button>
-        </div>
-      </div>
+      )}
 
       {/* Gezinme + görünüm + gruplama */}
       <div className="flex flex-wrap items-center gap-2">

@@ -110,6 +110,7 @@ import TeacherStudentExams from "./pages/teacher/TeacherStudentExams";
 import DriverPanel from "./pages/DriverPanel";
 const DrivingSchoolDashboard = lazyWithReload(() => import("./pages/driving/DrivingSchoolDashboard"));
 const DrivingOperations = lazyWithReload(() => import("./pages/driving/DrivingOperations"));
+const DrivingHub = lazyWithReload(() => import("./pages/driving/DrivingHub"));
 const DrivingScheduling = lazyWithReload(() => import("./pages/driving/DrivingScheduling"));
 const DrivingLessons = lazyWithReload(() => import("./pages/driving/DrivingLessons"));
 const DrivingFleetCompliance = lazyWithReload(() => import("./pages/driving/DrivingFleetCompliance"));
@@ -333,6 +334,7 @@ function App() {
               <Route path="/admin/service-tracking" element={<ServiceTrackingPage />} />
               <Route path="/driving/dashboard" element={<DrivingSchoolDashboard />} />
               <Route path="/driving/operations" element={<DrivingOperations />} />
+              <Route path="/driving/hub" element={<DrivingHub />} />
               <Route path="/driving/scheduling" element={<DrivingScheduling />} />
               <Route path="/driving/lessons" element={<DrivingLessons />} />
               <Route path="/driving/fleet-compliance" element={<DrivingFleetCompliance />} />

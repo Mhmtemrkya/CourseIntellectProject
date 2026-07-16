@@ -107,9 +107,7 @@ export const menuConfigs = {
     { path: "/driving/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6", special: true },
     { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true },
     { path: "/driving/vehicles", icon: CarFront, label: "Araçlarım", color: "#ea580c", special: true },
-    { path: "/driving/scheduling", icon: CalendarClock, label: "Öğrenci & Randevu", color: "#f59e0b", special: true },
-    { path: "/driving/calendar", icon: CalendarDays, label: "Takvim", color: "#6366f1", special: true },
-    { path: "/driving/lessons", icon: Activity, label: "Direksiyon Dersleri", color: "#10b981", special: true },
+    { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true },
     { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
     { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
     { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
@@ -1137,9 +1135,9 @@ const MODULE_MENU_REGISTRY = {
   "driving-school": { default: { path: "/driving/dashboard", icon: CarFront, label: "Sürücü Kursu", color: "#f97316", special: true } },
   "driving-registration": { default: { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true } },
   "driving-operations": { default: { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true } },
-  "driving-scheduling": { default: { path: "/driving/scheduling", icon: CalendarClock, label: "Öğrenci & Randevu", color: "#f59e0b", special: true } },
-  "driving-calendar": { default: { path: "/driving/calendar", icon: CalendarDays, label: "Takvim", color: "#6366f1", special: true } },
-  "driving-lessons": { default: { path: "/driving/lessons", icon: Activity, label: "Direksiyon Dersleri", color: "#10b981", special: true } },
+  // Takvim + Randevu + Dersler tek "Direksiyon" sayfasında (DrivingHub) birleşti;
+  // rol-tabanlı menü yeniden-eklemesi ayrı girişler üretmesin diye tek anahtar.
+  "driving-scheduling": { default: { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true } },
   "driving-fleet-compliance": { default: { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true } },
   "driving-assignments": { default: { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true } },
   dashboard: {
@@ -1300,6 +1298,7 @@ export function inferModuleKey(item) {
     "/driving/students": "driving-scheduling",
     "/driving/vehicles": "driving-operations",
     "/driving/operations": "driving-operations",
+    "/driving/hub": "driving-scheduling",
     "/driving/scheduling": "driving-scheduling",
     "/driving/calendar": "driving-calendar",
     "/driving/lessons": "driving-lessons",

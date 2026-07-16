@@ -55,7 +55,7 @@ function OverridePanel({ blocked, reason, setReason, onCancel, onConfirm, saving
   );
 }
 
-export default function DrivingScheduling() {
+export default function DrivingScheduling({ embedded = false }) {
   const { toast } = useToast();
   const navigate = useNavigate();
   const { can, loading: permissionsLoading } = useDrivingPermissions();
@@ -221,7 +221,7 @@ export default function DrivingScheduling() {
   if (permissionsLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
 
   return <div className="space-y-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-bold font-heading tracking-tight">Öğrenci, Öğretmen ve Randevu</h1><p className="text-muted-foreground">Uyumluluk ve çakışma kontrolleri backend tarafından zorunlu uygulanır.</p></div><Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button></div>
+    {!embedded && <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-3xl font-bold font-heading tracking-tight">Öğrenci, Öğretmen ve Randevu</h1><p className="text-muted-foreground">Uyumluluk ve çakışma kontrolleri backend tarafından zorunlu uygulanır.</p></div><Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button></div>}
 
     <div className="grid gap-5 xl:grid-cols-2">
       {canViewStudents && <Card><CardHeader><CardTitle className="flex gap-2"><GraduationCap className="text-violet-500" />Öğrenci Sürücü Profili</CardTitle></CardHeader><CardContent>
