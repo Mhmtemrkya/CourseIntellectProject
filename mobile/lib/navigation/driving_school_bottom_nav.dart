@@ -6,6 +6,8 @@ import '../pages/driving_school_operations_page.dart';
 import '../pages/driving_education_page.dart';
 import '../pages/driving_graduation_page.dart';
 import '../pages/driving_mobile_planning_page.dart';
+import '../pages/driving_school_students_page.dart';
+import '../pages/driving_school_vehicles_page.dart';
 import '../pages/teacher_content_page.dart';
 import '../pages/teacher_question_bank_page.dart';
 import '../widgets/adaptive_scaffold.dart';
@@ -27,6 +29,18 @@ class DrivingSchoolBottomNav extends StatelessWidget {
         label: 'Operasyon',
         pageBuilder: (_) => const DrivingSchoolOperationsPage(),
         sidebarColor: const Color(0xFF14B8A6),
+      ),
+      AdaptiveDestination(
+        icon: Icons.groups_rounded,
+        label: 'Öğrenciler',
+        pageBuilder: (_) => const DrivingSchoolStudentsPage(),
+        sidebarColor: const Color(0xFF8B5CF6),
+      ),
+      AdaptiveDestination(
+        icon: Icons.directions_car_filled_rounded,
+        label: 'Araçlarım',
+        pageBuilder: (_) => const DrivingSchoolVehiclesPage(),
+        sidebarColor: const Color(0xFFEA580C),
       ),
       AdaptiveDestination(
         icon: Icons.calendar_month_rounded,

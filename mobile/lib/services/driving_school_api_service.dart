@@ -329,6 +329,22 @@ class DrivingSchoolApiService {
         '/api/driving-school/vehicle-service-records',
       )).cast<Map<String, dynamic>>();
 
+  // Kursiyer listesi (Öğrenciler sayfası).
+  Future<List<Map<String, dynamic>>> students() async =>
+      (await _getList(
+        '/api/driving-school/students',
+      )).cast<Map<String, dynamic>>();
+
+  // Kursiyer dosyası (belge modalı overview + documents alanlarını kullanır).
+  Future<Map<String, dynamic>> studentDetail(String profileId) =>
+      _get('/api/driving-school/students/$profileId/detail');
+
+  // Öğretmen-araç atamaları (araç modalında "kime atanmış").
+  Future<List<Map<String, dynamic>>> instructorVehicleAssignments() async =>
+      (await _getList(
+        '/api/driving-school/instructor-vehicle-assignments?includeInactive=true',
+      )).cast<Map<String, dynamic>>();
+
   Future<void> createVehicleDocument(Map<String, dynamic> body) async {
     await _post('/api/driving-school/vehicle-documents', body);
   }
