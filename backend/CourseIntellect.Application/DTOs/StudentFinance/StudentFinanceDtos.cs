@@ -23,7 +23,9 @@ public sealed record RecordPaymentRequest(
     Guid? FinanceInstallmentId,
     decimal Amount,
     string? Method,
-    string? Note);
+    string? Note,
+    /// <summary>Tahsilatın yapıldığı şube. Boşsa aktörün etkin şubesine düşer.</summary>
+    Guid? BranchId = null);
 
 public sealed record FinanceInstallmentDto(
     Guid Id,

@@ -354,6 +354,8 @@ public sealed class StudentFinanceService(
             Currency = currency,
             Note = note,
             CreatedByUserId = createdByUserId,
+            // Şube açıkça seçildiyse onu yaz; boşsa ApplyTenantContext aktörün şubesine düşürür.
+            BranchId = request.BranchId,
             PaidAtUtc = DateTime.UtcNow,
         };
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);

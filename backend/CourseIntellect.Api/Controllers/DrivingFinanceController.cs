@@ -186,6 +186,13 @@ public sealed class DrivingFinanceController(
         if (row is null) return NotFound(new { message = "Kursiyer bulunamadı." });
         if (row.EnrollmentContractId is null) return BadRequest(new { message = "Kursiyerin sözleşmesi yok." });
 
+        // Şube seçildiyse kuruma ait ve aktif olmalı — yanlış şubeye tahsilat yazılmasın.
+        if (request.BranchId is Guid branchId)
+        {
+            var branchOk = await dbContext.OrgUnits.AsNoTracking().AnyAsync(x => x.Id == branchId, ct);
+            if (!branchOk) return BadRequest(new { message = "Seçilen şube bulunamadı." });
+        }
+
         var payment = await financeService.RecordPaymentAsync(
             new RecordPaymentRequest(
                 StudentUserId: row.UserId,
@@ -194,7 +201,8 @@ public sealed class DrivingFinanceController(
                 FinanceInstallmentId: request.FinanceInstallmentId,
                 Amount: request.Amount,
                 Method: request.Method,
-                Note: request.Note),
+                Note: request.Note,
+                BranchId: request.BranchId),
             CurrentUserId(),
             ct);
 
@@ -212,6 +220,104 @@ public sealed class DrivingFinanceController(
             cancellationToken: ct);
 
         return Ok(payment);
+    }
+
+    /// <summary>Kurumun şubeleri (tahsilat şubesi seçmek için). Şube yoksa liste boştur.</summary>
+    [HttpGet("branches")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    public async Task<IActionResult> GetBranches(CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var branches = await dbContext.OrgUnits.AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name, x.UnitType })
+            .ToListAsync(ct);
+        return Ok(branches);
+    }
+
+    /// <summary>
+    /// "Ödeme Al" listesi: kurumun TÜM kursiyerleri finans özetiyle. Öncelik aktif
+    /// (taksidi en önde olan başta) → mezun → pasif. Şube/grup filtrelenebilir.
+    /// Şubeler-arası tahsilat için şube izolasyonu okumada uygulanmaz; kayıt şubesi
+    /// ve kaydeden bilgisi de döner (finansta "kim, nereden" görünsün diye).
+    /// </summary>
+    [HttpGet("collection-list")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    public async Task<IActionResult> GetCollectionList([FromQuery] Guid? groupId, [FromQuery] bool? ungrouped, [FromQuery] string? bucket, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var tenantId = dbContext.CurrentTenantId;
+
+        var profileQuery = dbContext.StudentDrivingProfiles.AsNoTracking().AsQueryable();
+        if (ungrouped == true) profileQuery = profileQuery.Where(x => x.StudentGroupId == null);
+        else if (groupId is Guid gid) profileQuery = profileQuery.Where(x => x.StudentGroupId == gid);
+
+        var rows = await profileQuery
+            // Öğrenci kaydı (StudentProfile) şube-scoped; şubeler-arası liste için filtreyi
+            // yok say, tenant'ı elle uygula — yoksa yalnız aktörün şubesi görünürdü.
+            .Join(dbContext.Students.IgnoreQueryFilters().Where(s => s.TenantId == tenantId),
+                p => p.StudentId, s => s.Id,
+                (p, s) => new { p.Id, s.FullName, p.Status, p.StudentGroupId, p.EnrollmentContractId, RegBranchId = s.BranchId, p.RegisteredByUserId })
+            .ToListAsync(ct);
+
+        var groups = await dbContext.DrivingStudentGroups.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+        var branchNames = await dbContext.OrgUnits.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+        var registrarIds = rows.Where(x => x.RegisteredByUserId != null).Select(x => x.RegisteredByUserId!.Value).Distinct().ToList();
+        var registrarNames = await dbContext.Users.IgnoreQueryFilters().AsNoTracking()
+            .Where(u => registrarIds.Contains(u.Id)).ToDictionaryAsync(u => u.Id, u => u.FullName, ct);
+
+        var contractIds = rows.Where(x => x.EnrollmentContractId != null).Select(x => x.EnrollmentContractId!.Value).Distinct().ToList();
+        var installments = await dbContext.FinanceInstallments.IgnoreQueryFilters().AsNoTracking()
+            .Where(i => i.TenantId == tenantId && contractIds.Contains(i.EnrollmentContractId))
+            .Select(i => new { i.EnrollmentContractId, i.Amount, i.PaidAmount, i.DueDateUtc })
+            .ToListAsync(ct);
+        var byContract = installments.GroupBy(i => i.EnrollmentContractId).ToDictionary(g => g.Key, g => g.ToList());
+
+        var now = DateTime.UtcNow;
+        var list = rows.Select(x =>
+        {
+            var priority = x.Status == DrivingStudentStatus.Graduated ? 1
+                : x.Status is DrivingStudentStatus.Suspended or DrivingStudentStatus.Cancelled ? 2 : 0;
+            var unpaid = x.EnrollmentContractId is Guid cid && byContract.TryGetValue(cid, out var l)
+                ? l.Where(i => i.Amount - i.PaidAmount > 0).ToList()
+                : [];
+            DateTime? nextDue = unpaid.Count > 0 ? unpaid.Min(i => i.DueDateUtc) : null;
+            return new
+            {
+                profileId = x.Id,
+                x.FullName,
+                status = x.Status.ToString(),
+                priority,
+                groupId = x.StudentGroupId,
+                groupName = x.StudentGroupId is Guid g && groups.TryGetValue(g, out var gn) ? gn : null,
+                registrationBranchId = x.RegBranchId,
+                registrationBranchName = x.RegBranchId is Guid b && branchNames.TryGetValue(b, out var bn) ? bn : null,
+                registrarName = x.RegisteredByUserId is Guid r && registrarNames.TryGetValue(r, out var rn) ? rn : null,
+                hasContract = x.EnrollmentContractId != null,
+                remaining = unpaid.Sum(i => i.Amount - i.PaidAmount),
+                nextDueDateUtc = nextDue,
+                overdueAmount = unpaid.Where(i => i.DueDateUtc < now).Sum(i => i.Amount - i.PaidAmount),
+                overdueCount = unpaid.Count(i => i.DueDateUtc < now),
+            };
+        });
+
+        list = bucket switch
+        {
+            "passive" => list.Where(x => x.priority == 2),
+            "graduated" => list.Where(x => x.priority == 1),
+            "active" => list.Where(x => x.priority == 0),
+            _ => list,
+        };
+
+        // Aktif → mezun → pasif; aktifte taksidi en önde (en erken vade) olan başta.
+        var ordered = list
+            .OrderBy(x => x.priority)
+            .ThenBy(x => x.nextDueDateUtc ?? DateTime.MaxValue)
+            .ThenByDescending(x => x.overdueAmount)
+            .ThenBy(x => x.FullName)
+            .ToList();
+        return Ok(ordered);
     }
 
     /// <summary>
@@ -467,6 +573,6 @@ public sealed record CreateDrivingChargeRequest(
             : null;
 }
 
-public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid? FinanceInstallmentId, string? Note);
+public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid? FinanceInstallmentId, string? Note, Guid? BranchId = null);
 
 public sealed record RefundChargeRequest(decimal? Amount, string? Reason);

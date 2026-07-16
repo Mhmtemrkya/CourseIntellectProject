@@ -110,6 +110,8 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public bool TheoryExamFeePaid { get; set; }
     /// <summary>Direksiyon sınav ücreti tahsil edildi mi? (sonradan da girilebilir)</summary>
     public bool DrivingExamFeePaid { get; set; }
+    /// <summary>Direksiyon (uygulama) sınavının tarihi — e-sınav geçilince girilir.</summary>
+    public DateTime? DrivingExamDate { get; set; }
 
     // ─── Eğitim tercihleri ────────────────────────────────────────────────────
     public DateTime? CourseStartsAtUtc { get; set; }

@@ -480,11 +480,27 @@ public sealed class DrivingStudentsController(
                 .OrderBy(x => x.SeqNo)
                 .Select(x => new { x.Id, x.SeqNo, x.Label, x.DueDateUtc, x.Amount, x.PaidAmount, x.Status })
                 .ToListAsync(ct);
-            var payments = await dbContext.FinancePayments.AsNoTracking()
-                .Where(x => x.EnrollmentContractId == contractId)
+            // Şubeler-arası tahsilat görünsün: bir taksit başka şubeden ödenmiş olabilir,
+            // şube query filtresini yok say (tenant elle uygulanır).
+            var rawPayments = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.EnrollmentContractId == contractId && x.TenantId == dbContext.CurrentTenantId)
                 .OrderByDescending(x => x.PaidAtUtc)
-                .Select(x => new { x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc })
+                .Select(x => new { x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc, x.BranchId, x.CreatedByUserId })
                 .ToListAsync(ct);
+
+            // Şube ve tahsil eden adlarını çöz (kim, nereden tahsil etti).
+            var branchIds = rawPayments.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
+            var collectorIds = rawPayments.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value).Distinct().ToList();
+            var branchNames = await dbContext.OrgUnits.AsNoTracking().Where(x => branchIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+            var collectorNames = await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => collectorIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
+
+            var payments = rawPayments.Select(x => new
+            {
+                x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc,
+                branchId = x.BranchId,
+                branchName = x.BranchId is Guid b && branchNames.TryGetValue(b, out var bn) ? bn : null,
+                collectedByName = x.CreatedByUserId is Guid c && collectorNames.TryGetValue(c, out var cn) ? cn : null,
+            }).ToList();
             finance = new
             {
                 contract?.GrossAmount,
@@ -499,6 +515,14 @@ public sealed class DrivingStudentsController(
             };
         }
 
+        // Kayıt provenance: hangi şubeden, kim kaydetti (finansta "kim, nereden" için).
+        var registrationBranchName = row.student.BranchId is Guid regBranchId
+            ? await dbContext.OrgUnits.AsNoTracking().Where(x => x.Id == regBranchId).Select(x => x.Name).FirstOrDefaultAsync(ct)
+            : null;
+        var registrarName = profile.RegisteredByUserId is Guid registrarId
+            ? await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => x.Id == registrarId).Select(x => x.FullName).FirstOrDefaultAsync(ct)
+            : null;
+
         return Ok(new
         {
             overview = new
@@ -506,6 +530,8 @@ public sealed class DrivingStudentsController(
                 profile.Id,
                 row.student.FullName,
                 row.student.TcNo,
+                registrationBranchName,
+                registrarName,
                 identityKind = profile.IdentityKind.ToString(),
                 profile.IdentityNumber,
                 row.student.BirthDate,
@@ -534,6 +560,7 @@ public sealed class DrivingStudentsController(
                 profile.DrivingExamFee,
                 profile.TheoryExamFeePaid,
                 profile.DrivingExamFeePaid,
+                profile.DrivingExamDate,
                 profile.AccessibilityNotes,
                 status = profile.Status.ToString(),
                 packageName = row.package.Name,
@@ -629,21 +656,26 @@ public sealed class DrivingStudentsController(
         if (request.TheoryExamFee < 0 || request.DrivingExamFee < 0) return BadRequest(new { message = "Ücret negatif olamaz." });
         if (request.TheoryExamFee > 1_000_000 || request.DrivingExamFee > 1_000_000) return BadRequest(new { message = "Ücret makul aralıkta olmalıdır." });
 
-        var before = new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid };
+        if (request.DrivingExamDate is { } examDate && (examDate < DateTime.UtcNow.AddYears(-5) || examDate > DateTime.UtcNow.AddYears(5)))
+            return BadRequest(new { message = "Direksiyon sınav tarihi makul bir aralıkta olmalıdır." });
+
+        var before = new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid, profile.DrivingExamDate };
         profile.TheoryExamFee = request.TheoryExamFee;
         profile.DrivingExamFee = request.DrivingExamFee;
         profile.TheoryExamFeePaid = request.TheoryExamFeePaid;
         profile.DrivingExamFeePaid = request.DrivingExamFeePaid;
+        profile.DrivingExamDate = request.DrivingExamDate;
         await dbContext.SaveChangesAsync(ct);
 
         await auditLogService.LogChangeAsync("Sınav ücretleri güncellendi", AuditCategory, "StudentDrivingProfile", profile.Id.ToString(),
             $"Teorik: {profile.TheoryExamFee:N2}₺ ({(profile.TheoryExamFeePaid ? "ödendi" : "ödenmedi")}), "
-                + $"Direksiyon: {profile.DrivingExamFee:N2}₺ ({(profile.DrivingExamFeePaid ? "ödendi" : "ödenmedi")}).",
+                + $"Direksiyon: {profile.DrivingExamFee:N2}₺ ({(profile.DrivingExamFeePaid ? "ödendi" : "ödenmedi")})"
+                + (profile.DrivingExamDate is { } d ? $", sınav: {d:dd.MM.yyyy}" : string.Empty) + ".",
             before,
-            new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid },
+            new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid, profile.DrivingExamDate },
             ct);
 
-        return Ok(new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid });
+        return Ok(new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid, profile.DrivingExamDate });
     }
 
     // ─── Yardımcılar ──────────────────────────────────────────────────────────
@@ -989,7 +1021,7 @@ public sealed record UploadStudentDocumentRequest(
 
 public sealed record ReviewStudentDocumentRequest(bool Approved, string? RejectionReason);
 
-public sealed record UpdateDrivingExamFeesRequest(decimal TheoryExamFee, decimal DrivingExamFee, bool TheoryExamFeePaid, bool DrivingExamFeePaid);
+public sealed record UpdateDrivingExamFeesRequest(decimal TheoryExamFee, decimal DrivingExamFee, bool TheoryExamFeePaid, bool DrivingExamFeePaid, DateTime? DrivingExamDate);
 
 public sealed record UpdateDrivingStudentStatusRequest(string Status, string? Reason)
 {
