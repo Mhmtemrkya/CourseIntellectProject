@@ -324,6 +324,7 @@ export default function DrivingStudentDetail() {
         drivingExamFee: Number(examFeeDraft.drivingExamFee) || 0,
         theoryExamFeePaid: !!examFeeDraft.theoryExamFeePaid,
         drivingExamFeePaid: !!examFeeDraft.drivingExamFeePaid,
+        drivingExamDate: examFeeDraft.drivingExamDate ? new Date(examFeeDraft.drivingExamDate).toISOString() : null,
       });
       toast({ title: 'Sınav ücretleri güncellendi' });
       setExamFeeDraft(null);
@@ -469,6 +470,8 @@ export default function DrivingStudentDetail() {
               <Row label="WhatsApp" value={overview.whatsAppPhone} />
               <Row label="E-posta" value={overview.email} />
               <Row label="Acil durum" value={[overview.emergencyContactName, overview.emergencyContactPhone].filter(Boolean).join(' • ')} />
+              <Row label="Kayıt şubesi" value={overview.registrationBranchName} />
+              <Row label="Kaydeden" value={overview.registrarName} />
             </CardContent>
           </Card>
 
@@ -495,6 +498,7 @@ export default function DrivingStudentDetail() {
                   drivingExamFee: overview.drivingExamFee || 0,
                   theoryExamFeePaid: !!overview.theoryExamFeePaid,
                   drivingExamFeePaid: !!overview.drivingExamFeePaid,
+                  drivingExamDate: overview.drivingExamDate ? overview.drivingExamDate.slice(0, 10) : '',
                 })}>Düzenle</Button>
               )}
             </CardHeader>
@@ -523,6 +527,10 @@ export default function DrivingStudentDetail() {
                       )}
                     </span>
                   </div>
+                  <div className="flex items-center justify-between border-b py-2 text-sm">
+                    <span className="text-muted-foreground">Direksiyon sınav tarihi</span>
+                    <b>{dateOnly(overview.drivingExamDate)}</b>
+                  </div>
                   <div className="flex items-center justify-between py-2 text-sm">
                     <span className="text-muted-foreground">Toplam sınav ücreti</span>
                     <b>{money((overview.theoryExamFee || 0) + (overview.drivingExamFee || 0))}</b>
@@ -547,6 +555,10 @@ export default function DrivingStudentDetail() {
                         <input type="checkbox" checked={examFeeDraft.drivingExamFeePaid} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, drivingExamFeePaid: e.target.checked })} />Ödendi
                       </label>
                     </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-muted-foreground">Direksiyon sınav tarihi</label>
+                    <Input type="date" className="mt-1" value={examFeeDraft.drivingExamDate} onChange={(e) => setExamFeeDraft({ ...examFeeDraft, drivingExamDate: e.target.value })} />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" size="sm" onClick={() => setExamFeeDraft(null)} disabled={savingFees}>Vazgeç</Button>
@@ -935,6 +947,10 @@ export default function DrivingStudentDetail() {
                     <div>
                       <b>Makbuz {item.receiptNo}</b>
                       <p className="text-xs text-muted-foreground">{item.method} • {dateTime(item.paidAtUtc)}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {item.branchName ? `Şube: ${item.branchName}` : 'Şube: —'}
+                        {item.collectedByName ? ` • Tahsil eden: ${item.collectedByName}` : ''}
+                      </p>
                     </div>
                     <b className="text-emerald-600">{money(item.amount)}</b>
                   </div>
