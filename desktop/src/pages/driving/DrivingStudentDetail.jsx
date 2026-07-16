@@ -13,10 +13,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  addDrivingExtraMinutes, adjustDrivingLedger, createDrivingCharge, fetchDrivingCharges, fetchDrivingLedger,
-  fetchDrivingStudentDetail, recordDrivingPayment, refundDrivingCharge, reviewDrivingStudentDocument,
+  addDrivingExtraMinutes, adjustDrivingLedger, createDrivingAppointment, createDrivingCharge,
+  fetchDrivingCharges, fetchDrivingLedger, fetchDrivingStudentDetail, recordDrivingPayment,
+  refundDrivingCharge, reviewDrivingStudentDocument, suggestDrivingInstructors, suggestDrivingVehicles,
   updateDrivingExamFees, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import {
   DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
@@ -81,6 +83,131 @@ function Row({ label, value }) {
   );
 }
 
+const apptSelectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
+const DURATIONS = [30, 45, 60, 90, 120];
+
+/**
+ * Öğrenci sayfasından ayrılmadan bu kursiyere randevu/ders açar. Müsait öğretmen
+ * ve araç backend'den önerilir; çakışma/uygunluk kuralları kayıtta yeniden
+ * zorlanır (override yetkisi varsa gerekçeyle geçilebilir).
+ */
+function AppointmentModal({ profileId, studentName, canOverride, onClose, onCreated }) {
+  const { toast } = useToast();
+  const [form, setForm] = useState({ date: new Date().toISOString().slice(0, 10), time: '', duration: 60, instructorProfileId: '', vehicleId: '', meetingPoint: '', notes: '' });
+  const [suggestions, setSuggestions] = useState(null);
+  const [blockedOverrides, setBlockedOverrides] = useState([]);
+  const [overrideReason, setOverrideReason] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const set = (patch) => setForm((x) => ({ ...x, ...patch }));
+
+  const startLocal = form.date && form.time ? new Date(`${form.date}T${form.time}`) : null;
+  const endLocal = startLocal ? new Date(startLocal.getTime() + form.duration * 60000) : null;
+
+  // Öğretmen/araç önerileri: saat seçilince backend'e "kim müsait" diye sorulur.
+  useEffect(() => {
+    if (!startLocal || !endLocal) { setSuggestions(null); return undefined; }
+    let active = true;
+    const timer = setTimeout(async () => {
+      const params = { studentDrivingProfileId: profileId, startsAtUtc: startLocal.toISOString(), endsAtUtc: endLocal.toISOString() };
+      try {
+        const instructors = await suggestDrivingInstructors(params);
+        if (!active) return;
+        const vehicles = form.instructorProfileId
+          ? await suggestDrivingVehicles({ ...params, instructorProfileId: form.instructorProfileId })
+          : [];
+        if (active) setSuggestions({ instructors: instructors || [], vehicles: vehicles || [] });
+      } catch {
+        if (active) setSuggestions(null);
+      }
+    }, 400);
+    return () => { active = false; clearTimeout(timer); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profileId, form.date, form.time, form.duration, form.instructorProfileId]);
+
+  async function submit() {
+    if (!startLocal || !endLocal) { toast({ title: 'Tarih ve saat seçin', variant: 'destructive' }); return; }
+    if (!form.instructorProfileId || !form.vehicleId) { toast({ title: 'Öğretmen ve araç seçin', variant: 'destructive' }); return; }
+    if (blockedOverrides.length && overrideReason.trim().length < 10) { toast({ title: 'Override gerekçesi en az 10 karakter olmalı', variant: 'destructive' }); return; }
+    const payload = {
+      studentDrivingProfileId: profileId,
+      instructorProfileId: form.instructorProfileId,
+      vehicleId: form.vehicleId,
+      startsAtUtc: startLocal.toISOString(),
+      endsAtUtc: endLocal.toISOString(),
+      meetingPoint: form.meetingPoint.trim(),
+      notes: form.notes.trim(),
+      overrides: blockedOverrides.length ? blockedOverrides : null,
+      overrideReason: blockedOverrides.length ? overrideReason.trim() : null,
+    };
+    setSaving(true);
+    try {
+      await createDrivingAppointment(payload);
+      toast({ title: blockedOverrides.length ? 'Randevu gerekçeli override ile oluşturuldu' : 'Randevu oluşturuldu' });
+      onCreated();
+    } catch (e) {
+      const code = e.body?.overridableWith;
+      if (code && canOverride(code) && !blockedOverrides.includes(code)) {
+        setBlockedOverrides((prev) => [...prev, code]);
+        toast({ title: 'Kural ihlali', description: `${e.message} Yetkiniz var: gerekçe yazarak devam edin.` });
+      } else {
+        toast({ title: 'Randevu oluşturulamadı', description: e.message, variant: 'destructive' });
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader><DialogTitle>Randevu oluştur — {studentName}</DialogTitle></DialogHeader>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="space-y-1 text-xs font-bold"><span>Tarih</span><Input type="date" value={form.date} onChange={(e) => set({ date: e.target.value })} /></label>
+          <label className="space-y-1 text-xs font-bold"><span>Saat</span><Input type="time" value={form.time} onChange={(e) => set({ time: e.target.value })} /></label>
+          <label className="space-y-1 text-xs font-bold">
+            <span>Süre</span>
+            <select className={apptSelectClass} value={form.duration} onChange={(e) => set({ duration: Number(e.target.value) })}>
+              {DURATIONS.map((d) => <option key={d} value={d}>{d} dk</option>)}
+            </select>
+          </label>
+          <label className="space-y-1 text-xs font-bold">
+            <span>Öğretmen {suggestions && `(${suggestions.instructors.length} müsait)`}</span>
+            <select className={apptSelectClass} value={form.instructorProfileId} onChange={(e) => set({ instructorProfileId: e.target.value, vehicleId: '' })} disabled={!suggestions}>
+              <option value="">{suggestions ? 'Seçin' : 'Önce saat seçin'}</option>
+              {suggestions?.instructors.map((i) => <option key={i.instructorProfileId} value={i.instructorProfileId}>{i.fullName}</option>)}
+            </select>
+          </label>
+          <label className="space-y-1 text-xs font-bold">
+            <span>Araç {suggestions?.vehicles && form.instructorProfileId && `(${suggestions.vehicles.length} müsait)`}</span>
+            <select className={apptSelectClass} value={form.vehicleId} onChange={(e) => set({ vehicleId: e.target.value })} disabled={!form.instructorProfileId}>
+              <option value="">{form.instructorProfileId ? 'Seçin' : 'Önce öğretmen seçin'}</option>
+              {suggestions?.vehicles.map((v) => <option key={v.vehicleId} value={v.vehicleId}>{v.plateNumber}</option>)}
+            </select>
+          </label>
+          <label className="space-y-1 text-xs font-bold"><span>Buluşma noktası</span><Input value={form.meetingPoint} onChange={(e) => set({ meetingPoint: e.target.value })} /></label>
+          <label className="space-y-1 text-xs font-bold sm:col-span-2"><span>Not</span><Input maxLength={1000} value={form.notes} onChange={(e) => set({ notes: e.target.value })} /></label>
+          {startLocal && endLocal && (
+            <p className="text-xs text-muted-foreground sm:col-span-2">
+              {startLocal.toLocaleString('tr-TR')} – {endLocal.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+          {blockedOverrides.length > 0 && (
+            <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 sm:col-span-2">
+              <b className="text-xs text-amber-700 dark:text-amber-400">Kural ihlal ediliyor — gerekçe zorunlu</b>
+              <Input className="mt-2" maxLength={500} placeholder="En az 10 karakter" value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} />
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Vazgeç</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? 'Kaydediliyor…' : 'Randevu Oluştur'}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function DrivingStudentDetail() {
   const { profileId } = useParams();
   const navigate = useNavigate();
@@ -104,6 +231,8 @@ export default function DrivingStudentDetail() {
   const canAdjustBalance = can(DRIVING.lessonBalanceAdjust);
   const canCollect = can(DRIVING.financeCollect);
   const canRefund = can(DRIVING.financeRefund);
+  const canCreateAppointment = can(DRIVING.appointmentCreate);
+  const [apptOpen, setApptOpen] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -579,7 +708,12 @@ export default function DrivingStudentDetail() {
 
         <TabsContent value="appointments" className="mt-5">
           <Card>
-            <CardHeader><CardTitle className="flex gap-2"><CalendarClock className="text-[hsl(var(--brand-accent))]" />Randevular</CardTitle></CardHeader>
+            <CardHeader className="flex-row items-center justify-between space-y-0">
+              <CardTitle className="flex gap-2"><CalendarClock className="text-[hsl(var(--brand-accent))]" />Randevular</CardTitle>
+              {canCreateAppointment && (
+                <Button size="sm" onClick={() => setApptOpen(true)}><Plus className="mr-2 h-4 w-4" />Randevu Oluştur</Button>
+              )}
+            </CardHeader>
             <CardContent className="space-y-2">
               {appointments.length === 0 && <p className="py-6 text-center text-muted-foreground">Randevu yok.</p>}
               {appointments.map((item) => (
@@ -845,6 +979,16 @@ export default function DrivingStudentDetail() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {apptOpen && (
+        <AppointmentModal
+          profileId={profileId}
+          studentName={overview.fullName}
+          canOverride={can}
+          onClose={() => setApptOpen(false)}
+          onCreated={() => { setApptOpen(false); load(); }}
+        />
+      )}
     </div>
   );
 }
