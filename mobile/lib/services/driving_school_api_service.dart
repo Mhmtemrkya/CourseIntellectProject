@@ -335,6 +335,27 @@ class DrivingSchoolApiService {
         '/api/driving-school/students',
       )).cast<Map<String, dynamic>>();
 
+  // Kursiyer grupları (dönemler): liste + kursiyer sayıları.
+  Future<Map<String, dynamic>> studentGroups() =>
+      _get('/api/driving-school/student-groups');
+
+  Future<Map<String, dynamic>> createStudentGroup(
+    String name, {
+    String description = '',
+  }) => _post('/api/driving-school/student-groups', {
+    'name': name,
+    'description': description,
+  });
+
+  // profileIds → gruba atar; groupId null ise gruptan çıkarır.
+  Future<Map<String, dynamic>> assignStudentGroup(
+    List<String> profileIds,
+    String? groupId,
+  ) => _post('/api/driving-school/students/assign-group', {
+    'profileIds': profileIds,
+    'groupId': groupId,
+  });
+
   // Kursiyer dosyası (belge modalı overview + documents alanlarını kullanır).
   Future<Map<String, dynamic>> studentDetail(String profileId) =>
       _get('/api/driving-school/students/$profileId/detail');

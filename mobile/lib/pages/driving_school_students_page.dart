@@ -3,6 +3,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../i18n/app_locale.dart';
 import '../services/api_config.dart';
+import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
 
@@ -59,7 +60,18 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   bool _loading = true;
   Object? _error;
   List<Map<String, dynamic>> _students = [];
+  List<Map<String, dynamic>> _groups = [];
+  int _ungroupedCount = 0;
   String _search = '';
+  String _groupFilter = 'all'; // 'all' | 'ungrouped' | <groupId>
+  DrivingPermissionSnapshot _permissions = DrivingPermissionSnapshot.empty;
+
+  bool _selectMode = false;
+  final Set<String> _selected = {};
+  String? _assignTarget;
+  bool _assigning = false;
+
+  bool get _canManageGroups => _permissions.can(DrivingPermissions.studentUpdate);
 
   @override
   void initState() {
@@ -74,8 +86,22 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     });
     try {
       final rows = await _service.students();
+      final permissions = await DrivingPermissionsStore.instance.load();
+      Map<String, dynamic>? groupData;
+      try {
+        groupData = await _service.studentGroups();
+      } catch (_) {
+        groupData = null;
+      }
       if (!mounted) return;
-      setState(() => _students = rows);
+      setState(() {
+        _students = rows;
+        _permissions = permissions;
+        _groups = ((groupData?['groups'] as List?) ?? const [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _ungroupedCount = (groupData?['ungroupedCount'] as num?)?.toInt() ?? 0;
+      });
     } catch (e) {
       if (mounted) setState(() => _error = e);
     } finally {
@@ -83,12 +109,22 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     }
   }
 
+  List<Map<String, dynamic>> get _activeGroups =>
+      _groups.where((g) => g['isActive'] == true).toList();
+
   List<Map<String, dynamic>> get _filtered {
     final term = _search.trim().toLowerCase();
-    if (term.isEmpty) return _students;
-    return _students
-        .where((s) => '${s['fullName'] ?? ''}'.toLowerCase().contains(term))
-        .toList();
+    return _students.where((s) {
+      final groupId = s['groupId'];
+      if (_groupFilter == 'ungrouped' && groupId != null) return false;
+      if (_groupFilter != 'all' && _groupFilter != 'ungrouped' && '$groupId' != _groupFilter) {
+        return false;
+      }
+      if (term.isNotEmpty && !'${s['fullName'] ?? ''}'.toLowerCase().contains(term)) {
+        return false;
+      }
+      return true;
+    }).toList();
   }
 
   void _openStudent(Map<String, dynamic> student) {
@@ -103,6 +139,102 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     );
   }
 
+  void _exitSelectMode() {
+    setState(() {
+      _selectMode = false;
+      _selected.clear();
+      _assignTarget = null;
+    });
+  }
+
+  void _toggleSelect(String id) {
+    setState(() {
+      if (_selected.contains(id)) {
+        _selected.remove(id);
+      } else {
+        _selected.add(id);
+      }
+    });
+  }
+
+  Future<void> _createGroupDialog() async {
+    final nameCtrl = TextEditingController();
+    final descCtrl = TextEditingController();
+    final created = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Yeni Kursiyer Grubu'.tr),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameCtrl,
+              autofocus: true,
+              maxLength: 120,
+              decoration: InputDecoration(labelText: 'Grup adı'.tr, hintText: 'Örn. Temmuz 2026 grubu'),
+            ),
+            TextField(
+              controller: descCtrl,
+              maxLength: 500,
+              decoration: InputDecoration(labelText: 'Açıklama (opsiyonel)'.tr),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
+          FilledButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.length < 2) return;
+              try {
+                await _service.createStudentGroup(name, description: descCtrl.text.trim());
+                if (dialogContext.mounted) Navigator.pop(dialogContext, true);
+              } catch (e) {
+                if (dialogContext.mounted) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    SnackBar(content: Text('$e')),
+                  );
+                }
+              }
+            },
+            child: Text('Oluştur'.tr),
+          ),
+        ],
+      ),
+    );
+    nameCtrl.dispose();
+    descCtrl.dispose();
+    if (created == true) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Grup oluşturuldu.'.tr)),
+        );
+      }
+      await _load();
+    }
+  }
+
+  Future<void> _assign(String? groupId) async {
+    if (_selected.isEmpty) return;
+    setState(() => _assigning = true);
+    try {
+      final result = await _service.assignStudentGroup(_selected.toList(), groupId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${result['assigned'] ?? _selected.length} kursiyer güncellendi.')),
+        );
+      }
+      _exitSelectMode();
+      await _load();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _assigning = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeCount = _students
@@ -111,66 +243,181 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     final graduated = _students.where((s) => s['status'] == 'Graduated').length;
 
     return DrivingScaffold(
-      appBar: AppBar(title: Text('Öğrenciler'.tr)),
+      appBar: AppBar(
+        title: Text(_selectMode ? '${_selected.length} seçili' : 'Öğrenciler'.tr),
+        leading: _selectMode
+            ? IconButton(icon: const Icon(Icons.close_rounded), onPressed: _exitSelectMode)
+            : null,
+        actions: [
+          if (_canManageGroups && !_selectMode) ...[
+            IconButton(
+              tooltip: 'Grup Oluştur'.tr,
+              icon: const Icon(Icons.create_new_folder_rounded),
+              onPressed: _createGroupDialog,
+            ),
+            IconButton(
+              tooltip: 'Gruba Ata'.tr,
+              icon: const Icon(Icons.layers_rounded),
+              onPressed: () => setState(() => _selectMode = true),
+            ),
+          ],
+        ],
+      ),
       child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
           ? DrivingErrorState(error: _error!, onRetry: _load)
-          : RefreshIndicator(
-              onRefresh: _load,
-              child: ListView(
-                padding: const EdgeInsets.all(16),
-                children: [
-                  DrivingHero(
-                    eyebrow: 'KURSİYERLER'.tr,
-                    title: 'Öğrenciler'.tr,
-                    description:
-                        'Bir kursiyere dokunarak sisteme yüklenen belgelerini inceleyin.'.tr,
-                    icon: Icons.groups_rounded,
-                    metrics: [
-                      DrivingHeroMetric(label: 'Toplam'.tr, value: '${_students.length}'),
-                      const SizedBox(width: 10),
-                      DrivingHeroMetric(label: 'Aktif'.tr, value: '$activeCount'),
-                      const SizedBox(width: 10),
-                      DrivingHeroMetric(label: 'Mezun'.tr, value: '$graduated'),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    onChanged: (v) => setState(() => _search = v),
-                    decoration: InputDecoration(
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      hintText: 'Kursiyer ara...'.tr,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  if (_filtered.isEmpty)
-                    DrivingEmptyState(
-                      icon: Icons.groups_rounded,
-                      title: _search.isEmpty
-                          ? 'Henüz kursiyer yok.'.tr
-                          : 'Eşleşen kursiyer yok.'.tr,
-                    )
-                  else
-                    ..._filtered.map(
-                      (s) => DrivingListRow(
-                        icon: Icons.person_rounded,
-                        title: '${s['fullName'] ?? '—'}',
-                        subtitle:
-                            '${s['licenseClass'] ?? ''} • ${_transmission(s['transmissionType'])} • ${s['remainingDrivingMinutes'] ?? 0} dk kaldı',
-                        trailing: DrivingStatusPill(
-                          label: _statusLabel(s['status']),
-                          tone: DrivingTone.accent,
+          : Column(
+              children: [
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _load,
+                    child: ListView(
+                      padding: const EdgeInsets.all(16),
+                      children: [
+                        DrivingHero(
+                          eyebrow: 'KURSİYERLER'.tr,
+                          title: 'Öğrenciler'.tr,
+                          description:
+                              'Kursiyerleri gruplara (dönemlere) ayırın; belgelerini inceleyin.'.tr,
+                          icon: Icons.groups_rounded,
+                          metrics: [
+                            DrivingHeroMetric(label: 'Toplam'.tr, value: '${_students.length}'),
+                            const SizedBox(width: 10),
+                            DrivingHeroMetric(label: 'Aktif'.tr, value: '$activeCount'),
+                            const SizedBox(width: 10),
+                            DrivingHeroMetric(label: 'Mezun'.tr, value: '$graduated'),
+                          ],
                         ),
-                        onTap: () => _openStudent(s),
-                      ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          onChanged: (v) => setState(() => _search = v),
+                          decoration: InputDecoration(
+                            prefixIcon: const Icon(Icons.search_rounded),
+                            hintText: 'Kursiyer ara...'.tr,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _groupFilterChips(),
+                        const SizedBox(height: 12),
+                        if (_filtered.isEmpty)
+                          DrivingEmptyState(
+                            icon: Icons.groups_rounded,
+                            title: _search.isEmpty && _groupFilter == 'all'
+                                ? 'Henüz kursiyer yok.'.tr
+                                : 'Eşleşen kursiyer yok.'.tr,
+                          )
+                        else
+                          ..._filtered.map(_studentRow),
+                      ],
                     ),
-                ],
-              ),
+                  ),
+                ),
+                if (_selectMode) _assignBar(),
+              ],
             ),
+    );
+  }
+
+  Widget _groupFilterChips() {
+    final chips = <Widget>[
+      _filterChip('all', 'Tümü'.tr, _students.length),
+      ..._activeGroups.map((g) => _filterChip('${g['id']}', '${g['name']}', (g['studentCount'] as num?)?.toInt() ?? 0)),
+      if (_ungroupedCount > 0) _filterChip('ungrouped', 'Grupsuz'.tr, _ungroupedCount),
+    ];
+    return SizedBox(
+      height: 38,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: chips.length,
+        separatorBuilder: (_, _) => const SizedBox(width: 8),
+        itemBuilder: (_, i) => chips[i],
+      ),
+    );
+  }
+
+  Widget _filterChip(String key, String label, int count) {
+    final selected = _groupFilter == key;
+    return ChoiceChip(
+      selected: selected,
+      onSelected: (_) => setState(() => _groupFilter = key),
+      label: Text('$label ($count)'),
+      labelStyle: TextStyle(
+        fontWeight: FontWeight.w700,
+        fontSize: 12,
+        color: selected ? Colors.white : null,
+      ),
+      selectedColor: Theme.of(context).colorScheme.primary,
+      showCheckmark: false,
+    );
+  }
+
+  Widget _studentRow(Map<String, dynamic> s) {
+    final id = '${s['id']}';
+    final checked = _selected.contains(id);
+    final groupName = s['groupName'];
+    return DrivingListRow(
+      icon: _selectMode
+          ? (checked ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded)
+          : Icons.person_rounded,
+      title: '${s['fullName'] ?? '—'}',
+      subtitle: [
+        '${s['licenseClass'] ?? ''} • ${_transmission(s['transmissionType'])} • ${s['remainingDrivingMinutes'] ?? 0} dk kaldı',
+        if (groupName != null) 'Grup: $groupName',
+      ].join('\n'),
+      trailing: DrivingStatusPill(
+        label: _statusLabel(s['status']),
+        tone: DrivingTone.accent,
+      ),
+      onTap: () => _selectMode ? _toggleSelect(id) : _openStudent(s),
+    );
+  }
+
+  Widget _assignBar() {
+    return Material(
+      elevation: 8,
+      color: Theme.of(context).colorScheme.surface,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          child: Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _assignTarget,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    hintText: 'Grup seçin…'.tr,
+                  ),
+                  items: _activeGroups
+                      .map((g) => DropdownMenuItem(value: '${g['id']}', child: Text('${g['name']}')))
+                      .toList(),
+                  onChanged: _assigning ? null : (v) => setState(() => _assignTarget = v),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: (_assigning || _assignTarget == null || _selected.isEmpty)
+                    ? null
+                    : () => _assign(_assignTarget),
+                child: Text('Ata'.tr),
+              ),
+              const SizedBox(width: 6),
+              OutlinedButton(
+                onPressed: (_assigning || _selected.isEmpty) ? null : () => _assign(null),
+                child: Text('Çıkar'.tr),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

@@ -281,13 +281,139 @@ public sealed class DrivingSchoolController(
 
     [HttpGet("students")]
     [RequireDrivingPermission(DrivingPermissions.StudentView)]
-    public async Task<IActionResult> GetStudents(CancellationToken ct)
+    public async Task<IActionResult> GetStudents([FromQuery] Guid? groupId, [FromQuery] bool? ungrouped, CancellationToken ct = default)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
-        var rows = await dbContext.StudentDrivingProfiles.AsNoTracking()
-            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p.Id, p.StudentId, s.FullName, p.PackageId, p.LicenseClass, transmissionType = p.TransmissionType.ToString(), p.PurchasedDrivingMinutes, p.UsedDrivingMinutes, remainingDrivingMinutes = p.PurchasedDrivingMinutes - p.UsedDrivingMinutes, status = p.Status.ToString() })
+        var query = dbContext.StudentDrivingProfiles.AsNoTracking().AsQueryable();
+        // ?ungrouped=true → gruba atanmamış kursiyerler; ?groupId=… → o gruptakiler.
+        if (ungrouped == true) query = query.Where(x => x.StudentGroupId == null);
+        else if (groupId is Guid gid) query = query.Where(x => x.StudentGroupId == gid);
+
+        var rows = await query
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p, s.FullName })
+            .GroupJoin(dbContext.DrivingStudentGroups.AsNoTracking(), x => x.p.StudentGroupId, g => (Guid?)g.Id, (x, gs) => new { x.p, x.FullName, gs })
+            .SelectMany(x => x.gs.DefaultIfEmpty(), (x, g) => new
+            {
+                x.p.Id,
+                x.p.StudentId,
+                x.FullName,
+                x.p.PackageId,
+                x.p.LicenseClass,
+                transmissionType = x.p.TransmissionType.ToString(),
+                x.p.PurchasedDrivingMinutes,
+                x.p.UsedDrivingMinutes,
+                remainingDrivingMinutes = x.p.PurchasedDrivingMinutes - x.p.UsedDrivingMinutes,
+                status = x.p.Status.ToString(),
+                groupId = x.p.StudentGroupId,
+                groupName = g != null ? g.Name : null,
+            })
             .OrderBy(x => x.FullName).ToListAsync(ct);
         return Ok(rows);
+    }
+
+    // ─── Kursiyer grupları (dönemler) ─────────────────────────────────────────
+
+    /// <summary>Kurumun kursiyer gruplarını, her birindeki kursiyer sayısıyla döner.</summary>
+    [HttpGet("student-groups")]
+    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    public async Task<IActionResult> GetStudentGroups([FromQuery] bool includeInactive, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var query = dbContext.DrivingStudentGroups.AsNoTracking().AsQueryable();
+        if (!includeInactive) query = query.Where(x => x.IsActive);
+        var counts = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.StudentGroupId != null)
+            .GroupBy(x => x.StudentGroupId)
+            .Select(g => new { GroupId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.GroupId!.Value, x => x.Count, ct);
+        var groups = await query.OrderBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc })
+            .ToListAsync(ct);
+        var ungroupedCount = await dbContext.StudentDrivingProfiles.AsNoTracking().CountAsync(x => x.StudentGroupId == null, ct);
+        return Ok(new
+        {
+            groups = groups.Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc, studentCount = counts.GetValueOrDefault(x.Id) }),
+            ungroupedCount,
+        });
+    }
+
+    [HttpPost("student-groups")]
+    [RequireDrivingPermission(DrivingPermissions.StudentUpdate)]
+    public async Task<IActionResult> CreateStudentGroup([FromBody] SaveDrivingStudentGroupRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var name = (request.Name ?? string.Empty).Trim();
+        if (name.Length is < 2 or > 120) return BadRequest(new { message = "Grup adı 2-120 karakter olmalıdır." });
+        if ((request.Description?.Length ?? 0) > 500) return BadRequest(new { message = "Açıklama en fazla 500 karakter olabilir." });
+        var exists = await dbContext.DrivingStudentGroups.AsNoTracking().AnyAsync(x => x.Name == name, ct);
+        if (exists) return Conflict(new { message = "Bu isimde bir grup zaten var." });
+
+        var entity = new CourseIntellect.Domain.Entities.DrivingStudentGroup
+        {
+            Name = name,
+            Description = request.Description?.Trim() ?? string.Empty,
+            CreatedByUserId = CurrentUserId(),
+        };
+        dbContext.DrivingStudentGroups.Add(entity);
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Kursiyer grubu oluşturuldu", AuditCategory, "DrivingStudentGroup", entity.Id.ToString(),
+            $"\"{entity.Name}\" grubu oluşturuldu.", null, new { entity.Name, entity.Description }, ct);
+        return Ok(new { entity.Id, entity.Name, entity.Description, entity.IsActive, entity.CreatedAtUtc, studentCount = 0 });
+    }
+
+    [HttpPut("student-groups/{id:guid}")]
+    [RequireDrivingPermission(DrivingPermissions.StudentUpdate)]
+    public async Task<IActionResult> UpdateStudentGroup(Guid id, [FromBody] SaveDrivingStudentGroupRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var group = await dbContext.DrivingStudentGroups.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (group is null) return NotFound(new { message = "Grup bulunamadı." });
+        var name = (request.Name ?? string.Empty).Trim();
+        if (name.Length is < 2 or > 120) return BadRequest(new { message = "Grup adı 2-120 karakter olmalıdır." });
+        if ((request.Description?.Length ?? 0) > 500) return BadRequest(new { message = "Açıklama en fazla 500 karakter olabilir." });
+        var clash = await dbContext.DrivingStudentGroups.AsNoTracking().AnyAsync(x => x.Name == name && x.Id != id, ct);
+        if (clash) return Conflict(new { message = "Bu isimde başka bir grup var." });
+
+        var before = new { group.Name, group.Description, group.IsActive };
+        group.Name = name;
+        group.Description = request.Description?.Trim() ?? string.Empty;
+        if (request.IsActive is bool active) group.IsActive = active;
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Kursiyer grubu güncellendi", AuditCategory, "DrivingStudentGroup", group.Id.ToString(),
+            $"\"{group.Name}\" grubu güncellendi.", before, new { group.Name, group.Description, group.IsActive }, ct);
+        return Ok(new { group.Id, group.Name, group.Description, group.IsActive, group.CreatedAtUtc });
+    }
+
+    /// <summary>Bir veya birden çok kursiyeri bir gruba atar; <c>groupId</c> boşsa gruptan çıkarır.</summary>
+    [HttpPost("students/assign-group")]
+    [RequireDrivingPermission(DrivingPermissions.StudentUpdate)]
+    public async Task<IActionResult> AssignStudentsToGroup([FromBody] AssignStudentGroupRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var profileIds = (request.ProfileIds ?? []).Distinct().ToList();
+        if (profileIds.Count == 0) return BadRequest(new { message = "En az bir kursiyer seçilmelidir." });
+        if (profileIds.Count > 500) return BadRequest(new { message = "Tek seferde en fazla 500 kursiyer atanabilir." });
+
+        string? groupName = null;
+        if (request.GroupId is Guid gid)
+        {
+            var group = await dbContext.DrivingStudentGroups.AsNoTracking().SingleOrDefaultAsync(x => x.Id == gid, ct);
+            if (group is null) return BadRequest(new { message = "Grup bulunamadı." });
+            if (!group.IsActive) return BadRequest(new { message = "Pasif gruba kursiyer atanamaz." });
+            groupName = group.Name;
+        }
+
+        var profiles = await dbContext.StudentDrivingProfiles.Where(x => profileIds.Contains(x.Id)).ToListAsync(ct);
+        if (profiles.Count == 0) return NotFound(new { message = "Kursiyer bulunamadı." });
+        foreach (var profile in profiles) profile.StudentGroupId = request.GroupId;
+        await dbContext.SaveChangesAsync(ct);
+
+        await auditLogService.LogChangeAsync(
+            request.GroupId is null ? "Kursiyerler gruptan çıkarıldı" : "Kursiyerler gruba atandı",
+            AuditCategory, "DrivingStudentGroup", request.GroupId?.ToString() ?? "-",
+            $"{profiles.Count} kursiyer {(request.GroupId is null ? "gruptan çıkarıldı" : $"\"{groupName}\" grubuna atandı")}.",
+            null, new { request.GroupId, count = profiles.Count }, ct);
+        return Ok(new { assigned = profiles.Count, groupId = request.GroupId, groupName });
     }
 
     [HttpPost("students")]
@@ -1088,6 +1214,8 @@ public sealed record SaveDrivingPackageRequest(string Name, string LicenseClass,
 public sealed record SaveDrivingVehicleRequest(string PlateNumber, string Brand, string Model, int ModelYear, string LicenseClass, TransmissionType TransmissionType, int CurrentKilometer, DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc);
 public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic);
 public sealed record SaveStudentDrivingProfileRequest(Guid StudentId, Guid PackageId, string LicenseClass, TransmissionType TransmissionType);
+public sealed record SaveDrivingStudentGroupRequest(string Name, string? Description, bool? IsActive);
+public sealed record AssignStudentGroupRequest(IReadOnlyList<Guid> ProfileIds, Guid? GroupId);
 public sealed record SaveDrivingAppointmentRequest(Guid StudentDrivingProfileId, Guid InstructorProfileId, Guid VehicleId, DateTime StartsAtUtc, DateTime EndsAtUtc, string? Notes, string? MeetingPoint, IReadOnlyList<string>? Overrides, string? OverrideReason);
 public sealed record StartDrivingLessonRequest(int StartKilometer, bool BrakesOk, bool TiresOk, bool LightsOk, bool FluidsOk, string? PreCheckNote);
 public sealed record CompleteDrivingLessonRequest(int EndKilometer, Dictionary<string, int>? Criteria, string? InstructorNote);

@@ -11,6 +11,7 @@ class DrivingPermissions {
 
   static const studentView = 'driving.student.view';
   static const studentCreate = 'driving.student.create';
+  static const studentUpdate = 'driving.student.update';
   static const studentDocumentView = 'driving.student.document.view';
   static const studentDocumentUpload = 'driving.student.document.upload';
 

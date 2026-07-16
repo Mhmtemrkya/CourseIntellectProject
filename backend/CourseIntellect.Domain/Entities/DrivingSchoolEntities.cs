@@ -57,6 +57,8 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public Guid? TenantId { get; set; }
     public Guid StudentId { get; set; }
     public Guid PackageId { get; set; }
+    /// <summary>Atandığı kursiyer grubu (dönem). Boşsa gruba atanmamış.</summary>
+    public Guid? StudentGroupId { get; set; }
     public string LicenseClass { get; set; } = "B";
     public TransmissionType TransmissionType { get; set; }
     public int PurchasedDrivingMinutes { get; set; }

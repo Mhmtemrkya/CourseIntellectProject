@@ -3,6 +3,24 @@ using CourseIntellect.Domain.Enums;
 namespace CourseIntellect.Domain.Entities;
 
 /// <summary>
+/// Kursiyer grubu (dönem) — ör. "Temmuz 2026 grubu". Kursiyerler bir gruba
+/// atanır; öğrenci listeleri ve raporlar grup bazlı filtrelenir. Şimdilik bir
+/// kursiyer aynı anda tek gruptadır (<see cref="StudentDrivingProfile.StudentGroupId"/>);
+/// çoklu üyelik gerekirse ara tabloya çevrilir.
+/// </summary>
+public sealed class DrivingStudentGroup : ITenantScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+    /// <summary>Pasif grup yeni atamalarda seçilemez ama geçmiş atamalar korunur.</summary>
+    public bool IsActive { get; set; } = true;
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+}
+
+/// <summary>
 /// Sürücü adayının kurs dosyasındaki tek bir belge (kimlik, sağlık raporu, adli sicil…).
 ///
 /// Bir belge türünün aynı anda yalnız BİR geçerli sürümü olur (<see cref="IsCurrent"/>).

@@ -165,6 +165,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingVehicle> DrivingVehicles => Set<DrivingVehicle>();
     public DbSet<DrivingInstructorProfile> DrivingInstructorProfiles => Set<DrivingInstructorProfile>();
     public DbSet<StudentDrivingProfile> StudentDrivingProfiles => Set<StudentDrivingProfile>();
+    public DbSet<DrivingStudentGroup> DrivingStudentGroups => Set<DrivingStudentGroup>();
     public DbSet<StudentDrivingDocument> StudentDrivingDocuments => Set<StudentDrivingDocument>();
     public DbSet<DrivingRegistrationDraft> DrivingRegistrationDrafts => Set<DrivingRegistrationDraft>();
     public DbSet<DrivingAppointment> DrivingAppointments => Set<DrivingAppointment>();
@@ -1617,6 +1618,13 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.TenantId, x.StaffId }).IsUnique();
             entity.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<DrivingStudentGroup>(entity =>
+        {
+            entity.ToTable("driving_student_groups"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(500);
+            entity.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+        });
         modelBuilder.Entity<StudentDrivingProfile>(entity =>
         {
             entity.ToTable("student_driving_profiles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
@@ -1642,8 +1650,11 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.AccessibilityNotes).HasMaxLength(1000);
             entity.HasIndex(x => new { x.TenantId, x.StudentId }).IsUnique();
             entity.HasIndex(x => new { x.TenantId, x.Status });
+            entity.HasIndex(x => x.StudentGroupId);
             entity.HasOne<StudentProfile>().WithMany().HasForeignKey(x => x.StudentId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne<DrivingPackage>().WithMany().HasForeignKey(x => x.PackageId).OnDelete(DeleteBehavior.Restrict);
+            // Grup silinirse kursiyer grupsuz kalır (dosyası silinmez).
+            entity.HasOne<DrivingStudentGroup>().WithMany().HasForeignKey(x => x.StudentGroupId).OnDelete(DeleteBehavior.SetNull);
         });
         modelBuilder.Entity<StudentDrivingDocument>(entity =>
         {

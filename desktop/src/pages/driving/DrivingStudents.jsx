@@ -1,13 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ExternalLink, FileCheck2, GraduationCap, Plus, Search, UserPlus, Users } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, ExternalLink, FileCheck2, FolderPlus, GraduationCap, Layers, Plus, Search, UserPlus, Users, X } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { fetchDrivingStudentDetail, fetchDrivingStudents } from '../../lib/api/modules';
+import {
+  assignDrivingStudentGroup, createDrivingStudentGroup, fetchDrivingStudentDetail,
+  fetchDrivingStudentGroups, fetchDrivingStudents,
+} from '../../lib/api/modules';
+import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
 const STATUS_LABELS = {
@@ -117,19 +122,86 @@ function StudentDocumentsModal({ profileId, onClose }) {
   );
 }
 
+// Grup oluşturma modalı — ad + kısa açıklama.
+function CreateGroupModal({ onClose, onCreated }) {
+  const { toast } = useToast();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const submit = async () => {
+    const trimmed = name.trim();
+    if (trimmed.length < 2) { toast({ title: 'Grup adı en az 2 karakter olmalıdır.', variant: 'destructive' }); return; }
+    setSaving(true);
+    try {
+      const group = await createDrivingStudentGroup({ name: trimmed, description: description.trim() });
+      toast({ title: 'Grup oluşturuldu', description: `"${group.name}" hazır.` });
+      onCreated(group);
+    } catch (error) {
+      toast({ title: 'Grup oluşturulamadı', description: error.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <FolderPlus className="h-5 w-5 text-[hsl(var(--brand-accent))]" />Yeni Kursiyer Grubu
+          </DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-bold text-muted-foreground">Grup adı</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Temmuz 2026 grubu" maxLength={120} autoFocus />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-muted-foreground">Açıklama (opsiyonel)</label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Kısa not" maxLength={500} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={saving}>Vazgeç</Button>
+          <Button className="bg-brand-primary text-white hover:bg-brand-primary/90" onClick={submit} disabled={saving}>
+            {saving ? 'Kaydediliyor…' : 'Oluştur'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function DrivingStudents() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { can } = useDrivingPermissions();
+  const canManageGroups = can(DRIVING.studentUpdate);
   const [students, setStudents] = useState([]);
+  const [groups, setGroups] = useState([]);
+  const [ungroupedCount, setUngroupedCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'ungrouped' | <groupId>
   const [selectedId, setSelectedId] = useState(null);
+  const [createOpen, setCreateOpen] = useState(false);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [assignTarget, setAssignTarget] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
-      setStudents(await fetchDrivingStudents() || []);
+      const [studentList, groupData] = await Promise.all([
+        fetchDrivingStudents(),
+        fetchDrivingStudentGroups().catch(() => null),
+      ]);
+      setStudents(studentList || []);
+      setGroups(groupData?.groups || []);
+      setUngroupedCount(groupData?.ungroupedCount ?? 0);
     } catch (error) {
       toast({ title: 'Kursiyerler alınamadı', description: error.message, variant: 'destructive' });
     } finally {
@@ -142,27 +214,90 @@ export default function DrivingStudents() {
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('tr-TR');
-    if (!term) return students;
-    return students.filter((s) => (s.fullName || '').toLocaleLowerCase('tr-TR').includes(term));
-  }, [students, search]);
+    return students.filter((s) => {
+      if (groupFilter === 'ungrouped' && s.groupId) return false;
+      if (groupFilter !== 'all' && groupFilter !== 'ungrouped' && s.groupId !== groupFilter) return false;
+      if (term && !(s.fullName || '').toLocaleLowerCase('tr-TR').includes(term)) return false;
+      return true;
+    });
+  }, [students, search, groupFilter]);
 
   const activeCount = useMemo(() => students.filter((s) => !['Graduated', 'Cancelled'].includes(s.status)).length, [students]);
   const graduatedCount = useMemo(() => students.filter((s) => s.status === 'Graduated').length, [students]);
 
+  const exitSelectMode = useCallback(() => { setSelectMode(false); setSelectedIds(new Set()); setAssignTarget(''); }, []);
+
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const doAssign = useCallback(async (groupId) => {
+    const profileIds = [...selectedIds];
+    if (profileIds.length === 0) return;
+    setAssigning(true);
+    try {
+      const result = await assignDrivingStudentGroup({ profileIds, groupId: groupId || null });
+      toast({
+        title: groupId ? 'Kursiyerler gruba atandı' : 'Kursiyerler gruptan çıkarıldı',
+        description: `${result.assigned} kursiyer güncellendi.`,
+      });
+      exitSelectMode();
+      await load(true);
+    } catch (error) {
+      toast({ title: 'Atama başarısız', description: error.message, variant: 'destructive' });
+    } finally {
+      setAssigning(false);
+    }
+  }, [selectedIds, toast, exitSelectMode, load]);
+
+  const activeGroups = useMemo(() => groups.filter((g) => g.isActive), [groups]);
+
   if (loading) return <DrivingLoading />;
+
+  const filterPill = (key, label, count) => (
+    <button
+      key={key}
+      type="button"
+      onClick={() => setGroupFilter(key)}
+      className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+        groupFilter === key
+          ? 'border-brand-primary bg-brand-primary text-white'
+          : 'border-foreground/15 bg-foreground/[0.03] text-muted-foreground hover:border-[hsl(var(--brand-accent)/0.5)]'
+      }`}
+    >
+      {label}
+      {count != null && <span className={`rounded-full px-1.5 ${groupFilter === key ? 'bg-white/20' : 'bg-foreground/10'}`}>{count}</span>}
+    </button>
+  );
 
   return (
     <DrivingPage testId="driving-students-page">
       <DrivingPageHeader
         title="Öğrenciler"
-        description="Kursiyerleri görüntüleyin; bir kursiyere tıklayarak sisteme yüklenen belgelerini inceleyin."
+        description="Kursiyerleri görüntüleyin, gruplara (dönemlere) ayırın; bir kursiyere tıklayarak belgelerini inceleyin."
         icon={Users}
         onRefresh={() => load(true)}
         refreshing={refreshing}
         actions={(
-          <Button className="bg-brand-primary text-white hover:bg-brand-primary/90" onClick={() => navigate('/driving/students/new')}>
-            <UserPlus className="mr-2 h-4 w-4" />Yeni Kursiyer
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            {canManageGroups && (
+              <>
+                <Button variant="outline" onClick={() => setCreateOpen(true)}>
+                  <FolderPlus className="mr-2 h-4 w-4" />Grup Oluştur
+                </Button>
+                <Button variant={selectMode ? 'secondary' : 'outline'} onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}>
+                  <Layers className="mr-2 h-4 w-4" />{selectMode ? 'Seçimi Bitir' : 'Gruba Ata'}
+                </Button>
+              </>
+            )}
+            <Button className="bg-brand-primary text-white hover:bg-brand-primary/90" onClick={() => navigate('/driving/students/new')}>
+              <UserPlus className="mr-2 h-4 w-4" />Yeni Kursiyer
+            </Button>
+          </div>
         )}
       />
 
@@ -177,40 +312,97 @@ export default function DrivingStudents() {
         <Input className="pl-9" placeholder="Kursiyer ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
       </div>
 
+      {/* Grup (dönem) filtresi */}
+      <div className="flex flex-wrap items-center gap-2">
+        {filterPill('all', 'Tümü', students.length)}
+        {activeGroups.map((g) => filterPill(g.id, g.name, g.studentCount))}
+        {ungroupedCount > 0 && filterPill('ungrouped', 'Grupsuz', ungroupedCount)}
+      </div>
+
       {filtered.length === 0 ? (
         <DrivingNotice
           icon={Users}
-          title={search ? 'Eşleşen kursiyer yok.' : 'Henüz kursiyer eklenmedi.'}
-          message={search ? 'Aramanızı değiştirin.' : 'Yeni kursiyer ekleyerek başlayın.'}
-          action={!search ? <Button onClick={() => navigate('/driving/students/new')}><Plus className="mr-2 h-4 w-4" />Yeni Kursiyer</Button> : null}
+          title={search || groupFilter !== 'all' ? 'Eşleşen kursiyer yok.' : 'Henüz kursiyer eklenmedi.'}
+          message={search || groupFilter !== 'all' ? 'Filtreyi veya aramayı değiştirin.' : 'Yeni kursiyer ekleyerek başlayın.'}
+          action={!search && groupFilter === 'all' ? <Button onClick={() => navigate('/driving/students/new')}><Plus className="mr-2 h-4 w-4" />Yeni Kursiyer</Button> : null}
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map((student) => (
-            <button
-              type="button"
-              key={student.id}
-              onClick={() => setSelectedId(student.id)}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 text-left transition hover:border-[hsl(var(--brand-accent)/0.5)] hover:bg-foreground/[0.06]"
-            >
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-lg font-black text-brand-primary">
-                  {student.fullName?.[0] || '?'}
+        <div className="grid gap-3 pb-24 sm:grid-cols-2 xl:grid-cols-3">
+          {filtered.map((student) => {
+            const checked = selectedIds.has(student.id);
+            return (
+              <button
+                type="button"
+                key={student.id}
+                onClick={() => (selectMode ? toggleSelect(student.id) : setSelectedId(student.id))}
+                className={`flex items-center justify-between gap-3 rounded-2xl border p-4 text-left transition ${
+                  selectMode && checked
+                    ? 'border-brand-primary bg-brand-primary/[0.06]'
+                    : 'border-foreground/10 bg-foreground/[0.035] hover:border-[hsl(var(--brand-accent)/0.5)] hover:bg-foreground/[0.06]'
+                }`}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  {selectMode && <Checkbox checked={checked} className="pointer-events-none" />}
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-lg font-black text-brand-primary">
+                    {student.fullName?.[0] || '?'}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate font-bold">{student.fullName}</p>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {student.licenseClass} • {transmissionLabel(student.transmissionType)}
+                    </p>
+                    {student.groupName && (
+                      <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-[hsl(var(--brand-accent)/0.12)] px-2 py-0.5 text-[10px] font-bold text-[hsl(var(--brand-accent))]">
+                        <Layers className="h-3 w-3" />{student.groupName}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="truncate font-bold">{student.fullName}</p>
-                  <p className="truncate text-xs text-muted-foreground">
-                    {student.licenseClass} • {transmissionLabel(student.transmissionType)}
-                  </p>
+                <div className="flex shrink-0 flex-col items-end gap-1">
+                  <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[student.status] || student.status}</Badge>
+                  <span className="text-xs text-muted-foreground">{student.remainingDrivingMinutes} dk kaldı</span>
                 </div>
-              </div>
-              <div className="flex shrink-0 flex-col items-end gap-1">
-                <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[student.status] || student.status}</Badge>
-                <span className="text-xs text-muted-foreground">{student.remainingDrivingMinutes} dk kaldı</span>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
+      )}
+
+      {/* Toplu atama çubuğu */}
+      {selectMode && (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t border-foreground/10 bg-background/95 p-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div className="mx-auto flex max-w-4xl flex-wrap items-center gap-3">
+            <span className="text-sm font-bold">{selectedIds.size} kursiyer seçili</span>
+            <select
+              value={assignTarget}
+              onChange={(e) => setAssignTarget(e.target.value)}
+              className="h-9 rounded-lg border border-foreground/15 bg-background px-3 text-sm"
+            >
+              <option value="">Grup seçin…</option>
+              {activeGroups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+            </select>
+            <Button
+              className="bg-brand-primary text-white hover:bg-brand-primary/90"
+              disabled={!assignTarget || selectedIds.size === 0 || assigning}
+              onClick={() => doAssign(assignTarget)}
+            >
+              {assigning ? 'Atanıyor…' : 'Gruba Ata'}
+            </Button>
+            <Button variant="outline" disabled={selectedIds.size === 0 || assigning} onClick={() => doAssign(null)}>
+              Gruptan Çıkar
+            </Button>
+            <Button variant="ghost" className="ml-auto" onClick={exitSelectMode}>
+              <X className="mr-1 h-4 w-4" />Vazgeç
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {createOpen && (
+        <CreateGroupModal
+          onClose={() => setCreateOpen(false)}
+          onCreated={(group) => { setCreateOpen(false); setGroups((prev) => [...prev, group].sort((a, b) => a.name.localeCompare(b.name, 'tr'))); }}
+        />
       )}
 
       {selectedId && <StudentDocumentsModal profileId={selectedId} onClose={() => setSelectedId(null)} />}

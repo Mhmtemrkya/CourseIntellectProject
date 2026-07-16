@@ -95,8 +95,13 @@ export const fetchDrivingVehicles = () => api.get('/api/driving-school/vehicles'
 export const createDrivingVehicle = (payload) => api.post('/api/driving-school/vehicles', payload);
 export const fetchDrivingInstructors = () => api.get('/api/driving-school/instructors');
 export const createDrivingInstructor = (payload) => api.post('/api/driving-school/instructors', payload);
-export const fetchDrivingStudents = () => api.get('/api/driving-school/students');
+export const fetchDrivingStudents = (params = {}) => api.get('/api/driving-school/students', { params });
 export const createDrivingStudent = (payload) => api.post('/api/driving-school/students', payload);
+// Kursiyer grupları (dönemler)
+export const fetchDrivingStudentGroups = (params = {}) => api.get('/api/driving-school/student-groups', { params });
+export const createDrivingStudentGroup = (payload) => api.post('/api/driving-school/student-groups', payload);
+export const updateDrivingStudentGroup = (id, payload) => api.put(`/api/driving-school/student-groups/${id}`, payload);
+export const assignDrivingStudentGroup = (payload) => api.post('/api/driving-school/students/assign-group', payload);
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
 export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
 export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });

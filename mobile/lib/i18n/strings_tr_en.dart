@@ -2686,4 +2686,17 @@ const Map<String, String> kTrEn = {
   'gecikmiş taksit': 'overdue installment',
   'Gecikmiş taksit': 'Overdue installment',
   'Ücretsiz': 'Free',
+  // Kursiyer grupları (dönemler)
+  'Grup Oluştur': 'Create Group',
+  'Gruba Ata': 'Assign to Group',
+  'Yeni Kursiyer Grubu': 'New Student Group',
+  'Grup adı': 'Group name',
+  'Açıklama (opsiyonel)': 'Description (optional)',
+  'Grup oluşturuldu.': 'Group created.',
+  'Grupsuz': 'Ungrouped',
+  'Grup seçin…': 'Select a group…',
+  'Ata': 'Assign',
+  'Çıkar': 'Remove',
+  'Kursiyerleri gruplara (dönemlere) ayırın; belgelerini inceleyin.':
+      'Group students into cohorts; review their documents.',
 };
