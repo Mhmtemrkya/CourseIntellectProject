@@ -9,6 +9,7 @@ import {
   persistDesktopSession,
 } from '../lib/auth';
 import { startPkceLogin, exchangePkceCode } from '../lib/auth/pkce';
+import { setActiveTenantContext } from '../lib/api/client';
 
 // Module-level helper: aktif abonelik kontrolü. Component içinde tanımlanırsa
 // her render'da yeni reference oluşur ve login/loginWithBrowser useCallback
@@ -62,6 +63,12 @@ export function AppProvider({ children }) {
       if (!active) return;
       const savedSession = loadDesktopSession();
       if (savedSession?.user) {
+        // Açılışta kurum bağlamını ana kuruma sıfırla. Aksi halde önceki bir
+        // oturumdan localStorage'da kalan X-Tenant-Context (ör. bir okul kurumu)
+        // yeniden başlatmayı da atlatıp API'leri yanlış kuruma çözüyor ve sürücü
+        // kursu sahibine okul menülerini sızdırıyordu. Kullanıcı gerekirse üst
+        // bardaki kurum seçiciyle tekrar geçebilir.
+        setActiveTenantContext(null);
         setSession(savedSession);
         setUser(savedSession.user);
       }
@@ -73,6 +80,9 @@ export function AppProvider({ children }) {
   const login = useCallback(async ({ username, password }) => {
     const payload = await loginWithBackend(username, password);
     enforceActiveSubscription(payload);
+    // Taze giriş ana kuruma başlar; önceki oturumdan kalan kurum bağlamı
+    // (X-Tenant-Context) temizlenir ki yanlış kuruma çözülmesin.
+    setActiveTenantContext(null);
     const desktopUser = createDesktopUser(payload);
     const nextSession = {
       accessToken: payload.accessToken,
@@ -92,6 +102,7 @@ export function AppProvider({ children }) {
     const pkceResult = await startPkceLogin(desktopApiBaseUrl);
     const payload = await exchangePkceCode(desktopApiBaseUrl, pkceResult);
     enforceActiveSubscription(payload);
+    setActiveTenantContext(null);
     const desktopUser = createDesktopUser(payload);
     const nextSession = {
       accessToken: payload.accessToken,
@@ -109,10 +120,14 @@ export function AppProvider({ children }) {
 
   const logout = useCallback(() => {
     clearDesktopSession();
-    // Şube seçim bayrağı ve filtresi sıfırlanır; sonraki girişte tekrar şube seçilir.
+    // Aktif kurum bağlamı (X-Tenant-Context) + şube filtresi/seçimi sıfırlanır.
+    // ÖNEMLİ: ci-tenant-context'i temizlemek şart; aksi halde çok-kurumlu bir
+    // oturumdan (ör. bir okul kurumunu görüntüleme) kalan bağlam localStorage'da
+    // kalıp sonraki girişte de API'lere gidiyor ve yanlış kuruma çözülüyordu —
+    // sürücü kursu sahibi girse bile okul kurumu çözülüp okul menüleri sızıyordu.
+    setActiveTenantContext(null);
     if (typeof localStorage !== 'undefined') {
       localStorage.removeItem('ci-branch-selected');
-      localStorage.removeItem('ci-branch-filter');
     }
     setSession(null);
     setUser(null);
