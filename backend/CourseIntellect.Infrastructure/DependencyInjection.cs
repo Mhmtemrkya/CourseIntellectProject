@@ -36,6 +36,8 @@ public static class DependencyInjection
         services.AddSingleton<IOptions<FcmPushOptions>>(Options.Create(FcmPushOptions.FromConfiguration(configuration)));
         services.AddHttpClient<IPushNotificationService, FcmPushNotificationService>();
         services.AddHttpClient<IDocumentIntelligenceService, AzureDocumentIntelligenceService>();
+        // NVİ TC kimlik doğrulama (halka açık KPSPublic SOAP servisi).
+        services.AddHttpClient<IIdentityVerificationService, NviIdentityVerificationService>();
 
         services.AddScoped<DatabaseSeeder>();
         services.AddScoped<DrivingSchoolSeeder>();

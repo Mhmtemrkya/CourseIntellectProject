@@ -32,6 +32,7 @@ public sealed class DrivingStudentsController(
     IDrivingLedgerService ledgerService,
     IDrivingNotifier notifier,
     IDrivingReportPdfService pdf,
+    IIdentityVerificationService identityVerification,
     IAuditLogService auditLogService) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
@@ -249,6 +250,43 @@ public sealed class DrivingStudentsController(
         if (trimmed.Length < 5) return BadRequest(new { message = "Kimlik numarası en az 5 karakter olmalıdır." });
         var duplicate = await FindDuplicateAsync(trimmed, ct);
         return Ok(new { available = duplicate is null, existingStudentName = duplicate });
+    }
+
+    /// <summary>
+    /// NVİ kimlik doğrulaması: TC + ad soyad + doğum yılı devlet kaydıyla eşleşiyor mu?
+    /// Yanlış yazılmış ad/TC daha kayıt anında yakalanır — MEBBİS'te ret yaşanmaz.
+    /// Servise ulaşılamazsa <c>verified=null</c> döner; kayıt engellenmez.
+    /// </summary>
+    [HttpPost("students/verify-identity")]
+    [RequireDrivingPermission(DrivingPermissions.StudentCreate)]
+    public async Task<IActionResult> VerifyIdentity([FromBody] VerifyIdentityRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var identity = (request.IdentityNumber ?? string.Empty).Trim();
+        if (!DrivingStudentRules.IsValidTurkishId(identity))
+            return Ok(new { verified = false, message = "TC kimlik numarası kontrol basamağı geçersiz." });
+
+        var fullName = (request.FullName ?? string.Empty).Trim();
+        var lastSpace = fullName.LastIndexOf(' ');
+        if (lastSpace <= 0) return Ok(new { verified = (bool?)null, message = "Ad ve soyad birlikte girilmelidir." });
+        var firstName = fullName[..lastSpace];
+        var lastName = fullName[(lastSpace + 1)..];
+
+        if (!DateTime.TryParse(request.BirthDate, out var birth))
+            return Ok(new { verified = (bool?)null, message = "Doğum tarihi girilmeden doğrulama yapılamaz." });
+
+        var verified = await identityVerification.VerifyTurkishIdAsync(identity, firstName, lastName, birth.Year, ct);
+        return Ok(new
+        {
+            verified,
+            message = verified switch
+            {
+                true => "NVİ kaydıyla doğrulandı.",
+                false => "NVİ kaydıyla eşleşmedi — ad, soyad, TC veya doğum yılını kontrol edin.",
+                null => "NVİ servisine şu an ulaşılamıyor; kayıt doğrulamasız sürdürülebilir.",
+            },
+        });
     }
 
     /// <summary>Telefon numarası kurumda zaten kayıtlı mı? (sihirbaz iletişim adımında).</summary>
@@ -1330,6 +1368,8 @@ public sealed record UploadStudentDocumentRequest(
 }
 
 public sealed record ReviewStudentDocumentRequest(bool Approved, string? RejectionReason);
+
+public sealed record VerifyIdentityRequest(string? IdentityNumber, string? FullName, string? BirthDate);
 
 public sealed record UpdateDrivingExamFeesRequest(decimal TheoryExamFee, decimal DrivingExamFee, bool TheoryExamFeePaid, bool DrivingExamFeePaid, DateTime? DrivingExamDate);
 

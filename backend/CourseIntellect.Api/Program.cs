@@ -392,6 +392,11 @@ if (jobsEnabled && !string.IsNullOrWhiteSpace(hangfireConnection))
     // Yöneticiye günlük operasyon özeti: her gün 07:30 TR.
     recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
         "driving-daily-summary", x => x.RunDailyOperationsSummaryAsync(CancellationToken.None), "30 4 * * *", utc);
+
+    // MEBBİS/mevzuat uyumu: dönem kesim tarihi, çalışma izni, son sınav hakkı,
+    // devam riski — her gün 08:00 TR (dedupe basamakları tekrarı engeller).
+    recurringJobs.AddOrUpdate<IDrivingReminderJobService>(
+        "driving-compliance-reminders", x => x.RunComplianceRemindersAsync(CancellationToken.None), "0 5 * * *", utc);
 }
 
 app.UseForwardedHeaders();

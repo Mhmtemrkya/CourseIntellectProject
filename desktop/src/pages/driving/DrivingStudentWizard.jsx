@@ -11,7 +11,7 @@ import { Input } from '../../components/ui/input';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  checkDrivingIdentity, checkDrivingPhone, deleteDrivingRegistrationDraft, fetchDrivingInstructors, fetchDrivingPackages,
+  checkDrivingIdentity, checkDrivingPhone, deleteDrivingRegistrationDraft, fetchDrivingInstructors, fetchDrivingPackages, verifyDrivingIdentity,
   fetchDrivingRegistrationDrafts, fetchDrivingVehicles, registerDrivingStudent, saveDrivingRegistrationDraft,
   uploadFile,
 } from '../../lib/api/modules';
@@ -189,6 +189,8 @@ export default function DrivingStudentWizard() {
   const [uploading, setUploading] = useState(false);
   const [identityState, setIdentityState] = useState({ checking: false, available: null, existingStudentName: null });
   const [phoneState, setPhoneState] = useState({ checking: false, available: null, existingStudentName: null });
+  // NVİ doğrulaması: { checking, verified: true|false|null, message }
+  const [nviState, setNviState] = useState({ checking: false, verified: undefined, message: null });
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [result, setResult] = useState(null);
@@ -341,6 +343,20 @@ export default function DrivingStudentWizard() {
       setIdentityState({ checking: false, available: response.available, existingStudentName: response.existingStudentName });
     } catch {
       setIdentityState({ checking: false, available: null, existingStudentName: null });
+    }
+  }
+
+  async function verifyWithNvi() {
+    setNviState({ checking: true, verified: undefined, message: null });
+    try {
+      const response = await verifyDrivingIdentity({
+        identityNumber: form.identityNumber.trim(),
+        fullName: form.fullName.trim(),
+        birthDate: form.birthDate,
+      });
+      setNviState({ checking: false, verified: response.verified, message: response.message });
+    } catch (error) {
+      setNviState({ checking: false, verified: null, message: error.message });
     }
   }
 
@@ -581,6 +597,32 @@ export default function DrivingStudentWizard() {
               <Field label="Kimlik seri no" hint="Kimlik kartının üzerindeki seri numarası (ör. A12 345678)">
                 <Input maxLength={20} value={form.identitySerialNo} onChange={(e) => set({ identitySerialNo: e.target.value })} />
               </Field>
+              {/* NVİ resmî doğrulaması: MEBBİS'te "kimlik uyuşmuyor" reti yaşanmasın. */}
+              {form.identityKind === 1 && (
+                <div className={`sm:col-span-2 flex flex-wrap items-center gap-3 rounded-xl border p-3 ${
+                  nviState.verified === true ? 'border-emerald-500/40 bg-emerald-500/5'
+                    : nviState.verified === false ? 'border-red-500/40 bg-red-500/5'
+                    : 'border-foreground/10'
+                }`}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={nviState.checking || form.identityNumber.trim().length !== 11 || !form.fullName.trim() || !form.birthDate}
+                    onClick={verifyWithNvi}
+                  >
+                    {nviState.checking ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                    NVİ ile Doğrula
+                  </Button>
+                  <span className={`text-sm ${
+                    nviState.verified === true ? 'font-bold text-emerald-600'
+                      : nviState.verified === false ? 'font-bold text-red-600'
+                      : 'text-muted-foreground'
+                  }`}>
+                    {nviState.message || 'TC + ad soyad + doğum tarihi resmî NVİ kaydıyla karşılaştırılır (MEBBİS reti önlenir).'}
+                  </span>
+                </div>
+              )}
               <Field label="Baba adı" hint="MEBBİS aday kaydında zorunludur.">
                 <Input maxLength={100} value={form.fatherName} onChange={(e) => set({ fatherName: e.target.value })} />
               </Field>

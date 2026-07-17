@@ -108,6 +108,9 @@ export const downloadDrivingMebbisRoster = (groupId) =>
   api.get(`/api/driving-school/student-groups/${groupId}/mebbis-roster`, { params: { format: 'csv' }, responseType: 'blob' });
 export const fetchDrivingTheoryCurriculum = () => api.get('/api/driving-school/theory/curriculum');
 export const fetchDrivingClassCompliance = (classId) => api.get(`/api/driving-school/theory/classes/${classId}/compliance`);
+// e-Sınav sonuçlarını toplu içe aktarma + NVİ kimlik doğrulama
+export const importDrivingExamResults = (sessionId, rows) => api.post(`/api/driving-school/exams/sessions/${sessionId}/results/import`, { rows });
+export const verifyDrivingIdentity = (payload) => api.post('/api/driving-school/students/verify-identity', payload);
 // Sınav günü eşleşmesi + listesi ve resmî kursiyer formları (PDF)
 export const assignDrivingExamCandidate = (candidateId, payload) => api.put(`/api/driving-school/exams/candidates/${candidateId}/assignment`, payload);
 export const downloadDrivingExamRoster = (sessionId) =>

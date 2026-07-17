@@ -66,4 +66,39 @@ public sealed class DrivingExamRulesTests
         Assert.Contains("4 sınav hakkı doldu", message);
         Assert.Contains("yeniden kayıt", message);
     }
+
+    // ─── Toplu sonuç içe aktarma ─────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("Geçti", true)]
+    [InlineData("GEÇTİ", true)]
+    [InlineData("basarili", true)]
+    [InlineData("passed", true)]
+    [InlineData("Kaldı", false)]
+    [InlineData("BAŞARISIZ", false)]
+    [InlineData("failed", false)]
+    public void Import_ExplicitResultText_Wins(string text, bool expected)
+        => Assert.Equal(expected, DrivingExamRules.ParseImportedResult(text, null, DrivingExamType.DrivingPractice));
+
+    [Fact]
+    public void Import_TheoryScore_UsesSeventyThreshold()
+    {
+        Assert.Equal(true, DrivingExamRules.ParseImportedResult(null, 70, DrivingExamType.TheoryEExam));
+        Assert.Equal(true, DrivingExamRules.ParseImportedResult("", 85, DrivingExamType.TheoryEExam));
+        Assert.Equal(false, DrivingExamRules.ParseImportedResult(null, 69, DrivingExamType.TheoryEExam));
+    }
+
+    [Fact]
+    public void Import_ExplicitText_OverridesScore()
+        // Liste "kaldı" diyorsa puan 90 bile olsa metin kazanır — resmî liste esastır.
+        => Assert.Equal(false, DrivingExamRules.ParseImportedResult("kaldı", 90, DrivingExamType.TheoryEExam));
+
+    [Fact]
+    public void Import_PracticeWithoutText_CannotBeInferred()
+        // Direksiyon sınavında puan barajı yok; açık sonuç metni şart.
+        => Assert.Null(DrivingExamRules.ParseImportedResult(null, 80, DrivingExamType.DrivingPractice));
+
+    [Fact]
+    public void Import_Garbage_ReturnsNull()
+        => Assert.Null(DrivingExamRules.ParseImportedResult("belirsiz", null, DrivingExamType.TheoryEExam));
 }

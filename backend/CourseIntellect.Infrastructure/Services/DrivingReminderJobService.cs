@@ -427,6 +427,205 @@ public sealed class DrivingReminderJobService(
     /// Yalnızca sürücü kursu olan ve modülü açık kurumlar için çalışır; her kurumda
     /// tenant override kurar, hata kurum bazında izole edilir, override her zaman temizlenir.
     /// </summary>
+    public async Task<int> RunComplianceRemindersAsync(CancellationToken cancellationToken = default)
+    {
+        var total = 0;
+        await ForEachDrivingSchoolAsync(async () =>
+        {
+            total += await CheckTermDeadlinesAsync(cancellationToken);
+            total += await CheckWorkingPermitsAsync(cancellationToken);
+            total += await CheckLastExamAttemptsAsync(cancellationToken);
+            total += await CheckAttendanceRiskAsync(cancellationToken);
+        }, "MEBBİS/mevzuat uyum", cancellationToken);
+
+        logger.LogInformation("Sürücü kursu uyum hatırlatması bitti. Bildirim: {Count}.", total);
+        return total;
+    }
+
+    /// <summary>
+    /// Dönem kayıt kesim tarihi yaklaşırken (7/3/1 gün) yöneticiye MEBBİS eksiği
+    /// olan aday sayısıyla birlikte uyarı gider — kimse sayfayı açmasa da.
+    /// </summary>
+    private async Task<int> CheckTermDeadlinesAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var sent = 0;
+        var groups = await dbContext.DrivingStudentGroups.AsNoTracking()
+            .Where(x => x.IsActive && x.RegistrationDeadlineUtc != null && x.RegistrationDeadlineUtc > now)
+            .ToListAsync(cancellationToken);
+
+        foreach (var group in groups)
+        {
+            var daysLeft = (int)Math.Ceiling((group.RegistrationDeadlineUtc!.Value - now).TotalDays);
+            var bucket = daysLeft <= 1 ? 1 : daysLeft <= 3 ? 3 : daysLeft <= 7 ? 7 : (int?)null;
+            if (bucket is null) continue;
+
+            // Eksik hesabı hafif tutulur: MEBBİS kimlik alanları + zorunlu evraklar.
+            var students = await dbContext.StudentDrivingProfiles.AsNoTracking()
+                .Where(x => x.StudentGroupId == group.Id)
+                .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id,
+                    (p, s) => new { p.Id, p.FatherName, p.MotherName, p.BirthPlace, p.IdentitySerialNo, p.Phone, s.BirthDate })
+                .ToListAsync(cancellationToken);
+            var studentIds = students.Select(x => x.Id).ToList();
+            var documents = await dbContext.StudentDrivingDocuments.AsNoTracking()
+                .Where(x => studentIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
+                .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status, x.ExpiresAtUtc })
+                .ToListAsync(cancellationToken);
+            var documentsByStudent = documents.ToLookup(x => x.StudentDrivingProfileId);
+
+            var incomplete = students.Count(student =>
+            {
+                var identityMissing = string.IsNullOrWhiteSpace(student.FatherName)
+                    || string.IsNullOrWhiteSpace(student.MotherName)
+                    || string.IsNullOrWhiteSpace(student.BirthPlace)
+                    || string.IsNullOrWhiteSpace(student.IdentitySerialNo)
+                    || string.IsNullOrWhiteSpace(student.Phone);
+                if (identityMissing) return true;
+                var required = DrivingStudentRules.RequiredDocumentsFor(student.BirthDate, now);
+                var satisfied = documentsByStudent[student.Id]
+                    .Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now))
+                    .Select(x => x.DocumentType).ToHashSet();
+                return DrivingStudentRules.MissingDocuments(required, satisfied).Count > 0;
+            });
+
+            await notifier.NotifyManagersAsync(
+                $"Dönem kapanışına {daysLeft} gün: {group.Name}",
+                incomplete > 0
+                    ? $"{students.Count} kursiyerden {incomplete} adayın MEBBİS bilgisi/evrakı eksik. Kesim tarihi: {group.RegistrationDeadlineUtc:dd.MM.yyyy}."
+                    : $"{students.Count} kursiyerin tamamı MEBBİS girişine hazır. Kesim tarihi: {group.RegistrationDeadlineUtc:dd.MM.yyyy}.",
+                DrivingNotificationCategories.Document,
+                dedupeKey: $"term-deadline:{group.Id}:{bucket}",
+                relatedEntityType: nameof(DrivingStudentGroup), relatedEntityId: group.Id.ToString(),
+                cancellationToken: cancellationToken);
+            sent++;
+        }
+        return sent;
+    }
+
+    /// <summary>MEB çalışma izni süresi: 30/15/7/1 gün kala ve dolduğunda yöneticiye uyarı.</summary>
+    private async Task<int> CheckWorkingPermitsAsync(CancellationToken cancellationToken)
+    {
+        var now = DateTime.UtcNow;
+        var sent = 0;
+        var instructors = await dbContext.DrivingInstructorProfiles.AsNoTracking()
+            .Where(x => x.IsActive && x.WorkingPermitExpiresAtUtc != null)
+            .Join(dbContext.Staff.AsNoTracking(), p => p.StaffId, s => s.Id,
+                (p, s) => new { p.Id, s.FullName, p.WorkingPermitNo, Expires = p.WorkingPermitExpiresAtUtc!.Value })
+            .ToListAsync(cancellationToken);
+
+        foreach (var instructor in instructors)
+        {
+            var daysLeft = (int)Math.Floor((instructor.Expires - now).TotalDays);
+            var expired = daysLeft <= 0;
+            var bucket = expired ? 0 : ExpiryBucket(daysLeft);
+            if (bucket is null) continue;
+
+            await notifier.NotifyManagersAsync(
+                expired ? "Çalışma izni doldu" : $"Çalışma izni {daysLeft} gün içinde doluyor",
+                $"{instructor.FullName} — MEB çalışma izni"
+                    + (string.IsNullOrWhiteSpace(instructor.WorkingPermitNo) ? "" : $" ({instructor.WorkingPermitNo})")
+                    + $" bitiş: {instructor.Expires:dd.MM.yyyy}. {(expired ? "Süresi dolmuş izinle ders verilemez; yenileyin." : "Yenileme başvurusunu planlayın.")}",
+                DrivingNotificationCategories.Document,
+                dedupeKey: $"working-permit:{instructor.Id}:{bucket}",
+                relatedEntityType: "DrivingInstructorProfile", relatedEntityId: instructor.Id.ToString(),
+                cancellationToken: cancellationToken);
+            sent++;
+        }
+        return sent;
+    }
+
+    /// <summary>
+    /// Son sınav hakkına gelen adaylar (3/4 hak tüketilmiş): bir başarısızlık daha
+    /// dönemi düşürür — yönetici önceden bilsin, ek hazırlık planlansın.
+    /// </summary>
+    private async Task<int> CheckLastExamAttemptsAsync(CancellationToken cancellationToken)
+    {
+        var sent = 0;
+        var attempts = await dbContext.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.Status != DrivingExamCandidateStatus.Cancelled)
+            .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id,
+                (c, s) => new { c.StudentDrivingProfileId, s.ExamType, c.Status })
+            .ToListAsync(cancellationToken);
+
+        var lastAttempt = attempts
+            .GroupBy(x => new { x.StudentDrivingProfileId, x.ExamType })
+            // Son hak: kullanılan deneme MaxAttempts-1 VE tür henüz geçilmemiş.
+            .Where(g => g.Count() == DrivingExamRules.MaxAttempts - 1
+                && !g.Any(x => x.Status == DrivingExamCandidateStatus.Passed))
+            .ToList();
+        if (lastAttempt.Count == 0) return 0;
+
+        var profileIds = lastAttempt.Select(x => x.Key.StudentDrivingProfileId).Distinct().ToList();
+        var names = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => profileIds.Contains(x.Id) && x.Status != DrivingStudentStatus.Cancelled && x.Status != DrivingStudentStatus.Graduated)
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p.Id, p.StudentNumber, s.FullName })
+            .ToDictionaryAsync(x => x.Id, cancellationToken);
+
+        foreach (var group in lastAttempt)
+        {
+            if (!names.TryGetValue(group.Key.StudentDrivingProfileId, out var student)) continue;
+            await notifier.NotifyManagersAsync(
+                "Son sınav hakkı",
+                $"#{student.StudentNumber} {student.FullName} — {DrivingExamRules.ExamTypeLabel(group.Key.ExamType)} için son hakkına geldi. Bir başarısızlık daha dönemi düşürür; ek hazırlık planlayın.",
+                DrivingNotificationCategories.Exam,
+                dedupeKey: $"last-attempt:{group.Key.StudentDrivingProfileId}:{group.Key.ExamType}",
+                relatedEntityType: "StudentDrivingProfile", relatedEntityId: group.Key.StudentDrivingProfileId.ToString(),
+                cancellationToken: cancellationToken);
+            sent++;
+        }
+        return sent;
+    }
+
+    /// <summary>
+    /// Teorik devam riski: asgari devam oranının altına düşen kursiyer dönemini
+    /// kaybeder. Hesap, mezuniyet kontrolüyle aynı mazeret politikasını kullanır.
+    /// </summary>
+    private async Task<int> CheckAttendanceRiskAsync(CancellationToken cancellationToken)
+    {
+        var settings = await dbContext.DrivingSchoolSettings.AsNoTracking().SingleOrDefaultAsync(cancellationToken)
+            ?? new DrivingSchoolSettings();
+        var sent = 0;
+
+        var records = await dbContext.DrivingTheoryAttendances.AsNoTracking()
+            .Join(dbContext.DrivingTheorySessions.AsNoTracking().Where(x => x.Status != DrivingTheorySessionStatus.Cancelled),
+                a => a.TheorySessionId, s => s.Id,
+                (a, s) => new { a.StudentDrivingProfileId, a.Status, Minutes = (int)(s.EndsAtUtc - s.StartsAtUtc).TotalMinutes })
+            .ToListAsync(cancellationToken);
+        if (records.Count == 0) return 0;
+
+        var atRisk = new List<Guid>();
+        foreach (var group in records.GroupBy(x => x.StudentDrivingProfileId))
+        {
+            var scheduled = group.Sum(x => x.Minutes);
+            var attended = group.Where(x => x.Status is DrivingTheoryAttendanceStatus.Present or DrivingTheoryAttendanceStatus.Late).Sum(x => x.Minutes);
+            var excused = group.Where(x => x.Status == DrivingTheoryAttendanceStatus.Excused).Sum(x => x.Minutes);
+            var denominator = settings.ExcusedAbsencePolicy == DrivingExcusedAbsencePolicy.ExcludeFromCalculation ? Math.Max(0, scheduled - excused) : scheduled;
+            if (settings.ExcusedAbsencePolicy == DrivingExcusedAbsencePolicy.CountsAsPresent) attended += excused;
+            if (denominator == 0) continue;
+            var percent = attended * 100m / denominator;
+            if (percent < settings.MinimumTheoryAttendancePercent) atRisk.Add(group.Key);
+        }
+        if (atRisk.Count == 0) return 0;
+
+        var students = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => atRisk.Contains(x.Id) && DrivingStudentStatuses.Open.Contains(x.Status))
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p.Id, p.StudentNumber, s.FullName })
+            .ToListAsync(cancellationToken);
+
+        foreach (var student in students)
+        {
+            await notifier.NotifyManagersAsync(
+                "Devam riski — dönem yanabilir",
+                $"#{student.StudentNumber} {student.FullName} — teorik devam oranı asgari %{settings.MinimumTheoryAttendancePercent:0.##} sınırının altında. Devamsızlık sürerse dönem yanar.",
+                DrivingNotificationCategories.Document,
+                dedupeKey: $"attendance-risk:{student.Id}",
+                relatedEntityType: "StudentDrivingProfile", relatedEntityId: student.Id.ToString(),
+                cancellationToken: cancellationToken);
+            sent++;
+        }
+        return sent;
+    }
+
     private async Task ForEachDrivingSchoolAsync(Func<Task> action, string label, CancellationToken cancellationToken)
     {
         // Override yokken (job bağlamı) filtre kapalı → tüm kurumlar görünür.

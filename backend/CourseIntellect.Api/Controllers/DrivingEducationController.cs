@@ -393,21 +393,130 @@ public sealed class DrivingEducationController(
         if (!request.Passed && (request.FailureReason?.Trim().Length ?? 0) < 3) return BadRequest(new { message = "Başarısızlık nedeni zorunludur." });
         var exam = await db.DrivingExamSessions.SingleAsync(x => x.Id == candidate.ExamSessionId, ct);
         var student = await db.StudentDrivingProfiles.SingleAsync(x => x.Id == candidate.StudentDrivingProfileId, ct);
-        candidate.Status = request.Passed ? DrivingExamCandidateStatus.Passed : DrivingExamCandidateStatus.Failed;
-        candidate.Score = request.Score; candidate.FailureReason = request.Passed ? string.Empty : request.FailureReason!.Trim(); candidate.ResultNote = request.Note?.Trim() ?? string.Empty; candidate.ResultEnteredAtUtc = DateTime.UtcNow; candidate.ResultEnteredByUserId = CurrentUserId();
-        student.Status = DrivingExamRules.StudentStatusAfterResult(exam.ExamType, request.Passed);
-        var hasPendingCandidate = await db.DrivingExamCandidates.AnyAsync(
-            x => x.ExamSessionId == exam.Id && x.Id != candidate.Id && x.Status == DrivingExamCandidateStatus.Planned,
-            ct);
-        if (!hasPendingCandidate) exam.Status = DrivingExamSessionStatus.Completed;
+
+        var outcome = await ApplyExamResultAsync(candidate, exam, student, request.Passed, request.Score, request.FailureReason, request.Note, ct);
+        await CompleteExamIfDoneAsync(exam, ct);
+
+        return Ok(new
+        {
+            status = candidate.Status.ToString(),
+            studentStatus = student.Status.ToString(),
+            usedAttempts = outcome.UsedAttempts,
+            remainingAttempts = DrivingExamRules.RemainingAttempts(outcome.UsedAttempts),
+            outOfAttempts = outcome.OutOfAttempts,
+            outOfAttemptsMessage = outcome.OutOfAttempts ? DrivingExamRules.OutOfAttemptsMessage(exam.ExamType) : null,
+            extraLessonChargeId = outcome.ExtraLessonChargeId,
+        });
+    }
+
+    /// <summary>
+    /// e-Sınav/MEBBİS'ten indirilen sonuç listesinin toplu işlenmesi. Satırlar TC
+    /// kimlik numarasıyla adaya eşlenir; sonuç, tekil giriş ile AYNI çekirdekten
+    /// geçer — hak sayacı, dönem düşme ve zorunlu ek ders kuralları otomatik işler.
+    /// Eşleşmeyen/sonuçlanmış satırlar sessizce atlanmaz, raporlanır.
+    /// </summary>
+    [HttpPost("exams/sessions/{id:guid}/results/import")]
+    [RequireDrivingPermission(DrivingPermissions.ExamResultEnter)]
+    public async Task<IActionResult> ImportExamResults(Guid id, [FromBody] ImportExamResultsRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        if (request.Rows is not { Count: > 0 and <= 500 }) return BadRequest(new { message = "1-500 arası satır gönderilmelidir." });
+
+        var exam = await db.DrivingExamSessions.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (exam is null) return NotFound(new { message = "Sınav bulunamadı." });
+
+        // Adayların TC eşlemesi: sürücü dosyasındaki kimlik yoksa öğrenci TC'sine düşülür.
+        var candidates = await db.DrivingExamCandidates
+            .Where(x => x.ExamSessionId == id)
+            .Join(db.StudentDrivingProfiles, c => c.StudentDrivingProfileId, p => p.Id, (c, p) => new { Candidate = c, Profile = p })
+            .Join(db.Students, x => x.Profile.StudentId, s => s.Id, (x, s) => new { x.Candidate, x.Profile, s.FullName, s.TcNo })
+            .ToListAsync(ct);
+        static string Digits(string? value) => new((value ?? string.Empty).Where(char.IsDigit).ToArray());
+        var byIdentity = candidates
+            .Select(x => new { x.Candidate, x.Profile, x.FullName, Identity = Digits(string.IsNullOrWhiteSpace(x.Profile.IdentityNumber) ? x.TcNo : x.Profile.IdentityNumber) })
+            .Where(x => x.Identity.Length >= 5)
+            .GroupBy(x => x.Identity)
+            .ToDictionary(g => g.Key, g => g.First());
+
+        var processed = new List<object>();
+        var errors = new List<object>();
+        var passedCount = 0;
+        var failedCount = 0;
+
+        foreach (var row in request.Rows)
+        {
+            var identity = Digits(row.IdentityNumber);
+            if (identity.Length < 5) { errors.Add(new { row.IdentityNumber, reason = "Geçersiz kimlik numarası." }); continue; }
+            if (!byIdentity.TryGetValue(identity, out var match))
+            {
+                errors.Add(new { row.IdentityNumber, reason = "Bu sınavda bu TC ile kayıtlı aday yok." });
+                continue;
+            }
+            if (match.Candidate.Status != DrivingExamCandidateStatus.Planned)
+            {
+                errors.Add(new { row.IdentityNumber, name = match.FullName, reason = $"Sonuç zaten girilmiş ({match.Candidate.Status})." });
+                continue;
+            }
+            if (row.Score is < 0 or > 100) { errors.Add(new { row.IdentityNumber, name = match.FullName, reason = "Puan 0-100 arasında olmalıdır." }); continue; }
+
+            var passed = DrivingExamRules.ParseImportedResult(row.Result, row.Score, exam.ExamType);
+            if (passed is null)
+            {
+                errors.Add(new { row.IdentityNumber, name = match.FullName, reason = "Sonuç çıkarılamadı (geçti/kaldı veya puan gerekli)." });
+                continue;
+            }
+
+            var outcome = await ApplyExamResultAsync(
+                match.Candidate, exam, match.Profile,
+                passed.Value, row.Score,
+                passed.Value ? null : "Sınav başarısız (toplu sonuç aktarımı)", "Toplu içe aktarma", ct);
+
+            if (passed.Value) passedCount++; else failedCount++;
+            processed.Add(new
+            {
+                row.IdentityNumber,
+                name = match.FullName,
+                passed = passed.Value,
+                row.Score,
+                outcome.OutOfAttempts,
+                remainingAttempts = DrivingExamRules.RemainingAttempts(outcome.UsedAttempts),
+            });
+        }
+
+        await CompleteExamIfDoneAsync(exam, ct);
+
+        await audit.LogChangeAsync("Sınav sonuçları toplu aktarıldı", AuditCategory, nameof(DrivingExamSession), exam.Id.ToString(),
+            $"{exam.Title}: {processed.Count} sonuç işlendi ({passedCount} geçti, {failedCount} kaldı), {errors.Count} satır atlandı.",
+            null, new { processedCount = processed.Count, passedCount, failedCount, errorCount = errors.Count }, ct);
+
+        return Ok(new { processedCount = processed.Count, passedCount, failedCount, processed, errors });
+    }
+
+    private sealed record ExamResultOutcome(int UsedAttempts, bool OutOfAttempts, Guid? ExtraLessonChargeId);
+
+    /// <summary>
+    /// Sonuç işlemenin TEK çekirdeği: tekil giriş ve toplu içe aktarma aynı yoldan
+    /// geçer ki hak sayacı, dönem düşme bildirimi ve zorunlu ek ders asla ayrışmasın.
+    /// </summary>
+    private async Task<ExamResultOutcome> ApplyExamResultAsync(
+        DrivingExamCandidate candidate, DrivingExamSession exam, StudentDrivingProfile student,
+        bool passed, decimal? score, string? failureReason, string? note, CancellationToken ct)
+    {
+        candidate.Status = passed ? DrivingExamCandidateStatus.Passed : DrivingExamCandidateStatus.Failed;
+        candidate.Score = score;
+        candidate.FailureReason = passed ? string.Empty : (failureReason ?? "Sınav başarısız").Trim();
+        candidate.ResultNote = note?.Trim() ?? string.Empty;
+        candidate.ResultEnteredAtUtc = DateTime.UtcNow;
+        candidate.ResultEnteredByUserId = CurrentUserId();
+        student.Status = DrivingExamRules.StudentStatusAfterResult(exam.ExamType, passed);
         await db.SaveChangesAsync(ct);
 
         // ─── Hak takibi + zorunlu ek ders ─────────────────────────────────────
         var usedAttempts = await UsedAttemptsAsync(student.Id, exam.ExamType, ct);
-        var outOfAttempts = !request.Passed && DrivingExamRules.IsOutOfAttempts(usedAttempts);
+        var outOfAttempts = !passed && DrivingExamRules.IsOutOfAttempts(usedAttempts);
         Guid? extraLessonChargeId = null;
 
-        if (!request.Passed && outOfAttempts)
+        if (!passed && outOfAttempts)
         {
             // Dönem düştü: personel görsün, dosya yeniden kayıt ister.
             await notifier.NotifyManagersAsync(
@@ -418,7 +527,7 @@ public sealed class DrivingEducationController(
                 relatedEntityType: nameof(DrivingExamCandidate), relatedEntityId: candidate.Id.ToString(),
                 cancellationToken: ct);
         }
-        else if (!request.Passed && exam.ExamType == DrivingExamType.DrivingPractice)
+        else if (!passed && exam.ExamType == DrivingExamType.DrivingPractice)
         {
             // Mevzuat: başarısız direksiyon sınavı sonrası zorunlu ek direksiyon eğitimi.
             // Kurum ayarına göre otomatik ücret kalemi + ders hakkı açılır.
@@ -429,18 +538,21 @@ public sealed class DrivingEducationController(
             }
         }
 
-        await notifier.NotifyStudentAsync(student.Id, request.Passed ? "Sınavı geçtiniz" : "Sınav sonucu: başarısız", request.Passed ? $"{exam.Title} sınavını başarıyla tamamladınız." : $"{exam.Title}: {candidate.FailureReason}", DrivingNotificationCategories.Exam, dedupeKey: $"exam-result:{candidate.Id}", relatedEntityType: nameof(DrivingExamCandidate), relatedEntityId: candidate.Id.ToString(), cancellationToken: ct);
+        await notifier.NotifyStudentAsync(student.Id, passed ? "Sınavı geçtiniz" : "Sınav sonucu: başarısız", passed ? $"{exam.Title} sınavını başarıyla tamamladınız." : $"{exam.Title}: {candidate.FailureReason}", DrivingNotificationCategories.Exam, dedupeKey: $"exam-result:{candidate.Id}", relatedEntityType: nameof(DrivingExamCandidate), relatedEntityId: candidate.Id.ToString(), cancellationToken: ct);
         await audit.LogChangeAsync("Sınav sonucu girildi", AuditCategory, nameof(DrivingExamCandidate), candidate.Id.ToString(), $"{exam.Title}: {candidate.Status}, puan {candidate.Score}", null, candidate, ct);
-        return Ok(new
+        return new ExamResultOutcome(usedAttempts, outOfAttempts, extraLessonChargeId);
+    }
+
+    /// <summary>Bekleyen aday kalmadıysa oturumu kapatır.</summary>
+    private async Task CompleteExamIfDoneAsync(DrivingExamSession exam, CancellationToken ct)
+    {
+        var hasPending = await db.DrivingExamCandidates.AnyAsync(
+            x => x.ExamSessionId == exam.Id && x.Status == DrivingExamCandidateStatus.Planned, ct);
+        if (!hasPending && exam.Status == DrivingExamSessionStatus.Planned)
         {
-            status = candidate.Status.ToString(),
-            studentStatus = student.Status.ToString(),
-            usedAttempts,
-            remainingAttempts = DrivingExamRules.RemainingAttempts(usedAttempts),
-            outOfAttempts,
-            outOfAttemptsMessage = outOfAttempts ? DrivingExamRules.OutOfAttemptsMessage(exam.ExamType) : null,
-            extraLessonChargeId,
-        });
+            exam.Status = DrivingExamSessionStatus.Completed;
+            await db.SaveChangesAsync(ct);
+        }
     }
 
     /// <summary>Adayın bu sınav türünde tükettiği hak sayısı (iptal edilen deneme hak yakmaz).</summary>
@@ -660,5 +772,7 @@ public sealed record SaveExamSessionRequest(string ExamType, string Title, DateT
 }
 public sealed record AddExamCandidatesRequest(IReadOnlyList<Guid> StudentProfileIds, decimal FeeAmount);
 public sealed record AssignExamCandidateRequest(Guid? VehicleId, Guid? InstructorProfileId);
+public sealed record ExamResultImportRow(string IdentityNumber, string? Result, decimal? Score);
+public sealed record ImportExamResultsRequest(IReadOnlyList<ExamResultImportRow> Rows);
 public sealed record EnterExamResultRequest(bool Passed, decimal? Score, string? FailureReason, string? Note);
 public sealed record ScheduleExamRetryRequest(Guid ExamSessionId, decimal FeeAmount);

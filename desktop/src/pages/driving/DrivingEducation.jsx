@@ -11,8 +11,32 @@ import {
   addDrivingExamCandidates, assignDrivingExamCandidate, createDrivingExamSession, createDrivingTheoryClass,
   createDrivingTheorySession, downloadDrivingExamRoster, enrollDrivingTheoryStudents, enterDrivingExamResult,
   fetchDrivingClassCompliance, fetchDrivingEducationOverview, fetchDrivingInstructors, fetchDrivingTheoryAttendance,
-  fetchDrivingVehicles, saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
+  fetchDrivingVehicles, importDrivingExamResults, saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
 } from '../../lib/api/modules';
+
+/**
+ * e-Sınav/MEBBİS sonuç listesinden satır ayrıştırır: satırda 11 haneli sayı TC,
+ * 0-100 arası küçük sayı puan, "geçti/kaldı" kelimesi açık sonuç kabul edilir.
+ * Ayraç fark etmez (noktalı virgül, virgül, sekme, boşluk).
+ */
+function parseResultLines(text) {
+  const rows = [];
+  for (const line of text.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const identity = trimmed.match(/\b\d{11}\b/)?.[0];
+    if (!identity) continue;
+    const withoutIdentity = trimmed.replace(identity, ' ');
+    const scoreMatch = withoutIdentity.match(/\b(100|\d{1,2})(?:[.,]\d+)?\b/);
+    const resultMatch = withoutIdentity.match(/geçti|gecti|kaldı|kaldi|başarılı|basarili|başarısız|basarisiz|passed|failed/i);
+    rows.push({
+      identityNumber: identity,
+      result: resultMatch ? resultMatch[0] : null,
+      score: scoreMatch ? Number(scoreMatch[1]) : null,
+    });
+  }
+  return rows;
+}
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 
 const localInput = (value = new Date()) => {
@@ -47,6 +71,8 @@ export default function DrivingEducation() {
   const [compliance, setCompliance] = useState(null); // seçili sınıfın mevzuat uyum raporu
   // Sınav günü eşleşmesi için direksiyon öğretmenleri + araçlar (bir kez yüklenir).
   const [examResources, setExamResources] = useState({ instructors: [], vehicles: [] });
+  // Toplu sonuç içe aktarma: { exam, text, rows, summary }
+  const [importState, setImportState] = useState(null);
   // { candidate, passed, score, failureReason } — açıkken not girişi paneli görünür.
   const [resultForm, setResultForm] = useState(null);
 
@@ -77,6 +103,20 @@ export default function DrivingEducation() {
     } catch (error) {
       toast({ title: 'Atama kaydedilemedi', description: error.message, variant: 'destructive' });
     }
+  }
+
+  async function submitImport() {
+    const rows = parseResultLines(importState.text);
+    if (!rows.length) { toast({ title: 'Ayrıştırılabilir satır yok', description: 'Her satırda 11 haneli TC bulunmalı.', variant: 'destructive' }); return; }
+    setBusy(true);
+    try {
+      const summary = await importDrivingExamResults(importState.exam.id, rows);
+      setImportState((state) => ({ ...state, summary }));
+      toast({ title: 'Sonuçlar işlendi', description: `${summary.processedCount} sonuç (${summary.passedCount} geçti, ${summary.failedCount} kaldı), ${summary.errors.length} satır atlandı.` });
+      await load();
+    } catch (error) {
+      toast({ title: 'İçe aktarma başarısız', description: error.message, variant: 'destructive' });
+    } finally { setBusy(false); }
   }
 
   async function downloadRoster(exam) {
@@ -232,6 +272,58 @@ export default function DrivingEducation() {
         <div className="grid gap-3 lg:grid-cols-2">{data.sessions.map((session) => <Card key={session.id}><CardContent className="p-5"><div className="flex justify-between"><div><b>{session.subject}</b><p className="text-sm text-muted-foreground">{session.topic}</p></div><Badge className={statusTone(session.status)}>{session.status}</Badge></div><p className="mt-3 text-sm">{dateTime(session.startsAtUtc)} • {session.className} • {session.instructorName} • {session.room}</p>{canAttendance && <Button size="sm" variant="outline" className="mt-3" onClick={() => openAttendance(session)}><ClipboardCheck className="mr-2 h-4 w-4" />Yoklama</Button>}</CardContent></Card>)}</div>
       </TabsContent>
       <TabsContent value="exams" className="mt-5 space-y-5">
+        {importState && (
+          <Card className="border-blue-500/40">
+            <CardHeader>
+              <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+                <span>{importState.exam.title} — Toplu Sonuç İçe Aktarma</span>
+                <Button size="sm" variant="ghost" onClick={() => setImportState(null)}>Kapat</Button>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                e-Sınav/MEBBİS'ten aldığınız listeyi yapıştırın veya dosya seçin. Her satırda <b>11 haneli TC</b> yeterli;
+                varsa puan (e-sınavda 70 barajı otomatik uygulanır) ve "geçti/kaldı" metni de tanınır.
+                Hak sayacı, dönem düşme ve zorunlu ek ders kuralları otomatik işler.
+              </p>
+              <Input type="file" accept=".csv,.txt" onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => setImportState((state) => ({ ...state, text: String(reader.result || '') }));
+                reader.readAsText(file, 'utf-8');
+              }} />
+              <textarea
+                className="min-h-[140px] w-full rounded-xl border bg-background p-3 font-mono text-xs"
+                placeholder={'12345678901;85\n98765432109;kaldı\n11122233344;geçti'}
+                value={importState.text}
+                onChange={(e) => setImportState((state) => ({ ...state, text: e.target.value }))}
+              />
+              <div className="flex items-center gap-3">
+                <Button disabled={busy || !importState.text.trim()} onClick={submitImport}>
+                  {parseResultLines(importState.text).length} satırı işle
+                </Button>
+                {importState.summary && (
+                  <span className="text-sm">
+                    <b className="text-emerald-600">{importState.summary.passedCount} geçti</b>{' • '}
+                    <b className="text-red-600">{importState.summary.failedCount} kaldı</b>{' • '}
+                    {importState.summary.errors.length} atlandı
+                  </span>
+                )}
+              </div>
+              {importState.summary?.errors?.length > 0 && (
+                <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                  <b className="text-amber-700 dark:text-amber-400">Atlanan satırlar:</b>
+                  <ul className="mt-1 list-inside list-disc text-muted-foreground">
+                    {importState.summary.errors.map((err, index) => (
+                      <li key={index}>{err.identityNumber}{err.name ? ` (${err.name})` : ''}: {err.reason}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
         {resultForm ? (
           <Card className="border-[hsl(var(--brand-accent)/0.4)]">
             <CardHeader>
@@ -268,7 +360,7 @@ export default function DrivingEducation() {
           </Card>
         ) : null}
         {canExamManage && <Card><CardHeader><CardTitle>Yeni sınav ve komisyon</CardTitle></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={saveExam}><select className="h-10 rounded-md border bg-background px-3" value={examForm.examType} onChange={(e) => setExamForm({ ...examForm, examType: e.target.value })}><option value="TheoryEExam">E-sınav</option><option value="DrivingPractice">Direksiyon sınavı</option></select><Input required placeholder="Sınav adı" value={examForm.title} onChange={(e) => setExamForm({ ...examForm, title: e.target.value })} /><Input required placeholder="Sınav yeri" value={examForm.location} onChange={(e) => setExamForm({ ...examForm, location: e.target.value })} /><Input required type="datetime-local" value={examForm.startsAtUtc} onChange={(e) => setExamForm({ ...examForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={examForm.endsAtUtc} onChange={(e) => setExamForm({ ...examForm, endsAtUtc: e.target.value })} /><Input required type="number" min="1" max="100" value={examForm.capacity} onChange={(e) => setExamForm({ ...examForm, capacity: e.target.value })} /><Input required placeholder="Komisyon üyesi" value={examForm.commissionName} onChange={(e) => setExamForm({ ...examForm, commissionName: e.target.value })} /><Input required placeholder="Komisyon görevi" value={examForm.commissionRole} onChange={(e) => setExamForm({ ...examForm, commissionRole: e.target.value })} /><Input placeholder="Kurum" value={examForm.commissionOrganization} onChange={(e) => setExamForm({ ...examForm, commissionOrganization: e.target.value })} /><Button disabled={busy} className="md:col-span-3"><GraduationCap className="mr-2 h-4 w-4" />Sınavı Oluştur</Button></form></CardContent></Card>}
-        {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><span className="flex items-center gap-2"><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge><Button size="sm" variant="outline" onClick={() => downloadRoster(exam)}><Download className="mr-1 h-3 w-3" />Sınav Listesi (PDF)</Button></span></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => (
+        {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><span className="flex items-center gap-2"><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge>{canResult && <Button size="sm" variant="outline" onClick={() => setImportState({ exam, text: '', summary: null })}><ClipboardCheck className="mr-1 h-3 w-3" />Toplu Sonuç</Button>}<Button size="sm" variant="outline" onClick={() => downloadRoster(exam)}><Download className="mr-1 h-3 w-3" />Sınav Listesi (PDF)</Button></span></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => (
           <div key={candidate.id} className="space-y-2 rounded-xl border p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>

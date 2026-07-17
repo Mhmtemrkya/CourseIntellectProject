@@ -24,4 +24,11 @@ public interface IDrivingReminderJobService
 
     /// <summary>Yöneticiye günlük operasyon özeti (bugünkü ders, uyarı, tahsilat).</summary>
     Task<int> RunDailyOperationsSummaryAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// MEBBİS/mevzuat uyum hatırlatmaları: dönem kayıt kesim tarihi + MEBBİS
+    /// eksikleri, personel çalışma izni süresi, son sınav hakkına gelen adaylar
+    /// ve teorik devam riski.
+    /// </summary>
+    Task<int> RunComplianceRemindersAsync(CancellationToken cancellationToken = default);
 }
