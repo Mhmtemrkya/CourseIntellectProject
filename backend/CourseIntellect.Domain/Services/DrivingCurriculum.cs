@@ -28,6 +28,26 @@ public static class DrivingCurriculum
 
     public static int TotalRequiredHours => TheorySubjects.Sum(x => x.RequiredHours);
 
+    /// <summary>Bir direksiyon "ders saati"nin dakika karşılığı (MTSK: 50 dk).</summary>
+    public const int PracticeLessonMinutes = 50;
+
+    /// <summary>
+    /// Sınıf bazlı asgari direksiyon eğitimi (ders saati). Yalnızca yönetmelikte
+    /// net bilinen sınıflar sabitlenir; listede olmayan sınıfta kural uygulanmaz
+    /// (0 döner) — yanlış asgari dayatmak, hiç dayatmamaktan kötüdür.
+    /// </summary>
+    public static int MinimumPracticeLessonHoursFor(string? licenseClass) =>
+        (licenseClass ?? string.Empty).Trim().ToUpperInvariant() switch
+        {
+            "B" => 14,
+            "A" or "A1" or "A2" => 12,
+            _ => 0,
+        };
+
+    /// <summary>Sınıfın asgari direksiyon süresi dakika cinsinden (0 = kural yok).</summary>
+    public static int MinimumPracticeMinutesFor(string? licenseClass)
+        => MinimumPracticeLessonHoursFor(licenseClass) * PracticeLessonMinutes;
+
     /// <summary>
     /// Serbest metin konu adını resmî konuya eşler; eşleşmezse null (kurum dışı ek ders).
     /// Türkçe karakter ve büyük/küçük duyarsız arama yapılır.

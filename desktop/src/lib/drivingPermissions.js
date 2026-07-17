@@ -10,6 +10,9 @@ import { fetchDrivingPermissions } from './api/modules';
 export const DRIVING = {
   dashboardView: 'driving.dashboard.view',
 
+  leadView: 'driving.lead.view',
+  leadManage: 'driving.lead.manage',
+  leadConvert: 'driving.lead.convert',
   studentView: 'driving.student.view',
   studentCreate: 'driving.student.create',
   studentUpdate: 'driving.student.update',
@@ -116,6 +119,7 @@ export function resetDrivingPermissionCache() {
 const PATH_PERMISSIONS = {
   '/driving/dashboard': [DRIVING.dashboardView],
   '/driving/students/new': [DRIVING.studentCreate],
+  '/driving/leads': [DRIVING.leadView, DRIVING.leadManage],
   '/driving/assignments': [DRIVING.instructorAssignmentManage, DRIVING.instructorUpdate, DRIVING.settingsManage],
   '/driving/operations': [DRIVING.packageView, DRIVING.vehicleView],
   '/driving/hub': [DRIVING.appointmentView, DRIVING.studentView, DRIVING.lessonViewAll],

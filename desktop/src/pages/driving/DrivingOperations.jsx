@@ -128,7 +128,7 @@ export default function DrivingOperations() {
                   <Field label="Paket adı"><Input required value={packageForm.name} onChange={(e) => setPackageForm({ ...packageForm, name: e.target.value })} /></Field>
                   <Field label="Ehliyet sınıfı"><Input required maxLength={5} value={packageForm.licenseClass} onChange={(e) => setPackageForm({ ...packageForm, licenseClass: e.target.value.toUpperCase() })} /></Field>
                   <Field label="Vites"><TransmissionSelect value={packageForm.transmissionType} onChange={(v) => setPackageForm({ ...packageForm, transmissionType: v })} /></Field>
-                  <Field label="Direksiyon (dk)"><Input required min="30" type="number" value={packageForm.drivingLessonMinutes} onChange={(e) => setPackageForm({ ...packageForm, drivingLessonMinutes: e.target.value })} /></Field>
+                  <Field label="Direksiyon (dk)" hint="Mevzuat asgarisi: B sınıfı 14 ders saati (700 dk), A ailesi 12 (600 dk)."><Input required min="30" type="number" value={packageForm.drivingLessonMinutes} onChange={(e) => setPackageForm({ ...packageForm, drivingLessonMinutes: e.target.value })} /></Field>
                   <Field label="Teorik (dk)"><Input required min="0" type="number" value={packageForm.theoryLessonMinutes} onChange={(e) => setPackageForm({ ...packageForm, theoryLessonMinutes: e.target.value })} /></Field>
                   <Field label="Fiyat"><Input required min="0" type="number" value={packageForm.price} onChange={(e) => setPackageForm({ ...packageForm, price: e.target.value })} /></Field>
                   <Button disabled={saving} className="bg-brand-primary text-white hover:bg-brand-primary/90 sm:col-span-2">
@@ -146,6 +146,9 @@ export default function DrivingOperations() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{p.name}</p>
                       <p className="mt-0.5 text-xs text-muted-foreground">{p.licenseClass} • {p.transmissionType === 1 ? 'Manuel' : 'Otomatik'} • {p.drivingLessonMinutes} dk</p>
+                      {p.belowRegulatoryMinimum && (
+                        <p className="mt-0.5 text-xs font-bold text-red-600">Mevzuat asgarisinin altında ({p.regulatoryMinimumMinutes} dk gerekir)</p>
+                      )}
                     </div>
                     <span className="shrink-0 font-black tabular-nums">₺{Number(p.price).toLocaleString('tr-TR')}</span>
                   </div>

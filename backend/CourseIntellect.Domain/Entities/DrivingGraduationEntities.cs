@@ -26,6 +26,8 @@ public sealed class DrivingCertificate : ITenantScopedEntity
     public Guid StudentDrivingProfileId { get; set; }
     public DrivingCertificateType CertificateType { get; set; } = DrivingCertificateType.Completion;
     public string DocumentNumber { get; set; } = string.Empty;
+    /// <summary>MEBBİS'in verdiği resmî sertifika numarası — kurum MEBBİS'ten okuyup işler.</summary>
+    public string MebbisCertificateNo { get; set; } = string.Empty;
     public DateTime IssuedAtUtc { get; set; } = DateTime.UtcNow;
     public Guid? IssuedByUserId { get; set; }
     public DrivingCertificateDeliveryStatus DeliveryStatus { get; set; } = DrivingCertificateDeliveryStatus.Ready;

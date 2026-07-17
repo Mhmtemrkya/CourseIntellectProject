@@ -9,8 +9,9 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster,
+  assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster, downloadDrivingTermReport,
   fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
+  setDrivingMebbisEntered,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -280,6 +281,7 @@ export default function DrivingStudents() {
   const [createOpen, setCreateOpen] = useState(false);
   const [roster, setRoster] = useState(null); // seçili grubun MEBBİS durum özeti
   const [downloadingRoster, setDownloadingRoster] = useState(false);
+  const [assistantOpen, setAssistantOpen] = useState(false); // MEBBİS giriş asistanı
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [assignTarget, setAssignTarget] = useState('');
@@ -330,6 +332,34 @@ export default function DrivingStudents() {
       toast({ title: 'MEBBİS listesi indirilemedi', description: error.message, variant: 'destructive' });
     } finally {
       setDownloadingRoster(false);
+    }
+  };
+
+  const downloadTermReport = async () => {
+    try {
+      const blob = await downloadDrivingTermReport(groupFilter);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `donem-raporu-${roster?.group?.name || 'donem'}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: 'Dönem raporu indirilemedi', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const toggleMebbisEntered = async (row, entered) => {
+    try {
+      await setDrivingMebbisEntered(row.profileId, entered);
+      // Asistan açıkken tam yenileme yerine yerel işaret güncellenir.
+      setRoster((state) => state && {
+        ...state,
+        enteredCount: state.enteredCount + (entered ? 1 : -1),
+        rows: state.rows.map((x) => (x.profileId === row.profileId ? { ...x, mebbisEnteredAtUtc: entered ? new Date().toISOString() : null } : x)),
+      });
+    } catch (error) {
+      toast({ title: 'İşaret kaydedilemedi', description: error.message, variant: 'destructive' });
     }
   };
 
@@ -465,11 +495,20 @@ export default function DrivingStudents() {
                     ? ` • Dönem kapanışına ${roster.group.daysToDeadline} gün`
                     : ' • Kayıt kesim tarihi geçti'
                 )}
+                {` • MEBBİS'e girilen ${roster.enteredCount ?? 0}/${roster.studentCount}`}
               </p>
             </div>
-            <Button variant="outline" size="sm" disabled={downloadingRoster || roster.studentCount === 0} onClick={downloadRoster}>
-              <Download className="mr-2 h-4 w-4" />{downloadingRoster ? 'Hazırlanıyor…' : 'MEBBİS Listesi (CSV)'}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" disabled={roster.studentCount === 0} onClick={() => setAssistantOpen(true)}>
+                <FileCheck2 className="mr-2 h-4 w-4" />Giriş Asistanı
+              </Button>
+              <Button variant="outline" size="sm" disabled={downloadingRoster || roster.studentCount === 0} onClick={downloadRoster}>
+                <Download className="mr-2 h-4 w-4" />{downloadingRoster ? 'Hazırlanıyor…' : 'MEBBİS Listesi (CSV)'}
+              </Button>
+              <Button variant="outline" size="sm" disabled={roster.studentCount === 0} onClick={downloadTermReport}>
+                <Download className="mr-2 h-4 w-4" />Dönem Raporu (PDF)
+              </Button>
+            </div>
           </div>
 
           {roster.studentCount > 0 && (
@@ -602,6 +641,59 @@ export default function DrivingStudents() {
       )}
 
       {selectedId && <StudentDocumentsModal profileId={selectedId} onClose={() => setSelectedId(null)} />}
+
+      {/* MEBBİS Giriş Asistanı: çift ekranda alan alan kopyala-yapıştır + girildi işareti */}
+      {assistantOpen && roster && (
+        <Dialog open onOpenChange={(open) => { if (!open) setAssistantOpen(false); }}>
+          <DialogContent className="max-h-[92vh] w-[calc(100vw-1.5rem)] max-w-3xl overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>MEBBİS Giriş Asistanı — {roster.group.name} ({roster.enteredCount ?? 0}/{roster.studentCount} girildi)</DialogTitle>
+            </DialogHeader>
+            <p className="text-xs text-muted-foreground">
+              MEBBİS'i ikinci ekranda açın; alanları kopyalayıp yapıştırın, aday bitince "Girildi" işaretleyin.
+            </p>
+            <div className="space-y-3">
+              {roster.rows.map((row) => {
+                const entered = !!row.mebbisEnteredAtUtc;
+                const fields = [
+                  ['TC', row.tcNo], ['Adı', row.firstName], ['Soyadı', row.lastName],
+                  ['Baba adı', row.fatherName], ['Anne adı', row.motherName], ['Doğum yeri', row.birthPlace],
+                  ['Doğum tarihi', row.birthDate], ['Öğrenim', row.educationLevel], ['Sınıf', row.licenseClass],
+                  ['Seri no', row.identitySerialNo], ['Telefon', row.phone],
+                  ['Rapor no', row.healthReportNumber], ['Rapor kurumu', row.healthReportIssuedBy],
+                ].filter(([, value]) => value);
+                return (
+                  <div key={row.profileId} className={`rounded-2xl border p-3 ${entered ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-foreground/10'}`}>
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <b className="text-sm">#{row.studentNumber} {row.firstName} {row.lastName}</b>
+                      <label className="flex items-center gap-2 text-xs font-bold">
+                        <Checkbox checked={entered} onCheckedChange={(value) => toggleMebbisEntered(row, value === true)} />
+                        MEBBİS'e girildi
+                      </label>
+                    </div>
+                    {row.missing?.length > 0 && (
+                      <p className="mt-1 text-xs font-semibold text-amber-600">Eksik: {row.missing.join(', ')}</p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {fields.map(([label, value]) => (
+                        <button
+                          key={label}
+                          type="button"
+                          title={`${label} kopyala`}
+                          onClick={() => { navigator.clipboard?.writeText(String(value)); toast({ title: `${label} kopyalandı`, description: String(value) }); }}
+                          className="rounded-lg border border-foreground/15 bg-foreground/[0.03] px-2 py-1 text-xs hover:border-[hsl(var(--brand-accent)/0.5)]"
+                        >
+                          <span className="text-muted-foreground">{label}:</span> <b>{String(value)}</b>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </DrivingPage>
   );
 }

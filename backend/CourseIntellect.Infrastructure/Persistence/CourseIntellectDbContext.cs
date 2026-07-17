@@ -166,6 +166,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingInstructorProfile> DrivingInstructorProfiles => Set<DrivingInstructorProfile>();
     public DbSet<StudentDrivingProfile> StudentDrivingProfiles => Set<StudentDrivingProfile>();
     public DbSet<DrivingStudentGroup> DrivingStudentGroups => Set<DrivingStudentGroup>();
+    public DbSet<DrivingLead> DrivingLeads => Set<DrivingLead>();
     public DbSet<StudentDrivingDocument> StudentDrivingDocuments => Set<StudentDrivingDocument>();
     public DbSet<DrivingRegistrationDraft> DrivingRegistrationDrafts => Set<DrivingRegistrationDraft>();
     public DbSet<DrivingAppointment> DrivingAppointments => Set<DrivingAppointment>();
@@ -1619,6 +1620,18 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasIndex(x => new { x.TenantId, x.StaffId }).IsUnique();
             entity.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
         });
+        modelBuilder.Entity<DrivingLead>(entity =>
+        {
+            entity.ToTable("driving_leads"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.FullName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.LicenseClass).HasMaxLength(20);
+            entity.Property(x => x.Source).HasMaxLength(80);
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.Status).HasMaxLength(20).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Status });
+            entity.HasIndex(x => new { x.TenantId, x.Phone });
+        });
         modelBuilder.Entity<DrivingStudentGroup>(entity =>
         {
             entity.ToTable("driving_student_groups"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
@@ -1902,6 +1915,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.DeliveryStatus).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.Property(x => x.DocumentNumber).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.MebbisCertificateNo).HasMaxLength(60);
             entity.Property(x => x.DeliveredTo).HasMaxLength(150); entity.Property(x => x.DeliveryNote).HasMaxLength(500);
             entity.Property(x => x.ReissueReason).HasMaxLength(1000);
             entity.Property(x => x.VerificationTokenHash).HasMaxLength(64).IsRequired();

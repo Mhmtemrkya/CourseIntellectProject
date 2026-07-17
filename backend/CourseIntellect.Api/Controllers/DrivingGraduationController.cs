@@ -51,7 +51,7 @@ public sealed class DrivingGraduationController(
             .Select(x => new { x.Id, x.StudentDrivingProfileId, status = x.Status.ToString(), x.ChecklistJson, x.CheckedAtUtc, x.GraduatedAtUtc, x.Note, x.RevokedAtUtc, x.RevocationReason }).ToListAsync(ct);
         var certificates = await db.DrivingCertificates.AsNoTracking().Where(x => ids.Contains(x.StudentDrivingProfileId))
             .OrderByDescending(x => x.IssuedAtUtc)
-            .Select(x => new { x.Id, x.StudentDrivingProfileId, type = x.CertificateType.ToString(), x.DocumentNumber, x.IssuedAtUtc,
+            .Select(x => new { x.Id, x.StudentDrivingProfileId, type = x.CertificateType.ToString(), x.DocumentNumber, x.MebbisCertificateNo, x.IssuedAtUtc,
                 status = x.Status.ToString(), x.Version, x.ReissuedFromCertificateId, x.ReissueReason, x.PdfFileUrl,
                 deliveryStatus = x.DeliveryStatus.ToString(), x.DeliveredAtUtc, x.DeliveredTo, x.DeliveryNote, x.RevokedAtUtc, x.RevocationReason }).ToListAsync(ct);
         var actionRequests = User.IsInRole("Student") ? [] : await db.DrivingGraduationActionRequests.AsNoTracking()
@@ -358,6 +358,25 @@ public sealed class DrivingGraduationController(
         await db.SaveChangesAsync(ct); return Ok(new { deliveryStatus = certificate.DeliveryStatus.ToString(), certificate.DeliveredAtUtc });
     }
 
+    /// <summary>MEBBİS'in verdiği resmî sertifika numarasını işler (kurum MEBBİS'ten okur).</summary>
+    [HttpPut("certificates/{id:guid}/mebbis-no")]
+    [RequireDrivingPermission(DrivingPermissions.CertificateIssue)]
+    public async Task<IActionResult> UpdateMebbisNo(Guid id, [FromBody] CertificateMebbisNoRequest request, CancellationToken ct)
+    {
+        var value = (request.MebbisCertificateNo ?? string.Empty).Trim();
+        if (value.Length > 60) return BadRequest(new { message = "MEBBİS sertifika numarası en fazla 60 karakter olabilir." });
+        var certificate = await db.DrivingCertificates.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (certificate is null) return NotFound();
+
+        var before = certificate.MebbisCertificateNo;
+        certificate.MebbisCertificateNo = value;
+        await db.SaveChangesAsync(ct);
+        await audit.LogChangeAsync("MEBBİS sertifika no işlendi", AuditCategory, nameof(DrivingCertificate), certificate.Id.ToString(),
+            $"{certificate.DocumentNumber} → MEBBİS no: {(value.Length == 0 ? "—" : value)}",
+            new { mebbisCertificateNo = before }, new { certificate.MebbisCertificateNo }, ct);
+        return Ok(new { certificate.Id, certificate.MebbisCertificateNo });
+    }
+
     [HttpGet("certificates/{id:guid}/download")]
     [RequireDrivingPermission(DrivingPermissions.GraduationView)]
     public async Task<IActionResult> Download(Guid id, CancellationToken ct)
@@ -451,7 +470,13 @@ public sealed class DrivingGraduationController(
             new("documents", "Zorunlu kursiyer evrakları", missing.Count == 0, missing.Count == 0 ? "Tüm belgeler onaylı ve geçerli." : $"Eksik/geçersiz: {string.Join(", ", missing.Select(DrivingStudentRules.DocumentLabel))}"),
             new("theory", "Teorik eğitim ve devam", attendedMinutes >= package.TheoryLessonMinutes && attendancePercent >= settings.MinimumTheoryAttendancePercent,
                 $"{attendedMinutes}/{package.TheoryLessonMinutes} dakika; devam %{attendancePercent:0.##} (asgari %{settings.MinimumTheoryAttendancePercent:0.##}, mazeret: {settings.ExcusedAbsencePolicy})"),
-            new("practice", "Direksiyon eğitimi", drivingMinutes >= package.DrivingLessonMinutes, $"{drivingMinutes}/{package.DrivingLessonMinutes} dakika"),
+            // Taban = max(paket, mevzuat asgarisi): kurum paketi düşük tutsa bile
+            // bilinen sınıflarda mevzuat asgarisinin altında mezuniyet verilmez.
+            new("practice", "Direksiyon eğitimi",
+                drivingMinutes >= Math.Max(package.DrivingLessonMinutes, DrivingCurriculum.MinimumPracticeMinutesFor(profile.LicenseClass)),
+                $"{drivingMinutes}/{Math.Max(package.DrivingLessonMinutes, DrivingCurriculum.MinimumPracticeMinutesFor(profile.LicenseClass))} dakika"
+                    + (DrivingCurriculum.MinimumPracticeMinutesFor(profile.LicenseClass) > package.DrivingLessonMinutes
+                        ? $" (mevzuat asgarisi: {DrivingCurriculum.MinimumPracticeLessonHoursFor(profile.LicenseClass)} ders saati)" : string.Empty)),
             new("theoryExam", "E-sınav sonucu", passedTypes.Contains(DrivingExamType.TheoryEExam), passedTypes.Contains(DrivingExamType.TheoryEExam) ? "Geçti" : "Başarılı sonuç yok"),
             new("drivingExam", "Direksiyon sınavı sonucu", passedTypes.Contains(DrivingExamType.DrivingPractice), passedTypes.Contains(DrivingExamType.DrivingPractice) ? "Geçti" : "Başarılı sonuç yok"),
             new("finance", "Finansal kapanış", debt <= 0, debt <= 0 ? "Borç yok" : $"Kalan borç: {debt:0.00} TRY"),
@@ -535,6 +560,7 @@ public sealed record GraduationDecisionRequest(string? Note);
 public sealed record IssueCertificateRequest(string Type);
 public sealed record CertificateReissueRequest(string? Reason);
 public sealed record CertificateDeliveryRequest(string Status, string? DeliveredTo, string? Note);
+public sealed record CertificateMebbisNoRequest(string? MebbisCertificateNo);
 public sealed record UpdateDrivingCertificateSettingsRequest(
     string? DirectorName,
     string? DirectorTitle,

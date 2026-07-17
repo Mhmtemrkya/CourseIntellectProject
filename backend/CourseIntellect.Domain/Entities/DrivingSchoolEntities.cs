@@ -152,6 +152,33 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public Guid? RegisteredByUserId { get; set; }
     public Guid? ApprovedByUserId { get; set; }
     public DateTime? ApprovedAtUtc { get; set; }
+
+    /// <summary>Aday MEBBİS'e işlendi mi? Giriş asistanı işaretler; dönem paneli sayar.</summary>
+    public DateTime? MebbisEnteredAtUtc { get; set; }
+}
+
+/// <summary>
+/// Aday adayı (lead): arayan/soran ama henüz kayıt olmamış kişi. Kayda
+/// dönüşünce sihirbaz açılır; dönüşen lead kursiyer dosyasına bağlanır.
+/// </summary>
+public sealed class DrivingLead : ITenantScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    /// <summary>Yalnız rakam saklanır (mükerrer kontrolü için normalize).</summary>
+    public string Phone { get; set; } = string.Empty;
+    public string LicenseClass { get; set; } = "B";
+    /// <summary>Nereden ulaştı: telefon, tabela, sosyal medya, referans…</summary>
+    public string Source { get; set; } = string.Empty;
+    public string Note { get; set; } = string.Empty;
+    /// <summary>New → Contacted → Registered | Lost.</summary>
+    public string Status { get; set; } = "New";
+    public DateTime? ContactedAtUtc { get; set; }
+    /// <summary>Kayda dönüştüyse açılan kursiyer dosyası.</summary>
+    public Guid? ConvertedStudentProfileId { get; set; }
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
 public sealed class DrivingAppointment : ITenantScopedEntity

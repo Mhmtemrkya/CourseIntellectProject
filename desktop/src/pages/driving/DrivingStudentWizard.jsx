@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, Camera, CheckCircle2, CreditCard,
   FileCheck2, IdCard, KeyRound, Loader2, Save, ShieldCheck, Upload, UserRound, X,
@@ -11,7 +11,7 @@ import { Input } from '../../components/ui/input';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  checkDrivingIdentity, checkDrivingPhone, deleteDrivingRegistrationDraft, fetchDrivingInstructors, fetchDrivingPackages, verifyDrivingIdentity,
+  checkDrivingIdentity, checkDrivingPhone, convertDrivingLead, deleteDrivingRegistrationDraft, fetchDrivingInstructors, fetchDrivingPackages, verifyDrivingIdentity,
   fetchDrivingRegistrationDrafts, fetchDrivingVehicles, registerDrivingStudent, saveDrivingRegistrationDraft,
   uploadFile,
 } from '../../lib/api/modules';
@@ -181,8 +181,17 @@ export default function DrivingStudentWizard() {
   const navigate = useNavigate();
   const { can, loading: permissionsLoading } = useDrivingPermissions();
 
+  // Lead'den geliş: aday adayı bilgileri ön dolu açılır; kayıt bitince lead
+  // otomatik "kayda dönüştü" olarak dosyaya bağlanır.
+  const [searchParams] = useSearchParams();
+  const leadId = searchParams.get('leadId');
+
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState(() => ({
+    ...emptyForm,
+    fullName: searchParams.get('name') || emptyForm.fullName,
+    phone: searchParams.get('phone') || emptyForm.phone,
+  }));
   const [reference, setReference] = useState({ packages: [], instructors: [], vehicles: [] });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -453,6 +462,8 @@ export default function DrivingStudentWizard() {
       };
       const response = await registerDrivingStudent(payload);
       if (draftId) await deleteDrivingRegistrationDraft(draftId).catch(() => {});
+      // Lead'den gelindiyse aday adayını kursiyer dosyasına bağla (başarısızsa kayıt bozulmaz).
+      if (leadId) await convertDrivingLead(leadId, { studentDrivingProfileId: response.studentDrivingProfileId }).catch(() => {});
       setResult(response);
       toast({ title: 'Kayıt tamamlandı', description: `${form.fullName} kursiyer olarak kaydedildi.` });
     } catch (error) {

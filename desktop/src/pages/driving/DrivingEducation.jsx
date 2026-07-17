@@ -9,9 +9,10 @@ import { useToast } from '../../hooks/use-toast';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import {
   addDrivingExamCandidates, assignDrivingExamCandidate, createDrivingExamSession, createDrivingTheoryClass,
-  createDrivingTheorySession, downloadDrivingExamRoster, enrollDrivingTheoryStudents, enterDrivingExamResult,
-  fetchDrivingClassCompliance, fetchDrivingEducationOverview, fetchDrivingInstructors, fetchDrivingTheoryAttendance,
-  fetchDrivingVehicles, importDrivingExamResults, saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
+  createDrivingTheorySession, downloadDrivingClassSchedule, downloadDrivingExamRoster, enrollDrivingTheoryStudents,
+  enterDrivingExamResult, fetchDrivingClassCompliance, fetchDrivingEducationOverview, fetchDrivingInstructors,
+  fetchDrivingTheoryAttendance, fetchDrivingVehicles, generateDrivingSchedule, importDrivingExamResults,
+  saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
 } from '../../lib/api/modules';
 
 /**
@@ -73,6 +74,8 @@ export default function DrivingEducation() {
   const [examResources, setExamResources] = useState({ instructors: [], vehicles: [] });
   // Toplu sonuç içe aktarma: { exam, text, rows, summary }
   const [importState, setImportState] = useState(null);
+  // Program üreteci: { classId, startDate, days:Set, startHour, lessonsPerDay }
+  const [scheduleForm, setScheduleForm] = useState(null);
   // { candidate, passed, score, failureReason } — açıkken not girişi paneli görünür.
   const [resultForm, setResultForm] = useState(null);
 
@@ -102,6 +105,34 @@ export default function DrivingEducation() {
       await load();
     } catch (error) {
       toast({ title: 'Atama kaydedilemedi', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  async function submitSchedule() {
+    const days = [...scheduleForm.days];
+    if (!days.length) { toast({ title: 'En az bir gün seçin', variant: 'destructive' }); return; }
+    const [hour, minute] = scheduleForm.startTime.split(':').map(Number);
+    const ok = await run(() => generateDrivingSchedule(scheduleForm.classId, {
+      startDate: new Date(`${scheduleForm.startDate}T00:00:00`).toISOString(),
+      daysOfWeek: days,
+      startHourLocal: hour,
+      startMinuteLocal: minute || 0,
+      lessonsPerDay: Number(scheduleForm.lessonsPerDay),
+    }), 'Ders programı müfredattan üretildi');
+    if (ok) setScheduleForm(null);
+  }
+
+  async function downloadSchedule(group) {
+    try {
+      const blob = await downloadDrivingClassSchedule(group.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `ders-programi-${group.name}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: 'Program indirilemedi', description: error.message, variant: 'destructive' });
     }
   }
 
@@ -217,6 +248,50 @@ export default function DrivingEducation() {
       <TabsContent value="classes" className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr]">
         {canTheoryManage && <Card><CardHeader><CardTitle>Yeni teorik sınıf</CardTitle></CardHeader><CardContent><form className="space-y-3" onSubmit={saveClass}><Input required placeholder="Sınıf adı" value={classForm.name} onChange={(e) => setClassForm({ ...classForm, name: e.target.value })} /><div className="grid grid-cols-2 gap-2"><Input required placeholder="Ehliyet sınıfı" value={classForm.licenseClass} onChange={(e) => setClassForm({ ...classForm, licenseClass: e.target.value })} /><Input required type="number" min="1" max="100" value={classForm.capacity} onChange={(e) => setClassForm({ ...classForm, capacity: e.target.value })} /></div><select required className="h-10 w-full rounded-md border bg-background px-3" value={classForm.instructorStaffId} onChange={(e) => setClassForm({ ...classForm, instructorStaffId: e.target.value })}><option value="">Öğretmen seçin</option>{instructors.map((x) => <option key={x.id} value={x.id}>{x.fullName}</option>)}</select><Input required type="datetime-local" value={classForm.startsAtUtc} onChange={(e) => setClassForm({ ...classForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={classForm.endsAtUtc} onChange={(e) => setClassForm({ ...classForm, endsAtUtc: e.target.value })} /><Input placeholder="Derslik" value={classForm.room} onChange={(e) => setClassForm({ ...classForm, room: e.target.value })} /><Button disabled={busy} className="w-full">Sınıfı Oluştur</Button></form></CardContent></Card>}
         <div className="space-y-3">
+          {scheduleForm && (
+            <Card className="border-[hsl(var(--brand-accent)/0.4)]">
+              <CardHeader>
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+                  <span>{scheduleForm.className} — Müfredattan Program Üret</span>
+                  <Button size="sm" variant="ghost" onClick={() => setScheduleForm(null)}>Kapat</Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Resmî müfredat (Trafik 16 / İlk Yardım 8 / Araç Tekniği 6 / Adab 4 = 34 ders saati) seçtiğiniz
+                  günlere sırayla dağıtılır. Var olan dersler düşülür — mükerrer oturum üretilmez.
+                </p>
+                <div className="grid gap-3 md:grid-cols-4">
+                  <label className="space-y-1 text-xs font-bold"><span>Başlangıç tarihi</span>
+                    <Input type="date" value={scheduleForm.startDate} onChange={(e) => setScheduleForm({ ...scheduleForm, startDate: e.target.value })} />
+                  </label>
+                  <label className="space-y-1 text-xs font-bold"><span>Başlangıç saati</span>
+                    <Input type="time" value={scheduleForm.startTime} onChange={(e) => setScheduleForm({ ...scheduleForm, startTime: e.target.value })} />
+                  </label>
+                  <label className="space-y-1 text-xs font-bold"><span>Günde ders saati (45 dk)</span>
+                    <Input type="number" min="1" max="8" value={scheduleForm.lessonsPerDay} onChange={(e) => setScheduleForm({ ...scheduleForm, lessonsPerDay: e.target.value })} />
+                  </label>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {[[1, 'Pzt'], [2, 'Sal'], [3, 'Çar'], [4, 'Per'], [5, 'Cum'], [6, 'Cmt'], [0, 'Paz']].map(([day, label]) => (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => setScheduleForm((state) => {
+                        const days = new Set(state.days);
+                        if (days.has(day)) days.delete(day); else days.add(day);
+                        return { ...state, days };
+                      })}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold ${scheduleForm.days.has(day) ? 'border-brand-primary bg-brand-primary text-white' : 'border-foreground/15 text-muted-foreground'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <Button disabled={busy} onClick={submitSchedule}><CalendarPlus className="mr-2 h-4 w-4" />Programı Üret</Button>
+              </CardContent>
+            </Card>
+          )}
           {compliance && (
             <Card className={compliance.curriculumComplete && compliance.atRiskCount === 0 ? 'border-emerald-500/40' : 'border-amber-500/40'}>
               <CardHeader>
@@ -263,7 +338,7 @@ export default function DrivingEducation() {
               </CardContent>
             </Card>
           )}
-          {data.classes.map((group) => <Card key={group.id}><CardContent className="p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{group.name} • {group.licenseClass}</h3><p className="text-sm text-muted-foreground">{group.instructorName} • {group.room || 'Derslik belirtilmedi'} • {dateTime(group.startsAtUtc)}</p></div><div className="flex items-start gap-2"><Badge>{group.studentCount}/{group.capacity} öğrenci</Badge><Button size="sm" variant="outline" onClick={() => openCompliance(group)}><ShieldCheck className="mr-1 h-3 w-3" />Mevzuat</Button></div></div>{canTheoryManage && <div className="mt-4 space-y-2"><Checks items={students.filter((x) => x.licenseClass === group.licenseClass)} selected={classStudents[group.id] || []} onChange={(value) => setClassStudents((x) => ({ ...x, [group.id]: value }))} /><Button size="sm" disabled={busy || !(classStudents[group.id]?.length)} onClick={() => run(() => enrollDrivingTheoryStudents(group.id, classStudents[group.id]), 'Öğrenciler sınıfa atandı')}><Users className="mr-2 h-4 w-4" />Seçilenleri Ata</Button></div>}</CardContent></Card>)}
+          {data.classes.map((group) => <Card key={group.id}><CardContent className="p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{group.name} • {group.licenseClass}</h3><p className="text-sm text-muted-foreground">{group.instructorName} • {group.room || 'Derslik belirtilmedi'} • {dateTime(group.startsAtUtc)}</p></div><div className="flex flex-wrap items-start gap-2"><Badge>{group.studentCount}/{group.capacity} öğrenci</Badge><Button size="sm" variant="outline" onClick={() => openCompliance(group)}><ShieldCheck className="mr-1 h-3 w-3" />Mevzuat</Button>{canTheoryManage && <Button size="sm" variant="outline" onClick={() => setScheduleForm({ classId: group.id, className: group.name, startDate: new Date().toISOString().slice(0, 10), days: new Set([1, 3]), startTime: '18:00', lessonsPerDay: 2 })}><CalendarPlus className="mr-1 h-3 w-3" />Program Oluştur</Button>}<Button size="sm" variant="outline" onClick={() => downloadSchedule(group)}><Download className="mr-1 h-3 w-3" />Program (PDF)</Button></div></div>{canTheoryManage && <div className="mt-4 space-y-2"><Checks items={students.filter((x) => x.licenseClass === group.licenseClass)} selected={classStudents[group.id] || []} onChange={(value) => setClassStudents((x) => ({ ...x, [group.id]: value }))} /><Button size="sm" disabled={busy || !(classStudents[group.id]?.length)} onClick={() => run(() => enrollDrivingTheoryStudents(group.id, classStudents[group.id]), 'Öğrenciler sınıfa atandı')}><Users className="mr-2 h-4 w-4" />Seçilenleri Ata</Button></div>}</CardContent></Card>)}
         </div>
       </TabsContent>
       <TabsContent value="sessions" className="mt-5 space-y-5">

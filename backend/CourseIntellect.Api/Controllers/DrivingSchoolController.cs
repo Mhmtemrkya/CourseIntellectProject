@@ -30,6 +30,7 @@ public sealed class DrivingSchoolController(
     IDrivingLedgerService ledgerService,
     IDrivingAvailabilityService availabilityService,
     IDrivingNotifier notifier,
+    IDrivingReportPdfService reportPdf,
     IAuditLogService auditLogService) : ControllerBase
 {
     /// <summary>Her durum değişikliği ayrı satır olarak saklanır — "neden iptal oldu" tek yerden okunur.</summary>
@@ -196,7 +197,16 @@ public sealed class DrivingSchoolController(
     public async Task<IActionResult> GetPackages(CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
-        return Ok(await dbContext.DrivingPackages.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct));
+        var packages = await dbContext.DrivingPackages.AsNoTracking().OrderBy(x => x.Name).ToListAsync(ct);
+        // Mevzuat asgarisi (bilinen sınıflarda): paketin altında kalması UI'da uyarılır.
+        return Ok(packages.Select(x => new
+        {
+            x.Id, x.Name, x.LicenseClass, x.TransmissionType, x.DrivingLessonMinutes, x.TheoryLessonMinutes,
+            x.Price, x.IsActive, x.CreatedAtUtc,
+            regulatoryMinimumMinutes = DrivingCurriculum.MinimumPracticeMinutesFor(x.LicenseClass),
+            belowRegulatoryMinimum = DrivingCurriculum.MinimumPracticeMinutesFor(x.LicenseClass) > 0
+                && x.DrivingLessonMinutes < DrivingCurriculum.MinimumPracticeMinutesFor(x.LicenseClass),
+        }));
     }
 
     [HttpPost("packages")]
@@ -536,6 +546,8 @@ public sealed class DrivingSchoolController(
                 healthReportNumber = health?.DocumentNumber,
                 healthReportIssuedBy = health?.IssuedBy,
                 healthReportIssuedAt = health?.IssuedAtUtc,
+                profileId = x.Profile.Id,
+                mebbisEnteredAtUtc = x.Profile.MebbisEnteredAtUtc,
                 missing,
             };
         }).ToList();
@@ -577,7 +589,110 @@ public sealed class DrivingSchoolController(
             },
             studentCount = rows.Count,
             readyCount = rows.Count(x => x.missing.Count == 0),
+            enteredCount = rows.Count(x => x.mebbisEnteredAtUtc != null),
             rows,
+        });
+    }
+
+    /// <summary>
+    /// Dönem kapanış raporu: kayıtlı/mezun/dönemi düşen/devam eden dağılımı,
+    /// sınav hak durumu ve MEBBİS giriş sayacı — arşiv ve denetim için tek belge.
+    /// <c>?format=pdf</c> aynı belgeden PDF üretir.
+    /// </summary>
+    [HttpGet("student-groups/{id:guid}/term-report")]
+    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    public async Task<IActionResult> GetTermReport(Guid id, [FromQuery] string? format, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var group = await dbContext.DrivingStudentGroups.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (group is null) return NotFound(new { message = "Grup bulunamadı." });
+
+        var students = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.StudentGroupId == id)
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id,
+                (p, s) => new { p.Id, p.StudentNumber, s.FullName, p.Status, p.MebbisEnteredAtUtc })
+            .OrderBy(x => x.StudentNumber)
+            .ToListAsync(ct);
+        var profileIds = students.Select(x => x.Id).ToList();
+
+        // Sınav hakları: tür bazında tüketilen deneme (iptal hak yakmaz).
+        var attempts = await dbContext.DrivingExamCandidates.AsNoTracking()
+            .Where(x => profileIds.Contains(x.StudentDrivingProfileId) && x.Status != DrivingExamCandidateStatus.Cancelled)
+            .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id,
+                (c, s) => new { c.StudentDrivingProfileId, s.ExamType, c.Status })
+            .ToListAsync(ct);
+        var attemptsByStudent = attempts.ToLookup(x => x.StudentDrivingProfileId);
+
+        var statusLabels = new Dictionary<DrivingStudentStatus, string>
+        {
+            [DrivingStudentStatus.PreRegistered] = "Ön kayıt", [DrivingStudentStatus.DocumentsPending] = "Evrak bekliyor",
+            [DrivingStudentStatus.Active] = "Aktif", [DrivingStudentStatus.TheoryOngoing] = "Teorik eğitimde",
+            [DrivingStudentStatus.PracticeOngoing] = "Direksiyonda", [DrivingStudentStatus.ExamPending] = "Sınav bekliyor",
+            [DrivingStudentStatus.GraduationPending] = "Mezuniyet onayı", [DrivingStudentStatus.Graduated] = "Mezun",
+            [DrivingStudentStatus.Suspended] = "Askıda", [DrivingStudentStatus.Cancelled] = "İptal",
+        };
+
+        var rows = students.Select(student =>
+        {
+            var own = attemptsByStudent[student.Id].ToList();
+            int Used(DrivingExamType type) => own.Count(x => x.ExamType == type);
+            bool Passed(DrivingExamType type) => own.Any(x => x.ExamType == type && x.Status == DrivingExamCandidateStatus.Passed);
+            var theoryUsed = Used(DrivingExamType.TheoryEExam);
+            var practiceUsed = Used(DrivingExamType.DrivingPractice);
+            var forfeited = (!Passed(DrivingExamType.TheoryEExam) && DrivingExamRules.IsOutOfAttempts(theoryUsed))
+                || (!Passed(DrivingExamType.DrivingPractice) && DrivingExamRules.IsOutOfAttempts(practiceUsed));
+            return new
+            {
+                student.StudentNumber,
+                student.FullName,
+                status = statusLabels.GetValueOrDefault(student.Status, student.Status.ToString()),
+                theoryAttempts = $"{theoryUsed}/{DrivingExamRules.MaxAttempts}",
+                practiceAttempts = $"{practiceUsed}/{DrivingExamRules.MaxAttempts}",
+                forfeited,
+                graduated = student.Status == DrivingStudentStatus.Graduated,
+                mebbisEntered = student.MebbisEnteredAtUtc != null,
+            };
+        }).ToList();
+
+        var institutionName = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == dbContext.CurrentTenantId).Select(x => x.Name).FirstOrDefaultAsync(ct) ?? "Sürücü Kursu";
+
+        var document = new CourseIntellect.Application.Interfaces.DrivingReportDocument(
+            institutionName,
+            $"{group.Name} — Dönem Kapanış Raporu",
+            (group.TermYear is { } year && group.TermNumber is { } number ? $"Resmî dönem {year}/{number}" : "Dönem raporu")
+                + (string.IsNullOrWhiteSpace(group.MebbisTermCode) ? "" : $" • MEBBİS kodu: {group.MebbisTermCode}"),
+            group.CreatedAtUtc, DateTime.UtcNow,
+            [
+                new CourseIntellect.Application.Interfaces.DrivingReportColumn("Kursiyer No", Numeric: true),
+                new CourseIntellect.Application.Interfaces.DrivingReportColumn("Ad Soyad"),
+                new CourseIntellect.Application.Interfaces.DrivingReportColumn("Durum"),
+                new CourseIntellect.Application.Interfaces.DrivingReportColumn("E-Sınav Hak"),
+                new CourseIntellect.Application.Interfaces.DrivingReportColumn("Direksiyon Hak"),
+                new CourseIntellect.Application.Interfaces.DrivingReportColumn("MEBBİS"),
+            ],
+            rows.Select(x => (IReadOnlyList<string>)
+            [
+                x.StudentNumber.ToString(), x.FullName, x.status + (x.forfeited ? " (dönem düştü)" : string.Empty),
+                x.theoryAttempts, x.practiceAttempts, x.mebbisEntered ? "Girildi" : "Girilmedi",
+            ]).ToList(),
+            [
+                ("Kayıtlı kursiyer", rows.Count.ToString()),
+                ("Mezun", rows.Count(x => x.graduated).ToString()),
+                ("Dönemi düşen", rows.Count(x => x.forfeited).ToString()),
+                ("Devam eden", rows.Count(x => !x.graduated && !x.forfeited).ToString()),
+                ("MEBBİS'e girilen", $"{rows.Count(x => x.mebbisEntered)}/{rows.Count}"),
+            ]);
+
+        if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+            return File(reportPdf.Generate(document), "application/pdf", $"donem-raporu-{group.Name}.pdf");
+
+        return Ok(new
+        {
+            group = new { group.Id, group.Name, group.TermYear, group.TermNumber, group.MebbisTermCode },
+            columns = document.Columns.Select(x => new { header = x.Header, numeric = x.Numeric }),
+            rows = document.Rows,
+            summary = document.Summary.Select(x => new { label = x.Label, value = x.Value }),
         });
     }
 

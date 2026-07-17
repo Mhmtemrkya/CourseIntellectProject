@@ -197,4 +197,21 @@ public sealed class DrivingStudentRulesTests
         Assert.Equal(1, DrivingCurriculum.MinutesToLessonHours(89));
         Assert.Equal(16, DrivingCurriculum.MinutesToLessonHours(16 * 45));
     }
+
+    // ─── Asgari direksiyon süresi ────────────────────────────────────────────
+
+    [Theory]
+    [InlineData("B", 14)]
+    [InlineData("b", 14)]
+    [InlineData(" B ", 14)]
+    [InlineData("A", 12)]
+    [InlineData("A2", 12)]
+    [InlineData("CE", 0)] // bilinmeyen sınıfta kural uygulanmaz
+    [InlineData(null, 0)]
+    public void Curriculum_MinimumPracticeHours(string? licenseClass, int expectedHours)
+        => Assert.Equal(expectedHours, DrivingCurriculum.MinimumPracticeLessonHoursFor(licenseClass));
+
+    [Fact]
+    public void Curriculum_MinimumPracticeMinutes_UsesFiftyMinuteLessons()
+        => Assert.Equal(14 * 50, DrivingCurriculum.MinimumPracticeMinutesFor("B"));
 }

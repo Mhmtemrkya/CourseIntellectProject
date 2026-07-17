@@ -780,6 +780,27 @@ public sealed class DrivingStudentsController(
     }
 
     /// <summary>
+    /// MEBBİS giriş asistanı işareti: aday MEBBİS'e işlendi/işlenmedi. Dönem
+    /// paneli "girilen X/Y" sayacını buradan okur.
+    /// </summary>
+    [HttpPut("students/{profileId:guid}/mebbis-entered")]
+    [RequireDrivingPermission(DrivingPermissions.StudentUpdate)]
+    public async Task<IActionResult> SetMebbisEntered(Guid profileId, [FromBody] SetMebbisEnteredRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var profile = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == profileId, ct);
+        if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+
+        profile.MebbisEnteredAtUtc = request.Entered ? DateTime.UtcNow : null;
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync(
+            request.Entered ? "Aday MEBBİS'e işlendi" : "MEBBİS giriş işareti kaldırıldı",
+            AuditCategory, "StudentDrivingProfile", profile.Id.ToString(),
+            $"Kursiyer #{profile.StudentNumber}.", null, new { profile.MebbisEnteredAtUtc }, ct);
+        return Ok(new { profile.Id, profile.MebbisEnteredAtUtc });
+    }
+
+    /// <summary>
     /// Resmî kursiyer formları (PDF): <c>cover</c> = aday dosyası kapak formu,
     /// <c>lesson-card</c> = imza sütunlu direksiyon eğitim kartı,
     /// <c>attendance</c> = teorik devam çizelgesi. Denetimde dosyaya konur.
@@ -1370,6 +1391,8 @@ public sealed record UploadStudentDocumentRequest(
 public sealed record ReviewStudentDocumentRequest(bool Approved, string? RejectionReason);
 
 public sealed record VerifyIdentityRequest(string? IdentityNumber, string? FullName, string? BirthDate);
+
+public sealed record SetMebbisEnteredRequest(bool Entered);
 
 public sealed record UpdateDrivingExamFeesRequest(decimal TheoryExamFee, decimal DrivingExamFee, bool TheoryExamFeePaid, bool DrivingExamFeePaid, DateTime? DrivingExamDate);
 

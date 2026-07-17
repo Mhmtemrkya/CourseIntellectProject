@@ -108,6 +108,22 @@ export const downloadDrivingMebbisRoster = (groupId) =>
   api.get(`/api/driving-school/student-groups/${groupId}/mebbis-roster`, { params: { format: 'csv' }, responseType: 'blob' });
 export const fetchDrivingTheoryCurriculum = () => api.get('/api/driving-school/theory/curriculum');
 export const fetchDrivingClassCompliance = (classId) => api.get(`/api/driving-school/theory/classes/${classId}/compliance`);
+// Ders programı üreteci + program çizelgesi (PDF)
+export const generateDrivingSchedule = (classId, payload) => api.post(`/api/driving-school/theory/classes/${classId}/generate-schedule`, payload);
+export const downloadDrivingClassSchedule = (classId) =>
+  api.get(`/api/driving-school/theory/classes/${classId}/schedule`, { params: { format: 'pdf' }, responseType: 'blob' });
+// MEBBİS sertifika no + dönem kapanış raporu + giriş asistanı işareti
+export const updateDrivingCertificateMebbisNo = (certificateId, mebbisCertificateNo) =>
+  api.put(`/api/driving-school/graduation/certificates/${certificateId}/mebbis-no`, { mebbisCertificateNo });
+export const downloadDrivingTermReport = (groupId) =>
+  api.get(`/api/driving-school/student-groups/${groupId}/term-report`, { params: { format: 'pdf' }, responseType: 'blob' });
+export const setDrivingMebbisEntered = (profileId, entered) =>
+  api.put(`/api/driving-school/students/${profileId}/mebbis-entered`, { entered });
+// Aday adayları (lead)
+export const fetchDrivingLeads = (params = {}) => api.get('/api/driving-school/leads', { params });
+export const createDrivingLead = (payload) => api.post('/api/driving-school/leads', payload);
+export const updateDrivingLead = (id, payload) => api.put(`/api/driving-school/leads/${id}`, payload);
+export const convertDrivingLead = (id, payload = {}) => api.post(`/api/driving-school/leads/${id}/convert`, payload);
 // e-Sınav sonuçlarını toplu içe aktarma + NVİ kimlik doğrulama
 export const importDrivingExamResults = (sessionId, rows) => api.post(`/api/driving-school/exams/sessions/${sessionId}/results/import`, { rows });
 export const verifyDrivingIdentity = (payload) => api.post('/api/driving-school/students/verify-identity', payload);

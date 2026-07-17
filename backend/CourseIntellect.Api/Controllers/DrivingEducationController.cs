@@ -317,6 +317,144 @@ public sealed class DrivingEducationController(
         });
     }
 
+    /// <summary>
+    /// Resmî müfredattan ders programı üretir: konular sırayla (Trafik 16 → İlk
+    /// Yardım 8 → Araç Tekniği 6 → Adab 4), seçilen günlerde ve saatte, günde en
+    /// fazla verilen ders saati kadar. Var olan oturumların kapattığı saatler
+    /// düşülür — ikinci çalıştırma mükerrer ders üretmez.
+    /// </summary>
+    [HttpPost("theory/classes/{id:guid}/generate-schedule")]
+    [RequireDrivingPermission(DrivingPermissions.TheoryManage)]
+    public async Task<IActionResult> GenerateSchedule(Guid id, [FromBody] GenerateScheduleRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var theoryClass = await db.DrivingTheoryClasses.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (theoryClass is null) return NotFound(new { message = "Sınıf bulunamadı." });
+        if (request.DaysOfWeek is not { Count: > 0 } || request.DaysOfWeek.Any(x => x is < 0 or > 6))
+            return BadRequest(new { message = "En az bir geçerli gün seçilmelidir (0=Pazar…6=Cumartesi)." });
+        if (request.LessonsPerDay is < 1 or > 8) return BadRequest(new { message = "Günlük ders saati 1-8 arasında olmalıdır." });
+        if (request.StartHourLocal is < 0 or > 23 || request.StartMinuteLocal is < 0 or > 59)
+            return BadRequest(new { message = "Başlangıç saati geçersiz." });
+        if (request.StartDate < DateTime.UtcNow.Date.AddDays(-1) || request.StartDate > DateTime.UtcNow.AddYears(1))
+            return BadRequest(new { message = "Başlangıç tarihi makul aralıkta olmalıdır." });
+
+        // Var olan oturumların kapattığı ders saatleri konu bazında düşülür.
+        var existing = await db.DrivingTheorySessions.AsNoTracking()
+            .Where(x => x.TheoryClassId == id && x.Status != DrivingTheorySessionStatus.Cancelled)
+            .Select(x => new { x.Subject, Minutes = (int)(x.EndsAtUtc - x.StartsAtUtc).TotalMinutes })
+            .ToListAsync(ct);
+        var remaining = DrivingCurriculum.TheorySubjects.ToDictionary(
+            x => x.Key,
+            x => x.RequiredHours - DrivingCurriculum.MinutesToLessonHours(
+                existing.Where(e => DrivingCurriculum.MatchSubject(e.Subject)?.Key == x.Key).Sum(e => e.Minutes)));
+        if (remaining.Values.All(x => x <= 0))
+            return Conflict(new { message = "Müfredatın tüm konuları zaten planlanmış." });
+
+        var allowedDays = request.DaysOfWeek.Select(x => (DayOfWeek)x).ToHashSet();
+        var sessions = new List<DrivingTheorySession>();
+        var cursor = request.StartDate.Date;
+        var safety = 0;
+
+        foreach (var subject in DrivingCurriculum.TheorySubjects)
+        {
+            var hoursLeft = Math.Max(0, remaining[subject.Key]);
+            while (hoursLeft > 0 && safety < 366)
+            {
+                while (!allowedDays.Contains(cursor.DayOfWeek) && safety < 366) { cursor = cursor.AddDays(1); safety++; }
+                if (safety >= 366) break;
+
+                var hoursToday = Math.Min(hoursLeft, request.LessonsPerDay);
+                // Yerel saat → UTC (TR sabit +3).
+                var startsAtUtc = new DateTime(cursor.Year, cursor.Month, cursor.Day, request.StartHourLocal, request.StartMinuteLocal, 0, DateTimeKind.Utc).AddHours(-3);
+                sessions.Add(new DrivingTheorySession
+                {
+                    TheoryClassId = theoryClass.Id,
+                    InstructorStaffId = theoryClass.InstructorStaffId,
+                    Subject = subject.Label,
+                    Topic = $"{subject.Label} — {subject.RequiredHours - hoursLeft + 1}-{subject.RequiredHours - hoursLeft + hoursToday}. ders saati",
+                    StartsAtUtc = startsAtUtc,
+                    EndsAtUtc = startsAtUtc.AddMinutes(hoursToday * DrivingCurriculum.TheoryLessonMinutes),
+                    Room = theoryClass.Room,
+                });
+                hoursLeft -= hoursToday;
+                cursor = cursor.AddDays(1);
+                safety++;
+            }
+        }
+        if (sessions.Count == 0) return Conflict(new { message = "Program üretilemedi — gün/tarih seçimini kontrol edin." });
+
+        db.DrivingTheorySessions.AddRange(sessions);
+        await db.SaveChangesAsync(ct);
+        await audit.LogChangeAsync("Ders programı üretildi", AuditCategory, nameof(DrivingTheoryClass), theoryClass.Id.ToString(),
+            $"{theoryClass.Name}: müfredattan {sessions.Count} oturum üretildi ({sessions[0].StartsAtUtc.AddHours(3):dd.MM.yyyy} → {sessions[^1].StartsAtUtc.AddHours(3):dd.MM.yyyy}).",
+            null, new { sessionCount = sessions.Count }, ct);
+
+        return Ok(new
+        {
+            created = sessions.Count,
+            firstAtUtc = sessions[0].StartsAtUtc,
+            lastAtUtc = sessions[^1].StartsAtUtc,
+        });
+    }
+
+    /// <summary>Sınıfın ders programı çizelgesi — il müdürlüğüne sunulan biçimde PDF.</summary>
+    [HttpGet("theory/classes/{id:guid}/schedule")]
+    [RequireDrivingPermission(DrivingPermissions.TheoryView)]
+    public async Task<IActionResult> GetClassSchedule(Guid id, [FromQuery] string? format, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var theoryClass = await db.DrivingTheoryClasses.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (theoryClass is null) return NotFound(new { message = "Sınıf bulunamadı." });
+
+        var sessions = await db.DrivingTheorySessions.AsNoTracking()
+            .Where(x => x.TheoryClassId == id && x.Status != DrivingTheorySessionStatus.Cancelled)
+            .Join(db.Staff.AsNoTracking(), s => s.InstructorStaffId, st => st.Id, (s, st) => new { s.Subject, s.Topic, s.StartsAtUtc, s.EndsAtUtc, s.Room, InstructorName = st.FullName })
+            .OrderBy(x => x.StartsAtUtc)
+            .ToListAsync(ct);
+
+        var rows = sessions.Select((x, index) => (IReadOnlyList<string>)
+        [
+            (index + 1).ToString(),
+            x.StartsAtUtc.AddHours(3).ToString("dd.MM.yyyy dddd", new System.Globalization.CultureInfo("tr-TR")),
+            $"{x.StartsAtUtc.AddHours(3):HH:mm}-{x.EndsAtUtc.AddHours(3):HH:mm}",
+            x.Subject,
+            x.Topic,
+            DrivingCurriculum.MinutesToLessonHours((int)(x.EndsAtUtc - x.StartsAtUtc).TotalMinutes).ToString(),
+            x.InstructorName,
+            x.Room,
+        ]).ToList();
+
+        var institutionName = await db.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == db.CurrentTenantId).Select(x => x.Name).FirstOrDefaultAsync(ct) ?? "Sürücü Kursu";
+        var totalHours = sessions.Sum(x => DrivingCurriculum.MinutesToLessonHours((int)(x.EndsAtUtc - x.StartsAtUtc).TotalMinutes));
+
+        var document = new DrivingReportDocument(
+            institutionName,
+            $"{theoryClass.Name} — Teorik Ders Programı",
+            $"Sertifika sınıfı: {theoryClass.LicenseClass} • Resmî müfredat: {DrivingCurriculum.TotalRequiredHours} ders saati × {DrivingCurriculum.TheoryLessonMinutes} dk",
+            theoryClass.StartsAtUtc, theoryClass.EndsAtUtc,
+            [
+                new DrivingReportColumn("Sıra", Numeric: true), new DrivingReportColumn("Tarih"), new DrivingReportColumn("Saat"),
+                new DrivingReportColumn("Konu"), new DrivingReportColumn("İşlenecek"), new DrivingReportColumn("Ders Saati", Numeric: true),
+                new DrivingReportColumn("Öğretmen"), new DrivingReportColumn("Derslik"),
+            ],
+            rows,
+            [
+                ("Toplam oturum", sessions.Count.ToString()),
+                ("Toplam ders saati", $"{totalHours}/{DrivingCurriculum.TotalRequiredHours}"),
+            ]);
+
+        if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+            return File(pdf.Generate(document), "application/pdf", $"ders-programi-{theoryClass.Name}.pdf");
+
+        return Ok(new
+        {
+            columns = document.Columns.Select(x => new { header = x.Header, numeric = x.Numeric }),
+            rows = document.Rows,
+            summary = document.Summary.Select(x => new { label = x.Label, value = x.Value }),
+        });
+    }
+
     [HttpPost("exams/sessions")]
     [RequireDrivingPermission(DrivingPermissions.ExamManage)]
     public async Task<IActionResult> CreateExamSession([FromBody] SaveExamSessionRequest request, CancellationToken ct)
@@ -772,6 +910,7 @@ public sealed record SaveExamSessionRequest(string ExamType, string Title, DateT
 }
 public sealed record AddExamCandidatesRequest(IReadOnlyList<Guid> StudentProfileIds, decimal FeeAmount);
 public sealed record AssignExamCandidateRequest(Guid? VehicleId, Guid? InstructorProfileId);
+public sealed record GenerateScheduleRequest(DateTime StartDate, IReadOnlyList<int> DaysOfWeek, int StartHourLocal, int StartMinuteLocal, int LessonsPerDay);
 public sealed record ExamResultImportRow(string IdentityNumber, string? Result, decimal? Score);
 public sealed record ImportExamResultsRequest(IReadOnlyList<ExamResultImportRow> Rows);
 public sealed record EnterExamResultRequest(bool Passed, decimal? Score, string? FailureReason, string? Note);
