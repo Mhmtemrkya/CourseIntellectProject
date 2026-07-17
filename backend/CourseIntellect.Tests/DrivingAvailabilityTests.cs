@@ -186,4 +186,39 @@ public sealed class DrivingAvailabilityTests
             LocalTime(2026, 7, 14, 23, 30),
             LocalTime(2026, 7, 15, 0, 30)));
     }
+
+    // ─── Gece dersi yasağı (mevzuat saat penceresi) ──────────────────────────
+
+    [Fact]
+    public void AllowedHours_LessonInsideWindow_Passes()
+        => Assert.True(DrivingAvailability.IsWithinAllowedHours(
+            LocalTime(2026, 7, 14, 10), LocalTime(2026, 7, 14, 11, 30), 7, 19));
+
+    [Fact]
+    public void AllowedHours_LessonEndingExactlyAtLimit_Passes()
+        => Assert.True(DrivingAvailability.IsWithinAllowedHours(
+            LocalTime(2026, 7, 14, 18), LocalTime(2026, 7, 14, 19), 7, 19));
+
+    [Fact]
+    public void AllowedHours_EveningLesson_IsBlocked()
+        => Assert.False(DrivingAvailability.IsWithinAllowedHours(
+            LocalTime(2026, 7, 14, 19), LocalTime(2026, 7, 14, 20), 7, 19));
+
+    [Fact]
+    public void AllowedHours_EarlyMorningLesson_IsBlocked()
+        => Assert.False(DrivingAvailability.IsWithinAllowedHours(
+            LocalTime(2026, 7, 14, 6), LocalTime(2026, 7, 14, 7), 7, 19));
+
+    [Fact]
+    public void AllowedHours_DisabledWindow_MeansNoRestriction()
+    {
+        // Earliest >= Latest: kurum saat kısıtını bilerek kapatmıştır.
+        Assert.True(DrivingAvailability.IsWithinAllowedHours(
+            LocalTime(2026, 7, 14, 23), LocalTime(2026, 7, 14, 23, 45), 0, 0));
+    }
+
+    [Fact]
+    public void AllowedHours_LessonCrossingMidnight_IsBlocked()
+        => Assert.False(DrivingAvailability.IsWithinAllowedHours(
+            LocalTime(2026, 7, 14, 23, 30), LocalTime(2026, 7, 15, 0, 30), 0, 24));
 }

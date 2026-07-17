@@ -91,6 +91,24 @@ public sealed class DrivingAvailabilityService(CourseIntellectDbContext dbContex
                 DrivingPermissions.OverrideAppointmentRule));
         }
 
+        // MTSK mevzuatı: adaya günde en fazla 2 ders saati (120 dk) direksiyon eğitimi.
+        if (DrivingAvailability.ExceedsDailyMinutes(studentSlots, lessonMinutes, settings.MaxStudentDailyMinutes))
+        {
+            violations.Add(new AvailabilityViolation(
+                DrivingAvailability.Codes.StudentDailyMinutes,
+                $"Mevzuat sınırı: öğrenci aynı gün en fazla {settings.MaxStudentDailyMinutes} dakika direksiyon eğitimi alabilir.",
+                DrivingPermissions.OverrideAppointmentRule));
+        }
+
+        // Gece dersi yasağı: ders kurumun izin verdiği saat penceresine sığmalı.
+        if (!DrivingAvailability.IsWithinAllowedHours(candidate.StartsAtUtc, candidate.EndsAtUtc, settings.LessonEarliestHour, settings.LessonLatestHour))
+        {
+            violations.Add(new AvailabilityViolation(
+                DrivingAvailability.Codes.OutsideAllowedHours,
+                $"Direksiyon dersi {settings.LessonEarliestHour:00}:00-{settings.LessonLatestHour:00}:00 saatleri arasında olmalıdır (gece dersi yasağı).",
+                DrivingPermissions.OverrideAppointmentRule));
+        }
+
         // Hazırlık payı öğretmen ve araç için ayrı ayrı aranır: aynı öğretmenin
         // arka arkaya iki dersi arasında yol/dinlenme süresi olmalı.
         var neighbours = instructorSlots.Concat(vehicleSlots).ToList();

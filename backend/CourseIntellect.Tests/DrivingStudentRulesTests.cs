@@ -112,4 +112,89 @@ public sealed class DrivingStudentRulesTests
         Assert.DoesNotContain(DrivingStudentStatus.Cancelled, DrivingStudentStatuses.Open);
         Assert.DoesNotContain(DrivingStudentStatus.Suspended, DrivingStudentStatuses.Open);
     }
+
+    // ─── MEBBİS eksik alan kuralı ────────────────────────────────────────────
+
+    private static DrivingStudentRules.MebbisCandidate CompleteCandidate() => new(
+        HasValidNationalId: true,
+        BirthDate: "2000-01-01",
+        FatherName: "Ahmet",
+        MotherName: "Ayşe",
+        BirthPlace: "Ankara",
+        EducationLevel: "Lise",
+        IdentitySerialNo: "A12345678",
+        Phone: "05321112233",
+        HasPhoto: true,
+        HealthReportApproved: true,
+        HealthReportDetailsComplete: true,
+        DiplomaApproved: true,
+        CriminalRecordApproved: true);
+
+    [Fact]
+    public void MebbisMissingFields_CompleteCandidate_ReturnsEmpty()
+        => Assert.Empty(DrivingStudentRules.MebbisMissingFields(CompleteCandidate()));
+
+    [Fact]
+    public void MebbisMissingFields_ListsEveryMissingItem()
+    {
+        var missing = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
+        {
+            FatherName = "",
+            MotherName = "  ",
+            BirthPlace = null,
+            IdentitySerialNo = null,
+        });
+        Assert.Equal(["Baba adı", "Anne adı", "Doğum yeri", "Kimlik seri no"], missing);
+    }
+
+    [Fact]
+    public void MebbisMissingFields_HealthReportDetails_OnlyAskedWhenReportApproved()
+    {
+        // Rapor hiç yoksa detay istenmez — önce raporun kendisi eksiktir.
+        var withoutReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
+        {
+            HealthReportApproved = false,
+            HealthReportDetailsComplete = false,
+        });
+        Assert.Contains("Onaylı sağlık raporu", withoutReport);
+        Assert.DoesNotContain("Sağlık raporu no / veren kurum / tarih", withoutReport);
+
+        // Rapor onaylı ama no/kurum/tarih girilmemişse detay eksiği çıkar.
+        var withReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
+        {
+            HealthReportDetailsComplete = false,
+        });
+        Assert.Equal(["Sağlık raporu no / veren kurum / tarih"], withReport);
+    }
+
+    // ─── Resmî teorik müfredat ───────────────────────────────────────────────
+
+    [Fact]
+    public void Curriculum_TotalIs34LessonHours()
+        => Assert.Equal(34, DrivingCurriculum.TotalRequiredHours);
+
+    [Theory]
+    [InlineData("Trafik ve Çevre Bilgisi", "trafik")]
+    [InlineData("TRAFİK", "trafik")]
+    [InlineData("İlk Yardım", "ilkyardim")]
+    [InlineData("ilkyardim", "ilkyardim")]
+    [InlineData("Motor ve Araç Tekniği", "motor")]
+    [InlineData("Araç Tekniği", "motor")]
+    [InlineData("Trafik Adabı", "adab")]
+    [InlineData("trafik adabi", "adab")]
+    public void Curriculum_MatchesFreeTextSubjects(string subject, string expectedKey)
+        => Assert.Equal(expectedKey, DrivingCurriculum.MatchSubject(subject)?.Key);
+
+    [Fact]
+    public void Curriculum_UnknownSubject_DoesNotMatch()
+        => Assert.Null(DrivingCurriculum.MatchSubject("Satranç"));
+
+    [Fact]
+    public void Curriculum_MinutesToLessonHours_TruncatesPartialHours()
+    {
+        Assert.Equal(0, DrivingCurriculum.MinutesToLessonHours(44));
+        Assert.Equal(1, DrivingCurriculum.MinutesToLessonHours(45));
+        Assert.Equal(1, DrivingCurriculum.MinutesToLessonHours(89));
+        Assert.Equal(16, DrivingCurriculum.MinutesToLessonHours(16 * 45));
+    }
 }

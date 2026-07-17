@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using System.Data;
 using System.Security.Claims;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
@@ -328,12 +329,20 @@ public sealed class DrivingSchoolController(
             .Select(g => new { GroupId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.GroupId!.Value, x => x.Count, ct);
         var groups = await query.OrderBy(x => x.Name)
-            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc })
+            .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc, x.TermYear, x.TermNumber, x.MebbisTermCode, x.Quota, x.RegistrationDeadlineUtc })
             .ToListAsync(ct);
         var ungroupedCount = await dbContext.StudentDrivingProfiles.AsNoTracking().CountAsync(x => x.StudentGroupId == null, ct);
+        var now = DateTime.UtcNow;
         return Ok(new
         {
-            groups = groups.Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc, studentCount = counts.GetValueOrDefault(x.Id) }),
+            groups = groups.Select(x => new
+            {
+                x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc,
+                x.TermYear, x.TermNumber, x.MebbisTermCode, x.Quota, x.RegistrationDeadlineUtc,
+                studentCount = counts.GetValueOrDefault(x.Id),
+                quotaFull = x.Quota > 0 && counts.GetValueOrDefault(x.Id) >= x.Quota,
+                daysToDeadline = x.RegistrationDeadlineUtc is DateTime deadline ? (int?)Math.Ceiling((deadline - now).TotalDays) : null,
+            }),
             ungroupedCount,
         });
     }
@@ -346,6 +355,7 @@ public sealed class DrivingSchoolController(
         var name = (request.Name ?? string.Empty).Trim();
         if (name.Length is < 2 or > 120) return BadRequest(new { message = "Grup adı 2-120 karakter olmalıdır." });
         if ((request.Description?.Length ?? 0) > 500) return BadRequest(new { message = "Açıklama en fazla 500 karakter olabilir." });
+        if (ValidateGroupTerm(request) is { } termError) return BadRequest(new { message = termError });
         var exists = await dbContext.DrivingStudentGroups.AsNoTracking().AnyAsync(x => x.Name == name, ct);
         if (exists) return Conflict(new { message = "Bu isimde bir grup zaten var." });
 
@@ -353,13 +363,24 @@ public sealed class DrivingSchoolController(
         {
             Name = name,
             Description = request.Description?.Trim() ?? string.Empty,
+            TermYear = request.TermYear,
+            TermNumber = request.TermNumber,
+            MebbisTermCode = request.MebbisTermCode?.Trim() ?? string.Empty,
+            Quota = Math.Max(0, request.Quota),
+            RegistrationDeadlineUtc = request.RegistrationDeadlineUtc,
             CreatedByUserId = CurrentUserId(),
         };
         dbContext.DrivingStudentGroups.Add(entity);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Kursiyer grubu oluşturuldu", AuditCategory, "DrivingStudentGroup", entity.Id.ToString(),
-            $"\"{entity.Name}\" grubu oluşturuldu.", null, new { entity.Name, entity.Description }, ct);
-        return Ok(new { entity.Id, entity.Name, entity.Description, entity.IsActive, entity.CreatedAtUtc, studentCount = 0 });
+            $"\"{entity.Name}\" grubu oluşturuldu{TermLabel(entity)}.", null,
+            new { entity.Name, entity.Description, entity.TermYear, entity.TermNumber, entity.MebbisTermCode, entity.Quota, entity.RegistrationDeadlineUtc }, ct);
+        return Ok(new
+        {
+            entity.Id, entity.Name, entity.Description, entity.IsActive, entity.CreatedAtUtc,
+            entity.TermYear, entity.TermNumber, entity.MebbisTermCode, entity.Quota, entity.RegistrationDeadlineUtc,
+            studentCount = 0,
+        });
     }
 
     [HttpPut("student-groups/{id:guid}")]
@@ -372,17 +393,155 @@ public sealed class DrivingSchoolController(
         var name = (request.Name ?? string.Empty).Trim();
         if (name.Length is < 2 or > 120) return BadRequest(new { message = "Grup adı 2-120 karakter olmalıdır." });
         if ((request.Description?.Length ?? 0) > 500) return BadRequest(new { message = "Açıklama en fazla 500 karakter olabilir." });
+        if (ValidateGroupTerm(request) is { } termError) return BadRequest(new { message = termError });
         var clash = await dbContext.DrivingStudentGroups.AsNoTracking().AnyAsync(x => x.Name == name && x.Id != id, ct);
         if (clash) return Conflict(new { message = "Bu isimde başka bir grup var." });
 
-        var before = new { group.Name, group.Description, group.IsActive };
+        var before = new { group.Name, group.Description, group.IsActive, group.TermYear, group.TermNumber, group.MebbisTermCode, group.Quota, group.RegistrationDeadlineUtc };
         group.Name = name;
         group.Description = request.Description?.Trim() ?? string.Empty;
+        group.TermYear = request.TermYear;
+        group.TermNumber = request.TermNumber;
+        group.MebbisTermCode = request.MebbisTermCode?.Trim() ?? string.Empty;
+        group.Quota = Math.Max(0, request.Quota);
+        group.RegistrationDeadlineUtc = request.RegistrationDeadlineUtc;
         if (request.IsActive is bool active) group.IsActive = active;
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Kursiyer grubu güncellendi", AuditCategory, "DrivingStudentGroup", group.Id.ToString(),
-            $"\"{group.Name}\" grubu güncellendi.", before, new { group.Name, group.Description, group.IsActive }, ct);
-        return Ok(new { group.Id, group.Name, group.Description, group.IsActive, group.CreatedAtUtc });
+            $"\"{group.Name}\" grubu güncellendi{TermLabel(group)}.", before,
+            new { group.Name, group.Description, group.IsActive, group.TermYear, group.TermNumber, group.MebbisTermCode, group.Quota, group.RegistrationDeadlineUtc }, ct);
+        return Ok(new
+        {
+            group.Id, group.Name, group.Description, group.IsActive, group.CreatedAtUtc,
+            group.TermYear, group.TermNumber, group.MebbisTermCode, group.Quota, group.RegistrationDeadlineUtc,
+        });
+    }
+
+    /// <summary>
+    /// Dönemin MEBBİS aday listesi: satırlar MEBBİS aday giriş ekranı sırasındadır,
+    /// her satırda eksik alan listesi de döner. <c>?format=csv</c> Türkçe Excel
+    /// uyumlu (UTF-8 BOM + noktalı virgül) dosya indirir — sekreter MEBBİS'e
+    /// bakarak tek tek yazmak yerine bu listeden girer/aktarır.
+    /// </summary>
+    [HttpGet("student-groups/{id:guid}/mebbis-roster")]
+    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    public async Task<IActionResult> GetMebbisRoster(Guid id, [FromQuery] string? format, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var group = await dbContext.DrivingStudentGroups.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (group is null) return NotFound(new { message = "Grup bulunamadı." });
+
+        var profiles = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.StudentGroupId == id)
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id,
+                (p, s) => new { Profile = p, s.FullName, s.TcNo, s.BirthDate })
+            .OrderBy(x => x.Profile.StudentNumber)
+            .ToListAsync(ct);
+
+        var profileIds = profiles.Select(x => x.Profile.Id).ToList();
+        var now = DateTime.UtcNow;
+        var docs = await dbContext.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => profileIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
+            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status, x.ExpiresAtUtc, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc })
+            .ToListAsync(ct);
+        var docsByProfile = docs.ToLookup(x => x.StudentDrivingProfileId);
+
+        var rows = profiles.Select(x =>
+        {
+            var profileDocs = docsByProfile[x.Profile.Id].ToList();
+            bool Approved(StudentDocumentType type) => profileDocs.Any(d =>
+                d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status, d.ExpiresAtUtc, now));
+            var health = profileDocs.FirstOrDefault(d => d.DocumentType == StudentDocumentType.HealthReport);
+
+            var identityNumber = x.Profile.IdentityKind == IdentityKind.TurkishId
+                ? (string.IsNullOrWhiteSpace(x.Profile.IdentityNumber) ? x.TcNo : x.Profile.IdentityNumber)
+                : x.Profile.IdentityNumber;
+
+            var missing = DrivingStudentRules.MebbisMissingFields(new DrivingStudentRules.MebbisCandidate(
+                HasValidNationalId: x.Profile.IdentityKind != IdentityKind.TurkishId || DrivingStudentRules.IsValidTurkishId(identityNumber),
+                BirthDate: x.BirthDate,
+                FatherName: x.Profile.FatherName,
+                MotherName: x.Profile.MotherName,
+                BirthPlace: x.Profile.BirthPlace,
+                EducationLevel: x.Profile.EducationLevel,
+                IdentitySerialNo: x.Profile.IdentitySerialNo,
+                Phone: x.Profile.Phone,
+                HasPhoto: Approved(StudentDocumentType.BiometricPhoto) || !string.IsNullOrWhiteSpace(x.Profile.PhotoUrl),
+                HealthReportApproved: Approved(StudentDocumentType.HealthReport),
+                HealthReportDetailsComplete: health is not null
+                    && !string.IsNullOrWhiteSpace(health.DocumentNumber)
+                    && !string.IsNullOrWhiteSpace(health.IssuedBy)
+                    && health.IssuedAtUtc is not null,
+                DiplomaApproved: Approved(StudentDocumentType.Diploma),
+                CriminalRecordApproved: Approved(StudentDocumentType.CriminalRecord)));
+
+            // MEBBİS ad/soyad ayrı ister; son kelime soyad kabul edilir.
+            var fullName = (x.FullName ?? string.Empty).Trim();
+            var lastSpace = fullName.LastIndexOf(' ');
+            var firstName = lastSpace > 0 ? fullName[..lastSpace] : fullName;
+            var lastName = lastSpace > 0 ? fullName[(lastSpace + 1)..] : string.Empty;
+
+            return new
+            {
+                studentNumber = x.Profile.StudentNumber,
+                tcNo = identityNumber,
+                firstName,
+                lastName,
+                fatherName = x.Profile.FatherName,
+                motherName = x.Profile.MotherName,
+                birthPlace = x.Profile.BirthPlace,
+                birthDate = x.BirthDate,
+                educationLevel = x.Profile.EducationLevel,
+                licenseClass = x.Profile.LicenseClass,
+                identitySerialNo = x.Profile.IdentitySerialNo,
+                phone = x.Profile.Phone,
+                bloodType = x.Profile.BloodType,
+                healthReportNumber = health?.DocumentNumber,
+                healthReportIssuedBy = health?.IssuedBy,
+                healthReportIssuedAt = health?.IssuedAtUtc,
+                missing,
+            };
+        }).ToList();
+
+        if (string.Equals(format, "csv", StringComparison.OrdinalIgnoreCase))
+        {
+            // Noktalı virgül + UTF-8 BOM: Türkçe Excel'in varsayılan biçimi.
+            static string Cell(object? value) => $"\"{(value?.ToString() ?? string.Empty).Replace("\"", "\"\"")}\"";
+            var csv = new StringBuilder();
+            csv.AppendLine(string.Join(';', new[]
+            {
+                "Kursiyer No", "TC Kimlik No", "Adı", "Soyadı", "Baba Adı", "Anne Adı", "Doğum Yeri", "Doğum Tarihi",
+                "Öğrenim Durumu", "Sertifika Sınıfı", "Kimlik Seri No", "Telefon", "Kan Grubu",
+                "Sağlık Raporu No", "Sağlık Raporu Tarihi", "Sağlık Raporunu Veren Kurum", "MEBBİS Eksikleri",
+            }.Select(Cell)));
+            foreach (var row in rows)
+            {
+                csv.AppendLine(string.Join(';', new object?[]
+                {
+                    row.studentNumber, row.tcNo, row.firstName, row.lastName, row.fatherName, row.motherName,
+                    row.birthPlace, row.birthDate, row.educationLevel, row.licenseClass, row.identitySerialNo,
+                    row.phone, row.bloodType, row.healthReportNumber,
+                    row.healthReportIssuedAt?.ToString("dd.MM.yyyy"), row.healthReportIssuedBy,
+                    string.Join(", ", row.missing),
+                }.Select(Cell)));
+            }
+            var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
+            var safeName = Regex.Replace(group.Name, @"[^\wğüşöçıİĞÜŞÖÇ\- ]", string.Empty).Replace(' ', '-');
+            return File(bytes, "text/csv; charset=utf-8", $"mebbis-{safeName}.csv");
+        }
+
+        return Ok(new
+        {
+            group = new
+            {
+                group.Id, group.Name, group.TermYear, group.TermNumber, group.MebbisTermCode,
+                group.Quota, group.RegistrationDeadlineUtc,
+                daysToDeadline = group.RegistrationDeadlineUtc is DateTime deadline ? (int?)Math.Ceiling((deadline - now).TotalDays) : null,
+            },
+            studentCount = rows.Count,
+            readyCount = rows.Count(x => x.missing.Count == 0),
+            rows,
+        });
     }
 
     /// <summary>Bir veya birden çok kursiyeri bir gruba atar; <c>groupId</c> boşsa gruptan çıkarır.</summary>
@@ -401,6 +560,28 @@ public sealed class DrivingSchoolController(
             var group = await dbContext.DrivingStudentGroups.AsNoTracking().SingleOrDefaultAsync(x => x.Id == gid, ct);
             if (group is null) return BadRequest(new { message = "Grup bulunamadı." });
             if (!group.IsActive) return BadRequest(new { message = "Pasif gruba kursiyer atanamaz." });
+
+            // Dönem kontenjanı: MEBBİS'e girilebilecek aday sayısı teorik sınıf
+            // kapasitesiyle sınırlıdır — kontenjan üstü atama baştan engellenir.
+            if (group.Quota > 0)
+            {
+                var current = await dbContext.StudentDrivingProfiles.AsNoTracking()
+                    .CountAsync(x => x.StudentGroupId == gid && !profileIds.Contains(x.Id), ct);
+                var toAdd = await dbContext.StudentDrivingProfiles.AsNoTracking()
+                    .CountAsync(x => profileIds.Contains(x.Id), ct);
+                if (current + toAdd > group.Quota)
+                    return Conflict(new
+                    {
+                        message = $"\"{group.Name}\" dönem kontenjanı {group.Quota}; bu atamayla {current + toAdd} kursiyer olur. Kontenjanı artırın veya farklı dönem seçin.",
+                        quota = group.Quota,
+                        current,
+                    });
+            }
+
+            // Kayıt kesim tarihi geçtiyse uyarı amaçlı engelleme: dönem MEBBİS'te kapanmıştır.
+            if (group.RegistrationDeadlineUtc is { } deadline && deadline < DateTime.UtcNow)
+                return Conflict(new { message = $"\"{group.Name}\" döneminin kayıt kesim tarihi ({deadline:dd.MM.yyyy}) geçti. Sonraki dönemi kullanın." });
+
             groupName = group.Name;
         }
 
@@ -1203,6 +1384,18 @@ public sealed class DrivingSchoolController(
 
     private async Task<bool> CanUseModuleAsync(CancellationToken ct) => IsAvailable(await CurrentTenantAsync(ct) ?? new());
 
+    private static string? ValidateGroupTerm(SaveDrivingStudentGroupRequest request)
+    {
+        if (request.TermYear is { } year && year is < 2000 or > 2100) return "Dönem yılı geçersiz.";
+        if (request.TermNumber is { } number && number is < 1 or > 99) return "Dönem numarası 1-99 arasında olmalıdır.";
+        if ((request.MebbisTermCode?.Length ?? 0) > 40) return "MEBBİS dönem kodu en fazla 40 karakter olabilir.";
+        if (request.Quota is < 0 or > 10000) return "Kontenjan 0-10000 arasında olmalıdır (0 = sınırsız).";
+        return null;
+    }
+
+    private static string TermLabel(CourseIntellect.Domain.Entities.DrivingStudentGroup group)
+        => group.TermYear is { } year && group.TermNumber is { } number ? $" — resmî dönem {year}/{number}" : string.Empty;
+
     private static string? ValidatePackage(SaveDrivingPackageRequest request)
     {
         if (request.Name.Trim().Length is < 2 or > 140) return "Paket adı 2-140 karakter olmalıdır.";
@@ -1216,7 +1409,15 @@ public sealed record SaveDrivingPackageRequest(string Name, string LicenseClass,
 public sealed record SaveDrivingVehicleRequest(string PlateNumber, string Brand, string Model, int ModelYear, string LicenseClass, TransmissionType TransmissionType, int CurrentKilometer, DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc);
 public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic);
 public sealed record SaveStudentDrivingProfileRequest(Guid StudentId, Guid PackageId, string LicenseClass, TransmissionType TransmissionType);
-public sealed record SaveDrivingStudentGroupRequest(string Name, string? Description, bool? IsActive);
+public sealed record SaveDrivingStudentGroupRequest(
+    string Name,
+    string? Description,
+    bool? IsActive,
+    int? TermYear = null,
+    int? TermNumber = null,
+    string? MebbisTermCode = null,
+    int Quota = 0,
+    DateTime? RegistrationDeadlineUtc = null);
 public sealed record AssignStudentGroupRequest(IReadOnlyList<Guid> ProfileIds, Guid? GroupId);
 public sealed record SaveDrivingAppointmentRequest(Guid StudentDrivingProfileId, Guid InstructorProfileId, Guid VehicleId, DateTime StartsAtUtc, DateTime EndsAtUtc, string? Notes, string? MeetingPoint, IReadOnlyList<string>? Overrides, string? OverrideReason);
 public sealed record StartDrivingLessonRequest(int StartKilometer, bool BrakesOk, bool TiresOk, bool LightsOk, bool FluidsOk, string? PreCheckNote);

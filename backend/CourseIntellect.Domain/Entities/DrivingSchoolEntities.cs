@@ -76,6 +76,10 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public string IdentitySerialNo { get; set; } = string.Empty;
     /// <summary>Kursiyerin birincil telefon numarası (mükerrer kayıt kontrolünde kullanılır).</summary>
     public string Phone { get; set; } = string.Empty;
+    // MEBBİS aday kaydının zorunlu kimlik alanları.
+    public string FatherName { get; set; } = string.Empty;
+    public string MotherName { get; set; } = string.Empty;
+    public string BirthPlace { get; set; } = string.Empty;
     public string Nationality { get; set; } = string.Empty;
     public string Gender { get; set; } = string.Empty;
     public string BloodType { get; set; } = string.Empty;
@@ -228,6 +232,22 @@ public sealed class DrivingSchoolSettings : ITenantScopedEntity
 
     /// <summary>Bir öğrencinin aynı gün alabileceği ders sayısı.</summary>
     public int MaxStudentDailyLessons { get; set; } = 2;
+
+    /// <summary>
+    /// Bir öğrencinin aynı gün alabileceği toplam direksiyon dakikası.
+    /// MTSK mevzuatı: adaya günde en fazla 2 ders saati (120 dk). 0 = sınırsız.
+    /// </summary>
+    public int MaxStudentDailyMinutes { get; set; } = 120;
+
+    /// <summary>
+    /// Direksiyon dersinin başlayabileceği en erken yerel saat. Mevzuat direksiyon
+    /// eğitimini gün ışığına bağlar; kurum kendi penceresini daraltabilir.
+    /// Earliest >= Latest ise saat kısıtı uygulanmaz.
+    /// </summary>
+    public int LessonEarliestHour { get; set; } = 7;
+
+    /// <summary>Direksiyon dersinin bitmesi gereken en geç yerel saat (gece dersi yasağı).</summary>
+    public int LessonLatestHour { get; set; } = 19;
 
     /// <summary>İki ders arasında bırakılması gereken hazırlık/yol payı.</summary>
     public int PreparationMinutes { get; set; } = 15;

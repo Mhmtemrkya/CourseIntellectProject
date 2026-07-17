@@ -1623,7 +1623,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.ToTable("driving_student_groups"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
             entity.Property(x => x.Name).HasMaxLength(120).IsRequired();
             entity.Property(x => x.Description).HasMaxLength(500);
+            entity.Property(x => x.MebbisTermCode).HasMaxLength(40);
             entity.HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.TermYear, x.TermNumber });
         });
         modelBuilder.Entity<StudentDrivingProfile>(entity =>
         {
@@ -1637,6 +1639,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.IdentityNumber).HasMaxLength(40);
             entity.Property(x => x.IdentitySerialNo).HasMaxLength(20);
             entity.Property(x => x.Phone).HasMaxLength(30);
+            entity.Property(x => x.FatherName).HasMaxLength(100);
+            entity.Property(x => x.MotherName).HasMaxLength(100);
+            entity.Property(x => x.BirthPlace).HasMaxLength(100);
             entity.HasIndex(x => new { x.TenantId, x.StudentNumber });
             entity.HasIndex(x => new { x.TenantId, x.Phone });
             entity.Property(x => x.Nationality).HasMaxLength(60);
@@ -1675,6 +1680,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.FileUrl).HasMaxLength(400).IsRequired();
             entity.Property(x => x.FileName).HasMaxLength(200);
             entity.Property(x => x.DocumentNumber).HasMaxLength(100);
+            entity.Property(x => x.IssuedBy).HasMaxLength(150);
             entity.Property(x => x.Description).HasMaxLength(1000);
             entity.Property(x => x.RejectionReason).HasMaxLength(500);
             // Bir belge türünün yalnız bir geçerli sürümü olabilir.

@@ -50,6 +50,9 @@ public sealed class DrivingAppointmentsController(
             settings.MaxInstructorDailyMinutes,
             settings.MaxVehicleDailyMinutes,
             settings.MaxStudentDailyLessons,
+            settings.MaxStudentDailyMinutes,
+            settings.LessonEarliestHour,
+            settings.LessonLatestHour,
             settings.PreparationMinutes,
             settings.FinancialHoldEnabled,
             settings.FinancialHoldThreshold,
@@ -75,6 +78,9 @@ public sealed class DrivingAppointmentsController(
         if (request.MaxInstructorDailyMinutes is < 0 or > 1440 || request.MaxVehicleDailyMinutes is < 0 or > 1440)
             return BadRequest(new { message = "Günlük dakika limiti 0-1440 arasında olmalıdır (0 = sınırsız)." });
         if (request.MaxStudentDailyLessons is < 0 or > 10) return BadRequest(new { message = "Öğrenci günlük ders limiti 0-10 arasında olmalıdır." });
+        if (request.MaxStudentDailyMinutes is < 0 or > 1440) return BadRequest(new { message = "Öğrenci günlük dakika limiti 0-1440 arasında olmalıdır (0 = sınırsız)." });
+        if (request.LessonEarliestHour is < 0 or > 24 || request.LessonLatestHour is < 0 or > 24)
+            return BadRequest(new { message = "Ders saat penceresi 0-24 arasında olmalıdır." });
         if (request.PreparationMinutes is < 0 or > 240) return BadRequest(new { message = "Hazırlık süresi 0-240 dakika arasında olmalıdır." });
         if (request.FinancialHoldThreshold < 0) return BadRequest(new { message = "Borç eşiği negatif olamaz." });
         if (request.MinimumTheoryAttendancePercent is < 0 or > 100) return BadRequest(new { message = "Asgari devam oranı 0-100 arasında olmalıdır." });
@@ -97,6 +103,9 @@ public sealed class DrivingAppointmentsController(
         settings.MaxInstructorDailyMinutes = request.MaxInstructorDailyMinutes;
         settings.MaxVehicleDailyMinutes = request.MaxVehicleDailyMinutes;
         settings.MaxStudentDailyLessons = request.MaxStudentDailyLessons;
+        settings.MaxStudentDailyMinutes = request.MaxStudentDailyMinutes;
+        settings.LessonEarliestHour = request.LessonEarliestHour;
+        settings.LessonLatestHour = request.LessonLatestHour;
         settings.PreparationMinutes = request.PreparationMinutes;
         settings.FinancialHoldEnabled = request.FinancialHoldEnabled;
         settings.FinancialHoldThreshold = request.FinancialHoldThreshold;
@@ -122,6 +131,9 @@ public sealed class DrivingAppointmentsController(
         settings.MaxInstructorDailyMinutes,
         settings.MaxVehicleDailyMinutes,
         settings.MaxStudentDailyLessons,
+        settings.MaxStudentDailyMinutes,
+        settings.LessonEarliestHour,
+        settings.LessonLatestHour,
         settings.PreparationMinutes,
         settings.FinancialHoldEnabled,
         settings.FinancialHoldThreshold,
@@ -708,6 +720,10 @@ public sealed record UpdateDrivingSettingsRequest(
     bool FinancialHoldEnabled,
     decimal FinancialHoldThreshold,
     decimal MinimumTheoryAttendancePercent = 80,
+    // Mevzuat alanları: eski istemciler göndermezse varsayılan mevzuat değeri yazılır.
+    int MaxStudentDailyMinutes = 120,
+    int LessonEarliestHour = 7,
+    int LessonLatestHour = 19,
     string ExcusedAbsencePolicy = "ExcludeFromCalculation",
     string? CertificateDirectorName = null,
     string? CertificateDirectorTitle = null,

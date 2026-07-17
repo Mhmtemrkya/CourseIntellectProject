@@ -90,4 +90,46 @@ public static class DrivingStudentRules
         StudentDocumentType.ExistingLicense => "Mevcut ehliyet",
         _ => "Diğer belge",
     };
+
+    /// <summary>MEBBİS aday kaydı için gereken verilerin sadeleştirilmiş görünümü.</summary>
+    public sealed record MebbisCandidate(
+        bool HasValidNationalId,
+        string? BirthDate,
+        string? FatherName,
+        string? MotherName,
+        string? BirthPlace,
+        string? EducationLevel,
+        string? IdentitySerialNo,
+        string? Phone,
+        bool HasPhoto,
+        bool HealthReportApproved,
+        bool HealthReportDetailsComplete,
+        bool DiplomaApproved,
+        bool CriminalRecordApproved);
+
+    /// <summary>
+    /// MEBBİS aday girişinde eksik kalacak alanların listesi. Boş liste = MEBBİS'e
+    /// eksiksiz girilebilir. Sıra, MEBBİS ekran sırasına yakın tutulur.
+    /// </summary>
+    public static List<string> MebbisMissingFields(MebbisCandidate candidate)
+    {
+        var missing = new List<string>();
+        void Require(bool present, string label) { if (!present) missing.Add(label); }
+
+        Require(candidate.HasValidNationalId, "Geçerli TC kimlik numarası");
+        Require(!string.IsNullOrWhiteSpace(candidate.BirthDate), "Doğum tarihi");
+        Require(!string.IsNullOrWhiteSpace(candidate.FatherName), "Baba adı");
+        Require(!string.IsNullOrWhiteSpace(candidate.MotherName), "Anne adı");
+        Require(!string.IsNullOrWhiteSpace(candidate.BirthPlace), "Doğum yeri");
+        Require(!string.IsNullOrWhiteSpace(candidate.EducationLevel), "Öğrenim durumu");
+        Require(!string.IsNullOrWhiteSpace(candidate.IdentitySerialNo), "Kimlik seri no");
+        Require(!string.IsNullOrWhiteSpace(candidate.Phone), "Telefon");
+        Require(candidate.HasPhoto, "Biyometrik fotoğraf");
+        Require(candidate.HealthReportApproved, "Onaylı sağlık raporu");
+        if (candidate.HealthReportApproved)
+            Require(candidate.HealthReportDetailsComplete, "Sağlık raporu no / veren kurum / tarih");
+        Require(candidate.DiplomaApproved, "Onaylı öğrenim belgesi");
+        Require(candidate.CriminalRecordApproved, "Onaylı adli sicil kaydı");
+        return missing;
+    }
 }

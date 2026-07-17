@@ -16,6 +16,20 @@ public sealed class DrivingStudentGroup : ITenantScopedEntity
     public string Description { get; set; } = string.Empty;
     /// <summary>Pasif grup yeni atamalarda seçilemez ama geçmiş atamalar korunur.</summary>
     public bool IsActive { get; set; } = true;
+
+    // ─── MEBBİS dönem hizalaması ──────────────────────────────────────────────
+    // MTSK'da her ay resmî bir dönemdir (ör. 2026 yılı 7. dönem). Grup = dönem.
+    /// <summary>Resmî dönem yılı (ör. 2026). Boşsa MEBBİS dönemiyle eşlenmemiş.</summary>
+    public int? TermYear { get; set; }
+    /// <summary>Resmî dönem numarası (genelde ay: Temmuz = 7).</summary>
+    public int? TermNumber { get; set; }
+    /// <summary>MEBBİS'in verdiği dönem kodu — kurum MEBBİS'ten okuyup buraya yazar.</summary>
+    public string MebbisTermCode { get; set; } = string.Empty;
+    /// <summary>Dönem kontenjanı (teorik sınıf kapasitesi). 0 = sınırsız.</summary>
+    public int Quota { get; set; }
+    /// <summary>Dönem kayıt kesim tarihi — MEBBİS'e aday girişinin son günü.</summary>
+    public DateTime? RegistrationDeadlineUtc { get; set; }
+
     public Guid? CreatedByUserId { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
@@ -38,6 +52,10 @@ public sealed class StudentDrivingDocument : ITenantScopedEntity
     public string FileUrl { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
     public string DocumentNumber { get; set; } = string.Empty;
+    /// <summary>Belgeyi veren kurum (sağlık raporunda MEBBİS zorunlu ister).</summary>
+    public string IssuedBy { get; set; } = string.Empty;
+    /// <summary>Belgenin düzenlenme tarihi (rapor tarihi).</summary>
+    public DateTime? IssuedAtUtc { get; set; }
     /// <summary>Sağlık raporu, adli sicil gibi süreli belgelerde son geçerlilik.</summary>
     public DateTime? ExpiresAtUtc { get; set; }
     public string Description { get; set; } = string.Empty;

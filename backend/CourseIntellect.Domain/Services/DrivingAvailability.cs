@@ -42,8 +42,28 @@ public static class DrivingAvailability
         public const string InstructorDailyLimit = "instructor_daily_limit";
         public const string VehicleDailyLimit = "vehicle_daily_limit";
         public const string StudentDailyLimit = "student_daily_limit";
+        public const string StudentDailyMinutes = "student_daily_minutes";
+        public const string OutsideAllowedHours = "outside_allowed_hours";
         public const string PreparationGap = "preparation_gap";
         public const string FinancialHold = "financial_hold";
+    }
+
+    /// <summary>
+    /// Ders, kurumun izin verdiği yerel saat penceresine sığıyor mu? MTSK mevzuatı
+    /// direksiyon eğitimini gün ışığına bağlar (gece dersi yasağı). Earliest >= Latest
+    /// ise kısıt yoktur (kurum bilerek kapatmıştır). Gece yarısını aşan ders sığmaz.
+    /// </summary>
+    public static bool IsWithinAllowedHours(DateTime startsAtUtc, DateTime endsAtUtc, int earliestHour, int latestHour)
+    {
+        if (earliestHour >= latestHour) return true;
+
+        var startLocal = ToLocal(startsAtUtc);
+        var endLocal = ToLocal(endsAtUtc);
+        if (startLocal.Date != endLocal.Date) return false;
+
+        var startMinute = (int)startLocal.TimeOfDay.TotalMinutes;
+        var endMinute = (int)endLocal.TimeOfDay.TotalMinutes;
+        return startMinute >= earliestHour * 60 && endMinute <= latestHour * 60;
     }
 
     /// <summary>Öğretmen o aralıkta izinli mi?</summary>

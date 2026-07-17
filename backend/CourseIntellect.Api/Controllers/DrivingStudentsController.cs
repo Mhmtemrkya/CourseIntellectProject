@@ -114,6 +114,9 @@ public sealed class DrivingStudentsController(
             IdentityNumber = identityNumber,
             IdentitySerialNo = request.IdentitySerialNo?.Trim() ?? string.Empty,
             Phone = phone,
+            FatherName = request.FatherName?.Trim() ?? string.Empty,
+            MotherName = request.MotherName?.Trim() ?? string.Empty,
+            BirthPlace = request.BirthPlace?.Trim() ?? string.Empty,
             Nationality = request.Nationality?.Trim() ?? string.Empty,
             Gender = request.Gender?.Trim() ?? string.Empty,
             BloodType = request.BloodType?.Trim() ?? string.Empty,
@@ -173,6 +176,8 @@ public sealed class DrivingStudentsController(
                 FileUrl = document.FileUrl.Trim(),
                 FileName = document.FileName?.Trim() ?? string.Empty,
                 DocumentNumber = document.DocumentNumber?.Trim() ?? string.Empty,
+                IssuedBy = document.IssuedBy?.Trim() ?? string.Empty,
+                IssuedAtUtc = document.IssuedAtUtc,
                 ExpiresAtUtc = document.ExpiresAtUtc,
                 UploadedByUserId = actorId,
             });
@@ -552,8 +557,11 @@ public sealed class DrivingStudentsController(
             ? await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => x.Id == registrarId).Select(x => x.FullName).FirstOrDefaultAsync(ct)
             : null;
 
+        var mebbisMissing = await BuildMebbisMissingAsync(profile, row.student.TcNo, row.student.BirthDate, ct);
+
         return Ok(new
         {
+            mebbisMissing,
             overview = new
             {
                 profile.Id,
@@ -566,6 +574,9 @@ public sealed class DrivingStudentsController(
                 profile.IdentityNumber,
                 profile.IdentitySerialNo,
                 studentPhone = profile.Phone,
+                profile.FatherName,
+                profile.MotherName,
+                profile.BirthPlace,
                 row.student.BirthDate,
                 profile.Gender,
                 profile.BloodType,
@@ -751,6 +762,8 @@ public sealed class DrivingStudentsController(
                     fileUrl = document?.FileUrl,
                     fileName = document?.FileName,
                     documentNumber = document?.DocumentNumber,
+                    issuedBy = document?.IssuedBy,
+                    issuedAtUtc = document?.IssuedAtUtc,
                     expiresAtUtc = document?.ExpiresAtUtc,
                     uploadedAtUtc = document?.UploadedAtUtc,
                     reviewedAtUtc = document?.ReviewedAtUtc,
@@ -809,6 +822,8 @@ public sealed class DrivingStudentsController(
             FileUrl = request.FileUrl.Trim(),
             FileName = request.FileName?.Trim() ?? string.Empty,
             DocumentNumber = request.DocumentNumber?.Trim() ?? string.Empty,
+            IssuedBy = request.IssuedBy?.Trim() ?? string.Empty,
+            IssuedAtUtc = request.IssuedAtUtc,
             ExpiresAtUtc = request.ExpiresAtUtc,
             Description = request.Description?.Trim() ?? string.Empty,
             UploadedByUserId = actorId,
@@ -886,6 +901,48 @@ public sealed class DrivingStudentsController(
     /// <summary>Telefon yalnız rakamlarla saklanır ki "0532 111 22 33" ve "05321112233" aynı sayılsın.</summary>
     private static string NormalizePhone(string? value)
         => new((value ?? string.Empty).Where(char.IsDigit).ToArray());
+
+    /// <summary>
+    /// MEBBİS aday girişi için eksik alanların listesi. Kural Domain'de yaşar;
+    /// burada yalnız profil + onaylı belgeler kurala çevrilir.
+    /// </summary>
+    private async Task<List<string>> BuildMebbisMissingAsync(
+        StudentDrivingProfile profile, string? tcNo, string? birthDate, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var currentDocs = await dbContext.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id && x.IsCurrent)
+            .Select(x => new { x.DocumentType, x.Status, x.ExpiresAtUtc, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc })
+            .ToListAsync(ct);
+
+        bool Approved(StudentDocumentType type) => currentDocs.Any(x =>
+            x.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now));
+
+        var health = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.HealthReport);
+        var healthDetailsComplete = health is not null
+            && !string.IsNullOrWhiteSpace(health.DocumentNumber)
+            && !string.IsNullOrWhiteSpace(health.IssuedBy)
+            && health.IssuedAtUtc is not null;
+
+        var identityNumber = profile.IdentityKind == IdentityKind.TurkishId
+            ? (string.IsNullOrWhiteSpace(profile.IdentityNumber) ? tcNo : profile.IdentityNumber)
+            : profile.IdentityNumber;
+
+        return DrivingStudentRules.MebbisMissingFields(new DrivingStudentRules.MebbisCandidate(
+            HasValidNationalId: profile.IdentityKind != IdentityKind.TurkishId || DrivingStudentRules.IsValidTurkishId(identityNumber),
+            BirthDate: birthDate,
+            FatherName: profile.FatherName,
+            MotherName: profile.MotherName,
+            BirthPlace: profile.BirthPlace,
+            EducationLevel: profile.EducationLevel,
+            IdentitySerialNo: profile.IdentitySerialNo,
+            Phone: profile.Phone,
+            HasPhoto: Approved(StudentDocumentType.BiometricPhoto) || !string.IsNullOrWhiteSpace(profile.PhotoUrl),
+            HealthReportApproved: Approved(StudentDocumentType.HealthReport),
+            HealthReportDetailsComplete: healthDetailsComplete,
+            DiplomaApproved: Approved(StudentDocumentType.Diploma),
+            CriminalRecordApproved: Approved(StudentDocumentType.CriminalRecord)));
+    }
 
     private async Task<string?> FindDuplicateByPhoneAsync(string normalizedPhone, CancellationToken ct)
         => await dbContext.StudentDrivingProfiles.AsNoTracking()
@@ -990,6 +1047,9 @@ public sealed record DrivingStudentWizardRequest(
     IdentityKind IdentityKind,
     string IdentityNumber,
     string? IdentitySerialNo,
+    string? FatherName,
+    string? MotherName,
+    string? BirthPlace,
     string? Nationality,
     string? BirthDate,
     string? Gender,
@@ -1054,7 +1114,9 @@ public sealed record UploadStudentDocumentRequest(
     string? FileName,
     string? DocumentNumber,
     DateTime? ExpiresAtUtc,
-    string? Description)
+    string? Description,
+    string? IssuedBy = null,
+    DateTime? IssuedAtUtc = null)
 {
     public StudentDocumentType? ParsedType =>
         Enum.TryParse<StudentDocumentType>(DocumentType, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)

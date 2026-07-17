@@ -201,6 +201,118 @@ public sealed class DrivingEducationController(
         return Ok(new { saved = request.Items.Count, status = session.Status.ToString() });
     }
 
+    /// <summary>Resmî MTSK teorik müfredatı — sınıf/plan ekranı bunu referans gösterir.</summary>
+    [HttpGet("theory/curriculum")]
+    [RequireDrivingPermission(DrivingPermissions.TheoryView)]
+    public IActionResult GetCurriculum()
+        => Ok(new
+        {
+            lessonMinutes = DrivingCurriculum.TheoryLessonMinutes,
+            totalRequiredHours = DrivingCurriculum.TotalRequiredHours,
+            subjects = DrivingCurriculum.TheorySubjects.Select(x => new { x.Key, x.Label, x.RequiredHours }),
+        });
+
+    /// <summary>
+    /// Sınıfın mevzuat uyumu: konu bazında planlanan ders saati resmî müfredatla
+    /// karşılaştırılır; her kursiyer için devam oranı hesaplanır ve asgari devam
+    /// oranının altına düşen "dönem yanma riski" olarak işaretlenir.
+    /// </summary>
+    [HttpGet("theory/classes/{id:guid}/compliance")]
+    [RequireDrivingPermission(DrivingPermissions.TheoryView)]
+    public async Task<IActionResult> GetClassCompliance(Guid id, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var theoryClass = await db.DrivingTheoryClasses.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (theoryClass is null) return NotFound(new { message = "Sınıf bulunamadı." });
+
+        var settings = await db.DrivingSchoolSettings.AsNoTracking().SingleOrDefaultAsync(ct) ?? new DrivingSchoolSettings();
+
+        // ─── Konu bazında planlanan saat vs resmî müfredat ────────────────────
+        var sessions = await db.DrivingTheorySessions.AsNoTracking()
+            .Where(x => x.TheoryClassId == id && x.Status != DrivingTheorySessionStatus.Cancelled)
+            .Select(x => new { x.Id, x.Subject, Minutes = (int)(x.EndsAtUtc - x.StartsAtUtc).TotalMinutes })
+            .ToListAsync(ct);
+
+        var plannedBySubject = new Dictionary<string, int>();
+        var unmatchedMinutes = 0;
+        foreach (var session in sessions)
+        {
+            var subject = DrivingCurriculum.MatchSubject(session.Subject);
+            if (subject is null) { unmatchedMinutes += session.Minutes; continue; }
+            plannedBySubject[subject.Key] = plannedBySubject.GetValueOrDefault(subject.Key) + session.Minutes;
+        }
+
+        var curriculum = DrivingCurriculum.TheorySubjects.Select(subject =>
+        {
+            var plannedMinutes = plannedBySubject.GetValueOrDefault(subject.Key);
+            var plannedHours = DrivingCurriculum.MinutesToLessonHours(plannedMinutes);
+            return new
+            {
+                subject.Key,
+                subject.Label,
+                subject.RequiredHours,
+                plannedMinutes,
+                plannedHours,
+                complete = plannedHours >= subject.RequiredHours,
+                missingHours = Math.Max(0, subject.RequiredHours - plannedHours),
+            };
+        }).ToList();
+
+        // ─── Kursiyer bazında devam / dönem yanma riski ───────────────────────
+        // Hesap, mezuniyet kontrol listesindekiyle AYNI kuralları kullanır
+        // (mazeretli devamsızlık politikası dahil) — iki ekran çelişmesin.
+        var students = await db.DrivingTheoryEnrollments.AsNoTracking()
+            .Where(x => x.TheoryClassId == id)
+            .Join(db.StudentDrivingProfiles.AsNoTracking(), e => e.StudentDrivingProfileId, p => p.Id, (e, p) => new { p.Id, p.StudentId, p.StudentNumber })
+            .Join(db.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (x, s) => new { x.Id, x.StudentNumber, s.FullName })
+            .ToListAsync(ct);
+
+        var sessionIds = sessions.Select(x => x.Id).ToList();
+        var attendance = await db.DrivingTheoryAttendances.AsNoTracking()
+            .Where(x => sessionIds.Contains(x.TheorySessionId))
+            .Join(db.DrivingTheorySessions.AsNoTracking(), a => a.TheorySessionId, s => s.Id,
+                (a, s) => new { a.StudentDrivingProfileId, a.Status, Minutes = (int)(s.EndsAtUtc - s.StartsAtUtc).TotalMinutes })
+            .ToListAsync(ct);
+        var attendanceByStudent = attendance.ToLookup(x => x.StudentDrivingProfileId);
+
+        var studentRows = students.Select(student =>
+        {
+            var records = attendanceByStudent[student.Id].ToList();
+            var scheduled = records.Sum(x => x.Minutes);
+            var attended = records.Where(x => x.Status is DrivingTheoryAttendanceStatus.Present or DrivingTheoryAttendanceStatus.Late).Sum(x => x.Minutes);
+            var excused = records.Where(x => x.Status == DrivingTheoryAttendanceStatus.Excused).Sum(x => x.Minutes);
+            var denominator = settings.ExcusedAbsencePolicy == DrivingExcusedAbsencePolicy.ExcludeFromCalculation ? Math.Max(0, scheduled - excused) : scheduled;
+            if (settings.ExcusedAbsencePolicy == DrivingExcusedAbsencePolicy.CountsAsPresent) attended += excused;
+            var percent = denominator == 0 ? 100m : Math.Round(attended * 100m / denominator, 2);
+            return new
+            {
+                profileId = student.Id,
+                student.StudentNumber,
+                student.FullName,
+                scheduledMinutes = scheduled,
+                attendedMinutes = attended,
+                attendancePercent = percent,
+                // Asgari devam sağlanamazsa aday dönemi kaybeder (kurs tekrarı).
+                atRisk = denominator > 0 && percent < settings.MinimumTheoryAttendancePercent,
+            };
+        }).OrderBy(x => x.attendancePercent).ToList();
+
+        return Ok(new
+        {
+            classId = theoryClass.Id,
+            className = theoryClass.Name,
+            requiredTotalHours = DrivingCurriculum.TotalRequiredHours,
+            lessonMinutes = DrivingCurriculum.TheoryLessonMinutes,
+            minimumAttendancePercent = settings.MinimumTheoryAttendancePercent,
+            excusedAbsencePolicy = settings.ExcusedAbsencePolicy.ToString(),
+            curriculum,
+            curriculumComplete = curriculum.All(x => x.complete),
+            unmatchedMinutes,
+            students = studentRows,
+            atRiskCount = studentRows.Count(x => x.atRisk),
+        });
+    }
+
     [HttpPost("exams/sessions")]
     [RequireDrivingPermission(DrivingPermissions.ExamManage)]
     public async Task<IActionResult> CreateExamSession([FromBody] SaveExamSessionRequest request, CancellationToken ct)
