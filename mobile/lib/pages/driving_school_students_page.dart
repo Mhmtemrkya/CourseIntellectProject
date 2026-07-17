@@ -198,7 +198,13 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
               final name = nameCtrl.text.trim();
               if (name.length < 2) return;
               try {
-                await _service.createStudentGroup(name, description: descCtrl.text.trim());
+                final now = DateTime.now();
+                await _service.createStudentGroup(
+                  name,
+                  description: descCtrl.text.trim(),
+                  termYear: now.year,
+                  termNumber: now.month,
+                );
                 if (dialogContext.mounted) Navigator.pop(dialogContext, true);
               } catch (e) {
                 if (dialogContext.mounted) {
@@ -685,6 +691,43 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                       if ('${overview['studentPhone'] ?? ''}'.isNotEmpty) '${'Telefon'.tr}: ${overview['studentPhone']}',
                     ].join(' • '),
                     style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                if ('${overview['fatherName'] ?? ''}'.isNotEmpty ||
+                    '${overview['motherName'] ?? ''}'.isNotEmpty ||
+                    '${overview['birthPlace'] ?? ''}'.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    [
+                      if ('${overview['fatherName'] ?? ''}'.isNotEmpty) '${'Baba'.tr}: ${overview['fatherName']}',
+                      if ('${overview['motherName'] ?? ''}'.isNotEmpty) '${'Anne'.tr}: ${overview['motherName']}',
+                      if ('${overview['birthPlace'] ?? ''}'.isNotEmpty) '${'Doğum yeri'.tr}: ${overview['birthPlace']}',
+                    ].join(' • '),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+                // MEBBİS aday girişi için eksik kalan alanlar.
+                if ((data['mebbisMissing'] as List?)?.isNotEmpty == true) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFF59E0B)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            '${'MEBBİS için eksik'.tr}: ${(data['mebbisMissing'] as List).join(', ')}',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
                 if ('${overview['residenceAddress'] ?? ''}'.isNotEmpty) ...[

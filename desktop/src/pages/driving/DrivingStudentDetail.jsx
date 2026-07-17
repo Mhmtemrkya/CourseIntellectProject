@@ -383,7 +383,7 @@ export default function DrivingStudentDetail() {
   if (permissionsLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
   if (!data) return null;
 
-  const { overview, training, appointments, lessons, ledger, documents, finance, history } = data;
+  const { overview, training, appointments, lessons, ledger, documents, finance, history, mebbisMissing } = data;
   const trendData = [...lessons]
     .filter((lesson) => lesson.completedAtUtc && lessonAverage(lesson) != null)
     .sort((a, b) => new Date(a.startedAtUtc) - new Date(b.startedAtUtc))
@@ -430,6 +430,9 @@ export default function DrivingStudentDetail() {
               {finance?.overdueCount > 0 && (
                 <Badge className="border-0 bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent))]"><CreditCard className="mr-1 h-3 w-3" />{finance.overdueCount} gecikmiş taksit</Badge>
               )}
+              {mebbisMissing?.length > 0
+                ? <Badge className="border-0 bg-amber-500/15 text-amber-600" title={mebbisMissing.join(', ')}><AlertTriangle className="mr-1 h-3 w-3" />MEBBİS eksik: {mebbisMissing.length}</Badge>
+                : <Badge className="border-0 bg-emerald-500/15 text-emerald-600"><CheckCircle2 className="mr-1 h-3 w-3" />MEBBİS hazır</Badge>}
             </div>
           </div>
         </div>
@@ -470,6 +473,9 @@ export default function DrivingStudentDetail() {
               <Row label="Kimlik türü" value={overview.identityKind === 'TurkishId' ? 'T.C. Kimlik' : overview.identityKind === 'Passport' ? 'Pasaport' : 'Yabancı Kimlik'} />
               <Row label="Kimlik numarası" value={overview.identityNumber || overview.tcNo} />
               <Row label="Kimlik seri no" value={overview.identitySerialNo} />
+              <Row label="Baba adı" value={overview.fatherName} />
+              <Row label="Anne adı" value={overview.motherName} />
+              <Row label="Doğum yeri" value={overview.birthPlace} />
               <Row label="Doğum tarihi" value={overview.birthDate} />
               <Row label="Cinsiyet" value={overview.gender} />
               <Row label="Kan grubu" value={overview.bloodType} />
@@ -485,6 +491,22 @@ export default function DrivingStudentDetail() {
               <Row label="Kaydeden" value={overview.registrarName} />
             </CardContent>
           </Card>
+
+          {mebbisMissing?.length > 0 && (
+            <Card className="border-amber-500/40">
+              <CardHeader><CardTitle className="flex items-center gap-2 text-amber-700 dark:text-amber-400"><AlertTriangle className="h-4 w-4" />MEBBİS için eksik alanlar</CardTitle></CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-1.5">
+                  {mebbisMissing.map((item) => (
+                    <span key={item} className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">{item}</span>
+                  ))}
+                </div>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Bu alanlar tamamlanmadan aday MEBBİS'e eksiksiz girilemez. Kimlik alanları kayıt bilgilerinden, belgeler Evraklar sekmesinden tamamlanır.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {overview.hasExistingLicense && (
             <Card>

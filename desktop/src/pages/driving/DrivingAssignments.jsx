@@ -211,6 +211,9 @@ export default function DrivingAssignments() {
         maxInstructorDailyMinutes: Number(settings.maxInstructorDailyMinutes),
         maxVehicleDailyMinutes: Number(settings.maxVehicleDailyMinutes),
         maxStudentDailyLessons: Number(settings.maxStudentDailyLessons),
+        maxStudentDailyMinutes: Number(settings.maxStudentDailyMinutes),
+        lessonEarliestHour: Number(settings.lessonEarliestHour),
+        lessonLatestHour: Number(settings.lessonLatestHour),
         preparationMinutes: Number(settings.preparationMinutes),
         financialHoldThreshold: Number(settings.financialHoldThreshold),
         minimumTheoryAttendancePercent: Number(settings.minimumTheoryAttendancePercent),
@@ -506,6 +509,15 @@ export default function DrivingAssignments() {
                   </Field>
                   <Field label="Öğrenci günlük ders limiti" hint="0 = sınırsız">
                     <Input type="number" min="0" max="10" value={settings.maxStudentDailyLessons} onChange={(e) => setSettings({ ...settings, maxStudentDailyLessons: e.target.value })} />
+                  </Field>
+                  <Field label="Öğrenci günlük direksiyon limiti (dk)" hint="MTSK mevzuatı: günde en fazla 120 dk. 0 = sınırsız">
+                    <Input type="number" min="0" max="1440" value={settings.maxStudentDailyMinutes} onChange={(e) => setSettings({ ...settings, maxStudentDailyMinutes: e.target.value })} />
+                  </Field>
+                  <Field label="Ders başlangıç alt sınırı (saat)" hint="Gece dersi yasağı — mevzuat gün ışığını esas alır.">
+                    <Input type="number" min="0" max="24" value={settings.lessonEarliestHour} onChange={(e) => setSettings({ ...settings, lessonEarliestHour: e.target.value })} />
+                  </Field>
+                  <Field label="Ders bitiş üst sınırı (saat)" hint="Alt sınıra eşit/küçükse saat kısıtı uygulanmaz.">
+                    <Input type="number" min="0" max="24" value={settings.lessonLatestHour} onChange={(e) => setSettings({ ...settings, lessonLatestHour: e.target.value })} />
                   </Field>
                   <Field label="Dersler arası hazırlık (dk)">
                     <Input type="number" min="0" max="240" value={settings.preparationMinutes} onChange={(e) => setSettings({ ...settings, preparationMinutes: e.target.value })} />

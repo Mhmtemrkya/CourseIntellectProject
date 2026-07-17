@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, ExternalLink, FileCheck2, FolderPlus, GraduationCap, Layers, Plus, Search, UserPlus, Users, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, ExternalLink, FileCheck2, FolderPlus, GraduationCap, Layers, Plus, Search, UserPlus, Users, X } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -9,8 +9,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  assignDrivingStudentGroup, createDrivingStudentGroup, fetchDrivingStudentDetail,
-  fetchDrivingStudentGroups, fetchDrivingStudents,
+  assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster,
+  fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
@@ -177,8 +177,15 @@ function StudentDocumentsModal({ profileId, onClose }) {
 // Grup oluşturma modalı — ad + kısa açıklama.
 function CreateGroupModal({ onClose, onCreated }) {
   const { toast } = useToast();
+  const now = new Date();
   const [name, setName] = useState(currentMonthGroupName());
   const [description, setDescription] = useState('');
+  // MTSK'da her ay resmî bir dönemdir; yıl/no bulunulan aydan önerilir.
+  const [termYear, setTermYear] = useState(String(now.getFullYear()));
+  const [termNumber, setTermNumber] = useState(String(now.getMonth() + 1));
+  const [mebbisTermCode, setMebbisTermCode] = useState('');
+  const [quota, setQuota] = useState('');
+  const [deadline, setDeadline] = useState('');
   const [saving, setSaving] = useState(false);
 
   const submit = async () => {
@@ -186,7 +193,15 @@ function CreateGroupModal({ onClose, onCreated }) {
     if (trimmed.length < 2) { toast({ title: 'Grup adı en az 2 karakter olmalıdır.', variant: 'destructive' }); return; }
     setSaving(true);
     try {
-      const group = await createDrivingStudentGroup({ name: trimmed, description: description.trim() });
+      const group = await createDrivingStudentGroup({
+        name: trimmed,
+        description: description.trim(),
+        termYear: termYear ? Number(termYear) : null,
+        termNumber: termNumber ? Number(termNumber) : null,
+        mebbisTermCode: mebbisTermCode.trim(),
+        quota: Number(quota) || 0,
+        registrationDeadlineUtc: deadline ? new Date(`${deadline}T23:59:59`).toISOString() : null,
+      });
       toast({ title: 'Grup oluşturuldu', description: `"${group.name}" hazır.` });
       onCreated(group);
     } catch (error) {
@@ -198,16 +213,40 @@ function CreateGroupModal({ onClose, onCreated }) {
 
   return (
     <Dialog open onOpenChange={(open) => { if (!open) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <FolderPlus className="h-5 w-5 text-[hsl(var(--brand-accent))]" />Yeni Kursiyer Grubu
+            <FolderPlus className="h-5 w-5 text-[hsl(var(--brand-accent))]" />Yeni Kursiyer Grubu (Dönem)
           </DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div>
             <label className="mb-1 block text-xs font-bold text-muted-foreground">Grup adı</label>
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Örn. Temmuz 2026 grubu" maxLength={120} autoFocus />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">Resmî dönem yılı</label>
+              <Input type="number" min="2000" max="2100" value={termYear} onChange={(e) => setTermYear(e.target.value)} />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">Dönem no</label>
+              <Input type="number" min="1" max="99" value={termNumber} onChange={(e) => setTermNumber(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-bold text-muted-foreground">MEBBİS dönem kodu (opsiyonel)</label>
+            <Input value={mebbisTermCode} onChange={(e) => setMebbisTermCode(e.target.value)} placeholder="MEBBİS'in verdiği kod" maxLength={40} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">Kontenjan (0 = sınırsız)</label>
+              <Input type="number" min="0" max="10000" value={quota} onChange={(e) => setQuota(e.target.value)} placeholder="Teorik sınıf kapasitesi" />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-bold text-muted-foreground">Kayıt kesim tarihi</label>
+              <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+            </div>
           </div>
           <div>
             <label className="mb-1 block text-xs font-bold text-muted-foreground">Açıklama (opsiyonel)</label>
@@ -239,6 +278,8 @@ export default function DrivingStudents() {
   const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'ungrouped' | <groupId>
   const [selectedId, setSelectedId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [roster, setRoster] = useState(null); // seçili grubun MEBBİS durum özeti
+  const [downloadingRoster, setDownloadingRoster] = useState(false);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState(() => new Set());
   const [assignTarget, setAssignTarget] = useState('');
@@ -263,6 +304,34 @@ export default function DrivingStudents() {
   }, [toast]);
 
   useEffect(() => { load(); }, [load]);
+
+  // Belirli bir dönem seçilince MEBBİS hazırlık özeti çekilir (kesim tarihi,
+  // kontenjan, eksik alanlı aday sayısı) — "Tümü/Beklemede" için anlamsızdır.
+  useEffect(() => {
+    if (groupFilter === 'all' || groupFilter === 'ungrouped') { setRoster(null); return undefined; }
+    let active = true;
+    fetchDrivingMebbisRoster(groupFilter)
+      .then((data) => { if (active) setRoster(data); })
+      .catch(() => { if (active) setRoster(null); });
+    return () => { active = false; };
+  }, [groupFilter, students]);
+
+  const downloadRoster = async () => {
+    setDownloadingRoster(true);
+    try {
+      const blob = await downloadDrivingMebbisRoster(groupFilter);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `mebbis-${roster?.group?.name || 'donem'}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: 'MEBBİS listesi indirilemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setDownloadingRoster(false);
+    }
+  };
 
   const filtered = useMemo(() => {
     const term = search.trim().toLocaleLowerCase('tr-TR');
@@ -370,6 +439,68 @@ export default function DrivingStudents() {
         {activeGroups.map((g) => filterPill(g.id, g.name, g.studentCount))}
         {ungroupedCount > 0 && filterPill('ungrouped', 'Beklemede', ungroupedCount)}
       </div>
+
+      {/* Dönem durumu: MEBBİS hizalaması, kontenjan, kesim tarihi ve eksikler */}
+      {roster && (
+        <div className="space-y-3 rounded-2xl border border-foreground/10 bg-foreground/[0.02] p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <b className="text-sm">
+                {roster.group.name}
+                {roster.group.termYear != null && roster.group.termNumber != null && (
+                  <span className="ml-2 rounded-full bg-brand-primary/10 px-2 py-0.5 text-xs font-black text-brand-primary">
+                    Resmî dönem {roster.group.termYear}/{roster.group.termNumber}
+                  </span>
+                )}
+                {roster.group.mebbisTermCode && (
+                  <span className="ml-1 rounded-full bg-foreground/10 px-2 py-0.5 text-xs font-bold text-muted-foreground">
+                    MEBBİS: {roster.group.mebbisTermCode}
+                  </span>
+                )}
+              </b>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {roster.group.quota > 0 ? `Kontenjan ${roster.studentCount}/${roster.group.quota}` : `${roster.studentCount} kursiyer`}
+                {roster.group.daysToDeadline != null && (
+                  roster.group.daysToDeadline >= 0
+                    ? ` • Dönem kapanışına ${roster.group.daysToDeadline} gün`
+                    : ' • Kayıt kesim tarihi geçti'
+                )}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" disabled={downloadingRoster || roster.studentCount === 0} onClick={downloadRoster}>
+              <Download className="mr-2 h-4 w-4" />{downloadingRoster ? 'Hazırlanıyor…' : 'MEBBİS Listesi (CSV)'}
+            </Button>
+          </div>
+
+          {roster.studentCount > 0 && (
+            roster.readyCount === roster.studentCount ? (
+              <p className="flex items-center gap-2 text-sm text-emerald-600">
+                <CheckCircle2 className="h-4 w-4" />Tüm adaylar MEBBİS girişine hazır.
+              </p>
+            ) : (
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+                <p className="flex items-center gap-2 text-sm font-bold text-amber-700 dark:text-amber-400">
+                  <AlertTriangle className="h-4 w-4" />
+                  {roster.studentCount - roster.readyCount} adayın MEBBİS bilgisi eksik
+                  {roster.group.daysToDeadline != null && roster.group.daysToDeadline >= 0 && roster.group.daysToDeadline <= 7
+                    ? ' — dönem kapanışı yaklaşıyor!'
+                    : '.'}
+                </p>
+                <div className="mt-2 space-y-1">
+                  {roster.rows.filter((r) => r.missing.length > 0).slice(0, 6).map((r) => (
+                    <p key={r.studentNumber ?? r.tcNo ?? r.firstName} className="text-xs text-muted-foreground">
+                      <b>#{r.studentNumber} {r.firstName} {r.lastName}</b>: {r.missing.join(', ')}
+                    </p>
+                  ))}
+                  {roster.rows.filter((r) => r.missing.length > 0).length > 6 && (
+                    <p className="text-xs text-muted-foreground">… tamamı CSV çıktısında listelenir.</p>
+                  )}
+                </div>
+              </div>
+            )
+          )}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <DrivingNotice

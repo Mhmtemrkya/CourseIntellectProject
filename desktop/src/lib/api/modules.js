@@ -102,6 +102,12 @@ export const fetchDrivingStudentGroups = (params = {}) => api.get('/api/driving-
 export const createDrivingStudentGroup = (payload) => api.post('/api/driving-school/student-groups', payload);
 export const updateDrivingStudentGroup = (id, payload) => api.put(`/api/driving-school/student-groups/${id}`, payload);
 export const assignDrivingStudentGroup = (payload) => api.post('/api/driving-school/students/assign-group', payload);
+// MEBBİS dönem listesi: JSON (ekran) ve CSV (Türkçe Excel) aynı uçtan gelir.
+export const fetchDrivingMebbisRoster = (groupId) => api.get(`/api/driving-school/student-groups/${groupId}/mebbis-roster`);
+export const downloadDrivingMebbisRoster = (groupId) =>
+  api.get(`/api/driving-school/student-groups/${groupId}/mebbis-roster`, { params: { format: 'csv' }, responseType: 'blob' });
+export const fetchDrivingTheoryCurriculum = () => api.get('/api/driving-school/theory/curriculum');
+export const fetchDrivingClassCompliance = (classId) => api.get(`/api/driving-school/theory/classes/${classId}/compliance`);
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
 export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
 export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });

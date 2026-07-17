@@ -43,6 +43,7 @@ const DOCUMENT_TYPES = [
 
 const emptyForm = {
   fullName: '', identityKind: 1, identityNumber: '', identitySerialNo: '', nationality: 'T.C.', birthDate: '',
+  fatherName: '', motherName: '', birthPlace: '',
   gender: '', bloodType: '', occupation: '', educationLevel: '',
   city: '', district: '', address: '', residenceAddress: '', phone: '', email: '', whatsAppPhone: '',
   emergencyContactName: '', emergencyContactPhone: '', photoUrl: '', livePhotoUrl: '',
@@ -285,6 +286,29 @@ export default function DrivingStudentWizard() {
   }, [reference.vehicles, selectedPackage]);
 
   const netAmount = Math.max(0, Number(form.finance.grossAmount || 0) - Number(form.finance.discountAmount || 0));
+
+  // MEBBİS aday girişinde eksik kalacak alanlar (sunucudaki kuralın ekran kopyası).
+  const mebbisMissing = useMemo(() => {
+    const has = (value) => Boolean((value || '').trim());
+    const doc = (type) => form.documents.find((x) => x.documentType === type);
+    const health = doc('HealthReport');
+    const missing = [];
+    if (!has(form.identityNumber)) missing.push('Kimlik numarası');
+    if (!form.birthDate) missing.push('Doğum tarihi');
+    if (!has(form.fatherName)) missing.push('Baba adı');
+    if (!has(form.motherName)) missing.push('Anne adı');
+    if (!has(form.birthPlace)) missing.push('Doğum yeri');
+    if (!has(form.educationLevel)) missing.push('Öğrenim durumu');
+    if (!has(form.identitySerialNo)) missing.push('Kimlik seri no');
+    if (!has(form.phone)) missing.push('Telefon');
+    if (!has(form.photoUrl) && !doc('BiometricPhoto')) missing.push('Biyometrik fotoğraf');
+    if (!health) missing.push('Sağlık raporu');
+    else if (!has(health.documentNumber) || !has(health.issuedBy) || !health.issuedAtUtc) missing.push('Sağlık raporu no / veren kurum / tarih');
+    if (!doc('Diploma')) missing.push('Öğrenim belgesi');
+    if (!doc('CriminalRecord')) missing.push('Adli sicil kaydı');
+    return missing;
+  }, [form]);
+
   const examFeesTotal = (Number(form.theoryExamFee) || 0) + (Number(form.drivingExamFee) || 0);
   const grandTotal = netAmount + examFeesTotal;
   const remainingAfterDownPayment = Math.max(0, netAmount - Number(form.finance.downPayment || 0));
@@ -557,6 +581,15 @@ export default function DrivingStudentWizard() {
               <Field label="Kimlik seri no" hint="Kimlik kartının üzerindeki seri numarası (ör. A12 345678)">
                 <Input maxLength={20} value={form.identitySerialNo} onChange={(e) => set({ identitySerialNo: e.target.value })} />
               </Field>
+              <Field label="Baba adı" hint="MEBBİS aday kaydında zorunludur.">
+                <Input maxLength={100} value={form.fatherName} onChange={(e) => set({ fatherName: e.target.value })} />
+              </Field>
+              <Field label="Anne adı" hint="MEBBİS aday kaydında zorunludur.">
+                <Input maxLength={100} value={form.motherName} onChange={(e) => set({ motherName: e.target.value })} />
+              </Field>
+              <Field label="Doğum yeri" hint="MEBBİS aday kaydında zorunludur.">
+                <Input maxLength={100} value={form.birthPlace} onChange={(e) => set({ birthPlace: e.target.value })} />
+              </Field>
               <Field label="Uyruk"><Input value={form.nationality} onChange={(e) => set({ nationality: e.target.value })} /></Field>
               <Field label="Doğum tarihi" hint={isMinor ? '18 yaş altı: veli izin belgesi zorunlu olacak.' : undefined}>
                 <Input required type="date" value={form.birthDate} onChange={(e) => set({ birthDate: e.target.value })} />
@@ -709,34 +742,58 @@ export default function DrivingStudentWizard() {
               {DOCUMENT_TYPES.filter((x) => x.value !== 'ParentalConsent' || isMinor).map((type) => {
                 const attached = form.documents.find((x) => x.documentType === type.value);
                 const required = type.required || (isMinor && type.value === 'ParentalConsent');
+                const patchDocument = (patch) => setForm((current) => ({
+                  ...current,
+                  documents: current.documents.map((x) => (x.documentType === type.value ? { ...x, ...patch } : x)),
+                }));
                 return (
-                  <div key={type.value} className="flex flex-wrap items-center gap-3 rounded-xl border p-3">
-                    <div className="min-w-[220px] flex-1">
-                      <b className="text-sm">{type.label}</b>
-                      {required && <Badge className="ml-2 border-0 bg-red-500/15 text-red-600">Zorunlu</Badge>}
-                      {attached && <p className="text-xs text-emerald-600">{attached.fileName} eklendi</p>}
-                    </div>
-                    {type.expires && (
+                  <div key={type.value} className="space-y-2 rounded-xl border p-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="min-w-[220px] flex-1">
+                        <b className="text-sm">{type.label}</b>
+                        {required && <Badge className="ml-2 border-0 bg-red-500/15 text-red-600">Zorunlu</Badge>}
+                        {attached && <p className="text-xs text-emerald-600">{attached.fileName} eklendi</p>}
+                      </div>
+                      {type.expires && (
+                        <Input
+                          type="date"
+                          className="w-40"
+                          title="Son geçerlilik tarihi"
+                          value={attached?.expiresAtUtc ? attached.expiresAtUtc.slice(0, 10) : ''}
+                          onChange={(e) => patchDocument({ expiresAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                        />
+                      )}
                       <Input
-                        type="date"
-                        className="w-40"
-                        title="Son geçerlilik tarihi"
-                        value={attached?.expiresAtUtc ? attached.expiresAtUtc.slice(0, 10) : ''}
-                        onChange={(e) => setForm((current) => ({
-                          ...current,
-                          documents: current.documents.map((x) => x.documentType === type.value
-                            ? { ...x, expiresAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null }
-                            : x),
-                        }))}
+                        type="file"
+                        className="w-56"
+                        accept=".pdf,.jpg,.jpeg,.png"
+                        disabled={uploading}
+                        onChange={(e) => attachDocument(type.value, e.target.files?.[0], null)}
                       />
+                    </div>
+                    {/* MEBBİS sağlık raporunu no + veren kurum + rapor tarihiyle ister. */}
+                    {type.value === 'HealthReport' && attached && (
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <Input
+                          placeholder="Rapor no (MEBBİS)"
+                          maxLength={100}
+                          value={attached.documentNumber || ''}
+                          onChange={(e) => patchDocument({ documentNumber: e.target.value })}
+                        />
+                        <Input
+                          placeholder="Veren kurum (MEBBİS)"
+                          maxLength={150}
+                          value={attached.issuedBy || ''}
+                          onChange={(e) => patchDocument({ issuedBy: e.target.value })}
+                        />
+                        <Input
+                          type="date"
+                          title="Rapor tarihi"
+                          value={attached.issuedAtUtc ? attached.issuedAtUtc.slice(0, 10) : ''}
+                          onChange={(e) => patchDocument({ issuedAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null })}
+                        />
+                      </div>
                     )}
-                    <Input
-                      type="file"
-                      className="w-56"
-                      accept=".pdf,.jpg,.jpeg,.png"
-                      disabled={uploading}
-                      onChange={(e) => attachDocument(type.value, e.target.files?.[0], null)}
-                    />
                   </div>
                 );
               })}
@@ -838,6 +895,24 @@ export default function DrivingStudentWizard() {
                       Peşinat ₺{Number(form.finance.downPayment || 0).toLocaleString('tr-TR')} • {form.finance.installmentCount || 0} taksit
                     </p>
                   </div>
+                )}
+              </div>
+
+              {/* MEBBİS hazırlık kontrolü: kayıt engellenmez, sekreter neyin eksik kalacağını görür. */}
+              <div className={`rounded-2xl border p-4 ${mebbisMissing.length ? 'border-amber-500/40 bg-amber-500/5' : 'border-emerald-500/40 bg-emerald-500/5'}`}>
+                <b className={`flex items-center gap-2 text-sm ${mebbisMissing.length ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400'}`}>
+                  {mebbisMissing.length ? <AlertTriangle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {mebbisMissing.length ? `MEBBİS için eksik: ${mebbisMissing.length} alan` : 'MEBBİS aday girişi için tüm alanlar hazır.'}
+                </b>
+                {mebbisMissing.length > 0 && (
+                  <>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {mebbisMissing.map((item) => (
+                        <span key={item} className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-700 dark:text-amber-400">{item}</span>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-xs text-muted-foreground">Kayıt yine tamamlanabilir; eksikler kursiyer dosyasından sonradan girilebilir.</p>
+                  </>
                 )}
               </div>
 

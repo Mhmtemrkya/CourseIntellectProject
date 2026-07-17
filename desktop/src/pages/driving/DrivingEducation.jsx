@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { BookOpenCheck, CalendarPlus, CheckCircle2, ClipboardCheck, GraduationCap, RefreshCw, RotateCcw, Users } from 'lucide-react';
+import { AlertTriangle, BookOpenCheck, CalendarPlus, CheckCircle2, ClipboardCheck, GraduationCap, RefreshCw, RotateCcw, ShieldCheck, Users } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -9,8 +9,8 @@ import { useToast } from '../../hooks/use-toast';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import {
   addDrivingExamCandidates, createDrivingExamSession, createDrivingTheoryClass, createDrivingTheorySession,
-  enrollDrivingTheoryStudents, enterDrivingExamResult, fetchDrivingEducationOverview, fetchDrivingTheoryAttendance,
-  saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
+  enrollDrivingTheoryStudents, enterDrivingExamResult, fetchDrivingClassCompliance, fetchDrivingEducationOverview,
+  fetchDrivingTheoryAttendance, saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 
@@ -43,6 +43,7 @@ export default function DrivingEducation() {
   const [examStudents, setExamStudents] = useState({});
   const [examFees, setExamFees] = useState({});
   const [attendance, setAttendance] = useState(null);
+  const [compliance, setCompliance] = useState(null); // seçili sınıfın mevzuat uyum raporu
   // { candidate, passed, score, failureReason } — açıkken not girişi paneli görünür.
   const [resultForm, setResultForm] = useState(null);
 
@@ -81,6 +82,9 @@ export default function DrivingEducation() {
   }
   async function openAttendance(session) {
     try { setAttendance({ session, rows: await fetchDrivingTheoryAttendance(session.id) }); } catch (error) { toast({ title: 'Yoklama açılamadı', description: error.message, variant: 'destructive' }); }
+  }
+  async function openCompliance(group) {
+    try { setCompliance(await fetchDrivingClassCompliance(group.id)); } catch (error) { toast({ title: 'Mevzuat uyumu alınamadı', description: error.message, variant: 'destructive' }); }
   }
   async function saveAttendance() {
     if (!attendance) return;
@@ -138,10 +142,58 @@ export default function DrivingEducation() {
     <Tabs defaultValue="classes"><TabsList className="flex flex-wrap"><TabsTrigger value="classes">Sınıflar</TabsTrigger><TabsTrigger value="sessions">Ders Programı & Yoklama</TabsTrigger><TabsTrigger value="exams">Sınavlar</TabsTrigger></TabsList>
       <TabsContent value="classes" className="mt-5 grid gap-5 xl:grid-cols-[380px_1fr]">
         {canTheoryManage && <Card><CardHeader><CardTitle>Yeni teorik sınıf</CardTitle></CardHeader><CardContent><form className="space-y-3" onSubmit={saveClass}><Input required placeholder="Sınıf adı" value={classForm.name} onChange={(e) => setClassForm({ ...classForm, name: e.target.value })} /><div className="grid grid-cols-2 gap-2"><Input required placeholder="Ehliyet sınıfı" value={classForm.licenseClass} onChange={(e) => setClassForm({ ...classForm, licenseClass: e.target.value })} /><Input required type="number" min="1" max="100" value={classForm.capacity} onChange={(e) => setClassForm({ ...classForm, capacity: e.target.value })} /></div><select required className="h-10 w-full rounded-md border bg-background px-3" value={classForm.instructorStaffId} onChange={(e) => setClassForm({ ...classForm, instructorStaffId: e.target.value })}><option value="">Öğretmen seçin</option>{instructors.map((x) => <option key={x.id} value={x.id}>{x.fullName}</option>)}</select><Input required type="datetime-local" value={classForm.startsAtUtc} onChange={(e) => setClassForm({ ...classForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={classForm.endsAtUtc} onChange={(e) => setClassForm({ ...classForm, endsAtUtc: e.target.value })} /><Input placeholder="Derslik" value={classForm.room} onChange={(e) => setClassForm({ ...classForm, room: e.target.value })} /><Button disabled={busy} className="w-full">Sınıfı Oluştur</Button></form></CardContent></Card>}
-        <div className="space-y-3">{data.classes.map((group) => <Card key={group.id}><CardContent className="p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{group.name} • {group.licenseClass}</h3><p className="text-sm text-muted-foreground">{group.instructorName} • {group.room || 'Derslik belirtilmedi'} • {dateTime(group.startsAtUtc)}</p></div><Badge>{group.studentCount}/{group.capacity} öğrenci</Badge></div>{canTheoryManage && <div className="mt-4 space-y-2"><Checks items={students.filter((x) => x.licenseClass === group.licenseClass)} selected={classStudents[group.id] || []} onChange={(value) => setClassStudents((x) => ({ ...x, [group.id]: value }))} /><Button size="sm" disabled={busy || !(classStudents[group.id]?.length)} onClick={() => run(() => enrollDrivingTheoryStudents(group.id, classStudents[group.id]), 'Öğrenciler sınıfa atandı')}><Users className="mr-2 h-4 w-4" />Seçilenleri Ata</Button></div>}</CardContent></Card>)}</div>
+        <div className="space-y-3">
+          {compliance && (
+            <Card className={compliance.curriculumComplete && compliance.atRiskCount === 0 ? 'border-emerald-500/40' : 'border-amber-500/40'}>
+              <CardHeader>
+                <CardTitle className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4" />{compliance.className} — Mevzuat Uyumu</span>
+                  <Button size="sm" variant="ghost" onClick={() => setCompliance(null)}>Kapat</Button>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <b className="text-sm">Resmî müfredat ({compliance.requiredTotalHours} ders saati × {compliance.lessonMinutes} dk)</b>
+                  <div className="mt-2 space-y-1.5">
+                    {compliance.curriculum.map((subject) => (
+                      <div key={subject.key} className="flex flex-wrap items-center justify-between gap-2 rounded-xl border p-2.5 text-sm">
+                        <span>{subject.label}</span>
+                        <span className="flex items-center gap-2">
+                          <b>{subject.plannedHours}/{subject.requiredHours} saat</b>
+                          {subject.complete
+                            ? <Badge className="border-0 bg-emerald-500/15 text-emerald-600">Tamam</Badge>
+                            : <Badge className="border-0 bg-amber-500/15 text-amber-600">{subject.missingHours} saat eksik</Badge>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  {compliance.unmatchedMinutes > 0 && (
+                    <p className="mt-1 text-xs text-muted-foreground">{compliance.unmatchedMinutes} dk ders resmî konularla eşleşmedi (ek ders sayılır).</p>
+                  )}
+                </div>
+                <div>
+                  <b className="text-sm">Devam durumu (asgari %{compliance.minimumAttendancePercent})</b>
+                  {compliance.atRiskCount === 0 ? (
+                    <p className="mt-1 flex items-center gap-2 text-sm text-emerald-600"><CheckCircle2 className="h-4 w-4" />Dönem yanma riski taşıyan kursiyer yok.</p>
+                  ) : (
+                    <div className="mt-2 space-y-1.5">
+                      {compliance.students.filter((x) => x.atRisk).map((student) => (
+                        <div key={student.profileId} className="flex items-center justify-between rounded-xl border border-red-500/40 bg-red-500/5 p-2.5 text-sm">
+                          <span className="flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-red-600" /><b>#{student.studentNumber} {student.fullName}</b></span>
+                          <span className="font-bold text-red-600">Devam %{student.attendancePercent} — dönem yanma riski</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          {data.classes.map((group) => <Card key={group.id}><CardContent className="p-5"><div className="flex flex-wrap justify-between gap-3"><div><h3 className="font-black">{group.name} • {group.licenseClass}</h3><p className="text-sm text-muted-foreground">{group.instructorName} • {group.room || 'Derslik belirtilmedi'} • {dateTime(group.startsAtUtc)}</p></div><div className="flex items-start gap-2"><Badge>{group.studentCount}/{group.capacity} öğrenci</Badge><Button size="sm" variant="outline" onClick={() => openCompliance(group)}><ShieldCheck className="mr-1 h-3 w-3" />Mevzuat</Button></div></div>{canTheoryManage && <div className="mt-4 space-y-2"><Checks items={students.filter((x) => x.licenseClass === group.licenseClass)} selected={classStudents[group.id] || []} onChange={(value) => setClassStudents((x) => ({ ...x, [group.id]: value }))} /><Button size="sm" disabled={busy || !(classStudents[group.id]?.length)} onClick={() => run(() => enrollDrivingTheoryStudents(group.id, classStudents[group.id]), 'Öğrenciler sınıfa atandı')}><Users className="mr-2 h-4 w-4" />Seçilenleri Ata</Button></div>}</CardContent></Card>)}
+        </div>
       </TabsContent>
       <TabsContent value="sessions" className="mt-5 space-y-5">
-        {canTheoryManage && <Card><CardHeader><CardTitle>Ders programına ekle</CardTitle></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={saveTheory}><select required className="h-10 rounded-md border bg-background px-3" value={theoryForm.theoryClassId} onChange={(e) => setTheoryForm({ ...theoryForm, theoryClassId: e.target.value })}><option value="">Sınıf seçin</option>{data.classes.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select><Input required placeholder="Ders / konu alanı" value={theoryForm.subject} onChange={(e) => setTheoryForm({ ...theoryForm, subject: e.target.value })} /><Input required placeholder="İşlenecek konu" value={theoryForm.topic} onChange={(e) => setTheoryForm({ ...theoryForm, topic: e.target.value })} /><Input required type="datetime-local" value={theoryForm.startsAtUtc} onChange={(e) => setTheoryForm({ ...theoryForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={theoryForm.endsAtUtc} onChange={(e) => setTheoryForm({ ...theoryForm, endsAtUtc: e.target.value })} /><Input placeholder="Derslik" value={theoryForm.room} onChange={(e) => setTheoryForm({ ...theoryForm, room: e.target.value })} /><Button disabled={busy} className="md:col-span-3"><CalendarPlus className="mr-2 h-4 w-4" />Programa Ekle</Button></form></CardContent></Card>}
+        {canTheoryManage && <Card><CardHeader><CardTitle>Ders programına ekle</CardTitle></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={saveTheory}><select required className="h-10 rounded-md border bg-background px-3" value={theoryForm.theoryClassId} onChange={(e) => setTheoryForm({ ...theoryForm, theoryClassId: e.target.value })}><option value="">Sınıf seçin</option>{data.classes.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select><Input required placeholder="Ders / konu alanı" list="mtsk-subjects" value={theoryForm.subject} onChange={(e) => setTheoryForm({ ...theoryForm, subject: e.target.value })} /><datalist id="mtsk-subjects"><option value="Trafik ve Çevre Bilgisi" /><option value="İlk Yardım" /><option value="Araç Tekniği" /><option value="Trafik Adabı" /></datalist><Input required placeholder="İşlenecek konu" value={theoryForm.topic} onChange={(e) => setTheoryForm({ ...theoryForm, topic: e.target.value })} /><Input required type="datetime-local" value={theoryForm.startsAtUtc} onChange={(e) => setTheoryForm({ ...theoryForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={theoryForm.endsAtUtc} onChange={(e) => setTheoryForm({ ...theoryForm, endsAtUtc: e.target.value })} /><Input placeholder="Derslik" value={theoryForm.room} onChange={(e) => setTheoryForm({ ...theoryForm, room: e.target.value })} /><Button disabled={busy} className="md:col-span-3"><CalendarPlus className="mr-2 h-4 w-4" />Programa Ekle</Button></form></CardContent></Card>}
         {attendance && <Card className="border-blue-500/40"><CardHeader><CardTitle>{attendance.session.subject} yoklaması</CardTitle></CardHeader><CardContent className="space-y-2">{attendance.rows.map((row, index) => <div key={row.studentDrivingProfileId} className="grid items-center gap-2 rounded-xl border p-3 sm:grid-cols-[1fr_160px_1fr]"><b>{row.studentName}</b><select className="h-9 rounded-md border bg-background px-2" value={row.status} onChange={(e) => setAttendance((state) => ({ ...state, rows: state.rows.map((item, i) => i === index ? { ...item, status: e.target.value } : item) }))}><option value="Present">Katıldı</option><option value="Late">Geç kaldı</option><option value="Absent">Katılmadı</option><option value="Excused">Mazeretli</option></select><Input placeholder="Not" value={row.note} onChange={(e) => setAttendance((state) => ({ ...state, rows: state.rows.map((item, i) => i === index ? { ...item, note: e.target.value } : item) }))} /></div>)}<div className="flex gap-2 pt-2"><Button disabled={busy} onClick={saveAttendance}>Yoklamayı Kaydet</Button><Button variant="outline" onClick={() => setAttendance(null)}>Kapat</Button></div></CardContent></Card>}
         <div className="grid gap-3 lg:grid-cols-2">{data.sessions.map((session) => <Card key={session.id}><CardContent className="p-5"><div className="flex justify-between"><div><b>{session.subject}</b><p className="text-sm text-muted-foreground">{session.topic}</p></div><Badge className={statusTone(session.status)}>{session.status}</Badge></div><p className="mt-3 text-sm">{dateTime(session.startsAtUtc)} • {session.className} • {session.instructorName} • {session.room}</p>{canAttendance && <Button size="sm" variant="outline" className="mt-3" onClick={() => openAttendance(session)}><ClipboardCheck className="mr-2 h-4 w-4" />Yoklama</Button>}</CardContent></Card>)}</div>
       </TabsContent>

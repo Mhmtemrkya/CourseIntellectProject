@@ -342,9 +342,14 @@ class DrivingSchoolApiService {
   Future<Map<String, dynamic>> createStudentGroup(
     String name, {
     String description = '',
+    int? termYear,
+    int? termNumber,
   }) => _post('/api/driving-school/student-groups', {
     'name': name,
     'description': description,
+    // MTSK'da her ay resmî dönemdir; mobilde yıl/ay otomatik geçilir.
+    'termYear': termYear,
+    'termNumber': termNumber,
   });
 
   // profileIds → gruba atar; groupId null ise gruptan çıkarır.

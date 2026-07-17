@@ -2727,4 +2727,8 @@ const Map<String, String> kTrEn = {
   'Taksit': 'Installment',
   'Otomatik (en eski vade)': 'Automatic (oldest due)',
   'Seri no': 'Serial no',
+  'Baba': 'Father',
+  'Anne': 'Mother',
+  'Doğum yeri': 'Birthplace',
+  'MEBBİS için eksik': 'Missing for MEBBIS',
 };
