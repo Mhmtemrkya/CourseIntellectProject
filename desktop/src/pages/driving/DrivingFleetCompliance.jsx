@@ -186,6 +186,7 @@ export default function DrivingFleetCompliance() {
                     <option value="Emission">Egzoz Emisyon</option>
                     <option value="Tax">Vergi</option>
                     <option value="CourseUsage">Kurs Kullanım Belgesi</option>
+                    <option value="DualControl">Çift Kumanda / Ekspertiz</option>
                     <option value="Other">Diğer</option>
                   </select>
                 </Field>

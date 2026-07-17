@@ -14,9 +14,10 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
   addDrivingExtraMinutes, adjustDrivingLedger, createDrivingAppointment, createDrivingCharge,
-  fetchDrivingBranches, fetchDrivingCharges, fetchDrivingLedger, fetchDrivingStudentDetail, recordDrivingPayment,
-  refundDrivingCharge, reviewDrivingStudentDocument, suggestDrivingInstructors, suggestDrivingVehicles,
-  updateDrivingExamFees, updateDrivingStudentStatus, uploadDrivingStudentDocument, uploadFile,
+  downloadDrivingStudentForm, fetchDrivingBranches, fetchDrivingCharges, fetchDrivingLedger,
+  fetchDrivingStudentDetail, recordDrivingPayment, refundDrivingCharge, reviewDrivingStudentDocument,
+  suggestDrivingInstructors, suggestDrivingVehicles, updateDrivingExamFees, updateDrivingStudentStatus,
+  uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
@@ -345,6 +346,21 @@ export default function DrivingStudentDetail() {
   useEffect(() => { if (!permissionsLoading) load(); }, [load, permissionsLoading]);
   useEffect(() => { if (canCollect) fetchDrivingBranches().then((b) => setBranches(b || [])).catch(() => {}); }, [canCollect]);
 
+  // Resmî formlar (PDF): kapak formu, direksiyon eğitim kartı, devam çizelgesi.
+  async function downloadForm(formKey, label) {
+    try {
+      const blob = await downloadDrivingStudentForm(profileId, formKey);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${label}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: 'Form indirilemedi', description: error.message, variant: 'destructive' });
+    }
+  }
+
   async function run(action, success) {
     setBusy(true);
     try {
@@ -383,7 +399,7 @@ export default function DrivingStudentDetail() {
   if (permissionsLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
   if (!data) return null;
 
-  const { overview, training, appointments, lessons, ledger, documents, finance, history, mebbisMissing } = data;
+  const { overview, training, appointments, lessons, ledger, documents, finance, history, mebbisMissing, examRights } = data;
   const trendData = [...lessons]
     .filter((lesson) => lesson.completedAtUtc && lessonAverage(lesson) != null)
     .sort((a, b) => new Date(a.startedAtUtc) - new Date(b.startedAtUtc))
@@ -599,6 +615,40 @@ export default function DrivingStudentDetail() {
                   </div>
                 </div>
               )}
+            </CardContent>
+          </Card>
+
+          {examRights && (
+            <Card>
+              <CardHeader><CardTitle>Sınav hakları (en fazla 4)</CardTitle></CardHeader>
+              <CardContent>
+                {[['E-sınav', examRights.theory], ['Direksiyon sınavı', examRights.practice]].map(([label, right]) => (
+                  <div key={label} className="flex items-center justify-between border-b py-2 text-sm last:border-0">
+                    <span className="text-muted-foreground">{label}</span>
+                    <span className="flex items-center gap-2">
+                      <b>{right.used}/{right.max} hak kullanıldı</b>
+                      {right.outOfAttempts
+                        ? <Badge className="border-0 bg-red-500/15 text-red-600">Dönem düştü — yeniden kayıt gerekir</Badge>
+                        : <Badge className="border-0 bg-emerald-500/15 text-emerald-600">{right.remaining} hak kaldı</Badge>}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          <Card>
+            <CardHeader><CardTitle>Resmî formlar (PDF)</CardTitle></CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Button variant="outline" size="sm" onClick={() => downloadForm('cover', `kapak-formu-${overview.studentNumber}`)}>
+                <Download className="mr-2 h-4 w-4" />Aday Dosyası Kapak Formu
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadForm('lesson-card', `egitim-karti-${overview.studentNumber}`)}>
+                <Download className="mr-2 h-4 w-4" />Direksiyon Eğitim Kartı
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => downloadForm('attendance', `devam-cizelgesi-${overview.studentNumber}`)}>
+                <Download className="mr-2 h-4 w-4" />Devam Çizelgesi
+              </Button>
             </CardContent>
           </Card>
 

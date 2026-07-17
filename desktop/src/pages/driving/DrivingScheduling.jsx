@@ -62,7 +62,7 @@ export default function DrivingScheduling({ embedded = false }) {
   const [data, setData] = useState({ students: [], staff: [], profiles: [], instructors: [], packages: [], vehicles: [], appointments: [], requests: [] });
   const [loading, setLoading] = useState(true); const [saving, setSaving] = useState(false);
   const [studentForm, setStudentForm] = useState({ studentId: '', packageId: '', licenseClass: 'B', transmissionType: 1 });
-  const [instructorForm, setInstructorForm] = useState({ staffId: '', licenseClasses: 'B', canTeachManual: true, canTeachAutomatic: false });
+  const [instructorForm, setInstructorForm] = useState({ staffId: '', licenseClasses: 'B', canTeachManual: true, canTeachAutomatic: false, workingPermitNo: '', workingPermitExpiresAtUtc: '' });
   const [appointmentForm, setAppointmentForm] = useState(emptyAppointment);
   const [blockedOverrides, setBlockedOverrides] = useState([]);
   const [overrideReason, setOverrideReason] = useState('');
@@ -103,7 +103,16 @@ export default function DrivingScheduling({ embedded = false }) {
 
   async function run(action, success) { setSaving(true); try { await action(); toast({ title: success }); await load(); return true; } catch (e) { toast({ title: 'İşlem tamamlanamadı', description: e.message, variant: 'destructive' }); return false; } finally { setSaving(false); } }
   const saveStudent = async (e) => { e.preventDefault(); if (await run(() => createDrivingStudent(studentForm), 'Öğrenci sürücü profili oluşturuldu')) setStudentForm({ studentId: '', packageId: '', licenseClass: 'B', transmissionType: 1 }); };
-  const saveInstructor = async (e) => { e.preventDefault(); const payload = { ...instructorForm, licenseClasses: instructorForm.licenseClasses.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean) }; if (await run(() => createDrivingInstructor(payload), 'Öğretmen yetkinliği kaydedildi')) setInstructorForm({ staffId: '', licenseClasses: 'B', canTeachManual: true, canTeachAutomatic: false }); };
+  const saveInstructor = async (e) => {
+    e.preventDefault();
+    const payload = {
+      ...instructorForm,
+      licenseClasses: instructorForm.licenseClasses.split(',').map((x) => x.trim().toUpperCase()).filter(Boolean),
+      workingPermitNo: instructorForm.workingPermitNo.trim() || null,
+      workingPermitExpiresAtUtc: instructorForm.workingPermitExpiresAtUtc ? new Date(`${instructorForm.workingPermitExpiresAtUtc}T23:59:59`).toISOString() : null,
+    };
+    if (await run(() => createDrivingInstructor(payload), 'Öğretmen yetkinliği kaydedildi')) setInstructorForm({ staffId: '', licenseClasses: 'B', canTeachManual: true, canTeachAutomatic: false, workingPermitNo: '', workingPermitExpiresAtUtc: '' });
+  };
 
   const resetAppointment = () => { setAppointmentForm(emptyAppointment); setBlockedOverrides([]); setOverrideReason(''); setSuggestions(null); };
 
@@ -233,9 +242,9 @@ export default function DrivingScheduling({ embedded = false }) {
 
       {canViewInstructors && <Card><CardHeader><CardTitle className="flex gap-2"><UserRoundCheck className="text-emerald-500" />Öğretmen Yetkinliği</CardTitle></CardHeader><CardContent>
         {canCreateInstructor
-          ? <form onSubmit={saveInstructor} className="grid gap-3 sm:grid-cols-2"><Field label="Öğretmen"><select required className={selectClass} value={instructorForm.staffId} onChange={(e) => setInstructorForm({ ...instructorForm, staffId: e.target.value })}><option value="">Seçin</option>{unregisteredStaff.map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}</select></Field><Field label="Ehliyet sınıfları"><Input required placeholder="B, BE" value={instructorForm.licenseClasses} onChange={(e) => setInstructorForm({ ...instructorForm, licenseClasses: e.target.value })} /></Field><label className="flex items-center gap-2"><input type="checkbox" checked={instructorForm.canTeachManual} onChange={(e) => setInstructorForm({ ...instructorForm, canTeachManual: e.target.checked })} />Manuel</label><label className="flex items-center gap-2"><input type="checkbox" checked={instructorForm.canTeachAutomatic} onChange={(e) => setInstructorForm({ ...instructorForm, canTeachAutomatic: e.target.checked })} />Otomatik</label><Button disabled={saving || !unregisteredStaff.length} className="sm:col-span-2"><Plus className="mr-2 h-4 w-4" />Yetkinlik Ekle</Button></form>
+          ? <form onSubmit={saveInstructor} className="grid gap-3 sm:grid-cols-2"><Field label="Öğretmen"><select required className={selectClass} value={instructorForm.staffId} onChange={(e) => setInstructorForm({ ...instructorForm, staffId: e.target.value })}><option value="">Seçin</option>{unregisteredStaff.map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}</select></Field><Field label="Ehliyet sınıfları"><Input required placeholder="B, BE" value={instructorForm.licenseClasses} onChange={(e) => setInstructorForm({ ...instructorForm, licenseClasses: e.target.value })} /></Field><Field label="MEB çalışma izni no"><Input maxLength={60} placeholder="Opsiyonel" value={instructorForm.workingPermitNo} onChange={(e) => setInstructorForm({ ...instructorForm, workingPermitNo: e.target.value })} /></Field><Field label="Çalışma izni bitiş tarihi" hint="Süresi dolunca randevular ihlal üretir."><Input type="date" value={instructorForm.workingPermitExpiresAtUtc} onChange={(e) => setInstructorForm({ ...instructorForm, workingPermitExpiresAtUtc: e.target.value })} /></Field><label className="flex items-center gap-2"><input type="checkbox" checked={instructorForm.canTeachManual} onChange={(e) => setInstructorForm({ ...instructorForm, canTeachManual: e.target.checked })} />Manuel</label><label className="flex items-center gap-2"><input type="checkbox" checked={instructorForm.canTeachAutomatic} onChange={(e) => setInstructorForm({ ...instructorForm, canTeachAutomatic: e.target.checked })} />Otomatik</label><Button disabled={saving || !unregisteredStaff.length} className="sm:col-span-2"><Plus className="mr-2 h-4 w-4" />Yetkinlik Ekle</Button></form>
           : <ReadOnlyNotice message="Öğretmen yetkinliği tanımlamak için yetkiniz yok." />}
-        <div className="mt-5 space-y-2">{data.instructors.map((p) => <div key={p.id} className="rounded-xl border p-3"><b>{p.fullName}</b><p className="text-xs text-muted-foreground">{p.licenseClasses} • {[p.canTeachManual && 'Manuel', p.canTeachAutomatic && 'Otomatik'].filter(Boolean).join(' / ')}</p></div>)}</div>
+        <div className="mt-5 space-y-2">{data.instructors.map((p) => <div key={p.id} className="rounded-xl border p-3"><div className="flex flex-wrap items-center gap-2"><b>{p.fullName}</b>{p.workingPermitExpired && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-600">Çalışma izni doldu</span>}</div><p className="text-xs text-muted-foreground">{p.licenseClasses} • {[p.canTeachManual && 'Manuel', p.canTeachAutomatic && 'Otomatik'].filter(Boolean).join(' / ')}{p.workingPermitExpiresAtUtc ? ` • İzin bitişi: ${new Date(p.workingPermitExpiresAtUtc).toLocaleDateString('tr-TR')}` : ' • Çalışma izni tarihi girilmemiş'}</p></div>)}</div>
       </CardContent></Card>}
     </div>
 

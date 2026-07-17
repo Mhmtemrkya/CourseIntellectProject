@@ -2731,4 +2731,7 @@ const Map<String, String> kTrEn = {
   'Anne': 'Mother',
   'Doğum yeri': 'Birthplace',
   'MEBBİS için eksik': 'Missing for MEBBIS',
+  'Sınav hakları': 'Exam attempts',
+  'Dönem düştü': 'Term forfeited',
+  'hak kaldı': 'attempts left',
 };

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart3, CarFront, Download, FileText, GraduationCap, Lock, Users, XCircle,
+  BarChart3, CarFront, Download, FileText, GraduationCap, Lock, ShieldCheck, Users, XCircle,
 } from 'lucide-react';
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../../components/ui/button';
@@ -20,6 +20,7 @@ const REPORTS = [
   ['vehicles', 'Araç & Filo', CarFront, 'cyan'],
   ['cancellations', 'İptal & Devamsızlık', XCircle, 'rose'],
   ['students', 'Kursiyer & Sınav', GraduationCap, 'violet'],
+  ['audit-package', 'Denetim Paketi', ShieldCheck, 'emerald'],
 ];
 
 // Her raporda grafiğe taşınacak sütun: [etiket sütunu, değer sütunu].
@@ -28,6 +29,7 @@ const CHART_COLUMN = {
   vehicles: [0, 3],
   cancellations: null,
   students: [0, 3],
+  'audit-package': null,
 };
 
 const today = () => new Date().toISOString().slice(0, 10);

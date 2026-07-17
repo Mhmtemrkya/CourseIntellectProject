@@ -569,6 +569,27 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
     if (saved == true) _reload();
   }
 
+  Widget _examRightRow(String label, dynamic right) {
+    if (right is! Map) return const SizedBox.shrink();
+    final used = (right['used'] as num?)?.toInt() ?? 0;
+    final max = (right['max'] as num?)?.toInt() ?? 4;
+    final out = right['outOfAttempts'] == true;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        children: [
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
+          Text('$used/$max', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          const SizedBox(width: 8),
+          DrivingStatusPill(
+            label: out ? 'Dönem düştü'.tr : '${(right['remaining'] as num?)?.toInt() ?? (max - used)} ${'hak kaldı'.tr}',
+            tone: out ? DrivingTone.danger : DrivingTone.success,
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _examFeeRow(String label, dynamic fee, bool paid) {
     final amount = (fee as num?)?.toDouble() ?? 0;
     return Padding(
@@ -790,6 +811,14 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 _examFeeRow('Direksiyon sınavı'.tr, overview['drivingExamFee'], overview['drivingExamFeePaid'] == true),
                 if (overview['drivingExamDate'] != null)
                   _licenseLine('Direksiyon sınav tarihi'.tr, _dateOnly(overview['drivingExamDate'])),
+              ],
+              // Sınav hakları (mevzuat: her türde en fazla 4)
+              if (data['examRights'] != null) ...[
+                const SizedBox(height: 12),
+                const DrivingSectionTitle(title: 'Sınav hakları'),
+                const SizedBox(height: 6),
+                _examRightRow('Teorik (e-sınav)'.tr, data['examRights']['theory']),
+                _examRightRow('Direksiyon sınavı'.tr, data['examRights']['practice']),
               ],
               const SizedBox(height: 14),
               Container(

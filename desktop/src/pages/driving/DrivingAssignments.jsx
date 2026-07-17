@@ -214,6 +214,9 @@ export default function DrivingAssignments() {
         maxStudentDailyMinutes: Number(settings.maxStudentDailyMinutes),
         lessonEarliestHour: Number(settings.lessonEarliestHour),
         lessonLatestHour: Number(settings.lessonLatestHour),
+        failedPracticeExtraLessonMinutes: Number(settings.failedPracticeExtraLessonMinutes),
+        failedPracticeExtraLessonFee: Number(settings.failedPracticeExtraLessonFee),
+        maxVehicleAgeYears: Number(settings.maxVehicleAgeYears),
         preparationMinutes: Number(settings.preparationMinutes),
         financialHoldThreshold: Number(settings.financialHoldThreshold),
         minimumTheoryAttendancePercent: Number(settings.minimumTheoryAttendancePercent),
@@ -518,6 +521,15 @@ export default function DrivingAssignments() {
                   </Field>
                   <Field label="Ders bitiş üst sınırı (saat)" hint="Alt sınıra eşit/küçükse saat kısıtı uygulanmaz.">
                     <Input type="number" min="0" max="24" value={settings.lessonLatestHour} onChange={(e) => setSettings({ ...settings, lessonLatestHour: e.target.value })} />
+                  </Field>
+                  <Field label="Başarısız sınav sonrası zorunlu ek ders (dk)" hint="Direksiyon sınavında kalınca otomatik açılır. 0 = kapalı">
+                    <Input type="number" min="0" max="1440" value={settings.failedPracticeExtraLessonMinutes} onChange={(e) => setSettings({ ...settings, failedPracticeExtraLessonMinutes: e.target.value })} />
+                  </Field>
+                  <Field label="Zorunlu ek ders ücreti (₺)" hint="0 = ücretsiz; yalnızca ders hakkı eklenir.">
+                    <Input type="number" min="0" value={settings.failedPracticeExtraLessonFee} onChange={(e) => setSettings({ ...settings, failedPracticeExtraLessonFee: e.target.value })} />
+                  </Field>
+                  <Field label="MTSK araç yaş sınırı (yıl)" hint="İl müdürlüğü şartına göre girin. 0 = kapalı">
+                    <Input type="number" min="0" max="60" value={settings.maxVehicleAgeYears} onChange={(e) => setSettings({ ...settings, maxVehicleAgeYears: e.target.value })} />
                   </Field>
                   <Field label="Dersler arası hazırlık (dk)">
                     <Input type="number" min="0" max="240" value={settings.preparationMinutes} onChange={(e) => setSettings({ ...settings, preparationMinutes: e.target.value })} />

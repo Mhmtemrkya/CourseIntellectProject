@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, BookOpenCheck, CalendarPlus, CheckCircle2, ClipboardCheck, GraduationCap, RefreshCw, RotateCcw, ShieldCheck, Users } from 'lucide-react';
+import { AlertTriangle, BookOpenCheck, CalendarPlus, CheckCircle2, ClipboardCheck, Download, GraduationCap, RefreshCw, RotateCcw, ShieldCheck, Users } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
@@ -8,9 +8,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { useToast } from '../../hooks/use-toast';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import {
-  addDrivingExamCandidates, createDrivingExamSession, createDrivingTheoryClass, createDrivingTheorySession,
-  enrollDrivingTheoryStudents, enterDrivingExamResult, fetchDrivingClassCompliance, fetchDrivingEducationOverview,
-  fetchDrivingTheoryAttendance, saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
+  addDrivingExamCandidates, assignDrivingExamCandidate, createDrivingExamSession, createDrivingTheoryClass,
+  createDrivingTheorySession, downloadDrivingExamRoster, enrollDrivingTheoryStudents, enterDrivingExamResult,
+  fetchDrivingClassCompliance, fetchDrivingEducationOverview, fetchDrivingInstructors, fetchDrivingTheoryAttendance,
+  fetchDrivingVehicles, saveDrivingTheoryAttendance, scheduleDrivingExamRetry,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 
@@ -44,6 +45,8 @@ export default function DrivingEducation() {
   const [examFees, setExamFees] = useState({});
   const [attendance, setAttendance] = useState(null);
   const [compliance, setCompliance] = useState(null); // seçili sınıfın mevzuat uyum raporu
+  // Sınav günü eşleşmesi için direksiyon öğretmenleri + araçlar (bir kez yüklenir).
+  const [examResources, setExamResources] = useState({ instructors: [], vehicles: [] });
   // { candidate, passed, score, failureReason } — açıkken not girişi paneli görünür.
   const [resultForm, setResultForm] = useState(null);
 
@@ -58,6 +61,37 @@ export default function DrivingEducation() {
     finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { if (!permissionLoading) load(); }, [load, permissionLoading]);
+  useEffect(() => {
+    if (permissionLoading) return;
+    Promise.all([fetchDrivingInstructors().catch(() => []), fetchDrivingVehicles().catch(() => [])])
+      .then(([instructorList, vehicleList]) => setExamResources({ instructors: instructorList || [], vehicles: vehicleList || [] }));
+  }, [permissionLoading]);
+
+  async function assignCandidate(candidate, patch) {
+    try {
+      await assignDrivingExamCandidate(candidate.id, {
+        vehicleId: patch.vehicleId !== undefined ? (patch.vehicleId || null) : candidate.assignedVehicleId,
+        instructorProfileId: patch.instructorProfileId !== undefined ? (patch.instructorProfileId || null) : candidate.assignedInstructorProfileId,
+      });
+      await load();
+    } catch (error) {
+      toast({ title: 'Atama kaydedilemedi', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  async function downloadRoster(exam) {
+    try {
+      const blob = await downloadDrivingExamRoster(exam.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `sinav-listesi-${exam.title}.pdf`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: 'Sınav listesi indirilemedi', description: error.message, variant: 'destructive' });
+    }
+  }
 
   const students = data?.reference?.students || [];
   const instructors = data?.reference?.instructors || [];
@@ -234,7 +268,34 @@ export default function DrivingEducation() {
           </Card>
         ) : null}
         {canExamManage && <Card><CardHeader><CardTitle>Yeni sınav ve komisyon</CardTitle></CardHeader><CardContent><form className="grid gap-3 md:grid-cols-3" onSubmit={saveExam}><select className="h-10 rounded-md border bg-background px-3" value={examForm.examType} onChange={(e) => setExamForm({ ...examForm, examType: e.target.value })}><option value="TheoryEExam">E-sınav</option><option value="DrivingPractice">Direksiyon sınavı</option></select><Input required placeholder="Sınav adı" value={examForm.title} onChange={(e) => setExamForm({ ...examForm, title: e.target.value })} /><Input required placeholder="Sınav yeri" value={examForm.location} onChange={(e) => setExamForm({ ...examForm, location: e.target.value })} /><Input required type="datetime-local" value={examForm.startsAtUtc} onChange={(e) => setExamForm({ ...examForm, startsAtUtc: e.target.value })} /><Input required type="datetime-local" value={examForm.endsAtUtc} onChange={(e) => setExamForm({ ...examForm, endsAtUtc: e.target.value })} /><Input required type="number" min="1" max="100" value={examForm.capacity} onChange={(e) => setExamForm({ ...examForm, capacity: e.target.value })} /><Input required placeholder="Komisyon üyesi" value={examForm.commissionName} onChange={(e) => setExamForm({ ...examForm, commissionName: e.target.value })} /><Input required placeholder="Komisyon görevi" value={examForm.commissionRole} onChange={(e) => setExamForm({ ...examForm, commissionRole: e.target.value })} /><Input placeholder="Kurum" value={examForm.commissionOrganization} onChange={(e) => setExamForm({ ...examForm, commissionOrganization: e.target.value })} /><Button disabled={busy} className="md:col-span-3"><GraduationCap className="mr-2 h-4 w-4" />Sınavı Oluştur</Button></form></CardContent></Card>}
-        {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => <div key={candidate.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border p-3"><div><b>{candidate.studentName}</b><p className="text-xs text-muted-foreground">{candidate.attemptNo}. deneme {candidate.score != null ? `• ${candidate.score} puan` : ''} {candidate.failureReason ? `• ${candidate.failureReason}` : ''}</p></div><div className="flex gap-2"><Badge className={statusTone(candidate.status)}>{candidate.status}</Badge>{canResult && candidate.status === 'Planned' && <><Button size="sm" className="bg-emerald-600" onClick={() => setResultForm({ candidate, passed: true, score: '70', failureReason: '' })}><CheckCircle2 className="mr-1 h-3 w-3" />Geçti</Button><Button size="sm" variant="destructive" onClick={() => setResultForm({ candidate, passed: false, score: '', failureReason: '' })}>Kaldı</Button></>}{canExamManage && candidate.status === 'Failed' && <Button size="sm" variant="outline" onClick={() => retry(candidate, exam.examType)}><RotateCcw className="mr-1 h-3 w-3" />Tekrar</Button>}</div></div>)}</div></CardContent></Card>)}
+        {data.exams.map((exam) => <Card key={exam.id}><CardHeader><CardTitle className="flex flex-wrap items-center justify-between gap-2"><span>{exam.title}</span><span className="flex items-center gap-2"><Badge>{examLabel(exam.examType)} • {exam.candidateCount}/{exam.capacity}</Badge><Button size="sm" variant="outline" onClick={() => downloadRoster(exam)}><Download className="mr-1 h-3 w-3" />Sınav Listesi (PDF)</Button></span></CardTitle></CardHeader><CardContent><p className="text-sm text-muted-foreground">{dateTime(exam.startsAtUtc)} • {exam.location}</p><p className="mt-1 text-xs">Komisyon: {exam.commission.map((x) => `${x.fullName} (${x.role})`).join(', ')}</p>{canExamManage && <div className="mt-4 grid gap-3 md:grid-cols-[1fr_180px_auto]"><Checks items={students} selected={examStudents[exam.id] || []} onChange={(value) => setExamStudents((x) => ({ ...x, [exam.id]: value }))} /><Input type="number" min="0" placeholder="Sınav ücreti" value={examFees[exam.id] || ''} onChange={(e) => setExamFees((x) => ({ ...x, [exam.id]: e.target.value }))} /><Button disabled={busy || !(examStudents[exam.id]?.length)} onClick={() => run(() => addDrivingExamCandidates(exam.id, { studentProfileIds: examStudents[exam.id], feeAmount: Number(examFees[exam.id] || 0) }), 'Adaylar sınava eklendi')}>Adayları Ekle</Button></div>}<div className="mt-4 space-y-2">{(candidatesByExam[exam.id] || []).map((candidate) => (
+          <div key={candidate.id} className="space-y-2 rounded-xl border p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <b>{candidate.studentName}</b>
+                <p className="text-xs text-muted-foreground">
+                  {candidate.attemptNo}/{candidate.maxAttempts || 4}. hak
+                  {candidate.attemptNo >= (candidate.maxAttempts || 4) && candidate.status !== 'Passed' && <span className="ml-1 font-bold text-red-600">— SON HAK</span>}
+                  {candidate.score != null ? ` • ${candidate.score} puan` : ''} {candidate.failureReason ? `• ${candidate.failureReason}` : ''}
+                </p>
+              </div>
+              <div className="flex gap-2"><Badge className={statusTone(candidate.status)}>{candidate.status}</Badge>{canResult && candidate.status === 'Planned' && <><Button size="sm" className="bg-emerald-600" onClick={() => setResultForm({ candidate, passed: true, score: '70', failureReason: '' })}><CheckCircle2 className="mr-1 h-3 w-3" />Geçti</Button><Button size="sm" variant="destructive" onClick={() => setResultForm({ candidate, passed: false, score: '', failureReason: '' })}>Kaldı</Button></>}{canExamManage && candidate.status === 'Failed' && <Button size="sm" variant="outline" onClick={() => retry(candidate, exam.examType)}><RotateCcw className="mr-1 h-3 w-3" />Tekrar</Button>}</div>
+            </div>
+            {/* Direksiyon sınavında aday-araç-usta öğretici eşleşmesi (sınav günü listesi için). */}
+            {exam.examType === 'DrivingPractice' && canExamManage && candidate.status === 'Planned' && (
+              <div className="grid gap-2 sm:grid-cols-2">
+                <select className="h-9 rounded-md border bg-background px-2 text-sm" value={candidate.assignedVehicleId || ''} onChange={(e) => assignCandidate(candidate, { vehicleId: e.target.value })}>
+                  <option value="">Sınav aracı seçin</option>
+                  {examResources.vehicles.filter((x) => x.isActive).map((x) => <option key={x.id} value={x.id}>{x.plateNumber}</option>)}
+                </select>
+                <select className="h-9 rounded-md border bg-background px-2 text-sm" value={candidate.assignedInstructorProfileId || ''} onChange={(e) => assignCandidate(candidate, { instructorProfileId: e.target.value })}>
+                  <option value="">Usta öğretici seçin</option>
+                  {examResources.instructors.filter((x) => x.isActive).map((x) => <option key={x.id} value={x.id}>{x.fullName}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+        ))}</div></CardContent></Card>)}
       </TabsContent>
     </Tabs>
   </DrivingPage>;

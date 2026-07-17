@@ -108,6 +108,14 @@ export const downloadDrivingMebbisRoster = (groupId) =>
   api.get(`/api/driving-school/student-groups/${groupId}/mebbis-roster`, { params: { format: 'csv' }, responseType: 'blob' });
 export const fetchDrivingTheoryCurriculum = () => api.get('/api/driving-school/theory/curriculum');
 export const fetchDrivingClassCompliance = (classId) => api.get(`/api/driving-school/theory/classes/${classId}/compliance`);
+// Sınav günü eşleşmesi + listesi ve resmî kursiyer formları (PDF)
+export const assignDrivingExamCandidate = (candidateId, payload) => api.put(`/api/driving-school/exams/candidates/${candidateId}/assignment`, payload);
+export const downloadDrivingExamRoster = (sessionId) =>
+  api.get(`/api/driving-school/exams/sessions/${sessionId}/roster`, { params: { format: 'pdf' }, responseType: 'blob' });
+export const downloadDrivingStudentForm = (profileId, formKey) =>
+  api.get(`/api/driving-school/students/${profileId}/forms/${formKey}`, { responseType: 'blob' });
+export const updateDrivingWorkingPermit = (instructorProfileId, payload) =>
+  api.put(`/api/driving-school/instructors/${instructorProfileId}/working-permit`, payload);
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
 export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
 export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });
