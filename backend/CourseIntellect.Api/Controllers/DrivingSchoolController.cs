@@ -56,7 +56,8 @@ public sealed class DrivingSchoolController(
     private static readonly HashSet<string> LicenseClasses = new(StringComparer.OrdinalIgnoreCase)
         { "A", "A1", "A2", "B", "BE", "C", "C1", "CE", "C1E", "D", "D1", "DE", "D1E", "F", "M" };
     private static readonly HashSet<string> VehicleDocumentTypes = new(StringComparer.OrdinalIgnoreCase)
-        { "Registration", "Inspection", "TrafficInsurance", "Casco", "Emission", "Tax", "CourseUsage", "Other" };
+        // DualControl: çift kumanda (fren/debriyaj) montaj/ekspertiz belgesi — MTSK'ya özgü.
+        { "Registration", "Inspection", "TrafficInsurance", "Casco", "Emission", "Tax", "CourseUsage", "DualControl", "Other" };
     private static readonly HashSet<string> VehicleServiceTypes = new(StringComparer.OrdinalIgnoreCase) { "Maintenance", "Fault", "Damage" };
     private static readonly HashSet<string> ServicePriorities = new(StringComparer.OrdinalIgnoreCase) { "Low", "Normal", "High", "Critical" };
 
@@ -256,9 +257,15 @@ public sealed class DrivingSchoolController(
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var rows = await dbContext.DrivingInstructorProfiles.AsNoTracking()
-            .Join(dbContext.Staff.AsNoTracking(), p => p.StaffId, s => s.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.IsActive })
+            .Join(dbContext.Staff.AsNoTracking(), p => p.StaffId, s => s.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, p.IsActive })
             .OrderBy(x => x.FullName).ToListAsync(ct);
-        return Ok(rows);
+        var now = DateTime.UtcNow;
+        return Ok(rows.Select(x => new
+        {
+            x.Id, x.StaffId, x.FullName, x.LicenseClasses, x.CanTeachManual, x.CanTeachAutomatic,
+            x.WorkingPermitNo, x.WorkingPermitExpiresAtUtc, x.IsActive,
+            workingPermitExpired = x.WorkingPermitExpiresAtUtc is DateTime expires && expires <= now,
+        }));
     }
 
     [HttpPost("instructors")]
@@ -271,13 +278,43 @@ public sealed class DrivingSchoolController(
         if (classes.Length == 0 || classes.Any(x => !LicenseClasses.Contains(x))) return BadRequest(new { message = "Ehliyet sınıfı geçersiz." });
         var staff = await dbContext.Staff.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.StaffId, ct);
         if (staff is null) return BadRequest(new { message = "Personel bulunamadı." });
-        var entity = new CourseIntellect.Domain.Entities.DrivingInstructorProfile { StaffId = request.StaffId, LicenseClasses = string.Join(',', classes), CanTeachManual = request.CanTeachManual, CanTeachAutomatic = request.CanTeachAutomatic };
+        if ((request.WorkingPermitNo?.Length ?? 0) > 60) return BadRequest(new { message = "Çalışma izni numarası en fazla 60 karakter olabilir." });
+        var entity = new CourseIntellect.Domain.Entities.DrivingInstructorProfile
+        {
+            StaffId = request.StaffId,
+            LicenseClasses = string.Join(',', classes),
+            CanTeachManual = request.CanTeachManual,
+            CanTeachAutomatic = request.CanTeachAutomatic,
+            WorkingPermitNo = request.WorkingPermitNo?.Trim() ?? string.Empty,
+            WorkingPermitExpiresAtUtc = request.WorkingPermitExpiresAtUtc,
+        };
         dbContext.DrivingInstructorProfiles.Add(entity);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Direksiyon öğretmeni tanımlandı", AuditCategory, "DrivingInstructorProfile", entity.Id.ToString(),
-            $"{staff.FullName} — sınıflar: {entity.LicenseClasses}, manuel: {entity.CanTeachManual}, otomatik: {entity.CanTeachAutomatic}.",
-            null, new { entity.StaffId, entity.LicenseClasses, entity.CanTeachManual, entity.CanTeachAutomatic }, ct);
+            $"{staff.FullName} — sınıflar: {entity.LicenseClasses}, manuel: {entity.CanTeachManual}, otomatik: {entity.CanTeachAutomatic}"
+                + (entity.WorkingPermitExpiresAtUtc is { } permit ? $", çalışma izni: {permit:dd.MM.yyyy}." : "."),
+            null, new { entity.StaffId, entity.LicenseClasses, entity.CanTeachManual, entity.CanTeachAutomatic, entity.WorkingPermitNo, entity.WorkingPermitExpiresAtUtc }, ct);
         return Ok(entity);
+    }
+
+    /// <summary>Usta öğreticinin MEB çalışma izni bilgisini günceller (yenilenen izin işlenir).</summary>
+    [HttpPut("instructors/{id:guid}/working-permit")]
+    [RequireDrivingPermission(DrivingPermissions.InstructorUpdate)]
+    public async Task<IActionResult> UpdateWorkingPermit(Guid id, [FromBody] UpdateWorkingPermitRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var profile = await dbContext.DrivingInstructorProfiles.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (profile is null) return NotFound(new { message = "Öğretmen bulunamadı." });
+        if ((request.WorkingPermitNo?.Length ?? 0) > 60) return BadRequest(new { message = "Çalışma izni numarası en fazla 60 karakter olabilir." });
+
+        var before = new { profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc };
+        profile.WorkingPermitNo = request.WorkingPermitNo?.Trim() ?? string.Empty;
+        profile.WorkingPermitExpiresAtUtc = request.WorkingPermitExpiresAtUtc;
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Çalışma izni güncellendi", AuditCategory, "DrivingInstructorProfile", profile.Id.ToString(),
+            $"İzin no: {(string.IsNullOrWhiteSpace(profile.WorkingPermitNo) ? "—" : profile.WorkingPermitNo)}, bitiş: {profile.WorkingPermitExpiresAtUtc:dd.MM.yyyy}.",
+            before, new { profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc }, ct);
+        return Ok(new { profile.Id, profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc });
     }
 
     [HttpGet("students")]
@@ -1407,7 +1444,8 @@ public sealed class DrivingSchoolController(
 
 public sealed record SaveDrivingPackageRequest(string Name, string LicenseClass, TransmissionType TransmissionType, int DrivingLessonMinutes, int TheoryLessonMinutes, decimal Price);
 public sealed record SaveDrivingVehicleRequest(string PlateNumber, string Brand, string Model, int ModelYear, string LicenseClass, TransmissionType TransmissionType, int CurrentKilometer, DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc);
-public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic);
+public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic, string? WorkingPermitNo = null, DateTime? WorkingPermitExpiresAtUtc = null);
+public sealed record UpdateWorkingPermitRequest(string? WorkingPermitNo, DateTime? WorkingPermitExpiresAtUtc);
 public sealed record SaveStudentDrivingProfileRequest(Guid StudentId, Guid PackageId, string LicenseClass, TransmissionType TransmissionType);
 public sealed record SaveDrivingStudentGroupRequest(
     string Name,

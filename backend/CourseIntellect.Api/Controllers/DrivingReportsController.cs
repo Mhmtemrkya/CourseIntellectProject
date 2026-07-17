@@ -34,7 +34,7 @@ public sealed class DrivingReportsController(
     IDrivingReportPdfService pdf,
     IFileStorageService files) : ControllerBase
 {
-    private static readonly string[] ReportKeys = ["instructors", "vehicles", "cancellations", "students"];
+    private static readonly string[] ReportKeys = ["instructors", "vehicles", "cancellations", "students", "audit-package"];
 
     [HttpGet("{reportKey}")]
     [RequireDrivingPermission(DrivingPermissions.ReportView)]
@@ -96,8 +96,128 @@ public sealed class DrivingReportsController(
             "instructors" => InstructorsAsync(start, end, finance, withBranding, ct),
             "vehicles" => VehiclesAsync(start, end, finance, withBranding, ct),
             "cancellations" => CancellationsAsync(start, end, finance, withBranding, ct),
+            "audit-package" => AuditPackageAsync(start, end, withBranding, ct),
             _ => StudentsAsync(start, end, finance, withBranding, ct),
         };
+
+    /// <summary>
+    /// Denetim paketi: MEB denetçisinin sorduğu her şey tek raporda — eksik/geçersiz
+    /// kursiyer evrakları, süresi geçmiş/yaklaşan araç belgeleri, araç yaş sınırı ve
+    /// personel çalışma izinleri. Satır yoksa kurum "denetime hazır" demektir.
+    /// Tarih aralığından bağımsız ANLIK durum raporudur.
+    /// </summary>
+    private async Task<DrivingReportDocument> AuditPackageAsync(DateTime start, DateTime end, bool branding, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var soon = now.AddDays(30);
+        var rows = new List<IReadOnlyList<string>>();
+        static string LocalDate(DateTime? value) => value is { } v ? v.AddHours(3).ToString("dd.MM.yyyy") : "—";
+
+        // ─── 1) Kursiyer evrakları (açık dosyalar) ────────────────────────────
+        var openStatuses = DrivingStudentStatuses.Open.ToArray();
+        var students = await db.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => openStatuses.Contains(x.Status))
+            .Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id,
+                (p, s) => new { p.Id, p.StudentNumber, s.FullName, s.BirthDate })
+            .ToListAsync(ct);
+        var studentIds = students.Select(x => x.Id).ToList();
+        var documents = await db.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => studentIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
+            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status, x.ExpiresAtUtc })
+            .ToListAsync(ct);
+        var documentsByStudent = documents.ToLookup(x => x.StudentDrivingProfileId);
+
+        var missingDocumentStudents = 0;
+        foreach (var student in students.OrderBy(x => x.StudentNumber))
+        {
+            var required = DrivingStudentRules.RequiredDocumentsFor(student.BirthDate, now);
+            var satisfied = documentsByStudent[student.Id]
+                .Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now))
+                .Select(x => x.DocumentType)
+                .ToHashSet();
+            var missing = DrivingStudentRules.MissingDocuments(required, satisfied);
+            if (missing.Count == 0) continue;
+            missingDocumentStudents++;
+            rows.Add(["Kursiyer evrakları", $"#{student.StudentNumber} {student.FullName}",
+                string.Join(", ", missing.Select(DrivingStudentRules.DocumentLabel)), "EKSİK"]);
+        }
+
+        // ─── 2) Araç belgeleri, muayene/sigorta ve yaş sınırı ─────────────────
+        var settings = await db.DrivingSchoolSettings.AsNoTracking().SingleOrDefaultAsync(ct) ?? new DrivingSchoolSettings();
+        var vehicles = await db.DrivingVehicles.AsNoTracking().Where(x => x.IsActive).ToListAsync(ct);
+        var vehicleIssues = 0;
+        foreach (var vehicle in vehicles.OrderBy(x => x.PlateNumber))
+        {
+            void VehicleIssue(string subject, DateTime? expires)
+            {
+                if (expires is not { } value || value > soon) return;
+                vehicleIssues++;
+                rows.Add(["Araç belgeleri", vehicle.PlateNumber, subject + " — " + LocalDate(value),
+                    value <= now ? "SÜRESİ GEÇTİ" : "30 GÜN İÇİNDE DOLUYOR"]);
+            }
+            VehicleIssue("Muayene", vehicle.InspectionExpiresAtUtc);
+            VehicleIssue("Sigorta", vehicle.InsuranceExpiresAtUtc);
+
+            if (DrivingAvailability.ExceedsVehicleAge(vehicle.ModelYear, settings.MaxVehicleAgeYears, now))
+            {
+                vehicleIssues++;
+                rows.Add(["Araç belgeleri", vehicle.PlateNumber,
+                    $"Araç yaşı ({vehicle.ModelYear} model) kurumun {settings.MaxVehicleAgeYears} yıl sınırını aşıyor", "YAŞ SINIRI"]);
+            }
+        }
+
+        var vehicleDocuments = await db.DrivingVehicleDocuments.AsNoTracking()
+            .Where(x => x.ExpiresAtUtc <= soon)
+            .Join(db.DrivingVehicles.AsNoTracking(), d => d.VehicleId, v => v.Id, (d, v) => new { d.DocumentType, d.ExpiresAtUtc, v.PlateNumber, v.IsActive })
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.ExpiresAtUtc)
+            .ToListAsync(ct);
+        foreach (var document in vehicleDocuments)
+        {
+            vehicleIssues++;
+            rows.Add(["Araç belgeleri", document.PlateNumber, $"{document.DocumentType} — {LocalDate(document.ExpiresAtUtc)}",
+                document.ExpiresAtUtc <= now ? "SÜRESİ GEÇTİ" : "30 GÜN İÇİNDE DOLUYOR"]);
+        }
+
+        // ─── 3) Personel çalışma izinleri ─────────────────────────────────────
+        var instructors = await db.DrivingInstructorProfiles.AsNoTracking()
+            .Where(x => x.IsActive)
+            .Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (profile, staff) => new { staff.FullName, profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc })
+            .ToListAsync(ct);
+        var permitIssues = 0;
+        foreach (var instructor in instructors.OrderBy(x => x.FullName, StringComparer.CurrentCulture))
+        {
+            if (instructor.WorkingPermitExpiresAtUtc is not { } expires)
+            {
+                permitIssues++;
+                rows.Add(["Personel çalışma izni", instructor.FullName, "Çalışma izni bitiş tarihi sisteme girilmemiş", "EKSİK KAYIT"]);
+            }
+            else if (expires <= soon)
+            {
+                permitIssues++;
+                rows.Add(["Personel çalışma izni", instructor.FullName,
+                    $"İzin no {(string.IsNullOrWhiteSpace(instructor.WorkingPermitNo) ? "—" : instructor.WorkingPermitNo)} — {LocalDate(expires)}",
+                    expires <= now ? "SÜRESİ GEÇTİ" : "30 GÜN İÇİNDE DOLUYOR"]);
+            }
+        }
+
+        return await DocumentAsync(
+            "Denetim Paketi",
+            "MEB denetimine hazırlık: eksik kursiyer evrakları, araç belge/muayene/yaş durumu ve personel çalışma izinleri (anlık durum).",
+            start, end, branding,
+            [
+                new DrivingReportColumn("Bölüm"), new DrivingReportColumn("Konu"),
+                new DrivingReportColumn("Detay"), new DrivingReportColumn("Durum"),
+            ],
+            rows,
+            [
+                ("Denetime hazır", rows.Count == 0 ? "EVET" : "HAYIR"),
+                ("Eksik evraklı kursiyer", missingDocumentStudents.ToString()),
+                ("Araç belge/yaş sorunu", vehicleIssues.ToString()),
+                ("Çalışma izni sorunu", permitIssues.ToString()),
+            ],
+            ct);
+    }
 
     private async Task<DrivingReportDocument> InstructorsAsync(DateTime start, DateTime end, bool finance, bool branding, CancellationToken ct)
     {

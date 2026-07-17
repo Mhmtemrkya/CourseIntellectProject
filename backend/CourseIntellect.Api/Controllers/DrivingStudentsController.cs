@@ -31,6 +31,7 @@ public sealed class DrivingStudentsController(
     IStudentFinanceService financeService,
     IDrivingLedgerService ledgerService,
     IDrivingNotifier notifier,
+    IDrivingReportPdfService pdf,
     IAuditLogService auditLogService) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
@@ -559,9 +560,28 @@ public sealed class DrivingStudentsController(
 
         var mebbisMissing = await BuildMebbisMissingAsync(profile, row.student.TcNo, row.student.BirthDate, ct);
 
+        // Sınav hak sayacı: her türde en fazla 4 hak; iptal edilen deneme hak yakmaz.
+        var attemptTypes = await dbContext.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId && x.Status != DrivingExamCandidateStatus.Cancelled)
+            .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id, (_, s) => s.ExamType)
+            .ToListAsync(ct);
+        object ExamRight(DrivingExamType type)
+        {
+            var used = attemptTypes.Count(x => x == type);
+            return new
+            {
+                used,
+                max = DrivingExamRules.MaxAttempts,
+                remaining = DrivingExamRules.RemainingAttempts(used),
+                outOfAttempts = DrivingExamRules.IsOutOfAttempts(used),
+            };
+        }
+        var examRights = new { theory = ExamRight(DrivingExamType.TheoryEExam), practice = ExamRight(DrivingExamType.DrivingPractice) };
+
         return Ok(new
         {
             mebbisMissing,
+            examRights,
             overview = new
             {
                 profile.Id,
@@ -719,6 +739,191 @@ public sealed class DrivingStudentsController(
             ct);
 
         return Ok(new { profile.TheoryExamFee, profile.DrivingExamFee, profile.TheoryExamFeePaid, profile.DrivingExamFeePaid, profile.DrivingExamDate });
+    }
+
+    /// <summary>
+    /// Resmî kursiyer formları (PDF): <c>cover</c> = aday dosyası kapak formu,
+    /// <c>lesson-card</c> = imza sütunlu direksiyon eğitim kartı,
+    /// <c>attendance</c> = teorik devam çizelgesi. Denetimde dosyaya konur.
+    /// </summary>
+    [HttpGet("students/{profileId:guid}/forms/{formKey}")]
+    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    public async Task<IActionResult> GetStudentForm(Guid profileId, string formKey, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var row = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId)
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (profile, student) => new { profile, student })
+            .SingleOrDefaultAsync(ct);
+        if (row is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+
+        var institutionName = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == dbContext.CurrentTenantId).Select(x => x.Name).FirstOrDefaultAsync(ct) ?? "Sürücü Kursu";
+
+        var document = formKey.ToLowerInvariant() switch
+        {
+            "cover" => await BuildCoverFormAsync(institutionName, row.profile, row.student.FullName, row.student.TcNo, row.student.BirthDate, ct),
+            "lesson-card" => await BuildLessonCardAsync(institutionName, row.profile, row.student.FullName, ct),
+            "attendance" => await BuildAttendanceSheetAsync(institutionName, row.profile, row.student.FullName, ct),
+            _ => null,
+        };
+        if (document is null) return NotFound(new { message = "Tanımsız form. Geçerli: cover, lesson-card, attendance." });
+
+        var safeName = $"{formKey}-{row.profile.StudentNumber}";
+        return File(pdf.Generate(document), "application/pdf", $"{safeName}.pdf");
+    }
+
+    /// <summary>Aday dosyası kapak formu: kimlik bilgileri + evrak kontrol listesi.</summary>
+    private async Task<DrivingReportDocument> BuildCoverFormAsync(
+        string institutionName, StudentDrivingProfile profile, string fullName, string? tcNo, string? birthDate, CancellationToken ct)
+    {
+        var now = DateTime.UtcNow;
+        var required = RequiredDocumentsFor(birthDate);
+        var stored = await dbContext.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id && x.IsCurrent)
+            .ToListAsync(ct);
+
+        var rows = required
+            .Concat(stored.Select(x => x.DocumentType).Where(x => !required.Contains(x)))
+            .Distinct()
+            .Select(type =>
+            {
+                var document = stored.FirstOrDefault(x => x.DocumentType == type);
+                var status = document is null
+                    ? "EKSİK"
+                    : DrivingStudentRules.EffectiveStatus(document.Status, document.ExpiresAtUtc, now) switch
+                    {
+                        StudentDocumentStatus.Approved => "ONAYLI",
+                        StudentDocumentStatus.PendingApproval => "ONAY BEKLİYOR",
+                        StudentDocumentStatus.Expired => "SÜRESİ GEÇTİ",
+                        StudentDocumentStatus.Rejected => "REDDEDİLDİ",
+                        _ => "EKSİK",
+                    };
+                return (IReadOnlyList<string>)
+                [
+                    DocumentLabel(type),
+                    required.Contains(type) ? "Zorunlu" : "Ek",
+                    document?.DocumentNumber ?? "—",
+                    document?.IssuedBy ?? "—",
+                    document?.IssuedAtUtc?.AddHours(3).ToString("dd.MM.yyyy") ?? "—",
+                    document?.ExpiresAtUtc?.AddHours(3).ToString("dd.MM.yyyy") ?? "—",
+                    status,
+                ];
+            })
+            .ToList();
+
+        return new DrivingReportDocument(
+            institutionName,
+            "Aday Dosyası Kapak Formu",
+            $"MTSK kursiyer dosyası — düzenlenme: {now.AddHours(3):dd.MM.yyyy}",
+            profile.RegisteredAtUtc, now,
+            [
+                new DrivingReportColumn("Belge"), new DrivingReportColumn("Nitelik"), new DrivingReportColumn("Belge No"),
+                new DrivingReportColumn("Veren"), new DrivingReportColumn("Tarih"), new DrivingReportColumn("Geçerlilik"),
+                new DrivingReportColumn("Durum"),
+            ],
+            rows,
+            [
+                ("Kursiyer No", profile.StudentNumber.ToString()),
+                ("Ad Soyad", fullName),
+                ("TC Kimlik No", string.IsNullOrWhiteSpace(profile.IdentityNumber) ? tcNo ?? "—" : profile.IdentityNumber),
+                ("Kimlik Seri No", string.IsNullOrWhiteSpace(profile.IdentitySerialNo) ? "—" : profile.IdentitySerialNo),
+                ("Baba / Anne Adı", $"{(string.IsNullOrWhiteSpace(profile.FatherName) ? "—" : profile.FatherName)} / {(string.IsNullOrWhiteSpace(profile.MotherName) ? "—" : profile.MotherName)}"),
+                ("Doğum Yeri / Tarihi", $"{(string.IsNullOrWhiteSpace(profile.BirthPlace) ? "—" : profile.BirthPlace)} / {birthDate ?? "—"}"),
+                ("Sertifika Sınıfı", profile.LicenseClass),
+                ("Kayıt Tarihi", profile.RegisteredAtUtc.AddHours(3).ToString("dd.MM.yyyy")),
+            ]);
+    }
+
+    /// <summary>Direksiyon eğitim kartı: her ders bir satır, imza sütunu boş bırakılır.</summary>
+    private async Task<DrivingReportDocument> BuildLessonCardAsync(
+        string institutionName, StudentDrivingProfile profile, string fullName, CancellationToken ct)
+    {
+        var lessons = await dbContext.DrivingLessons.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id && x.CompletedAtUtc != null)
+            .Join(dbContext.DrivingInstructorProfiles.AsNoTracking(), x => x.InstructorProfileId, x => x.Id, (lesson, instructor) => new { lesson, instructor.StaffId })
+            .Join(dbContext.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (x, staff) => new { x.lesson, InstructorName = staff.FullName })
+            .Join(dbContext.DrivingVehicles.AsNoTracking(), x => x.lesson.VehicleId, x => x.Id, (x, vehicle) => new { x.lesson, x.InstructorName, vehicle.PlateNumber })
+            .OrderBy(x => x.lesson.StartedAtUtc)
+            .ToListAsync(ct);
+
+        var rows = lessons.Select((x, index) => (IReadOnlyList<string>)
+        [
+            (index + 1).ToString(),
+            x.lesson.StartedAtUtc.AddHours(3).ToString("dd.MM.yyyy"),
+            $"{x.lesson.StartedAtUtc.AddHours(3):HH:mm}-{x.lesson.CompletedAtUtc!.Value.AddHours(3):HH:mm}",
+            x.lesson.ChargedMinutes.ToString(),
+            x.InstructorName,
+            x.PlateNumber,
+            x.lesson.EndKilometer is { } end ? $"{x.lesson.StartKilometer}-{end}" : x.lesson.StartKilometer.ToString(),
+            string.Empty, // imza sütunu — çıktıda elle imzalanır
+        ]).ToList();
+
+        return new DrivingReportDocument(
+            institutionName,
+            "Direksiyon Eğitim Kartı",
+            $"Kursiyer: {fullName} (#{profile.StudentNumber}) • Sertifika sınıfı: {profile.LicenseClass}",
+            lessons.Count > 0 ? lessons[0].lesson.StartedAtUtc : profile.RegisteredAtUtc, DateTime.UtcNow,
+            [
+                new DrivingReportColumn("Ders", Numeric: true), new DrivingReportColumn("Tarih"), new DrivingReportColumn("Saat"),
+                new DrivingReportColumn("Süre (dk)", Numeric: true), new DrivingReportColumn("Usta Öğretici"),
+                new DrivingReportColumn("Araç"), new DrivingReportColumn("Km"), new DrivingReportColumn("Kursiyer İmzası"),
+            ],
+            rows,
+            [
+                ("Tamamlanan ders", lessons.Count.ToString()),
+                ("Toplam süre", $"{lessons.Sum(x => x.lesson.ChargedMinutes)} dk / {profile.PurchasedDrivingMinutes} dk"),
+            ]);
+    }
+
+    /// <summary>Teorik devam çizelgesi: oturum başına katılım durumu + devam oranı.</summary>
+    private async Task<DrivingReportDocument> BuildAttendanceSheetAsync(
+        string institutionName, StudentDrivingProfile profile, string fullName, CancellationToken ct)
+    {
+        var records = await dbContext.DrivingTheoryAttendances.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id)
+            .Join(dbContext.DrivingTheorySessions.AsNoTracking().Where(x => x.Status != DrivingTheorySessionStatus.Cancelled),
+                a => a.TheorySessionId, s => s.Id,
+                (a, s) => new { a.Status, a.Note, s.Subject, s.Topic, s.StartsAtUtc, Minutes = (int)(s.EndsAtUtc - s.StartsAtUtc).TotalMinutes })
+            .OrderBy(x => x.StartsAtUtc)
+            .ToListAsync(ct);
+
+        static string StatusLabel(DrivingTheoryAttendanceStatus status) => status switch
+        {
+            DrivingTheoryAttendanceStatus.Present => "Katıldı",
+            DrivingTheoryAttendanceStatus.Late => "Geç kaldı",
+            DrivingTheoryAttendanceStatus.Excused => "Mazeretli",
+            _ => "Katılmadı",
+        };
+
+        var rows = records.Select(x => (IReadOnlyList<string>)
+        [
+            x.StartsAtUtc.AddHours(3).ToString("dd.MM.yyyy HH:mm"),
+            x.Subject,
+            x.Topic,
+            x.Minutes.ToString(),
+            StatusLabel(x.Status),
+            x.Note,
+        ]).ToList();
+
+        var scheduled = records.Sum(x => x.Minutes);
+        var attended = records.Where(x => x.Status is DrivingTheoryAttendanceStatus.Present or DrivingTheoryAttendanceStatus.Late).Sum(x => x.Minutes);
+
+        return new DrivingReportDocument(
+            institutionName,
+            "Teorik Eğitim Devam Çizelgesi",
+            $"Kursiyer: {fullName} (#{profile.StudentNumber}) • Sertifika sınıfı: {profile.LicenseClass}",
+            records.Count > 0 ? records[0].StartsAtUtc : profile.RegisteredAtUtc, DateTime.UtcNow,
+            [
+                new DrivingReportColumn("Tarih"), new DrivingReportColumn("Konu"), new DrivingReportColumn("İşlenen"),
+                new DrivingReportColumn("Süre (dk)", Numeric: true), new DrivingReportColumn("Durum"), new DrivingReportColumn("Not"),
+            ],
+            rows,
+            [
+                ("Planlanan", $"{scheduled} dk"),
+                ("Katılınan", $"{attended} dk"),
+                ("Devam oranı", scheduled == 0 ? "—" : $"%{Math.Round(attended * 100m / scheduled, 1)}"),
+            ]);
     }
 
     // ─── Yardımcılar ──────────────────────────────────────────────────────────

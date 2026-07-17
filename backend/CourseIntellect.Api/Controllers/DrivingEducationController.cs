@@ -20,6 +20,8 @@ public sealed class DrivingEducationController(
     CourseIntellectDbContext db,
     IDrivingPermissionService permissions,
     IDrivingNotifier notifier,
+    IDrivingLedgerService ledgerService,
+    IDrivingReportPdfService pdf,
     IAuditLogService audit) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
@@ -83,8 +85,10 @@ public sealed class DrivingEducationController(
             .Join(db.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (x, student) => new
             {
                 x.candidate.Id, x.candidate.ExamSessionId, x.candidate.StudentDrivingProfileId, studentName = student.FullName,
-                x.candidate.AttemptNo, status = x.candidate.Status.ToString(), x.candidate.Score, x.candidate.FailureReason,
+                x.candidate.AttemptNo, maxAttempts = DrivingExamRules.MaxAttempts,
+                status = x.candidate.Status.ToString(), x.candidate.Score, x.candidate.FailureReason,
                 x.candidate.ResultNote, x.candidate.ResultEnteredAtUtc, x.candidate.DrivingChargeId,
+                x.candidate.AssignedVehicleId, x.candidate.AssignedInstructorProfileId,
             }).OrderBy(x => x.studentName).ToListAsync(ct);
 
         var canManage = await permissions.HasAsync(User, DrivingPermissions.TheoryManage, ct)
@@ -353,6 +357,14 @@ public sealed class DrivingEducationController(
                     .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == DrivingExamType.TheoryEExam), x => x.ExamSessionId, x => x.Id, (_, _) => true).AnyAsync(ct);
                 if (!theoryPassed) return BadRequest(new { message = "Direksiyon sınavı için öğrencinin e-sınavı geçmiş olması gerekir." });
             }
+
+            // Mevzuat: her sınav türünde en fazla 4 hak. İptal edilen deneme hak yakmaz.
+            var usedAttempts = await UsedAttemptsAsync(student.Id, exam.ExamType, ct);
+            if (DrivingExamRules.IsOutOfAttempts(usedAttempts))
+            {
+                var studentName = await db.Students.AsNoTracking().Where(x => x.Id == student.StudentId).Select(x => x.FullName).SingleAsync(ct);
+                return Conflict(new { message = $"{studentName}: {DrivingExamRules.OutOfAttemptsMessage(exam.ExamType)}" });
+            }
         }
         await using var tx = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         foreach (var student in students)
@@ -389,9 +401,100 @@ public sealed class DrivingEducationController(
             ct);
         if (!hasPendingCandidate) exam.Status = DrivingExamSessionStatus.Completed;
         await db.SaveChangesAsync(ct);
+
+        // ─── Hak takibi + zorunlu ek ders ─────────────────────────────────────
+        var usedAttempts = await UsedAttemptsAsync(student.Id, exam.ExamType, ct);
+        var outOfAttempts = !request.Passed && DrivingExamRules.IsOutOfAttempts(usedAttempts);
+        Guid? extraLessonChargeId = null;
+
+        if (!request.Passed && outOfAttempts)
+        {
+            // Dönem düştü: personel görsün, dosya yeniden kayıt ister.
+            await notifier.NotifyManagersAsync(
+                "Sınav hakkı doldu — dönem düştü",
+                $"{await StudentNameAsync(student.StudentId, ct)}: {DrivingExamRules.OutOfAttemptsMessage(exam.ExamType)}",
+                DrivingNotificationCategories.Exam,
+                dedupeKey: $"exam-out-of-attempts:{candidate.Id}",
+                relatedEntityType: nameof(DrivingExamCandidate), relatedEntityId: candidate.Id.ToString(),
+                cancellationToken: ct);
+        }
+        else if (!request.Passed && exam.ExamType == DrivingExamType.DrivingPractice)
+        {
+            // Mevzuat: başarısız direksiyon sınavı sonrası zorunlu ek direksiyon eğitimi.
+            // Kurum ayarına göre otomatik ücret kalemi + ders hakkı açılır.
+            var settings = await db.DrivingSchoolSettings.AsNoTracking().SingleOrDefaultAsync(ct) ?? new DrivingSchoolSettings();
+            if (settings.FailedPracticeExtraLessonMinutes > 0)
+            {
+                extraLessonChargeId = await CreateMandatoryExtraLessonAsync(student, settings, exam.Title, ct);
+            }
+        }
+
         await notifier.NotifyStudentAsync(student.Id, request.Passed ? "Sınavı geçtiniz" : "Sınav sonucu: başarısız", request.Passed ? $"{exam.Title} sınavını başarıyla tamamladınız." : $"{exam.Title}: {candidate.FailureReason}", DrivingNotificationCategories.Exam, dedupeKey: $"exam-result:{candidate.Id}", relatedEntityType: nameof(DrivingExamCandidate), relatedEntityId: candidate.Id.ToString(), cancellationToken: ct);
         await audit.LogChangeAsync("Sınav sonucu girildi", AuditCategory, nameof(DrivingExamCandidate), candidate.Id.ToString(), $"{exam.Title}: {candidate.Status}, puan {candidate.Score}", null, candidate, ct);
-        return Ok(new { status = candidate.Status.ToString(), studentStatus = student.Status.ToString() });
+        return Ok(new
+        {
+            status = candidate.Status.ToString(),
+            studentStatus = student.Status.ToString(),
+            usedAttempts,
+            remainingAttempts = DrivingExamRules.RemainingAttempts(usedAttempts),
+            outOfAttempts,
+            outOfAttemptsMessage = outOfAttempts ? DrivingExamRules.OutOfAttemptsMessage(exam.ExamType) : null,
+            extraLessonChargeId,
+        });
+    }
+
+    /// <summary>Adayın bu sınav türünde tükettiği hak sayısı (iptal edilen deneme hak yakmaz).</summary>
+    private async Task<int> UsedAttemptsAsync(Guid profileId, DrivingExamType examType, CancellationToken ct)
+        => await db.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId && x.Status != DrivingExamCandidateStatus.Cancelled)
+            .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == examType), x => x.ExamSessionId, x => x.Id, (candidate, _) => candidate)
+            .CountAsync(ct);
+
+    private async Task<string> StudentNameAsync(Guid studentId, CancellationToken ct)
+        => await db.Students.AsNoTracking().Where(x => x.Id == studentId).Select(x => x.FullName).SingleOrDefaultAsync(ct) ?? "Kursiyer";
+
+    /// <summary>
+    /// Başarısız direksiyon sınavı sonrası zorunlu ek ders: ücret kalemi (varsa),
+    /// taksit ve ders hakkı dakikası tek yerden açılır. Ücret 0 ise yalnızca
+    /// dakika eklenir — borç yazılmaz.
+    /// </summary>
+    private async Task<Guid?> CreateMandatoryExtraLessonAsync(StudentDrivingProfile student, DrivingSchoolSettings settings, string examTitle, CancellationToken ct)
+    {
+        var minutes = settings.FailedPracticeExtraLessonMinutes;
+        var fee = settings.FailedPracticeExtraLessonFee;
+        var description = $"Zorunlu ek direksiyon eğitimi — {examTitle} başarısız ({minutes} dk)";
+
+        Guid? chargeId = null;
+        if (fee > 0 && student.EnrollmentContractId is Guid contractId)
+        {
+            var contract = await db.EnrollmentContracts.SingleAsync(x => x.Id == contractId, ct);
+            var seq = await db.FinanceInstallments.Where(x => x.EnrollmentContractId == contractId).Select(x => (int?)x.SeqNo).MaxAsync(ct) ?? 0;
+            var installment = new FinanceInstallment { EnrollmentContractId = contractId, StudentUserId = contract.StudentUserId, StudentName = contract.StudentName, SeqNo = seq + 1, Label = "Zorunlu ek ders", DueDateUtc = DateTime.UtcNow.Date, Amount = fee, Status = "Pending" };
+            var charge = new DrivingCharge { StudentDrivingProfileId = student.Id, ChargeType = DrivingChargeType.ExtraLesson, Description = description, GrossAmount = fee, NetAmount = fee, Minutes = minutes, FinanceInstallmentId = installment.Id, EnrollmentContractId = contractId, CreatedByUserId = CurrentUserId() };
+            db.FinanceInstallments.Add(installment); db.DrivingCharges.Add(charge);
+            contract.GrossAmount += fee; contract.NetAmount += fee;
+            await db.SaveChangesAsync(ct);
+            chargeId = charge.Id;
+        }
+
+        // Ders hakkı: aday ek dersi alabilsin diye dakika defterine eklenir.
+        await ledgerService.AddAsync(student.Id, DrivingLedgerEntryType.ExtraPurchasedMinutes, minutes, description,
+            reason: "Başarısız direksiyon sınavı sonrası mevzuat gereği zorunlu ek eğitim", cancellationToken: ct);
+
+        await notifier.NotifyStudentAsync(student.Id,
+            "Zorunlu ek direksiyon eğitimi",
+            fee > 0
+                ? $"Sınav başarısızlığı nedeniyle {minutes} dakikalık zorunlu ek ders tanımlandı ({fee:N2} ₺)."
+                : $"Sınav başarısızlığı nedeniyle {minutes} dakikalık zorunlu ek ders tanımlandı.",
+            DrivingNotificationCategories.Exam,
+            dedupeKey: $"mandatory-extra-lesson:{student.Id}:{DateTime.UtcNow:yyyyMMddHHmm}",
+            relatedEntityType: nameof(DrivingCharge), relatedEntityId: chargeId?.ToString() ?? student.Id.ToString(),
+            cancellationToken: ct);
+
+        await audit.LogChangeAsync("Zorunlu ek ders tanımlandı", AuditCategory, nameof(DrivingCharge), chargeId?.ToString() ?? "-",
+            description + (fee > 0 ? $" — {fee:N2} ₺ borç yazıldı." : " — ücretsiz."), null, new { minutes, fee }, ct);
+
+        return chargeId;
     }
 
     [HttpPost("exams/candidates/{id:guid}/retry")]
@@ -403,6 +506,11 @@ public sealed class DrivingEducationController(
         if (previous is null || !DrivingExamRules.CanScheduleRetry(previous.Status)) return Conflict(new { message = "Yalnızca başarısız sınav için tekrar planlanabilir." });
         if (request.FeeAmount is < 0 or > 1_000_000) return BadRequest(new { message = "Tekrar sınavı ücreti geçersiz." });
         var previousExam = await db.DrivingExamSessions.AsNoTracking().SingleAsync(x => x.Id == previous.ExamSessionId, ct);
+
+        // Mevzuat: 4 hak dolduysa tekrar planlanamaz — aday dönemi düşmüştür.
+        var usedAttempts = await UsedAttemptsAsync(previous.StudentDrivingProfileId, previousExam.ExamType, ct);
+        if (DrivingExamRules.IsOutOfAttempts(usedAttempts))
+            return Conflict(new { message = DrivingExamRules.OutOfAttemptsMessage(previousExam.ExamType) });
         var target = await db.DrivingExamSessions.SingleOrDefaultAsync(x => x.Id == request.ExamSessionId && x.ExamType == previousExam.ExamType && x.Status == DrivingExamSessionStatus.Planned, ct);
         if (target is null) return BadRequest(new { message = "Aynı türde planlanmış hedef sınav bulunamadı." });
         if (await db.DrivingExamCandidates.AnyAsync(x => x.ExamSessionId == target.Id && x.StudentDrivingProfileId == previous.StudentDrivingProfileId, ct)) return Conflict(new { message = "Öğrenci hedef sınava zaten eklenmiş." });
@@ -413,6 +521,105 @@ public sealed class DrivingEducationController(
         if (request.FeeAmount > 0) candidate.DrivingChargeId = await CreateExamChargeAsync(student, request.FeeAmount, $"{target.Title} tekrar", ct);
         db.DrivingExamCandidates.Add(candidate); await db.SaveChangesAsync(ct);
         return Ok(new { candidate.Id, candidate.AttemptNo, candidate.DrivingChargeId });
+    }
+
+    /// <summary>Sınav günü eşleşmesi: aday hangi araçla ve hangi usta öğreticiyle sınava girecek.</summary>
+    [HttpPut("exams/candidates/{id:guid}/assignment")]
+    [RequireDrivingPermission(DrivingPermissions.ExamManage)]
+    public async Task<IActionResult> AssignExamCandidate(Guid id, [FromBody] AssignExamCandidateRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var candidate = await db.DrivingExamCandidates.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (candidate is null) return NotFound(new { message = "Sınav adayı bulunamadı." });
+        if (request.VehicleId is Guid vehicleId && !await db.DrivingVehicles.AsNoTracking().AnyAsync(x => x.Id == vehicleId, ct))
+            return BadRequest(new { message = "Araç bulunamadı." });
+        if (request.InstructorProfileId is Guid instructorId && !await db.DrivingInstructorProfiles.AsNoTracking().AnyAsync(x => x.Id == instructorId, ct))
+            return BadRequest(new { message = "Usta öğretici bulunamadı." });
+
+        candidate.AssignedVehicleId = request.VehicleId;
+        candidate.AssignedInstructorProfileId = request.InstructorProfileId;
+        await db.SaveChangesAsync(ct);
+        return Ok(new { candidate.Id, candidate.AssignedVehicleId, candidate.AssignedInstructorProfileId });
+    }
+
+    /// <summary>
+    /// Sınav günü listesi: aday–araç–usta öğretici eşleşmesi. Sınav yerinde
+    /// komisyona sunulan liste — <c>?format=pdf</c> tek belge modelinden PDF üretir.
+    /// </summary>
+    [HttpGet("exams/sessions/{id:guid}/roster")]
+    [RequireDrivingPermission(DrivingPermissions.ExamView)]
+    public async Task<IActionResult> GetExamRoster(Guid id, [FromQuery] string? format, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var exam = await db.DrivingExamSessions.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (exam is null) return NotFound(new { message = "Sınav bulunamadı." });
+
+        var commission = await db.DrivingExamCommissionMembers.AsNoTracking()
+            .Where(x => x.ExamSessionId == id).Select(x => $"{x.FullName} ({x.Role})").ToListAsync(ct);
+
+        var rows = await db.DrivingExamCandidates.AsNoTracking()
+            .Where(x => x.ExamSessionId == id && x.Status != DrivingExamCandidateStatus.Cancelled)
+            .Join(db.StudentDrivingProfiles.AsNoTracking(), c => c.StudentDrivingProfileId, p => p.Id, (c, p) => new { c, p })
+            .Join(db.Students.AsNoTracking(), x => x.p.StudentId, s => s.Id, (x, s) => new
+            {
+                x.p.StudentNumber,
+                s.FullName,
+                Identity = x.p.IdentityNumber == "" ? s.TcNo : x.p.IdentityNumber,
+                x.p.LicenseClass,
+                x.c.AttemptNo,
+                x.c.AssignedVehicleId,
+                x.c.AssignedInstructorProfileId,
+            })
+            .OrderBy(x => x.StudentNumber)
+            .ToListAsync(ct);
+
+        var vehicles = await db.DrivingVehicles.AsNoTracking().ToDictionaryAsync(x => x.Id, x => x.PlateNumber, ct);
+        var instructorNames = await db.DrivingInstructorProfiles.AsNoTracking()
+            .Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (profile, staff) => new { profile.Id, staff.FullName })
+            .ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
+
+        var tableRows = rows.Select((x, index) => (IReadOnlyList<string>)
+        [
+            (index + 1).ToString(),
+            x.StudentNumber.ToString(),
+            x.FullName,
+            x.Identity ?? string.Empty,
+            x.LicenseClass,
+            $"{x.AttemptNo}/{DrivingExamRules.MaxAttempts}",
+            x.AssignedVehicleId is Guid v && vehicles.TryGetValue(v, out var plate) ? plate : "—",
+            x.AssignedInstructorProfileId is Guid i && instructorNames.TryGetValue(i, out var name) ? name : "—",
+        ]).ToList();
+
+        var institutionName = await db.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == db.CurrentTenantId).Select(x => x.Name).FirstOrDefaultAsync(ct) ?? "Sürücü Kursu";
+
+        var document = new DrivingReportDocument(
+            institutionName,
+            $"{exam.Title} — Sınav Günü Listesi",
+            $"{DrivingExamRules.ExamTypeLabel(exam.ExamType)} • {exam.StartsAtUtc.AddHours(3):dd.MM.yyyy HH:mm} • {exam.Location}",
+            exam.StartsAtUtc, exam.EndsAtUtc,
+            [
+                new DrivingReportColumn("Sıra", Numeric: true), new DrivingReportColumn("Kursiyer No", Numeric: true),
+                new DrivingReportColumn("Ad Soyad"), new DrivingReportColumn("TC Kimlik No"),
+                new DrivingReportColumn("Sınıf"), new DrivingReportColumn("Deneme"),
+                new DrivingReportColumn("Araç"), new DrivingReportColumn("Usta Öğretici"),
+            ],
+            tableRows,
+            [
+                ("Aday sayısı", rows.Count.ToString()),
+                ("Komisyon", commission.Count > 0 ? string.Join(", ", commission) : "—"),
+            ]);
+
+        if (string.Equals(format, "pdf", StringComparison.OrdinalIgnoreCase))
+            return File(pdf.Generate(document), "application/pdf", $"sinav-listesi-{exam.StartsAtUtc:yyyyMMdd}.pdf");
+
+        return Ok(new
+        {
+            exam = new { exam.Id, exam.Title, examType = exam.ExamType.ToString(), exam.StartsAtUtc, exam.Location },
+            columns = document.Columns.Select(x => new { header = x.Header, numeric = x.Numeric }),
+            rows = document.Rows,
+            summary = document.Summary.Select(x => new { label = x.Label, value = x.Value }),
+        });
     }
 
     private async Task<Guid> CreateExamChargeAsync(StudentDrivingProfile profile, decimal amount, string description, CancellationToken ct)
@@ -452,5 +659,6 @@ public sealed record SaveExamSessionRequest(string ExamType, string Title, DateT
     public DrivingExamType? ParsedType => Enum.TryParse<DrivingExamType>(ExamType, true, out var value) && Enum.IsDefined(value) ? value : null;
 }
 public sealed record AddExamCandidatesRequest(IReadOnlyList<Guid> StudentProfileIds, decimal FeeAmount);
+public sealed record AssignExamCandidateRequest(Guid? VehicleId, Guid? InstructorProfileId);
 public sealed record EnterExamResultRequest(bool Passed, decimal? Score, string? FailureReason, string? Note);
 public sealed record ScheduleExamRetryRequest(Guid ExamSessionId, decimal FeeAmount);

@@ -85,6 +85,11 @@ public sealed class DrivingExamCandidate : ITenantScopedEntity
     public Guid StudentDrivingProfileId { get; set; }
     public int AttemptNo { get; set; } = 1;
     public Guid? PreviousCandidateId { get; set; }
+
+    // Sınav günü eşleşmesi: aday hangi araçla, hangi usta öğreticiyle sınava girer.
+    // Sınav yerinde istenen "aday-araç-usta öğretici" listesi bu alanlardan üretilir.
+    public Guid? AssignedVehicleId { get; set; }
+    public Guid? AssignedInstructorProfileId { get; set; }
     public DrivingExamCandidateStatus Status { get; set; } = DrivingExamCandidateStatus.Planned;
     public decimal? Score { get; set; }
     public string FailureReason { get; set; } = string.Empty;

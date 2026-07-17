@@ -1615,6 +1615,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("driving_instructor_profiles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
             entity.Property(x => x.LicenseClasses).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.WorkingPermitNo).HasMaxLength(60);
             entity.HasIndex(x => new { x.TenantId, x.StaffId }).IsUnique();
             entity.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -1750,6 +1751,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("driving_school_settings"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
             entity.Property(x => x.FinancialHoldThreshold).HasPrecision(18, 2);
+            entity.Property(x => x.FailedPracticeExtraLessonFee).HasPrecision(18, 2);
             entity.Property(x => x.MinimumTheoryAttendancePercent).HasPrecision(5, 2);
             entity.Property(x => x.ExcusedAbsencePolicy).HasConversion<string>().HasMaxLength(40);
             entity.Property(x => x.CertificateDirectorName).HasMaxLength(150);
@@ -1876,6 +1878,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30); entity.Property(x => x.Score).HasPrecision(6, 2);
             entity.Property(x => x.FailureReason).HasMaxLength(500); entity.Property(x => x.ResultNote).HasMaxLength(1000);
             entity.HasIndex(x => new { x.ExamSessionId, x.StudentDrivingProfileId }).IsUnique(); entity.HasIndex(x => new { x.StudentDrivingProfileId, x.AttemptNo });
+            // Sınav günü eşleşmesi: araç/öğretmen silinirse atama boşa düşer, aday kaydı korunur.
+            entity.HasOne<DrivingVehicle>().WithMany().HasForeignKey(x => x.AssignedVehicleId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<DrivingInstructorProfile>().WithMany().HasForeignKey(x => x.AssignedInstructorProfileId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<DrivingExamSession>().WithMany().HasForeignKey(x => x.ExamSessionId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
             entity.HasOne<DrivingExamCandidate>().WithMany().HasForeignKey(x => x.PreviousCandidateId).OnDelete(DeleteBehavior.Restrict);

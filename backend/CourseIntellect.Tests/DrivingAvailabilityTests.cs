@@ -221,4 +221,41 @@ public sealed class DrivingAvailabilityTests
     public void AllowedHours_LessonCrossingMidnight_IsBlocked()
         => Assert.False(DrivingAvailability.IsWithinAllowedHours(
             LocalTime(2026, 7, 14, 23, 30), LocalTime(2026, 7, 15, 0, 30), 0, 24));
+
+    // ─── MEB çalışma izni ────────────────────────────────────────────────────
+
+    [Fact]
+    public void WorkingPermit_NoDateEntered_MeansNoRestriction()
+        => Assert.True(DrivingAvailability.IsWorkingPermitValid(null, LocalTime(2026, 7, 14, 10)));
+
+    [Fact]
+    public void WorkingPermit_ValidUntilAfterLesson_Passes()
+        => Assert.True(DrivingAvailability.IsWorkingPermitValid(
+            LocalTime(2026, 12, 31, 0), LocalTime(2026, 7, 14, 10)));
+
+    [Fact]
+    public void WorkingPermit_ExpiredBeforeLesson_Fails()
+        => Assert.False(DrivingAvailability.IsWorkingPermitValid(
+            LocalTime(2026, 7, 1, 0), LocalTime(2026, 7, 14, 10)));
+
+    // ─── MTSK araç yaş sınırı ────────────────────────────────────────────────
+
+    [Fact]
+    public void VehicleAge_LimitDisabled_NeverBlocks()
+        => Assert.False(DrivingAvailability.ExceedsVehicleAge(2005, 0, LocalTime(2026, 7, 14, 10)));
+
+    [Fact]
+    public void VehicleAge_UnknownModelYear_NeverBlocks()
+        => Assert.False(DrivingAvailability.ExceedsVehicleAge(0, 10, LocalTime(2026, 7, 14, 10)));
+
+    [Fact]
+    public void VehicleAge_WithinLimit_Passes()
+    {
+        // 2026'da 2016 model = 10 yaş; sınır 10 → tam sınırda, aşmıyor.
+        Assert.False(DrivingAvailability.ExceedsVehicleAge(2016, 10, LocalTime(2026, 7, 14, 10)));
+    }
+
+    [Fact]
+    public void VehicleAge_OverLimit_Blocks()
+        => Assert.True(DrivingAvailability.ExceedsVehicleAge(2015, 10, LocalTime(2026, 7, 14, 10)));
 }

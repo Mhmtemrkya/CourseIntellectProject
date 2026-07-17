@@ -53,6 +53,9 @@ public sealed class DrivingAppointmentsController(
             settings.MaxStudentDailyMinutes,
             settings.LessonEarliestHour,
             settings.LessonLatestHour,
+            settings.FailedPracticeExtraLessonMinutes,
+            settings.FailedPracticeExtraLessonFee,
+            settings.MaxVehicleAgeYears,
             settings.PreparationMinutes,
             settings.FinancialHoldEnabled,
             settings.FinancialHoldThreshold,
@@ -81,6 +84,9 @@ public sealed class DrivingAppointmentsController(
         if (request.MaxStudentDailyMinutes is < 0 or > 1440) return BadRequest(new { message = "Öğrenci günlük dakika limiti 0-1440 arasında olmalıdır (0 = sınırsız)." });
         if (request.LessonEarliestHour is < 0 or > 24 || request.LessonLatestHour is < 0 or > 24)
             return BadRequest(new { message = "Ders saat penceresi 0-24 arasında olmalıdır." });
+        if (request.FailedPracticeExtraLessonMinutes is < 0 or > 1440) return BadRequest(new { message = "Zorunlu ek ders süresi 0-1440 dakika arasında olmalıdır (0 = kapalı)." });
+        if (request.FailedPracticeExtraLessonFee is < 0 or > 1_000_000) return BadRequest(new { message = "Zorunlu ek ders ücreti geçersiz." });
+        if (request.MaxVehicleAgeYears is < 0 or > 60) return BadRequest(new { message = "Araç yaş sınırı 0-60 arasında olmalıdır (0 = kapalı)." });
         if (request.PreparationMinutes is < 0 or > 240) return BadRequest(new { message = "Hazırlık süresi 0-240 dakika arasında olmalıdır." });
         if (request.FinancialHoldThreshold < 0) return BadRequest(new { message = "Borç eşiği negatif olamaz." });
         if (request.MinimumTheoryAttendancePercent is < 0 or > 100) return BadRequest(new { message = "Asgari devam oranı 0-100 arasında olmalıdır." });
@@ -106,6 +112,9 @@ public sealed class DrivingAppointmentsController(
         settings.MaxStudentDailyMinutes = request.MaxStudentDailyMinutes;
         settings.LessonEarliestHour = request.LessonEarliestHour;
         settings.LessonLatestHour = request.LessonLatestHour;
+        settings.FailedPracticeExtraLessonMinutes = request.FailedPracticeExtraLessonMinutes;
+        settings.FailedPracticeExtraLessonFee = request.FailedPracticeExtraLessonFee;
+        settings.MaxVehicleAgeYears = request.MaxVehicleAgeYears;
         settings.PreparationMinutes = request.PreparationMinutes;
         settings.FinancialHoldEnabled = request.FinancialHoldEnabled;
         settings.FinancialHoldThreshold = request.FinancialHoldThreshold;
@@ -134,6 +143,9 @@ public sealed class DrivingAppointmentsController(
         settings.MaxStudentDailyMinutes,
         settings.LessonEarliestHour,
         settings.LessonLatestHour,
+        settings.FailedPracticeExtraLessonMinutes,
+        settings.FailedPracticeExtraLessonFee,
+        settings.MaxVehicleAgeYears,
         settings.PreparationMinutes,
         settings.FinancialHoldEnabled,
         settings.FinancialHoldThreshold,
@@ -724,6 +736,9 @@ public sealed record UpdateDrivingSettingsRequest(
     int MaxStudentDailyMinutes = 120,
     int LessonEarliestHour = 7,
     int LessonLatestHour = 19,
+    int FailedPracticeExtraLessonMinutes = 120,
+    decimal FailedPracticeExtraLessonFee = 0,
+    int MaxVehicleAgeYears = 0,
     string ExcusedAbsencePolicy = "ExcludeFromCalculation",
     string? CertificateDirectorName = null,
     string? CertificateDirectorTitle = null,

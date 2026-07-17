@@ -109,6 +109,32 @@ public sealed class DrivingAvailabilityService(CourseIntellectDbContext dbContex
                 DrivingPermissions.OverrideAppointmentRule));
         }
 
+        // MEB çalışma izni: süresi dolmuş usta öğretici ders veremez.
+        var permitExpiresAtUtc = await dbContext.DrivingInstructorProfiles.AsNoTracking()
+            .Where(x => x.Id == candidate.InstructorProfileId)
+            .Select(x => x.WorkingPermitExpiresAtUtc)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (!DrivingAvailability.IsWorkingPermitValid(permitExpiresAtUtc, candidate.StartsAtUtc))
+        {
+            violations.Add(new AvailabilityViolation(
+                DrivingAvailability.Codes.InstructorPermitExpired,
+                $"Usta öğreticinin MEB çalışma izni {permitExpiresAtUtc:dd.MM.yyyy} tarihinde dolmuş; ders tarihinde geçerli değil.",
+                DrivingPermissions.OverrideDocumentExpiry));
+        }
+
+        // MTSK araç yaş sınırı: sınırı aşan araçla eğitim verilemez.
+        var modelYear = await dbContext.DrivingVehicles.AsNoTracking()
+            .Where(x => x.Id == candidate.VehicleId)
+            .Select(x => x.ModelYear)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (DrivingAvailability.ExceedsVehicleAge(modelYear, settings.MaxVehicleAgeYears, candidate.StartsAtUtc))
+        {
+            violations.Add(new AvailabilityViolation(
+                DrivingAvailability.Codes.VehicleTooOld,
+                $"Araç ({modelYear} model) kurumun {settings.MaxVehicleAgeYears} yıllık MTSK yaş sınırını aşıyor.",
+                DrivingPermissions.OverrideVehicleCompliance));
+        }
+
         // Hazırlık payı öğretmen ve araç için ayrı ayrı aranır: aynı öğretmenin
         // arka arkaya iki dersi arasında yol/dinlenme süresi olmalı.
         var neighbours = instructorSlots.Concat(vehicleSlots).ToList();

@@ -42,6 +42,12 @@ public sealed class DrivingInstructorProfile : ITenantScopedEntity
     public string LicenseClasses { get; set; } = "B";
     public bool CanTeachManual { get; set; }
     public bool CanTeachAutomatic { get; set; }
+
+    // MEB çalışma izni: usta öğretici/eğitici izin belgesi olmadan ders veremez.
+    // Tarih girilmemişse kural uygulanmaz; süresi geçmişse randevu ihlal üretir.
+    public string WorkingPermitNo { get; set; } = string.Empty;
+    public DateTime? WorkingPermitExpiresAtUtc { get; set; }
+
     public bool IsActive { get; set; } = true;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
@@ -248,6 +254,19 @@ public sealed class DrivingSchoolSettings : ITenantScopedEntity
 
     /// <summary>Direksiyon dersinin bitmesi gereken en geç yerel saat (gece dersi yasağı).</summary>
     public int LessonLatestHour { get; set; } = 19;
+
+    /// <summary>
+    /// Başarısız direksiyon sınavı sonrası zorunlu ek direksiyon eğitimi (dakika).
+    /// Sonuç "kaldı" girildiğinde otomatik ek ders ücret kalemi + ders hakkı açılır.
+    /// 0 = otomatik ek ders kapalı.
+    /// </summary>
+    public int FailedPracticeExtraLessonMinutes { get; set; } = 120;
+
+    /// <summary>Zorunlu ek dersin ücreti (₺). 0 = ücretsiz (yalnızca dakika eklenir).</summary>
+    public decimal FailedPracticeExtraLessonFee { get; set; }
+
+    /// <summary>MTSK araç yaş sınırı (yıl). Randevuda yaşı aşan araç ihlal üretir. 0 = kapalı.</summary>
+    public int MaxVehicleAgeYears { get; set; }
 
     /// <summary>İki ders arasında bırakılması gereken hazırlık/yol payı.</summary>
     public int PreparationMinutes { get; set; } = 15;

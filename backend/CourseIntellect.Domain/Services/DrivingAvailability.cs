@@ -44,9 +44,25 @@ public static class DrivingAvailability
         public const string StudentDailyLimit = "student_daily_limit";
         public const string StudentDailyMinutes = "student_daily_minutes";
         public const string OutsideAllowedHours = "outside_allowed_hours";
+        public const string InstructorPermitExpired = "instructor_permit_expired";
+        public const string VehicleTooOld = "vehicle_too_old";
         public const string PreparationGap = "preparation_gap";
         public const string FinancialHold = "financial_hold";
     }
+
+    /// <summary>
+    /// Usta öğreticinin çalışma izin belgesi ders tarihinde geçerli mi?
+    /// Tarih hiç girilmemişse kısıt yoktur (kurum henüz işlememiştir).
+    /// </summary>
+    public static bool IsWorkingPermitValid(DateTime? permitExpiresAtUtc, DateTime lessonStartsAtUtc)
+        => permitExpiresAtUtc is not { } expires || expires > lessonStartsAtUtc;
+
+    /// <summary>
+    /// Araç, MTSK yaş sınırını aşıyor mu? Sınır 0 = kapalı; model yılı
+    /// girilmemişse (0) kural uygulanmaz. Yaş = ders yılı − model yılı.
+    /// </summary>
+    public static bool ExceedsVehicleAge(int modelYear, int maxAgeYears, DateTime lessonStartsAtUtc)
+        => maxAgeYears > 0 && modelYear > 0 && ToLocal(lessonStartsAtUtc).Year - modelYear > maxAgeYears;
 
     /// <summary>
     /// Ders, kurumun izin verdiği yerel saat penceresine sığıyor mu? MTSK mevzuatı
