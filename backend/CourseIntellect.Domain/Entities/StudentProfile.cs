@@ -19,5 +19,7 @@ public sealed class StudentProfile : IBranchScopedEntity
     public Guid? ParentUserId { get; set; }
     public string Address { get; set; } = string.Empty;
     public string Note { get; set; } = string.Empty;
+    /// <summary>Öğrenci fotoğrafı — web kameradan çekilen veya yüklenen tek görsel.</summary>
+    public string PhotoUrl { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

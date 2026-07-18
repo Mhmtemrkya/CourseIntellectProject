@@ -57,6 +57,7 @@ public sealed class AcademicQueryService(
                 student.ParentEmail,
                 student.Address,
                 student.Note,
+                student.PhotoUrl,
                 users[student.UserId].Username,
                 users[student.UserId].Status.ToString(),
                 users[student.UserId].LastLoginAtUtc,
@@ -246,6 +247,7 @@ public sealed class AcademicQueryService(
             ParentUserId = parentUser?.Id,
             Address = request.Address,
             Note = request.Note,
+            PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
             CreatedAtUtc = DateTime.UtcNow
         };
 
@@ -301,6 +303,8 @@ public sealed class AcademicQueryService(
         student.ParentEmail = request.ParentEmail;
         student.Address = request.Address;
         student.Note = request.Note;
+        // PhotoUrl null gelirse mevcut foto korunur (kısmi güncelleme); '' gelirse temizlenir.
+        if (request.PhotoUrl is not null) student.PhotoUrl = request.PhotoUrl.Trim();
 
         user.FullName = request.FullName;
         user.DepartmentOrBranch = request.ClassName;
@@ -322,6 +326,7 @@ public sealed class AcademicQueryService(
             student.ParentEmail,
             student.Address,
             student.Note,
+            student.PhotoUrl,
             user.Username,
             user.Status.ToString(),
             user.LastLoginAtUtc,

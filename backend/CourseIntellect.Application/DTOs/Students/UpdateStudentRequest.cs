@@ -12,5 +12,6 @@ public sealed record UpdateStudentRequest(
     string ParentPhone,
     string ParentEmail,
     string Address,
-    string Note
+    string Note,
+    string? PhotoUrl = null
 );

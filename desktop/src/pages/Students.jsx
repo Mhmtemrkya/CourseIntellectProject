@@ -18,7 +18,8 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import PhotoCapture from '../components/ui/photo-capture';
 import {
   Select,
   SelectContent,
@@ -81,6 +82,7 @@ function buildStudentUpdatePayload(student) {
     parentEmail: student.parentEmail || '',
     address: student.address || '',
     note: student.note || '',
+    photoUrl: student.photoUrl || '',
   };
 }
 
@@ -88,7 +90,25 @@ function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
 }
 
-function StudentDetailDrawer({ student, onToggleStatus }) {
+function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
+  const { toast } = useToast();
+  const [photoUrl, setPhotoUrl] = useState(student?.photoUrl || '');
+  const [savingPhoto, setSavingPhoto] = useState(false);
+
+  const savePhoto = async (url) => {
+    setPhotoUrl(url);
+    setSavingPhoto(true);
+    try {
+      await updateStudent(student.id, { ...buildStudentUpdatePayload(student), photoUrl: url });
+      toast({ title: url ? 'Fotoğraf kaydedildi' : 'Fotoğraf kaldırıldı' });
+      onUpdated?.();
+    } catch (error) {
+      setPhotoUrl(student.photoUrl || '');
+      toast({ title: 'Fotoğraf kaydedilemedi', description: error.message, variant: 'destructive' });
+    } finally {
+      setSavingPhoto(false);
+    }
+  };
   if (!student) return null;
   const passive = isUserPassive(student.status);
 
@@ -101,6 +121,7 @@ function StudentDetailDrawer({ student, onToggleStatus }) {
 
       <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
         <Avatar className="h-16 w-16">
+          {photoUrl && <AvatarImage src={photoUrl} alt={student.fullName} className="object-cover" />}
           <AvatarFallback className="bg-brand-primary text-white text-lg">
             {student.fullName.split(' ').map((n) => n[0]).join('')}
           </AvatarFallback>
@@ -122,6 +143,14 @@ function StudentDetailDrawer({ student, onToggleStatus }) {
           </FeatureGate>
         ) : null}
       </div>
+
+      <FeatureGate module="students" action="edit">
+        <div className="space-y-2">
+          <h4 className="font-medium">Öğrenci Fotoğrafı</h4>
+          <PhotoCapture value={photoUrl} onChange={savePhoto} folder="student-photos" size={96} />
+          {savingPhoto && <p className="text-xs text-muted-foreground">Kaydediliyor…</p>}
+        </div>
+      </FeatureGate>
 
       <div className="space-y-3">
         <h4 className="font-medium">İletişim Bilgileri</h4>
@@ -683,10 +712,11 @@ export default function Students() {
             </TableHeader>
             <TableBody>
               {filteredStudents.map((student) => (
-                <TableRow key={student.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} />)}>
+                <TableRow key={student.id} className="group cursor-pointer hover:bg-muted/50" onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} onUpdated={loadStudents} />)}>
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
+                        {student.photoUrl && <AvatarImage src={student.photoUrl} alt={student.fullName} className="object-cover" />}
                         <AvatarFallback className="bg-brand-primary text-white">
                           {student.fullName.split(' ').map((n) => n[0]).join('')}
                         </AvatarFallback>
@@ -720,7 +750,7 @@ export default function Students() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} />)}>
+                          <DropdownMenuItem onClick={() => openDrawer(<StudentDetailDrawer student={student} onToggleStatus={handleToggleStudentStatus} onUpdated={loadStudents} />)}>
                             <Eye className="h-4 w-4 mr-2" /> Detay
                           </DropdownMenuItem>
                         </DropdownMenuContent>

@@ -15,6 +15,7 @@ public sealed record StudentSummaryDto(
     string ParentEmail,
     string Address,
     string Note,
+    string PhotoUrl,
     string Username,
     string Status,
     DateTime? LastLoginAtUtc,

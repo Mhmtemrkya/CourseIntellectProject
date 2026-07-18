@@ -7,6 +7,7 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
+import PhotoCapture from '../../components/ui/photo-capture';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
@@ -51,6 +52,7 @@ const emptyForm = {
   parentEmail: '',
   address: '',
   note: '',
+  photoUrl: '',
   academicYear: '',
   enrollmentGrossAmount: '',
   enrollmentDiscountAmount: '',
@@ -167,6 +169,7 @@ export default function AdminStudentRegistration() {
         parentEmail: form.parentEmail.trim(),
         address: form.address.trim(),
         note: form.note.trim(),
+        photoUrl: form.photoUrl || null,
         academicYear: form.academicYear.trim(),
         enrollmentGrossAmount: form.enrollmentGrossAmount ? Number(form.enrollmentGrossAmount) : null,
         enrollmentDiscountAmount: form.enrollmentDiscountAmount ? Number(form.enrollmentDiscountAmount) : null,
@@ -299,6 +302,12 @@ export default function AdminStudentRegistration() {
 
                 <TabsContent value="personal" className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label>Öğrenci Fotoğrafı</Label>
+                      <div className="mt-1">
+                        <PhotoCapture value={form.photoUrl} onChange={(url) => handleChange('photoUrl', url)} folder="student-photos" />
+                      </div>
+                    </div>
                     <div className="col-span-2">
                       <Label>Ad Soyad *</Label>
                       <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ahmet Yılmaz" autoComplete="name" maxLength={100} />

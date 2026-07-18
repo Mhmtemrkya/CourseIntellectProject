@@ -422,14 +422,9 @@ export default function DrivingStudentDetail() {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="flex items-start gap-4">
           <Button variant="outline" size="icon" onClick={() => navigate('/driving/students')}><ArrowLeft className="h-4 w-4" /></Button>
-          <div className="flex gap-2">
-            {overview.photoUrl
-              ? <img src={overview.photoUrl} alt={`${overview.fullName} biyografik`} title="Biyografik fotoğraf" className="h-16 w-16 rounded-2xl object-cover" />
-              : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-xl font-black">{overview.fullName?.[0]}</div>}
-            {overview.livePhotoUrl && (
-              <img src={overview.livePhotoUrl} alt={`${overview.fullName} anlık`} title="Anlık fotoğraf (web kamera)" className="h-16 w-16 rounded-2xl object-cover" />
-            )}
-          </div>
+          {(overview.livePhotoUrl || overview.photoUrl)
+            ? <img src={overview.livePhotoUrl || overview.photoUrl} alt={overview.fullName} className="h-16 w-16 rounded-2xl object-cover" />
+            : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-xl font-black">{overview.fullName?.[0]}</div>}
           <div>
             <h1 className="flex items-center gap-2 text-3xl font-bold font-heading tracking-tight">
               {overview.fullName}
@@ -483,6 +478,38 @@ export default function DrivingStudentDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="mt-5 grid gap-5 lg:grid-cols-2">
+          {/* Öğrenci kimliği: biyometrik + anlık (web kamera) fotoğraf alt alta, kimlik kartı görünümü. */}
+          <Card className="overflow-hidden">
+            <div className="bg-gradient-to-br from-brand-primary to-brand-primary/70 px-5 py-4 text-white">
+              <div className="flex items-center justify-between">
+                <b className="text-sm font-black tracking-widest">ÖĞRENCİ KİMLİĞİ</b>
+                {overview.studentNumber != null && (
+                  <span className="rounded-md bg-white/20 px-2 py-0.5 text-xs font-black">No: {overview.studentNumber}</span>
+                )}
+              </div>
+              <p className="mt-2 text-xl font-black leading-tight">{overview.fullName}</p>
+              <p className="text-xs text-white/80">
+                {overview.packageName ? `${overview.packageName} • ` : ''}{overview.licenseClass} • {overview.transmissionType === 'Manual' ? 'Manuel' : 'Otomatik'}
+              </p>
+            </div>
+            <CardContent className="pt-5">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-1 sm:gap-5">
+                {[['Biyometrik fotoğraf', overview.photoUrl], ['Anlık fotoğraf (web kamera)', overview.livePhotoUrl]].map(([label, url]) => (
+                  <div key={label} className="flex flex-col items-center gap-2">
+                    {url
+                      ? <img src={url} alt={label} className="h-44 w-36 rounded-xl border object-cover shadow-sm" />
+                      : (
+                        <div className="flex h-44 w-36 items-center justify-center rounded-xl border border-dashed bg-muted/40 text-3xl font-black text-muted-foreground">
+                          {overview.fullName?.[0] || '?'}
+                        </div>
+                      )}
+                    <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
           <Card>
             <CardHeader><CardTitle>Kimlik ve iletişim</CardTitle></CardHeader>
             <CardContent>

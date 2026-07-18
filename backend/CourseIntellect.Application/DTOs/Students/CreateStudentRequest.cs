@@ -13,6 +13,9 @@ public sealed record CreateStudentRequest(
     string ParentEmail,
     string Address,
     string Note,
+    // Öğrenci fotoğrafı (web kameradan veya yüklenen). Sürücü kursunda kullanılmaz;
+    // okul öğrencisinde tek fotoğraf alanıdır.
+    string? PhotoUrl = null,
     // Opsiyonel kayıt finansalı: doluysa kayıtta otomatik sözleşme + taksit planı üretilir.
     decimal? EnrollmentGrossAmount = null,
     decimal? EnrollmentDiscountAmount = null,
