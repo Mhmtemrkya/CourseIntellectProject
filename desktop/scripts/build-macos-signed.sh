@@ -62,6 +62,10 @@ export REACT_APP_COURSE_INTELLECT_ENV=production
 # DMG arka planı (mevcut akışla aynı)
 swift scripts/generate-dmg-background.swift
 
+# Bu script tauri'yi doğrudan çağırdığı için npm'in pre-hook'u devreye girmez;
+# proc-macro kitaplıklarının provenance temizliği burada elle yapılır.
+bash scripts/clear-macos-provenance.sh
+
 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg
 
 echo ""
