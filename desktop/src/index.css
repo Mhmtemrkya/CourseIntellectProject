@@ -362,7 +362,12 @@ code {
     z-index: 0;
 }
 
-.app-shell > * {
+/* Çocukları ::before ızgara katmanının (z-index: 0) üstüne çıkarır.
+   `.fixed` hariç tutulur: bu seçicinin özgüllüğü (0,1,1) Tailwind'in `.fixed`
+   sınıfını (0,1,0) ezdiği için, sabit konumlu her doğrudan çocuk flex akışına
+   düşüp tam boy uzuyordu (asistan butonu böyle bozulmuştu). Sabit konumlu
+   öğelerin zaten kendi z-index'i olur, bu kurala ihtiyaçları yok. */
+.app-shell > *:not(.fixed) {
     position: relative;
     z-index: 1;
 }
