@@ -49,9 +49,21 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
     {
         if (ContainsAny(text, "merhaba", "selam", "gunaydin", "iyi aksamlar")) return AssistantIntent.Greeting;
         if (ContainsAny(text, "yardim", "neler yapabilirsin", "komutlar")) return AssistantIntent.Help;
+        // Faz 2 niyetleri, daha genel sürücü kuralları TARAFINDAN YUTULMAMASI için
+        // onlardan önce gelir: "randevu" kelimesi GetDrivingLessons'a düşüyordu,
+        // "evrak"/"belge" ise hiçbir kurala uymayıp Unknown oluyordu.
+        if (ContainsAny(text, "evrak", "belge", "dosya durum", "eksik belge", "saglik raporu", "adli sicil"))
+            return AssistantIntent.GetDrivingDocuments;
+        if (ContainsAny(text, "mezun", "sertifika", "belge almaya hak"))
+            return AssistantIntent.GetDrivingGraduation;
+        if (ContainsAny(text, "kitap", "kutuphane", "odunc", "iade tarihi"))
+            return AssistantIntent.GetLibraryLoans;
+        if (ContainsAny(text, "randevu", "yaklasan ders", "ne zaman dersim"))
+            return AssistantIntent.GetDrivingAppointments;
+
         if (ContainsAny(text, "kurs ilerleme", "ders hakk", "kalan dakika", "surus ilerleme")) return AssistantIntent.GetDrivingProgress;
         if (ContainsAny(text, "direksiyon sinav", "e-sinav", "sinav durum")) return AssistantIntent.GetDrivingExamStatus;
-        if (ContainsAny(text, "direksiyon ders", "surus ders", "randevu")) return AssistantIntent.GetDrivingLessons;
+        if (ContainsAny(text, "direksiyon ders", "surus ders")) return AssistantIntent.GetDrivingLessons;
         if (ContainsAny(text, "devamsiz", "yoklama", "gec kal")) return text.Contains("bugun") && !ContainsAny(text, "devamsizligim", "cocugum") ? AssistantIntent.ListAbsentStudents : AssistantIntent.GetAttendance;
         if (ContainsAny(text, "odev")) return AssistantIntent.GetHomework;
         if (ContainsAny(text, "ders program", "bugunku ders", "yarinki ders", "haftalik program")) return AssistantIntent.GetSchedule;

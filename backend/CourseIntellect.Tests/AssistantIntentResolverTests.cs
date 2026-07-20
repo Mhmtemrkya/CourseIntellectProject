@@ -47,4 +47,30 @@ public sealed class AssistantIntentResolverTests
         Assert.Equal(AssistantIntent.GetHomework, result.Intent);
         Assert.Contains("ipek", result.SearchText);
     }
+
+    // ─── Faz 2 niyetleri ──────────────────────────────────────────────────────
+    // Kural motoru sıraya duyarlı: önce eşleşen kural kazanır. Faz 2 kuralları
+    // daha genel olanların ÖNÜNE eklendi, o yüzden hem yeni eşleşmeler hem de
+    // bozulmaması gereken eskiler burada kilitleniyor.
+    [Theory]
+    [InlineData("Ali'nin evrak durumu ne", AssistantIntent.GetDrivingDocuments)]
+    [InlineData("eksik belge var mı", AssistantIntent.GetDrivingDocuments)]
+    [InlineData("sağlık raporu yüklendi mi", AssistantIntent.GetDrivingDocuments)]
+    [InlineData("yaklaşan randevuları göster", AssistantIntent.GetDrivingAppointments)]
+    [InlineData("mezun oldu mu", AssistantIntent.GetDrivingGraduation)]
+    [InlineData("sertifika numarası ne", AssistantIntent.GetDrivingGraduation)]
+    [InlineData("üzerinde kitap var mı", AssistantIntent.GetLibraryLoans)]
+    [InlineData("kütüphaneden aldıkları", AssistantIntent.GetLibraryLoans)]
+    public void ResolvesPhase2Intents(string message, AssistantIntent expected)
+        => Assert.Equal(expected, resolver.Resolve(message).Intent);
+
+    /// <summary>
+    /// "randevu" kelimesi eskiden GetDrivingLessons'a düşüyordu; ayrıştırdıktan
+    /// sonra direksiyon dersi sorgusunun hâlâ kendi niyetine gittiğini doğrular.
+    /// </summary>
+    [Theory]
+    [InlineData("direksiyon dersleri", AssistantIntent.GetDrivingLessons)]
+    [InlineData("sürüş dersi geçmişi", AssistantIntent.GetDrivingLessons)]
+    public void DrivingLessonsStillResolve_AfterAppointmentSplit(string message, AssistantIntent expected)
+        => Assert.Equal(expected, resolver.Resolve(message).Intent);
 }
