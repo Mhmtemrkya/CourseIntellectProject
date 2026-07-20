@@ -43,7 +43,7 @@ class _AssignmentsPageState extends State<AssignmentsPage> {
         return matchesSubmission || className.isNotEmpty;
       }).toList();
       if (!mounted) return;
-      setState(() => assignments = filtered);
+      setState(() => assignments = filtered); 
     } catch (error) {
       if (!mounted) return;
       setState(() => _error = error.toString());

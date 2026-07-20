@@ -86,6 +86,7 @@ export async function fetchDrivingSchoolStatus() {
 export async function fetchDrivingSchoolDashboard(params = {}) {
   return api.get('/api/driving-school/dashboard', { params });
 }
+export const fetchDrivingTermAlerts = () => api.get('/api/driving-school/term-alerts');
 
 export const fetchDrivingPermissions = () => api.get('/api/driving-school/permissions/me');
 export const fetchDrivingPermissionCatalog = () => api.get('/api/driving-school/permissions/catalog');
@@ -119,6 +120,49 @@ export const downloadDrivingTermReport = (groupId) =>
   api.get(`/api/driving-school/student-groups/${groupId}/term-report`, { params: { format: 'pdf' }, responseType: 'blob' });
 export const setDrivingMebbisEntered = (profileId, entered) =>
   api.put(`/api/driving-school/students/${profileId}/mebbis-entered`, { entered });
+export const fetchDrivingMebbisWorkCenter = (params = {}) =>
+  api.get('/api/driving-school/mebbis/work-center', { params });
+export const syncDrivingMebbisWorkCenter = () => api.post('/api/driving-school/mebbis/work-center/sync', {});
+export const fetchDrivingMebbisErrors = (params = {}) => api.get('/api/driving-school/mebbis/errors', { params });
+export const fetchDrivingMebbisError = (id) => api.get(`/api/driving-school/mebbis/errors/${id}`);
+export const syncDrivingMebbisErrorDefaults = () => api.post('/api/driving-school/mebbis/errors/sync-defaults', {});
+export const createDrivingMebbisError = (payload) => api.post('/api/driving-school/mebbis/errors', payload);
+export const reportDrivingMebbisError = (id, payload) => api.post(`/api/driving-school/mebbis/errors/${id}/occurrences`, payload);
+export const resolveDrivingMebbisError = (id, payload) => api.put(`/api/driving-school/mebbis/errors/occurrences/${id}/resolve`, payload);
+export const changeDrivingMebbisWorkStatus = (workType, subjectId, payload) =>
+  api.put(`/api/driving-school/mebbis/work-center/items/${encodeURIComponent(workType)}/${subjectId}/status`, payload);
+export const fetchDrivingMebbisEntryAssistant = (profileId) =>
+  api.get(`/api/driving-school/mebbis/entry-assistant/students/${profileId}`);
+export const updateDrivingMebbisEntryField = (profileId, fieldKey, payload) =>
+  api.put(`/api/driving-school/mebbis/entry-assistant/students/${profileId}/fields/${encodeURIComponent(fieldKey)}`, payload);
+export const completeDrivingMebbisEntryAssistant = (profileId, payload) =>
+  api.post(`/api/driving-school/mebbis/entry-assistant/students/${profileId}/complete`, payload);
+export const fetchDrivingMebbisQuality = (profileId) =>
+  api.get(`/api/driving-school/mebbis/quality/students/${profileId}`);
+export const runDrivingPhotoInspection = (profileId) =>
+  api.post(`/api/driving-school/mebbis/photo-inspections/students/${profileId}`, {});
+export const downloadDrivingMebbisPhoto = (inspectionId) =>
+  api.get(`/api/driving-school/mebbis/photo-inspections/${inspectionId}/mebbis-file`, { responseType: 'blob' });
+export const fetchDrivingTermWizardOptions = () => api.get('/api/driving-school/term-opening-wizard/options');
+export const validateDrivingTermWizard = (payload) => api.post('/api/driving-school/term-opening-wizard/validate', payload);
+export const openDrivingTermWizard = (payload) => api.post('/api/driving-school/term-opening-wizard/open', payload);
+export const fetchDrivingTransferPackages = (params = {}) => api.get('/api/driving-school/mebbis/transfer-packages', { params });
+export const createDrivingTransferPackage = (payload) => api.post('/api/driving-school/mebbis/transfer-packages', payload);
+export const downloadDrivingTransferPackage = (id) => api.get(`/api/driving-school/mebbis/transfer-packages/${id}/download`, { responseType: 'blob' });
+export const updateDrivingTransferPackageStatus = (id, payload) => api.put(`/api/driving-school/mebbis/transfer-packages/${id}/status`, payload);
+export const fetchDrivingMebbisImports = () => api.get('/api/driving-school/mebbis/imports');
+export const fetchDrivingMebbisImport = (id, params = {}) => api.get(`/api/driving-school/mebbis/imports/${id}`, { params });
+export const previewDrivingMebbisImport = (formData) => api.post('/api/driving-school/mebbis/imports/preview', formData);
+export const applyDrivingMebbisImport = (id, payload) => api.post(`/api/driving-school/mebbis/imports/${id}/apply`, payload);
+export const rejectDrivingMebbisImport = (id, payload) => api.post(`/api/driving-school/mebbis/imports/${id}/reject`, payload);
+export const fetchDrivingMebbisCertificateNumbers = () => api.get('/api/driving-school/mebbis/certificate-numbers');
+export const fetchDrivingMebbisCertificateNumber = (id, params = {}) => api.get(`/api/driving-school/mebbis/certificate-numbers/${id}`, { params });
+export const fetchDrivingMebbisHistory = (profileId, params = {}) => api.get(`/api/driving-school/mebbis/history/students/${profileId}`, { params });
+export const fetchDrivingMebbisReconciliations = () => api.get('/api/driving-school/mebbis/reconciliations');
+export const fetchDrivingMebbisReconciliation = (id, params = {}) => api.get(`/api/driving-school/mebbis/reconciliations/${id}`, { params });
+export const createDrivingMebbisReconciliation = (payload) => api.post('/api/driving-school/mebbis/reconciliations', payload);
+export const fetchDrivingMebbisExamResults = () => api.get('/api/driving-school/mebbis/exam-results');
+export const fetchDrivingMebbisExamResult = (id, params = {}) => api.get(`/api/driving-school/mebbis/exam-results/${id}`, { params });
 // Aday adayları (lead)
 export const fetchDrivingLeads = (params = {}) => api.get('/api/driving-school/leads', { params });
 export const createDrivingLead = (payload) => api.post('/api/driving-school/leads', payload);
@@ -133,6 +177,17 @@ export const downloadDrivingExamRoster = (sessionId) =>
   api.get(`/api/driving-school/exams/sessions/${sessionId}/roster`, { params: { format: 'pdf' }, responseType: 'blob' });
 export const downloadDrivingStudentForm = (profileId, formKey) =>
   api.get(`/api/driving-school/students/${profileId}/forms/${formKey}`, { responseType: 'blob' });
+
+// Matbu MEB evrakları: muracaat | imza-sirkuleri | sozlesme | tumu.
+// Kurum künyesi ve ücretler kurum ayarından, kişisel alanlar kursiyer dosyasından gelir.
+export const downloadDrivingContractForm = (profileId, formKey) =>
+  api.get(`/api/driving-school/students/${profileId}/contract-forms/${formKey}`, { responseType: 'blob' });
+export const fetchDrivingContractFormSettings = () =>
+  api.get('/api/driving-school/contract-form-settings');
+export const updateDrivingContractFormSettings = (payload) =>
+  api.put('/api/driving-school/contract-form-settings', payload);
+export const updateDrivingRegistrationIdentity = (profileId, payload) =>
+  api.put(`/api/driving-school/students/${profileId}/registration-identity`, payload);
 export const updateDrivingWorkingPermit = (instructorProfileId, payload) =>
   api.put(`/api/driving-school/instructors/${instructorProfileId}/working-permit`, payload);
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
@@ -221,6 +276,8 @@ export const updateDrivingStudentStatus = (profileId, payload) => api.post(`/api
 export const fetchDrivingStudentDocuments = (profileId) => api.get(`/api/driving-school/students/${profileId}/documents`);
 export const uploadDrivingStudentDocument = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/documents`, payload);
 export const reviewDrivingStudentDocument = (documentId, payload) => api.post(`/api/driving-school/student-documents/${documentId}/review`, payload);
+export const fetchDrivingDocumentReviewQueue = (params = {}) => api.get('/api/driving-school/student-documents/review-queue', { params });
+export const downloadDrivingStudentDocument = (documentId) => api.get(`/api/driving-school/student-documents/${documentId}/file`, { responseType: 'blob' });
 export const fetchDrivingRegistrationDrafts = () => api.get('/api/driving-school/registration-drafts');
 export const saveDrivingRegistrationDraft = (payload) => api.put('/api/driving-school/registration-drafts', payload);
 export const deleteDrivingRegistrationDraft = (id) => api.delete(`/api/driving-school/registration-drafts/${id}`);
@@ -685,7 +742,8 @@ export async function fetchAuditLogs(params) {
   return Array.isArray(response) ? response : [];
 }
 
-// Gelişmiş denetim görünümü: kategori/şube/tarih/arama + sayfalama.
+// Kayıt geçmişi: kategori/şube/tarih/arama/kaynak (All|Action|Login) + sayfalama.
+// Giriş denemeleri ile idari işlemler tek zaman çizelgesinde birleştirilir.
 export async function fetchAuditLogsPaged(params) {
   const response = await api.get('/api/audit-logs/paged', { params });
   return response && Array.isArray(response.items)

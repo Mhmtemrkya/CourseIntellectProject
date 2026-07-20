@@ -67,6 +67,11 @@ public sealed class StudentDrivingDocument : ITenantScopedEntity
     public DateTime? ReviewedAtUtc { get; set; }
     /// <summary>Reddedildiyse nedeni — öğrenciye aynen gösterilir.</summary>
     public string RejectionReason { get; set; } = string.Empty;
+    /// <summary>İnceleyen personelin iç notu; kursiyere gösterilmez.</summary>
+    public string ReviewNote { get; set; } = string.Empty;
+    public DateTime? ReuploadRequestedAtUtc { get; set; }
+    /// <summary>Eşzamanlı iki personelin aynı evrakı ezmesini engeller.</summary>
+    public int ReviewVersion { get; set; }
 
     /// <summary>Bu tür için geçerli sürüm mü? Yeni yükleme eskiyi false'a çeker.</summary>
     public bool IsCurrent { get; set; } = true;

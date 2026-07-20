@@ -7,6 +7,7 @@ import '../pages/driving_school_operations_page.dart';
 import '../pages/driving_education_page.dart';
 import '../pages/driving_graduation_page.dart';
 import '../pages/driving_mobile_planning_page.dart';
+import '../pages/driving_mebbis_work_center_page.dart';
 import '../pages/driving_school_students_page.dart';
 import '../pages/driving_school_vehicles_page.dart';
 import '../pages/teacher_content_page.dart';
@@ -66,6 +67,12 @@ class DrivingSchoolBottomNav extends StatelessWidget {
         label: 'Mezuniyet',
         pageBuilder: (_) => const DrivingGraduationPage(),
         sidebarColor: const Color(0xFF16A34A),
+      ),
+      AdaptiveDestination(
+        icon: Icons.fact_check_rounded,
+        label: 'MEBBİS',
+        pageBuilder: (_) => const DrivingMebbisWorkCenterPage(),
+        sidebarColor: const Color(0xFF0284C7),
       ),
       AdaptiveDestination(
         icon: Icons.menu_book_rounded,

@@ -58,6 +58,7 @@ public sealed class LoginAttemptService(CourseIntellectDbContext dbContext) : IL
     {
         var entity = new LoginAttemptItem
         {
+            TenantId = request.TenantId,
             UserId = request.UserId,
             Email = request.Email.Trim(),
             Role = request.Role.Trim(),

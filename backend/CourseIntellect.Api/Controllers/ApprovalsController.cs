@@ -96,9 +96,13 @@ public sealed class AuditLogsController(IAuditLogService auditLogService) : Cont
         [FromQuery] DateTime? toUtc,
         [FromQuery] int skip = 0,
         [FromQuery] int take = 100,
+        [FromQuery] string source = AuditLogSources.All,
+        [FromQuery] bool onlyFailedLogins = false,
+        [FromQuery] string? actor = null,
         CancellationToken cancellationToken = default)
     {
-        var query = new AuditLogQuery(category, branchId, search, fromUtc, toUtc, skip, take);
+        var query = new AuditLogQuery(
+            category, branchId, search, fromUtc, toUtc, skip, take, source, onlyFailedLogins, actor);
         return Ok(await auditLogService.GetPagedAsync(query, cancellationToken));
     }
 

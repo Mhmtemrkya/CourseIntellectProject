@@ -39,7 +39,26 @@ public sealed record AuditLogDto(
     string Detail,
     DateTime CreatedAtUtc,
     Guid? BranchId = null,
-    string BranchName = "");
+    string BranchName = "",
+    /// <summary>İsteğin geldiği IP. Eski kayıtlarda boş olabilir.</summary>
+    string? IpAddress = null,
+    /// <summary>Ham User-Agent. Cihaz adına çevirme istemci tarafında yapılır.</summary>
+    string? UserAgent = null,
+    /// <summary>İşlemi yapanın olay anındaki rolü. Bu alan eklenmeden önceki kayıtlarda boş.</summary>
+    string? ActorRole = null,
+    /// <summary>Kaydın kaynağı: <c>Action</c> (idari işlem) veya <c>Login</c> (giriş denemesi).</summary>
+    string Source = AuditLogSources.Action,
+    /// <summary>Yalnız giriş kayıtlarında dolar: deneme başarılı mıydı?</summary>
+    bool? Success = null);
+
+/// <summary>Kayıt geçmişindeki satırın hangi tablodan geldiği.</summary>
+public static class AuditLogSources
+{
+    public const string Action = "Action";
+    public const string Login = "Login";
+    /// <summary>Sorgu filtresinde "ikisi de" anlamına gelir.</summary>
+    public const string All = "All";
+}
 
 /// <summary>Sayfalanmış denetim kaydı sonucu (toplam sayıyla birlikte).</summary>
 public sealed record AuditLogPageDto(
@@ -56,7 +75,16 @@ public sealed record AuditLogQuery(
     DateTime? FromUtc = null,
     DateTime? ToUtc = null,
     int Skip = 0,
-    int Take = 100);
+    int Take = 100,
+    /// <summary>Hangi kaynak listelensin: <c>All</c>, <c>Action</c> veya <c>Login</c>.</summary>
+    string Source = AuditLogSources.All,
+    /// <summary>
+    /// Yalnız başarısız giriş denemelerini getir. İdari işlemlerin başarı/başarısızlık
+    /// kavramı olmadığı için bu filtre kaynağı zorunlu olarak girişlere daraltır.
+    /// </summary>
+    bool OnlyFailedLogins = false,
+    /// <summary>Belirli bir kişinin hareketleri (ad veya giriş e-postası, kısmi eşleşme).</summary>
+    string? Actor = null);
 
 /// <summary>Şube bazında denetim kaydı özeti (kurum yöneticisi görünümü).</summary>
 public sealed record AuditBranchSummaryDto(

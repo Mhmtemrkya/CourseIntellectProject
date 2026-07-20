@@ -86,12 +86,14 @@ const DRIVING_SCHOOL_HIDDEN_PATHS = new Set([
   '/admin/student-registration',
 ]);
 
-// Bir menü öğesi bu kurumda görünmeli mi? Yalnızca DrivingSchool'da filtreler;
-// diğer kurum türlerinde her şey görünür.
+// Kuruma özel modüller iki yönde yalıtılır: sürücü kursunda okul modülleri,
+// okulda da sürücü kursu modülleri görünmez ve route guard tarafından açılmaz.
 export function isModuleAllowedForInstitution(moduleKey, institutionType, path) {
+  const key = moduleKey || '';
+  const drivingOnly = key.startsWith('driving-') || path === '/driving' || path?.startsWith('/driving/');
+  if (drivingOnly) return institutionType === 'DrivingSchool';
   if (institutionType !== 'DrivingSchool') return true;
   if (path && DRIVING_SCHOOL_HIDDEN_PATHS.has(path)) return false;
-  const key = moduleKey || '';
   if (ALWAYS_VISIBLE.has(key)) return true;
   return DRIVING_SCHOOL_ALLOWED.has(key);
 }

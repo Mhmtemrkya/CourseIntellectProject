@@ -12,6 +12,7 @@ namespace CourseIntellect.Infrastructure.Services;
 public sealed class DrivingReminderJobService(
     CourseIntellectDbContext dbContext,
     IDrivingNotifier notifier,
+    IDrivingTermAlertService termAlertService,
     IDrivingLedgerService ledgerService,
     ILogger<DrivingReminderJobService> logger) : IDrivingReminderJobService
 {
@@ -406,15 +407,18 @@ public sealed class DrivingReminderJobService(
 
             var pendingDocuments = await dbContext.StudentDrivingDocuments.AsNoTracking()
                 .CountAsync(x => x.IsCurrent && x.Status == StudentDocumentStatus.PendingApproval, cancellationToken);
+            var termAlerts = await termAlertService.GetAsync(cancellationToken);
 
             // Hiç iş yoksa yöneticiyi boş bildirimle rahatsız etme.
-            if (lessonsToday == 0 && vehiclesOut == 0 && pendingDocuments == 0) return;
+            if (lessonsToday == 0 && vehiclesOut == 0 && pendingDocuments == 0 && termAlerts.Alerts.Count == 0) return;
 
             await notifier.NotifyManagersAsync(
                 "Günlük operasyon özeti",
                 $"Bugün {lessonsToday} direksiyon dersi planlı. "
-                    + $"Kullanılamayan araç: {vehiclesOut}. Onay bekleyen evrak: {pendingDocuments}.",
-                DrivingNotificationCategories.Fleet,
+                    + $"Kullanılamayan araç: {vehiclesOut}. Onay bekleyen evrak: {pendingDocuments}. "
+                    + $"Kritik dönem uyarısı: {termAlerts.CriticalCount}; MEBBİS eksiği: {termAlerts.MissingMebbisCount}; "
+                    + $"hazır olup girişi bekleyen: {termAlerts.ReadyNotEnteredCount}; mutabakat farkı: {termAlerts.ReconciliationMismatchCount}.",
+                termAlerts.Alerts.Count > 0 ? DrivingNotificationCategories.Term : DrivingNotificationCategories.Fleet,
                 dedupeKey: $"daily-summary:{today}",
                 cancellationToken: cancellationToken);
             total++;

@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { getUserRoles } from '../lib/permissions';
 import { getEntitlements, isModuleAllowed } from '../lib/entitlements';
 import { inferModuleKey } from './layout/ModernSidebar';
+import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from '../lib/institutionType';
 import { Button } from './ui/button';
 
 // Bu modüller pakete bakılmaksızın her zaman erişilebilir (ayarlar, profil).
@@ -52,14 +53,20 @@ export function EntitlementGuard({ children }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [entitlements, setEntitlements] = useState(null);
+  const [institutionType, setInstitutionType] = useState(null);
 
   useEffect(() => {
     let active = true;
     if (user?.isPlatformAdmin) {
       setEntitlements({ unrestricted: true, roles: {} });
+      setInstitutionType('Platform');
     } else {
+      resetInstitutionTypeCache();
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
+      });
+      getInstitutionType().then((value) => {
+        if (active) setInstitutionType(value);
       });
     }
     return () => {
@@ -69,7 +76,7 @@ export function EntitlementGuard({ children }) {
 
   // Yetkiler yüklenene kadar içerik açılmaz — kilitli sayfanın bir anlığına
   // görünüp veri çekmesini engeller.
-  if (entitlements === null) {
+  if (entitlements === null || institutionType === null) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center text-sm text-muted-foreground">
         Yükleniyor...
@@ -77,8 +84,13 @@ export function EntitlementGuard({ children }) {
     );
   }
 
+  const routeModuleKey = moduleKeyForPath(location.pathname);
+  if (!user?.isPlatformAdmin && !isModuleAllowedForInstitution(routeModuleKey, institutionType, location.pathname)) {
+    return <LockedScreen onBack={() => navigate(getUserRoles(user).includes('admin') ? '/dashboard' : -1)} />;
+  }
+
   if (!entitlements.unrestricted) {
-    const moduleKey = moduleKeyForPath(location.pathname);
+    const moduleKey = routeModuleKey;
     if (!ALWAYS_ALLOWED.has(moduleKey)) {
       const primaryRole = getUserRoles(user)[0] || 'student';
       if (!isModuleAllowed(entitlements, primaryRole, moduleKey)) {

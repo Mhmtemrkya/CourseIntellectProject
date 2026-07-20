@@ -91,6 +91,7 @@ public sealed class AuditLogService(
                 AfterValue = afterValue,
                 IpAddress = ResolveIpAddress(),
                 UserAgent = Truncate(httpContextAccessor.HttpContext?.Request.Headers.UserAgent.ToString(), 300),
+                ActorRole = ResolveActorRole(),
                 CreatedAtUtc = DateTime.UtcNow,
             }, cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
@@ -99,6 +100,23 @@ public sealed class AuditLogService(
         {
             // Denetim kaydı asıl işlemi bloklamamalı.
         }
+    }
+
+    /// <summary>
+    /// İşlemi yapanın olay anındaki rolü. Rol JWT'de <c>role</c> claim'inde durur ve
+    /// birden çok olabilir; hepsi virgülle yazılır. Kullanıcı kaydından okumuyoruz:
+    /// rol sonradan değişirse geçmiş kayıt yanlış görünürdü.
+    /// </summary>
+    private string? ResolveActorRole()
+    {
+        var user = httpContextAccessor.HttpContext?.User;
+        if (user?.Identity?.IsAuthenticated != true) return null;
+
+        var roles = user.FindAll("role").Select(x => x.Value)
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct()
+            .ToList();
+        return roles.Count == 0 ? null : Truncate(string.Join(", ", roles), 60);
     }
 
     /// <summary>Proxy arkasında gerçek istemci X-Forwarded-For'un ilk adresidir.</summary>
@@ -151,7 +169,12 @@ public sealed class AuditLogService(
                 item.Detail,
                 item.CreatedAtUtc,
                 item.BranchId,
-                string.Empty))
+                string.Empty,
+                item.IpAddress,
+                item.UserAgent,
+                item.ActorRole,
+                AuditLogSources.Action,
+                null))
             .ToListAsync(cancellationToken);
     }
 
@@ -194,11 +217,71 @@ public sealed class AuditLogService(
                 || EF.Functions.ILike(item.EntityType, pattern));
         }
 
-        var totalCount = await logs.CountAsync(cancellationToken);
+        if (!string.IsNullOrWhiteSpace(query.Actor))
+        {
+            var actorPattern = $"%{query.Actor.Trim()}%";
+            logs = logs.Where(item => EF.Functions.ILike(item.ActorName, actorPattern));
+        }
+
         var skip = Math.Max(0, query.Skip);
         var take = query.Take is <= 0 or > 500 ? 100 : query.Take;
 
-        var items = await logs
+        // Giriş kayıtları "Login" kategorisiyle temsil edilir. Başka bir kategori
+        // seçiliyse yalnız idari işlemler, "Login" seçiliyse yalnız girişler listelenir.
+        var categoryFilter = query.Category?.Trim();
+        var isLoginCategory = string.Equals(categoryFilter, "Login", StringComparison.OrdinalIgnoreCase);
+        var hasOtherCategory = !string.IsNullOrWhiteSpace(categoryFilter) && !isLoginCategory;
+
+        // "Yalnız başarısız girişler" idari işlemleri tamamen dışarıda bırakır:
+        // bir onay/kayıt işleminin başarısızlık kavramı yok.
+        var wantsActions = query.Source is not AuditLogSources.Login
+            && !isLoginCategory
+            && !query.OnlyFailedLogins;
+        // Giriş denemelerinde şube bilgisi yok; şube seçiliyken listelenemezler.
+        var wantsLogins = query.Source is not AuditLogSources.Action
+            && !query.BranchId.HasValue
+            && !hasOtherCategory;
+
+        var actionCount = wantsActions ? await logs.CountAsync(cancellationToken) : 0;
+
+        // Tek kaynak istendiğinde sayfalamayı veritabanı yapar.
+        if (!wantsLogins)
+        {
+            var onlyActions = await ProjectActionsAsync(logs, skip, take, cancellationToken);
+            return new AuditLogPageDto(
+                await AttachBranchNamesAsync(onlyActions, cancellationToken), actionCount, skip, take);
+        }
+
+        var logins = BuildLoginQuery(query);
+        var loginCount = await logins.CountAsync(cancellationToken);
+
+        if (!wantsActions)
+        {
+            var onlyLogins = await ProjectLoginsAsync(logins, skip, take, cancellationToken);
+            return new AuditLogPageDto(onlyLogins, loginCount, skip, take);
+        }
+
+        // İki kaynak birleştiğinde sıralama tek bir SQL sorgusuyla yapılamaz.
+        // Her iki taraftan da istenen pencereyi (skip+take) çekip bellekte birleştiriyoruz;
+        // pencere `take` ile sınırlı olduğundan (≤500) maliyet sabit kalır.
+        var window = skip + take;
+        var mergedActions = await ProjectActionsAsync(logs, 0, window, cancellationToken);
+        var mergedLogins = await ProjectLoginsAsync(logins, 0, window, cancellationToken);
+
+        var page = mergedActions
+            .Concat(mergedLogins)
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .Skip(skip)
+            .Take(take)
+            .ToList();
+
+        return new AuditLogPageDto(
+            await AttachBranchNamesAsync(page, cancellationToken), actionCount + loginCount, skip, take);
+    }
+
+    private static async Task<List<AuditLogDto>> ProjectActionsAsync(
+        IQueryable<AuditLogEntry> logs, int skip, int take, CancellationToken cancellationToken)
+        => await logs
             .OrderByDescending(item => item.CreatedAtUtc)
             .Skip(skip)
             .Take(take)
@@ -212,11 +295,85 @@ public sealed class AuditLogService(
                 item.Detail,
                 item.CreatedAtUtc,
                 item.BranchId,
-                string.Empty))
+                string.Empty,
+                item.IpAddress,
+                item.UserAgent,
+                item.ActorRole,
+                AuditLogSources.Action,
+                null))
             .ToListAsync(cancellationToken);
 
-        var resolved = await AttachBranchNamesAsync(items, cancellationToken);
-        return new AuditLogPageDto(resolved, totalCount, skip, take);
+    /// <summary>
+    /// Giriş denemelerini denetim kaydı şekline çevirir. Tenant izolasyonu
+    /// <c>login_attempts</c> üzerindeki query filter ile sağlanır.
+    /// </summary>
+    private static async Task<List<AuditLogDto>> ProjectLoginsAsync(
+        IQueryable<LoginAttemptItem> logins, int skip, int take, CancellationToken cancellationToken)
+    {
+        var rows = await logins
+            .OrderByDescending(item => item.Timestamp)
+            .Skip(skip)
+            .Take(take)
+            .Select(item => new
+            {
+                item.Id, item.Email, item.Role, item.Success,
+                item.IpAddress, item.UserAgent, item.Timestamp,
+            })
+            .ToListAsync(cancellationToken);
+
+        return rows.Select(item => new AuditLogDto(
+            item.Id,
+            item.Email,
+            item.Success ? "Giriş yapıldı" : "Başarısız giriş denemesi",
+            "Login",
+            "Oturum",
+            string.Empty,
+            item.Success ? "Oturum açıldı." : "Hatalı kullanıcı adı veya parola.",
+            item.Timestamp.UtcDateTime,
+            null,
+            string.Empty,
+            item.IpAddress,
+            item.UserAgent,
+            string.IsNullOrWhiteSpace(item.Role) ? null : item.Role,
+            AuditLogSources.Login,
+            item.Success)).ToList();
+    }
+
+    private IQueryable<LoginAttemptItem> BuildLoginQuery(AuditLogQuery query)
+    {
+        var logins = dbContext.LoginAttempts.AsNoTracking().AsQueryable();
+
+        if (query.OnlyFailedLogins) logins = logins.Where(x => !x.Success);
+
+        if (!string.IsNullOrWhiteSpace(query.Actor))
+        {
+            var actorPattern = $"%{query.Actor.Trim()}%";
+            logins = logins.Where(x => EF.Functions.ILike(x.Email, actorPattern));
+        }
+
+        // Timestamp DateTimeOffset; sınırları aynı türe çevirmeden karşılaştırma çevrilemez.
+        if (query.FromUtc.HasValue)
+        {
+            var from = new DateTimeOffset(DateTime.SpecifyKind(query.FromUtc.Value, DateTimeKind.Utc));
+            logins = logins.Where(x => x.Timestamp >= from);
+        }
+
+        if (query.ToUtc.HasValue)
+        {
+            var to = new DateTimeOffset(DateTime.SpecifyKind(query.ToUtc.Value, DateTimeKind.Utc));
+            logins = logins.Where(x => x.Timestamp <= to);
+        }
+
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var pattern = $"%{query.Search.Trim()}%";
+            logins = logins.Where(x =>
+                EF.Functions.ILike(x.Email, pattern)
+                || EF.Functions.ILike(x.IpAddress, pattern)
+                || EF.Functions.ILike(x.Role, pattern));
+        }
+
+        return logins;
     }
 
     public async Task<IReadOnlyList<AuditBranchSummaryDto>> GetBranchSummaryAsync(

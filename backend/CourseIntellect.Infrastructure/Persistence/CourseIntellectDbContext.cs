@@ -191,6 +191,17 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingCertificate> DrivingCertificates => Set<DrivingCertificate>();
     public DbSet<DrivingGraduationActionRequest> DrivingGraduationActionRequests => Set<DrivingGraduationActionRequest>();
     public DbSet<DrivingAppointmentRequest> DrivingAppointmentRequests => Set<DrivingAppointmentRequest>();
+    public DbSet<DrivingMebbisWorkItem> DrivingMebbisWorkItems => Set<DrivingMebbisWorkItem>();
+    public DbSet<DrivingMebbisFieldProgress> DrivingMebbisFieldProgresses => Set<DrivingMebbisFieldProgress>();
+    public DbSet<DrivingPhotoInspection> DrivingPhotoInspections => Set<DrivingPhotoInspection>();
+    public DbSet<DrivingMebbisTransferPackage> DrivingMebbisTransferPackages => Set<DrivingMebbisTransferPackage>();
+    public DbSet<DrivingMebbisImportSession> DrivingMebbisImportSessions => Set<DrivingMebbisImportSession>();
+    public DbSet<DrivingMebbisImportRow> DrivingMebbisImportRows => Set<DrivingMebbisImportRow>();
+    public DbSet<DrivingMebbisReconciliation> DrivingMebbisReconciliations => Set<DrivingMebbisReconciliation>();
+    public DbSet<DrivingMebbisReconciliationRow> DrivingMebbisReconciliationRows => Set<DrivingMebbisReconciliationRow>();
+    public DbSet<DrivingMebbisHistoryEvent> DrivingMebbisHistoryEvents => Set<DrivingMebbisHistoryEvent>();
+    public DbSet<DrivingMebbisErrorDefinition> DrivingMebbisErrorDefinitions => Set<DrivingMebbisErrorDefinition>();
+    public DbSet<DrivingMebbisErrorOccurrence> DrivingMebbisErrorOccurrences => Set<DrivingMebbisErrorOccurrence>();
 
     public override int SaveChanges()
     {
@@ -651,6 +662,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.AfterValue).HasColumnName("after_value").HasMaxLength(4000);
             entity.Property(x => x.IpAddress).HasColumnName("ip_address").HasMaxLength(64);
             entity.Property(x => x.UserAgent).HasColumnName("user_agent").HasMaxLength(300);
+            entity.Property(x => x.ActorRole).HasColumnName("actor_role").HasMaxLength(60);
             entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
             entity.HasIndex(x => new { x.TenantId, x.Category, x.CreatedAtUtc });
         });
@@ -1139,6 +1151,7 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.ToTable("login_attempts");
             entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
             entity.Property(x => x.Email).HasMaxLength(180).IsRequired();
             entity.Property(x => x.Role).HasMaxLength(40).IsRequired();
             entity.Property(x => x.IpAddress).HasMaxLength(60).IsRequired();
@@ -1672,6 +1685,14 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.EmergencyContactPhone).HasMaxLength(30);
             entity.Property(x => x.PhotoUrl).HasMaxLength(400);
             entity.Property(x => x.LivePhotoUrl).HasMaxLength(400);
+            entity.Property(x => x.RegistrationCity).HasMaxLength(60);
+            entity.Property(x => x.RegistrationDistrict).HasMaxLength(60);
+            entity.Property(x => x.RegistrationNeighborhood).HasMaxLength(120);
+            entity.Property(x => x.RegistrationStreet).HasMaxLength(120);
+            entity.Property(x => x.RegistrationVolumeNo).HasMaxLength(30);
+            entity.Property(x => x.RegistrationFamilyOrderNo).HasMaxLength(30);
+            entity.Property(x => x.RegistrationOrderNo).HasMaxLength(30);
+            entity.Property(x => x.IdentityIssuePlace).HasMaxLength(120);
             entity.Property(x => x.ExistingLicenseNumber).HasMaxLength(40);
             entity.Property(x => x.ExistingLicenseClasses).HasMaxLength(60);
             entity.Property(x => x.LicenseIssuePlace).HasMaxLength(120);
@@ -1698,9 +1719,23 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.IssuedBy).HasMaxLength(150);
             entity.Property(x => x.Description).HasMaxLength(1000);
             entity.Property(x => x.RejectionReason).HasMaxLength(500);
+            entity.Property(x => x.ReviewNote).HasMaxLength(1000);
             // Bir belge türünün yalnız bir geçerli sürümü olabilir.
             entity.HasIndex(x => new { x.StudentDrivingProfileId, x.DocumentType, x.IsCurrent });
             entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<DrivingPhotoInspection>(entity =>
+        {
+            entity.ToTable("driving_photo_inspections"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.SourceSha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.Overall).HasMaxLength(10).IsRequired();
+            entity.Property(x => x.ChecksJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.MebbisFileUrl).HasMaxLength(400);
+            entity.Property(x => x.AnalyzerVersion).HasMaxLength(50).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.StudentDrivingDocumentId, x.CreatedAtUtc });
+            entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.CreatedAtUtc });
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudentDrivingDocument>().WithMany().HasForeignKey(x => x.StudentDrivingDocumentId).OnDelete(DeleteBehavior.Cascade);
         });
         modelBuilder.Entity<DrivingRegistrationDraft>(entity =>
         {
@@ -1773,6 +1808,19 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.CertificateLogoUrl).HasMaxLength(700);
             entity.Property(x => x.CertificateSignatureUrl).HasMaxLength(700);
             entity.Property(x => x.CertificatePrimaryColor).HasMaxLength(20);
+            entity.Property(x => x.FormInstitutionName).HasMaxLength(200);
+            entity.Property(x => x.FormInstitutionCity).HasMaxLength(60);
+            entity.Property(x => x.FormInstitutionDistrict).HasMaxLength(60);
+            entity.Property(x => x.FormInstitutionAddress).HasMaxLength(400);
+            entity.Property(x => x.FormInstitutionPhone).HasMaxLength(30);
+            entity.Property(x => x.FormDirectorName).HasMaxLength(150);
+            entity.Property(x => x.FormBankName).HasMaxLength(120);
+            entity.Property(x => x.FormBankAccountNo).HasMaxLength(60);
+            entity.Property(x => x.FormJurisdictionCity).HasMaxLength(60);
+            entity.Property(x => x.FormTheoryHourlyFee).HasPrecision(18, 2);
+            entity.Property(x => x.FormDrivingHourlyFee).HasPrecision(18, 2);
+            entity.Property(x => x.FormTheoryExamFee).HasPrecision(18, 2);
+            entity.Property(x => x.FormDrivingExamFee).HasPrecision(18, 2);
             entity.HasIndex(x => x.TenantId).IsUnique();
         });
         modelBuilder.Entity<DrivingInstructorVehicleAssignment>(entity =>
@@ -1847,6 +1895,101 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Room).HasMaxLength(100); entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30);
             entity.HasIndex(x => new { x.InstructorStaffId, x.StartsAtUtc });
             entity.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.InstructorStaffId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<DrivingMebbisTransferPackage>(entity =>
+        {
+            entity.ToTable("driving_mebbis_transfer_packages"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.PackageType).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MebbisTermCode).HasMaxLength(40);
+            entity.Property(x => x.FileName).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.FileUrl).HasMaxLength(700).IsRequired();
+            entity.Property(x => x.ContentType).HasMaxLength(100).IsRequired();
+            entity.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.ErrorResult).HasMaxLength(2000);
+            entity.Property(x => x.CreatedByName).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.PackageType, x.StudentGroupId, x.FileVersion }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+            entity.HasOne<DrivingStudentGroup>().WithMany().HasForeignKey(x => x.StudentGroupId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<DrivingMebbisImportSession>(entity =>
+        {
+            entity.ToTable("driving_mebbis_import_sessions"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.ImportType).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.FileName).HasMaxLength(200).IsRequired(); entity.Property(x => x.FileUrl).HasMaxLength(700).IsRequired();
+            entity.Property(x => x.ContentType).HasMaxLength(100); entity.Property(x => x.Sha256).HasMaxLength(64).IsRequired();
+            entity.Property(x => x.CreatedByName).HasMaxLength(150).IsRequired(); entity.Property(x => x.ApplySummaryJson).HasColumnType("jsonb");
+            entity.HasIndex(x => new { x.TenantId, x.CreatedAtUtc });
+            entity.HasOne<DrivingStudentGroup>().WithMany().HasForeignKey(x => x.StudentGroupId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<DrivingMebbisImportRow>(entity =>
+        {
+            entity.ToTable("driving_mebbis_import_rows"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.Classification).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MatchKey).HasMaxLength(100); entity.Property(x => x.SourceJson).HasColumnType("jsonb");
+            entity.Property(x => x.ChangesJson).HasColumnType("jsonb"); entity.Property(x => x.MessagesJson).HasColumnType("jsonb");
+            entity.HasIndex(x => new { x.ImportSessionId, x.RowNumber }).IsUnique();
+            entity.HasOne<DrivingMebbisImportSession>().WithMany().HasForeignKey(x => x.ImportSessionId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.MatchedStudentProfileId).OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<DrivingMebbisReconciliation>(entity =>
+        {
+            entity.ToTable("driving_mebbis_reconciliations"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.SourceSessionsJson).HasColumnType("jsonb"); entity.Property(x => x.CreatedByName).HasMaxLength(150).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.StudentGroupId, x.CreatedAtUtc });
+            entity.HasOne<DrivingStudentGroup>().WithMany().HasForeignKey(x => x.StudentGroupId).OnDelete(DeleteBehavior.Restrict);
+        });
+        modelBuilder.Entity<DrivingMebbisReconciliationRow>(entity =>
+        {
+            entity.ToTable("driving_mebbis_reconciliation_rows"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.Classification).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.Property(x => x.MaskedIdentity).HasMaxLength(30); entity.Property(x => x.DisplayName).HasMaxLength(180);
+            entity.Property(x => x.DifferenceCodesJson).HasColumnType("jsonb"); entity.Property(x => x.CourseSnapshotJson).HasColumnType("jsonb"); entity.Property(x => x.MebbisSnapshotJson).HasColumnType("jsonb");
+            entity.HasIndex(x => new { x.ReconciliationId, x.Classification });
+            entity.HasOne<DrivingMebbisReconciliation>().WithMany().HasForeignKey(x => x.ReconciliationId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.SetNull);
+            entity.HasOne<DrivingMebbisImportRow>().WithMany().HasForeignKey(x => x.SourceImportRowId).OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<DrivingMebbisHistoryEvent>(entity =>
+        {
+            entity.ToTable("driving_mebbis_history_events"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.EventType).HasConversion<string>().HasMaxLength(40);
+            entity.Property(x => x.Severity).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.Status).HasMaxLength(40);
+            entity.Property(x => x.SourceType).HasMaxLength(80);
+            entity.Property(x => x.ActorName).HasMaxLength(150);
+            entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.OccurredAtUtc });
+            entity.HasIndex(x => new { x.TenantId, x.EventType, x.OccurredAtUtc });
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<DrivingMebbisErrorDefinition>(entity =>
+        {
+            entity.ToTable("driving_mebbis_error_definitions"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.Code).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.Description).HasMaxLength(1000).IsRequired();
+            entity.Property(x => x.PossibleCause).HasMaxLength(1500).IsRequired();
+            entity.Property(x => x.ResolutionStepsJson).HasColumnType("jsonb").IsRequired();
+            entity.Property(x => x.Severity).HasConversion<string>().HasMaxLength(20).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.IsActive, x.Severity });
+        });
+        modelBuilder.Entity<DrivingMebbisErrorOccurrence>(entity =>
+        {
+            entity.ToTable("driving_mebbis_error_occurrences"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.SourceType).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.ReportedByName).HasMaxLength(150).IsRequired();
+            entity.Property(x => x.ResolutionNote).HasMaxLength(1000);
+            entity.HasIndex(x => new { x.TenantId, x.ErrorDefinitionId, x.OccurredAtUtc });
+            entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.OccurredAtUtc });
+            entity.HasIndex(x => new { x.TenantId, x.ResolvedAtUtc, x.OccurredAtUtc });
+            entity.HasOne<DrivingMebbisErrorDefinition>().WithMany().HasForeignKey(x => x.ErrorDefinitionId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.SetNull);
         });
         modelBuilder.Entity<DrivingTheoryEnrollment>(entity =>
         {
@@ -1924,6 +2067,8 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.SnapshotJson).HasColumnType("jsonb");
             entity.Property(x => x.RevocationReason).HasMaxLength(1000);
             entity.HasIndex(x => new { x.TenantId, x.DocumentNumber }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.MebbisCertificateNo }).IsUnique()
+                .HasFilter("\"MebbisCertificateNo\" <> ''");
             entity.HasIndex(x => x.VerificationTokenHash).IsUnique();
             entity.HasIndex(x => x.StudentDrivingProfileId);
             entity.HasOne<DrivingGraduationRecord>().WithMany().HasForeignKey(x => x.GraduationRecordId).OnDelete(DeleteBehavior.Cascade);
@@ -1954,6 +2099,28 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.HasOne<DrivingAppointment>().WithMany().HasForeignKey(x => x.ResultAppointmentId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<DrivingInstructorProfile>().WithMany().HasForeignKey(x => x.PreferredInstructorProfileId).OnDelete(DeleteBehavior.SetNull);
             entity.HasOne<DrivingVehicle>().WithMany().HasForeignKey(x => x.PreferredVehicleId).OnDelete(DeleteBehavior.SetNull);
+        });
+        modelBuilder.Entity<DrivingMebbisWorkItem>(entity =>
+        {
+            entity.ToTable("driving_mebbis_work_items"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.WorkType).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.Property(x => x.ErrorReason).HasMaxLength(1000);
+            entity.HasIndex(x => new { x.TenantId, x.WorkType, x.SubjectId }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.Status, x.DueAtUtc });
+            entity.HasIndex(x => x.StudentDrivingProfileId);
+            entity.HasIndex(x => x.StudentGroupId);
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
+            entity.HasOne<DrivingStudentGroup>().WithMany().HasForeignKey(x => x.StudentGroupId).OnDelete(DeleteBehavior.Cascade);
+        });
+        modelBuilder.Entity<DrivingMebbisFieldProgress>(entity =>
+        {
+            entity.ToTable("driving_mebbis_field_progresses"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
+            entity.Property(x => x.FieldKey).HasMaxLength(60).IsRequired();
+            entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.FieldKey }).IsUnique();
+            entity.HasIndex(x => new { x.TenantId, x.StudentDrivingProfileId, x.IsCompleted });
+            entity.HasOne<StudentDrivingProfile>().WithMany().HasForeignKey(x => x.StudentDrivingProfileId).OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<TeacherDuty>(entity =>

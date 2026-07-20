@@ -32,10 +32,13 @@ public sealed class DrivingStudentsController(
     IDrivingLedgerService ledgerService,
     IDrivingNotifier notifier,
     IDrivingReportPdfService pdf,
+    IDrivingContractFormPdfService contractForms,
     IIdentityVerificationService identityVerification,
-    IAuditLogService auditLogService) : ControllerBase
+    IAuditLogService auditLogService,
+    IFileStorageService files) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
+    private const long MaxStudentDocumentBytes = 20L * 1024 * 1024;
 
     // ─── Kayıt sihirbazı ──────────────────────────────────────────────────────
 
@@ -127,6 +130,15 @@ public sealed class DrivingStudentsController(
             City = request.City?.Trim() ?? string.Empty,
             District = request.District?.Trim() ?? string.Empty,
             ResidenceAddress = request.ResidenceAddress?.Trim() ?? string.Empty,
+            RegistrationCity = request.RegistrationCity?.Trim() ?? string.Empty,
+            RegistrationDistrict = request.RegistrationDistrict?.Trim() ?? string.Empty,
+            RegistrationNeighborhood = request.RegistrationNeighborhood?.Trim() ?? string.Empty,
+            RegistrationStreet = request.RegistrationStreet?.Trim() ?? string.Empty,
+            RegistrationVolumeNo = request.RegistrationVolumeNo?.Trim() ?? string.Empty,
+            RegistrationFamilyOrderNo = request.RegistrationFamilyOrderNo?.Trim() ?? string.Empty,
+            RegistrationOrderNo = request.RegistrationOrderNo?.Trim() ?? string.Empty,
+            IdentityIssueDate = request.IdentityIssueDate,
+            IdentityIssuePlace = request.IdentityIssuePlace?.Trim() ?? string.Empty,
             WhatsAppPhone = request.WhatsAppPhone?.Trim() ?? string.Empty,
             EmergencyContactName = request.EmergencyContactName?.Trim() ?? string.Empty,
             EmergencyContactPhone = request.EmergencyContactPhone?.Trim() ?? string.Empty,
@@ -169,7 +181,9 @@ public sealed class DrivingStudentsController(
         foreach (var document in request.Documents ?? [])
         {
             if (document.ParsedType is not { } documentType) return BadRequest(new { message = $"Belge türü geçersiz: {document.DocumentType}." });
-            if (!IsSafeUploadUrl(document.FileUrl)) return BadRequest(new { message = "Belge dosyası güvenli yükleme alanından seçilmelidir." });
+            var storedFile = IsSafeStudentDocumentUrl(document.FileUrl) ? await files.ReadPrefixAsync(document.FileUrl, 32, ct) : null;
+            if (storedFile is null || storedFile.Length > MaxStudentDocumentBytes || !IsAllowedStudentDocumentContent(document.FileName, storedFile.Bytes))
+                return BadRequest(new { message = "Belge dosyası güvenli öğrenci evrak alanından seçilmelidir." });
             dbContext.StudentDrivingDocuments.Add(new StudentDrivingDocument
             {
                 StudentDrivingProfileId = profile.Id,
@@ -374,7 +388,84 @@ public sealed class DrivingStudentsController(
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var profile = await dbContext.StudentDrivingProfiles.AsNoTracking().SingleOrDefaultAsync(x => x.Id == profileId, ct);
         if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
-        return Ok(await BuildDocumentFileAsync(profile, ct));
+        return Ok(await BuildDocumentFileAsync(profile, includeInternalReview: true, ct));
+    }
+
+    [HttpGet("student-documents/review-queue")]
+    [RequireDrivingPermission(DrivingPermissions.StudentDocumentView)]
+    public async Task<IActionResult> StudentDocumentReviewQueue(
+        [FromQuery] string? status, [FromQuery] string? documentType, [FromQuery] string? search,
+        [FromQuery] int page = 1, [FromQuery] int pageSize = 50, CancellationToken ct = default)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        if (page < 1 || pageSize is < 1 or > 100) return BadRequest(new { message = "Sayfalama değerleri geçersiz." });
+        if ((search?.Length ?? 0) > 100) return BadRequest(new { message = "Arama en fazla 100 karakter olabilir." });
+        StudentDocumentStatus? parsedStatus = null;
+        if (!string.IsNullOrWhiteSpace(status) && !status.Equals("ActionRequired", StringComparison.OrdinalIgnoreCase))
+        {
+            if (!Enum.TryParse<StudentDocumentStatus>(status, true, out var value) || !Enum.IsDefined(value))
+                return BadRequest(new { message = "Belge durumu geçersiz." });
+            parsedStatus = value;
+        }
+        StudentDocumentType? parsedType = null;
+        if (!string.IsNullOrWhiteSpace(documentType))
+        {
+            if (!Enum.TryParse<StudentDocumentType>(documentType, true, out var value) || !Enum.IsDefined(value))
+                return BadRequest(new { message = "Belge türü geçersiz." });
+            parsedType = value;
+        }
+
+        var now = DateTime.UtcNow;
+        var relevantTypes = new[] { StudentDocumentType.HealthReport, StudentDocumentType.Diploma, StudentDocumentType.CriminalRecord,
+            StudentDocumentType.BiometricPhoto, StudentDocumentType.Identity, StudentDocumentType.ExistingLicense, StudentDocumentType.ForeignStudentDocument };
+        var query = dbContext.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => x.IsCurrent && relevantTypes.Contains(x.DocumentType))
+            .Join(dbContext.StudentDrivingProfiles.AsNoTracking(), d => d.StudentDrivingProfileId, p => p.Id, (d, p) => new { d, p })
+            .Join(dbContext.Students.AsNoTracking(), x => x.p.StudentId, s => s.Id, (x, s) => new { x.d, x.p, s });
+        if (parsedType.HasValue) query = query.Where(x => x.d.DocumentType == parsedType.Value);
+        if (parsedStatus == StudentDocumentStatus.Expired) query = query.Where(x => x.d.ExpiresAtUtc <= now);
+        else if (parsedStatus.HasValue) query = query.Where(x => x.d.Status == parsedStatus.Value && (x.d.ExpiresAtUtc == null || x.d.ExpiresAtUtc > now));
+        else query = query.Where(x => x.d.Status == StudentDocumentStatus.PendingApproval || x.d.Status == StudentDocumentStatus.ReuploadRequested
+            || x.d.Status == StudentDocumentStatus.Rejected || x.d.ExpiresAtUtc <= now);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            var isNumber = int.TryParse(term, out var studentNumber);
+            query = query.Where(x => EF.Functions.ILike(x.s.FullName, $"%{term}%") || (isNumber && x.p.StudentNumber == studentNumber));
+        }
+
+        var total = await query.CountAsync(ct);
+        var rows = await query.OrderBy(x => x.d.Status == StudentDocumentStatus.PendingApproval ? 0 : x.d.Status == StudentDocumentStatus.ReuploadRequested ? 1 : 2)
+            .ThenBy(x => x.d.UploadedAtUtc).Skip((page - 1) * pageSize).Take(pageSize)
+            .Select(x => new
+            {
+                x.d.Id, x.d.StudentDrivingProfileId, studentName = x.s.FullName, x.p.StudentNumber,
+                identityKind = x.p.IdentityKind.ToString(), documentType = x.d.DocumentType.ToString(), label = DrivingStudentRules.DocumentLabel(x.d.DocumentType),
+                storedStatus = x.d.Status, x.d.FileName, x.d.DocumentNumber, x.d.IssuedBy, x.d.IssuedAtUtc,
+                x.d.ExpiresAtUtc, x.d.UploadedAtUtc, x.d.ReviewedAtUtc, x.d.RejectionReason, x.d.ReviewNote, x.d.ReviewVersion,
+            }).ToListAsync(ct);
+        var items = rows.Select(x => new
+        {
+            x.Id, x.StudentDrivingProfileId, x.studentName, x.StudentNumber, x.identityKind, x.documentType, x.label,
+            status = DrivingStudentRules.EffectiveStatus(x.storedStatus, x.ExpiresAtUtc, now).ToString(),
+            x.FileName, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc, x.ExpiresAtUtc, x.UploadedAtUtc,
+            x.ReviewedAtUtc, x.RejectionReason, x.ReviewNote, x.ReviewVersion,
+            fileUrl = $"/api/driving-school/student-documents/{x.Id}/file",
+        }).ToList();
+        var allCurrent = dbContext.StudentDrivingDocuments.AsNoTracking().Where(x => x.IsCurrent && relevantTypes.Contains(x.DocumentType));
+        return Ok(new
+        {
+            generatedAtUtc = now, page, pageSize, total, items,
+            summary = new
+            {
+                pending = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.PendingApproval, ct),
+                reuploadRequested = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.ReuploadRequested, ct),
+                rejected = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.Rejected, ct),
+                expiringSoon = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.Approved && x.ExpiresAtUtc > now && x.ExpiresAtUtc <= now.AddDays(30), ct),
+                expired = await allCurrent.CountAsync(x => x.ExpiresAtUtc <= now, ct),
+            },
+            documentTypes = relevantTypes.Select(x => new { value = x.ToString(), label = DrivingStudentRules.DocumentLabel(x) }),
+        });
     }
 
     /// <summary>Personelin aday adına belge yüklemesi.</summary>
@@ -400,45 +491,101 @@ public sealed class DrivingStudentsController(
         var actorId = CurrentUserId();
         if (actorId is null) return Unauthorized();
 
-        var document = await dbContext.StudentDrivingDocuments.SingleOrDefaultAsync(x => x.Id == id, ct);
+        var document = await dbContext.StudentDrivingDocuments.SingleOrDefaultAsync(x => x.Id == id
+            && dbContext.StudentDrivingProfiles.Any(p => p.Id == x.StudentDrivingProfileId), ct);
         if (document is null) return NotFound(new { message = "Belge bulunamadı." });
         if (!document.IsCurrent) return Conflict(new { message = "Bu belge geçmiş bir sürüm; güncel sürümü inceleyin." });
 
+        if (document.ReviewVersion != request.ExpectedVersion)
+            return Conflict(new { message = "Belge başka bir personel tarafından güncellendi. Kuyruğu yenileyin." });
+        var action = string.IsNullOrWhiteSpace(request.Action) ? request.Approved == true ? "Approve" : "Reject" : request.Action.Trim();
+        if (action is not ("Approve" or "Reject" or "RequestReupload" or "UpdateDetails"))
+            return BadRequest(new { message = "Belge inceleme işlemi geçersiz." });
         var reason = request.RejectionReason?.Trim() ?? string.Empty;
-        if (!request.Approved && reason.Length is < 5 or > 500)
-            return BadRequest(new { message = "Ret nedeni 5-500 karakter olmalıdır." });
-        if (request.Approved && DrivingStudentRules.ExpiringDocuments.Contains(document.DocumentType) && document.ExpiresAtUtc is null)
+        var note = request.Note?.Trim() ?? string.Empty;
+        if (action is "Reject" or "RequestReupload" && (reason.Length is < 5 or > 500))
+            return BadRequest(new { message = "Ret/yeniden yükleme gerekçesi 5-500 karakter olmalıdır." });
+        if (note.Length > 1000) return BadRequest(new { message = "Personel notu en fazla 1000 karakter olabilir." });
+        if (request.ExpiresAtUtc is { } requestedExpiry && (requestedExpiry <= DateTime.UtcNow || requestedExpiry > DateTime.UtcNow.AddYears(20)))
+            return BadRequest(new { message = "Son geçerlilik tarihi gelecekte ve makul bir aralıkta olmalıdır." });
+        if (request.ExpiresAtUtc.HasValue) document.ExpiresAtUtc = request.ExpiresAtUtc;
+        if (action == "Approve" && DrivingStudentRules.ExpiringDocuments.Contains(document.DocumentType) && document.ExpiresAtUtc is null)
             return BadRequest(new { message = "Süreli belge, son geçerlilik tarihi olmadan onaylanamaz." });
-        if (request.Approved && document.ExpiresAtUtc is { } expires && expires <= DateTime.UtcNow)
+        if (action == "Approve" && document.ExpiresAtUtc is { } expires && expires <= DateTime.UtcNow)
             return BadRequest(new { message = "Süresi dolmuş belge onaylanamaz." });
 
         var before = document.Status;
-        document.Status = request.Approved ? StudentDocumentStatus.Approved : StudentDocumentStatus.Rejected;
-        document.RejectionReason = request.Approved ? string.Empty : reason;
+        document.Status = action switch
+        {
+            "Approve" => StudentDocumentStatus.Approved,
+            "Reject" => StudentDocumentStatus.Rejected,
+            "RequestReupload" => StudentDocumentStatus.ReuploadRequested,
+            _ => document.Status,
+        };
+        document.RejectionReason = action is "Reject" or "RequestReupload" ? reason : action == "Approve" ? string.Empty : document.RejectionReason;
+        document.ReviewNote = note;
+        document.ReuploadRequestedAtUtc = action == "RequestReupload" ? DateTime.UtcNow : action == "Approve" ? null : document.ReuploadRequestedAtUtc;
         document.ReviewedByUserId = actorId;
         document.ReviewedAtUtc = DateTime.UtcNow;
+        document.ReviewVersion++;
+        var documentTitle = action switch
+        {
+            "Approve" => $"{DocumentLabel(document.DocumentType)} onaylandı",
+            "Reject" => $"{DocumentLabel(document.DocumentType)} reddedildi",
+            "RequestReupload" => $"{DocumentLabel(document.DocumentType)} için yeniden yükleme istendi",
+            _ => $"{DocumentLabel(document.DocumentType)} bilgileri güncellendi",
+        };
+        dbContext.AddMebbisHistory(document.StudentDrivingProfileId, DrivingMebbisHistoryEventType.DocumentReview,
+            documentTitle, action is "Reject" or "RequestReupload" ? reason : "Evrak kontrol kuyruğunda incelendi.",
+            document.Status.ToString(), nameof(StudentDrivingDocument), document.Id, actorId, CurrentUserName(),
+            action == "Approve" ? DrivingMebbisHistorySeverity.Success : action == "UpdateDetails" ? DrivingMebbisHistorySeverity.Info : DrivingMebbisHistorySeverity.Warning,
+            document.ReviewedAtUtc);
         await dbContext.SaveChangesAsync(ct);
 
         await auditLogService.LogChangeAsync(
-            request.Approved ? "Öğrenci evrakı onaylandı" : "Öğrenci evrakı reddedildi",
+            action == "Approve" ? "Öğrenci evrakı onaylandı" : action == "Reject" ? "Öğrenci evrakı reddedildi" : action == "RequestReupload" ? "Öğrenci evrakı yeniden yüklemeye gönderildi" : "Öğrenci evrakı bilgileri güncellendi",
             AuditCategory, "StudentDrivingDocument", document.Id.ToString(),
-            $"{DocumentLabel(document.DocumentType)}{(request.Approved ? string.Empty : $" — ret nedeni: {reason}")}",
-            new { status = before.ToString() },
-            new { status = document.Status.ToString(), document.RejectionReason },
+            $"{DocumentLabel(document.DocumentType)} — {action}{(reason.Length == 0 ? string.Empty : $" — gerekçe: {reason}")}",
+            new { status = before.ToString(), request.ExpectedVersion },
+            new { status = document.Status.ToString(), document.RejectionReason, document.ReviewNote, document.ExpiresAtUtc, document.ReviewVersion },
             ct);
 
-        // Ret nedeni öğrenciye AYNEN gider; doğru belgeyi yükleyebilmesi için şart.
-        await notifier.NotifyStudentAsync(document.StudentDrivingProfileId,
-            request.Approved ? "Belgeniz onaylandı" : "Belgeniz reddedildi",
-            request.Approved
-                ? $"{DocumentLabel(document.DocumentType)} onaylandı."
-                : $"{DocumentLabel(document.DocumentType)} reddedildi. Neden: {reason} Lütfen doğru belgeyi yeniden yükleyin.",
-            DrivingNotificationCategories.Document,
-            dedupeKey: $"document-review:{document.Id}:{document.Status}",
-            relatedEntityType: "StudentDrivingDocument", relatedEntityId: document.Id.ToString(),
-            cancellationToken: ct);
+        if (action != "UpdateDetails")
+            await notifier.NotifyStudentAsync(document.StudentDrivingProfileId,
+                action == "Approve" ? "Belgeniz onaylandı" : action == "Reject" ? "Belgeniz reddedildi" : "Belgenizi yeniden yüklemeniz gerekiyor",
+                action == "Approve" ? $"{DocumentLabel(document.DocumentType)} onaylandı."
+                    : $"{DocumentLabel(document.DocumentType)} için yeni belge istendi. Neden: {reason} Mobil uygulamadaki Evraklarım ekranından yeniden yükleyin.",
+                DrivingNotificationCategories.Document,
+                dedupeKey: $"document-review:{document.Id}:{document.Status}:{document.ReviewVersion}",
+                relatedEntityType: "StudentDrivingDocument", relatedEntityId: document.Id.ToString(), cancellationToken: ct);
 
-        return Ok(new { document.Id, status = document.Status.ToString(), document.RejectionReason, document.ReviewedAtUtc });
+        return Ok(new { document.Id, status = document.Status.ToString(), document.RejectionReason, document.ReviewNote, document.ExpiresAtUtc, document.ReviewedAtUtc, document.ReviewVersion });
+    }
+
+    [HttpGet("student-documents/{id:guid}/file")]
+    public async Task<IActionResult> DownloadStudentDocument(Guid id, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var document = await dbContext.StudentDrivingDocuments.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id
+            && dbContext.StudentDrivingProfiles.Any(p => p.Id == x.StudentDrivingProfileId), ct);
+        if (document is null) return NotFound(new { message = "Belge bulunamadı." });
+        var isStudent = User.IsInRole("Student");
+        if (isStudent)
+        {
+            var ownProfile = await CurrentStudentProfileAsync(ct);
+            if (ownProfile?.Id != document.StudentDrivingProfileId) return Forbid();
+        }
+        else if (!await permissionService.HasAsync(User, DrivingPermissions.StudentDocumentView, ct)) return Forbid();
+        var prefix = await files.ReadPrefixAsync(document.FileUrl, 32, ct);
+        if (prefix is null || prefix.Length > MaxStudentDocumentBytes || !IsAllowedStudentDocumentContent(document.FileName, prefix.Bytes))
+            return BadRequest(new { message = "Belge dosyası güvenli boyut veya içerik kurallarını karşılamıyor." });
+        var bytes = await files.ReadBytesAsync(document.FileUrl, ct);
+        if (bytes is null) return NotFound(new { message = "Belge dosyası güvenli depoda bulunamadı." });
+        Response.Headers.CacheControl = "no-store, private";
+        Response.Headers.XContentTypeOptions = "nosniff";
+        var extension = Path.GetExtension(document.FileName).ToLowerInvariant();
+        var contentType = extension == ".pdf" ? "application/pdf" : extension is ".jpg" or ".jpeg" ? "image/jpeg" : extension == ".png" ? "image/png" : "application/octet-stream";
+        return File(bytes, contentType, string.IsNullOrWhiteSpace(document.FileName) ? $"belge-{document.Id:N}" : Path.GetFileName(document.FileName));
     }
 
     // ─── Öğrencinin kendi dosyası (mobil) ─────────────────────────────────────
@@ -451,7 +598,7 @@ public sealed class DrivingStudentsController(
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var profile = await CurrentStudentProfileAsync(ct);
         if (profile is null) return Forbid();
-        return Ok(await BuildDocumentFileAsync(profile, ct));
+        return Ok(await BuildDocumentFileAsync(profile, includeInternalReview: false, ct));
     }
 
     [HttpPost("student/my-documents")]
@@ -536,7 +683,7 @@ public sealed class DrivingStudentsController(
             .Select(x => new { x.Id, x.MinutesDelta, x.EntryType, x.Description, x.CreatedAtUtc })
             .ToListAsync(ct);
 
-        var documents = await BuildDocumentFileAsync(profile, ct);
+        var documents = await BuildDocumentFileAsync(profile, includeInternalReview: true, ct);
 
         // Planlanmış (henüz kullanılmamış ama bağlanmış) dakikalar borç değil, rezervasyondur.
         var now = DateTime.UtcNow;
@@ -643,6 +790,16 @@ public sealed class DrivingStudentsController(
                 profile.City,
                 profile.District,
                 profile.ResidenceAddress,
+                // Nüfus kayıt bloğu — matbu müracaat formunu doldurmak için.
+                profile.RegistrationCity,
+                profile.RegistrationDistrict,
+                profile.RegistrationNeighborhood,
+                profile.RegistrationStreet,
+                profile.RegistrationVolumeNo,
+                profile.RegistrationFamilyOrderNo,
+                profile.RegistrationOrderNo,
+                profile.IdentityIssueDate,
+                profile.IdentityIssuePlace,
                 phone = row.student.ParentPhone,
                 email = row.student.ParentEmail,
                 profile.WhatsAppPhone,
@@ -744,6 +901,50 @@ public sealed class DrivingStudentsController(
     }
 
     /// <summary>
+    /// Kursiyerin nüfus kayıt bilgilerini günceller. Bu blok yalnızca matbu EK-1
+    /// müracaat formunda kullanılır ve nüfus cüzdanından elle okunur; kayıt
+    /// sırasında atlanmış olabileceği için sonradan da doldurulabilmelidir.
+    /// </summary>
+    [HttpPut("students/{profileId:guid}/registration-identity")]
+    [RequireDrivingPermission(DrivingPermissions.StudentUpdate)]
+    public async Task<IActionResult> UpdateRegistrationIdentity(
+        Guid profileId, [FromBody] UpdateDrivingRegistrationIdentityRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var profile = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == profileId, ct);
+        if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+
+        var before = RegistrationIdentitySnapshot(profile);
+        profile.RegistrationCity = Trim(request.RegistrationCity, 60);
+        profile.RegistrationDistrict = Trim(request.RegistrationDistrict, 60);
+        profile.RegistrationNeighborhood = Trim(request.RegistrationNeighborhood, 120);
+        profile.RegistrationStreet = Trim(request.RegistrationStreet, 120);
+        profile.RegistrationVolumeNo = Trim(request.RegistrationVolumeNo, 30);
+        profile.RegistrationFamilyOrderNo = Trim(request.RegistrationFamilyOrderNo, 30);
+        profile.RegistrationOrderNo = Trim(request.RegistrationOrderNo, 30);
+        profile.IdentityIssueDate = request.IdentityIssueDate;
+        profile.IdentityIssuePlace = Trim(request.IdentityIssuePlace, 120);
+        // Doğum yeri ve baba/ana adı da aynı formda; kayıtta boş kalmışsa buradan tamamlanır.
+        profile.BirthPlace = Trim(request.BirthPlace, 100);
+        profile.FatherName = Trim(request.FatherName, 100);
+        profile.MotherName = Trim(request.MotherName, 100);
+
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Kursiyer nüfus bilgileri güncellendi", AuditCategory,
+            "StudentDrivingProfile", profile.Id.ToString(),
+            $"Kursiyer #{profile.StudentNumber} nüfus kayıt bilgileri düzenlendi.",
+            before, RegistrationIdentitySnapshot(profile), ct);
+        return Ok(RegistrationIdentitySnapshot(profile));
+    }
+
+    private static object RegistrationIdentitySnapshot(StudentDrivingProfile p) => new
+    {
+        p.RegistrationCity, p.RegistrationDistrict, p.RegistrationNeighborhood, p.RegistrationStreet,
+        p.RegistrationVolumeNo, p.RegistrationFamilyOrderNo, p.RegistrationOrderNo,
+        p.IdentityIssueDate, p.IdentityIssuePlace, p.BirthPlace, p.FatherName, p.MotherName,
+    };
+
+    /// <summary>
     /// Sınav ücretlerini ve "ödendi" bilgisini günceller — kayıt sonrasında da
     /// (direksiyon sınav harcı ödendiğinde) elle işaretlenebilir.
     /// </summary>
@@ -792,6 +993,12 @@ public sealed class DrivingStudentsController(
         if (profile is null) return NotFound(new { message = "Kursiyer bulunamadı." });
 
         profile.MebbisEnteredAtUtc = request.Entered ? DateTime.UtcNow : null;
+        dbContext.AddMebbisHistory(profile.Id,
+            request.Entered ? DrivingMebbisHistoryEventType.CandidateEntry : DrivingMebbisHistoryEventType.Correction,
+            request.Entered ? "Aday kaydı MEBBİS’e girildi" : "MEBBİS giriş işareti kaldırıldı",
+            request.Entered ? "Aday kaydı kurum personeli tarafından işlendi." : "MEBBİS giriş durumu geri alındı.",
+            request.Entered ? "Entered" : "Removed", nameof(StudentDrivingProfile), profile.Id, CurrentUserId(), CurrentUserName(),
+            request.Entered ? DrivingMebbisHistorySeverity.Success : DrivingMebbisHistorySeverity.Warning);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync(
             request.Entered ? "Aday MEBBİS'e işlendi" : "MEBBİS giriş işareti kaldırıldı",
@@ -831,6 +1038,235 @@ public sealed class DrivingStudentsController(
         var safeName = $"{formKey}-{row.profile.StudentNumber}";
         return File(pdf.Generate(document), "application/pdf", $"{safeName}.pdf");
     }
+
+    /// <summary>
+    /// Matbu MEB evrakları (PDF): <c>muracaat</c> = EK-1 müracaat formu,
+    /// <c>imza-sirkuleri</c> = kursiyerin imza sirküleri, <c>sozlesme</c> = kayıt
+    /// sözleşmesi (2 sayfa), <c>tumu</c> = üçü tek dosyada.
+    ///
+    /// Sözleşme ücret/taksit içerdiğinden yalnızca finans yetkisi olanlara verilir;
+    /// müracaat formu ile imza sirkülerinde para geçmediği için kursiyer görme
+    /// yetkisi yeterlidir.
+    /// </summary>
+    [HttpGet("students/{profileId:guid}/contract-forms/{formKey}")]
+    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    public async Task<IActionResult> GetContractForm(Guid profileId, string formKey, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var key = formKey.ToLowerInvariant();
+        var isBundle = key == "tumu";
+        // Paket dışındaki anahtarlar tek belgeye karşılık gelir; tanımsızsa 404.
+        DrivingContractFormKind? kind = key switch
+        {
+            "muracaat" => DrivingContractFormKind.Application,
+            "imza-sirkuleri" => DrivingContractFormKind.SignatureCircular,
+            "sozlesme" => DrivingContractFormKind.Contract,
+            _ => null,
+        };
+        if (!isBundle && kind is null)
+            return NotFound(new { message = "Tanımsız form. Geçerli: muracaat, imza-sirkuleri, sozlesme, tumu." });
+
+        // Sözleşme ve paket ücret tablosu taşıdığından finans yetkisi şart.
+        var needsFinance = isBundle || kind is DrivingContractFormKind.Contract;
+        if (needsFinance && !await permissionService.HasAsync(User, DrivingPermissions.FinanceView, ct))
+            return Forbid();
+
+        var row = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId)
+            .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (profile, student) => new { profile, student })
+            .SingleOrDefaultAsync(ct);
+        if (row is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+
+        var data = await BuildContractFormDataAsync(row.profile, row.student, ct);
+        var bytes = isBundle ? contractForms.GenerateBundle(data) : contractForms.Generate(kind!.Value, data);
+        return File(bytes, "application/pdf", $"{formKey}-{row.profile.StudentNumber}.pdf");
+    }
+
+    /// <summary>
+    /// Matbu formlarda kullanılan kurum künyesi ve ücret satırları. Kurum bir kere
+    /// doldurur, sonra tüm kursiyerlerin evrakı bu değerlerle basılır.
+    /// </summary>
+    [HttpGet("contract-form-settings")]
+    [RequireDrivingPermission(DrivingPermissions.StudentView)]
+    public async Task<IActionResult> GetContractFormSettings(CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var settings = await dbContext.DrivingSchoolSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var tenantName = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == dbContext.CurrentTenantId).Select(x => x.Name).FirstOrDefaultAsync(ct);
+        return Ok(ContractFormSettingsResponse(settings, tenantName));
+    }
+
+    [HttpPut("contract-form-settings")]
+    [RequireDrivingPermission(DrivingPermissions.SettingsManage)]
+    public async Task<IActionResult> UpdateContractFormSettings(
+        [FromBody] UpdateDrivingContractFormSettingsRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        if (request.TheoryHours is < 1 or > 200) return BadRequest(new { message = "Teorik ders saati 1-200 arasında olmalıdır." });
+        if (request.DrivingHours is < 1 or > 200) return BadRequest(new { message = "Direksiyon ders saati 1-200 arasında olmalıdır." });
+        foreach (var (label, value) in new (string, decimal)[]
+        {
+            ("Teorik saat ücreti", request.TheoryHourlyFee), ("Direksiyon saat ücreti", request.DrivingHourlyFee),
+            ("Teorik sınav ücreti", request.TheoryExamFee), ("Direksiyon sınav ücreti", request.DrivingExamFee),
+        })
+        {
+            if (value is < 0 or > 1_000_000) return BadRequest(new { message = $"{label} 0 ile 1.000.000 arasında olmalıdır." });
+        }
+
+        var settings = await dbContext.DrivingSchoolSettings.SingleOrDefaultAsync(ct);
+        var before = settings is null ? null : ContractFormSettingsSnapshot(settings);
+        if (settings is null) { settings = new DrivingSchoolSettings(); dbContext.DrivingSchoolSettings.Add(settings); }
+
+        settings.FormInstitutionName = Trim(request.InstitutionName, 200);
+        settings.FormInstitutionCity = Trim(request.InstitutionCity, 60);
+        settings.FormInstitutionDistrict = Trim(request.InstitutionDistrict, 60);
+        settings.FormInstitutionAddress = Trim(request.InstitutionAddress, 400);
+        settings.FormInstitutionPhone = Trim(request.InstitutionPhone, 30);
+        settings.FormDirectorName = Trim(request.DirectorName, 150);
+        settings.FormBankName = Trim(request.BankName, 120);
+        settings.FormBankAccountNo = Trim(request.BankAccountNo, 60);
+        settings.FormJurisdictionCity = Trim(request.JurisdictionCity, 60);
+        settings.FormTheoryHourlyFee = request.TheoryHourlyFee;
+        settings.FormDrivingHourlyFee = request.DrivingHourlyFee;
+        settings.FormTheoryExamFee = request.TheoryExamFee;
+        settings.FormDrivingExamFee = request.DrivingExamFee;
+        settings.FormTheoryHours = request.TheoryHours;
+        settings.FormDrivingHours = request.DrivingHours;
+        settings.UpdatedAtUtc = DateTime.UtcNow;
+
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Sözleşme ve form künyesi güncellendi", AuditCategory,
+            nameof(DrivingSchoolSettings), settings.Id.ToString(),
+            "Matbu MEB evraklarında kullanılan kurum bilgileri ve ücret satırları değişti.",
+            before, ContractFormSettingsSnapshot(settings), ct);
+        return Ok(ContractFormSettingsResponse(settings, null));
+    }
+
+    private static object ContractFormSettingsResponse(DrivingSchoolSettings? s, string? tenantName) => new
+    {
+        // Kurum adı hiç girilmemişse çalışma alanı adı önerilir.
+        institutionName = Pick(s?.FormInstitutionName, tenantName),
+        institutionCity = s?.FormInstitutionCity ?? string.Empty,
+        institutionDistrict = s?.FormInstitutionDistrict ?? string.Empty,
+        institutionAddress = s?.FormInstitutionAddress ?? string.Empty,
+        institutionPhone = s?.FormInstitutionPhone ?? string.Empty,
+        directorName = Pick(s?.FormDirectorName, s?.CertificateDirectorName),
+        bankName = s?.FormBankName ?? string.Empty,
+        bankAccountNo = s?.FormBankAccountNo ?? string.Empty,
+        jurisdictionCity = Pick(s?.FormJurisdictionCity, s?.FormInstitutionCity),
+        theoryHourlyFee = s?.FormTheoryHourlyFee ?? 0m,
+        drivingHourlyFee = s?.FormDrivingHourlyFee ?? 0m,
+        theoryExamFee = s?.FormTheoryExamFee ?? 0m,
+        drivingExamFee = s?.FormDrivingExamFee ?? 0m,
+        theoryHours = s?.FormTheoryHours ?? 34,
+        drivingHours = s?.FormDrivingHours ?? 16,
+    };
+
+    private static object ContractFormSettingsSnapshot(DrivingSchoolSettings s) => new
+    {
+        s.FormInstitutionName, s.FormInstitutionCity, s.FormInstitutionDistrict, s.FormInstitutionAddress,
+        s.FormInstitutionPhone, s.FormDirectorName, s.FormBankName, s.FormBankAccountNo, s.FormJurisdictionCity,
+        s.FormTheoryHourlyFee, s.FormDrivingHourlyFee, s.FormTheoryExamFee, s.FormDrivingExamFee,
+        s.FormTheoryHours, s.FormDrivingHours,
+    };
+
+    private static string Trim(string? value, int maxLength)
+    {
+        var trimmed = value?.Trim() ?? string.Empty;
+        return trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
+    }
+
+    /// <summary>
+    /// Kursiyer dosyası + kurum ayarları + finans sözleşmesini matbu formların
+    /// beklediği düz veri kümesine çevirir. Girilmemiş alanlar boş string kalır;
+    /// evrak elde tamamlanabilsin diye tire konmaz.
+    /// </summary>
+    private async Task<DrivingContractFormData> BuildContractFormDataAsync(
+        StudentDrivingProfile profile, StudentProfile student, CancellationToken ct)
+    {
+        var settings = await dbContext.DrivingSchoolSettings.AsNoTracking().FirstOrDefaultAsync(ct);
+        var tenantName = await dbContext.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.Id == dbContext.CurrentTenantId).Select(x => x.Name).FirstOrDefaultAsync(ct);
+
+        EnrollmentContract? contract = null;
+        var installments = new List<DrivingContractInstallment>();
+        if (profile.EnrollmentContractId is Guid contractId)
+        {
+            contract = await dbContext.EnrollmentContracts.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Id == contractId, ct);
+            installments = await dbContext.FinanceInstallments.AsNoTracking()
+                .Where(x => x.EnrollmentContractId == contractId)
+                .OrderBy(x => x.SeqNo)
+                .Select(x => new DrivingContractInstallment(
+                    string.IsNullOrWhiteSpace(x.Label) ? $"{x.SeqNo}. Taksit" : x.Label,
+                    x.Amount,
+                    x.DueDateUtc,
+                    // Ödeme tarihi ayrı tutulmuyor; tamamı tahsil edilmişse vade tarihi basılır.
+                    x.PaidAmount >= x.Amount ? x.DueDateUtc : null))
+                .ToListAsync(ct);
+        }
+
+        var drivingHourly = settings?.FormDrivingHourlyFee ?? 0m;
+        var drivingHours = settings?.FormDrivingHours ?? 16;
+
+        return new DrivingContractFormData(
+            FullName: student.FullName ?? string.Empty,
+            IdentityNumber: Pick(profile.IdentityNumber, student.TcNo),
+            FatherName: profile.FatherName,
+            MotherName: profile.MotherName,
+            BirthPlace: profile.BirthPlace,
+            BirthDate: student.BirthDate ?? string.Empty,
+            EducationLevel: profile.EducationLevel,
+            LicenseClass: profile.LicenseClass,
+            Phone: Pick(profile.Phone, student.ParentPhone),
+            HomePhone: string.Empty,
+            ResidenceAddress: Pick(profile.ResidenceAddress, student.Address),
+            RegistrationCity: profile.RegistrationCity,
+            RegistrationDistrict: profile.RegistrationDistrict,
+            RegistrationNeighborhood: profile.RegistrationNeighborhood,
+            RegistrationStreet: profile.RegistrationStreet,
+            RegistrationVolumeNo: profile.RegistrationVolumeNo,
+            RegistrationFamilyOrderNo: profile.RegistrationFamilyOrderNo,
+            RegistrationOrderNo: profile.RegistrationOrderNo,
+            IdentityIssueDate: Date(profile.IdentityIssueDate),
+            IdentityIssuePlace: profile.IdentityIssuePlace,
+            ExistingLicenseCity: profile.HasExistingLicense ? profile.LicenseIssuePlace : string.Empty,
+            ExistingLicenseClasses: profile.HasExistingLicense ? profile.ExistingLicenseClasses : string.Empty,
+            ExistingLicenseDate: profile.HasExistingLicense ? Date(profile.LicenseIssueDate) : string.Empty,
+            ExistingLicenseNumber: profile.HasExistingLicense ? profile.ExistingLicenseNumber : string.Empty,
+            InstitutionName: Pick(settings?.FormInstitutionName, tenantName, "Sürücü Kursu"),
+            InstitutionCity: settings?.FormInstitutionCity ?? string.Empty,
+            InstitutionDistrict: settings?.FormInstitutionDistrict ?? string.Empty,
+            InstitutionAddress: settings?.FormInstitutionAddress ?? string.Empty,
+            InstitutionPhone: settings?.FormInstitutionPhone ?? string.Empty,
+            DirectorName: Pick(settings?.FormDirectorName, settings?.CertificateDirectorName),
+            BankName: settings?.FormBankName ?? string.Empty,
+            BankAccountNo: settings?.FormBankAccountNo ?? string.Empty,
+            JurisdictionCity: Pick(settings?.FormJurisdictionCity, settings?.FormInstitutionCity),
+            TotalFee: contract?.NetAmount ?? 0m,
+            TheoryHourlyFee: settings?.FormTheoryHourlyFee ?? 0m,
+            DrivingHourlyFee: drivingHourly,
+            // Sınav ücretleri önce kursiyere özel girilmişse ondan, yoksa kurum varsayılanından.
+            TheoryExamFee: profile.TheoryExamFee > 0 ? profile.TheoryExamFee : settings?.FormTheoryExamFee ?? 0m,
+            DrivingExamFee: profile.DrivingExamFee > 0 ? profile.DrivingExamFee : settings?.FormDrivingExamFee ?? 0m,
+            TheoryHours: settings?.FormTheoryHours ?? 34,
+            DrivingHours: drivingHours,
+            // İkinci 4'üncü hak bedeli: zorunlu direksiyon saati × saat ücreti.
+            FailedFourthAttemptFee: drivingHourly * drivingHours,
+            Installments: installments,
+            DownPayment: contract?.DownPayment ?? 0m,
+            RegisteredAtUtc: profile.RegisteredAtUtc,
+            GeneratedAtUtc: DateTime.UtcNow);
+    }
+
+    /// <summary>İlk dolu değeri döndürür; hiçbiri yoksa boş string.</summary>
+    private static string Pick(params string?[] candidates) =>
+        candidates.FirstOrDefault(x => !string.IsNullOrWhiteSpace(x))?.Trim() ?? string.Empty;
+
+    private static string Date(DateTime? utc) => utc is null ? string.Empty : utc.Value.AddHours(3).ToString("dd.MM.yyyy");
 
     /// <summary>Aday dosyası kapak formu: kimlik bilgileri + evrak kontrol listesi.</summary>
     private async Task<DrivingReportDocument> BuildCoverFormAsync(
@@ -988,7 +1424,7 @@ public sealed class DrivingStudentsController(
     // ─── Yardımcılar ──────────────────────────────────────────────────────────
 
     /// <summary>Belge dosyasını (zorunlu + yüklenmiş) tek listede birleştirir.</summary>
-    private async Task<object> BuildDocumentFileAsync(StudentDrivingProfile profile, CancellationToken ct)
+    private async Task<object> BuildDocumentFileAsync(StudentDrivingProfile profile, bool includeInternalReview, CancellationToken ct)
     {
         var birthDate = await dbContext.Students.AsNoTracking()
             .Where(x => x.Id == profile.StudentId)
@@ -1023,7 +1459,7 @@ public sealed class DrivingStudentsController(
                     required = required.Contains(type),
                     status = status.ToString(),
                     id = document?.Id,
-                    fileUrl = document?.FileUrl,
+                    fileUrl = document is null ? null : $"/api/driving-school/student-documents/{document.Id}/file",
                     fileName = document?.FileName,
                     documentNumber = document?.DocumentNumber,
                     issuedBy = document?.IssuedBy,
@@ -1032,6 +1468,8 @@ public sealed class DrivingStudentsController(
                     uploadedAtUtc = document?.UploadedAtUtc,
                     reviewedAtUtc = document?.ReviewedAtUtc,
                     rejectionReason = document?.RejectionReason,
+                    reviewNote = includeInternalReview ? document?.ReviewNote : null,
+                    reviewVersion = document?.ReviewVersion ?? 0,
                 };
             })
             .ToList();
@@ -1039,7 +1477,7 @@ public sealed class DrivingStudentsController(
         return new
         {
             items = rows,
-            missingCount = rows.Count(x => x.required && x.status is nameof(StudentDocumentStatus.Missing) or nameof(StudentDocumentStatus.Rejected) or nameof(StudentDocumentStatus.Expired)),
+            missingCount = rows.Count(x => x.required && x.status is nameof(StudentDocumentStatus.Missing) or nameof(StudentDocumentStatus.Rejected) or nameof(StudentDocumentStatus.ReuploadRequested) or nameof(StudentDocumentStatus.Expired)),
             pendingCount = rows.Count(x => x.status == nameof(StudentDocumentStatus.PendingApproval)),
             complete = rows.Where(x => x.required).All(x => x.status == nameof(StudentDocumentStatus.Approved)),
             history = stored.Where(x => !x.IsCurrent).Select(x => new
@@ -1048,9 +1486,10 @@ public sealed class DrivingStudentsController(
                 documentType = x.DocumentType.ToString(),
                 label = DocumentLabel(x.DocumentType),
                 status = x.Status.ToString(),
-                x.FileUrl,
+                fileUrl = $"/api/driving-school/student-documents/{x.Id}/file",
                 x.UploadedAtUtc,
                 x.RejectionReason,
+                reviewNote = includeInternalReview ? x.ReviewNote : null,
             }).ToList(),
         };
     }
@@ -1064,7 +1503,9 @@ public sealed class DrivingStudentsController(
         var actorId = CurrentUserId();
         if (actorId is null) return Unauthorized();
         if (request.ParsedType is not { } documentType) return BadRequest(new { message = $"Belge türü geçersiz: {request.DocumentType}." });
-        if (!IsSafeUploadUrl(request.FileUrl)) return BadRequest(new { message = "Belge dosyası güvenli yükleme alanından seçilmelidir." });
+        var storedFile = IsSafeStudentDocumentUrl(request.FileUrl) ? await files.ReadPrefixAsync(request.FileUrl, 32, ct) : null;
+        if (storedFile is null || storedFile.Length > MaxStudentDocumentBytes || !IsAllowedStudentDocumentContent(request.FileName, storedFile.Bytes))
+            return BadRequest(new { message = "Belge dosyası güvenli öğrenci evrak alanından seçilmelidir." });
         if ((request.DocumentNumber?.Length ?? 0) > 100 || (request.Description?.Length ?? 0) > 1000)
             return BadRequest(new { message = "Belge numarası veya açıklama çok uzun." });
         if (request.ExpiresAtUtc is { } expires && (expires <= DateTime.UtcNow || expires > DateTime.UtcNow.AddYears(20)))
@@ -1279,10 +1720,32 @@ public sealed class DrivingStudentsController(
         return path.StartsWith("/uploads/", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool IsSafeStudentDocumentUrl(string? value)
+    {
+        if (!IsSafeUploadUrl(value) || !Uri.TryCreate(value, UriKind.RelativeOrAbsolute, out var uri)) return false;
+        var path = uri.IsAbsoluteUri ? uri.AbsolutePath : value!;
+        return path.StartsWith("/uploads/driving-student-documents/", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsAllowedStudentDocumentContent(string? fileName, ReadOnlySpan<byte> header)
+    {
+        var extension = Path.GetExtension(fileName ?? string.Empty).ToLowerInvariant();
+        if (extension == ".pdf") return header.Length >= 5 && header[..5].SequenceEqual("%PDF-"u8);
+        if (extension is ".jpg" or ".jpeg") return header.Length >= 3 && header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF;
+        ReadOnlySpan<byte> png = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+        return extension == ".png" && header.Length >= png.Length && header[..png.Length].SequenceEqual(png);
+    }
+
     private Guid? CurrentUserId()
     {
         var raw = User.FindFirstValue("nameid") ?? User.FindFirstValue("sub") ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         return Guid.TryParse(raw, out var parsed) ? parsed : null;
+    }
+
+    private string CurrentUserName()
+    {
+        var value = (User.FindFirstValue("name") ?? User.Identity?.Name ?? "Sistem").Trim();
+        return string.IsNullOrWhiteSpace(value) ? "Sistem" : value;
     }
 
     private async Task<StudentDrivingProfile?> CurrentStudentProfileAsync(CancellationToken ct)
@@ -1323,6 +1786,16 @@ public sealed record DrivingStudentWizardRequest(
     string? City,
     string? District,
     string? ResidenceAddress,
+    // Nüfusa kayıtlı olduğu yer — EK-1 müracaat formunun kimlik tablosunu doldurur.
+    string? RegistrationCity,
+    string? RegistrationDistrict,
+    string? RegistrationNeighborhood,
+    string? RegistrationStreet,
+    string? RegistrationVolumeNo,
+    string? RegistrationFamilyOrderNo,
+    string? RegistrationOrderNo,
+    DateTime? IdentityIssueDate,
+    string? IdentityIssuePlace,
     string? Address,
     string? Phone,
     string? Email,
@@ -1388,9 +1861,48 @@ public sealed record UploadStudentDocumentRequest(
             : null;
 }
 
-public sealed record ReviewStudentDocumentRequest(bool Approved, string? RejectionReason);
+public sealed record ReviewStudentDocumentRequest(
+    string? Action,
+    bool? Approved,
+    string? RejectionReason,
+    string? Note,
+    DateTime? ExpiresAtUtc,
+    int ExpectedVersion = 0);
 
 public sealed record VerifyIdentityRequest(string? IdentityNumber, string? FullName, string? BirthDate);
+
+/// <summary>EK-1 müracaat formundaki "nüfus cüzdanındaki kayıtlara göre" bloğu.</summary>
+public sealed record UpdateDrivingRegistrationIdentityRequest(
+    string? RegistrationCity,
+    string? RegistrationDistrict,
+    string? RegistrationNeighborhood,
+    string? RegistrationStreet,
+    string? RegistrationVolumeNo,
+    string? RegistrationFamilyOrderNo,
+    string? RegistrationOrderNo,
+    DateTime? IdentityIssueDate,
+    string? IdentityIssuePlace,
+    string? BirthPlace,
+    string? FatherName,
+    string? MotherName);
+
+/// <summary>Matbu evraklarda kullanılan kurum künyesi ve mevzuat ücretleri.</summary>
+public sealed record UpdateDrivingContractFormSettingsRequest(
+    string? InstitutionName,
+    string? InstitutionCity,
+    string? InstitutionDistrict,
+    string? InstitutionAddress,
+    string? InstitutionPhone,
+    string? DirectorName,
+    string? BankName,
+    string? BankAccountNo,
+    string? JurisdictionCity,
+    decimal TheoryHourlyFee,
+    decimal DrivingHourlyFee,
+    decimal TheoryExamFee,
+    decimal DrivingExamFee,
+    int TheoryHours,
+    int DrivingHours);
 
 public sealed record SetMebbisEnteredRequest(bool Entered);
 

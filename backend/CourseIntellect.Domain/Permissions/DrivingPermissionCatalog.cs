@@ -55,6 +55,7 @@ public static class DrivingPermissionCatalog
         GraduationOverrideRequest, GraduationRevokeRequest,
         FinanceView, FinanceCollect,
         ReportView,
+        MebbisView, MebbisManage,
     };
 
     /// <summary>
@@ -71,6 +72,7 @@ public static class DrivingPermissionCatalog
         ExamView, GraduationView,
         FinanceView, FinanceCollect, FinanceDiscount, FinanceRefund, FinanceReportView,
         ReportView, ReportExport,
+        MebbisView,
     };
 
     /// <summary>Filo sorumlusu: yalnızca araç, evrak, bakım ve öğretmen-araç ataması.</summary>

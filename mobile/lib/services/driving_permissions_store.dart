@@ -14,6 +14,7 @@ class DrivingPermissions {
   static const studentUpdate = 'driving.student.update';
   static const studentDocumentView = 'driving.student.document.view';
   static const studentDocumentUpload = 'driving.student.document.upload';
+  static const studentDocumentReview = 'driving.student.document.review';
 
   static const packageView = 'driving.package.view';
   static const packageCreate = 'driving.package.create';
@@ -59,6 +60,10 @@ class DrivingPermissions {
   static const financeReportView = 'driving.finance.report.view';
 
   static const reportView = 'driving.report.view';
+  static const reportExport = 'driving.report.export';
+  static const mebbisView = 'driving.mebbis.view';
+  static const mebbisManage = 'driving.mebbis.manage';
+  static const mebbisVerify = 'driving.mebbis.verify';
 }
 
 class DrivingPermissionSnapshot {

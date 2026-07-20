@@ -31,5 +31,12 @@ public sealed class AuditLogEntry : IBranchScopedEntity
     /// <summary>İstemci tanımı (User-Agent) — hangi cihaz/uygulama.</summary>
     public string? UserAgent { get; set; }
 
+    /// <summary>
+    /// İşlemi yapanın O ANDAKİ rolü. Kişinin rolü sonradan değişebildiği için
+    /// kullanıcı kaydından okunamaz; olay anında dondurulur. Bu alan eklenmeden
+    /// önceki kayıtlarda boştur — geriye dönük doldurulmaz.
+    /// </summary>
+    public string? ActorRole { get; set; }
+
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

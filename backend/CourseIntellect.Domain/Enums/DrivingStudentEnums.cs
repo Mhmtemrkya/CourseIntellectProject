@@ -70,6 +70,7 @@ public enum StudentDocumentType
     ParentalConsent = 8,
     ExistingLicense = 9,
     Other = 10,
+    ForeignStudentDocument = 11,
 }
 
 public enum StudentDocumentStatus
@@ -80,4 +81,6 @@ public enum StudentDocumentStatus
     Approved = 3,
     Rejected = 4,
     Expired = 5,
+    /// <summary>Belge teknik olarak incelendi ancak yeni sürüm yüklenmesi istendi.</summary>
+    ReuploadRequested = 6,
 }

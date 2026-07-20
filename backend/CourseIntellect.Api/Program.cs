@@ -57,13 +57,18 @@ builder.Services.AddControllers();
 builder.Services.AddHttpClient();
 builder.Services.AddInfrastructure(builder.Configuration);
 
+// EF migration araçları servis sağlayıcıyı kurarken canlı başlangıç işleri ve
+// Hangfire bağlantıları çalışmamalıdır. Değişken yalnız geliştirici komutunda
+// kullanılır; normal uygulama davranışını etkilemez.
+var isEfDesignTime = string.Equals(Environment.GetEnvironmentVariable("COURSE_INTELLECT_EF_DESIGN_TIME"), "1", StringComparison.Ordinal);
+
 // ─── Hangfire (arka plan zamanlanmış işler) ──────────────────────────────
 // Aynı backend process'i içinde çalışır; işleri mevcut PostgreSQL'de saklar
 // (ayrı altyapı yok). Pano public'e AÇILMAZ (güvenlik) — headless çalışır.
-var jobsEnabled = builder.Configuration.GetValue<bool?>("Jobs:Enabled") ?? true;
+var jobsEnabled = !isEfDesignTime && (builder.Configuration.GetValue<bool?>("Jobs:Enabled") ?? true);
 var hangfireConnection = Environment.GetEnvironmentVariable("COURSE_INTELLECT_DB")
     ?? builder.Configuration.GetConnectionString("DefaultConnection");
-var hangfireAvailable = !string.IsNullOrWhiteSpace(hangfireConnection);
+var hangfireAvailable = !isEfDesignTime && !string.IsNullOrWhiteSpace(hangfireConnection);
 if (hangfireAvailable)
 {
     // AddHangfire IBackgroundJobClient'ı da kaydeder → servisler işleri kuyruğa
@@ -129,6 +134,18 @@ builder.Services.AddRateLimiter(options =>
             factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
             {
                 PermitLimit = 30,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
+    options.AddPolicy("photo-analysis", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirstValue("user_id")
+                ?? httpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
@@ -296,6 +313,11 @@ builder.Services
         };
     });
 
+// dotnet-ef yalnız model/factory kullanır; web host'u kurup başlangıç işleri
+// çalıştırmasına gerek yoktur. Normal çalışmada değişken false olduğu için bu
+// dal uygulamanın davranışını değiştirmez.
+if (isEfDesignTime) return;
+
 var app = builder.Build();
 
 if (app.Environment.IsProduction())
@@ -305,8 +327,8 @@ if (app.Environment.IsProduction())
         throw new InvalidOperationException("Production ortamında CertificateVerification:PublicBaseUrl geçerli bir HTTPS adresi olmalıdır.");
 }
 
-var autoMigrateDatabase = builder.Configuration.GetValue<bool?>("Database:AutoMigrate") ?? true;
-var seedDatabase = builder.Configuration.GetValue<bool?>("Database:Seed") ?? true;
+var autoMigrateDatabase = !isEfDesignTime && (builder.Configuration.GetValue<bool?>("Database:AutoMigrate") ?? true);
+var seedDatabase = !isEfDesignTime && (builder.Configuration.GetValue<bool?>("Database:Seed") ?? true);
 
 if (autoMigrateDatabase || seedDatabase)
 {
@@ -429,7 +451,9 @@ app.Use(async (context, next) =>
 {
     var path = context.Request.Path.Value ?? string.Empty;
     if (path.StartsWith("/uploads/driving-certificate-assets/", StringComparison.OrdinalIgnoreCase)
-        || path.StartsWith("/uploads/driving-certificates/", StringComparison.OrdinalIgnoreCase))
+        || path.StartsWith("/uploads/driving-certificates/", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/uploads/driving-mebbis-photos/", StringComparison.OrdinalIgnoreCase)
+        || path.StartsWith("/uploads/driving-student-documents/", StringComparison.OrdinalIgnoreCase))
     {
         context.Response.StatusCode = StatusCodes.Status404NotFound;
         return;

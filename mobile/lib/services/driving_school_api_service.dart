@@ -91,6 +91,269 @@ class DrivingSchoolApiService {
       _get('/api/driving-school/permissions/me');
   Future<Map<String, dynamic>> dashboard() =>
       _get('/api/driving-school/dashboard');
+  Future<Map<String, dynamic>> termAlerts() =>
+      _get('/api/driving-school/term-alerts');
+  Future<Map<String, dynamic>> mebbisWorkCenter({
+    String? status,
+    String? type,
+    String? search,
+  }) {
+    final query = <String, String>{'pageSize': '100'};
+    if (status != null && status.isNotEmpty) query['status'] = status;
+    if (type != null && type.isNotEmpty) query['type'] = type;
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+    final uri = Uri(
+      path: '/api/driving-school/mebbis/work-center',
+      queryParameters: query,
+    );
+    return _get(uri.toString());
+  }
+
+  Future<Map<String, dynamic>> syncMebbisWorkCenter() =>
+      _post('/api/driving-school/mebbis/work-center/sync', const {});
+
+  Future<Map<String, dynamic>> mebbisErrorLibrary({String search = ''}) => _get(
+    Uri(
+      path: '/api/driving-school/mebbis/errors',
+      queryParameters: search.trim().isEmpty ? null : {'search': search.trim()},
+    ).toString(),
+  );
+  Future<Map<String, dynamic>> mebbisErrorDetail(String id) =>
+      _get('/api/driving-school/mebbis/errors/$id');
+  Future<Map<String, dynamic>> syncMebbisErrorDefaults() =>
+      _post('/api/driving-school/mebbis/errors/sync-defaults', const {});
+  Future<Map<String, dynamic>> reportMebbisError(String id, String note) =>
+      _post('/api/driving-school/mebbis/errors/$id/occurrences', {
+        'note': note,
+        'sourceType': 'MobileManual',
+      });
+  Future<Map<String, dynamic>> resolveMebbisError(
+    String id,
+    String note,
+    int version,
+  ) => _put('/api/driving-school/mebbis/errors/occurrences/$id/resolve', {
+    'resolutionNote': note,
+    'expectedVersion': version,
+  });
+
+  Future<Map<String, dynamic>> termOpeningWizardOptions() =>
+      _get('/api/driving-school/term-opening-wizard/options');
+
+  Future<Map<String, dynamic>> validateTermOpeningWizard(
+    Map<String, dynamic> body,
+  ) => _post('/api/driving-school/term-opening-wizard/validate', body);
+
+  Future<Map<String, dynamic>> openTermOpeningWizard(
+    Map<String, dynamic> body,
+  ) => _post('/api/driving-school/term-opening-wizard/open', body);
+
+  Future<Map<String, dynamic>> transferPackages() =>
+      _get('/api/driving-school/mebbis/transfer-packages');
+  Future<Map<String, dynamic>> createTransferPackage(
+    String packageType,
+    String studentGroupId,
+  ) => _post('/api/driving-school/mebbis/transfer-packages', {
+    'packageType': packageType,
+    'studentGroupId': studentGroupId,
+  });
+  Future<Map<String, dynamic>> updateTransferPackageStatus(
+    String id,
+    String status,
+    int expectedVersion, {
+    String errorResult = '',
+  }) => _put('/api/driving-school/mebbis/transfer-packages/$id/status', {
+    'status': status,
+    'errorResult': errorResult,
+    'expectedVersion': expectedVersion,
+  });
+
+  Future<Map<String, dynamic>> mebbisImports() =>
+      _get('/api/driving-school/mebbis/imports');
+  Future<Map<String, dynamic>> mebbisImportDetail(String id) =>
+      _get('/api/driving-school/mebbis/imports/$id?pageSize=200');
+  Future<Map<String, dynamic>> applyMebbisImport(
+    String id,
+    int expectedPreviewVersion,
+    List<String> excludedRowIds, {
+    bool createRetryFees = false,
+  }) => _post('/api/driving-school/mebbis/imports/$id/apply', {
+    'expectedPreviewVersion': expectedPreviewVersion,
+    'excludedRowIds': excludedRowIds,
+    'createRetryFees': createRetryFees,
+  });
+  Future<Map<String, dynamic>> rejectMebbisImport(
+    String id,
+    int expectedPreviewVersion,
+    String reason,
+  ) => _post('/api/driving-school/mebbis/imports/$id/reject', {
+    'expectedPreviewVersion': expectedPreviewVersion,
+    'reason': reason,
+  });
+
+  Future<Map<String, dynamic>> mebbisReconciliations() =>
+      _get('/api/driving-school/mebbis/reconciliations');
+  Future<Map<String, dynamic>> mebbisReconciliationDetail(
+    String id, {
+    String classification = '',
+  }) => _get(
+    '/api/driving-school/mebbis/reconciliations/$id?pageSize=500${classification.isEmpty ? '' : '&classification=$classification'}',
+  );
+  Future<Map<String, dynamic>> createMebbisReconciliation(
+    String studentGroupId,
+    String candidateImportSessionId,
+  ) => _post('/api/driving-school/mebbis/reconciliations', {
+    'studentGroupId': studentGroupId,
+    'candidateImportSessionId': candidateImportSessionId,
+  });
+  Future<Map<String, dynamic>> mebbisExamResults() =>
+      _get('/api/driving-school/mebbis/exam-results');
+  Future<Map<String, dynamic>> mebbisExamResultDetail(String id) =>
+      _get('/api/driving-school/mebbis/exam-results/$id?pageSize=500');
+  Future<Map<String, dynamic>> mebbisCertificateNumbers() =>
+      _get('/api/driving-school/mebbis/certificate-numbers');
+  Future<Map<String, dynamic>> mebbisCertificateNumberDetail(String id) =>
+      _get('/api/driving-school/mebbis/certificate-numbers/$id?pageSize=500');
+
+  Future<Map<String, dynamic>> previewMebbisImport(
+    PlatformFile file,
+    String importType,
+    String? studentGroupId,
+  ) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) throw StateError('Oturum bulunamadı.');
+    final request = http.MultipartRequest(
+      'POST',
+      Uri.parse(
+        '${ApiConfig.baseUrl}/api/driving-school/mebbis/imports/preview',
+      ),
+    );
+    request.headers.addAll({
+      'Authorization': 'Bearer ${session.accessToken}',
+      ...ScopeHeaders.merged,
+    });
+    request.fields['importType'] = importType;
+    if (studentGroupId != null && studentGroupId.isNotEmpty) {
+      request.fields['studentGroupId'] = studentGroupId;
+    }
+    if (file.bytes != null) {
+      request.files.add(
+        http.MultipartFile.fromBytes('file', file.bytes!, filename: file.name),
+      );
+    } else if (file.path != null) {
+      request.files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          file.path!,
+          filename: file.name,
+        ),
+      );
+    } else {
+      throw StateError('Dosya içeriği okunamadı.');
+    }
+    final response = await http.Response.fromStream(await request.send());
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      var message = 'Önizleme oluşturulamadı (${response.statusCode}).';
+      try {
+        message =
+            (jsonDecode(response.body) as Map)['message']?.toString() ??
+            message;
+      } catch (_) {}
+      throw StateError(message);
+    }
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
+  Future<Uint8List> downloadAuthenticated(String path) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) throw StateError('Oturum bulunamadı.');
+    final response = await http.get(
+      Uri.parse('${ApiConfig.baseUrl}$path'),
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw StateError('Dosya indirilemedi (${response.statusCode}).');
+    }
+    return response.bodyBytes;
+  }
+
+  Future<Map<String, dynamic>> changeMebbisWorkStatus(
+    String workType,
+    String subjectId,
+    String status,
+    int expectedVersion, {
+    String reason = '',
+    String note = '',
+  }) => _put(
+    '/api/driving-school/mebbis/work-center/items/${Uri.encodeComponent(workType)}/$subjectId/status',
+    {
+      'status': status,
+      'reason': reason,
+      'note': note,
+      'expectedVersion': expectedVersion,
+    },
+  );
+
+  Future<Map<String, dynamic>> mebbisEntryAssistant(String profileId) =>
+      _get('/api/driving-school/mebbis/entry-assistant/students/$profileId');
+
+  Future<Map<String, dynamic>> updateMebbisEntryField(
+    String profileId,
+    String fieldKey,
+    bool completed,
+    int expectedVersion,
+  ) => _put(
+    '/api/driving-school/mebbis/entry-assistant/students/$profileId/fields/${Uri.encodeComponent(fieldKey)}',
+    {'completed': completed, 'expectedVersion': expectedVersion},
+  );
+
+  Future<Map<String, dynamic>> completeMebbisEntryAssistant(
+    String profileId,
+    int expectedWorkItemVersion,
+  ) => _post(
+    '/api/driving-school/mebbis/entry-assistant/students/$profileId/complete',
+    {'expectedWorkItemVersion': expectedWorkItemVersion},
+  );
+
+  Future<Map<String, dynamic>> mebbisQuality(String profileId) =>
+      _get('/api/driving-school/mebbis/quality/students/$profileId');
+
+  Future<Map<String, dynamic>> documentReviewQueue({
+    String status = 'ActionRequired',
+    String documentType = '',
+    String search = '',
+  }) {
+    final query = <String, String>{'status': status, 'pageSize': '100'};
+    if (documentType.isNotEmpty) query['documentType'] = documentType;
+    if (search.trim().isNotEmpty) query['search'] = search.trim();
+    return _get(
+      Uri(
+        path: '/api/driving-school/student-documents/review-queue',
+        queryParameters: query,
+      ).toString(),
+    );
+  }
+
+  Future<Map<String, dynamic>> reviewStudentDocument(
+    String id,
+    Map<String, dynamic> payload,
+  ) => _post('/api/driving-school/student-documents/$id/review', payload);
+
+  Future<Uint8List> downloadStudentDocument(String id) =>
+      _downloadBytes('/api/driving-school/student-documents/$id/file');
+
+  Future<Map<String, dynamic>> inspectMebbisPhoto(String profileId) => _post(
+    '/api/driving-school/mebbis/photo-inspections/students/$profileId',
+    const {},
+  );
+
+  Future<Uint8List> downloadMebbisPhoto(String inspectionId) => _downloadBytes(
+    '/api/driving-school/mebbis/photo-inspections/$inspectionId/mebbis-file',
+  );
   Future<List<Map<String, dynamic>>> packages() async => ((await _getList(
     '/api/driving-school/packages',
   )).cast<Map<String, dynamic>>());
@@ -330,10 +593,9 @@ class DrivingSchoolApiService {
       )).cast<Map<String, dynamic>>();
 
   // Kursiyer listesi (Öğrenciler sayfası).
-  Future<List<Map<String, dynamic>>> students() async =>
-      (await _getList(
-        '/api/driving-school/students',
-      )).cast<Map<String, dynamic>>();
+  Future<List<Map<String, dynamic>>> students() async => (await _getList(
+    '/api/driving-school/students',
+  )).cast<Map<String, dynamic>>();
 
   // Kursiyer grupları (dönemler): liste + kursiyer sayıları.
   Future<Map<String, dynamic>> studentGroups() =>
@@ -378,10 +640,15 @@ class DrivingSchoolApiService {
   });
 
   // Ödeme Al: kurumun şubeleri + tahsilat listesi + şube seçimli tahsilat.
-  Future<List<Map<String, dynamic>>> branches() async =>
-      (await _getList('/api/driving-school/branches')).cast<Map<String, dynamic>>();
+  Future<List<Map<String, dynamic>>> branches() async => (await _getList(
+    '/api/driving-school/branches',
+  )).cast<Map<String, dynamic>>();
 
-  Future<List<Map<String, dynamic>>> collectionList({String? bucket, String? groupId, bool? ungrouped}) async {
+  Future<List<Map<String, dynamic>>> collectionList({
+    String? bucket,
+    String? groupId,
+    bool? ungrouped,
+  }) async {
     final q = <String, String>{};
     if (bucket != null) q['bucket'] = bucket;
     if (ungrouped == true) {
@@ -389,13 +656,18 @@ class DrivingSchoolApiService {
     } else if (groupId != null) {
       q['groupId'] = groupId;
     }
-    final query = q.isEmpty ? '' : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
-    return (await _getList('/api/driving-school/collection-list$query')).cast<Map<String, dynamic>>();
+    final query = q.isEmpty
+        ? ''
+        : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
+    return (await _getList(
+      '/api/driving-school/collection-list$query',
+    )).cast<Map<String, dynamic>>();
   }
 
   Future<List<Map<String, dynamic>>> installments(String profileId) async =>
-      (await _getList('/api/driving-school/students/$profileId/installments'))
-          .cast<Map<String, dynamic>>();
+      (await _getList(
+        '/api/driving-school/students/$profileId/installments',
+      )).cast<Map<String, dynamic>>();
 
   Future<Map<String, dynamic>> recordPayment(
     String profileId, {
@@ -415,12 +687,15 @@ class DrivingSchoolApiService {
   // Kursiyer dosyası (belge modalı overview + documents alanlarını kullanır).
   Future<Map<String, dynamic>> studentDetail(String profileId) =>
       _get('/api/driving-school/students/$profileId/detail');
+  Future<Map<String, dynamic>> mebbisHistory(String profileId) => _get(
+    '/api/driving-school/mebbis/history/students/$profileId?pageSize=100',
+  );
 
   // Öğretmen-araç atamaları (araç modalında "kime atanmış").
-  Future<List<Map<String, dynamic>>> instructorVehicleAssignments() async =>
-      (await _getList(
-        '/api/driving-school/instructor-vehicle-assignments?includeInactive=true',
-      )).cast<Map<String, dynamic>>();
+  Future<List<Map<String, dynamic>>>
+  instructorVehicleAssignments() async => (await _getList(
+    '/api/driving-school/instructor-vehicle-assignments?includeInactive=true',
+  )).cast<Map<String, dynamic>>();
 
   Future<void> createVehicleDocument(Map<String, dynamic> body) async {
     await _post('/api/driving-school/vehicle-documents', body);

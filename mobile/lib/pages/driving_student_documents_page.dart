@@ -1,5 +1,9 @@
+import 'dart:io';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:open_filex/open_filex.dart';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:student/i18n/app_locale.dart';
 
@@ -51,14 +55,16 @@ class _DrivingStudentDocumentsPageState
     }
   }
 
-  List<Map<String, dynamic>> get _items => ((_file['items'] as List?) ?? const [])
-      .map((e) => Map<String, dynamic>.from(e as Map))
-      .toList();
+  List<Map<String, dynamic>> get _items =>
+      ((_file['items'] as List?) ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 
   /// Eksik → reddedilen → süresi dolmuş → onay bekleyen → onaylı sırasıyla.
   int _priority(String status) => switch (status) {
     'Missing' => 0,
     'Rejected' => 1,
+    'ReuploadRequested' => 1,
     'Expired' => 2,
     'PendingApproval' => 3,
     _ => 4,
@@ -72,11 +78,12 @@ class _DrivingStudentDocumentsPageState
       'Onay bekliyor',
     ),
     'Rejected' => (Colors.red, Icons.cancel_rounded, 'Reddedildi'),
-    'Expired' => (
-      Colors.orange,
-      Icons.event_busy_rounded,
-      'Süresi doldu',
+    'ReuploadRequested' => (
+      Colors.deepOrange,
+      Icons.replay_circle_filled_rounded,
+      'Yeniden yükleme istendi',
     ),
+    'Expired' => (Colors.orange, Icons.event_busy_rounded, 'Süresi doldu'),
     _ => (Colors.red, Icons.upload_file_rounded, 'Eksik'),
   };
 
@@ -117,20 +124,41 @@ class _DrivingStudentDocumentsPageState
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Belge yüklendi, kurum onayı bekleniyor.'.tr),
-          ),
+          SnackBar(content: Text('Belge yüklendi, kurum onayı bekleniyor.'.tr)),
         );
       }
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Belge yüklenemedi: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Belge yüklenemedi: $e')));
       }
     } finally {
       if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _open(Map<String, dynamic> item) async {
+    try {
+      final bytes = await DrivingSchoolApiService.instance
+          .downloadStudentDocument('${item['id']}');
+      final rawName = '${item['fileName'] ?? 'belge'}'.replaceAll(
+        RegExp(r'[^a-zA-Z0-9._-]'),
+        '_',
+      );
+      final file = File(
+        '${(await getTemporaryDirectory()).path}/${item['id']}-$rawName',
+      );
+      await file.writeAsBytes(bytes, flush: true);
+      final result = await OpenFilex.open(file.path);
+      if (result.type != ResultType.done) throw StateError(result.message);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Belge açılamadı: $e')));
+      }
     }
   }
 
@@ -138,9 +166,8 @@ class _DrivingStudentDocumentsPageState
   Widget build(BuildContext context) {
     final items = _items
       ..sort(
-        (a, b) => _priority(
-          '${a['status']}',
-        ).compareTo(_priority('${b['status']}')),
+        (a, b) =>
+            _priority('${a['status']}').compareTo(_priority('${b['status']}')),
       );
     final missing = (_file['missingCount'] as num?)?.toInt() ?? 0;
     final complete = _file['complete'] == true;
@@ -256,7 +283,9 @@ class _DrivingStudentDocumentsPageState
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Text(
-                                    'Ret nedeni: $reason',
+                                    status == 'ReuploadRequested'
+                                        ? 'Yeniden yükleme nedeni: $reason'
+                                        : 'Ret nedeni: $reason',
                                     style: const TextStyle(
                                       fontSize: 12,
                                       color: Colors.red,
@@ -275,6 +304,15 @@ class _DrivingStudentDocumentsPageState
                                         ? 'Belgeyi yükle'
                                         : 'Yeniden yükle',
                                   ),
+                                ),
+                              ),
+                            if (item['id'] != null)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 6),
+                                child: TextButton.icon(
+                                  onPressed: _busy ? null : () => _open(item),
+                                  icon: const Icon(Icons.visibility_rounded),
+                                  label: const Text('Belgeyi görüntüle'),
                                 ),
                               ),
                           ],

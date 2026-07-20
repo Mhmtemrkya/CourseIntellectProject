@@ -85,7 +85,7 @@ export const TR_EN = {
   'İdari Kayıtlar': 'Administrative Records', 'Belge Merkezi': 'Document Center',
   'Personel / İK': 'Staff / HR', 'Organizasyon Birimleri': 'Organization Units',
   'Rol Yönetimi': 'Role Management', 'Yetki Matrisi': 'Permission Matrix',
-  'Personel Onayları': 'Staff Approvals', 'Denetim Kayıtları': 'Audit Logs',
+  'Personel Onayları': 'Staff Approvals', 'Denetim Kayıtları': 'Audit Logs', 'Kayıt Geçmişi': 'Activity History',
   'Şifre Talepleri': 'Password Requests', 'Servis Takip': 'Transport Tracking',
   'Servis & Yemekhane': 'Transport & Cafeteria', 'İdari Birimler': 'Administrative Units',
   'İdari İşler': 'Administrative Affairs', 'İdari Operasyon': 'Administrative Operations',

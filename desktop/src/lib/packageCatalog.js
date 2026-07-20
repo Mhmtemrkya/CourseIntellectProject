@@ -99,7 +99,7 @@ export const MODULE_LIBRARY = {
     label: 'Personel / İK',
     actions: { 'profile-edit': 'Personel dosyası düzenle', status: 'Aktif/pasif durumunu yönet', 'leave-approve': 'İzin onayla', 'asset-assign': 'Zimmet ata', export: 'Dışa aktar' },
   },
-  'audit-log': { label: 'Denetim Kayıtları', actions: { export: 'Dışa aktar' } },
+  'audit-log': { label: 'Kayıt Geçmişi', actions: { export: 'Dışa aktar' } },
   'org-units': { label: 'Organizasyon Birimleri', actions: { manage: 'Birim oluştur/düzenle' } },
   rbac: { label: 'Yetki Matrisi', actions: { edit: 'Matris düzenle' } },
 };

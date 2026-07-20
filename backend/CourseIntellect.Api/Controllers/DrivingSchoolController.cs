@@ -30,6 +30,7 @@ public sealed class DrivingSchoolController(
     IDrivingLedgerService ledgerService,
     IDrivingAvailabilityService availabilityService,
     IDrivingNotifier notifier,
+    IDrivingTermAlertService termAlertService,
     IDrivingReportPdfService reportPdf,
     IAuditLogService auditLogService) : ControllerBase
 {
@@ -123,6 +124,8 @@ public sealed class DrivingSchoolController(
         if (!await CanUseModuleAsync(cancellationToken)) return Forbid();
 
         var canSeeFinance = await permissionService.HasAsync(User, DrivingPermissions.FinanceView, cancellationToken);
+        var canSeeMebbis = await permissionService.HasAsync(User, DrivingPermissions.MebbisView, cancellationToken);
+        var canManageMebbis = await permissionService.HasAsync(User, DrivingPermissions.MebbisManage, cancellationToken);
         var today = from?.ToUniversalTime() ?? DateTime.UtcNow.Date;
         var tomorrow = to?.ToUniversalTime() ?? today.AddDays(1);
         if (tomorrow <= today || tomorrow - today > TimeSpan.FromDays(400))
@@ -147,6 +150,12 @@ public sealed class DrivingSchoolController(
             .OrderBy(x => x.PlateNumber).Take(20)
             .Select(x => new { type = x.IsInMaintenance ? "Maintenance" : "VehicleDocument", severity = x.IsInMaintenance || x.InspectionExpiresAtUtc <= DateTime.UtcNow || x.InsuranceExpiresAtUtc <= DateTime.UtcNow ? "Critical" : "Warning", title = x.PlateNumber, message = x.IsInMaintenance ? "Araç bakım veya arıza nedeniyle kullanım dışı." : "Zorunlu araç evrakı eksik, süresi dolmuş veya 30 gün içinde dolacak." })
             .ToListAsync(cancellationToken);
+        var termAlerts = canSeeMebbis ? await termAlertService.GetAsync(cancellationToken) : null;
+        var operationAlerts = vehicleAlerts.Select(x => new DrivingTermAlertItem(
+                x.type, x.severity, x.title, x.message, 1, null, "/driving/fleet-compliance"))
+            .Concat(termAlerts?.Alerts ?? [])
+            .OrderBy(x => x.Severity == "Critical" ? 0 : 1)
+            .ThenByDescending(x => x.Count).Take(50).ToList();
 
         // Finans KPI'ları yalnızca finans izni olana gider (sekreterde tahsilat var,
         // filo sorumlusunda hiç yok — panoda tutar sızdırmayalım).
@@ -169,6 +178,71 @@ public sealed class DrivingSchoolController(
             return new { label = month.ToString("MMM"), value = count };
         });
 
+        object? managerMebbisSummary = null;
+        if (canManageMebbis && termAlerts is not null)
+        {
+            // Bu özet seçili dashboard tarih filtresinden bağımsızdır: yöneticiye
+            // bugünün operasyonunu ve özellikle belirtilen son yedi günü gösterir.
+            var now = DateTime.UtcNow;
+            var institutionTimeZone = ResolveInstitutionTimeZone();
+            var localDay = TimeZoneInfo.ConvertTimeFromUtc(now, institutionTimeZone).Date;
+            var dayStart = TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(localDay, DateTimeKind.Unspecified), institutionTimeZone);
+            var activeGroupIds = termAlerts.Terms.Select(x => x.GroupId).ToArray();
+            var activeProfiles = await dbContext.StudentDrivingProfiles.AsNoTracking()
+                .Where(x => x.StudentGroupId != null && activeGroupIds.Contains(x.StudentGroupId.Value))
+                .Join(dbContext.Students.AsNoTracking(), p => p.StudentId, s => s.Id,
+                    (p, s) => new { p.Id, s.BirthDate })
+                .ToListAsync(cancellationToken);
+            var activeProfileIds = activeProfiles.Select(x => x.Id).ToArray();
+            var currentDocuments = await dbContext.StudentDrivingDocuments.AsNoTracking()
+                .Where(x => activeProfileIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
+                .ToListAsync(cancellationToken);
+            var documentsByProfile = currentDocuments.ToLookup(x => x.StudentDrivingProfileId);
+            var missingDocumentStudents = activeProfiles.Count(profile =>
+            {
+                var required = DrivingStudentRules.RequiredDocumentsFor(profile.BirthDate, now);
+                return required.Any(type => !documentsByProfile[profile.Id].Any(document =>
+                    document.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(document.Status, document.ExpiresAtUtc, now)));
+            });
+
+            var entryPending = await dbContext.DrivingMebbisWorkItems.AsNoTracking()
+                .Where(x => x.WorkType == DrivingMebbisWorkType.CandidateRegistration
+                    && x.Status == DrivingMebbisWorkStatus.EntryPending)
+                .Select(x => x.StudentDrivingProfileId).Where(x => x != null).Distinct().CountAsync(cancellationToken);
+            var pendingExamResults = await dbContext.DrivingExamCandidates.AsNoTracking()
+                .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id, (c, s) => new { Candidate = c, Session = s })
+                .CountAsync(x => x.Candidate.Status == DrivingExamCandidateStatus.Planned && x.Session.EndsAtUtc <= now, cancellationToken);
+            var certificatesWaiting = await dbContext.DrivingCertificates.AsNoTracking()
+                .CountAsync(x => x.Status == DrivingCertificateStatus.Active && x.MebbisCertificateNo == "", cancellationToken);
+            var errorsLast7Days = await dbContext.DrivingMebbisErrorOccurrences.AsNoTracking()
+                .CountAsync(x => x.OccurredAtUtc >= now.AddDays(-7), cancellationToken);
+            var personnel = await dbContext.DrivingMebbisHistoryEvents.AsNoTracking()
+                .Where(x => x.OccurredAtUtc >= dayStart && x.ActorUserId != null
+                    && x.Severity == CourseIntellect.Domain.Entities.DrivingMebbisHistorySeverity.Success)
+                .GroupBy(x => new { x.ActorUserId, x.ActorName })
+                .Select(x => new { userId = x.Key.ActorUserId, name = x.Key.ActorName, completedCount = x.Count() })
+                .OrderByDescending(x => x.completedCount).ThenBy(x => x.name).Take(20).ToListAsync(cancellationToken);
+
+            managerMebbisSummary = new
+            {
+                generatedAtUtc = now,
+                dayStartUtc = dayStart,
+                timeZone = institutionTimeZone.Id,
+                activeTermCount = termAlerts.ActiveTermCount,
+                mebbisReadyStudents = termAlerts.ReadyNotEnteredCount,
+                entryPendingCount = entryPending,
+                missingDocumentStudents,
+                approachingDeadlineTerms = termAlerts.Terms.Count(x => x.DaysToDeadline is >= 0 and <= 7),
+                pendingExamResults,
+                certificatesWaiting,
+                errorsLast7Days,
+                personnelCompletions = personnel,
+            };
+        }
+
+        Response.Headers.CacheControl = "no-store, private";
+        Response.Headers.Pragma = "no-cache";
+
         return Ok(new
         {
             generatedAtUtc = DateTime.UtcNow,
@@ -185,11 +259,35 @@ public sealed class DrivingSchoolController(
                 missingDocuments,
                 expiringDocuments,
                 upcomingExams,
+                termCriticalAlerts = termAlerts?.CriticalCount,
+                mebbisReadyNotEntered = termAlerts?.ReadyNotEnteredCount,
                 todayCollections,
             },
             charts = new { monthlyRegistrations = registrationSeries },
-            alerts = vehicleAlerts,
+            alerts = operationAlerts,
+            termAlerts,
+            managerMebbisSummary,
         });
+    }
+
+    private static TimeZoneInfo ResolveInstitutionTimeZone()
+    {
+        foreach (var id in new[] { "Europe/Istanbul", "Turkey Standard Time" })
+        {
+            try { return TimeZoneInfo.FindSystemTimeZoneById(id); }
+            catch (TimeZoneNotFoundException) { }
+            catch (InvalidTimeZoneException) { }
+        }
+        return TimeZoneInfo.Utc;
+    }
+
+    /// <summary>Dönem kontenjanı, son tarih, evrak ve MEBBİS mutabakat uyarıları.</summary>
+    [HttpGet("term-alerts")]
+    [RequireDrivingPermission(DrivingPermissions.MebbisView)]
+    public async Task<IActionResult> GetTermAlerts(CancellationToken cancellationToken)
+    {
+        if (!await CanUseModuleAsync(cancellationToken)) return Forbid();
+        return Ok(await termAlertService.GetAsync(cancellationToken));
     }
 
     [HttpGet("packages")]

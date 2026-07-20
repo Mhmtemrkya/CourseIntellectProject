@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
+import 'driving_document_review_queue_page.dart';
+import 'driving_mebbis_work_center_page.dart';
+import 'driving_mebbis_error_library_page.dart';
+import 'driving_mebbis_exam_results_page.dart';
+import 'driving_mebbis_certificate_numbers_page.dart';
+import 'driving_term_opening_wizard_page.dart';
+import 'driving_school_students_page.dart';
 
 class DrivingSchoolDashboardPage extends StatefulWidget {
   const DrivingSchoolDashboardPage({super.key});
@@ -42,6 +49,15 @@ class _DrivingSchoolDashboardPageState
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
       final alerts = (data['alerts'] as List? ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+      final termAlerts = Map<String, dynamic>.from(
+        data['termAlerts'] as Map? ?? const {},
+      );
+      final managerSummary = data['managerMebbisSummary'] == null
+          ? null
+          : Map<String, dynamic>.from(data['managerMebbisSummary'] as Map);
+      final terms = (termAlerts['terms'] as List? ?? const [])
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
       final accent = Theme.of(context).colorScheme.primary;
@@ -127,8 +143,151 @@ class _DrivingSchoolDashboardPageState
                     icon: Icons.build_rounded,
                     color: const Color(0xFFEF4444),
                   ),
+                  DrivingKpiCard(
+                    label: 'Kritik Dönem',
+                    value: '${kpis['termCriticalAlerts'] ?? 0}',
+                    icon: Icons.crisis_alert_rounded,
+                    color: const Color(0xFFDC2626),
+                  ),
+                  DrivingKpiCard(
+                    label: 'MEBBİS Girişi Bekleyen',
+                    value: '${kpis['mebbisReadyNotEntered'] ?? 0}',
+                    icon: Icons.pending_actions_rounded,
+                    color: const Color(0xFFF59E0B),
+                  ),
                 ],
               ),
+            ),
+            SliverToBoxAdapter(
+              child: managerSummary == null
+                  ? const SizedBox.shrink()
+                  : DrivingPanel(
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                      padding: const EdgeInsets.all(18),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const DrivingSectionTitle(
+                            title: 'Kurum Yöneticisi MEBBİS Özeti',
+                          ),
+                          const SizedBox(height: 4),
+                          const Text(
+                            'Günlük operasyon ve son 7 günlük hata görünümü',
+                            style: TextStyle(color: Colors.grey, fontSize: 12),
+                          ),
+                          const SizedBox(height: 14),
+                          GridView.count(
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
+                            crossAxisCount: drivingGridColumns(context),
+                            childAspectRatio: 1.2,
+                            mainAxisSpacing: 10,
+                            crossAxisSpacing: 10,
+                            children: [
+                              _managerCard(
+                                context,
+                                'Aktif dönem',
+                                managerSummary['activeTermCount'],
+                                Icons.calendar_month_rounded,
+                                Colors.indigo,
+                                'terms',
+                              ),
+                              _managerCard(
+                                context,
+                                'MEBBİS’e hazır',
+                                managerSummary['mebbisReadyStudents'],
+                                Icons.verified_rounded,
+                                Colors.green,
+                                'work',
+                              ),
+                              _managerCard(
+                                context,
+                                'Girişi bekleyen',
+                                managerSummary['entryPendingCount'],
+                                Icons.pending_actions_rounded,
+                                Colors.blue,
+                                'work',
+                              ),
+                              _managerCard(
+                                context,
+                                'Eksik evraklı',
+                                managerSummary['missingDocumentStudents'],
+                                Icons.folder_off_rounded,
+                                Colors.orange,
+                                'documents',
+                              ),
+                              _managerCard(
+                                context,
+                                'Son tarihi yaklaşan',
+                                managerSummary['approachingDeadlineTerms'],
+                                Icons.timer_rounded,
+                                Colors.red,
+                                'terms',
+                              ),
+                              _managerCard(
+                                context,
+                                'Sınav sonucu bekleyen',
+                                managerSummary['pendingExamResults'],
+                                Icons.fact_check_rounded,
+                                Colors.purple,
+                                'exams',
+                              ),
+                              _managerCard(
+                                context,
+                                'Sertifika no bekleyen',
+                                managerSummary['certificatesWaiting'],
+                                Icons.workspace_premium_rounded,
+                                Colors.teal,
+                                'certificates',
+                              ),
+                              _managerCard(
+                                context,
+                                'Son 7 gün hata',
+                                managerSummary['errorsLast7Days'],
+                                Icons.error_outline_rounded,
+                                Colors.red,
+                                'errors',
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Text(
+                            'Bugün personel bazlı tamamlanan işlemler',
+                            style: TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 6),
+                          if ((managerSummary['personnelCompletions']
+                                      as List? ??
+                                  const [])
+                              .isEmpty)
+                            const Text(
+                              'Bugün tamamlanmış MEBBİS girişi veya doğrulaması yok.',
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 13,
+                              ),
+                            )
+                          else
+                            ...(managerSummary['personnelCompletions'] as List)
+                                .map((raw) {
+                                  final person = Map<String, dynamic>.from(
+                                    raw as Map,
+                                  );
+                                  return DrivingListRow(
+                                    icon: Icons.person_outline_rounded,
+                                    iconColor: Colors.green,
+                                    title: '${person['name'] ?? 'Personel'}',
+                                    subtitle:
+                                        '${person['completedCount'] ?? 0} tamamlanan işlem',
+                                    trailing: DrivingStatusPill(
+                                      label: '${person['completedCount'] ?? 0}',
+                                      tone: DrivingTone.success,
+                                    ),
+                                  );
+                                }),
+                        ],
+                      ),
+                    ),
             ),
             SliverToBoxAdapter(
               child: DrivingPanel(
@@ -158,11 +317,92 @@ class _DrivingSchoolDashboardPageState
                           ),
                           title: '${alert['title']}',
                           subtitle: '${alert['message']}',
+                          onTap: () =>
+                              _openAlert(context, '${alert['actionPath']}'),
                           trailing: DrivingStatusPill(
                             label: critical ? 'Kritik' : 'Uyarı',
                             tone: critical
                                 ? DrivingTone.danger
                                 : DrivingTone.warning,
+                          ),
+                        );
+                      }),
+                  ],
+                ),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: DrivingPanel(
+                margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const DrivingSectionTitle(title: 'Dönem ve MEBBİS Sağlığı'),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        _summaryChip(
+                          'MEBBİS eksiği',
+                          termAlerts['missingMebbisCount'],
+                          Colors.orange,
+                        ),
+                        _summaryChip(
+                          'Sağlık raporu',
+                          termAlerts['healthReportPendingCount'],
+                          Colors.deepOrange,
+                        ),
+                        _summaryChip(
+                          'Giriş bekleyen',
+                          termAlerts['readyNotEnteredCount'],
+                          Colors.blue,
+                        ),
+                        _summaryChip(
+                          'Mutabakat farkı',
+                          termAlerts['reconciliationMismatchCount'],
+                          Colors.red,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    if (terms.isEmpty)
+                      const DrivingEmptyState(
+                        icon: Icons.event_available_rounded,
+                        title: 'Aktif dönem bulunmuyor',
+                        message:
+                            'Dönem açma sihirbazından yeni dönem oluşturabilirsiniz.',
+                      )
+                    else
+                      ...terms.map((term) {
+                        final exceeded = term['capacityExceeded'] == true;
+                        final remaining =
+                            (term['remainingCapacity'] as num?)?.toInt() ?? 0;
+                        final days = (term['daysToDeadline'] as num?)?.toInt();
+                        return DrivingListRow(
+                          icon: exceeded
+                              ? Icons.group_off_rounded
+                              : Icons.calendar_month_rounded,
+                          iconColor: exceeded
+                              ? Colors.red
+                              : remaining <= 5
+                              ? Colors.orange
+                              : Colors.green,
+                          title: '${term['name']}',
+                          subtitle:
+                              '${term['studentCount']}/${term['quota'] == 0 ? '∞' : term['quota']} kursiyer · ${days == null
+                                  ? 'Son tarih yok'
+                                  : days < 0
+                                  ? 'Son tarih ${days.abs()} gün geçti'
+                                  : 'Son tarihe $days gün'}\n${term['missingMebbisCount']} MEBBİS eksiği · ${term['readyNotEnteredCount']} giriş bekliyor',
+                          trailing: const Icon(Icons.chevron_right_rounded),
+                          onTap: () => Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => DrivingSchoolStudentsPage(
+                                initialGroupId: '${term['groupId']}',
+                              ),
+                            ),
                           ),
                         );
                       }),
@@ -190,4 +430,59 @@ class _DrivingSchoolDashboardPageState
       );
     },
   );
+
+  static Widget _summaryChip(String label, dynamic raw, Color color) => Chip(
+    avatar: CircleAvatar(
+      backgroundColor: color.withValues(alpha: .14),
+      child: Text(
+        '${raw ?? 0}',
+        style: TextStyle(
+          color: color,
+          fontSize: 11,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    ),
+    label: Text(label),
+  );
+
+  static Widget _managerCard(
+    BuildContext context,
+    String label,
+    dynamic value,
+    IconData icon,
+    Color color,
+    String destination,
+  ) => DrivingKpiCard(
+    label: label,
+    value: '${value ?? 0}',
+    icon: icon,
+    color: color,
+    onTap: () => _openManagerMetric(context, destination),
+  );
+
+  static void _openManagerMetric(BuildContext context, String destination) {
+    final Widget page = switch (destination) {
+      'terms' => const DrivingTermOpeningWizardPage(),
+      'documents' => const DrivingDocumentReviewQueuePage(),
+      'exams' => const DrivingMebbisExamResultsPage(),
+      'certificates' => const DrivingMebbisCertificateNumbersPage(),
+      'errors' => const DrivingMebbisErrorLibraryPage(),
+      _ => const DrivingMebbisWorkCenterPage(),
+    };
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  static void _openAlert(BuildContext context, String path) {
+    final Widget? page = path.contains('/documents')
+        ? const DrivingDocumentReviewQueuePage()
+        : path.contains('/mebbis')
+        ? const DrivingMebbisWorkCenterPage()
+        : path.contains('/students')
+        ? const DrivingSchoolStudentsPage()
+        : null;
+    if (page != null) {
+      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+    }
+  }
 }

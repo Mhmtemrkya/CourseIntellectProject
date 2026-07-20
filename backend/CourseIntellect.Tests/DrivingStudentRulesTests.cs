@@ -59,7 +59,12 @@ public sealed class DrivingStudentRulesTests
     {
         Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.PendingApproval, null, Now));
         Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Rejected, null, Now));
+        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.ReuploadRequested, null, Now));
     }
+
+    [Fact]
+    public void ForeignStudentDocument_HasExplicitQueueLabel()
+        => Assert.Equal("Yabancı kursiyer belgesi", DrivingStudentRules.DocumentLabel(StudentDocumentType.ForeignStudentDocument));
 
     [Fact]
     public void MissingDocuments_ListsRequiredButUnsatisfied()

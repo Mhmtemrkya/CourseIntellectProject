@@ -363,14 +363,26 @@ public sealed class DrivingGraduationController(
     [RequireDrivingPermission(DrivingPermissions.CertificateIssue)]
     public async Task<IActionResult> UpdateMebbisNo(Guid id, [FromBody] CertificateMebbisNoRequest request, CancellationToken ct)
     {
-        var value = (request.MebbisCertificateNo ?? string.Empty).Trim();
+        var value = (request.MebbisCertificateNo ?? string.Empty).Trim().ToUpperInvariant();
         if (value.Length > 60) return BadRequest(new { message = "MEBBİS sertifika numarası en fazla 60 karakter olabilir." });
         var certificate = await db.DrivingCertificates.SingleOrDefaultAsync(x => x.Id == id, ct);
         if (certificate is null) return NotFound();
+        if (value.Length > 0 && await db.DrivingCertificates.AsNoTracking().AnyAsync(x => x.Id != id && x.MebbisCertificateNo == value, ct))
+            return Conflict(new { message = "Bu MEBBİS sertifika numarası başka bir belgede kullanılıyor." });
 
         var before = certificate.MebbisCertificateNo;
         certificate.MebbisCertificateNo = value;
-        await db.SaveChangesAsync(ct);
+        db.AddMebbisHistory(certificate.StudentDrivingProfileId,
+            value.Length > 0 ? DrivingMebbisHistoryEventType.CertificateNumber : DrivingMebbisHistoryEventType.Correction,
+            value.Length > 0 ? "Sertifika numarası işlendi" : "MEBBİS sertifika numarası kaldırıldı",
+            value.Length > 0 ? "MEBBİS sertifika numarası belgeyle ilişkilendirildi." : "Sertifika numarası kurum personeli tarafından geri alındı.",
+            value.Length > 0 ? "Processed" : "Removed", nameof(DrivingCertificate), certificate.Id, CurrentUserId(), CurrentUserName(),
+            value.Length > 0 ? DrivingMebbisHistorySeverity.Success : DrivingMebbisHistorySeverity.Warning);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateException)
+        {
+            return Conflict(new { message = "Bu MEBBİS sertifika numarası başka bir belgede kullanılıyor." });
+        }
         await audit.LogChangeAsync("MEBBİS sertifika no işlendi", AuditCategory, nameof(DrivingCertificate), certificate.Id.ToString(),
             $"{certificate.DocumentNumber} → MEBBİS no: {(value.Length == 0 ? "—" : value)}",
             new { mebbisCertificateNo = before }, new { certificate.MebbisCertificateNo }, ct);
@@ -488,6 +500,7 @@ public sealed class DrivingGraduationController(
     private async Task<DrivingSchoolSettings> ResolveSettingsAsync(CancellationToken ct) => await db.DrivingSchoolSettings.SingleOrDefaultAsync(ct) ?? new DrivingSchoolSettings();
     private async Task<bool> CanAccessProfileAsync(Guid profileId, CancellationToken ct) => await CanUseModuleAsync(ct) && (!User.IsInRole("Student") || await CurrentStudentProfileIdAsync(ct) == profileId);
     private Guid? CurrentUserId() { var raw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub"); return Guid.TryParse(raw, out var id) ? id : null; }
+    private string CurrentUserName() { var value = (User.FindFirstValue("name") ?? User.Identity?.Name ?? "Sistem").Trim(); return string.IsNullOrWhiteSpace(value) ? "Sistem" : value; }
     private async Task<Guid?> CurrentStudentProfileIdAsync(CancellationToken ct) { var id = CurrentUserId(); return id is null ? null : await db.StudentDrivingProfiles.Join(db.Students.Where(x => x.UserId == id), p => p.StudentId, s => s.Id, (p, _) => (Guid?)p.Id).SingleOrDefaultAsync(ct); }
     private async Task<bool> CanUseModuleAsync(CancellationToken ct) { if (db.CurrentTenantId is not Guid tenantId) return false; var tenant = await db.TenantWorkspaces.IgnoreQueryFilters().AsNoTracking().SingleOrDefaultAsync(x => x.Id == tenantId, ct); return tenant is not null && tenant.InstitutionType == InstitutionType.DrivingSchool && tenant.DrivingSchoolModuleEnabled && tenant.Status.Equals("active", StringComparison.OrdinalIgnoreCase); }
     private static string NewVerificationToken() => Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_');

@@ -33,6 +33,7 @@ public sealed class PublicDrivingCertificatesController(CourseIntellectDbContext
         var valid = certificate.Status == DrivingCertificateStatus.Active;
         return Ok(new { valid, status = certificate.Status.ToString(), certificate.DocumentNumber, type = certificate.CertificateType.ToString(), certificate.Version,
             certificate.IssuedAtUtc, snapshot?.InstitutionName, snapshot?.StudentName, snapshot?.LicenseClass,
+            mebbisCertificateNo = string.IsNullOrWhiteSpace(certificate.MebbisCertificateNo) ? null : certificate.MebbisCertificateNo,
             certificate.RevokedAtUtc, revocationReason = valid ? null : certificate.RevocationReason });
     }
 }

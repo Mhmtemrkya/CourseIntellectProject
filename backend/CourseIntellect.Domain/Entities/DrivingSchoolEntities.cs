@@ -103,6 +103,24 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     /// <summary>Kayıt masasında web kamerasından anlık çekilen fotoğraf.</summary>
     public string LivePhotoUrl { get; set; } = string.Empty;
 
+    // ─── Nüfusa kayıtlı olduğu yer (EK-1 müracaat formunun kimlik tablosu) ────
+    // Nüfus cüzdanından okunup elle girilir; MEB formları bu bloğu zorunlu tutar.
+    /// <summary>Nüfusa kayıtlı olduğu il.</summary>
+    public string RegistrationCity { get; set; } = string.Empty;
+    /// <summary>Nüfusa kayıtlı olduğu ilçe.</summary>
+    public string RegistrationDistrict { get; set; } = string.Empty;
+    /// <summary>Nüfusa kayıtlı olduğu köy veya mahalle.</summary>
+    public string RegistrationNeighborhood { get; set; } = string.Empty;
+    /// <summary>Nüfus kaydındaki sokak bilgisi.</summary>
+    public string RegistrationStreet { get; set; } = string.Empty;
+    public string RegistrationVolumeNo { get; set; } = string.Empty;
+    public string RegistrationFamilyOrderNo { get; set; } = string.Empty;
+    public string RegistrationOrderNo { get; set; } = string.Empty;
+    /// <summary>Nüfus cüzdanının veriliş tarihi.</summary>
+    public DateTime? IdentityIssueDate { get; set; }
+    /// <summary>Nüfus cüzdanının verildiği yer (nüfus müdürlüğü).</summary>
+    public string IdentityIssuePlace { get; set; } = string.Empty;
+
     // ─── Mevcut sürücü belgesi (ehliyeti olan / sınıf yükselten aday) ──────────
     /// <summary>Adayın hâlihazırda bir sürücü belgesi var mı?</summary>
     public bool HasExistingLicense { get; set; }
@@ -315,6 +333,34 @@ public sealed class DrivingSchoolSettings : ITenantScopedEntity
     public string CertificateLogoUrl { get; set; } = string.Empty;
     public string CertificateSignatureUrl { get; set; } = string.Empty;
     public string CertificatePrimaryColor { get; set; } = "#173B57";
+    // ─── Resmî sözleşme ve müracaat formu künyesi ─────────────────────────────
+    // Kurum künyesi TenantWorkspace'te tutulmuyor (orada adres/il/ilçe alanı yok),
+    // bu yüzden MEB formlarının ihtiyaç duyduğu alanlar burada toplanır.
+    /// <summary>Formların başlığında geçen resmî kurum adı — ör. "ÖZEL TEMA M.T.S.K.".</summary>
+    public string FormInstitutionName { get; set; } = string.Empty;
+    public string FormInstitutionCity { get; set; } = string.Empty;
+    public string FormInstitutionDistrict { get; set; } = string.Empty;
+    public string FormInstitutionAddress { get; set; } = string.Empty;
+    public string FormInstitutionPhone { get; set; } = string.Empty;
+    /// <summary>Sözleşmedeki "Müdür/Kurucu Adı" alanı. Boşsa sertifika müdür adı kullanılır.</summary>
+    public string FormDirectorName { get; set; } = string.Empty;
+    public string FormBankName { get; set; } = string.Empty;
+    public string FormBankAccountNo { get; set; } = string.Empty;
+    /// <summary>Uyuşmazlıkta yetkili mahkemenin ili. Boşsa kurum ili kullanılır.</summary>
+    public string FormJurisdictionCity { get; set; } = string.Empty;
+    /// <summary>Teorik dersin bir saatlik ücreti (₺) — sözleşme metnine basılır.</summary>
+    public decimal FormTheoryHourlyFee { get; set; }
+    /// <summary>Direksiyon eğitiminin bir saatlik ücreti (₺) — tavan ücret.</summary>
+    public decimal FormDrivingHourlyFee { get; set; }
+    /// <summary>Bakanlıkça belirlenen teorik sınav ücreti (₺).</summary>
+    public decimal FormTheoryExamFee { get; set; }
+    /// <summary>Bakanlıkça belirlenen direksiyon sınav ücreti (₺).</summary>
+    public decimal FormDrivingExamFee { get; set; }
+    /// <summary>Zorunlu teorik ders saati — sözleşmede yazılı toplam.</summary>
+    public int FormTheoryHours { get; set; } = 34;
+    /// <summary>Zorunlu direksiyon eğitimi ders saati.</summary>
+    public int FormDrivingHours { get; set; } = 16;
+
     public int CertificateSettingsRevision { get; set; } = 1;
     public int? CertificateSettingsApprovedRevision { get; set; }
     public Guid? CertificateSettingsApprovedByUserId { get; set; }

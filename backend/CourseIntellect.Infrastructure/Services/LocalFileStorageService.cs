@@ -68,4 +68,24 @@ public sealed class LocalFileStorageService(IHostEnvironment environment, IConfi
 
         return await File.ReadAllBytesAsync(physicalPath, cancellationToken);
     }
+
+    public async Task<StoredFilePrefixDto?> ReadPrefixAsync(string fileUrl, int maxBytes, CancellationToken cancellationToken = default)
+    {
+        if (maxBytes is < 1 or > 1024 * 1024 || string.IsNullOrWhiteSpace(fileUrl)) return null;
+        var relativePath = Uri.TryCreate(fileUrl, UriKind.Absolute, out var absoluteUri) ? absoluteUri.AbsolutePath : fileUrl;
+        relativePath = relativePath.Replace('\\', '/').TrimStart('/');
+        if (!relativePath.StartsWith("uploads/", StringComparison.OrdinalIgnoreCase)) return null;
+
+        var uploadsRoot = UploadStoragePathResolver.ResolveUploadsRoot(environment, configuration);
+        var physicalPath = Path.GetFullPath(Path.Combine(uploadsRoot, relativePath["uploads/".Length..].Replace('/', Path.DirectorySeparatorChar)));
+        var safeRoot = Path.EndsInDirectorySeparator(uploadsRoot) ? uploadsRoot : uploadsRoot + Path.DirectorySeparatorChar;
+        if (!physicalPath.StartsWith(safeRoot, StringComparison.OrdinalIgnoreCase) || !File.Exists(physicalPath)) return null;
+
+        var info = new FileInfo(physicalPath);
+        var length = (int)Math.Min(info.Length, maxBytes);
+        var buffer = new byte[length];
+        await using var stream = new FileStream(physicalPath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, FileOptions.Asynchronous | FileOptions.SequentialScan);
+        var read = await stream.ReadAtLeastAsync(buffer, length, throwOnEndOfStream: false, cancellationToken);
+        return new StoredFilePrefixDto(read == buffer.Length ? buffer : buffer[..read], info.Length);
+    }
 }

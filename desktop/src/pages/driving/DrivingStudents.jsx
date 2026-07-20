@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AlertTriangle, CheckCircle2, Download, ExternalLink, FileCheck2, FolderPlus, GraduationCap, Layers, Plus, Search, UserPlus, Users, X } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -268,6 +268,7 @@ function CreateGroupModal({ onClose, onCreated }) {
 export default function DrivingStudents() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { can } = useDrivingPermissions();
   const canManageGroups = can(DRIVING.studentUpdate);
   const [students, setStudents] = useState([]);
@@ -276,7 +277,7 @@ export default function DrivingStudents() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
-  const [groupFilter, setGroupFilter] = useState('all'); // 'all' | 'ungrouped' | <groupId>
+  const [groupFilter, setGroupFilter] = useState(() => searchParams.get('groupId') || 'all'); // 'all' | 'ungrouped' | <groupId>
   const [selectedId, setSelectedId] = useState(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [roster, setRoster] = useState(null); // seçili grubun MEBBİS durum özeti

@@ -88,6 +88,7 @@ public static class DrivingStudentRules
         StudentDocumentType.Residence => "İkametgâh",
         StudentDocumentType.ParentalConsent => "Veli izin belgesi",
         StudentDocumentType.ExistingLicense => "Mevcut ehliyet",
+        StudentDocumentType.ForeignStudentDocument => "Yabancı kursiyer belgesi",
         _ => "Diğer belge",
     };
 

@@ -96,6 +96,11 @@ public static class DrivingPermissions
     public const string PermissionManage = "driving.permission.manage";
     public const string AuditView = "driving.audit.view";
 
+    public const string MebbisView = "driving.mebbis.view";
+    public const string MebbisManage = "driving.mebbis.manage";
+    /// <summary>MEBBİS'e girilmiş bir kaydı ikinci kontrolle doğrulama.</summary>
+    public const string MebbisVerify = "driving.mebbis.verify";
+
     /// <summary>Bakımdaki / evrakı geçersiz aracı yine de randevuya bağlama.</summary>
     public const string OverrideVehicleCompliance = "driving.override.vehicle_compliance";
     /// <summary>Çakışma, limit, hazırlık süresi gibi randevu kurallarını ezme.</summary>
@@ -139,6 +144,7 @@ public static class DrivingPermissions
         FinanceView, FinanceCollect, FinanceDiscount, FinanceRefund, FinanceReportView,
         ReportView, ReportExport,
         SettingsManage, PermissionManage, AuditView,
+        MebbisView, MebbisManage, MebbisVerify,
         OverrideVehicleCompliance, OverrideAppointmentRule, OverrideDocumentExpiry, OverrideTransmission, OverrideFinancialHold,
     };
 }

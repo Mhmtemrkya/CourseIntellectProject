@@ -46,6 +46,10 @@ const emptyForm = {
   fatherName: '', motherName: '', birthPlace: '',
   gender: '', bloodType: '', occupation: '', educationLevel: '',
   city: '', district: '', address: '', residenceAddress: '', phone: '', email: '', whatsAppPhone: '',
+  // Nüfus kayıt bloğu — matbu EK-1 müracaat formunun kimlik tablosunu doldurur.
+  registrationCity: '', registrationDistrict: '', registrationNeighborhood: '', registrationStreet: '',
+  registrationVolumeNo: '', registrationFamilyOrderNo: '', registrationOrderNo: '',
+  identityIssueDate: '', identityIssuePlace: '',
   emergencyContactName: '', emergencyContactPhone: '', photoUrl: '', livePhotoUrl: '',
   hasExistingLicense: false, existingLicenseNumber: '', existingLicenseClasses: '',
   licenseIssueDate: '', licenseExpiryDate: '', licenseIssuePlace: '',
@@ -444,6 +448,7 @@ export default function DrivingStudentWizard() {
         courseStartsAtUtc: form.courseStartsAtUtc ? new Date(form.courseStartsAtUtc).toISOString() : null,
         licenseIssueDate: form.hasExistingLicense && form.licenseIssueDate ? new Date(form.licenseIssueDate).toISOString() : null,
         licenseExpiryDate: form.hasExistingLicense && form.licenseExpiryDate ? new Date(form.licenseExpiryDate).toISOString() : null,
+        identityIssueDate: form.identityIssueDate ? new Date(form.identityIssueDate).toISOString() : null,
         theoryExamFee: Number(form.theoryExamFee) || 0,
         drivingExamFee: Number(form.drivingExamFee) || 0,
         preferredInstructorProfileId: form.preferredInstructorProfileId || null,
@@ -690,6 +695,35 @@ export default function DrivingStudentWizard() {
               <Field label="Adres"><Input value={form.address} onChange={(e) => set({ address: e.target.value })} /></Field>
               <Field label="İkametgâh adresi" hint="Nüfusa kayıtlı yerleşim yeri (MEB dosyası için)">
                 <Input maxLength={500} value={form.residenceAddress} onChange={(e) => set({ residenceAddress: e.target.value })} />
+              </Field>
+              {/* Nüfus cüzdanından okunan kayıt bilgileri. Yalnız EK-1 müracaat
+                  formunda kullanılır; boş bırakılırsa form elde doldurulabilir. */}
+              <Field label="Nüfus ili" hint="Nüfusa kayıtlı olduğu il (müracaat formu)">
+                <Input maxLength={60} value={form.registrationCity} onChange={(e) => set({ registrationCity: e.target.value })} />
+              </Field>
+              <Field label="Nüfus ilçesi">
+                <Input maxLength={60} value={form.registrationDistrict} onChange={(e) => set({ registrationDistrict: e.target.value })} />
+              </Field>
+              <Field label="Köy - mahalle">
+                <Input maxLength={120} value={form.registrationNeighborhood} onChange={(e) => set({ registrationNeighborhood: e.target.value })} />
+              </Field>
+              <Field label="Sokağı">
+                <Input maxLength={120} value={form.registrationStreet} onChange={(e) => set({ registrationStreet: e.target.value })} />
+              </Field>
+              <Field label="Cilt no">
+                <Input maxLength={30} value={form.registrationVolumeNo} onChange={(e) => set({ registrationVolumeNo: e.target.value })} />
+              </Field>
+              <Field label="Aile sıra no">
+                <Input maxLength={30} value={form.registrationFamilyOrderNo} onChange={(e) => set({ registrationFamilyOrderNo: e.target.value })} />
+              </Field>
+              <Field label="Sıra no">
+                <Input maxLength={30} value={form.registrationOrderNo} onChange={(e) => set({ registrationOrderNo: e.target.value })} />
+              </Field>
+              <Field label="Cüzdan veriliş tarihi">
+                <Input type="date" value={form.identityIssueDate} onChange={(e) => set({ identityIssueDate: e.target.value })} />
+              </Field>
+              <Field label="Cüzdanın verildiği yer">
+                <Input maxLength={120} value={form.identityIssuePlace} onChange={(e) => set({ identityIssuePlace: e.target.value })} />
               </Field>
               <Field label="Acil durum kişisi"><Input value={form.emergencyContactName} onChange={(e) => set({ emergencyContactName: e.target.value })} /></Field>
               <Field label="Acil durum telefonu"><Input value={form.emergencyContactPhone} onChange={(e) => set({ emergencyContactPhone: e.target.value })} /></Field>

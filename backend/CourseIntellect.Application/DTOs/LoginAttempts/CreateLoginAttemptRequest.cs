@@ -7,5 +7,11 @@ public sealed record CreateLoginAttemptRequest(
     bool Success,
     string IpAddress,
     string UserAgent,
-    string DeviceId
+    string DeviceId,
+    /// <summary>
+    /// Denemenin ait olduğu kurum. Giriş anında oturum bağlamı henüz olmadığı için
+    /// otomatik damgalama çalışmaz; çözülen kullanıcının kurumu açıkça verilmelidir.
+    /// Kullanıcı çözülemediyse null bırakılır.
+    /// </summary>
+    Guid? TenantId = null
 );

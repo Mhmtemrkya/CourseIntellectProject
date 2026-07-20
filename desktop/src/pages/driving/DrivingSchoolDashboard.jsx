@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, Banknote, BookOpen, Brain, CalendarClock, CarFront, GraduationCap,
-  ShieldCheck, Users, Wrench, ChevronRight,
+  ShieldCheck, Users, Wrench, ChevronRight, Award, ClipboardCheck, FileWarning, UserCheck,
 } from 'lucide-react';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { Input } from '../../components/ui/input';
@@ -34,6 +34,8 @@ const KPI_META = [
   ['missingDocuments', 'Eksik Evrak', AlertTriangle, 'amber', 'Dosyası tamamlanmamış'],
   ['expiringDocuments', 'Süresi Dolan Evrak', ShieldCheck, 'amber', 'Yakında geçersiz olacak'],
   ['upcomingExams', 'Yaklaşan Sınav', CalendarClock, 'blue', 'Planlanmış sınav'],
+  ['termCriticalAlerts', 'Kritik Dönem Uyarısı', AlertTriangle, 'rose', 'Hemen müdahale edilmeli'],
+  ['mebbisReadyNotEntered', 'MEBBİS Girişi Bekleyen', ShieldCheck, 'amber', 'Hazır fakat girilmemiş'],
   ['todayCollections', 'Tahsilat', Banknote, 'emerald', null],
 ];
 
@@ -124,6 +126,8 @@ export default function DrivingSchoolDashboard() {
 
   const series = data?.charts?.monthlyRegistrations || [];
   const alerts = data?.alerts || [];
+  const termAlerts = data?.termAlerts || {};
+  const managerSummary = data?.managerMebbisSummary || null;
 
   return (
     <DrivingPage testId="driving-dashboard-page">
@@ -193,7 +197,7 @@ export default function DrivingSchoolDashboard() {
             </motion.div>
 
             <motion.div variants={itemVariants}>
-              <PremiumPanel title="Operasyon Uyarıları" description="Evrak, bakım ve çakışma kontrolleri" contentClassName="space-y-2.5">
+              <PremiumPanel title="Operasyon Uyarıları" description={`${termAlerts.criticalCount || 0} kritik · ${termAlerts.warningCount || 0} dönem uyarısı`} contentClassName="space-y-2.5">
                 {alerts.length === 0 ? (
                   <div className="flex min-h-[200px] flex-col items-center justify-center text-center">
                     <ShieldCheck className="h-10 w-10 text-emerald-500" />
@@ -203,7 +207,11 @@ export default function DrivingSchoolDashboard() {
                 ) : alerts.map((alert, index) => (
                   <div
                     key={`${alert.type}-${alert.title}-${index}`}
-                    className="flex items-start justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3"
+                    role={alert.actionPath ? 'button' : undefined}
+                    tabIndex={alert.actionPath ? 0 : undefined}
+                    onClick={() => alert.actionPath && navigate(alert.actionPath)}
+                    onKeyDown={(event) => { if (alert.actionPath && (event.key === 'Enter' || event.key === ' ')) navigate(alert.actionPath); }}
+                    className={`flex items-start justify-between gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-3 ${alert.actionPath ? 'cursor-pointer transition hover:border-primary/40 hover:bg-primary/[0.04]' : ''}`}
                   >
                     <div className="min-w-0">
                       <p className="truncate text-sm font-semibold">{alert.title}</p>
@@ -217,6 +225,40 @@ export default function DrivingSchoolDashboard() {
               </PremiumPanel>
             </motion.div>
           </div>
+
+          {managerSummary ? (
+            <PremiumPanel title="Kurum Yöneticisi MEBBİS Özeti" description={`Günlük operasyon · Son güncelleme ${new Date(managerSummary.generatedAtUtc).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })}`}>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                <ManagerMetric label="Aktif dönem" value={managerSummary.activeTermCount} icon={CalendarClock} path="/driving/mebbis/term-opening" navigate={navigate} />
+                <ManagerMetric label="MEBBİS’e hazır" value={managerSummary.mebbisReadyStudents} icon={ShieldCheck} path="/driving/mebbis" navigate={navigate} />
+                <ManagerMetric label="Girişi bekleyen" value={managerSummary.entryPendingCount} icon={ClipboardCheck} path="/driving/mebbis" navigate={navigate} />
+                <ManagerMetric label="Eksik evraklı" value={managerSummary.missingDocumentStudents} icon={FileWarning} path="/driving/mebbis/documents" navigate={navigate} danger={managerSummary.missingDocumentStudents > 0} />
+                <ManagerMetric label="Son tarihi yaklaşan" value={managerSummary.approachingDeadlineTerms} icon={AlertTriangle} path="/driving/mebbis/term-opening" navigate={navigate} danger={managerSummary.approachingDeadlineTerms > 0} />
+                <ManagerMetric label="Sınav sonucu bekleyen" value={managerSummary.pendingExamResults} icon={ClipboardCheck} path="/driving/mebbis/exam-results" navigate={navigate} />
+                <ManagerMetric label="Sertifika no bekleyen" value={managerSummary.certificatesWaiting} icon={Award} path="/driving/mebbis/certificate-numbers" navigate={navigate} />
+                <ManagerMetric label="Son 7 gün hata" value={managerSummary.errorsLast7Days} icon={AlertTriangle} path="/driving/mebbis/errors" navigate={navigate} danger={managerSummary.errorsLast7Days > 0} />
+              </div>
+              <div className="mt-5 rounded-2xl border bg-foreground/[0.025] p-4">
+                <div className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-emerald-600" /><b className="text-sm">Bugün personel bazlı tamamlanan işlemler</b></div>
+                {(managerSummary.personnelCompletions || []).length === 0 ? <p className="mt-3 text-sm text-muted-foreground">Bugün tamamlanmış MEBBİS girişi veya doğrulaması yok.</p> : <div className="mt-3 grid gap-2 md:grid-cols-2">{managerSummary.personnelCompletions.map((person) => <div key={person.userId || person.name} className="flex items-center justify-between rounded-xl border bg-background px-3 py-2"><span className="truncate text-sm font-semibold">{person.name || 'Personel'}</span><PremiumStatusPill tone="success">{person.completedCount} işlem</PremiumStatusPill></div>)}</div>}
+              </div>
+            </PremiumPanel>
+          ) : null}
+
+          <PremiumPanel title="Dönem ve MEBBİS Sağlığı" description="Aktif dönemlerin canlı kontenjan, evrak ve mutabakat özeti">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              <TermMetric label="MEBBİS eksiği" value={termAlerts.missingMebbisCount || 0} tone="text-amber-600" />
+              <TermMetric label="Sağlık raporu bekleyen" value={termAlerts.healthReportPendingCount || 0} tone="text-orange-600" />
+              <TermMetric label="Hazır, girişi yapılmamış" value={termAlerts.readyNotEnteredCount || 0} tone="text-blue-600" />
+              <TermMetric label="Mutabakat farkı" value={termAlerts.reconciliationMismatchCount || 0} tone="text-red-600" />
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-2">{(termAlerts.terms || []).map((term) => (
+              <button key={term.groupId} type="button" onClick={() => navigate(`/driving/students?groupId=${term.groupId}`)} className="rounded-2xl border p-4 text-left transition hover:border-primary/40">
+                <div className="flex items-center justify-between gap-3"><b>{term.name}</b><PremiumStatusPill tone={term.capacityExceeded ? 'danger' : term.remainingCapacity <= 5 ? 'warn' : 'success'}>{term.capacityExceeded ? 'Aşıldı' : `${term.studentCount}/${term.quota || '∞'}`}</PremiumStatusPill></div>
+                <p className="mt-2 text-xs text-muted-foreground">{term.daysToDeadline == null ? 'Son kayıt tarihi yok' : term.daysToDeadline < 0 ? `Son kayıt ${Math.abs(term.daysToDeadline)} gün geçti` : `Son kayda ${term.daysToDeadline} gün`} · {term.missingMebbisCount} MEBBİS eksiği · {term.readyNotEnteredCount} giriş bekliyor</p>
+              </button>
+            ))}</div>
+          </PremiumPanel>
 
           <div className="grid gap-4 md:grid-cols-2">
             {SHORTCUTS.map(([title, subtitle, Icon, tone, path]) => (
@@ -242,4 +284,12 @@ export default function DrivingSchoolDashboard() {
       ) : null}
     </DrivingPage>
   );
+}
+
+function TermMetric({ label, value, tone }) {
+  return <div className="rounded-2xl border bg-foreground/[0.025] p-4"><p className="text-xs font-semibold text-muted-foreground">{label}</p><p className={`mt-1 text-2xl font-black ${tone}`}>{value}</p></div>;
+}
+
+function ManagerMetric({ label, value, icon: Icon, path, navigate, danger = false }) {
+  return <button type="button" onClick={() => navigate(path)} className="flex items-center gap-3 rounded-2xl border bg-foreground/[0.025] p-4 text-left transition hover:border-primary/40 hover:bg-primary/[0.04]"><span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${danger ? 'bg-red-500/10 text-red-600' : 'bg-primary/10 text-primary'}`}><Icon className="h-5 w-5" /></span><span className="min-w-0"><span className="block text-2xl font-black">{value || 0}</span><span className="block truncate text-xs font-semibold text-muted-foreground">{label}</span></span></button>;
 }

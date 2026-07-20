@@ -70,8 +70,8 @@ export const WELCOME_TOURS = {
       },
       {
         target: nav('/admin/audit-log'),
-        title: 'Denetim Kayıtları',
-        body: 'Kurumunuzda kim, ne zaman, ne yaptı? Kayıt, yetki, finans ve idari işlemlerin tamamı burada loglanır. Birden fazla şubeniz varsa kayıtları şube şube inceleyebilirsiniz.',
+        title: 'Kayıt Geçmişi',
+        body: 'Kurumunuzda kim, ne zaman, hangi rolle, hangi cihaz ve IP adresinden ne yaptı? Giriş denemeleri ve idari işlemler tek zaman çizelgesinde loglanır. Birden fazla şubeniz varsa kayıtları şube şube inceleyebilirsiniz.',
       },
       {
         target: nav('/scope-management'),
@@ -508,9 +508,9 @@ export const PAGE_TOURS = {
   },
   '/admin/audit-log': {
     steps: [
-      { title: 'Denetim Kayıtları', body: 'Kurumunuzdaki kritik işlemlerin tam izi: kim, ne zaman, ne yaptı.\n\nKapsanan işlemler: kullanıcı oluşturma/pasifleştirme/silme, rol ve yetki değişiklikleri, öğrenci/personel/veli kayıtları, tahsilat ve iadeler, birim/şube işlemleri, onaylar, evrak ve görevler.' },
+      { title: 'Kayıt Geçmişi', body: 'Kurumunuzdaki kritik işlemlerin tam izi: kim, ne zaman, hangi rolle, hangi cihaz ve IP adresinden ne yaptı.\n\nKapsanan işlemler: giriş denemeleri (başarılı/başarısız), kullanıcı oluşturma/pasifleştirme/silme, rol ve yetki değişiklikleri, öğrenci/personel/veli kayıtları, tahsilat ve iadeler, birim/şube işlemleri, onaylar, evrak ve görevler.\n\nNot: Rol bilgisi bu özellik eklendikten SONRAKİ işlemlerde görünür; daha eski kayıtlarda rol saklanmamıştı.' },
       { target: '[data-tour="audit-branch-summary"]', title: 'Şube kartları', body: 'Birden fazla şubeniz varsa her şubenin kayıt yoğunluğunu buradan görürsünüz. Karta tıklayınca liste o şubeye filtrelenir.\n\nNot: Şube müdürleri bu sayfada YALNIZCA kendi şubelerinin kayıtlarını görür — izolasyon otomatiktir.' },
-      { target: '[data-tour="audit-filters"]', title: 'Filtreler', body: 'Kategori (Hesap, Yetki, Kayıt, Finans...), şube ve serbest metin aramasıyla kayıtları daraltın. Arama; kişi adı, işlem ve detay metninde çalışır.' },
+      { target: '[data-tour="audit-filters"]', title: 'Filtreler', body: 'Kaynak (tüm hareketler / yalnız işlemler / yalnız girişler), kategori, şube ve serbest metin aramasıyla kayıtları daraltın. Arama; kişi adı, işlem, IP adresi ve detay metninde çalışır.\n\nGiriş kayıtları şubeye bağlı tutulmadığı için şube seçtiğinizde listeden çıkarlar.' },
       { target: '[data-tour="audit-list"]', title: 'Kayıt listesi', body: 'Her satırda işlem, kategori, şube, detay ve zaman bilgisi var. Liste sayfalıdır; alttaki Önceki/Sonraki butonlarıyla gezinin.' },
     ],
   },

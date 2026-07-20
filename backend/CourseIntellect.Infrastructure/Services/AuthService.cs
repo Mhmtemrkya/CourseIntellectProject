@@ -73,13 +73,13 @@ public sealed class AuthService(
 
         if (user is null || !passwordHasher.Verify(request.Password, user.PasswordHash))
         {
-            await RecordLoginAttemptAsync(login, user?.Id, user?.PrimaryRole.ToString() ?? string.Empty, false, cancellationToken);
+            await RecordLoginAttemptAsync(login, user?.Id, user?.PrimaryRole.ToString() ?? string.Empty, false, user?.TenantId, cancellationToken);
             return null;
         }
 
         if (await ExpireApprovedPasswordResetIfNeededAsync(user, cancellationToken))
         {
-            await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), false, cancellationToken);
+            await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), false, user.TenantId, cancellationToken);
             return null;
         }
 
@@ -95,7 +95,7 @@ public sealed class AuthService(
             }
         }
 
-        await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), true, cancellationToken);
+        await RecordLoginAttemptAsync(login, user.Id, user.PrimaryRole.ToString(), true, user.TenantId, cancellationToken);
 
         user.LastLoginAtUtc = DateTime.UtcNow;
         await dbContext.SaveChangesAsync(cancellationToken);
@@ -114,7 +114,11 @@ public sealed class AuthService(
         // Zaman penceresi karşılaştırması bellekte yapılır: DateTimeOffset SQL çevirisi
         // sağlayıcıya göre değişir (Postgres destekler, SQLite etmez). E-posta+başarısızlık
         // filtresi SQL'de kalır; tek hesabın başarısız denemeleri pratikte küçük bir kümedir.
+        // IgnoreQueryFilters ŞART: kilitleme bir güvenlik kontrolüdür ve giriş anında
+        // henüz oturum/kurum bağlamı yoktur. Tenant filtresine tabi bırakılırsa
+        // başarısız denemeler görünmez olur ve kilit hiç devreye girmez.
         var failureTimes = await dbContext.LoginAttempts
+            .IgnoreQueryFilters()
             .Where(x => x.Email.ToLower() == login && !x.Success)
             .Select(x => x.Timestamp)
             .ToListAsync(cancellationToken);
@@ -123,7 +127,8 @@ public sealed class AuthService(
         return recentFailures >= _lockoutMaxFailed;
     }
 
-    private Task RecordLoginAttemptAsync(string login, Guid? userId, string role, bool success, CancellationToken cancellationToken)
+    private Task RecordLoginAttemptAsync(
+        string login, Guid? userId, string role, bool success, Guid? tenantId, CancellationToken cancellationToken)
     {
         var context = httpContextAccessor.HttpContext;
         var ip = context?.Connection.RemoteIpAddress?.ToString() ?? string.Empty;
@@ -136,7 +141,8 @@ public sealed class AuthService(
             success,
             ip,
             userAgent,
-            string.Empty), cancellationToken);
+            string.Empty,
+            tenantId), cancellationToken);
     }
 
     public async Task<LoginResponse?> RefreshAsync(RefreshTokenRequest request, CancellationToken cancellationToken = default)

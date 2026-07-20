@@ -20,8 +20,18 @@ const _statusLabels = {
 };
 
 const _trMonths = [
-  'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-  'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık',
+  'Ocak',
+  'Şubat',
+  'Mart',
+  'Nisan',
+  'Mayıs',
+  'Haziran',
+  'Temmuz',
+  'Ağustos',
+  'Eylül',
+  'Ekim',
+  'Kasım',
+  'Aralık',
 ];
 
 // Gruplar aylık açılır; yeni grup adına bu ayı öner (ör. "Temmuz 2026").
@@ -31,7 +41,8 @@ String _currentMonthGroupName() {
 }
 
 String _statusLabel(dynamic status) => _statusLabels['$status'] ?? '$status';
-String _transmission(dynamic v) => (v == 'Manual' || v == 1) ? 'Manuel' : 'Otomatik';
+String _transmission(dynamic v) =>
+    (v == 'Manual' || v == 1) ? 'Manuel' : 'Otomatik';
 
 String _dateOnly(dynamic value) {
   final raw = '${value ?? ''}';
@@ -60,10 +71,13 @@ String _dateOnly(dynamic value) {
 }
 
 class DrivingSchoolStudentsPage extends StatefulWidget {
-  const DrivingSchoolStudentsPage({super.key});
+  const DrivingSchoolStudentsPage({super.key, this.initialGroupId});
+
+  final String? initialGroupId;
 
   @override
-  State<DrivingSchoolStudentsPage> createState() => _DrivingSchoolStudentsPageState();
+  State<DrivingSchoolStudentsPage> createState() =>
+      _DrivingSchoolStudentsPageState();
 }
 
 class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
@@ -82,11 +96,13 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   String? _assignTarget;
   bool _assigning = false;
 
-  bool get _canManageGroups => _permissions.can(DrivingPermissions.studentUpdate);
+  bool get _canManageGroups =>
+      _permissions.can(DrivingPermissions.studentUpdate);
 
   @override
   void initState() {
     super.initState();
+    _groupFilter = widget.initialGroupId ?? 'all';
     _load();
   }
 
@@ -128,10 +144,13 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     return _students.where((s) {
       final groupId = s['groupId'];
       if (_groupFilter == 'ungrouped' && groupId != null) return false;
-      if (_groupFilter != 'all' && _groupFilter != 'ungrouped' && '$groupId' != _groupFilter) {
+      if (_groupFilter != 'all' &&
+          _groupFilter != 'ungrouped' &&
+          '$groupId' != _groupFilter) {
         return false;
       }
-      if (term.isNotEmpty && !'${s['fullName'] ?? ''}'.toLowerCase().contains(term)) {
+      if (term.isNotEmpty &&
+          !'${s['fullName'] ?? ''}'.toLowerCase().contains(term)) {
         return false;
       }
       return true;
@@ -182,7 +201,10 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
               controller: nameCtrl,
               autofocus: true,
               maxLength: 120,
-              decoration: InputDecoration(labelText: 'Grup adı'.tr, hintText: 'Örn. Temmuz 2026 grubu'),
+              decoration: InputDecoration(
+                labelText: 'Grup adı'.tr,
+                hintText: 'Örn. Temmuz 2026 grubu',
+              ),
             ),
             TextField(
               controller: descCtrl,
@@ -192,7 +214,10 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
           ],
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: Text('Vazgeç'.tr),
+          ),
           FilledButton(
             onPressed: () async {
               final name = nameCtrl.text.trim();
@@ -208,9 +233,9 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
                 if (dialogContext.mounted) Navigator.pop(dialogContext, true);
               } catch (e) {
                 if (dialogContext.mounted) {
-                  ScaffoldMessenger.of(dialogContext).showSnackBar(
-                    SnackBar(content: Text('$e')),
-                  );
+                  ScaffoldMessenger.of(
+                    dialogContext,
+                  ).showSnackBar(SnackBar(content: Text('$e')));
                 }
               }
             },
@@ -223,9 +248,9 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     descCtrl.dispose();
     if (created == true) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Grup oluşturuldu.'.tr)),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Grup oluşturuldu.'.tr)));
       }
       await _load();
     }
@@ -235,17 +260,26 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     if (_selected.isEmpty) return;
     setState(() => _assigning = true);
     try {
-      final result = await _service.assignStudentGroup(_selected.toList(), groupId);
+      final result = await _service.assignStudentGroup(
+        _selected.toList(),
+        groupId,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('${result['assigned'] ?? _selected.length} kursiyer güncellendi.')),
+          SnackBar(
+            content: Text(
+              '${result['assigned'] ?? _selected.length} kursiyer güncellendi.',
+            ),
+          ),
         );
       }
       _exitSelectMode();
       await _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
       }
     } finally {
       if (mounted) setState(() => _assigning = false);
@@ -261,9 +295,14 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
 
     return DrivingScaffold(
       appBar: AppBar(
-        title: Text(_selectMode ? '${_selected.length} seçili' : 'Öğrenciler'.tr),
+        title: Text(
+          _selectMode ? '${_selected.length} seçili' : 'Öğrenciler'.tr,
+        ),
         leading: _selectMode
-            ? IconButton(icon: const Icon(Icons.close_rounded), onPressed: _exitSelectMode)
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded),
+                onPressed: _exitSelectMode,
+              )
             : null,
         actions: [
           if (_canManageGroups && !_selectMode) ...[
@@ -296,14 +335,24 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
                           eyebrow: 'KURSİYERLER'.tr,
                           title: 'Öğrenciler'.tr,
                           description:
-                              'Kursiyerleri gruplara (dönemlere) ayırın; belgelerini inceleyin.'.tr,
+                              'Kursiyerleri gruplara (dönemlere) ayırın; belgelerini inceleyin.'
+                                  .tr,
                           icon: Icons.groups_rounded,
                           metrics: [
-                            DrivingHeroMetric(label: 'Toplam'.tr, value: '${_students.length}'),
+                            DrivingHeroMetric(
+                              label: 'Toplam'.tr,
+                              value: '${_students.length}',
+                            ),
                             const SizedBox(width: 10),
-                            DrivingHeroMetric(label: 'Aktif'.tr, value: '$activeCount'),
+                            DrivingHeroMetric(
+                              label: 'Aktif'.tr,
+                              value: '$activeCount',
+                            ),
                             const SizedBox(width: 10),
-                            DrivingHeroMetric(label: 'Mezun'.tr, value: '$graduated'),
+                            DrivingHeroMetric(
+                              label: 'Mezun'.tr,
+                              value: '$graduated',
+                            ),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -342,8 +391,15 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   Widget _groupFilterChips() {
     final chips = <Widget>[
       _filterChip('all', 'Tümü'.tr, _students.length),
-      ..._activeGroups.map((g) => _filterChip('${g['id']}', '${g['name']}', (g['studentCount'] as num?)?.toInt() ?? 0)),
-      if (_ungroupedCount > 0) _filterChip('ungrouped', 'Beklemede'.tr, _ungroupedCount),
+      ..._activeGroups.map(
+        (g) => _filterChip(
+          '${g['id']}',
+          '${g['name']}',
+          (g['studentCount'] as num?)?.toInt() ?? 0,
+        ),
+      ),
+      if (_ungroupedCount > 0)
+        _filterChip('ungrouped', 'Beklemede'.tr, _ungroupedCount),
     ];
     return SizedBox(
       height: 38,
@@ -378,7 +434,9 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     final groupName = s['groupName'];
     return DrivingListRow(
       icon: _selectMode
-          ? (checked ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded)
+          ? (checked
+                ? Icons.check_circle_rounded
+                : Icons.radio_button_unchecked_rounded)
           : Icons.person_rounded,
       title: '${s['fullName'] ?? '—'}',
       subtitle: [
@@ -409,26 +467,41 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
                   isExpanded: true,
                   decoration: InputDecoration(
                     isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 10,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                     hintText: 'Grup seçin…'.tr,
                   ),
                   items: _activeGroups
-                      .map((g) => DropdownMenuItem(value: '${g['id']}', child: Text('${g['name']}')))
+                      .map(
+                        (g) => DropdownMenuItem(
+                          value: '${g['id']}',
+                          child: Text('${g['name']}'),
+                        ),
+                      )
                       .toList(),
-                  onChanged: _assigning ? null : (v) => setState(() => _assignTarget = v),
+                  onChanged: _assigning
+                      ? null
+                      : (v) => setState(() => _assignTarget = v),
                 ),
               ),
               const SizedBox(width: 8),
               FilledButton(
-                onPressed: (_assigning || _assignTarget == null || _selected.isEmpty)
+                onPressed:
+                    (_assigning || _assignTarget == null || _selected.isEmpty)
                     ? null
                     : () => _assign(_assignTarget),
                 child: Text('Ata'.tr),
               ),
               const SizedBox(width: 6),
               OutlinedButton(
-                onPressed: (_assigning || _selected.isEmpty) ? null : () => _assign(null),
+                onPressed: (_assigning || _selected.isEmpty)
+                    ? null
+                    : () => _assign(null),
                 child: Text('Çıkar'.tr),
               ),
             ],
@@ -443,7 +516,10 @@ class _StudentDocumentsSheet extends StatefulWidget {
   final String profileId;
   final String fallbackName;
 
-  const _StudentDocumentsSheet({required this.profileId, required this.fallbackName});
+  const _StudentDocumentsSheet({
+    required this.profileId,
+    required this.fallbackName,
+  });
 
   @override
   State<_StudentDocumentsSheet> createState() => _StudentDocumentsSheetState();
@@ -451,21 +527,46 @@ class _StudentDocumentsSheet extends StatefulWidget {
 
 class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
   late Future<Map<String, dynamic>> _future;
+  List<Map<String, dynamic>> _mebbisHistory = const [];
+  bool _historyLoading = true;
   bool _canCollect = false;
 
   @override
   void initState() {
     super.initState();
     _future = DrivingSchoolApiService.instance.studentDetail(widget.profileId);
+    _loadMebbisHistory();
     DrivingPermissionsStore.instance.load().then((p) {
-      if (mounted) setState(() => _canCollect = p.can(DrivingPermissions.financeCollect));
+      if (mounted) {
+        setState(() => _canCollect = p.can(DrivingPermissions.financeCollect));
+      }
     });
   }
 
   void _reload() {
     setState(() {
-      _future = DrivingSchoolApiService.instance.studentDetail(widget.profileId);
+      _future = DrivingSchoolApiService.instance.studentDetail(
+        widget.profileId,
+      );
     });
+    _loadMebbisHistory();
+  }
+
+  Future<void> _loadMebbisHistory() async {
+    try {
+      final value = await DrivingSchoolApiService.instance.mebbisHistory(
+        widget.profileId,
+      );
+      if (!mounted) return;
+      setState(() {
+        _mebbisHistory = ((value['items'] as List?) ?? const [])
+            .map((e) => Map<String, dynamic>.from(e as Map))
+            .toList();
+        _historyLoading = false;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _historyLoading = false);
+    }
   }
 
   Future<void> _openFile(String? url) async {
@@ -481,8 +582,12 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
   }
 
   Future<void> _editExamFees(Map<String, dynamic> overview) async {
-    final theoryCtrl = TextEditingController(text: '${(overview['theoryExamFee'] as num?)?.toInt() ?? 0}');
-    final drivingCtrl = TextEditingController(text: '${(overview['drivingExamFee'] as num?)?.toInt() ?? 0}');
+    final theoryCtrl = TextEditingController(
+      text: '${(overview['theoryExamFee'] as num?)?.toInt() ?? 0}',
+    );
+    final drivingCtrl = TextEditingController(
+      text: '${(overview['drivingExamFee'] as num?)?.toInt() ?? 0}',
+    );
     var theoryPaid = overview['theoryExamFeePaid'] == true;
     var drivingPaid = overview['drivingExamFeePaid'] == true;
     DateTime? examDate = overview['drivingExamDate'] != null
@@ -501,7 +606,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 TextField(
                   controller: theoryCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: '${'Teorik (e-sınav)'.tr} (₺)'),
+                  decoration: InputDecoration(
+                    labelText: '${'Teorik (e-sınav)'.tr} (₺)',
+                  ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -512,7 +619,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 TextField(
                   controller: drivingCtrl,
                   keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: '${'Direksiyon sınavı'.tr} (₺)'),
+                  decoration: InputDecoration(
+                    labelText: '${'Direksiyon sınavı'.tr} (₺)',
+                  ),
                 ),
                 SwitchListTile(
                   contentPadding: EdgeInsets.zero,
@@ -523,14 +632,22 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 ListTile(
                   contentPadding: EdgeInsets.zero,
                   title: Text('Direksiyon sınav tarihi'.tr),
-                  subtitle: Text(examDate != null ? _dateOnly(examDate!.toIso8601String()) : '—'),
+                  subtitle: Text(
+                    examDate != null
+                        ? _dateOnly(examDate!.toIso8601String())
+                        : '—',
+                  ),
                   trailing: const Icon(Icons.event_rounded),
                   onTap: () async {
                     final picked = await showDatePicker(
                       context: dialogContext,
                       initialDate: examDate ?? DateTime.now(),
-                      firstDate: DateTime.now().subtract(const Duration(days: 365 * 2)),
-                      lastDate: DateTime.now().add(const Duration(days: 365 * 2)),
+                      firstDate: DateTime.now().subtract(
+                        const Duration(days: 365 * 2),
+                      ),
+                      lastDate: DateTime.now().add(
+                        const Duration(days: 365 * 2),
+                      ),
                     );
                     if (picked != null) setDialogState(() => examDate = picked);
                   },
@@ -539,7 +656,10 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext, false),
+              child: Text('Vazgeç'.tr),
+            ),
             FilledButton(
               onPressed: () async {
                 try {
@@ -554,7 +674,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   if (dialogContext.mounted) Navigator.pop(dialogContext, true);
                 } catch (e) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(SnackBar(content: Text('$e')));
+                    ScaffoldMessenger.of(
+                      dialogContext,
+                    ).showSnackBar(SnackBar(content: Text('$e')));
                   }
                 }
               },
@@ -579,10 +701,15 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
       child: Row(
         children: [
           Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-          Text('$used/$max', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          Text(
+            '$used/$max',
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
           const SizedBox(width: 8),
           DrivingStatusPill(
-            label: out ? 'Dönem düştü'.tr : '${(right['remaining'] as num?)?.toInt() ?? (max - used)} ${'hak kaldı'.tr}',
+            label: out
+                ? 'Dönem düştü'.tr
+                : '${(right['remaining'] as num?)?.toInt() ?? (max - used)} ${'hak kaldı'.tr}',
             tone: out ? DrivingTone.danger : DrivingTone.success,
           ),
         ],
@@ -597,7 +724,10 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
       child: Row(
         children: [
           Expanded(child: Text(label, style: const TextStyle(fontSize: 13))),
-          Text(_money(fee), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          Text(
+            _money(fee),
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+          ),
           if (amount > 0) ...[
             const SizedBox(width: 8),
             DrivingStatusPill(
@@ -656,10 +786,16 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+            child: Text(
+              label,
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
+            ),
           ),
           Expanded(
-            child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -676,7 +812,12 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
         future: _future,
         builder: (context, snapshot) {
           if (snapshot.connectionState != ConnectionState.done) {
-            return const Center(child: Padding(padding: EdgeInsets.all(40), child: CircularProgressIndicator()));
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.all(40),
+                child: CircularProgressIndicator(),
+              ),
+            );
           }
           if (snapshot.hasError || snapshot.data == null) {
             return DrivingEmptyState(
@@ -696,7 +837,10 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
             children: [
               Text(
                 '${overview?['studentNumber'] != null ? '#${overview!['studentNumber']} ' : ''}${overview?['fullName'] ?? widget.fallbackName}',
-                style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
+                ),
               ),
               if (overview != null) ...[
                 const SizedBox(height: 4),
@@ -704,12 +848,15 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   '${overview['packageName'] != null ? '${overview['packageName']} • ' : ''}${overview['licenseClass'] ?? ''} • ${_transmission(overview['transmissionType'])} • ${_statusLabel(overview['status'])}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
-                if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty || '${overview['studentPhone'] ?? ''}'.isNotEmpty) ...[
+                if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty ||
+                    '${overview['studentPhone'] ?? ''}'.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(
                     [
-                      if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty) '${'Seri no'.tr}: ${overview['identitySerialNo']}',
-                      if ('${overview['studentPhone'] ?? ''}'.isNotEmpty) '${'Telefon'.tr}: ${overview['studentPhone']}',
+                      if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty)
+                        '${'Seri no'.tr}: ${overview['identitySerialNo']}',
+                      if ('${overview['studentPhone'] ?? ''}'.isNotEmpty)
+                        '${'Telefon'.tr}: ${overview['studentPhone']}',
                     ].join(' • '),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -720,9 +867,12 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   const SizedBox(height: 2),
                   Text(
                     [
-                      if ('${overview['fatherName'] ?? ''}'.isNotEmpty) '${'Baba'.tr}: ${overview['fatherName']}',
-                      if ('${overview['motherName'] ?? ''}'.isNotEmpty) '${'Anne'.tr}: ${overview['motherName']}',
-                      if ('${overview['birthPlace'] ?? ''}'.isNotEmpty) '${'Doğum yeri'.tr}: ${overview['birthPlace']}',
+                      if ('${overview['fatherName'] ?? ''}'.isNotEmpty)
+                        '${'Baba'.tr}: ${overview['fatherName']}',
+                      if ('${overview['motherName'] ?? ''}'.isNotEmpty)
+                        '${'Anne'.tr}: ${overview['motherName']}',
+                      if ('${overview['birthPlace'] ?? ''}'.isNotEmpty)
+                        '${'Doğum yeri'.tr}: ${overview['birthPlace']}',
                     ].join(' • '),
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
@@ -739,12 +889,19 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.warning_amber_rounded, size: 16, color: Color(0xFFF59E0B)),
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          size: 16,
+                          color: Color(0xFFF59E0B),
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             '${'MEBBİS için eksik'.tr}: ${(data['mebbisMissing'] as List).join(', ')}',
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -786,11 +943,26 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 const SizedBox(height: 12),
                 const DrivingSectionTitle(title: 'Mevcut sürücü belgesi'),
                 const SizedBox(height: 6),
-                _licenseLine('Geçmek istediği sınıf'.tr, overview!['targetLicenseClass'] ?? overview['licenseClass']),
-                _licenseLine('Önceki belge no'.tr, overview['existingLicenseNumber']),
-                _licenseLine('Önceki sınıf(lar)'.tr, overview['existingLicenseClasses']),
-                _licenseLine('Veriliş'.tr, _dateOnly(overview['licenseIssueDate'])),
-                _licenseLine('Son geçerlilik'.tr, _dateOnly(overview['licenseExpiryDate'])),
+                _licenseLine(
+                  'Geçmek istediği sınıf'.tr,
+                  overview!['targetLicenseClass'] ?? overview['licenseClass'],
+                ),
+                _licenseLine(
+                  'Önceki belge no'.tr,
+                  overview['existingLicenseNumber'],
+                ),
+                _licenseLine(
+                  'Önceki sınıf(lar)'.tr,
+                  overview['existingLicenseClasses'],
+                ),
+                _licenseLine(
+                  'Veriliş'.tr,
+                  _dateOnly(overview['licenseIssueDate']),
+                ),
+                _licenseLine(
+                  'Son geçerlilik'.tr,
+                  _dateOnly(overview['licenseExpiryDate']),
+                ),
                 _licenseLine('Veren makam'.tr, overview['licenseIssuePlace']),
               ],
               // Sınav ücretleri
@@ -798,7 +970,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Expanded(child: DrivingSectionTitle(title: 'Sınav ücretleri'.tr)),
+                    Expanded(
+                      child: DrivingSectionTitle(title: 'Sınav ücretleri'.tr),
+                    ),
                     if (_canCollect)
                       TextButton.icon(
                         onPressed: () => _editExamFees(overview),
@@ -807,40 +981,86 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                       ),
                   ],
                 ),
-                _examFeeRow('Teorik (e-sınav)'.tr, overview['theoryExamFee'], overview['theoryExamFeePaid'] == true),
-                _examFeeRow('Direksiyon sınavı'.tr, overview['drivingExamFee'], overview['drivingExamFeePaid'] == true),
+                _examFeeRow(
+                  'Teorik (e-sınav)'.tr,
+                  overview['theoryExamFee'],
+                  overview['theoryExamFeePaid'] == true,
+                ),
+                _examFeeRow(
+                  'Direksiyon sınavı'.tr,
+                  overview['drivingExamFee'],
+                  overview['drivingExamFeePaid'] == true,
+                ),
                 if (overview['drivingExamDate'] != null)
-                  _licenseLine('Direksiyon sınav tarihi'.tr, _dateOnly(overview['drivingExamDate'])),
+                  _licenseLine(
+                    'Direksiyon sınav tarihi'.tr,
+                    _dateOnly(overview['drivingExamDate']),
+                  ),
               ],
               // Sınav hakları (mevzuat: her türde en fazla 4)
               if (data['examRights'] != null) ...[
                 const SizedBox(height: 12),
                 const DrivingSectionTitle(title: 'Sınav hakları'),
                 const SizedBox(height: 6),
-                _examRightRow('Teorik (e-sınav)'.tr, data['examRights']['theory']),
-                _examRightRow('Direksiyon sınavı'.tr, data['examRights']['practice']),
+                _examRightRow(
+                  'Teorik (e-sınav)'.tr,
+                  data['examRights']['theory'],
+                ),
+                _examRightRow(
+                  'Direksiyon sınavı'.tr,
+                  data['examRights']['practice'],
+                ),
               ],
+              const SizedBox(height: 14),
+              const DrivingSectionTitle(title: 'MEBBİS zaman çizelgesi'),
+              const SizedBox(height: 8),
+              if (_historyLoading)
+                const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12),
+                    child: CircularProgressIndicator(),
+                  ),
+                )
+              else if (_mebbisHistory.isEmpty)
+                const DrivingEmptyState(
+                  icon: Icons.history_toggle_off_rounded,
+                  title: 'Henüz MEBBİS işlem kaydı yok.',
+                )
+              else
+                ..._mebbisHistory.map(_mebbisHistoryRow),
               const SizedBox(height: 14),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: (complete ? const Color(0xFF10B981) : const Color(0xFFF59E0B)).withValues(alpha: 0.12),
+                  color:
+                      (complete
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFF59E0B))
+                          .withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(
                   children: [
                     Icon(
-                      complete ? Icons.check_circle_rounded : Icons.warning_amber_rounded,
-                      color: complete ? const Color(0xFF10B981) : const Color(0xFFF59E0B),
+                      complete
+                          ? Icons.check_circle_rounded
+                          : Icons.warning_amber_rounded,
+                      color: complete
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFF59E0B),
                       size: 18,
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
                         complete
-                            ? 'Kurs dosyası tamam — tüm zorunlu evraklar onaylı.'.tr
+                            ? 'Kurs dosyası tamam — tüm zorunlu evraklar onaylı.'
+                                  .tr
                             : '${documents?['missingCount'] ?? 0} eksik, ${documents?['pendingCount'] ?? 0} onay bekliyor.',
-                        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ],
@@ -850,7 +1070,10 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
               const DrivingSectionTitle(title: 'Belgeler'),
               const SizedBox(height: 8),
               if (items.isEmpty)
-                DrivingEmptyState(icon: Icons.folder_off_rounded, title: 'Belge yok.'.tr)
+                DrivingEmptyState(
+                  icon: Icons.folder_off_rounded,
+                  title: 'Belge yok.'.tr,
+                )
               else
                 ...items.map((raw) {
                   final item = Map<String, dynamic>.from(raw as Map);
@@ -864,15 +1087,20 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                       item['uploadedAtUtc'] != null
                           ? 'Yüklendi: ${_dateOnly(item['uploadedAtUtc'])}'
                           : 'Yüklenmedi',
-                      if (item['expiresAtUtc'] != null) 'Geçerlilik: ${_dateOnly(item['expiresAtUtc'])}',
-                      if (item['rejectionReason'] != null) 'Ret: ${item['rejectionReason']}',
+                      if (item['expiresAtUtc'] != null)
+                        'Geçerlilik: ${_dateOnly(item['expiresAtUtc'])}',
+                      if (item['rejectionReason'] != null)
+                        'Ret: ${item['rejectionReason']}',
                     ].join(' • '),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         if (fileUrl != null && fileUrl.isNotEmpty)
                           IconButton(
-                            icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                            icon: const Icon(
+                              Icons.open_in_new_rounded,
+                              size: 18,
+                            ),
                             onPressed: () => _openFile(fileUrl),
                           ),
                         DrivingStatusPill(label: tone.label, tone: tone.tone),
@@ -883,6 +1111,64 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _mebbisHistoryRow(Map<String, dynamic> item) {
+    final severity = '${item['severity'] ?? 'Info'}';
+    final color = severity == 'Error'
+        ? Colors.red
+        : severity == 'Warning'
+        ? Colors.orange
+        : severity == 'Success'
+        ? Colors.green
+        : Colors.blue;
+    final date = DateTime.tryParse('${item['occurredAtUtc'] ?? ''}')?.toLocal();
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 12,
+            height: 12,
+            margin: const EdgeInsets.only(top: 4),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${item['title'] ?? ''}',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                if ('${item['description'] ?? ''}'.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(
+                      '${item['description']}',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ),
+                const SizedBox(height: 4),
+                Text(
+                  '${date == null ? '—' : '${date.day.toString().padLeft(2, '0')}.${date.month.toString().padLeft(2, '0')}.${date.year} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}'} • ${item['actorName'] ?? 'Sistem'}',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -73,6 +73,9 @@ export const DRIVING = {
 
   reportView: 'driving.report.view',
   reportExport: 'driving.report.export',
+  mebbisView: 'driving.mebbis.view',
+  mebbisManage: 'driving.mebbis.manage',
+  mebbisVerify: 'driving.mebbis.verify',
   permissionManage: 'driving.permission.manage',
 
   overrideVehicleCompliance: 'driving.override.vehicle_compliance',
@@ -131,10 +134,15 @@ const PATH_PERMISSIONS = {
   '/driving/education': [DRIVING.theoryView, DRIVING.examView],
   '/driving/graduation': [DRIVING.graduationView],
   '/driving/reports': [DRIVING.reportView],
+  '/driving/forms': [DRIVING.studentView],
+  '/driving/mebbis': [DRIVING.mebbisView],
+  '/driving/mebbis/documents': [DRIVING.studentDocumentView],
 };
 
 export function isDrivingPathAllowed(path, state) {
-  const required = PATH_PERMISSIONS[path];
+  const required = path.startsWith('/driving/mebbis/assistant/')
+    ? [DRIVING.mebbisManage]
+    : PATH_PERMISSIONS[path];
   if (!required) return true; // sürücü kursu sayfası değil
   if (!state) return false;
   return required.some((code) => state.permissions.has(code));

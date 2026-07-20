@@ -34,7 +34,9 @@ import {
   Package,
   Server,
   Video,
+  FileSignature,
   FileText,
+  FileCheck2,
   Bell,
   User,
   Gift,
@@ -113,8 +115,11 @@ export const menuConfigs = {
     { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true },
     { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
     { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
+    { path: "/driving/mebbis", icon: ClipboardCheck, label: "MEBBİS İş Merkezi", color: "#0284c7", special: true },
+    { path: "/driving/mebbis/documents", icon: FileCheck2, label: "Evrak Onay Kuyruğu", color: "#7c3aed", special: true },
     { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
     { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true },
+    { path: "/driving/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea", special: true },
     { path: "/driving/reports", icon: BarChart3, label: "Raporlar", color: "#0891b2", special: true },
     {
       path: "/admin/kpi",
@@ -237,7 +242,7 @@ export const menuConfigs = {
     {
       path: "/admin/audit-log",
       icon: CheckSquare,
-      label: "Denetim Kayıtları",
+      label: "Kayıt Geçmişi",
       color: "#64748b",
     },
     {
@@ -1066,7 +1071,7 @@ export const ROLE_LABELS = {
 
 const ROLE_MENU_GROUPS = {
   admin: [
-    { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "driving-education", "driving-graduation", "driving-reports", "kpi", "operations", "global-search", "tasks"] },
+    { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "driving-education", "driving-graduation", "driving-forms", "driving-reports", "kpi", "operations", "global-search", "tasks"] },
     { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"] },
     { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library"] },
@@ -1279,7 +1284,7 @@ const MODULE_MENU_REGISTRY = {
     parent: { path: "/p/library", icon: BookOpen, label: "Kütüphane", color: "#0ea5e9" },
   },
   "staff-hr": { default: { path: "/admin/staff-hr", icon: Users, label: "Personel / İK", color: "#10b981" } },
-  "audit-log": { default: { path: "/admin/audit-log", icon: Activity, label: "Denetim Kayıtları", color: "#6366f1" } },
+  "audit-log": { default: { path: "/admin/audit-log", icon: Activity, label: "Kayıt Geçmişi", color: "#6366f1" } },
   "org-units": { default: { path: "/admin/org-units", icon: Layers, label: "Organizasyon Birimleri", color: "#f97316" } },
   rbac: { default: { path: "/admin/rbac", icon: Shield, label: "Yetki Matrisi", color: "#a855f7" } },
 };
@@ -1311,6 +1316,9 @@ export function inferModuleKey(item) {
     "/driving/assignments": "driving-assignments",
     "/driving/education": "driving-education",
     "/driving/graduation": "driving-graduation",
+    "/driving/mebbis": "driving-education",
+    "/driving/mebbis/documents": "driving-education",
+    "/driving/forms": "driving-forms",
     "/driving/reports": "driving-reports",
     "/t/dashboard": "dashboard",
     "/s/dashboard": "dashboard",

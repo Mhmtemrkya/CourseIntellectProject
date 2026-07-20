@@ -65,4 +65,5 @@ public static class DrivingNotificationCategories
     public const string Finance = "DrivingFinance";
     public const string Fleet = "DrivingFleet";
     public const string Exam = "DrivingExam";
+    public const string Term = "DrivingTerm";
 }

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardList, CreditCard, Download,
-  FileCheck2, Gauge, History, Plus, Receipt, RefreshCw, StickyNote, TrendingUp, Undo2, Upload, Wrench, XCircle,
+  FileCheck2, FileSignature, Gauge, History, Plus, Receipt, RefreshCw, StickyNote, TrendingUp, Undo2, Upload, Wrench, XCircle,
 } from 'lucide-react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '../../components/ui/badge';
@@ -14,8 +14,8 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
   addDrivingExtraMinutes, adjustDrivingLedger, createDrivingAppointment, createDrivingCharge,
-  downloadDrivingStudentForm, fetchDrivingBranches, fetchDrivingCharges, fetchDrivingLedger,
-  fetchDrivingStudentDetail, recordDrivingPayment, refundDrivingCharge, reviewDrivingStudentDocument,
+  downloadDrivingStudentForm, downloadDrivingStudentDocument, fetchDrivingBranches, fetchDrivingCharges, fetchDrivingLedger,
+  fetchDrivingStudentDetail, fetchDrivingMebbisHistory, recordDrivingPayment, refundDrivingCharge, reviewDrivingStudentDocument,
   suggestDrivingInstructors, suggestDrivingVehicles, updateDrivingExamFees, updateDrivingStudentStatus,
   uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
@@ -58,7 +58,13 @@ const DOCUMENT_STATUS = {
   PendingApproval: { label: 'Onay bekliyor', tone: 'bg-amber-500' },
   Approved: { label: 'Onaylı', tone: 'bg-emerald-500' },
   Rejected: { label: 'Reddedildi', tone: 'bg-red-500' },
+  ReuploadRequested: { label: 'Yeniden yükleme istendi', tone: 'bg-orange-500' },
   Expired: { label: 'Süresi doldu', tone: 'bg-[hsl(var(--brand-accent))]' },
+};
+
+const MEBBIS_EVENT_LABELS = {
+  Preparation: 'Hazırlık', DocumentReview: 'Evrak', CandidateEntry: 'Aday kaydı', Verification: 'Doğrulama',
+  ExamResult: 'Sınav sonucu', CertificateNumber: 'Sertifika', Correction: 'Düzeltme', Import: 'Geri aktarım', StatusChange: 'Durum',
 };
 
 const minutes = (value) => `${Math.round(Number(value || 0))} dk`;
@@ -218,6 +224,7 @@ export default function DrivingStudentDetail() {
   const [data, setData] = useState(null);
   const [reconciliation, setReconciliation] = useState(null);
   const [charges, setCharges] = useState([]);
+  const [mebbisHistory, setMebbisHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [rejectReasons, setRejectReasons] = useState({});
@@ -239,15 +246,17 @@ export default function DrivingStudentDetail() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [detail, ledgerState, chargeList] = await Promise.all([
+      const [detail, ledgerState, chargeList, mebbisTimeline] = await Promise.all([
         fetchDrivingStudentDetail(profileId),
         // Mutabakat ve ücret kalemleri yalnızca yetkisi olana gösterilir; hata sessiz geçilir.
         fetchDrivingLedger(profileId).catch(() => null),
         fetchDrivingCharges(profileId).catch(() => []),
+        fetchDrivingMebbisHistory(profileId, { pageSize: 100 }).catch(() => ({ items: [] })),
       ]);
       setData(detail);
       setReconciliation(ledgerState?.reconciliation ?? null);
       setCharges(chargeList || []);
+      setMebbisHistory(mebbisTimeline?.items || []);
     } catch (error) {
       toast({ title: 'Kursiyer dosyası açılamadı', description: error.message, variant: 'destructive' });
     } finally {
@@ -396,6 +405,13 @@ export default function DrivingStudentDetail() {
     }
   }
 
+  async function openDocument(item) {
+    try {
+      const blob = await downloadDrivingStudentDocument(item.id); const url = URL.createObjectURL(blob);
+      window.open(url, '_blank', 'noopener,noreferrer'); setTimeout(() => URL.revokeObjectURL(url), 60000);
+    } catch (error) { toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' }); }
+  }
+
   if (permissionsLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
   if (!data) return null;
 
@@ -474,6 +490,7 @@ export default function DrivingStudentDetail() {
           <TabsTrigger value="documents">Evraklar</TabsTrigger>
           {finance && <TabsTrigger value="finance">Ödemeler</TabsTrigger>}
           <TabsTrigger value="notes">Notlar</TabsTrigger>
+          <TabsTrigger value="mebbis-history">MEBBİS geçmişi</TabsTrigger>
           <TabsTrigger value="history">İşlem geçmişi</TabsTrigger>
         </TabsList>
 
@@ -676,6 +693,11 @@ export default function DrivingStudentDetail() {
               <Button variant="outline" size="sm" onClick={() => downloadForm('attendance', `devam-cizelgesi-${overview.studentNumber}`)}>
                 <Download className="mr-2 h-4 w-4" />Devam Çizelgesi
               </Button>
+              {/* Matbu MEB evrakları (müracaat formu, imza sirküleri, sözleşme)
+                  ayrı sayfada yönetilir; buradan o kursiyerle açılır. */}
+              <Button variant="outline" size="sm" onClick={() => navigate('/driving/forms')}>
+                <FileSignature className="mr-2 h-4 w-4" />Sözleşme ve Formlar
+              </Button>
             </CardContent>
           </Card>
 
@@ -876,7 +898,7 @@ export default function DrivingStudentDetail() {
                         {item.rejectionReason && <p className="mt-1 text-xs text-red-600">Ret nedeni: {item.rejectionReason}</p>}
                       </div>
                       <div className="flex items-center gap-2">
-                        {item.fileUrl && <a className="text-xs font-bold text-blue-600 hover:underline" href={item.fileUrl} target="_blank" rel="noreferrer">Dosya</a>}
+                        {item.fileUrl && <button type="button" className="text-xs font-bold text-blue-600 hover:underline" onClick={() => openDocument(item)}>Dosya</button>}
                         <Badge className={tone.tone}>{tone.label}</Badge>
                       </div>
                     </div>
@@ -884,7 +906,7 @@ export default function DrivingStudentDetail() {
                     {canReview && item.status === 'PendingApproval' && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Button size="sm" disabled={busy} className="bg-emerald-600 text-white hover:bg-emerald-700"
-                          onClick={() => run(() => reviewDrivingStudentDocument(item.id, { approved: true }), 'Belge onaylandı')}>
+                          onClick={() => run(() => reviewDrivingStudentDocument(item.id, { action: 'Approve', expectedVersion: item.reviewVersion }), 'Belge onaylandı')}>
                           <CheckCircle2 className="mr-1 h-4 w-4" />Onayla
                         </Button>
                         <Input
@@ -896,7 +918,7 @@ export default function DrivingStudentDetail() {
                         <Button size="sm" variant="destructive"
                           disabled={busy || (rejectReasons[item.id] || '').trim().length < 5}
                           onClick={() => run(
-                            () => reviewDrivingStudentDocument(item.id, { approved: false, rejectionReason: rejectReasons[item.id] }),
+                            () => reviewDrivingStudentDocument(item.id, { action: 'Reject', rejectionReason: rejectReasons[item.id], expectedVersion: item.reviewVersion }),
                             'Belge reddedildi',
                           )}>
                           <XCircle className="mr-1 h-4 w-4" />Reddet
@@ -935,7 +957,7 @@ export default function DrivingStudentDetail() {
                       <b>{item.label}</b>
                       <p className="text-xs text-muted-foreground">{dateTime(item.uploadedAtUtc)} • {item.status}</p>
                     </div>
-                    <a className="text-xs font-bold text-blue-600 hover:underline" href={item.fileUrl} target="_blank" rel="noreferrer">Dosya</a>
+                    <button type="button" className="text-xs font-bold text-blue-600 hover:underline" onClick={() => openDocument(item)}>Dosya</button>
                   </div>
                 ))}
               </CardContent>
@@ -1102,6 +1124,29 @@ export default function DrivingStudentDetail() {
                 <b className="text-sm text-muted-foreground">Erişilebilirlik / özel eğitim</b>
                 <p className="mt-1">{data.notes?.accessibility || '—'}</p>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="mebbis-history" className="mt-5">
+          <Card>
+            <CardHeader><CardTitle className="flex gap-2"><History className="text-sky-600" />MEBBİS zaman çizelgesi</CardTitle></CardHeader>
+            <CardContent>
+              {mebbisHistory.length === 0 ? <p className="py-8 text-center text-muted-foreground">Henüz MEBBİS işlem kaydı bulunmuyor.</p> : (
+                <div className="relative space-y-0 before:absolute before:bottom-4 before:left-[7px] before:top-4 before:w-px before:bg-border">
+                  {mebbisHistory.map((item) => {
+                    const tone = item.severity === 'Error' ? 'bg-red-500' : item.severity === 'Warning' ? 'bg-amber-500' : item.severity === 'Success' ? 'bg-emerald-500' : 'bg-sky-500';
+                    return <div key={item.id} className="relative grid grid-cols-[16px_1fr] gap-4 pb-6 last:pb-0">
+                      <span className={`z-10 mt-1.5 h-3.5 w-3.5 rounded-full ring-4 ring-background ${tone}`} />
+                      <div className="rounded-xl border bg-card p-4">
+                        <div className="flex flex-wrap items-start justify-between gap-2"><b>{item.title}</b><time className="text-xs text-muted-foreground">{dateTime(item.occurredAtUtc)}</time></div>
+                        {item.description && <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>}
+                        <div className="mt-2 flex flex-wrap gap-2 text-xs text-muted-foreground"><Badge variant="outline">{MEBBIS_EVENT_LABELS[item.eventType] || item.eventType}</Badge>{item.status && <Badge variant="outline">{item.status}</Badge>}<span>İşlemi yapan: {item.actorName || 'Sistem'}</span></div>
+                      </div>
+                    </div>;
+                  })}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

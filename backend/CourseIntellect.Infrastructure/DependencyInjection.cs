@@ -53,6 +53,8 @@ public static class DependencyInjection
         services.AddScoped<IDrivingLedgerService, DrivingLedgerService>();
         services.AddScoped<IDrivingAvailabilityService, DrivingAvailabilityService>();
         services.AddScoped<IDrivingNotifier, DrivingNotifier>();
+        services.AddScoped<IDrivingTermAlertService, DrivingTermAlertService>();
+        services.AddScoped<IDrivingImportFileParser, DrivingImportFileParser>();
         services.AddScoped<IDrivingReminderJobService, DrivingReminderJobService>();
         services.AddScoped<IAuthService, AuthService>();
         services.AddScoped<IUserDirectoryService, UserDirectoryService>();
@@ -74,8 +76,10 @@ public static class DependencyInjection
         services.AddScoped<IQuestionThreadService, QuestionThreadService>();
         services.AddScoped<IHomeworkService, HomeworkService>();
         services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services.AddSingleton<IDrivingPhotoInspectionService, DrivingPhotoInspectionService>();
         services.AddSingleton<IDrivingCertificatePdfService, DrivingCertificatePdfService>();
         services.AddSingleton<IDrivingReportPdfService, DrivingReportPdfService>();
+        services.AddSingleton<IDrivingContractFormPdfService, DrivingContractFormPdfService>();
         services.AddScoped<IAccountingService, AccountingService>();
         services.AddScoped<IStaffManagementService, StaffManagementService>();
         services.AddScoped<INotificationService, NotificationService>();
