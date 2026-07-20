@@ -34,7 +34,17 @@ public enum AssistantIntent
     /// <summary>Mezuniyet ve sertifika durumu.</summary>
     GetDrivingGraduation,
     /// <summary>Öğrencinin üzerindeki kütüphane kitapları ve gecikmeler.</summary>
-    GetLibraryLoans
+    GetLibraryLoans,
+
+    // ─── Faz 4: yazma eylemleri ───────────────────────────────────────────
+    // DİKKAT: Bu niyetler VERİ DEĞİŞTİRİR. Asla ilk turda çalıştırılmazlar;
+    // asistan önce bir onay kartı üretir, kullanıcı onaylarsa yürütülür.
+    // Yeni bir yazma niyeti eklerken AssistantIntentCatalog.IsWriteAction
+    // listesine de eklenmelidir, aksi hâlde onay kapısı atlanır.
+    /// <summary>Kursiyere eksik evrakları için hatırlatma bildirimi gönderir.</summary>
+    SendDocumentReminder,
+    /// <summary>Öğrencinin velisine devamsızlık bilgilendirmesi gönderir.</summary>
+    NotifyParentAboutAbsence
 }
 
 public enum AssistantSenderType { User = 1, Assistant = 2, System = 3 }

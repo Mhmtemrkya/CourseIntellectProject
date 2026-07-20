@@ -15,8 +15,28 @@ function StructuredData({ message, onAction }) {
     {data.fullName && <div className="rounded-xl border bg-background/80 p-3"><b>{data.fullName}</b>{data.className && <span className="text-muted-foreground"> · {data.className}</span>}{data.driving && <div className="mt-2 rounded-lg bg-[hsl(var(--brand-accent)/0.12)] p-2 text-xs">Ehliyet: {data.driving.licenseClass || '-'} · Kalan: {data.driving.remainingDrivingMinutes ?? Math.max(0, (data.driving.purchasedDrivingMinutes || 0) - (data.driving.usedDrivingMinutes || 0))} dk</div>}</div>}
     {typeof data.remaining === 'number' && <div className="rounded-xl border bg-background/80 p-3">Kalan ödeme: <b>{data.remaining.toLocaleString('tr-TR')} ₺</b></div>}
     {items.slice(0, 15).map((item, index) => <button key={item.id || item.studentId || index} type="button" onClick={() => item.studentId && onAction('get_attendance', item.studentId)} className={`w-full rounded-xl border bg-background/80 p-3 text-left text-xs ${item.studentId ? 'hover:border-[hsl(var(--brand-accent))]' : ''}`}><div className="font-semibold text-foreground">{item.fullName || item.title || item.examTitle || item.lesson || item.label || `Kayıt ${index + 1}`}</div><div className="mt-1 text-muted-foreground">{[item.className, item.subject, item.status, item.date, item.deadline, item.startsAt, item.score != null ? `${item.score} puan` : null, item.remaining != null ? `${item.remaining} ₺` : null].filter(Boolean).join(' · ')}</div></button>)}
-    {message.actions?.length > 0 && <div className="flex flex-wrap gap-2 pt-1">{message.actions.map((item, index) => <button key={index} type="button" onClick={() => onAction(item.command, item.parameters?.studentId, item.route)} className="rounded-full border border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--brand-accent)/0.12)] px-3 py-1.5 text-xs font-semibold text-[hsl(var(--brand-accent-text))] transition-colors hover:bg-[hsl(var(--brand-accent)/0.2)]">{item.label}</button>)}</div>}
+    {message.actions?.length > 0 && <div className="flex flex-wrap gap-2 pt-1">{message.actions.map((item, index) => <ActionButton key={index} item={item} onAction={onAction} />)}</div>}
   </div>;
+}
+
+/**
+ * Eylem butonu. Veri DEĞİŞTİREN onay butonu, gezinme/sorgu çiplerinden görsel
+ * olarak ayrılmalı: hepsi aynı görünürse kullanıcı "Onayla ve gönder"e sıradan
+ * bir çip sanıp basar. Tür bilgisi backend'den `item.type` ile gelir.
+ */
+function ActionButton({ item, onAction }) {
+  const base = 'rounded-full px-3 py-1.5 text-xs font-semibold transition-colors';
+  const style = item.type === 'confirm_action'
+    ? 'bg-red-600 text-white shadow-sm hover:bg-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2'
+    : item.type === 'cancel_action'
+      ? 'border border-foreground/20 text-muted-foreground hover:bg-foreground/[0.06]'
+      : 'border border-[hsl(var(--brand-accent)/0.4)] bg-[hsl(var(--brand-accent)/0.12)] text-[hsl(var(--brand-accent-text))] hover:bg-[hsl(var(--brand-accent)/0.2)]';
+
+  return <button
+    type="button"
+    onClick={() => onAction(item.command, item.parameters?.studentId, item.route)}
+    className={`${base} ${style}`}
+  >{item.label}</button>;
 }
 
 export function AssistantPanel({ onClose, fullPage = false }) {

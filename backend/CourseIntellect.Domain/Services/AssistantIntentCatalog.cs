@@ -93,7 +93,38 @@ public static class AssistantIntentCatalog
 
             // ─── Yalnız okul/dershane ─────────────────────────────────────────
             [AssistantIntent.GetLibraryLoans] = new(Academic, "library", DenyAccounting),
+
+            // ─── Yazma eylemleri ──────────────────────────────────────────────
+            // Bildirim gönderme kursiyer/öğrenci dosyasına dokunduğu için
+            // "students" modülüne ve öğretmen üstü rollere bağlı.
+            [AssistantIntent.SendDocumentReminder] = new(Driving, "students", DenyAccounting),
+            [AssistantIntent.NotifyParentAboutAbsence] = new(Academic, "attendance", DenyAccounting),
         };
+
+    /// <summary>
+    /// Veri değiştiren niyetler. Bunlar ASLA doğrudan çalıştırılmaz: asistan
+    /// önce onay kartı üretir, kullanıcı onaylarsa yürütülür.
+    ///
+    /// Buraya eklenmeyen bir yazma niyeti onay kapısını atlar ve tek mesajla
+    /// veri değiştirir — yeni eylem eklerken burası güncellenmeli.
+    /// </summary>
+    private static readonly IReadOnlySet<AssistantIntent> WriteActions = new HashSet<AssistantIntent>
+    {
+        AssistantIntent.SendDocumentReminder,
+        AssistantIntent.NotifyParentAboutAbsence,
+    };
+
+    public static bool IsWriteAction(AssistantIntent intent) => WriteActions.Contains(intent);
+
+    /// <summary>Onay kartında gösterilecek, ne olacağını açıkça anlatan metin.</summary>
+    public static string WriteActionDescription(AssistantIntent intent, string subjectName) => intent switch
+    {
+        AssistantIntent.SendDocumentReminder =>
+            $"{subjectName} adlı kursiyere eksik evrakları için hatırlatma bildirimi gönderilecek.",
+        AssistantIntent.NotifyParentAboutAbsence =>
+            $"{subjectName} adlı öğrencinin velisine devamsızlık bilgilendirmesi gönderilecek.",
+        _ => "Bu işlem veri değiştirecek.",
+    };
 
     /// <summary>Kataloğa girmemiş bir niyet varsayılan olarak her yerde ve serbesttir.</summary>
     private static readonly AssistantIntentScope Fallback = new(Any, null, NoDeniedRoles);

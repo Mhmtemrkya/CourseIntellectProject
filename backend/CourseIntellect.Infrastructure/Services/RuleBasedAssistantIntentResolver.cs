@@ -49,6 +49,14 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
     {
         if (ContainsAny(text, "merhaba", "selam", "gunaydin", "iyi aksamlar")) return AssistantIntent.Greeting;
         if (ContainsAny(text, "yardim", "neler yapabilirsin", "komutlar")) return AssistantIntent.Help;
+        // Yazma eylemleri EN ÖNDE: "evrak hatırlatması gönder" cümlesi aksi hâlde
+        // "evrak" kuralına takılıp sorguya dönerdi. Bu niyetler doğrudan
+        // çalıştırılmaz; servis katmanı önce onay kartı üretir.
+        if (ContainsAny(text, "hatirlatma gonder", "hatirlat", "uyari gonder") && ContainsAny(text, "evrak", "belge"))
+            return AssistantIntent.SendDocumentReminder;
+        if (ContainsAny(text, "veliye bildir", "veliyi bilgilendir", "veliye haber", "veliye mesaj"))
+            return AssistantIntent.NotifyParentAboutAbsence;
+
         // Faz 2 niyetleri, daha genel sürücü kuralları TARAFINDAN YUTULMAMASI için
         // onlardan önce gelir: "randevu" kelimesi GetDrivingLessons'a düşüyordu,
         // "evrak"/"belge" ise hiçbir kurala uymayıp Unknown oluyordu.

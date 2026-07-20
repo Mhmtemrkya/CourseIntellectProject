@@ -15,6 +15,8 @@ public sealed class AssistantService(
     CourseIntellectDbContext db,
     IAssistantIntentResolver resolver,
     IEntitlementService entitlementService,
+    IDrivingNotifier drivingNotifier,
+    IParentNotifier parentNotifier,
     ILogger<AssistantService> logger) : IAssistantService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
@@ -167,9 +169,19 @@ public sealed class AssistantService(
         _ => AssistantIntent.Unknown,
     };
 
-    public Task<AssistantResponseDto> ExecuteActionAsync(AssistantRequestContext context, AssistantActionRequest request, CancellationToken cancellationToken)
+    public async Task<AssistantResponseDto> ExecuteActionAsync(AssistantRequestContext context, AssistantActionRequest request, CancellationToken cancellationToken)
     {
-        var message = request.Command.ToLowerInvariant() switch
+        var command = request.Command.ToLowerInvariant();
+
+        // "confirm:" ön eki yalnız onay kartındaki butondan gelir ve VERİ DEĞİŞTİRİR.
+        // Bu yüzden buradan sonrası sorgu hattına düşmez; ayrı, denetimli bir yol.
+        if (command.StartsWith("confirm:", StringComparison.Ordinal))
+            return await ExecuteConfirmedActionAsync(context, request, command["confirm:".Length..], cancellationToken);
+
+        if (command == "cancel_action")
+            return Build(request.ConversationId, "text", "İşlem iptal edildi.", null, AssistantIntent.Unknown);
+
+        var message = command switch
         {
             "attendance" or "get_attendance" => "Devamsızlığını göster",
             "exam" or "get_exam_results" => "Sınav sonuçlarını göster",
@@ -180,7 +192,112 @@ public sealed class AssistantService(
             "driving_progress" => "Kurs ilerlemesini göster",
             _ => request.Command,
         };
-        return SendInternalAsync(context, new SendAssistantMessageRequest(request.ConversationId, message, Guid.NewGuid(), null), request.StudentId, cancellationToken);
+        return await SendInternalAsync(context, new SendAssistantMessageRequest(request.ConversationId, message, Guid.NewGuid(), null), request.StudentId, cancellationToken);
+    }
+
+    /// <summary>
+    /// Onaylanmış yazma eylemini yürütür.
+    ///
+    /// Kapılar ÖNERİ ANINDA DEĞİL BURADA tekrar kontrol edilir: onay kartı ile
+    /// tıklama arasında rol, paket veya kurum değişmiş olabilir; ayrıca istemci
+    /// kartı görmeden doğrudan "confirm:" komutu gönderebilir. Bu uç, kullanıcı
+    /// girdisiyle veri değiştiren tek yer olduğu için hiçbir kontrolü atlamaz.
+    /// </summary>
+    private async Task<AssistantResponseDto> ExecuteConfirmedActionAsync(
+        AssistantRequestContext context, AssistantActionRequest request, string actionCommand, CancellationToken ct)
+    {
+        var intent = WriteActionIntent(actionCommand);
+        if (intent == AssistantIntent.Unknown || !AssistantIntentCatalog.IsWriteAction(intent))
+            return Build(request.ConversationId, "error", "Tanımsız işlem.", null, AssistantIntent.Unknown);
+
+        var conversation = await db.AssistantConversations
+            .SingleOrDefaultAsync(x => x.Id == request.ConversationId && x.UserId == context.UserId && !x.IsArchived, ct);
+        if (conversation is null)
+            return Build(request.ConversationId, "error", "Sohbet bulunamadı.", null, intent);
+
+        // Hedef öğrenci butonun parametresinden gelir; yoksa sohbetin seçili
+        // öğrencisine düşeriz. İkisi de yoksa işlem yapılmaz.
+        var studentId = request.StudentId ?? conversation.SelectedStudentId;
+        if (studentId is null)
+            return Build(request.ConversationId, "error", "İşlemin uygulanacağı öğrenci belirlenemedi.", null, intent);
+
+        var institutionType = await ResolveInstitutionTypeAsync(context, ct);
+        var authorized = true;
+        var failureCode = string.Empty;
+        AssistantResponseDto response;
+
+        if (!AssistantIntentCatalog.IsAvailableFor(intent, institutionType))
+        {
+            authorized = false;
+            failureCode = "INSTITUTION_SCOPE_DENIED";
+            response = Build(request.ConversationId, "permission_denied",
+                $"Bu işlem {AssistantIntentCatalog.DisplayName(institutionType)} kurumlarında yapılamaz.", null, intent);
+        }
+        else if (!AssistantIntentCatalog.IsAllowedForRole(intent, context.PrimaryRole))
+        {
+            authorized = false;
+            failureCode = "ROLE_SCOPE_DENIED";
+            response = Build(request.ConversationId, "permission_denied", "Rolünüz bu işlemi yapamıyor.", null, intent);
+        }
+        else if (AssistantIntentCatalog.RequiredModule(intent) is { } module
+                 && !await entitlementService.IsAllowedAsync(context.Principal, module, "view", ct))
+        {
+            authorized = false;
+            failureCode = "ENTITLEMENT_DENIED";
+            response = Build(request.ConversationId, "permission_denied", "Bu işlem kurum paketiniz kapsamında değil.", null, intent);
+        }
+        else
+        {
+            // Öğrenciyi tenant kapsamı içinde doğrula: istemciden gelen id'ye güvenmeyiz.
+            var student = await db.Students.AsNoTracking()
+                .Where(x => x.Id == studentId.Value)
+                .Select(ToStudentCandidate())
+                .FirstOrDefaultAsync(ct);
+
+            if (student is null)
+            {
+                authorized = false;
+                failureCode = "STUDENT_NOT_FOUND";
+                response = Build(request.ConversationId, "error", "Öğrenci bulunamadı.", null, intent);
+            }
+            else
+            {
+                try
+                {
+                    response = intent switch
+                    {
+                        AssistantIntent.SendDocumentReminder => await SendDocumentReminderAsync(request.ConversationId, student, ct),
+                        AssistantIntent.NotifyParentAboutAbsence => await NotifyParentAboutAbsenceAsync(request.ConversationId, student, ct),
+                        _ => Build(request.ConversationId, "error", "Tanımsız işlem.", null, intent),
+                    };
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Asistan yazma eylemi başarısız: {Intent}", intent);
+                    authorized = false;
+                    failureCode = "ACTION_FAILED";
+                    response = Build(request.ConversationId, "error", "İşlem tamamlanamadı. Lütfen ilgili ekrandan deneyin.", null, intent);
+                }
+            }
+        }
+
+        // Yazma eylemleri her hâlükârda denetim kaydına yazılır — reddedilenler dâhil.
+        db.AssistantAuditLogs.Add(new AssistantAuditLog
+        {
+            TenantId = context.TenantId,
+            UserId = context.UserId,
+            ConversationId = conversation.Id,
+            Intent = intent,
+            ToolName = actionCommand,
+            TargetStudentId = studentId,
+            WasAuthorized = authorized,
+            FailureReasonCode = failureCode,
+            CorrelationId = context.CorrelationId,
+            IpAddressMasked = MaskIp(context.IpAddress),
+            UserAgent = Truncate(context.UserAgent, 250),
+        });
+        await db.SaveChangesAsync(ct);
+        return response;
     }
 
     public Task<AssistantResponseDto> SendAsync(AssistantRequestContext context, SendAssistantMessageRequest request, CancellationToken cancellationToken) =>
@@ -295,7 +412,13 @@ public sealed class AssistantService(
                     var student = selection.Candidates[0];
                     conversation.SelectedStudentId = student.Id;
                     targetStudentId = student.Id;
-                    response = await ExecuteStudentIntentAsync(context, conversation.Id, parsed.Intent, student, cancellationToken);
+
+                    // GÜVENLİK KAPISI: veri değiştiren niyetler burada ÇALIŞTIRILMAZ.
+                    // Kullanıcıya ne olacağını anlatan bir onay kartı döner; işlem
+                    // yalnızca onay butonuyla (ExecuteActionAsync) yürütülür.
+                    response = AssistantIntentCatalog.IsWriteAction(parsed.Intent)
+                        ? BuildConfirmation(conversation.Id, parsed.Intent, student)
+                        : await ExecuteStudentIntentAsync(context, conversation.Id, parsed.Intent, student, cancellationToken);
                 }
             }
         }
@@ -728,6 +851,123 @@ public sealed class AssistantService(
         var id = conversationId ?? (await CreateConversationAsync(context, "Yeni sohbet", ct)).Id;
         return Build(id, type, text, null, intent);
     }
+
+    /// <summary>
+    /// Kursiyere eksik evrak hatırlatması gönderir. Eksik belge yoksa bildirim
+    /// GÖNDERİLMEZ — gereksiz bildirim kullanıcıyı bildirimlere karşı körleştirir.
+    /// </summary>
+    private async Task<AssistantResponseDto> SendDocumentReminderAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
+    {
+        var profileId = await db.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
+        if (!profileId.HasValue)
+            return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.SendDocumentReminder);
+
+        var now = DateTime.UtcNow;
+        var stored = await db.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent)
+            .Select(x => new { x.DocumentType, x.Status, x.ExpiresAtUtc })
+            .ToListAsync(ct);
+
+        var problems = stored
+            .Select(x => new { x.DocumentType, Effective = DrivingStudentRules.EffectiveStatus(x.Status, x.ExpiresAtUtc, now) })
+            .Where(x => x.Effective is StudentDocumentStatus.Expired or StudentDocumentStatus.Rejected or StudentDocumentStatus.PendingApproval)
+            .Select(x => DrivingStudentRules.DocumentLabel(x.DocumentType))
+            .ToList();
+
+        if (problems.Count == 0)
+            return Build(conversationId, "text",
+                $"{student.FullName} için eksik veya süresi geçmiş evrak yok — hatırlatma gönderilmedi.",
+                null, AssistantIntent.SendDocumentReminder);
+
+        await drivingNotifier.NotifyStudentAsync(
+            profileId.Value,
+            "Evrak hatırlatması",
+            $"Dosyanızda ilgi bekleyen belgeler var: {string.Join(", ", problems)}. Lütfen kurs sekreterliğiyle iletişime geçin.",
+            "driving.document.reminder",
+            // Aynı gün içinde tekrar tetiklenirse kursiyere iki bildirim gitmesin.
+            dedupeKey: $"assistant-doc-reminder-{profileId}-{now:yyyyMMdd}",
+            relatedEntityType: "StudentDrivingProfile",
+            relatedEntityId: profileId.Value.ToString(),
+            cancellationToken: ct);
+
+        return Build(conversationId, "action_result",
+            $"{student.FullName} adlı kursiyere {problems.Count} eksik evrak için hatırlatma gönderildi.",
+            new { studentId = student.Id, student.FullName, items = problems.Select(x => new { title = x }) },
+            AssistantIntent.SendDocumentReminder);
+    }
+
+    /// <summary>
+    /// Veliye devamsızlık bilgilendirmesi. Devamsızlık yoksa gönderilmez —
+    /// veliye "çocuğunuz 0 gün devamsız" bildirimi göndermek anlamsızdır.
+    ///
+    /// Son 30 KAYIT üzerinden bakılır (tarih penceresi değil): mevcut
+    /// <see cref="AttendanceAsync"/> ile aynı kalıp, böylece asistanın
+    /// gösterdiği özet ile gönderdiği bildirim aynı veriyi anlatır.
+    /// </summary>
+    private async Task<AssistantResponseDto> NotifyParentAboutAbsenceAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
+    {
+        var rows = await db.AttendanceEntries.AsNoTracking()
+            .Where(x => x.StudentName == student.FullName)
+            .OrderByDescending(x => x.LessonDate)
+            .Take(30)
+            .Select(x => x.Status)
+            .ToListAsync(ct);
+
+        var absences = rows.Count(x => x.Contains("Gelmedi", StringComparison.OrdinalIgnoreCase));
+        if (absences == 0)
+            return Build(conversationId, "text",
+                $"{student.FullName} için son kayıtlarda devamsızlık yok — bilgilendirme gönderilmedi.",
+                null, AssistantIntent.NotifyParentAboutAbsence);
+
+        await parentNotifier.NotifyStudentParentAsync(
+            student.FullName,
+            "Devamsızlık bilgilendirmesi",
+            $"{student.FullName} adlı öğrencinin son {rows.Count} yoklama kaydındaki devamsızlık sayısı: {absences}. Ayrıntı için okul ile iletişime geçebilirsiniz.",
+            "attendance.parent.notice",
+            ct);
+
+        return Build(conversationId, "action_result",
+            $"{student.FullName} adlı öğrencinin velisine {absences} devamsızlık için bilgilendirme gönderildi.",
+            new { studentId = student.Id, student.FullName, absences, examined = rows.Count },
+            AssistantIntent.NotifyParentAboutAbsence);
+    }
+
+    /// <summary>
+    /// Yazma eyleminin onay kartı. İşlem BURADA YAPILMAZ — kart yalnızca ne
+    /// olacağını anlatır ve onay/vazgeç butonlarını taşır.
+    ///
+    /// Hedef öğrenci butonun parametresinde taşınır; onay adımı mesajı yeniden
+    /// ayrıştırmaz. Aksi hâlde kullanıcı onaya basana kadar sohbette başka bir
+    /// öğrenciye geçtiyse işlem yanlış kişiye uygulanırdı.
+    /// </summary>
+    private static AssistantResponseDto BuildConfirmation(Guid conversationId, AssistantIntent intent, StudentCandidate student)
+    {
+        var command = WriteActionCommand(intent);
+        return Build(conversationId, "confirm_action",
+            AssistantIntentCatalog.WriteActionDescription(intent, student.FullName) + " Onaylıyor musunuz?",
+            new { studentId = student.Id, student.FullName, action = command },
+            intent,
+            [
+                new("confirm_action", "Onayla ve gönder", null, $"confirm:{command}", new { studentId = student.Id }),
+                new("cancel_action", "Vazgeç", null, "cancel_action", null),
+            ]);
+    }
+
+    /// <summary>Yazma niyeti ↔ onay komutu eşlemesi. İki yönlü kullanılır.</summary>
+    private static string WriteActionCommand(AssistantIntent intent) => intent switch
+    {
+        AssistantIntent.SendDocumentReminder => "send_document_reminder",
+        AssistantIntent.NotifyParentAboutAbsence => "notify_parent_absence",
+        _ => "unknown_action",
+    };
+
+    private static AssistantIntent WriteActionIntent(string command) => command switch
+    {
+        "send_document_reminder" => AssistantIntent.SendDocumentReminder,
+        "notify_parent_absence" => AssistantIntent.NotifyParentAboutAbsence,
+        _ => AssistantIntent.Unknown,
+    };
 
     private static AssistantResponseDto Build(Guid conversationId, string type, string text, object? data, AssistantIntent intent, IReadOnlyList<AssistantActionDto>? actions = null, IReadOnlyList<string>? suggestions = null) =>
         new(conversationId, Guid.NewGuid(), type, text, data, actions ?? [], suggestions ?? [], intent);

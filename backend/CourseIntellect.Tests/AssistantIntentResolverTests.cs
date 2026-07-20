@@ -73,4 +73,25 @@ public sealed class AssistantIntentResolverTests
     [InlineData("sürüş dersi geçmişi", AssistantIntent.GetDrivingLessons)]
     public void DrivingLessonsStillResolve_AfterAppointmentSplit(string message, AssistantIntent expected)
         => Assert.Equal(expected, resolver.Resolve(message).Intent);
+
+    // ─── Faz 4: yazma eylemleri ───────────────────────────────────────────────
+    [Theory]
+    [InlineData("Ali'ye evrak hatırlatması gönder", AssistantIntent.SendDocumentReminder)]
+    [InlineData("eksik belge için hatırlat", AssistantIntent.SendDocumentReminder)]
+    [InlineData("veliyi bilgilendir", AssistantIntent.NotifyParentAboutAbsence)]
+    [InlineData("veliye haber ver", AssistantIntent.NotifyParentAboutAbsence)]
+    public void ResolvesWriteActions(string message, AssistantIntent expected)
+        => Assert.Equal(expected, resolver.Resolve(message).Intent);
+
+    /// <summary>
+    /// "evrak durumu" (sorgu) ile "evrak hatırlatması gönder" (yazma) ayrışmalı.
+    /// Yazma kuralı en önde olduğu için sorgunun yutulmadığını doğrularız.
+    /// </summary>
+    [Fact]
+    public void DocumentQuery_IsNotMistakenForWriteAction()
+    {
+        Assert.Equal(AssistantIntent.GetDrivingDocuments, resolver.Resolve("evrak durumu ne").Intent);
+        Assert.Equal(AssistantIntent.GetDrivingDocuments, resolver.Resolve("eksik belge var mı").Intent);
+        Assert.Equal(AssistantIntent.SendDocumentReminder, resolver.Resolve("eksik belge için hatırlatma gönder").Intent);
+    }
 }

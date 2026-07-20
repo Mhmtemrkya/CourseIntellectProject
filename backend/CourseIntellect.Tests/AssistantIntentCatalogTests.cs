@@ -89,6 +89,50 @@ public sealed class AssistantIntentCatalogTests
     public void RequiredModule_MatchesLegacyMapping(AssistantIntent intent, string? expected)
         => Assert.Equal(expected, AssistantIntentCatalog.RequiredModule(intent));
 
+    // ─── Faz 4: yazma eylemleri ───────────────────────────────────────────────
+
+    /// <summary>
+    /// Veri değiştiren her niyet WriteActions kümesinde OLMALI. Buraya
+    /// eklenmeyen bir yazma niyeti onay kapısını atlar ve tek mesajla veri
+    /// değiştirir — bu testin amacı o kazayı yakalamak.
+    /// </summary>
+    [Theory]
+    [InlineData(AssistantIntent.SendDocumentReminder)]
+    [InlineData(AssistantIntent.NotifyParentAboutAbsence)]
+    public void WriteActions_AreMarkedAsWrite(AssistantIntent intent)
+        => Assert.True(AssistantIntentCatalog.IsWriteAction(intent));
+
+    /// <summary>Salt okunur niyetler yanlışlıkla onay kapısına takılmamalı.</summary>
+    [Theory]
+    [InlineData(AssistantIntent.GetAttendance)]
+    [InlineData(AssistantIntent.SearchStudent)]
+    [InlineData(AssistantIntent.GetDrivingDocuments)]
+    [InlineData(AssistantIntent.Greeting)]
+    public void ReadIntents_AreNotWriteActions(AssistantIntent intent)
+        => Assert.False(AssistantIntentCatalog.IsWriteAction(intent));
+
+    /// <summary>Yazma eylemleri de kurum türüne göre ayrışmalı.</summary>
+    [Fact]
+    public void WriteActions_RespectInstitutionScope()
+    {
+        // Evrak hatırlatması: yalnız sürücü kursu.
+        Assert.True(AssistantIntentCatalog.IsAvailableFor(AssistantIntent.SendDocumentReminder, InstitutionType.DrivingSchool));
+        Assert.False(AssistantIntentCatalog.IsAvailableFor(AssistantIntent.SendDocumentReminder, InstitutionType.PrivateSchool));
+
+        // Veli bilgilendirmesi: yalnız okul/dershane.
+        Assert.True(AssistantIntentCatalog.IsAvailableFor(AssistantIntent.NotifyParentAboutAbsence, InstitutionType.PrivateSchool));
+        Assert.False(AssistantIntentCatalog.IsAvailableFor(AssistantIntent.NotifyParentAboutAbsence, InstitutionType.DrivingSchool));
+    }
+
+    /// <summary>Onay kartı metni hedefin adını içermeli — kullanıcı kime ne yapacağını görmeli.</summary>
+    [Fact]
+    public void WriteActionDescription_NamesTheSubject()
+    {
+        var text = AssistantIntentCatalog.WriteActionDescription(AssistantIntent.SendDocumentReminder, "Ali Kaya");
+        Assert.Contains("Ali Kaya", text);
+        Assert.Contains("evrak", text, StringComparison.OrdinalIgnoreCase);
+    }
+
     /// <summary>
     /// Kataloğa girmemiş bir niyet kazara "her kurumda açık" olmamalı diye
     /// enum'daki her değerin bilinçli olarak ele alındığını doğrularız.
