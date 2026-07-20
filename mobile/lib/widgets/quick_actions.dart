@@ -15,6 +15,7 @@ import 'package:student/pages/student_attendance_scan_page.dart';
 import 'package:student/pages/student_study_plan_page.dart';
 import 'package:student/pages/student_question_page.dart';
 import 'package:student/services/tenant_feature_service.dart';
+import 'package:student/features/assistant/presentation/assistant_page.dart';
 import 'responsive_layout.dart';
 
 class QuickActions extends StatelessWidget {
@@ -33,6 +34,13 @@ class QuickActions extends StatelessWidget {
 
   Widget _buildContent(BuildContext context, Set<String> disabled) {
     final allActions = [
+      (
+        Icons.auto_awesome_rounded,
+        "AI Asistan",
+        const Color(0xFFF59E0B),
+        const AssistantPage(),
+        '',
+      ),
       (
         Icons.message_rounded,
         "Mesajlar",

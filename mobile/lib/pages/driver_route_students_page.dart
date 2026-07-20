@@ -9,6 +9,7 @@ import '../services/service_tracking_api_service.dart';
 import '../utils/session_navigation.dart';
 import '../widgets/admin_ui.dart';
 import '../widgets/service_tracking_ui.dart';
+import '../features/assistant/presentation/assistant_page.dart';
 
 class DriverRouteStudentsPage extends StatefulWidget {
   /// true ise sayfa şoförün ana ekranıdır: geri dönüş yerine çıkış sunulur.
@@ -106,6 +107,11 @@ class _DriverRouteStudentsPageState extends State<DriverRouteStudentsPage> {
         title: Text('Servis Şoförü'.tr),
         automaticallyImplyLeading: !widget.standalone,
         actions: [
+          IconButton(
+            tooltip: 'SchoolAsist Asistan',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantPage())),
+            icon: const Icon(Icons.auto_awesome_rounded),
+          ),
           IconButton(
             onPressed: _loadRoutes,
             icon: const Icon(Icons.refresh_rounded),

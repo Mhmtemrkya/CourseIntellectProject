@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../features/assistant/presentation/assistant_page.dart';
 
 import 'package:student/i18n/app_locale.dart';
 import 'admin_branch_comparison_page.dart';
@@ -153,6 +154,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          IconButton(
+            tooltip: 'SchoolAsist Asistan',
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AssistantPage())),
+            icon: const Icon(Icons.auto_awesome_rounded),
+          ),
           IconButton(
             onPressed: () => Navigator.push(
               context,

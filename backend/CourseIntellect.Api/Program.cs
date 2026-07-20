@@ -149,6 +149,19 @@ builder.Services.AddRateLimiter(options =>
                 Window = TimeSpan.FromMinutes(1),
                 QueueLimit = 0,
             }));
+    var assistantPermit = builder.Configuration.GetValue<int?>("Assistant:RateLimit:PermitPerMinute") ?? 30;
+    options.AddPolicy("assistant", httpContext =>
+        System.Threading.RateLimiting.RateLimitPartition.GetFixedWindowLimiter(
+            partitionKey: httpContext.User.FindFirstValue("sub")
+                ?? httpContext.User.FindFirstValue("nameid")
+                ?? httpContext.Connection.RemoteIpAddress?.ToString()
+                ?? "unknown",
+            factory: _ => new System.Threading.RateLimiting.FixedWindowRateLimiterOptions
+            {
+                PermitLimit = assistantPermit,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+            }));
 });
 
 var defaultCorsOrigins = new[]

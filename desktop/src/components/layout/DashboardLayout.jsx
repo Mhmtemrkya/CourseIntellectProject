@@ -11,6 +11,7 @@ import { PageErrorBoundary } from '../system/PageErrorBoundary';
 import { Sheet, SheetContent } from '../ui/sheet';
 import { gsap } from 'gsap';
 import { OnboardingProvider } from '../../onboarding/OnboardingProvider';
+import { AssistantLauncher } from '../../features/assistant/AssistantPanel';
 
 const pageVariants = {
   initial: { opacity: 0, y: 10 },
@@ -133,6 +134,7 @@ export function DashboardLayout() {
 
       {/* Command Palette */}
       <CommandPalette />
+      <AssistantLauncher />
     </div>
     </OnboardingProvider>
   );

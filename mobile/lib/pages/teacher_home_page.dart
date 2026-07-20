@@ -27,6 +27,7 @@ import 'package:student/widgets/responsive_layout.dart';
 import 'package:student/widgets/teacher_header.dart';
 
 import '../widgets/adaptive_scaffold.dart';
+import '../features/assistant/presentation/assistant_page.dart';
 
 class TeacherHomePage extends StatefulWidget {
   const TeacherHomePage({super.key});
@@ -652,12 +653,26 @@ class _TeacherHomePageState extends State<TeacherHomePage> {
               subtitle: _teacherSubtitle,
               onNotificationTap: _openNotificationsSheet,
             ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _openQuickCreateMenu,
-        backgroundColor: const Color(0xFFFF7A00),
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: Text("Hızlı İşlem".tr),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'teacher-assistant',
+            onPressed: () => _openPage(const AssistantPage()),
+            icon: const Icon(Icons.auto_awesome_rounded),
+            label: const Text('Asistan'),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton.extended(
+            heroTag: 'teacher-quick-action',
+            onPressed: _openQuickCreateMenu,
+            backgroundColor: const Color(0xFFFF7A00),
+            foregroundColor: Colors.white,
+            icon: const Icon(Icons.add_rounded),
+            label: Text("Hızlı İşlem".tr),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 96),

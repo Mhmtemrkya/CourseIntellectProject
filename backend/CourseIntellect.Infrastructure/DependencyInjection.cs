@@ -108,6 +108,8 @@ public static class DependencyInjection
         services.AddHttpClient<IEInvoiceService, HttpEInvoiceService>();
         services.AddSingleton<IPayrollService, PayrollService>();
         services.AddScoped<IReconciliationService, ReconciliationService>();
+        services.AddSingleton<IAssistantIntentResolver, RuleBasedAssistantIntentResolver>();
+        services.AddScoped<IAssistantService, AssistantService>();
 
         return services;
     }

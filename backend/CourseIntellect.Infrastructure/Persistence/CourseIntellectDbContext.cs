@@ -202,6 +202,9 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<DrivingMebbisHistoryEvent> DrivingMebbisHistoryEvents => Set<DrivingMebbisHistoryEvent>();
     public DbSet<DrivingMebbisErrorDefinition> DrivingMebbisErrorDefinitions => Set<DrivingMebbisErrorDefinition>();
     public DbSet<DrivingMebbisErrorOccurrence> DrivingMebbisErrorOccurrences => Set<DrivingMebbisErrorOccurrence>();
+    public DbSet<AssistantConversation> AssistantConversations => Set<AssistantConversation>();
+    public DbSet<AssistantMessage> AssistantMessages => Set<AssistantMessage>();
+    public DbSet<AssistantAuditLog> AssistantAuditLogs => Set<AssistantAuditLog>();
 
     public override int SaveChanges()
     {
@@ -2133,6 +2136,45 @@ public sealed class CourseIntellectDbContext : DbContext
         {
             entity.HasKey(x => x.Id);
             ConfigureTenantScope(entity);
+        });
+
+        modelBuilder.Entity<AssistantConversation>(entity =>
+        {
+            entity.ToTable("assistant_conversations");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Title).HasMaxLength(80).IsRequired();
+            entity.Property(x => x.LastIntent).HasConversion<string>().HasMaxLength(50);
+            entity.HasIndex(x => new { x.TenantId, x.UserId, x.IsArchived, x.LastMessageAtUtc });
+        });
+
+        modelBuilder.Entity<AssistantMessage>(entity =>
+        {
+            entity.ToTable("assistant_messages");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.SenderType).HasConversion<string>().HasMaxLength(20);
+            entity.Property(x => x.MessageType).HasConversion<string>().HasMaxLength(30);
+            entity.Property(x => x.Intent).HasConversion<string>().HasMaxLength(50);
+            entity.Property(x => x.Text).HasMaxLength(4000).IsRequired();
+            entity.Property(x => x.StructuredPayloadJson).HasColumnType("jsonb");
+            entity.HasIndex(x => new { x.ConversationId, x.CreatedAtUtc });
+            entity.HasIndex(x => new { x.UserId, x.ClientMessageId, x.SenderType }).IsUnique().HasFilter("\"ClientMessageId\" IS NOT NULL");
+            entity.HasOne<AssistantConversation>().WithMany().HasForeignKey(x => x.ConversationId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<AssistantAuditLog>(entity =>
+        {
+            entity.ToTable("assistant_audit_logs");
+            entity.HasKey(x => x.Id);
+            ConfigureTenantScope(entity);
+            entity.Property(x => x.Intent).HasConversion<string>().HasMaxLength(50);
+            entity.Property(x => x.ToolName).HasMaxLength(80);
+            entity.Property(x => x.FailureReasonCode).HasMaxLength(80);
+            entity.Property(x => x.CorrelationId).HasMaxLength(100);
+            entity.Property(x => x.IpAddressMasked).HasMaxLength(64);
+            entity.Property(x => x.UserAgent).HasMaxLength(250);
+            entity.HasIndex(x => new { x.TenantId, x.UserId, x.CreatedAtUtc });
         });
     }
 

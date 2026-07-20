@@ -19,6 +19,7 @@ import {
   updateStudentBoardingStatus,
 } from '../lib/api/modules';
 import { resetDriverGuardCache } from '../lib/driverGuard';
+import { AssistantLauncher } from '../features/assistant/AssistantPanel';
 
 const TRIP_STATUS_LABELS = {
   NotStarted: 'Başlamadı',
@@ -234,6 +235,7 @@ export default function DriverPanel() {
           </>
         )}
       </motion.main>
+      <AssistantLauncher />
     </div>
   );
 }
