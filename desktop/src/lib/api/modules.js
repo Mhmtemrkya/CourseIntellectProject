@@ -1828,6 +1828,12 @@ export async function updateUserStatus(username, status) {
   return response;
 }
 
+// Pasif (deaktive) hesaplar — "Pasif Kayıtlar" ekranı.
+export async function fetchPassiveAccounts() {
+  const response = await api.get('/api/users/passive');
+  return Array.isArray(response) ? response : [];
+}
+
 export async function assignPrimaryRole(username, primaryRole, departmentOrBranch) {
   const response = await api.put(`/api/users/${username}/primary-role`, { primaryRole, departmentOrBranch });
   return response;

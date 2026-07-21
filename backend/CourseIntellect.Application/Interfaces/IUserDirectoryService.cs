@@ -6,6 +6,8 @@ namespace CourseIntellect.Application.Interfaces;
 public interface IUserDirectoryService
 {
     Task<IReadOnlyList<UserSummaryDto>> GetUsersAsync(CancellationToken cancellationToken = default);
+    // Tüm pasif hesaplar (öğrenci/öğretmen/personel/veli) — "Pasif Kayıtlar" ekranı.
+    Task<IReadOnlyList<PassiveAccountDto>> GetPassiveAccountsAsync(CancellationToken cancellationToken = default);
     Task<PagedResult<AdminUserListItemDto>> GetUsersPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default);
     Task<AdminUserListItemDto> CreateUserAsync(AdminCreateUserRequest request, CancellationToken cancellationToken = default);
     Task<AdminUserListItemDto?> UpdateUserAsync(Guid id, AdminUpdateUserRequest request, CancellationToken cancellationToken = default);

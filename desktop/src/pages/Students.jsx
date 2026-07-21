@@ -696,10 +696,10 @@ export default function Students() {
             </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-full md:w-40"><SelectValue placeholder="Durum" /></SelectTrigger>
+              {/* Pasifler artık listede gelmiyor (yalnız "Pasif Kayıtlar" ekranında). */}
               <SelectContent>
                 <SelectItem value="all">Tüm Durumlar</SelectItem>
                 <SelectItem value="Aktif">Aktif</SelectItem>
-                <SelectItem value="Pasif">Pasif</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -176,6 +176,7 @@ import AdminOrgUnits from "./pages/admin/AdminOrgUnits";
 import AdminRbacMatrix from "./pages/admin/AdminRbacMatrix";
 import AdminRoleManagement from "./pages/admin/AdminRoleManagement";
 import AdministrativeRecords from "./pages/admin/AdministrativeRecords";
+import AdminPassiveRecords from "./pages/admin/AdminPassiveRecords";
 import AdministrativeNotifications from "./pages/admin/AdministrativeNotifications";
 import AdministrativeDocuments from "./pages/admin/AdministrativeDocuments";
 import AdministrativeAnnouncements from "./pages/admin/AdministrativeAnnouncements";
@@ -333,6 +334,7 @@ function App() {
               <Route path="/admin/finance-approvals" element={<AdminOnlyRoute><Approvals /></AdminOnlyRoute>} />
               <Route path="/admin/role-management" element={<AdminOnlyRoute><AdminRoleManagement /></AdminOnlyRoute>} />
               <Route path="/admin/records" element={<AdministrativeRecords />} />
+              <Route path="/admin/passive-records" element={<AdminPassiveRecords />} />
               <Route path="/admin/administrative-units" element={<AdminAdministrativeUnits />} />
               <Route path="/admin/announcements" element={<AdministrativeAnnouncements />} />
               <Route path="/admin/notifications" element={<AdministrativeNotifications />} />

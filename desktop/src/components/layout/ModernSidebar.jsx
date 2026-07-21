@@ -58,7 +58,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck } from "lucide-react";
+import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck, UserX } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -293,6 +293,12 @@ export const menuConfigs = {
       icon: FileText,
       label: "İdari Kayıtlar",
       color: "#f97316",
+    },
+    {
+      path: "/admin/passive-records",
+      icon: UserX,
+      label: "Pasif Kayıtlar",
+      color: "#64748b",
     },
     {
       path: "/admin/administrative-units",
@@ -1084,7 +1090,7 @@ const ROLE_MENU_GROUPS = {
   admin: [
     { id: "main", title: "Ana Panel", modules: ["dashboard", "driving-school", "driving-registration", "driving-operations", "driving-scheduling", "driving-calendar", "driving-lessons", "driving-fleet-compliance", "driving-assignments", "driving-education", "driving-graduation", "driving-forms", "driving-reports", "kpi", "operations", "global-search", "tasks"] },
     { id: "academics", title: "Akademik Yönetim", modules: ["academics", "students", "parents", "teachers", "classes", "schedule", "attendance", "courses", "duties"] },
-    { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"] },
+    { id: "registrations", title: "Kayıt İşlemleri", modules: ["registrations", "records", "administrative-units", "org-units", "staff-hr", "approvals", "password-reset"], paths: ["/admin/passive-records"] },
     { id: "learning", title: "İçerik & Eğitim", modules: ["content", "questions", "question-bank", "exams", "assignments", "live-lessons", "library"] },
     { id: "reports", title: "Raporlar", modules: ["reports", "branch-comparison"] },
     { id: "finance", title: "Finans", modules: ["finance", "student-accounts", "collections", "installments", "billing", "late-payments", "discounts-scholarships", "collection-calendar", "reconciliation", "bulk-actions", "overdue-rules", "salary", "cash-report", "ledger", "finance-export", "finance-audit-log", "finance-detail-hub"] },

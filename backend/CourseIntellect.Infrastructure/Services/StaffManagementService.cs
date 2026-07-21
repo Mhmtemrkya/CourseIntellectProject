@@ -41,9 +41,13 @@ public sealed class StaffManagementService(
             query = query.Where(x => userIds.Contains(x.UserId));
         }
 
-        var staffList = await query
+        // Pasif personel/öğretmen hiçbir listede/seçimde görünmez; yalnız "Pasif
+        // Kayıtlar" ekranında. Bu uç tüm öğretmen seçicilerinin kaynağıdır.
+        var staffList = (await query
             .OrderBy(x => x.FullName)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Where(x => users.TryGetValue(x.UserId, out var u) && u.Status != UserStatus.Passive)
+            .ToList();
 
         return staffList
             .Select(staff => new StaffSummaryDto(

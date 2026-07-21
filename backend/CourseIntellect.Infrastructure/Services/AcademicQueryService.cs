@@ -38,9 +38,14 @@ public sealed class AcademicQueryService(
             studentsQuery = studentsQuery.Where(x => userIds.Contains(x.UserId));
         }
 
-        var students = await studentsQuery
+        // Pasif öğrenciler HİÇBİR listede/seçimde görünmez — yalnız "Pasif Kayıtlar"
+        // ekranında (GetPassiveAccountsAsync). Bu uç tüm öğrenci seçicilerinin kaynağı
+        // olduğu için filtreyi burada uygulamak her yeri (sınıf atama, rapor, mobil…) kapsar.
+        var students = (await studentsQuery
             .OrderBy(x => x.FullName)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .Where(x => users.TryGetValue(x.UserId, out var u) && u.Status != UserStatus.Passive)
+            .ToList();
 
         return students
             .Select(student => new StudentSummaryDto(
@@ -498,7 +503,9 @@ public sealed class AcademicQueryService(
     public async Task<IReadOnlyList<ParentAccountDto>> GetParentAccountsAsync(CancellationToken cancellationToken = default)
     {
         var currentTenantId = ResolveCurrentTenantId();
-        var usersQuery = dbContext.Users.AsNoTracking().Where(x => x.PrimaryRole == UserRole.Parent);
+        // Pasif veliler yalnız "Pasif Kayıtlar" ekranında görünür; ana veli listesi aktifler.
+        var usersQuery = dbContext.Users.AsNoTracking()
+            .Where(x => x.PrimaryRole == UserRole.Parent && x.Status != UserStatus.Passive);
         if (currentTenantId.HasValue)
         {
             usersQuery = usersQuery.Where(x => x.TenantId == currentTenantId.Value);

@@ -18,6 +18,14 @@ public sealed class UsersController(IUserDirectoryService userDirectoryService) 
         return Ok(result);
     }
 
+    // Pasif (deaktive) hesaplar — "Pasif Kayıtlar" ekranı. Yalnız yönetici erişir.
+    [HttpGet("passive")]
+    [Authorize(Roles = "Admin,BranchManager,Administrative")]
+    public async Task<IActionResult> GetPassiveAccounts(CancellationToken cancellationToken)
+    {
+        return Ok(await userDirectoryService.GetPassiveAccountsAsync(cancellationToken));
+    }
+
     [HttpPost]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> CreateUser([FromBody] AdminCreateUserRequest request, CancellationToken cancellationToken)

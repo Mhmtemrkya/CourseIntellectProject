@@ -36,6 +36,46 @@ public sealed class UserDirectoryService(
             .ToList();
     }
 
+    public async Task<IReadOnlyList<PassiveAccountDto>> GetPassiveAccountsAsync(CancellationToken cancellationToken = default)
+    {
+        var users = await ApplyTenantScope(dbContext.Users)
+            .Where(x => x.Status == UserStatus.Passive)
+            .OrderBy(x => x.FullName)
+            .ToListAsync(cancellationToken);
+        if (users.Count == 0) return [];
+
+        var userIds = users.Select(u => u.Id).ToList();
+        var classByUser = (await dbContext.Students.AsNoTracking()
+                .Where(s => userIds.Contains(s.UserId))
+                .Select(s => new { s.UserId, s.ClassName })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First().ClassName);
+        var deptByUser = (await dbContext.Staff.AsNoTracking()
+                .Where(s => userIds.Contains(s.UserId))
+                .Select(s => new { s.UserId, s.DepartmentOrBranch })
+                .ToListAsync(cancellationToken))
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First().DepartmentOrBranch);
+
+        return users.Select(u =>
+        {
+            var detail = classByUser.TryGetValue(u.Id, out var className) && !string.IsNullOrWhiteSpace(className)
+                ? className
+                : deptByUser.TryGetValue(u.Id, out var dept) && !string.IsNullOrWhiteSpace(dept)
+                    ? dept
+                    : u.DepartmentOrBranch ?? string.Empty;
+            return new PassiveAccountDto(
+                u.Id,
+                u.FullName,
+                u.Username,
+                u.PrimaryRole.ToString(),
+                u.ExtraRoles.Select(r => r.ToString()).ToList(),
+                detail,
+                u.LastLoginAtUtc);
+        }).ToList();
+    }
+
     public async Task<PagedResult<AdminUserListItemDto>> GetUsersPagedAsync(int page, int pageSize, CancellationToken cancellationToken = default)
     {
         var query = ApplyTenantScope(dbContext.Users).OrderBy(x => x.FullName);
