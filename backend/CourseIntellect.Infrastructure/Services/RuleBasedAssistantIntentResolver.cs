@@ -57,6 +57,16 @@ public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentR
         if (ContainsAny(text, "veliye bildir", "veliyi bilgilendir", "veliye haber", "veliye mesaj"))
             return AssistantIntent.NotifyParentAboutAbsence;
 
+        // Analitik özetler: tek öğrenciye değil kuruma bakan sorular. "kaç",
+        // "toplam", "özet", "genel" gibi niceleyiciler bunları ayırır. Finans
+        // özeti, borç LİSTESİNDEN (ListStudentsWithDebt) önce gelmeli ki
+        // "toplam borç ne kadar" liste değil özet dönsün.
+        if (ContainsAny(text, "tahsilat", "ciro", "gelir", "kasa")
+            || (ContainsAny(text, "borc", "odeme") && ContainsAny(text, "toplam", "ne kadar", "genel", "ozet")))
+            return AssistantIntent.GetFinanceOverview;
+        if (ContainsAny(text, "kac kursiyer", "kac ogrenci", "kac mezun", "kac kisi", "kurum ozet", "genel durum", "istatistik", "ozet ver"))
+            return AssistantIntent.GetInstitutionSummary;
+
         // Faz 2 niyetleri, daha genel sürücü kuralları TARAFINDAN YUTULMAMASI için
         // onlardan önce gelir: "randevu" kelimesi GetDrivingLessons'a düşüyordu,
         // "evrak"/"belge" ise hiçbir kurala uymayıp Unknown oluyordu.

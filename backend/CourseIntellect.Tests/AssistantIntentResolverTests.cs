@@ -94,4 +94,26 @@ public sealed class AssistantIntentResolverTests
         Assert.Equal(AssistantIntent.GetDrivingDocuments, resolver.Resolve("eksik belge var mı").Intent);
         Assert.Equal(AssistantIntent.SendDocumentReminder, resolver.Resolve("eksik belge için hatırlatma gönder").Intent);
     }
+
+    // ─── Faz 5: analitik özetler ──────────────────────────────────────────────
+    [Theory]
+    [InlineData("bu ay tahsilat ne kadar", AssistantIntent.GetFinanceOverview)]
+    [InlineData("toplam borç ne kadar", AssistantIntent.GetFinanceOverview)]
+    [InlineData("kasa durumu", AssistantIntent.GetFinanceOverview)]
+    [InlineData("kaç kursiyer var", AssistantIntent.GetInstitutionSummary)]
+    [InlineData("bu ay kaç mezun oldu", AssistantIntent.GetInstitutionSummary)]
+    [InlineData("kurum özeti ver", AssistantIntent.GetInstitutionSummary)]
+    public void ResolvesAnalyticsIntents(string message, AssistantIntent expected)
+        => Assert.Equal(expected, resolver.Resolve(message).Intent);
+
+    /// <summary>
+    /// "toplam borç ne kadar" (özet) ile "borcu olan öğrenciler" (liste) ayrışmalı.
+    /// Özet kuralı listenin önünde olduğu için niceleyicili soru özete gider.
+    /// </summary>
+    [Fact]
+    public void DebtSummary_IsNotMistakenForDebtList()
+    {
+        Assert.Equal(AssistantIntent.GetFinanceOverview, resolver.Resolve("toplam borç ne kadar").Intent);
+        Assert.Equal(AssistantIntent.ListStudentsWithDebt, resolver.Resolve("borcu olan öğrencileri listele").Intent);
+    }
 }

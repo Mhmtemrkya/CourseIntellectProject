@@ -49,6 +49,10 @@ public static class AssistantIntentCatalog
     private static readonly IReadOnlySet<string> NoDeniedRoles = new HashSet<string>();
     private static readonly IReadOnlySet<string> DenyAccounting = new HashSet<string> { "accounting" };
     private static readonly IReadOnlySet<string> DenyTeacher = new HashSet<string> { "teacher" };
+    // Analitik özetler tek öğrenciye değil tüm kuruma bakar; öğrenci/veli/öğretmen
+    // görmemeli. Muhasebe finans özetini görebilir ama akademik panoyu görmez.
+    private static readonly IReadOnlySet<string> DenyBelowFinance = new HashSet<string> { "student", "parent", "teacher" };
+    private static readonly IReadOnlySet<string> DenyBelowManagement = new HashSet<string> { "student", "parent", "teacher", "accounting" };
 
     private static readonly IReadOnlyDictionary<AssistantIntent, AssistantIntentScope> Scopes =
         new Dictionary<AssistantIntent, AssistantIntentScope>
@@ -93,6 +97,12 @@ public static class AssistantIntentCatalog
 
             // ─── Yalnız okul/dershane ─────────────────────────────────────────
             [AssistantIntent.GetLibraryLoans] = new(Academic, "library", DenyAccounting),
+
+            // ─── Analitik özetler (yönetici seviyesi, öğrenci hedefi yok) ─────
+            // Finans özeti her kurumda, muhasebe de görebilir.
+            [AssistantIntent.GetFinanceOverview] = new(Any, "finance", DenyBelowFinance),
+            // Kurum panosu akademik/kursiyer sayımı içerir; muhasebe kapsam dışı.
+            [AssistantIntent.GetInstitutionSummary] = new(Any, "students", DenyBelowManagement),
 
             // ─── Yazma eylemleri ──────────────────────────────────────────────
             // Bildirim gönderme kursiyer/öğrenci dosyasına dokunduğu için

@@ -44,7 +44,15 @@ public enum AssistantIntent
     /// <summary>Kursiyere eksik evrakları için hatırlatma bildirimi gönderir.</summary>
     SendDocumentReminder,
     /// <summary>Öğrencinin velisine devamsızlık bilgilendirmesi gönderir.</summary>
-    NotifyParentAboutAbsence
+    NotifyParentAboutAbsence,
+
+    // ─── Faz 5: analitik özetler ──────────────────────────────────────────
+    // Bu niyetler tek öğrenciye değil TÜM KURUMA bakar; öğrenci çözümlemesi
+    // yapılmaz. Yalnız yönetici seviyesi roller erişebilir.
+    /// <summary>Bu ayki tahsilat ve açık borç toplamı.</summary>
+    GetFinanceOverview,
+    /// <summary>Kuruma özel sayım panosu (aktif/mezun/evrak bekleyen ya da öğrenci/devamsız).</summary>
+    GetInstitutionSummary
 }
 
 public enum AssistantSenderType { User = 1, Assistant = 2, System = 3 }

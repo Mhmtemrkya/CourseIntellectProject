@@ -20,6 +20,7 @@ public sealed class AssistantService(
     ILogger<AssistantService> logger) : IAssistantService
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
+    private static readonly System.Globalization.CultureInfo TrCulture = new("tr-TR");
 
     /// <summary>
     /// Aktif kurumun türü. Asistanın kapsamı buna göre daralır: bir okul
@@ -117,13 +118,14 @@ public sealed class AssistantService(
                 ("Yaklaşan randevular", "driving_appointments", "Sürücü Kursu")),
             "accounting" => Suggestions(
                 ("Borcu olan öğrenciler", "debt", "Finans"), ("Ödeme durumunu göster", "payment", "Finans"),
-                ("Öğrenci ara", "search", "Finans")),
+                ("Öğrenci ara", "search", "Finans"), ("Bu ay tahsilat", "finance_overview", "Özet")),
             _ => Suggestions(
                 ("Öğrenci ara", "search", "Öğrenci"), ("Bugün devamsız olanlar", "absent", "Yoklama"),
                 ("Borcu olan öğrenciler", "debt", "Finans"), ("Yaklaşan sınavlar", "exam", "Akademik"),
                 ("Kursiyer ilerlemesi", "driving_progress", "Sürücü Kursu"), ("Evrak durumu", "driving_documents", "Sürücü Kursu"),
                 ("Yaklaşan randevular", "driving_appointments", "Sürücü Kursu"), ("Mezuniyet durumu", "driving_graduation", "Sürücü Kursu"),
-                ("Gecikmiş kitaplar", "library", "Kütüphane")),
+                ("Gecikmiş kitaplar", "library", "Kütüphane"),
+                ("Kurum özeti", "institution_summary", "Özet"), ("Bu ay tahsilat", "finance_overview", "Özet")),
         };
 
         return candidates
@@ -166,6 +168,8 @@ public sealed class AssistantService(
         "driving_appointments" => AssistantIntent.GetDrivingAppointments,
         "driving_graduation" => AssistantIntent.GetDrivingGraduation,
         "library" => AssistantIntent.GetLibraryLoans,
+        "institution_summary" => AssistantIntent.GetInstitutionSummary,
+        "finance_overview" => AssistantIntent.GetFinanceOverview,
         _ => AssistantIntent.Unknown,
     };
 
@@ -190,6 +194,8 @@ public sealed class AssistantService(
             "transport" or "get_transport" => "Servis durumunu göster",
             "driving_lessons" => "Direksiyon derslerini göster",
             "driving_progress" => "Kurs ilerlemesini göster",
+            "institution_summary" => "Kurum özetini göster",
+            "finance_overview" => "Bu ay tahsilat özeti",
             _ => request.Command,
         };
         return await SendInternalAsync(context, new SendAssistantMessageRequest(request.ConversationId, message, Guid.NewGuid(), null), request.StudentId, cancellationToken);
@@ -389,6 +395,11 @@ public sealed class AssistantService(
                     suggestions: (await GetSuggestionsAsync(context, cancellationToken)).Select(x => x.Label).ToArray());
             else if (parsed.Intent is AssistantIntent.ListClassStudents or AssistantIntent.ListAbsentStudents or AssistantIntent.ListLowScoreStudents or AssistantIntent.ListStudentsWithDebt)
                 response = await ExecuteListAsync(context, conversation.Id, parsed, cancellationToken);
+            // Analitik özetler öğrenci hedefi almaz; yetki kapıları yukarıda geçildi.
+            else if (parsed.Intent == AssistantIntent.GetFinanceOverview)
+                response = await FinanceOverviewAsync(conversation.Id, ct: cancellationToken);
+            else if (parsed.Intent == AssistantIntent.GetInstitutionSummary)
+                response = await InstitutionSummaryAsync(conversation.Id, institutionType, cancellationToken);
             else if (parsed.Intent == AssistantIntent.GetSchedule && context.PrimaryRole.Equals("Teacher", StringComparison.OrdinalIgnoreCase))
                 response = await ScheduleAsync(context, conversation.Id, new StudentCandidate(Guid.Empty, Guid.Empty, context.Principal.FindFirst("name")?.Value ?? "Öğretmen", string.Empty, string.Empty, string.Empty), cancellationToken);
             else
@@ -552,6 +563,94 @@ public sealed class AssistantService(
         if (role == "parent" && candidates.Count == 0 && string.IsNullOrWhiteSpace(query.SearchText) && !selectedId.HasValue)
             candidates = await db.Students.AsNoTracking().Where(x => x.ParentUserId == context.UserId).Take(11).Select(ToStudentCandidate()).ToListAsync(ct);
         return new(candidates, false, string.Empty, string.Empty);
+    }
+
+    /// <summary>
+    /// Bu ayki tahsilat + açık borç toplamı. Ay penceresi UTC+3 yerel ayın
+    /// başından şimdiye kadar; kurum "bu ay ne kazandık" sorusunu bekler.
+    /// Tenant izolasyonu sorgu filtresiyle sağlanır — elle tenant koşulu yok.
+    /// </summary>
+    private async Task<AssistantResponseDto> FinanceOverviewAsync(Guid conversationId, CancellationToken ct)
+    {
+        var localNow = DateTime.UtcNow.AddHours(3);
+        var monthStartUtc = new DateTime(localNow.Year, localNow.Month, 1, 0, 0, 0, DateTimeKind.Unspecified).AddHours(-3);
+
+        var collectedThisMonth = await db.FinancePayments.AsNoTracking()
+            .Where(x => x.PaidAtUtc >= monthStartUtc)
+            .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+
+        var openDebt = await db.FinanceInstallments.AsNoTracking()
+            .Where(x => x.Amount > x.PaidAmount)
+            .SumAsync(x => (decimal?)(x.Amount - x.PaidAmount), ct) ?? 0m;
+
+        var overdueCount = await db.FinanceInstallments.AsNoTracking()
+            .Where(x => x.Amount > x.PaidAmount && x.DueDateUtc < DateTime.UtcNow)
+            .CountAsync(ct);
+
+        return Build(conversationId, "finance_overview",
+            $"Bu ay {collectedThisMonth.ToString("N0", TrCulture)} ₺ tahsil edildi. Açık borç toplamı {openDebt.ToString("N0", TrCulture)} ₺.",
+            new
+            {
+                collectedThisMonth,
+                openDebt,
+                overdueInstallments = overdueCount,
+                currency = "TRY",
+                periodLabel = localNow.ToString("MMMM yyyy", TrCulture),
+            },
+            AssistantIntent.GetFinanceOverview);
+    }
+
+    /// <summary>
+    /// Kuruma özel sayım panosu. Sürücü kursu ve okul FARKLI metrikler ister,
+    /// o yüzden kurum türüne göre ayrışır.
+    /// </summary>
+    private async Task<AssistantResponseDto> InstitutionSummaryAsync(Guid conversationId, InstitutionType institutionType, CancellationToken ct)
+    {
+        if (institutionType == InstitutionType.DrivingSchool)
+        {
+            var localNow = DateTime.UtcNow.AddHours(3);
+            var monthStartUtc = new DateTime(localNow.Year, localNow.Month, 1, 0, 0, 0, DateTimeKind.Unspecified).AddHours(-3);
+
+            var active = await db.StudentDrivingProfiles.AsNoTracking()
+                .CountAsync(x => x.Status != DrivingStudentStatus.Cancelled && x.Status != DrivingStudentStatus.Graduated, ct);
+            var graduatedThisMonth = await db.DrivingGraduationRecords.AsNoTracking()
+                .CountAsync(x => x.GraduatedAtUtc != null && x.GraduatedAtUtc >= monthStartUtc, ct);
+            var documentsPending = await db.StudentDrivingProfiles.AsNoTracking()
+                .CountAsync(x => x.Status == DrivingStudentStatus.DocumentsPending, ct);
+
+            return Build(conversationId, "institution_summary",
+                $"Aktif kursiyer: {active}. Bu ay mezun: {graduatedThisMonth}. Evrak bekleyen: {documentsPending}.",
+                new
+                {
+                    mode = "driving_school",
+                    metrics = new[]
+                    {
+                        new { label = "Aktif kursiyer", value = active },
+                        new { label = "Bu ay mezun", value = graduatedThisMonth },
+                        new { label = "Evrak bekleyen", value = documentsPending },
+                    },
+                },
+                AssistantIntent.GetInstitutionSummary);
+        }
+
+        var today = DateTime.UtcNow.Date;
+        var totalStudents = await db.Students.AsNoTracking().CountAsync(ct);
+        var absentNames = await db.AttendanceEntries.AsNoTracking()
+            .Where(x => x.LessonDate >= today && x.LessonDate < today.AddDays(1) && x.Status.ToLower().Contains("gelmedi"))
+            .Select(x => x.StudentName).Distinct().CountAsync(ct);
+
+        return Build(conversationId, "institution_summary",
+            $"Toplam öğrenci: {totalStudents}. Bugün devamsız: {absentNames}.",
+            new
+            {
+                mode = "school",
+                metrics = new[]
+                {
+                    new { label = "Toplam öğrenci", value = totalStudents },
+                    new { label = "Bugün devamsız", value = absentNames },
+                },
+            },
+            AssistantIntent.GetInstitutionSummary);
     }
 
     private async Task<AssistantResponseDto> ExecuteListAsync(AssistantRequestContext context, Guid conversationId, ParsedAssistantQuery parsed, CancellationToken ct)

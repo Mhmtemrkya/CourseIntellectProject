@@ -133,6 +133,45 @@ public sealed class AssistantIntentCatalogTests
         Assert.Contains("evrak", text, StringComparison.OrdinalIgnoreCase);
     }
 
+    // ─── Faz 5: analitik özetler ──────────────────────────────────────────────
+
+    /// <summary>Analitik özetler her kurumda çalışır (metrikler kuruma göre değişir).</summary>
+    [Theory]
+    [InlineData(AssistantIntent.GetFinanceOverview)]
+    [InlineData(AssistantIntent.GetInstitutionSummary)]
+    public void Analytics_AreAvailableEverywhere(AssistantIntent intent)
+    {
+        Assert.True(AssistantIntentCatalog.IsAvailableFor(intent, InstitutionType.PrivateSchool));
+        Assert.True(AssistantIntentCatalog.IsAvailableFor(intent, InstitutionType.DrivingSchool));
+    }
+
+    /// <summary>Özetler tek öğrenciye değil kuruma bakar; alt roller görmemeli.</summary>
+    [Theory]
+    [InlineData("student")]
+    [InlineData("parent")]
+    [InlineData("teacher")]
+    public void Analytics_AreHiddenFromNonManagementRoles(string role)
+    {
+        Assert.False(AssistantIntentCatalog.IsAllowedForRole(AssistantIntent.GetFinanceOverview, role));
+        Assert.False(AssistantIntentCatalog.IsAllowedForRole(AssistantIntent.GetInstitutionSummary, role));
+    }
+
+    [Fact]
+    public void Accounting_SeesFinanceOverview_ButNotInstitutionSummary()
+    {
+        // Muhasebe finans özetini görmeli — işinin merkezinde.
+        Assert.True(AssistantIntentCatalog.IsAllowedForRole(AssistantIntent.GetFinanceOverview, "accounting"));
+        // Ama akademik/kursiyer sayımı içeren kurum panosunu görmemeli.
+        Assert.False(AssistantIntentCatalog.IsAllowedForRole(AssistantIntent.GetInstitutionSummary, "accounting"));
+    }
+
+    [Fact]
+    public void Analytics_AreNotWriteActions()
+    {
+        Assert.False(AssistantIntentCatalog.IsWriteAction(AssistantIntent.GetFinanceOverview));
+        Assert.False(AssistantIntentCatalog.IsWriteAction(AssistantIntent.GetInstitutionSummary));
+    }
+
     /// <summary>
     /// Kataloğa girmemiş bir niyet kazara "her kurumda açık" olmamalı diye
     /// enum'daki her değerin bilinçli olarak ele alındığını doğrularız.
