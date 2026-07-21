@@ -60,6 +60,13 @@ export function getRoleHomePath(role) {
 }
 
 export function getHomePathForRole(role, options = {}) {
+  if (
+    options?.institutionType === "DrivingSchool" &&
+    options?.drivingSchoolModuleEnabled !== false
+  ) {
+    return "/driving";
+  }
+
   switch (role) {
     case "admin":
       return options?.isPlatformAdmin ? "/sa/dashboard" : "/dashboard";
@@ -91,6 +98,13 @@ export function getUserHomePath(user) {
     return "/sa/dashboard";
   }
 
+  if (
+    user?.institutionType === "DrivingSchool" &&
+    user?.drivingSchoolModuleEnabled !== false
+  ) {
+    return "/driving";
+  }
+
   if (user?.hasRoleManagementPolicy) {
     const modules = Array.isArray(user.modules) ? user.modules.map((m) => String(m).toLowerCase()) : [];
     for (const moduleKey of modules) {
@@ -101,7 +115,11 @@ export function getUserHomePath(user) {
     return getProfilePathForRole(user?.role);
   }
 
-  return getHomePathForRole(user?.role, { isPlatformAdmin: user?.isPlatformAdmin });
+  return getHomePathForRole(user?.role, {
+    isPlatformAdmin: user?.isPlatformAdmin,
+    institutionType: user?.institutionType,
+    drivingSchoolModuleEnabled: user?.drivingSchoolModuleEnabled,
+  });
 }
 
 function getProfilePathForRole(role) {
@@ -212,13 +230,23 @@ export function createDesktopUser(payload) {
     tenantId,
     tenantSlug: data?.user?.tenantSlug || "",
     tenant: tenantName,
+    institutionType: data?.user?.institutionType || null,
+    drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
     branch: data?.user?.campus || "Merkez Kampus",
     department: data?.user?.departmentOrBranch || "",
     extraRoles: data?.user?.extraRoles || [],
     modules: data?.user?.modules || [],
     permissions: data?.user?.permissions || [],
     hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy),
-    homePath: getUserHomePath({ role, isPlatformAdmin, modules: data?.user?.modules || [], hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy), mustChangePassword: Boolean(data?.user?.mustChangePassword) }),
+    homePath: getUserHomePath({
+      role,
+      isPlatformAdmin,
+      institutionType: data?.user?.institutionType || null,
+      drivingSchoolModuleEnabled: Boolean(data?.user?.drivingSchoolModuleEnabled),
+      modules: data?.user?.modules || [],
+      hasRoleManagementPolicy: Boolean(data?.user?.hasRoleManagementPolicy),
+      mustChangePassword: Boolean(data?.user?.mustChangePassword),
+    }),
     mustChangePassword: Boolean(data?.user?.mustChangePassword),
     subscriptionRequired: Boolean(data?.user?.subscriptionRequired),
   };

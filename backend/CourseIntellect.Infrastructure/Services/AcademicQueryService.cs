@@ -4,6 +4,7 @@ using CourseIntellect.Application.DTOs.Students;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
@@ -181,10 +182,39 @@ public sealed class AcademicQueryService(
         return (Math.Clamp(requestedScore, 0, 100), decimal.Round(requestedNet, 2));
     }
 
-    public async Task<StudentCredentialsDto> CreateStudentAsync(CreateStudentRequest request, CancellationToken cancellationToken = default)
+    public async Task<StudentCredentialsDto> CreateStudentAsync(
+        CreateStudentRequest request,
+        CancellationToken cancellationToken = default,
+        bool requireTcNo = false,
+        bool linkExistingParent = false,
+        bool validateParentPhone = false)
     {
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var tcNo = SchoolRegistrationRules.NormalizeTcNo(request.TcNo, required: requireTcNo);
+        SchoolRegistrationRules.ValidateBirthDate(request.BirthDate);
+        var parentPhone = (request.ParentPhone ?? string.Empty).Trim();
+        if (validateParentPhone && parentPhone.Length > 0 && !SchoolRegistrationRules.IsValidTrMobile(parentPhone))
+        {
+            throw new InvalidOperationException("Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.");
+        }
+        await EnsureTcNoAvailableAsync(tenantId, tcNo, null, cancellationToken);
+
+        await using var transaction = dbContext.Database.IsRelational()
+            ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (transaction is not null && dbContext.Database.IsNpgsql())
+        {
+            await dbContext.Database.ExecuteSqlInterpolatedAsync(
+                $"SELECT pg_advisory_xact_lock(hashtext({tenantId.ToString()}))",
+                cancellationToken);
+        }
+
+        var schoolNumber = SchoolRegistrationRules.NextSchoolNumber(await dbContext.Students
+            .IgnoreQueryFilters()
+            .Where(x => x.TenantId == tenantId)
+            .Select(x => x.SchoolNumber)
+            .ToListAsync(cancellationToken));
         var username = await usernameGenerator.GenerateAsync(
             tenantId,
             request.FullName,
@@ -201,33 +231,56 @@ public sealed class AcademicQueryService(
             PrimaryRole = UserRole.Student,
             Campus = "Merkez Kampus",
             DepartmentOrBranch = request.ClassName,
+            TcNo = tcNo,
+            PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
             MustChangePassword = true
         };
 
-        // Veli bilgileri girildiyse veli için de otomatik AppUser oluştur.
+        // Veli bilgileri girildiyse veli için de AppUser hazırla. Aynı telefonlu veli zaten
+        // varsa (kardeş kaydı) yeni hesap açmak yerine mevcut veliye bağlanır — böylece bir
+        // veliye ikinci bir giriş/parola üretilmez.
         AppUser? parentUser = null;
         string? parentPlainPassword = null;
+        var parentIsExisting = false;
         var parentName = (request.ParentName ?? string.Empty).Trim();
         if (!string.IsNullOrWhiteSpace(parentName))
         {
-            var parentUsername = await usernameGenerator.GenerateAsync(
-                tenantId,
-                parentName,
-                new UsernameContext(Role: "Parent", StudentClassName: request.ClassName),
-                cancellationToken);
-            parentPlainPassword = PasswordGenerator.Generate();
-            parentUser = new AppUser
+            if (linkExistingParent && parentPhone.Length > 0)
             {
-                TenantId = tenantId,
-                FullName = parentName,
-                Username = parentUsername,
-                PasswordHash = passwordHasher.Hash(parentPlainPassword),
-                PrimaryRole = UserRole.Parent,
-                Campus = "Merkez Kampus",
-                DepartmentOrBranch = string.Empty,
-                Phone = (request.ParentPhone ?? string.Empty).Trim(),
-                MustChangePassword = true
-            };
+                var phoneKey = SchoolRegistrationRules.NormalizePhone(parentPhone);
+                var candidates = await dbContext.Users
+                    .Where(x => x.TenantId == tenantId
+                        && x.PrimaryRole == UserRole.Parent
+                        && x.Phone != null && x.Phone != string.Empty)
+                    .ToListAsync(cancellationToken);
+                parentUser = candidates.FirstOrDefault(x => SchoolRegistrationRules.NormalizePhone(x.Phone) == phoneKey);
+            }
+
+            if (parentUser is not null)
+            {
+                parentIsExisting = true;
+            }
+            else
+            {
+                var parentUsername = await usernameGenerator.GenerateAsync(
+                    tenantId,
+                    parentName,
+                    new UsernameContext(Role: "Parent", StudentClassName: request.ClassName),
+                    cancellationToken);
+                parentPlainPassword = PasswordGenerator.Generate();
+                parentUser = new AppUser
+                {
+                    TenantId = tenantId,
+                    FullName = parentName,
+                    Username = parentUsername,
+                    PasswordHash = passwordHasher.Hash(parentPlainPassword),
+                    PrimaryRole = UserRole.Parent,
+                    Campus = "Merkez Kampus",
+                    DepartmentOrBranch = string.Empty,
+                    Phone = parentPhone,
+                    MustChangePassword = true
+                };
+            }
         }
 
         var student = new StudentProfile
@@ -235,10 +288,10 @@ public sealed class AcademicQueryService(
             TenantId = user.TenantId,
             UserId = user.Id,
             FullName = request.FullName,
-            TcNo = request.TcNo,
+            TcNo = tcNo,
             ClassName = request.ClassName,
             CurrentSchool = request.CurrentSchool,
-            SchoolNumber = request.SchoolNumber,
+            SchoolNumber = schoolNumber,
             BirthDate = request.BirthDate,
             ProgramType = request.ProgramType,
             ParentName = request.ParentName ?? string.Empty,
@@ -252,12 +305,23 @@ public sealed class AcademicQueryService(
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
-        if (parentUser is not null)
+        if (parentUser is not null && !parentIsExisting)
         {
             await dbContext.Users.AddAsync(parentUser, cancellationToken);
         }
         await dbContext.Students.AddAsync(student, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+        }
+        catch (DbUpdateException)
+        {
+            throw new InvalidOperationException("TC kimlik numarası veya okul numarası bu kurumda zaten kullanılıyor.");
+        }
 
         ParentCredentialsDto? parentCreds = null;
         if (parentUser is not null && parentPlainPassword is not null)
@@ -274,7 +338,7 @@ public sealed class AcademicQueryService(
             "Registration",
             "StudentProfile",
             student.Id.ToString(),
-            $"{student.FullName} ({user.Username}) — sınıf: {student.ClassName}{(parentUser is not null ? $"; veli hesabı da açıldı: {parentUser.FullName} ({parentUser.Username})" : string.Empty)}.",
+            $"{student.FullName} ({user.Username}) — sınıf: {student.ClassName}{(parentUser is null ? string.Empty : parentIsExisting ? $"; mevcut veliye bağlandı: {parentUser.FullName} ({parentUser.Username})" : $"; veli hesabı da açıldı: {parentUser.FullName} ({parentUser.Username})")}.",
             cancellationToken);
 
         return new StudentCredentialsDto(user.Id, user.FullName, user.Username, password, student.ClassName, parentCreds);
@@ -291,11 +355,15 @@ public sealed class AcademicQueryService(
         var currentTenantId = ResolveCurrentTenantId();
         if (currentTenantId.HasValue && user.TenantId != currentTenantId.Value) return null;
 
+        var tcNo = SchoolRegistrationRules.NormalizeTcNo(request.TcNo);
+        SchoolRegistrationRules.ValidateBirthDate(request.BirthDate);
+        await EnsureTcNoAvailableAsync(user.TenantId, tcNo, user.Id, cancellationToken);
+
         student.FullName = request.FullName;
-        student.TcNo = request.TcNo;
+        student.TcNo = tcNo;
         student.ClassName = request.ClassName;
         student.CurrentSchool = request.CurrentSchool;
-        student.SchoolNumber = request.SchoolNumber;
+        // Okul numarası kayıt anında kurum bazında üretilir ve sonradan değiştirilemez.
         student.BirthDate = request.BirthDate;
         student.ProgramType = request.ProgramType;
         student.ParentName = request.ParentName;
@@ -308,8 +376,17 @@ public sealed class AcademicQueryService(
 
         user.FullName = request.FullName;
         user.DepartmentOrBranch = request.ClassName;
+        user.TcNo = tcNo;
+        if (request.PhotoUrl is not null) user.PhotoUrl = request.PhotoUrl.Trim();
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
 
         return new StudentSummaryDto(
             student.Id,
@@ -331,6 +408,30 @@ public sealed class AcademicQueryService(
             user.Status.ToString(),
             user.LastLoginAtUtc,
             user.ExtraRoles.Select(r => r.ToString()).ToList());
+    }
+
+    private async Task EnsureTcNoAvailableAsync(Guid? tenantId, string tcNo, Guid? excludedUserId, CancellationToken cancellationToken)
+    {
+        if (!tenantId.HasValue || string.IsNullOrEmpty(tcNo)) return;
+
+        var usedByUser = await dbContext.Users.IgnoreQueryFilters().AnyAsync(
+            x => x.TenantId == tenantId && x.TcNo == tcNo && (!excludedUserId.HasValue || x.Id != excludedUserId.Value),
+            cancellationToken);
+        if (usedByUser)
+        {
+            throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
+
+        var usedByStudent = await dbContext.Students.IgnoreQueryFilters().AnyAsync(
+            x => x.TenantId == tenantId && x.TcNo == tcNo && (!excludedUserId.HasValue || x.UserId != excludedUserId.Value),
+            cancellationToken);
+        var usedByStaff = await dbContext.Staff.IgnoreQueryFilters().AnyAsync(
+            x => x.TenantId == tenantId && x.TcNo == tcNo && (!excludedUserId.HasValue || x.UserId != excludedUserId.Value),
+            cancellationToken);
+        if (usedByStudent || usedByStaff)
+        {
+            throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
     }
 
     public async Task<bool> DeleteStudentAsync(Guid studentId, CancellationToken cancellationToken = default)
@@ -435,7 +536,7 @@ public sealed class AcademicQueryService(
                     parent.Id,
                     parent.FullName,
                     parent.Username,
-                    parent.Phone,
+                    parent.Phone ?? string.Empty,
                     parent.Status.ToString(),
                     parent.LastLoginAtUtc,
                     linked);

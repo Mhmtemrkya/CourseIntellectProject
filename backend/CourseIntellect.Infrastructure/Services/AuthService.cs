@@ -492,7 +492,14 @@ public sealed class AuthService(
             ? await dbContext.TenantWorkspaces
                 .AsNoTracking()
                 .Where(x => x.Id == user.TenantId.Value)
-                .Select(x => new { x.Id, x.Name, x.Slug })
+                .Select(x => new
+                {
+                    x.Id,
+                    x.Name,
+                    x.Slug,
+                    x.InstitutionType,
+                    x.DrivingSchoolModuleEnabled,
+                })
                 .SingleOrDefaultAsync(cancellationToken)
             : null;
 
@@ -523,6 +530,8 @@ public sealed class AuthService(
             tenant?.Id,
             tenant?.Name,
             tenant?.Slug,
+            tenant?.InstitutionType.ToString(),
+            tenant?.DrivingSchoolModuleEnabled ?? false,
             isPlatformAdmin,
             subscriptionRequired,
             user.MustChangePassword,

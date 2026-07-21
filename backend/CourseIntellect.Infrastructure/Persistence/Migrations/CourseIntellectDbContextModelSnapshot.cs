@@ -578,6 +578,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<string>("Phone")
                         .HasColumnType("text");
 
+                    b.Property<string>("PhotoUrl")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
                     b.Property<int>("PrimaryRole")
                         .HasColumnType("integer");
 
@@ -589,6 +594,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");
+
+                    b.Property<string>("TcNo")
+                        .IsRequired()
+                        .HasMaxLength(11)
+                        .HasColumnType("character varying(11)");
 
                     b.Property<Guid?>("TenantId")
                         .HasColumnType("uuid")
@@ -606,6 +616,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasIndex("CustomRoleId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "TcNo")
+                        .IsUnique()
+                        .HasFilter("\"TcNo\" <> '' AND tenant_id IS NOT NULL");
 
                     b.HasIndex("Username")
                         .IsUnique();
@@ -7000,6 +7014,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<string>("PhotoUrl")
+                        .IsRequired()
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)");
+
                     b.Property<int>("Role")
                         .HasColumnType("integer");
 
@@ -7024,6 +7043,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasIndex("BranchId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "TcNo")
+                        .IsUnique()
+                        .HasFilter("\"TcNo\" <> '' AND tenant_id IS NOT NULL");
 
                     b.HasIndex("UserId")
                         .IsUnique();
@@ -7561,6 +7584,14 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.HasIndex("ParentUserId");
 
                     b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "SchoolNumber")
+                        .IsUnique()
+                        .HasFilter("\"SchoolNumber\" <> '' AND tenant_id IS NOT NULL");
+
+                    b.HasIndex("TenantId", "TcNo")
+                        .IsUnique()
+                        .HasFilter("\"TcNo\" <> '' AND tenant_id IS NOT NULL");
 
                     b.HasIndex("UserId")
                         .IsUnique();

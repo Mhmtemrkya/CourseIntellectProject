@@ -20,6 +20,7 @@ import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import PhotoCapture from '../components/ui/photo-capture';
+import { IdentityCard } from '../components/identity/IdentityCard';
 import {
   Select,
   SelectContent,
@@ -59,7 +60,7 @@ import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchSt
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
 import {
-  isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
+  isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
 
 const containerVariants = {
@@ -119,30 +120,31 @@ function StudentDetailDrawer({ student, onToggleStatus, onUpdated }) {
         <SheetDescription>Öğrenci bilgileri ve istatistikleri</SheetDescription>
       </SheetHeader>
 
-      <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
-        <Avatar className="h-16 w-16">
-          {photoUrl && <AvatarImage src={photoUrl} alt={student.fullName} className="object-cover" />}
-          <AvatarFallback className="bg-brand-primary text-white text-lg">
-            {student.fullName.split(' ').map((n) => n[0]).join('')}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-lg font-semibold">{student.fullName}</h3>
-          <p className="text-sm text-muted-foreground">{student.className} • {student.programType}</p>
-          <Badge className={passive ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}>
-            {userStatusLabel(student.status)}
-          </Badge>
-        </div>
-        {onToggleStatus ? (
-          <FeatureGate module="students" action="status">
-            <UserStatusButton
-              isPassive={passive}
-              className="ml-auto"
-              onToggle={() => onToggleStatus(student)}
-            />
-          </FeatureGate>
-        ) : null}
-      </div>
+      <IdentityCard
+        type="Öğrenci Kimlik Kartı"
+        name={student.fullName}
+        photoUrl={photoUrl}
+        institution={student.currentSchool}
+        subtitle={`${student.className || 'Sınıf yok'} • ${student.programType || 'Seviye yok'}`}
+        status={userStatusLabel(student.status)}
+        fields={[
+          { label: 'Okul No', value: student.schoolNumber },
+          { label: 'TC Kimlik No', value: student.tcNo },
+          { label: 'Doğum Tarihi', value: student.birthDate },
+          { label: 'Kullanıcı Adı', value: student.username },
+          { label: 'Veli', value: student.parentName },
+          { label: 'Veli Telefonu', value: student.parentPhone },
+          { label: 'Veli E-posta', value: student.parentEmail, wide: true },
+          { label: 'Adres', value: student.address, wide: true },
+          { label: 'Not', value: student.note, wide: true },
+        ]}
+      />
+
+      {onToggleStatus ? (
+        <FeatureGate module="students" action="status">
+          <UserStatusButton isPassive={passive} className="w-full" onToggle={() => onToggleStatus(student)} />
+        </FeatureGate>
+      ) : null}
 
       <FeatureGate module="students" action="edit">
         <div className="space-y-2">
@@ -209,6 +211,7 @@ function AddStudentDialog({
   const [form, setForm] = useState({
     fullName: '',
     tcNo: '',
+    photoUrl: '',
     className: '',
     currentSchool: tenantName,
     schoolNumber: '',
@@ -234,8 +237,8 @@ function AddStudentDialog({
       });
       return;
     }
-    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
-      toast({ title: 'Geçersiz TC kimlik no', description: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+    if (!isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçersiz TC kimlik no', description: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
       return;
     }
     if (form.parentPhone && !isValidTrPhone(form.parentPhone)) {
@@ -404,11 +407,15 @@ function AddStudentDialog({
         </DialogHeader>
         <div className="grid grid-cols-2 gap-4 py-4">
           <div className="space-y-2 col-span-2">
+            <Label>Öğrenci Fotoğrafı</Label>
+            <PhotoCapture value={form.photoUrl} onChange={(photoUrl) => setForm((p) => ({ ...p, photoUrl }))} folder="student-photos" size={112} />
+          </div>
+          <div className="space-y-2 col-span-2">
             <Label>Ad Soyad</Label>
             <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} autoComplete="name" maxLength={100} />
           </div>
           <div className="space-y-2">
-            <Label>TC No</Label>
+            <Label>TC No *</Label>
             <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: maskTcKimlik(e.target.value) }))} inputMode="numeric" pattern="[0-9]{11}" maxLength={11} placeholder="11 haneli kimlik no" />
           </div>
           <div className="space-y-2">
@@ -426,7 +433,7 @@ function AddStudentDialog({
           </div>
           <div className="space-y-2">
             <Label>Okul No</Label>
-            <Input value={form.schoolNumber} onChange={(e) => setForm((p) => ({ ...p, schoolNumber: maskDigits(e.target.value, 12) }))} inputMode="numeric" maxLength={12} placeholder="Yalnızca rakam" />
+            <Input value="Kayıt sırasında otomatik oluşturulur" readOnly className="bg-muted cursor-not-allowed" />
           </div>
           <div className="space-y-2">
             <Label>Doğum Tarihi</Label>

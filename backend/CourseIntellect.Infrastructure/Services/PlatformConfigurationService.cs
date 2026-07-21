@@ -121,6 +121,7 @@ public sealed class PlatformConfigurationService(
     {
         return string.Equals(configurationType, ClassManagementConfigurationType, StringComparison.OrdinalIgnoreCase)
                || string.Equals(configurationType, ClassRegistryConfigurationType, StringComparison.OrdinalIgnoreCase)
+               || string.Equals(configurationType, "staff-branches", StringComparison.OrdinalIgnoreCase)
                || string.Equals(configurationType, "role-management", StringComparison.OrdinalIgnoreCase);
     }
 

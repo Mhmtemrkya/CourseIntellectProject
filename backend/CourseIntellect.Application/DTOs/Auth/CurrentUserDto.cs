@@ -12,6 +12,10 @@ public sealed record CurrentUserDto(
     Guid? TenantId,
     string? TenantName,
     string? TenantSlug,
+    // İstemci ilk yönlendirmeyi doğru kuruma göre yapabilsin; ayrıca ayrı bir
+    // status isteği başarısız olduğunda okul dashboard'una düşmesin.
+    string? InstitutionType,
+    bool DrivingSchoolModuleEnabled,
     bool IsPlatformAdmin,
     // Kurum aktif bir abonelik ödemesi yapmamışsa true.
     // Desktop bu durumda girişi reddeder, marketing site checkout'a izin verir.

@@ -23,6 +23,7 @@ import {
 } from '../../components/ui/dialog';
 import { useToast } from '../../hooks/use-toast';
 import { useApp } from '../../context/AppContext';
+import PhotoCapture from '../../components/ui/photo-capture';
 import { createStaffAccounting } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
@@ -39,6 +40,7 @@ const emptyForm = {
   maritalStatus: 'Bekar',
   childCount: '0',
   note: '',
+  photoUrl: '',
 };
 
 export default function AdminAccountingRegistration() {
@@ -62,7 +64,7 @@ export default function AdminAccountingRegistration() {
       return false;
     }
     if (!isValidTcKimlik(form.tcNo)) {
-      toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+      toast({ title: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
       return false;
     }
     if (!isValidTrPhone(form.phone)) {
@@ -87,6 +89,7 @@ export default function AdminAccountingRegistration() {
         maritalStatus: form.maritalStatus,
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
+        photoUrl: form.photoUrl,
       });
       setCredentials({ ...response, requestedFullName: form.fullName.trim() });
       try {
@@ -146,6 +149,10 @@ export default function AdminAccountingRegistration() {
             <CardTitle>Muhasebe Profil Bilgileri</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
+            <div className="space-y-2">
+              <Label>Personel Fotoğrafı</Label>
+              <PhotoCapture value={form.photoUrl} onChange={(photoUrl) => handleChange('photoUrl', photoUrl)} folder="staff-photos" size={112} />
+            </div>
             <div className="grid gap-4 md:grid-cols-2">
               <div className="space-y-2">
                 <Label>Ad Soyad *</Label>

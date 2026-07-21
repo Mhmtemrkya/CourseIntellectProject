@@ -22,6 +22,7 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { IdentityCard } from '../components/identity/IdentityCard';
 import {
   Table,
   TableBody,
@@ -94,17 +95,17 @@ function ParentDetailDrawer({ parent }) {
         <SheetDescription>Bağlı öğrenciler ve görüşme özeti</SheetDescription>
       </SheetHeader>
 
-      <div className="flex items-center gap-4 p-4 rounded-xl bg-muted">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback className="bg-brand-primary text-white text-lg">
-            {parent.name.split(' ').map((part) => part[0]).join('')}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-lg font-semibold">{parent.name}</h3>
-          <p className="text-sm text-muted-foreground">{parent.children.length} öğrenci velisi</p>
-        </div>
-      </div>
+      <IdentityCard
+        type="Veli Kimlik Kartı"
+        name={parent.name}
+        subtitle={`${parent.children.length} öğrenci velisi`}
+        fields={[
+          { label: 'Telefon', value: parent.phone },
+          { label: 'E-posta', value: parent.email },
+          { label: 'Bağlı Öğrenciler', value: parent.children.map((student) => student.fullName).join(', '), wide: true },
+          { label: 'Sınıflar', value: parent.classNames.join(', '), wide: true },
+        ]}
+      />
 
       <div className="space-y-2">
         <h4 className="font-medium">İletişim</h4>

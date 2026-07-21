@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Lock } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { getUserHomePath } from '../lib/auth';
 import { getUserRoles } from '../lib/permissions';
 import { getEntitlements, isModuleAllowed } from '../lib/entitlements';
 import { inferModuleKey } from './layout/ModernSidebar';
@@ -86,7 +87,7 @@ export function EntitlementGuard({ children }) {
 
   const routeModuleKey = moduleKeyForPath(location.pathname);
   if (!user?.isPlatformAdmin && !isModuleAllowedForInstitution(routeModuleKey, institutionType, location.pathname)) {
-    return <LockedScreen onBack={() => navigate(getUserRoles(user).includes('admin') ? '/dashboard' : -1)} />;
+    return <LockedScreen onBack={() => navigate(getUserHomePath(user))} />;
   }
 
   if (!entitlements.unrestricted) {

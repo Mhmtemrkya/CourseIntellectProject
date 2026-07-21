@@ -109,6 +109,7 @@ import StudentBadges from "./pages/student/StudentBadges";
 import TeacherStudentExams from "./pages/teacher/TeacherStudentExams";
 import DriverPanel from "./pages/DriverPanel";
 const DrivingSchoolDashboard = lazyWithReload(() => import("./pages/driving/DrivingSchoolDashboard"));
+const DrivingHomeRedirect = lazyWithReload(() => import("./pages/driving/DrivingHomeRedirect"));
 const DrivingOperations = lazyWithReload(() => import("./pages/driving/DrivingOperations"));
 const DrivingHub = lazyWithReload(() => import("./pages/driving/DrivingHub"));
 const DrivingCollection = lazyWithReload(() => import("./pages/driving/DrivingCollection"));
@@ -345,6 +346,7 @@ function App() {
               <Route path="/admin/branch-comparison" element={<AdminBranchComparison />} />
               <Route path="/admin/meetings" element={<AdminMeetings />} />
               <Route path="/admin/service-tracking" element={<ServiceTrackingPage />} />
+              <Route path="/driving" element={<DrivingHomeRedirect />} />
               <Route path="/driving/dashboard" element={<DrivingSchoolDashboard />} />
               <Route path="/driving/operations" element={<DrivingOperations />} />
               <Route path="/driving/hub" element={<DrivingHub />} />

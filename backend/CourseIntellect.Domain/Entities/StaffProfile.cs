@@ -21,6 +21,7 @@ public sealed class StaffProfile : IBranchScopedEntity
     public string MaritalStatus { get; set; } = string.Empty;
     public int ChildCount { get; set; }
     public string Note { get; set; } = string.Empty;
+    public string PhotoUrl { get; set; } = string.Empty;
     public UserRole Role { get; set; }
     public string AssignedClassesSerialized { get; set; } = string.Empty;
 

@@ -97,6 +97,28 @@ const FINANCE_MENU_ITEMS = [
   { path: "/finance/export", icon: Download, label: "Dışa Aktar", color: "#84cc16" },
 ];
 
+// Sürücü kursu personelinin rolü (yönetici, sekreter, muhasebe, eğitmen,
+// kursiyer) tek başına hangi ekranı göreceğini belirlemez. Bu ortak aday liste
+// PremiumSidebar'da backend'den gelen driving.* izinleriyle daraltılır.
+const DRIVING_MENU_ITEMS = [
+  { path: "/driving/dashboard", icon: CarFront, label: "Sürücü Kursu", color: "#f97316", special: true },
+  { path: "/driving/leads", icon: PhoneCall, label: "Aday Adayları", color: "#0ea5e9", special: true },
+  { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true },
+  { path: "/driving/students", icon: Users, label: "Kursiyerler", color: "#8b5cf6", special: true },
+  { path: "/driving/collection", icon: Wallet, label: "Ödeme Al", color: "#059669", special: true },
+  { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true },
+  { path: "/driving/vehicles", icon: CarFront, label: "Araçlarım", color: "#ea580c", special: true },
+  { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true },
+  { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
+  { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
+  { path: "/driving/mebbis", icon: ClipboardCheck, label: "MEBBİS İş Merkezi", color: "#0284c7", special: true },
+  { path: "/driving/mebbis/documents", icon: FileCheck2, label: "Evrak Onay Kuyruğu", color: "#7c3aed", special: true },
+  { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
+  { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true },
+  { path: "/driving/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea", special: true },
+  { path: "/driving/reports", icon: BarChart3, label: "Raporlar", color: "#0891b2", special: true },
+];
+
 export const menuConfigs = {
   admin: [
     {
@@ -105,22 +127,7 @@ export const menuConfigs = {
       label: "Dashboard",
       color: "#3b82f6",
     },
-    { path: "/driving/dashboard", icon: CarFront, label: "Sürücü Kursu", color: "#f97316", special: true },
-    { path: "/driving/leads", icon: PhoneCall, label: "Aday Adayları", color: "#0ea5e9", special: true },
-    { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true },
-    { path: "/driving/students", icon: Users, label: "Öğrenciler", color: "#8b5cf6", special: true },
-    { path: "/driving/collection", icon: Wallet, label: "Ödeme Al", color: "#059669", special: true },
-    { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true },
-    { path: "/driving/vehicles", icon: CarFront, label: "Araçlarım", color: "#ea580c", special: true },
-    { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true },
-    { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
-    { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
-    { path: "/driving/mebbis", icon: ClipboardCheck, label: "MEBBİS İş Merkezi", color: "#0284c7", special: true },
-    { path: "/driving/mebbis/documents", icon: FileCheck2, label: "Evrak Onay Kuyruğu", color: "#7c3aed", special: true },
-    { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
-    { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true },
-    { path: "/driving/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea", special: true },
-    { path: "/driving/reports", icon: BarChart3, label: "Raporlar", color: "#0891b2", special: true },
+    ...DRIVING_MENU_ITEMS,
     {
       path: "/admin/kpi",
       icon: BarChart3,
@@ -357,6 +364,7 @@ export const menuConfigs = {
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
   administrative: [
+    ...DRIVING_MENU_ITEMS,
     {
       path: "/admin/operations",
       icon: Activity,
@@ -464,6 +472,7 @@ export const menuConfigs = {
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
   finance: [
+    ...DRIVING_MENU_ITEMS,
     {
       path: "/finance/dashboard",
       icon: LayoutDashboard,
@@ -659,6 +668,7 @@ export const menuConfigs = {
     },
   ],
   teacher: [
+    ...DRIVING_MENU_ITEMS,
     {
       path: "/t/dashboard",
       icon: LayoutDashboard,
@@ -792,6 +802,7 @@ export const menuConfigs = {
     { path: "/settings", icon: Settings, label: "Ayarlar", color: "#64748b" },
   ],
   student: [
+    ...DRIVING_MENU_ITEMS,
     {
       path: "/s/dashboard",
       icon: LayoutDashboard,

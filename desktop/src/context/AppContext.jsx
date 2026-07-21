@@ -61,7 +61,7 @@ export function AppProvider({ children }) {
     (async () => {
       await initDesktopSessionStore();
       if (!active) return;
-      const savedSession = loadDesktopSession();
+      let savedSession = loadDesktopSession();
       if (savedSession?.user) {
         // Açılışta kurum bağlamını ana kuruma sıfırla. Aksi halde önceki bir
         // oturumdan localStorage'da kalan X-Tenant-Context (ör. bir okul kurumu)
@@ -69,6 +69,25 @@ export function AppProvider({ children }) {
         // kursu sahibine okul menülerini sızdırıyordu. Kullanıcı gerekirse üst
         // bardaki kurum seçiciyle tekrar geçebilir.
         setActiveTenantContext(null);
+        // Eski masaüstü oturumlarında kurum türü login yanıtında saklanmıyordu.
+        // Kullanıcıyı yeniden girişe zorlamadan oturumu bir kez zenginleştir;
+        // aksi halde sürücü kursu hesabı eski /dashboard yoluna düşer.
+        if (!savedSession.user.institutionType) {
+          try {
+            const { fetchDrivingSchoolStatus } = await import('../lib/api/modules');
+            const status = await fetchDrivingSchoolStatus();
+            const enrichedUser = {
+              ...savedSession.user,
+              institutionType: status?.institutionType || null,
+              drivingSchoolModuleEnabled: status?.moduleEnabled === true,
+            };
+            savedSession = { ...savedSession, user: enrichedUser };
+            persistDesktopSession(savedSession);
+          } catch {
+            // API geçici olarak erişilemiyorsa mevcut güvenli oturumla devam et.
+          }
+        }
+        if (!active) return;
         setSession(savedSession);
         setUser(savedSession.user);
       }

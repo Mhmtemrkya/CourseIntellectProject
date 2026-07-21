@@ -243,6 +243,11 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.PasswordHash).HasMaxLength(300).IsRequired();
             entity.Property(x => x.Campus).HasMaxLength(80);
             entity.Property(x => x.DepartmentOrBranch).HasMaxLength(120);
+            entity.Property(x => x.TcNo).HasMaxLength(11);
+            entity.Property(x => x.PhotoUrl).HasMaxLength(400);
+            entity.HasIndex(x => new { x.TenantId, x.TcNo })
+                .IsUnique()
+                .HasFilter("\"TcNo\" <> '' AND tenant_id IS NOT NULL");
             entity.Property(x => x.ExtraRolesSerialized).HasColumnName("extra_roles").HasMaxLength(400);
             entity.Property(x => x.RoleHistorySerialized).HasColumnName("role_history").HasMaxLength(4000);
             entity.Property(x => x.MustChangePassword).HasColumnName("must_change_password").HasDefaultValue(false);
@@ -278,6 +283,12 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ClassName).HasMaxLength(20).IsRequired();
             entity.Property(x => x.ParentEmail).HasMaxLength(120);
             entity.Property(x => x.PhotoUrl).HasMaxLength(400);
+            entity.HasIndex(x => new { x.TenantId, x.TcNo })
+                .IsUnique()
+                .HasFilter("\"TcNo\" <> '' AND tenant_id IS NOT NULL");
+            entity.HasIndex(x => new { x.TenantId, x.SchoolNumber })
+                .IsUnique()
+                .HasFilter("\"SchoolNumber\" <> '' AND tenant_id IS NOT NULL");
             entity.Property(x => x.ParentUserId).HasColumnName("parent_user_id");
             entity.HasIndex(x => x.ParentUserId);
         });
@@ -293,6 +304,10 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.Email).HasMaxLength(120);
             entity.Property(x => x.DepartmentOrBranch).HasMaxLength(120).IsRequired();
             entity.Property(x => x.AssignedClassesSerialized).HasColumnName("assigned_classes").HasMaxLength(400);
+            entity.Property(x => x.PhotoUrl).HasMaxLength(400);
+            entity.HasIndex(x => new { x.TenantId, x.TcNo })
+                .IsUnique()
+                .HasFilter("\"TcNo\" <> '' AND tenant_id IS NOT NULL");
         });
 
         modelBuilder.Entity<AnnouncementItem>(entity =>

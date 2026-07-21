@@ -97,7 +97,14 @@ public sealed class StaffController(IStaffManagementService staffManagementServi
         [FromBody] CreateAccountingStaffRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await staffManagementService.CreateAccountingStaffAsync(request, cancellationToken);
-        return CreatedAtAction(nameof(Get), new { role = "Accounting" }, result);
+        try
+        {
+            var result = await staffManagementService.CreateAccountingStaffAsync(request, cancellationToken);
+            return CreatedAtAction(nameof(Get), new { role = "Accounting" }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

@@ -10,5 +10,6 @@ public sealed record CreateAccountingStaffRequest(
     string Campus,
     string MaritalStatus,
     int ChildCount,
-    string Note
+    string Note,
+    string? PhotoUrl = null
 );

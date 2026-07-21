@@ -22,6 +22,10 @@ public sealed class AppUser : IBranchScopedEntity
     public string Campus { get; set; } = string.Empty;
     public string DepartmentOrBranch { get; set; } = string.Empty;
     public string? Phone { get; set; }
+    /// <summary>Kurum içindeki tüm kullanıcı türleri için ortak TC kimlik numarası.</summary>
+    public string TcNo { get; set; } = string.Empty;
+    /// <summary>Kimlik kartında kullanılan profil fotoğrafı.</summary>
+    public string PhotoUrl { get; set; } = string.Empty;
     public bool IsEmailVerified { get; set; }
     public bool MustChangePassword { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;

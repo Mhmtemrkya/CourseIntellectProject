@@ -19,7 +19,10 @@ import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
+import PhotoCapture from '../components/ui/photo-capture';
+import { BranchSelectWithCreate } from '../components/registration/BranchSelectWithCreate';
+import { IdentityCard } from '../components/identity/IdentityCard';
 import {
   Select,
   SelectContent,
@@ -54,9 +57,10 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStaff, updateStaff, fetchStaff, fetchClasses, updateUserStatus } from '../lib/api/modules';
+import { createStaff, updateStaff, fetchStaff, fetchClasses, fetchPlatformConfigurations, updateUserStatus, upsertPlatformConfiguration } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { isUserPassive } from '../lib/userStatus';
+import { mergeBranches, readSavedStaffBranches, staffBranchConfigurationPayload } from '../lib/staffBranches';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
 } from '../lib/inputMasks';
@@ -89,12 +93,6 @@ const ROLE_LABELS = {
 function TeacherDetailDrawer({ teacher }) {
   if (!teacher) return null;
   const assignedClasses = Array.isArray(teacher.assignedClasses) ? teacher.assignedClasses : [];
-  const initials = String(teacher.fullName || 'OG')
-    .split(' ')
-    .filter(Boolean)
-    .map((n) => n[0])
-    .join('')
-    .slice(0, 2);
 
   return (
     <div className="space-y-6">
@@ -103,18 +101,25 @@ function TeacherDetailDrawer({ teacher }) {
         <SheetDescription>Öğretmen bilgileri ve istatistikleri</SheetDescription>
       </SheetHeader>
 
-      <div className="flex items-center gap-4 p-4 bg-muted rounded-xl">
-        <Avatar className="h-16 w-16">
-          <AvatarFallback className="bg-brand-primary text-white text-lg">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <div>
-          <h3 className="text-lg font-semibold">{teacher.fullName}</h3>
-          <p className="text-sm text-muted-foreground">{teacher.departmentOrBranch || 'Branş atanmadı'} • {ROLE_LABELS[teacher.role] || teacher.role}</p>
-          <Badge className="bg-brand-accent mt-1">{assignedClasses.length} Sınıf</Badge>
-        </div>
-      </div>
+      <IdentityCard
+        type="Personel Kimlik Kartı"
+        name={teacher.fullName}
+        photoUrl={teacher.photoUrl}
+        institution={teacher.campus}
+        subtitle={`${ROLE_LABELS[teacher.role] || teacher.role || 'Öğretmen'} • ${teacher.departmentOrBranch || 'Branş atanmadı'}`}
+        status={teacher.status}
+        fields={[
+          { label: 'TC Kimlik No', value: teacher.tcNo },
+          { label: 'Kullanıcı Adı', value: teacher.username },
+          { label: 'Telefon', value: teacher.phone },
+          { label: 'E-posta', value: teacher.email },
+          { label: 'Eğitim', value: teacher.education },
+          { label: 'İşe Başlama', value: teacher.startDate },
+          { label: 'Sınıf Öğretmenliği', value: teacher.homeroomClass },
+          { label: 'Atanan Sınıflar', value: assignedClasses.join(', '), wide: true },
+          { label: 'Not', value: teacher.note, wide: true },
+        ]}
+      />
 
       <div className="space-y-3">
         <h4 className="font-medium">İletişim Bilgileri</h4>
@@ -157,7 +162,7 @@ function TeacherDetailDrawer({ teacher }) {
   );
 }
 
-function TeacherFormFields({ form, setForm, branches, classes }) {
+function TeacherFormFields({ form, setForm, branches, classes, onCreateBranch }) {
   const EMPTY_HOME_ROOM = '__none__';
 
   const toggleAssignedClass = (value) => {
@@ -175,30 +180,25 @@ function TeacherFormFields({ form, setForm, branches, classes }) {
         <Label>Ad Soyad</Label>
         <Input value={form.fullName} onChange={(e) => setForm((p) => ({ ...p, fullName: e.target.value }))} />
       </div>
-      {form.role !== undefined && (
-        <div className="space-y-2">
-          <Label>Rol</Label>
-          <Select value={form.role} onValueChange={(value) => setForm((p) => ({ ...p, role: value }))}>
-            <SelectTrigger><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="Teacher">Öğretmen</SelectItem>
-              <SelectItem value="Administrative">İdari Personel</SelectItem>
-            </SelectContent>
-          </Select>
+      {form.photoUrl !== undefined ? (
+        <div className="space-y-2 col-span-2">
+          <Label>Personel Fotoğrafı</Label>
+          <PhotoCapture value={form.photoUrl} onChange={(photoUrl) => setForm((prev) => ({ ...prev, photoUrl }))} folder="staff-photos" size={112} />
         </div>
-      )}
+      ) : null}
       <div className="space-y-2">
-        <Label>Branş / Birim</Label>
-        <Select value={form.departmentOrBranch} onValueChange={(value) => setForm((p) => ({ ...p, departmentOrBranch: value }))}>
-          <SelectTrigger><SelectValue placeholder="Branş seçin" /></SelectTrigger>
-          <SelectContent>
-            {branches.map((branch) => <SelectItem key={branch} value={branch}>{branch}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Label>Rol</Label>
+        <Input value="Öğretmen" readOnly className="bg-muted cursor-not-allowed" />
       </div>
+      <BranchSelectWithCreate
+        value={form.departmentOrBranch}
+        onValueChange={(value) => setForm((prev) => ({ ...prev, departmentOrBranch: value }))}
+        options={branches}
+        onCreate={onCreateBranch}
+      />
       {form.tcNo !== undefined && (
         <div className="space-y-2">
-          <Label>TC No</Label>
+          <Label>TC No *</Label>
           <Input value={form.tcNo} onChange={(e) => setForm((p) => ({ ...p, tcNo: maskTcKimlik(e.target.value) }))} inputMode="numeric" pattern="[0-9]{11}" maxLength={11} placeholder="11 haneli kimlik no" />
         </div>
       )}
@@ -269,7 +269,7 @@ function TeacherFormFields({ form, setForm, branches, classes }) {
 }
 
 function AddTeacherDialog({
-  open, onOpenChange, branches, classes, onCreated,
+  open, onOpenChange, branches, classes, onCreated, onCreateBranch,
 }) {
   const { toast } = useToast();
   const { user } = useApp();
@@ -290,6 +290,7 @@ function AddTeacherDialog({
     maritalStatus: 'Bekar',
     childCount: 0,
     note: '',
+    photoUrl: '',
   });
 
   const handleSave = async () => {
@@ -297,8 +298,8 @@ function AddTeacherDialog({
       toast({ title: 'Eksik bilgi', description: 'Ad-soyad ve branş zorunlu.', variant: 'destructive' });
       return;
     }
-    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
-      toast({ title: 'Geçersiz TC kimlik no', description: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+    if (!isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçersiz TC kimlik no', description: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
       return;
     }
     if (form.phone && !isValidTrPhone(form.phone)) {
@@ -397,7 +398,7 @@ function AddTeacherDialog({
           <DialogTitle>Yeni Öğretmen Ekle</DialogTitle>
           <DialogDescription>Öğretmen bilgilerini girin</DialogDescription>
         </DialogHeader>
-        <TeacherFormFields form={form} setForm={setForm} branches={branches} classes={classes} />
+        <TeacherFormFields form={form} setForm={setForm} branches={branches} classes={classes} onCreateBranch={onCreateBranch} />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Kaydet'}</Button>
@@ -408,7 +409,7 @@ function AddTeacherDialog({
 }
 
 function EditTeacherDialog({
-  open, onOpenChange, teacher, branches, classes, onUpdated,
+  open, onOpenChange, teacher, branches, classes, onUpdated, onCreateBranch,
 }) {
   const { toast } = useToast();
   const [saving, setSaving] = useState(false);
@@ -423,6 +424,7 @@ function EditTeacherDialog({
     maritalStatus: 'Bekar',
     childCount: 0,
     note: '',
+    photoUrl: '',
   });
 
   useEffect(() => {
@@ -438,6 +440,7 @@ function EditTeacherDialog({
         maritalStatus: teacher.maritalStatus || 'Bekar',
         childCount: teacher.childCount || 0,
         note: teacher.note || '',
+        photoUrl: teacher.photoUrl || '',
       });
     }
   }, [teacher]);
@@ -471,7 +474,7 @@ function EditTeacherDialog({
           <DialogTitle>Öğretmen Bilgilerini Düzenle</DialogTitle>
           <DialogDescription>{teacher?.fullName}</DialogDescription>
         </DialogHeader>
-        <TeacherFormFields form={form} setForm={setForm} branches={branches} classes={classes} />
+        <TeacherFormFields form={form} setForm={setForm} branches={branches} classes={classes} onCreateBranch={onCreateBranch} />
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? 'Kaydediliyor...' : 'Güncelle'}</Button>
@@ -494,6 +497,7 @@ export default function Teachers() {
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [staff, setStaff] = useState([]);
   const [classNames, setClassNames] = useState([]);
+  const [savedBranches, setSavedBranches] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -501,12 +505,14 @@ export default function Teachers() {
     try {
       setLoading(true);
       setError('');
-      const [staffList, classList] = await Promise.all([
+      const [staffList, classList, branchConfigurations] = await Promise.all([
         fetchStaff('Teacher'),
         fetchClasses().catch(() => []),
+        fetchPlatformConfigurations('staff-branches').catch(() => []),
       ]);
       setStaff(staffList);
       setClassNames(Array.isArray(classList) ? classList : []);
+      setSavedBranches(readSavedStaffBranches(branchConfigurations));
     } catch (err) {
       setError(err.message || 'Öğretmen listesi alınamadı.');
     } finally {
@@ -520,8 +526,21 @@ export default function Teachers() {
 
   const branches = useMemo(() => {
     const fromStaff = staff.map((t) => t.departmentOrBranch).filter(Boolean);
-    return [...new Set([...PREDEFINED_BRANCHES, ...fromStaff])];
-  }, [staff]);
+    return mergeBranches(PREDEFINED_BRANCHES, [...fromStaff, ...savedBranches]);
+  }, [savedBranches, staff]);
+
+  const createBranch = async (name) => {
+    const next = mergeBranches(savedBranches, [name]);
+    try {
+      await upsertPlatformConfiguration(staffBranchConfigurationPayload(next));
+      setSavedBranches(next);
+      toast({ title: 'Branş oluşturuldu', description: `${name} seçim listesine eklendi.` });
+      return true;
+    } catch (err) {
+      toast({ title: 'Branş oluşturulamadı', description: err.message, variant: 'destructive' });
+      return false;
+    }
+  };
 
   const classes = useMemo(
     () => [...new Set((classNames || []).filter(Boolean))],
@@ -600,6 +619,7 @@ export default function Teachers() {
       maritalStatus: created.maritalStatus || '',
       childCount: created.childCount || 0,
       note: created.note || '',
+      photoUrl: created.photoUrl || '',
     }, ...prev]);
   };
 
@@ -680,6 +700,7 @@ export default function Teachers() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
+                        {teacher.photoUrl ? <AvatarImage src={teacher.photoUrl} alt={teacher.fullName} className="object-cover" /> : null}
                         <AvatarFallback className="bg-brand-primary text-white">
                           {teacher.fullName.split(' ').map((n) => n[0]).join('')}
                         </AvatarFallback>
@@ -739,8 +760,8 @@ export default function Teachers() {
         </CardContent>
       </Card>
 
-      <AddTeacherDialog open={dialogOpen} onOpenChange={setDialogOpen} branches={branches} classes={classes} onCreated={handleCreated} />
-      <EditTeacherDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} teacher={editingTeacher} branches={branches} classes={classes} onUpdated={handleUpdated} />
+      <AddTeacherDialog open={dialogOpen} onOpenChange={setDialogOpen} branches={branches} classes={classes} onCreated={handleCreated} onCreateBranch={createBranch} />
+      <EditTeacherDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} teacher={editingTeacher} branches={branches} classes={classes} onUpdated={handleUpdated} onCreateBranch={createBranch} />
     </motion.div>
   );
 }

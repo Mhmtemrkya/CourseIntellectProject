@@ -8,6 +8,8 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
 import { Textarea } from '../../components/ui/textarea';
+import PhotoCapture from '../../components/ui/photo-capture';
+import { BranchSelectWithCreate } from '../../components/registration/BranchSelectWithCreate';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '../../components/ui/select';
@@ -28,11 +30,14 @@ import {
   fetchCustomRoles,
   fetchStaff,
   fetchOrgUnits,
+  fetchPlatformConfigurations,
   updateStaffAssignment,
   updateUserStatus,
+  upsertPlatformConfiguration,
 } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import { isUserPassive } from '../../lib/userStatus';
+import { mergeBranches, readSavedStaffBranches, staffBranchConfigurationPayload } from '../../lib/staffBranches';
 import {
   isValidEmail,
   isValidTcKimlik,
@@ -103,6 +108,7 @@ const emptyForm = {
   maritalStatus: 'Bekar',
   childCount: 0,
   note: '',
+  photoUrl: '',
   licenseNumber: '',
   vehicleNumber: '',
   plateNumber: '',
@@ -126,6 +132,7 @@ export default function AdminStaffRegistration() {
   const [branches, setBranches] = useState([]);
   const [branchId, setBranchId] = useState('');
   const [customRoles, setCustomRoles] = useState([]);
+  const [savedBranches, setSavedBranches] = useState([]);
   const [editStaff, setEditStaff] = useState(null);
   const [editForm, setEditForm] = useState({ role: '', branchId: '', customRoleId: '' });
   const [loading, setLoading] = useState(true);
@@ -134,13 +141,15 @@ export default function AdminStaffRegistration() {
   const loadRecent = useCallback(async () => {
     try {
       setLoading(true);
-      const [data, orgUnits, customRoleList] = await Promise.all([
+      const [data, orgUnits, customRoleList, branchConfigurations] = await Promise.all([
         fetchStaff().catch(() => []),
         fetchOrgUnits().catch(() => []),
         fetchCustomRoles().catch(() => []),
+        fetchPlatformConfigurations('staff-branches').catch(() => []),
       ]);
       setAllStaff(Array.isArray(data) ? data : []);
       setCustomRoles(Array.isArray(customRoleList) ? customRoleList : []);
+      setSavedBranches(readSavedStaffBranches(branchConfigurations));
       const all = Array.isArray(orgUnits) ? orgUnits : [];
       // Pasif birimler seçim listesinde görünmez.
       const activeUnits = all.filter((u) => u.isActive !== false);
@@ -183,8 +192,8 @@ export default function AdminStaffRegistration() {
       toast({ title: 'Şube müdürü için şube seçimi zorunludur.', variant: 'destructive' });
       return;
     }
-    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
-      toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+    if (!isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
       return;
     }
     if (form.phone && !isValidTrPhone(form.phone)) {
@@ -235,6 +244,7 @@ export default function AdminStaffRegistration() {
         maritalStatus: form.maritalStatus,
         childCount: Number(form.childCount || 0),
         note: form.note.trim(),
+        photoUrl: form.photoUrl || null,
         branchId: branchId || undefined,
         customRoleId: selectedCustomRole?.id || undefined,
       }, branchId || undefined);
@@ -356,10 +366,27 @@ export default function AdminStaffRegistration() {
     }
   };
 
+  const teacherBranches = mergeBranches(branchOptions, [
+    ...savedBranches,
+    ...allStaff.filter((item) => item.role === 'Teacher').map((item) => item.departmentOrBranch).filter(Boolean),
+  ]);
   const branchList = form.role === 'Cafeteria'
     ? cafeteriaBranches
-    : form.role === 'Administrative' || form.role === 'ServiceDriver' ? administrativeBranches : branchOptions;
+    : form.role === 'Administrative' || form.role === 'ServiceDriver' ? administrativeBranches : teacherBranches;
   const isServiceDriver = form.role === 'ServiceDriver';
+
+  const createTeacherBranch = async (name) => {
+    const next = mergeBranches(savedBranches, [name]);
+    try {
+      await upsertPlatformConfiguration(staffBranchConfigurationPayload(next));
+      setSavedBranches(next);
+      toast({ title: 'Branş oluşturuldu', description: `${name} seçim listesine eklendi.` });
+      return true;
+    } catch (err) {
+      toast({ title: 'Branş oluşturulamadı', description: err.message, variant: 'destructive' });
+      return false;
+    }
+  };
 
   return (
     <motion.div className="space-y-6" initial="hidden" animate="visible" variants={containerVariants}>
@@ -383,6 +410,12 @@ export default function AdminStaffRegistration() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Personel Fotoğrafı</Label>
+                  <div className="mt-1">
+                    <PhotoCapture value={form.photoUrl} onChange={(photoUrl) => handleChange('photoUrl', photoUrl)} folder="staff-photos" size={112} />
+                  </div>
+                </div>
                 <div>
                   <Label>Ad Soyad *</Label>
                   <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ayşe Demir" autoComplete="name" maxLength={100} />
@@ -401,19 +434,22 @@ export default function AdminStaffRegistration() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div>
-                  <Label>{form.role === 'Teacher' ? 'Branş *' : 'Birim *'}</Label>
-                  <Select value={form.departmentOrBranch} onValueChange={(v) => handleChange('departmentOrBranch', v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder={form.role === 'Teacher' ? 'Branş seçin...' : 'Birim seçin...'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branchList.map((b) => (
-                        <SelectItem key={b} value={b}>{b}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                {form.role === 'Teacher' ? (
+                  <BranchSelectWithCreate
+                    value={form.departmentOrBranch}
+                    onValueChange={(value) => handleChange('departmentOrBranch', value)}
+                    options={branchList}
+                    onCreate={createTeacherBranch}
+                  />
+                ) : (
+                  <div>
+                    <Label>Birim *</Label>
+                    <Select value={form.departmentOrBranch} onValueChange={(value) => handleChange('departmentOrBranch', value)}>
+                      <SelectTrigger><SelectValue placeholder="Birim seçin..." /></SelectTrigger>
+                      <SelectContent>{branchList.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                )}
                 {branches.length > 0 ? (
                   <div>
                     <Label>Şube</Label>
@@ -426,7 +462,7 @@ export default function AdminStaffRegistration() {
                   </div>
                 ) : null}
                 <div>
-                  <Label>TC Kimlik No</Label>
+                  <Label>TC Kimlik No *</Label>
                   <Input maxLength={11} value={form.tcNo} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" pattern="[0-9]{11}" placeholder="11 haneli kimlik no" />
                 </div>
                 <div>

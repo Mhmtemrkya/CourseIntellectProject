@@ -38,12 +38,45 @@ const steps = [
 
 // Silme dialogunda "taşıma yok" seçeneği: Radix Select boş değer kabul etmediği için sentinel kullanılır.
 const DEACTIVATE_OPTION = '__deactivate__';
+const EMPTY_SELECT_OPTION = '__empty__';
 
 const colorOptions = ['#2563EB', '#7B61FF', '#22C55E', '#FF8A00', '#EF4444', '#06B6D4'];
 const iconOptions = ['users', 'graduation', 'book', 'science', 'globe', 'palette', 'music', 'sport', 'code', 'star', 'target', 'spark'];
 const unitOptions = ['İlkokul', 'Ortaokul', 'Lise', 'Dershane'];
 const gradeOptions = Array.from({ length: 12 }, (_, index) => `${index + 1}. Sınıf`);
 const sectionOptions = ['A Şubesi', 'B Şubesi', 'C Şubesi', 'D Şubesi'];
+
+function ThemedSelect({
+  value,
+  onValueChange,
+  options,
+  emptyLabel,
+  ariaLabel,
+  className = 'h-11',
+}) {
+  const selectedValue = value === '' && emptyLabel ? EMPTY_SELECT_OPTION : String(value);
+
+  return (
+    <Select
+      value={selectedValue}
+      onValueChange={(nextValue) => onValueChange(nextValue === EMPTY_SELECT_OPTION ? '' : nextValue)}
+    >
+      <SelectTrigger
+        aria-label={ariaLabel}
+        className={`${className} border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground`}
+      >
+        <SelectValue placeholder={emptyLabel} />
+      </SelectTrigger>
+      <SelectContent>
+        {emptyLabel ? <SelectItem value={EMPTY_SELECT_OPTION}>{emptyLabel}</SelectItem> : null}
+        {options.map((option) => {
+          const item = typeof option === 'string' ? { value: option, label: option } : option;
+          return <SelectItem key={item.value} value={String(item.value)}>{item.label}</SelectItem>;
+        })}
+      </SelectContent>
+    </Select>
+  );
+}
 
 function normalize(value = '') {
   return String(value)
@@ -548,15 +581,16 @@ export default function Classes() {
           <div className="mt-5 grid gap-5 xl:grid-cols-[320px_minmax(0,1fr)]">
             <div className="space-y-4 rounded-xl border border-foreground/10 bg-foreground/5 p-4">
               <Field label="Sınıf">
-                <select value={managementClassName} onChange={(event) => setManagementClassName(event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
-                  {classNames.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
+                <ThemedSelect value={managementClassName} onValueChange={setManagementClassName} options={classNames} ariaLabel="Sınıf" />
               </Field>
               <Field label="Sınıf Danışmanı">
-                <select value={managementAdvisorId} onChange={(event) => setManagementAdvisorId(event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
-                  <option value="">Danışman yok</option>
-                  {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName} • {teacher.departmentOrBranch || 'Branş yok'}</option>)}
-                </select>
+                <ThemedSelect
+                  value={managementAdvisorId}
+                  onValueChange={setManagementAdvisorId}
+                  emptyLabel="Danışman yok"
+                  ariaLabel="Sınıf danışmanı"
+                  options={teachers.map((teacher) => ({ value: teacher.id, label: `${teacher.fullName} • ${teacher.departmentOrBranch || 'Branş yok'}` }))}
+                />
               </Field>
               <div className="grid grid-cols-2 gap-2">
                 <Detail label="Öğrenci" value={`${managementStudentIds.length}`} />
@@ -603,26 +637,26 @@ export default function Classes() {
                 <Field label="Sınıf Adı" required><Input value={form.name} onChange={(event) => updateForm('name', event.target.value)} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" placeholder="7-A" /></Field>
                 <Field label="Sınıf Kodu" required><Input value={form.code} onChange={(event) => updateForm('code', event.target.value)} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" /></Field>
                 <Field label="Kurum Birimi" required>
-                  <select value={form.institutionUnit} onChange={(event) => updateForm('institutionUnit', event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
-                    {unitOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <ThemedSelect value={form.institutionUnit} onValueChange={(value) => updateForm('institutionUnit', value)} options={unitOptions} ariaLabel="Kurum birimi" />
                 </Field>
                 <Field label="Sınıf Seviyesi" required>
-                  <select value={form.grade} onChange={(event) => updateForm('grade', event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
-                    {gradeOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <ThemedSelect value={form.grade} onValueChange={(value) => updateForm('grade', value)} options={gradeOptions} ariaLabel="Sınıf seviyesi" />
                 </Field>
                 <Field label="Şube / Sınıf" required>
-                  <select value={form.section} onChange={(event) => updateForm('section', event.target.value)} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
-                    {sectionOptions.map((item) => <option key={item} value={item}>{item}</option>)}
-                  </select>
+                  <ThemedSelect value={form.section} onValueChange={(value) => updateForm('section', value)} options={sectionOptions} ariaLabel="Şube veya sınıf" />
                 </Field>
                 <Field label="Eğitim Dönemi" required><Input value={form.academicYear} onChange={(event) => updateForm('academicYear', event.target.value)} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" /></Field>
                 <Field label="Sınıf Danışmanı">
-                  <select value={form.advisorTeacherId} onChange={(event) => { updateForm('advisorTeacherId', event.target.value); if (event.target.value && !selectedTeacherIds.includes(event.target.value)) setSelectedTeacherIds((prev) => [...prev, event.target.value]); }} className="h-11 w-full rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground">
-                    <option value="">Danışman seçin</option>
-                    {teachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName} • {teacher.departmentOrBranch}</option>)}
-                  </select>
+                  <ThemedSelect
+                    value={form.advisorTeacherId}
+                    emptyLabel="Danışman seçin"
+                    ariaLabel="Sınıf danışmanı seçin"
+                    options={teachers.map((teacher) => ({ value: teacher.id, label: `${teacher.fullName} • ${teacher.departmentOrBranch || 'Branş yok'}` }))}
+                    onValueChange={(value) => {
+                      updateForm('advisorTeacherId', value);
+                      if (value && !selectedTeacherIds.includes(value)) setSelectedTeacherIds((prev) => [...prev, value]);
+                    }}
+                  />
                 </Field>
                 <Field label="Açıklama" className="md:col-span-2">
                   <Textarea value={form.description} maxLength={250} onChange={(event) => updateForm('description', event.target.value)} className="min-h-[110px] border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" placeholder="Sınıf açıklaması..." />
@@ -651,7 +685,7 @@ export default function Classes() {
                 <div>
                   <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_180px]">
                     <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={teacherQuery} onChange={(event) => setTeacherQuery(event.target.value)} placeholder="Öğretmen ara..." className="border-foreground/10 bg-[hsl(var(--ci-card))] pl-9 text-foreground" /></div>
-                    <select value={teacherBranchFilter} onChange={(event) => setTeacherBranchFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground"><option value="all">Tümü</option>{branches.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+                    <ThemedSelect value={teacherBranchFilter} onValueChange={setTeacherBranchFilter} className="h-10" ariaLabel="Öğretmen branşı" options={[{ value: 'all', label: 'Tümü' }, ...branches.map((item) => ({ value: item, label: item }))]} />
                   </div>
                   <div className="max-h-[360px] overflow-y-auto rounded-xl border border-foreground/10">
                     {filteredTeachers.map((teacher) => {
@@ -677,9 +711,9 @@ export default function Classes() {
                   {assignments.map((assignment, index) => (
                     <div key={`${assignment.courseName}-${index}`} className="grid gap-2 rounded-xl border border-foreground/10 p-3 lg:grid-cols-[1fr_1fr_110px_110px_44px]">
                       <Input value={assignment.courseName} onChange={(event) => updateAssignment(index, 'courseName', event.target.value)} placeholder="Ders" className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
-                      <select value={assignment.teacherId || ''} onChange={(event) => updateAssignment(index, 'teacherId', event.target.value || null)} className="h-10 rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground"><option value="">Öğretmen seç</option>{selectedTeachers.map((teacher) => <option key={teacher.id} value={teacher.id}>{teacher.fullName}</option>)}</select>
+                      <ThemedSelect value={assignment.teacherId || ''} onValueChange={(value) => updateAssignment(index, 'teacherId', value || null)} emptyLabel="Öğretmen seç" className="h-10" ariaLabel={`${assignment.courseName || 'Ders'} öğretmeni`} options={selectedTeachers.map((teacher) => ({ value: teacher.id, label: teacher.fullName }))} />
                       <Input type="number" value={assignment.weeklyHours} onChange={(event) => updateAssignment(index, 'weeklyHours', event.target.value)} className="border-foreground/10 bg-[hsl(var(--ci-card))] text-foreground" />
-                      <select value={assignment.isRequired ? 'required' : 'optional'} onChange={(event) => updateAssignment(index, 'isRequired', event.target.value === 'required')} className="h-10 rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground"><option value="required">Zorunlu</option><option value="optional">Seçmeli</option></select>
+                      <ThemedSelect value={assignment.isRequired ? 'required' : 'optional'} onValueChange={(value) => updateAssignment(index, 'isRequired', value === 'required')} className="h-10" ariaLabel={`${assignment.courseName || 'Ders'} türü`} options={[{ value: 'required', label: 'Zorunlu' }, { value: 'optional', label: 'Seçmeli' }]} />
                       <Button variant="outline" size="icon" className="border-foreground/10 bg-foreground/5 text-red-300 hover:bg-red-500/10" onClick={() => setAssignments((prev) => prev.filter((_, itemIndex) => itemIndex !== index))}><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
@@ -695,7 +729,7 @@ export default function Classes() {
                 <div>
                   <div className="mb-3 grid gap-2 sm:grid-cols-[1fr_160px]">
                     <div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" /><Input value={studentQuery} onChange={(event) => setStudentQuery(event.target.value)} placeholder="Öğrenci ara..." className="border-foreground/10 bg-[hsl(var(--ci-card))] pl-9 text-foreground" /></div>
-                    <select value={studentFilter} onChange={(event) => setStudentFilter(event.target.value)} className="h-10 rounded-lg border border-foreground/10 bg-[hsl(var(--ci-card))] px-3 text-sm text-foreground"><option value="all">Filtrele</option><option value="active">Aktif</option><option value="waiting">Sınıf Bekleyen</option></select>
+                    <ThemedSelect value={studentFilter} onValueChange={setStudentFilter} className="h-10" ariaLabel="Öğrenci filtresi" options={[{ value: 'all', label: 'Filtrele' }, { value: 'active', label: 'Aktif' }, { value: 'waiting', label: 'Sınıf Bekleyen' }]} />
                   </div>
                   <div className="max-h-[430px] overflow-y-auto rounded-xl border border-foreground/10">
                     {filteredStudents.map((student) => {

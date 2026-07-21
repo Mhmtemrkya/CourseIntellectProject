@@ -44,6 +44,11 @@ export function isModuleAllowed(entitlements, roleKey, moduleKey) {
   const roleEntry = getRoleEntry(entitlements, roleKey);
   if (!roleEntry) return true; // kısıtsız
   const moduleEntry = roleEntry.modules?.[moduleKey];
+  // Paket kaydı bu modül eklenmeden önce oluşturulmuş olabilir. Backend de
+  // eksik (rol, modül) çiftini "bu paket tarafından sahiplenilmiyor" kabul edip
+  // engellemez. Frontend aynı geriye uyumlu davranışı göstermelidir; açıkça
+  // kayıtlı ve disabled olan modüller yine kapalı kalır.
+  if (!moduleEntry) return true;
   return Boolean(moduleEntry?.enabled);
 }
 

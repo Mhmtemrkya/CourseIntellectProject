@@ -13,6 +13,18 @@
 // ─── Modül kütüphanesi: modül → etiket + sayfa içi işlemler ───────────────────
 export const MODULE_LIBRARY = {
   dashboard: { label: 'Ana Panel', actions: {} },
+  'driving-school': { label: 'Sürücü Kursu Paneli', actions: {} },
+  'driving-registration': { label: 'Sürücü Kursu Kayıt', actions: {} },
+  'driving-operations': { label: 'Sürücü Kursu Paket & Filo', actions: {} },
+  'driving-scheduling': { label: 'Sürücü Kursu Direksiyon Planlama', actions: {} },
+  'driving-calendar': { label: 'Sürücü Kursu Takvimi', actions: {} },
+  'driving-lessons': { label: 'Sürücü Kursu Dersleri', actions: {} },
+  'driving-fleet-compliance': { label: 'Sürücü Kursu Evrak & Bakım', actions: {} },
+  'driving-assignments': { label: 'Sürücü Kursu Atama & Kurallar', actions: {} },
+  'driving-education': { label: 'Sürücü Kursu Teorik Eğitim', actions: {} },
+  'driving-graduation': { label: 'Sürücü Kursu Mezuniyet', actions: {} },
+  'driving-forms': { label: 'Sürücü Kursu Sözleşme & Formlar', actions: {} },
+  'driving-reports': { label: 'Sürücü Kursu Raporları', actions: {} },
   kpi: { label: 'Kurum Özeti (KPI)', actions: { export: 'Rapor dışa aktar' } },
   operations: { label: 'Operasyon Paneli', actions: {} },
   'global-search': { label: 'Kurum İçi Arama', actions: {} },
@@ -118,7 +130,11 @@ export const PACKAGE_ROLES = [
 
 export const ROLE_MODULES = {
   admin: [
-    'dashboard', 'kpi', 'operations', 'global-search', 'tasks',
+    'dashboard', 'driving-school', 'driving-registration', 'driving-operations',
+    'driving-scheduling', 'driving-calendar', 'driving-lessons',
+    'driving-fleet-compliance', 'driving-assignments', 'driving-education',
+    'driving-graduation', 'driving-forms', 'driving-reports',
+    'kpi', 'operations', 'global-search', 'tasks',
     'academics', 'students', 'parents', 'teachers', 'classes', 'schedule', 'attendance', 'courses', 'duties',
     'registrations', 'records', 'administrative-units', 'approvals', 'password-reset',
     'content', 'questions', 'question-bank', 'exams', 'assignments', 'live-lessons',
@@ -130,11 +146,17 @@ export const ROLE_MODULES = {
     'library', 'staff-hr', 'audit-log', 'org-units', 'rbac',
   ],
   administrative: [
+    'driving-school', 'driving-registration', 'driving-operations', 'driving-scheduling',
+    'driving-calendar', 'driving-lessons', 'driving-fleet-compliance',
+    'driving-assignments', 'driving-education', 'driving-graduation',
+    'driving-forms', 'driving-reports',
     'operations', 'tasks', 'schedule', 'duties', 'records', 'documents', 'password-reset',
     'registrations', 'reports', 'notifications', 'meetings', 'chat', 'service', 'cafeteria',
     'library', 'staff-hr',
   ],
   finance: [
+    'driving-school', 'driving-operations', 'driving-scheduling',
+    'driving-education', 'driving-graduation', 'driving-reports',
     'finance', 'student-accounts', 'collections', 'installments', 'late-payments',
     'discounts-scholarships', 'billing', 'collection-calendar', 'reconciliation', 'bulk-actions',
     'overdue-rules', 'cash-report', 'ledger', 'finance-export', 'finance-audit-log',
@@ -142,11 +164,13 @@ export const ROLE_MODULES = {
   ],
   counselor: ['guidance', 'library', 'chat'],
   teacher: [
+    'driving-scheduling', 'driving-education',
     'dashboard', 'schedule', 'attendance', 'live-lessons', 'duties',
     'content', 'question-bank', 'questions', 'exams', 'mock-exams', 'grade-entry',
     'reports', 'assignments', 'meetings', 'notifications', 'chat', 'library',
   ],
   student: [
+    'driving-scheduling', 'driving-education', 'driving-graduation',
     'dashboard', 'schedule', 'study-plan', 'live-lessons',
     'content', 'question-bank', 'questions', 'assignments', 'ai',
     'exams', 'mock-exams', 'reports', 'attendance', 'cafeteria', 'notifications', 'chat', 'library',

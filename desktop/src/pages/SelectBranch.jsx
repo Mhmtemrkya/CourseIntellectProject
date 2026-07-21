@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { fetchOrgUnits } from '../lib/api/modules';
 import { setActiveBranchFilter } from '../lib/api/client';
+import { getUserHomePath } from '../lib/auth';
 
 const BRANCH_TYPES = ['şube', 'sube', 'kampüs', 'kampus'];
 
@@ -19,8 +20,8 @@ export default function SelectBranch() {
   const proceed = useCallback((branchId) => {
     setActiveBranchFilter(branchId || null);
     if (typeof localStorage !== 'undefined') localStorage.setItem('ci-branch-selected', '1');
-    navigate('/dashboard', { replace: true });
-  }, [navigate]);
+    navigate(getUserHomePath(user), { replace: true });
+  }, [navigate, user]);
 
   const load = useCallback(async () => {
     try {

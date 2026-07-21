@@ -2,6 +2,7 @@ using CourseIntellect.Application.DTOs.Staff;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
 using CourseIntellect.Domain.Enums;
+using CourseIntellect.Domain.Services;
 using CourseIntellect.Infrastructure.Auth;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Http;
@@ -65,7 +66,8 @@ public sealed class StaffManagementService(
                 staff.ChildCount,
                 staff.Note,
                 staff.StartDate,
-                staff.UserId))
+                staff.UserId,
+                staff.PhotoUrl))
             .ToList();
     }
 
@@ -79,6 +81,13 @@ public sealed class StaffManagementService(
 
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var tcNo = SchoolRegistrationRules.NormalizeTcNo(request.TcNo);
+        var phone = (request.Phone ?? string.Empty).Trim();
+        if (phone.Length > 0 && !SchoolRegistrationRules.IsValidTrMobile(phone))
+        {
+            throw new InvalidOperationException("Telefon +90 5XX XXX XX XX biçiminde olmalıdır.");
+        }
+        await EnsureTcNoAvailableAsync(tenantId, tcNo, null, cancellationToken);
 
         // Özel rol: kuruma ait olmalı; taban rolü istek rolüyle uyuşmalı.
         if (request.CustomRoleId is Guid customRoleId)
@@ -181,7 +190,9 @@ public sealed class StaffManagementService(
             PrimaryRole = parsedRole,
             Campus = request.Campus,
             DepartmentOrBranch = departmentOrBranch,
-            Phone = request.Phone.Trim(),
+            Phone = phone,
+            TcNo = tcNo,
+            PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
             MustChangePassword = true
         };
 
@@ -190,8 +201,8 @@ public sealed class StaffManagementService(
             TenantId = user.TenantId,
             UserId = user.Id,
             FullName = request.FullName,
-            TcNo = request.TcNo,
-            Phone = request.Phone,
+            TcNo = tcNo,
+            Phone = phone,
             Email = email,
             Education = request.Education,
             StartDate = request.StartDate,
@@ -202,12 +213,20 @@ public sealed class StaffManagementService(
             MaritalStatus = request.MaritalStatus,
             ChildCount = request.ChildCount,
             Note = request.Note,
+            PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
             Role = parsedRole
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
         await dbContext.Staff.AddAsync(staff, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
 
         await auditLogService.LogAsync(
             "Personel kaydedildi",
@@ -224,6 +243,13 @@ public sealed class StaffManagementService(
     {
         var tenantId = ResolveCurrentTenantId()
             ?? throw new InvalidOperationException("Kurum baglami bulunamadi.");
+        var tcNo = SchoolRegistrationRules.NormalizeTcNo(request.TcNo);
+        var phone = (request.Phone ?? string.Empty).Trim();
+        if (phone.Length > 0 && !SchoolRegistrationRules.IsValidTrMobile(phone))
+        {
+            throw new InvalidOperationException("Telefon +90 5XX XXX XX XX biçiminde olmalıdır.");
+        }
+        await EnsureTcNoAvailableAsync(tenantId, tcNo, null, cancellationToken);
         var username = await usernameGenerator.GenerateAsync(
             tenantId,
             request.FullName,
@@ -239,6 +265,8 @@ public sealed class StaffManagementService(
             PrimaryRole = UserRole.Accounting,
             Campus = request.Campus,
             DepartmentOrBranch = "Muhasebe",
+            TcNo = tcNo,
+            PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
             MustChangePassword = true
         };
 
@@ -247,8 +275,8 @@ public sealed class StaffManagementService(
             TenantId = user.TenantId,
             UserId = user.Id,
             FullName = request.FullName,
-            TcNo = request.TcNo,
-            Phone = request.Phone,
+            TcNo = tcNo,
+            Phone = phone,
             Email = request.Email,
             Education = request.Education,
             StartDate = request.StartDate,
@@ -259,12 +287,20 @@ public sealed class StaffManagementService(
             MaritalStatus = request.MaritalStatus,
             ChildCount = request.ChildCount,
             Note = request.Note,
+            PhotoUrl = request.PhotoUrl?.Trim() ?? string.Empty,
             Role = UserRole.Accounting
         };
 
         await dbContext.Users.AddAsync(user, cancellationToken);
         await dbContext.Staff.AddAsync(staff, cancellationToken);
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
 
         return new StaffCredentialsDto(user.Id, user.FullName, user.Username, password, UserRole.Accounting.ToString());
     }
@@ -317,10 +353,12 @@ public sealed class StaffManagementService(
         staff.MaritalStatus = request.MaritalStatus;
         staff.ChildCount = request.ChildCount;
         staff.Note = request.Note;
+        if (request.PhotoUrl is not null) staff.PhotoUrl = request.PhotoUrl.Trim();
 
         user.FullName = request.FullName;
         user.Campus = request.Campus;
         user.DepartmentOrBranch = request.DepartmentOrBranch;
+        if (request.PhotoUrl is not null) user.PhotoUrl = request.PhotoUrl.Trim();
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -344,7 +382,27 @@ public sealed class StaffManagementService(
             staff.ChildCount,
             staff.Note,
             staff.StartDate,
-            staff.UserId);
+            staff.UserId,
+            staff.PhotoUrl);
+    }
+
+    private async Task EnsureTcNoAvailableAsync(Guid tenantId, string tcNo, Guid? excludedUserId, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrEmpty(tcNo)) return;
+
+        var usedByUser = await dbContext.Users.IgnoreQueryFilters().AnyAsync(
+            x => x.TenantId == tenantId && x.TcNo == tcNo && (!excludedUserId.HasValue || x.Id != excludedUserId.Value),
+            cancellationToken);
+        var usedByStudent = await dbContext.Students.IgnoreQueryFilters().AnyAsync(
+            x => x.TenantId == tenantId && x.TcNo == tcNo && (!excludedUserId.HasValue || x.UserId != excludedUserId.Value),
+            cancellationToken);
+        var usedByStaff = await dbContext.Staff.IgnoreQueryFilters().AnyAsync(
+            x => x.TenantId == tenantId && x.TcNo == tcNo && (!excludedUserId.HasValue || x.UserId != excludedUserId.Value),
+            cancellationToken);
+        if (usedByUser || usedByStudent || usedByStaff)
+        {
+            throw new InvalidOperationException("Bu TC kimlik numarasıyla kurumda daha önce kayıt oluşturulmuş.");
+        }
     }
 
     public async Task<bool> DeleteStaffByUserIdAsync(Guid userId, CancellationToken cancellationToken = default)

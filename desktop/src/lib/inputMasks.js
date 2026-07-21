@@ -57,7 +57,14 @@ export function maskTrPlate(value) {
 
 export function isValidTcKimlik(value) {
   const digits = maskTcKimlik(value);
-  return digits.length === 11 && !digits.startsWith('0');
+  if (digits.length !== 11 || digits.startsWith('0')) return false;
+  const d = digits.split('').map(Number);
+  const oddSum = d[0] + d[2] + d[4] + d[6] + d[8];   // 1, 3, 5, 7, 9. haneler
+  const evenSum = d[1] + d[3] + d[5] + d[7];          // 2, 4, 6, 8. haneler
+  const tenth = ((oddSum * 7 - evenSum) % 10 + 10) % 10;
+  if (tenth !== d[9]) return false;
+  const eleventh = (oddSum + evenSum + d[9]) % 10;
+  return eleventh === d[10];
 }
 
 export function isValidTrPhone(value) {

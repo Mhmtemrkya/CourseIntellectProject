@@ -10,6 +10,7 @@ import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
+import { IdentityCard } from '../../components/identity/IdentityCard';
 import { fetchStudents, fetchStaff } from '../../lib/api/modules';
 
 function normalizeText(value = '') {
@@ -228,21 +229,26 @@ export default function AdministrativeRecords() {
           </DialogHeader>
           {selectedRecord && selectedPayload ? (
             <div className="space-y-5">
-              <div className="rounded-[28px] border p-6 text-white" style={{ background: 'radial-gradient(circle at top left, hsl(var(--brand-accent) / 0.16), transparent 34%), linear-gradient(135deg, var(--brand-p-900, #0f172a) 0%, var(--brand-p-800, #12324a) 45%, var(--brand-p-700, #115e59) 100%)' }}>
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <Badge className="border-foreground/10 bg-foreground/15 text-white">{selectedRecord.type}</Badge>
-                    <h3 className="mt-4 text-2xl font-semibold">{selectedRecord.title}</h3>
-                    <p className="mt-2 text-sm text-foreground/80">{selectedRecord.detail}</p>
-                  </div>
-                  <div className="grid gap-2 text-right">
-                    <div className="rounded-2xl bg-foreground/10 p-4">
-                      {selectedRecord.type === 'Öğrenci' ? <School className="h-6 w-6" /> : selectedRecord.type === 'Personel' ? <BriefcaseBusiness className="h-6 w-6" /> : <Users className="h-6 w-6" />}
-                    </div>
-                    <span className="text-xs uppercase tracking-[0.18em] text-foreground/65">Detay Dosyası</span>
-                  </div>
-                </div>
-              </div>
+              <IdentityCard
+                type={`${selectedRecord.type} Kimlik Kartı`}
+                name={selectedRecord.title}
+                photoUrl={selectedPayload.photoUrl}
+                institution={selectedPayload.currentSchool || selectedPayload.campus}
+                subtitle={selectedRecord.detail}
+                status={selectedPayload.status || 'Aktif'}
+                fields={[
+                  { label: 'TC Kimlik No', value: selectedPayload.tcNo },
+                  { label: 'Okul No', value: selectedPayload.schoolNumber },
+                  { label: 'Kullanıcı Adı', value: selectedPayload.username },
+                  { label: 'Rol', value: selectedPayload.role || selectedRecord.type },
+                  { label: 'Sınıf / Birim', value: selectedPayload.className || selectedPayload.departmentOrBranch },
+                  { label: 'Telefon', value: selectedPayload.phone || selectedPayload.parentPhone },
+                  { label: 'E-posta', value: selectedPayload.email || selectedPayload.parentEmail, wide: true },
+                  { label: 'Bağlı Öğrenciler', value: selectedPayload.childNames?.join(', '), wide: true },
+                  { label: 'Adres', value: selectedPayload.address, wide: true },
+                  { label: 'Not', value: selectedPayload.note, wide: true },
+                ]}
+              />
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
                   <CardContent className="p-4">

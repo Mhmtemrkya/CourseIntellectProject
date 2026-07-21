@@ -123,8 +123,10 @@ const PATH_PERMISSIONS = {
   '/driving/dashboard': [DRIVING.dashboardView],
   '/driving/students/new': [DRIVING.studentCreate],
   '/driving/leads': [DRIVING.leadView, DRIVING.leadManage],
+  '/driving/students': [DRIVING.studentView],
   '/driving/assignments': [DRIVING.instructorAssignmentManage, DRIVING.instructorUpdate, DRIVING.settingsManage],
   '/driving/operations': [DRIVING.packageView, DRIVING.vehicleView],
+  '/driving/vehicles': [DRIVING.vehicleView],
   '/driving/hub': [DRIVING.appointmentView, DRIVING.studentView, DRIVING.lessonViewAll],
   '/driving/collection': [DRIVING.financeView, DRIVING.financeCollect],
   '/driving/scheduling': [DRIVING.appointmentView, DRIVING.studentView],
@@ -140,10 +142,13 @@ const PATH_PERMISSIONS = {
 };
 
 export function isDrivingPathAllowed(path, state) {
+  if (path === '/driving') return state?.moduleAvailable === true;
   const required = path.startsWith('/driving/mebbis/assistant/')
     ? [DRIVING.mebbisManage]
     : PATH_PERMISSIONS[path];
-  if (!required) return true; // sürücü kursu sayfası değil
+  // Yeni bir sürücü sayfası kataloğa eklenip izin eşlemesi unutulursa menüde
+  // kendiliğinden açılmasın. Sürücü dışı ortak yollar bu filtreden etkilenmez.
+  if (!required) return !path.startsWith('/driving/');
   if (!state) return false;
   return required.some((code) => state.permissions.has(code));
 }

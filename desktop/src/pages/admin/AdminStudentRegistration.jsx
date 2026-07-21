@@ -21,7 +21,7 @@ import { useApp } from '../../context/AppContext';
 import { createStudent, fetchClasses, fetchStudents, fetchStaff, fetchOrgUnits } from '../../lib/api/modules';
 import { downloadCredentialsPdf } from '../../lib/credentialsPdf';
 import {
-  isValidEmail, isValidTcKimlik, isValidTrPhone, maskDigits, maskEmail, maskTcKimlik, maskTrPhone,
+  isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
 } from '../../lib/inputMasks';
 
 const containerVariants = {
@@ -44,7 +44,6 @@ const emptyForm = {
   fullName: '',
   tcNo: '',
   className: '',
-  schoolNumber: '',
   birthDate: '',
   programType: 'Lise',
   parentName: '',
@@ -86,7 +85,7 @@ export default function AdminStudentRegistration() {
     if (step === 'personal') {
       if (!form.fullName.trim()) { toast({ title: 'Ad soyad zorunludur.', variant: 'destructive' }); return false; }
       if (!form.className) { toast({ title: 'Sınıf seçimi zorunludur.', variant: 'destructive' }); return false; }
-      if (form.tcNo && !isValidTcKimlik(form.tcNo)) { toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' }); return false; }
+      if (!isValidTcKimlik(form.tcNo)) { toast({ title: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' }); return false; }
     }
     if (step === 'parent') {
       if (form.parentPhone && !isValidTrPhone(form.parentPhone)) { toast({ title: 'Veli telefonu +90 5XX XXX XX XX biçiminde olmalıdır.', variant: 'destructive' }); return false; }
@@ -142,8 +141,8 @@ export default function AdminStudentRegistration() {
       toast({ title: 'Sınıf seçimi zorunludur.', variant: 'destructive' });
       return;
     }
-    if (form.tcNo && !isValidTcKimlik(form.tcNo)) {
-      toast({ title: 'TC kimlik no 11 rakam olmalıdır.', variant: 'destructive' });
+    if (!isValidTcKimlik(form.tcNo)) {
+      toast({ title: 'Geçerli bir TC kimlik numarası girin (11 haneli).', variant: 'destructive' });
       return;
     }
     if (form.parentPhone && !isValidTrPhone(form.parentPhone)) {
@@ -161,7 +160,7 @@ export default function AdminStudentRegistration() {
         tcNo: form.tcNo.trim(),
         className: form.className,
         currentSchool: tenantName,
-        schoolNumber: form.schoolNumber.trim(),
+        schoolNumber: '',
         birthDate: form.birthDate || '',
         programType: form.programType,
         parentName: form.parentName.trim(),
@@ -313,7 +312,7 @@ export default function AdminStudentRegistration() {
                       <Input value={form.fullName} onChange={(e) => handleChange('fullName', e.target.value)} placeholder="Örn: Ahmet Yılmaz" autoComplete="name" maxLength={100} />
                     </div>
                     <div>
-                      <Label>TC No</Label>
+                      <Label>TC No *</Label>
                       <Input value={form.tcNo} maxLength={11} onChange={(e) => handleChange('tcNo', maskTcKimlik(e.target.value))} inputMode="numeric" pattern="[0-9]{11}" placeholder="11 haneli kimlik no" />
                     </div>
                     <div>
@@ -331,7 +330,7 @@ export default function AdminStudentRegistration() {
                     </div>
                     <div>
                       <Label>Okul No</Label>
-                      <Input value={form.schoolNumber} maxLength={12} onChange={(e) => handleChange('schoolNumber', maskDigits(e.target.value, 12))} inputMode="numeric" placeholder="Yalnızca rakam" />
+                      <Input value="Kayıt sırasında otomatik oluşturulur" readOnly className="bg-muted cursor-not-allowed" />
                     </div>
                     <div>
                       <Label>Doğum Tarihi</Label>

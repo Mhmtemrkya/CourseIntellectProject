@@ -11,5 +11,6 @@ public sealed record UpdateStaffRequest(
     IReadOnlyList<string> AssignedClasses,
     string MaritalStatus,
     int ChildCount,
-    string Note
+    string Note,
+    string? PhotoUrl = null
 );

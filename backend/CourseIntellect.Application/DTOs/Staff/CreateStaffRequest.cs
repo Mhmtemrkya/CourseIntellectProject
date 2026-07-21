@@ -20,7 +20,8 @@ public sealed record CreateStaffRequest(
     Guid? BranchId = null,
     // Kurumun tanımladığı özel rol (opsiyonel). Verilirse Role = özel rolün BaseRole'ü
     // olmalı; kullanıcının modül erişimi bu rolün listesiyle sınırlanır.
-    Guid? CustomRoleId = null
+    Guid? CustomRoleId = null,
+    string? PhotoUrl = null
 );
 
 /// <summary>Var olan bir kullanıcının rol/şube/özel rol atamasını günceller.

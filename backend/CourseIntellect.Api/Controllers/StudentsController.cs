@@ -28,7 +28,14 @@ public sealed class StudentsController(
         [FromBody] CourseIntellect.Application.DTOs.Students.CreateStudentRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await academicQueryService.CreateStudentAsync(request, cancellationToken);
+        try
+        {
+            var result = await academicQueryService.CreateStudentAsync(
+                request,
+                cancellationToken,
+                requireTcNo: true,
+                linkExistingParent: true,
+                validateParentPhone: true);
 
         // Kayıt ücreti girildiyse otomatik sözleşme + taksit planı oluştur.
         if (request.EnrollmentGrossAmount is decimal gross && gross > 0)
@@ -52,7 +59,12 @@ public sealed class StudentsController(
                 cancellationToken);
         }
 
-        return CreatedAtAction(nameof(GetStudents), new { id = result.UserId }, result);
+            return CreatedAtAction(nameof(GetStudents), new { id = result.UserId }, result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:guid}")]
@@ -63,8 +75,15 @@ public sealed class StudentsController(
         [FromBody] CourseIntellect.Application.DTOs.Students.UpdateStudentRequest request,
         CancellationToken cancellationToken)
     {
-        var result = await academicQueryService.UpdateStudentAsync(id, request, cancellationToken);
-        return result is null ? NotFound(new { message = "Ogrenci bulunamadi." }) : Ok(result);
+        try
+        {
+            var result = await academicQueryService.UpdateStudentAsync(id, request, cancellationToken);
+            return result is null ? NotFound(new { message = "Ogrenci bulunamadi." }) : Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 
     [HttpDelete("{id:guid}")]

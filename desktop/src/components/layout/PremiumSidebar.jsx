@@ -17,6 +17,7 @@ import { useApp } from "../../context/AppContext";
 import { useTheme } from "../../context/ThemeContext";
 import { useLanguage } from "../../lib/i18n/LanguageContext";
 import { getDisabledFeatureKeys, isPathDisabled } from "../../lib/tenantFeatures";
+import { getDrivingPermissions, isDrivingPathAllowed, resetDrivingPermissionCache } from "../../lib/drivingPermissions";
 import { getInstitutionType, isModuleAllowedForInstitution, resetInstitutionTypeCache } from "../../lib/institutionType";
 import { getEntitlements, isModuleAllowed } from "../../lib/entitlements";
 import { getUserRoles, isPathVisibleForRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
@@ -145,6 +146,7 @@ export function PremiumSidebar() {
   // Kurum türü: sürücü kursunda okula özgü menüler (servis, yemekhane, nöbet,
   // veliler, kurs yönetimi, okul sınavları) gizlenir.
   const [institutionType, setInstitutionType] = useState(null);
+  const [drivingPermissions, setDrivingPermissions] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
   useEffect(() => {
@@ -185,6 +187,21 @@ export function PremiumSidebar() {
     };
   }, [user]);
 
+  useEffect(() => {
+    let active = true;
+    if (institutionType !== "DrivingSchool") {
+      setDrivingPermissions(null);
+      return () => { active = false; };
+    }
+    resetDrivingPermissionCache();
+    getDrivingPermissions().then((value) => {
+      if (active) setDrivingPermissions(value);
+    });
+    return () => {
+      active = false;
+    };
+  }, [institutionType, user]);
+
   const roles = useMemo(() => getUserRoles(user), [user]);
   const primaryRole = roles[0] || "student";
   const enabledModules = useMemo(
@@ -223,15 +240,24 @@ export function PremiumSidebar() {
     const institutionFilteredItems = featureFilteredItems.filter((item) =>
       isModuleAllowedForInstitution(inferModuleKey(item), institutionType, item.path),
     );
+    // Sürücü kursu menüsü rol adına göre değil, backend'in hesapladığı ince
+    // taneli driving.* izinlerine göre daralır. Böylece sekreter, muhasebe,
+    // filo sorumlusu ve eğitmen yalnızca gerçekten açabildiği sayfaları görür.
+    const permissionFilteredItems =
+      institutionType === "DrivingSchool"
+        ? institutionFilteredItems.filter((item) =>
+            isDrivingPathAllowed(item.path, drivingPermissions),
+          )
+        : institutionFilteredItems;
     // Paket yetkisi: kurumun paketi bu rol için modülü içermiyorsa menüden gizle.
     const visibleItems =
       entitlements && !entitlements.unrestricted
-        ? institutionFilteredItems.filter((item) => {
+        ? permissionFilteredItems.filter((item) => {
             const moduleKey = inferModuleKey(item);
             if (!moduleKey || moduleKey === "profile" || moduleKey === "system") return true;
             return isModuleAllowed(entitlements, primaryRole, moduleKey);
           })
-        : institutionFilteredItems;
+        : permissionFilteredItems;
     // Sürücü kursunda "Sorular" (öğrenci→öğretmen thread akışı) kullanılmıyor;
     // menü ehliyet SORU BANKASINA yönlenir. Böylece bulk-yükleme ile eklenen
     // sorular aynı yerde görünür ('questions' modülü her zaman açık olduğundan
@@ -249,6 +275,7 @@ export function PremiumSidebar() {
     disabledFeatures,
     entitlements,
     institutionType,
+    drivingPermissions,
     enabledModules,
     primaryRole,
     roles,
