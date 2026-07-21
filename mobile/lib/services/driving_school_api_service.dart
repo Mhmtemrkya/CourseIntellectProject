@@ -360,6 +360,20 @@ class DrivingSchoolApiService {
   Future<List<Map<String, dynamic>>> vehicles() async => ((await _getList(
     '/api/driving-school/vehicles',
   )).cast<Map<String, dynamic>>());
+
+  // Peşinatı beklenen (tahsil edilmemiş) sözleşmeler — student-finance ucundan.
+  Future<List<Map<String, dynamic>>> pendingDownPayments() async =>
+      (await _getList('/api/student-finance/pending-down-payments'))
+          .cast<Map<String, dynamic>>();
+
+  // Bekleyen peşinatı makbuzlu tahsil eder ve sözleşmeyi "ödendi" işaretler.
+  Future<Map<String, dynamic>> collectDownPayment(
+    String contractId,
+    String method,
+  ) => _post(
+    '/api/student-finance/contracts/$contractId/collect-down-payment',
+    {'method': method},
+  );
   Future<List<dynamic>> _getList(String path) async {
     final session = await AuthSessionStore.instance.load();
     if (session == null) throw StateError('Oturum bulunamadı.');

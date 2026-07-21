@@ -46,6 +46,8 @@ class _AdminStudentRegistrationPageState
 
   String _programType = 'Lise';
   String _downPaymentMethod = 'Nakit';
+  // Peşinat kayıtta tahsil edildi mi? false → makbuz kesilmez, "bekliyor" olur.
+  bool _downPaymentPaid = true;
   List<String> _classOptions = const [];
   List<Map<String, dynamic>> _branches = const [];
   String? _branchId;
@@ -421,6 +423,44 @@ class _AdminStudentRegistrationPageState
                         setState(() => _downPaymentMethod = value ?? 'Nakit'),
                   ),
                   const SizedBox(height: 12),
+                  Text(
+                    'Peşinat Durumu'.tr,
+                    style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _DownPaymentStatusButton(
+                          label: 'Ödendi'.tr,
+                          icon: Icons.check_circle,
+                          color: Colors.green,
+                          selected: _downPaymentPaid,
+                          onTap: () => setState(() => _downPaymentPaid = true),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _DownPaymentStatusButton(
+                          label: 'Ödenmedi'.tr,
+                          icon: Icons.cancel,
+                          color: Colors.red,
+                          selected: !_downPaymentPaid,
+                          onTap: () => setState(() => _downPaymentPaid = false),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      _downPaymentPaid
+                          ? 'Kayıtta tahsil edildi; makbuz kesilir.'.tr
+                          : 'Tahsil edilmedi; “Peşinat Bekleyenler” listesinde görünür.'.tr,
+                      style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
                   _buildField(
                     controller: _academicYearController,
                     label: 'Akademik Yıl (örn: 2025-2026)'.tr,
@@ -653,6 +693,9 @@ class _AdminStudentRegistrationPageState
         enrollmentDownPayment: double.tryParse(_downPaymentController.text.trim()),
         enrollmentDownPaymentMethod:
             _downPaymentController.text.trim().isEmpty ? null : _downPaymentMethod,
+        // Peşinat girildiyse ödendi/ödenmedi; peşinat yoksa anlamsız (true).
+        enrollmentDownPaymentPaid:
+            _downPaymentController.text.trim().isEmpty ? true : _downPaymentPaid,
         enrollmentInstallmentCount:
             int.tryParse(_installmentCountController.text.trim()),
         branchId: (_branchId != null && _branchId!.isNotEmpty) ? _branchId : null,
@@ -1012,5 +1055,55 @@ class _AdminStudentRegistrationPageState
         ),
       );
     }
+  }
+}
+
+/// Peşinat ödendi/ödenmedi seçim düğmesi (tik / çarpı).
+class _DownPaymentStatusButton extends StatelessWidget {
+  const _DownPaymentStatusButton({
+    required this.label,
+    required this.icon,
+    required this.color,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final Color color;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: selected ? color : Colors.grey.shade300,
+            width: selected ? 1.5 : 1,
+          ),
+          color: selected ? color.withValues(alpha: 0.10) : null,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 18, color: selected ? color : Colors.grey.shade500),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: selected ? color : Colors.grey.shade600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { AlertTriangle, CheckCircle2, Download, ExternalLink, FileCheck2, FolderPlus, GraduationCap, Layers, Plus, Search, UserPlus, Users, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, ExternalLink, FileCheck2, FolderPlus, GraduationCap, Layers, Plus, Search, UserPlus, Users, X, XCircle } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
@@ -11,10 +11,11 @@ import { useToast } from '../../hooks/use-toast';
 import {
   assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster, downloadDrivingTermReport,
   fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
-  setDrivingMebbisEntered,
+  fetchPendingDownPayments, setDrivingMebbisEntered,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import { assetUrl } from '../../lib/assetUrl';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif',
@@ -44,7 +45,7 @@ function PhotoTile({ url, label, fallback }) {
   return (
     <div className="flex flex-col items-center gap-1">
       {url
-        ? <img src={url} alt={label} className="h-24 w-24 rounded-xl border object-cover" />
+        ? <img src={assetUrl(url)} alt={label} className="h-24 w-24 rounded-xl border object-cover" />
         : <div className="flex h-24 w-24 items-center justify-center rounded-xl border bg-muted text-2xl font-black text-muted-foreground">{fallback || '?'}</div>}
       <span className="text-[10px] font-bold uppercase tracking-wide text-muted-foreground">{label}</span>
     </div>
@@ -288,16 +289,21 @@ export default function DrivingStudents() {
   const [assignTarget, setAssignTarget] = useState('');
   const [assigning, setAssigning] = useState(false);
 
+  // Peşinatı beklenen kursiyerler: liste profileId taşıdığından ada göre eşleştirilir.
+  const [pendingNames, setPendingNames] = useState(() => new Set());
+
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
     try {
-      const [studentList, groupData] = await Promise.all([
+      const [studentList, groupData, pending] = await Promise.all([
         fetchDrivingStudents(),
         fetchDrivingStudentGroups().catch(() => null),
+        fetchPendingDownPayments().catch(() => []),
       ]);
       setStudents(studentList || []);
       setGroups(groupData?.groups || []);
       setUngroupedCount(groupData?.ungroupedCount ?? 0);
+      setPendingNames(new Set((pending || []).map((row) => String(row.studentName || '').trim().toLocaleLowerCase('tr-TR'))));
     } catch (error) {
       toast({ title: 'Kursiyerler alınamadı', description: error.message, variant: 'destructive' });
     } finally {
@@ -587,6 +593,9 @@ export default function DrivingStudents() {
                 </div>
                 <div className="flex shrink-0 flex-col items-end gap-1">
                   <Badge className="border-0 bg-violet-500/15 text-violet-600">{STATUS_LABELS[student.status] || student.status}</Badge>
+                  {pendingNames.has(String(student.fullName || '').trim().toLocaleLowerCase('tr-TR')) ? (
+                    <Badge className="border-0 bg-red-500/15 text-red-600"><XCircle className="mr-1 h-3 w-3" />Peşinat bekliyor</Badge>
+                  ) : null}
                   <span className="text-xs text-muted-foreground">{student.remainingDrivingMinutes} dk kaldı</span>
                 </div>
               </button>

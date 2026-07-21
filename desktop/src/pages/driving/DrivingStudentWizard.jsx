@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, ArrowRight, BadgeCheck, CalendarClock, Camera, CheckCircle2, CreditCard,
-  FileCheck2, IdCard, KeyRound, Loader2, Save, ShieldCheck, Upload, UserRound, X,
+  FileCheck2, IdCard, KeyRound, Loader2, Save, ShieldCheck, Upload, UserRound, X, XCircle,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
@@ -16,6 +16,7 @@ import {
   uploadFile,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { assetUrl } from '../../lib/assetUrl';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 
@@ -58,7 +59,7 @@ const emptyForm = {
   prefersMorning: false, prefersMidday: false, prefersEvening: false, accessibilityNotes: '',
   kvkkConsent: false, communicationConsent: false, signatureUrl: '', note: '',
   theoryExamFee: 0, drivingExamFee: 0, theoryExamFeePaid: false, drivingExamFeePaid: false,
-  finance: { grossAmount: 0, discountAmount: 0, discountReason: '', downPayment: 0, installmentCount: 0, firstInstallmentDate: '', downPaymentMethod: 'Nakit' },
+  finance: { grossAmount: 0, discountAmount: 0, discountReason: '', downPayment: 0, downPaymentPaid: true, installmentCount: 0, firstInstallmentDate: '', downPaymentMethod: 'Nakit' },
   documents: [],
 };
 
@@ -149,7 +150,7 @@ function WebcamCapture({ value, onCaptured, onClear, folder = 'driving-student-p
   if (value) {
     return (
       <div className="flex items-center gap-3">
-        <img src={value} alt="Anlık fotoğraf" className="h-24 w-24 rounded-xl border object-cover" />
+        <img src={assetUrl(value)} alt="Anlık fotoğraf" className="h-24 w-24 rounded-xl border object-cover" />
         <div className="flex flex-col gap-2">
           <Button type="button" variant="outline" size="sm" onClick={start}><Camera className="mr-2 h-4 w-4" />Yeniden çek</Button>
           <Button type="button" variant="ghost" size="sm" onClick={onClear}><X className="mr-2 h-4 w-4" />Kaldır</Button>
@@ -462,6 +463,8 @@ export default function DrivingStudentWizard() {
               installmentCount: Number(form.finance.installmentCount) || 0,
               firstInstallmentDate: form.finance.firstInstallmentDate ? new Date(form.finance.firstInstallmentDate).toISOString() : null,
               downPaymentMethod: form.finance.downPaymentMethod,
+              // Peşinat girildiyse ödendi/ödenmedi durumu; peşinat yoksa anlamsız (true).
+              downPaymentPaid: Number(form.finance.downPayment) > 0 ? !!form.finance.downPaymentPaid : true,
             }
           : null,
       };
@@ -729,7 +732,7 @@ export default function DrivingStudentWizard() {
               <Field label="Acil durum telefonu"><Input value={form.emergencyContactPhone} onChange={(e) => set({ emergencyContactPhone: e.target.value })} /></Field>
               <Field label="Biyografik fotoğraf" hint="Dosyadan yüklenen vesikalık.">
                 <div className="flex items-center gap-3">
-                  {form.photoUrl && <img src={form.photoUrl} alt="Biyografik" className="h-24 w-24 rounded-xl border object-cover" />}
+                  {form.photoUrl && <img src={assetUrl(form.photoUrl)} alt="Biyografik" className="h-24 w-24 rounded-xl border object-cover" />}
                   <Input type="file" accept=".jpg,.jpeg,.png" disabled={uploading} onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
@@ -897,11 +900,33 @@ export default function DrivingStudentWizard() {
                 <Field label="İndirim (₺)"><Input type="number" min="0" value={form.finance.discountAmount} onChange={(e) => set({ finance: { ...form.finance, discountAmount: e.target.value } })} /></Field>
                 <Field label="İndirim nedeni"><Input value={form.finance.discountReason} onChange={(e) => set({ finance: { ...form.finance, discountReason: e.target.value } })} /></Field>
                 <Field label="Peşinat (₺)"><Input type="number" min="0" value={form.finance.downPayment} onChange={(e) => set({ finance: { ...form.finance, downPayment: e.target.value } })} /></Field>
-                <Field label="Peşinat yöntemi">
-                  <select className={selectClass} value={form.finance.downPaymentMethod} onChange={(e) => set({ finance: { ...form.finance, downPaymentMethod: e.target.value } })}>
-                    <option value="Nakit">Nakit</option><option value="Kart">Kart</option><option value="Havale">Havale</option>
-                  </select>
-                </Field>
+                {Number(form.finance.downPayment) > 0 ? (
+                  <Field label="Peşinat durumu" hint={form.finance.downPaymentPaid ? 'Kayıtta tahsil edildi; makbuz kesilir.' : 'Tahsil edilmedi; “Peşinat Bekleyenler”de görünür.'}>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => set({ finance: { ...form.finance, downPaymentPaid: true } })}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition ${form.finance.downPaymentPaid ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-foreground/15 text-muted-foreground hover:bg-foreground/5'}`}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />Ödendi
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => set({ finance: { ...form.finance, downPaymentPaid: false } })}
+                        className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold transition ${!form.finance.downPaymentPaid ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-foreground/15 text-muted-foreground hover:bg-foreground/5'}`}
+                      >
+                        <XCircle className="h-4 w-4" />Ödenmedi
+                      </button>
+                    </div>
+                  </Field>
+                ) : <div className="hidden sm:block" />}
+                {Number(form.finance.downPayment) > 0 && form.finance.downPaymentPaid ? (
+                  <Field label="Peşinat yöntemi">
+                    <select className={selectClass} value={form.finance.downPaymentMethod} onChange={(e) => set({ finance: { ...form.finance, downPaymentMethod: e.target.value } })}>
+                      <option value="Nakit">Nakit</option><option value="Kart">Kart</option><option value="Havale">Havale</option>
+                    </select>
+                  </Field>
+                ) : null}
                 <Field label="Taksit sayısı"><Input type="number" min="0" max="36" value={form.finance.installmentCount} onChange={(e) => set({ finance: { ...form.finance, installmentCount: e.target.value } })} /></Field>
                 <Field label="İlk taksit tarihi"><Input type="date" value={form.finance.firstInstallmentDate} onChange={(e) => set({ finance: { ...form.finance, firstInstallmentDate: e.target.value } })} /></Field>
 

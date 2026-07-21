@@ -595,6 +595,32 @@ export default function FinanceDashboard() {
           </PremiumPanel>
         </motion.div>
 
+        {finance?.pendingDownPaymentCount > 0 ? (
+          <motion.div variants={itemVariants}>
+            <Card className="border-amber-300 dark:border-amber-800">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <AlertCircle className="h-5 w-5 text-amber-500" />
+                    Peşinat Bekleyenler
+                  </CardTitle>
+                  <CardDescription>Kayıtta peşinatı tahsil edilmemiş sözleşmeler</CardDescription>
+                </div>
+                <Badge className="bg-amber-100 text-amber-700">{finance.pendingDownPaymentCount} Kayıt</Badge>
+              </CardHeader>
+              <CardContent className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">Beklenen toplam peşinat</p>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-amber-600">₺{parseMoney(finance.pendingDownPaymentTotal).toLocaleString('tr-TR')}</p>
+                  <Button asChild variant="outline" size="sm" className="mt-1 h-7 text-xs">
+                    <Link to="/finance/student-accounts">Peşinatları Tahsil Et</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ) : null}
+
         <motion.div variants={itemVariants}>
           <Card className="border-red-200 dark:border-red-800">
             <CardHeader className="flex flex-row items-center justify-between">

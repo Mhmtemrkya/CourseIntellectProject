@@ -54,7 +54,8 @@ public sealed class StudentsController(
                     null,
                     "TRY",
                     "Kayıt sırasında oluşturuldu",
-                    request.EnrollmentDownPaymentMethod),
+                    request.EnrollmentDownPaymentMethod,
+                    request.EnrollmentDownPaymentPaid),
                 CurrentUserId(),
                 cancellationToken);
         }

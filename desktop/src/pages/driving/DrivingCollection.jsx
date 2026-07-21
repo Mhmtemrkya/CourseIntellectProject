@@ -9,6 +9,7 @@ import {
   fetchDrivingBranches, fetchDrivingCollectionList, fetchDrivingInstallments, fetchDrivingStudentGroups, recordDrivingPayment,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import PendingDownPayments from '../../components/finance/PendingDownPayments';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
 const STATUS_LABELS = {
@@ -193,6 +194,8 @@ export default function DrivingCollection() {
         <DrivingStatCard label="Gecikmiş tutar" value={money(totals.overdue)} caption="Vadesi geçmiş" icon={AlertTriangle} tone="amber" />
         <DrivingStatCard label="Gecikmiş kursiyer" value={totals.overdueCount} caption="En az bir gecikmiş taksit" icon={Clock} tone="violet" />
       </div>
+
+      <PendingDownPayments onCollected={() => load(true)} />
 
       <div className="flex flex-wrap items-center gap-2">
         {BUCKETS.map((b) => (

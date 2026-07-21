@@ -21,6 +21,7 @@ import {
 } from '../../lib/api/modules';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { assetUrl } from '../../lib/assetUrl';
 import {
   DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
   evaluationScores, lessonAverage,
@@ -439,7 +440,7 @@ export default function DrivingStudentDetail() {
         <div className="flex items-start gap-4">
           <Button variant="outline" size="icon" onClick={() => navigate('/driving/students')}><ArrowLeft className="h-4 w-4" /></Button>
           {(overview.livePhotoUrl || overview.photoUrl)
-            ? <img src={overview.livePhotoUrl || overview.photoUrl} alt={overview.fullName} className="h-16 w-16 rounded-2xl object-cover" />
+            ? <img src={assetUrl(overview.livePhotoUrl || overview.photoUrl)} alt={overview.fullName} className="h-16 w-16 rounded-2xl object-cover" />
             : <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted text-xl font-black">{overview.fullName?.[0]}</div>}
           <div>
             <h1 className="flex items-center gap-2 text-3xl font-bold font-heading tracking-tight">
@@ -514,7 +515,7 @@ export default function DrivingStudentDetail() {
                 {[['Biyometrik fotoğraf', overview.photoUrl], ['Anlık fotoğraf (web kamera)', overview.livePhotoUrl]].map(([label, url]) => (
                   <div key={label} className="flex flex-col items-center gap-2">
                     {url
-                      ? <img src={url} alt={label} className="h-44 w-36 rounded-xl border object-cover shadow-sm" />
+                      ? <img src={assetUrl(url)} alt={label} className="h-44 w-36 rounded-xl border object-cover shadow-sm" />
                       : (
                         <div className="flex h-44 w-36 items-center justify-center rounded-xl border border-dashed bg-muted/40 text-3xl font-black text-muted-foreground">
                           {overview.fullName?.[0] || '?'}

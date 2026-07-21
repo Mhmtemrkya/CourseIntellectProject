@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../i18n/app_locale.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
 import 'driving_document_review_queue_page.dart';
@@ -19,15 +20,38 @@ class DrivingSchoolDashboardPage extends StatefulWidget {
 class _DrivingSchoolDashboardPageState
     extends State<DrivingSchoolDashboardPage> {
   late Future<Map<String, dynamic>> _future;
+  // Peşinatı beklenen sözleşmeler (dashboard payload'ında yok, ayrı finans ucu).
+  List<Map<String, dynamic>> _pending = [];
 
   @override
   void initState() {
     super.initState();
     _future = DrivingSchoolApiService.instance.dashboard();
+    _loadPending();
   }
 
-  void _reload() =>
-      setState(() => _future = DrivingSchoolApiService.instance.dashboard());
+  Future<void> _loadPending() async {
+    try {
+      final pending = await DrivingSchoolApiService.instance
+          .pendingDownPayments();
+      if (mounted) setState(() => _pending = pending);
+    } catch (_) {
+      if (mounted) setState(() => _pending = []);
+    }
+  }
+
+  void _reload() {
+    setState(() => _future = DrivingSchoolApiService.instance.dashboard());
+    _loadPending();
+  }
+
+  String _pesinatTotal() {
+    final total = _pending.fold<double>(
+      0,
+      (sum, r) => sum + ((r['downPayment'] as num?)?.toDouble() ?? 0),
+    );
+    return '₺${total.toStringAsFixed(0)}';
+  }
 
   @override
   Widget build(BuildContext context) => FutureBuilder<Map<String, dynamic>>(
@@ -87,6 +111,58 @@ class _DrivingSchoolDashboardPageState
                 ),
               ),
             ),
+            if (_pending.isNotEmpty)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                  child: Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.amber.withValues(alpha: 0.45),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.orange,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${'Peşinat Bekleyenler'.tr} · ${_pending.length}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              Text(
+                                'Kayıtta peşinatı tahsil edilmemiş kursiyerler.'.tr,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey.shade600,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          _pesinatTotal(),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w900,
+                            color: Colors.orange,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
               sliver: SliverGrid.count(

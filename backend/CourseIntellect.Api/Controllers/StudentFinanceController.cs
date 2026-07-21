@@ -70,6 +70,29 @@ public sealed class StudentFinanceController(
         return Ok(await studentFinanceService.GetDashboardAsync(className, cancellationToken));
     }
 
+    // Peşinatı beklenen (tahsil edilmemiş) sözleşmeler — tahsilat ekranı listesi.
+    [HttpGet("pending-down-payments")]
+    public async Task<IActionResult> GetPendingDownPayments(CancellationToken cancellationToken)
+    {
+        return Ok(await studentFinanceService.GetPendingDownPaymentsAsync(cancellationToken));
+    }
+
+    // Bekleyen peşinatı makbuzlu tahsil eder ve sözleşmeyi "ödendi" işaretler.
+    [HttpPost("contracts/{contractId:guid}/collect-down-payment")]
+    [RequireEntitlement("collections", "collect")]
+    public async Task<IActionResult> CollectDownPayment(Guid contractId, [FromBody] CollectDownPaymentRequest? request, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await studentFinanceService.CollectDownPaymentAsync(contractId, request?.Method, CurrentUserId(), cancellationToken);
+            return Ok(result);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     [HttpPost("refunds")]
     [RequireEntitlement("collections", "refund")]
     public async Task<IActionResult> Refund([FromBody] RefundRequest request, CancellationToken cancellationToken)

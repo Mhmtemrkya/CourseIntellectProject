@@ -220,7 +220,8 @@ public sealed class DrivingStudentsController(
                     FirstInstallmentDate: finance.FirstInstallmentDate,
                     Currency: "TRY",
                     Note: $"Sürücü kursu paketi: {package.Name}",
-                    DownPaymentMethod: finance.DownPaymentMethod),
+                    DownPaymentMethod: finance.DownPaymentMethod,
+                    DownPaymentPaid: finance.DownPaymentPaid),
                 actorId,
                 ct);
 
@@ -1839,7 +1840,9 @@ public sealed record DrivingWizardFinance(
     decimal DownPayment,
     int InstallmentCount,
     DateTime? FirstInstallmentDate,
-    string? DownPaymentMethod);
+    string? DownPaymentMethod,
+    // Peşinat kayıt anında tahsil edildi mi? false → makbuz kesilmez, "bekliyor" olur.
+    bool DownPaymentPaid = true);
 
 /// <summary>
 /// Belge türü ve durum, tel üzerinde ADIYLA taşınır ("Identity", "Active"): sayısal

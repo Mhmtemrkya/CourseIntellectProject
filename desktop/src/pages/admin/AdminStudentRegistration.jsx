@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { UserPlus, Save, Copy, ChevronLeft, ChevronRight } from 'lucide-react';
+import { UserPlus, Save, Copy, ChevronLeft, ChevronRight, CheckCircle2, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
@@ -58,6 +58,7 @@ const emptyForm = {
   enrollmentDiscountReason: '',
   enrollmentDownPayment: '',
   enrollmentDownPaymentMethod: 'Nakit',
+  enrollmentDownPaymentPaid: true,
   enrollmentInstallmentCount: '',
 };
 
@@ -175,6 +176,8 @@ export default function AdminStudentRegistration() {
         enrollmentDiscountReason: form.enrollmentDiscountReason.trim() || null,
         enrollmentDownPayment: form.enrollmentDownPayment ? Number(form.enrollmentDownPayment) : null,
         enrollmentDownPaymentMethod: form.enrollmentDownPayment ? (form.enrollmentDownPaymentMethod || 'Nakit') : null,
+        // Peşinat girildiyse ödendi/ödenmedi; peşinat yoksa anlamsız (true).
+        enrollmentDownPaymentPaid: form.enrollmentDownPayment ? !!form.enrollmentDownPaymentPaid : true,
         enrollmentInstallmentCount: form.enrollmentInstallmentCount ? Number(form.enrollmentInstallmentCount) : null,
       }, branchId || undefined);
       const studentInfo = {
@@ -420,19 +423,42 @@ export default function AdminStudentRegistration() {
                         <Label>Peşinat (₺)</Label>
                         <Input type="number" min="0" value={form.enrollmentDownPayment} onChange={(e) => handleChange('enrollmentDownPayment', e.target.value)} placeholder="Örn: 10000" />
                       </div>
-                      <div>
-                        <Label>Peşinat Ödeme Yöntemi</Label>
-                        <select
-                          value={form.enrollmentDownPaymentMethod}
-                          onChange={(e) => handleChange('enrollmentDownPaymentMethod', e.target.value)}
-                          disabled={!form.enrollmentDownPayment}
-                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          <option value="Nakit">Nakit</option>
-                          <option value="Kart">Kart / POS</option>
-                          <option value="Havale">Havale / EFT</option>
-                        </select>
-                      </div>
+                      {form.enrollmentDownPayment ? (
+                        <div>
+                          <Label>Peşinat Durumu</Label>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={() => handleChange('enrollmentDownPaymentPaid', true)}
+                              className={`flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border text-sm font-semibold transition ${form.enrollmentDownPaymentPaid ? 'border-emerald-500 bg-emerald-500/10 text-emerald-600' : 'border-input text-muted-foreground hover:bg-muted/50'}`}
+                            >
+                              <CheckCircle2 className="h-4 w-4" />Ödendi
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleChange('enrollmentDownPaymentPaid', false)}
+                              className={`flex h-10 flex-1 items-center justify-center gap-1.5 rounded-md border text-sm font-semibold transition ${!form.enrollmentDownPaymentPaid ? 'border-red-500 bg-red-500/10 text-red-600' : 'border-input text-muted-foreground hover:bg-muted/50'}`}
+                            >
+                              <XCircle className="h-4 w-4" />Ödenmedi
+                            </button>
+                          </div>
+                          <p className="mt-1 text-xs text-muted-foreground">{form.enrollmentDownPaymentPaid ? 'Kayıtta tahsil edildi; makbuz kesilir.' : 'Tahsil edilmedi; “Peşinat Bekleyenler” listesinde görünür.'}</p>
+                        </div>
+                      ) : null}
+                      {form.enrollmentDownPayment && form.enrollmentDownPaymentPaid ? (
+                        <div>
+                          <Label>Peşinat Ödeme Yöntemi</Label>
+                          <select
+                            value={form.enrollmentDownPaymentMethod}
+                            onChange={(e) => handleChange('enrollmentDownPaymentMethod', e.target.value)}
+                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+                          >
+                            <option value="Nakit">Nakit</option>
+                            <option value="Kart">Kart / POS</option>
+                            <option value="Havale">Havale / EFT</option>
+                          </select>
+                        </div>
+                      ) : null}
                       <div>
                         <Label>Taksit Sayısı</Label>
                         <Input type="number" min="0" max="48" value={form.enrollmentInstallmentCount} onChange={(e) => handleChange('enrollmentInstallmentCount', e.target.value)} placeholder="Örn: 10" />

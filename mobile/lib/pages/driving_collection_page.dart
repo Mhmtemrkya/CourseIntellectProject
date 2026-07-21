@@ -43,6 +43,8 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
   String _groupId = 'all';
   String _search = '';
   bool _canCollect = false;
+  // Peşinatı beklenen (tahsil edilmemiş) sözleşmeler.
+  List<Map<String, dynamic>> _pending = [];
 
   @override
   void initState() {
@@ -74,11 +76,18 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
       } catch (_) {
         groupData = null;
       }
+      List<Map<String, dynamic>> pending;
+      try {
+        pending = await _service.pendingDownPayments();
+      } catch (_) {
+        pending = <Map<String, dynamic>>[];
+      }
       if (!mounted) return;
       setState(() {
         _rows = rows;
         _branches = branches;
         _canCollect = perms.can(DrivingPermissions.financeCollect);
+        _pending = pending;
         _groups = ((groupData?['groups'] as List?) ?? const [])
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
@@ -216,6 +225,123 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
     if (done == true) _load();
   }
 
+  Future<void> _collectPending(Map<String, dynamic> row) async {
+    var method = 'Nakit';
+    final messenger = ScaffoldMessenger.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setD) => AlertDialog(
+          title: Text('${'Peşinatı Tahsil Et'.tr} — ${row['studentName']}'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  '${'Beklenen peşinat'.tr}: ${_money(row['downPayment'])}',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: method,
+                isExpanded: true,
+                decoration: InputDecoration(
+                  labelText: 'Ödeme yöntemi'.tr,
+                  border: const OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Nakit', child: Text('Nakit')),
+                  DropdownMenuItem(value: 'Kart', child: Text('Kart / POS')),
+                  DropdownMenuItem(value: 'Havale', child: Text('Havale / EFT')),
+                ],
+                onChanged: (v) => setD(() => method = v ?? 'Nakit'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(dialogContext, false), child: Text('Vazgeç'.tr)),
+            FilledButton(onPressed: () => Navigator.pop(dialogContext, true), child: Text('Tahsil Et'.tr)),
+          ],
+        ),
+      ),
+    );
+    if (confirmed != true) return;
+    try {
+      await _service.collectDownPayment('${row['contractId']}', method);
+      messenger.showSnackBar(
+        SnackBar(content: Text('Peşinat tahsil edildi — makbuz kesildi.'.tr)),
+      );
+      _load();
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('$e')));
+    }
+  }
+
+  Widget _buildPendingDownPayments() {
+    final total = _pending.fold<double>(
+      0,
+      (sum, r) => sum + ((r['downPayment'] as num?)?.toDouble() ?? 0),
+    );
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.red.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.30)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.cancel, color: Colors.red, size: 20),
+              const SizedBox(width: 6),
+              Text('Peşinat Bekleyenler'.tr, style: const TextStyle(fontWeight: FontWeight.w800)),
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text('${_pending.length}', style: const TextStyle(color: Colors.red, fontWeight: FontWeight.w800, fontSize: 12)),
+              ),
+              const Spacer(),
+              Text(_money(total), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ..._pending.map((row) => Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('${row['studentName']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+                          Text(
+                            '${'Beklenen'.tr}: ${_money(row['downPayment'])}${(row['className'] ?? '').toString().isNotEmpty ? ' • ${row['className']}' : ''}',
+                            style: const TextStyle(fontSize: 12, color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_canCollect)
+                      FilledButton.tonal(
+                        onPressed: () => _collectPending(row),
+                        child: Text('Tahsil Et'.tr),
+                      ),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DrivingScaffold(
@@ -229,6 +355,10 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
               child: ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
+                  if (_pending.isNotEmpty) ...[
+                    _buildPendingDownPayments(),
+                    const SizedBox(height: 12),
+                  ],
                   TextField(
                     onChanged: (v) => setState(() => _search = v),
                     decoration: InputDecoration(

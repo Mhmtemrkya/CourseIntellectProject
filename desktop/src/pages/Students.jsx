@@ -10,6 +10,7 @@ import {
   Phone,
   ChevronUp,
   ChevronDown,
+  XCircle,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { FeatureGate } from '../components/FeatureGate';
@@ -56,7 +57,7 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../components/ui/shee
 import { ErrorBanner } from '../components/ui/AlertBanner';
 import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
-import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents, updateStudent, updateUserStatus } from '../lib/api/modules';
+import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchPendingDownPayments, fetchStudents, updateStudent, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { assetUrl } from '../lib/assetUrl';
 import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
@@ -502,21 +503,25 @@ export default function Students() {
   const [activating, setActivating] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // Peşinatı beklenen öğrenciler (studentUserId = student.id) → kırmızı rozet.
+  const [pendingPesinatIds, setPendingPesinatIds] = useState(() => new Set());
 
   const loadStudents = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
-      const [studentList, attendanceList, examList, classList] = await Promise.all([
+      const [studentList, attendanceList, examList, classList, pending] = await Promise.all([
         fetchStudents(),
         fetchAttendance().catch(() => []),
         fetchExamResults().catch(() => []),
         fetchClasses().catch(() => []),
+        fetchPendingDownPayments().catch(() => []),
       ]);
       setStudents(studentList);
       setAttendance(attendanceList);
       setExamResults(examList);
       setClassNames(Array.isArray(classList) ? classList : []);
+      setPendingPesinatIds(new Set((pending || []).map((row) => row.studentUserId).filter(Boolean)));
     } catch (err) {
       setError(err.message || 'Öğrenci listesi alınamadı.');
     } finally {
@@ -732,6 +737,9 @@ export default function Students() {
                       <div>
                         <p className="font-medium">{student.fullName}</p>
                         <p className="text-sm text-muted-foreground">{student.parentEmail || student.username}</p>
+                        {pendingPesinatIds.has(student.id) ? (
+                          <Badge className="mt-1 border-0 bg-red-100 text-red-700"><XCircle className="mr-1 h-3 w-3" />Peşinat bekliyor</Badge>
+                        ) : null}
                       </div>
                     </div>
                   </TableCell>

@@ -14,7 +14,10 @@ public sealed record CreateEnrollmentRequest(
     string? Currency,
     string? Note,
     // Peşinatın ödeme yöntemi (Nakit/Kart/Havale); boşsa "Nakit" varsayılır.
-    string? DownPaymentMethod = null);
+    string? DownPaymentMethod = null,
+    // Peşinat kayıt anında tahsil edildi mi? false → makbuz kesilmez, peşinat
+    // "bekliyor" olarak sözleşmede durur. Varsayılan true (geriye dönük uyum).
+    bool DownPaymentPaid = true);
 
 public sealed record RecordPaymentRequest(
     Guid? StudentUserId,
@@ -61,11 +64,26 @@ public sealed record EnrollmentContractDto(
     string DiscountReason,
     decimal NetAmount,
     decimal DownPayment,
+    bool DownPaymentPaid,
     int InstallmentCount,
     string Currency,
     string Status,
     DateTime CreatedAtUtc,
     IReadOnlyList<FinanceInstallmentDto> Installments);
+
+/// <summary>Bekleyen peşinatı tahsil etme isteği; yöntem boşsa "Nakit".</summary>
+public sealed record CollectDownPaymentRequest(string? Method = null);
+
+/// <summary>Peşinatı henüz tahsil edilmemiş (beklenen) sözleşme satırı.</summary>
+public sealed record PendingDownPaymentDto(
+    Guid ContractId,
+    Guid? StudentUserId,
+    string StudentName,
+    string ClassName,
+    decimal DownPayment,
+    string Currency,
+    string? DownPaymentMethod,
+    DateTime CreatedAtUtc);
 
 public sealed record StudentFinanceAccountDto(
     Guid? StudentUserId,
@@ -113,6 +131,9 @@ public sealed record FinanceDashboardDto(
     int OverdueStudentCount,
     int CollectionRatePercent,
     int AverageCollectionDays,
+    // Peşinatı henüz tahsil edilmemiş sözleşme sayısı ve beklenen toplam tutar.
+    int PendingDownPaymentCount,
+    decimal PendingDownPaymentTotal,
     IReadOnlyList<AgingBucketDto> Aging,
     IReadOnlyList<MonthlyIncomeDto> MonthlyIncome,
     IReadOnlyList<StudentFinanceSummaryDto> TopDebtors);

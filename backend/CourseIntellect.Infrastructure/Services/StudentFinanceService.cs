@@ -37,6 +37,9 @@ public sealed class StudentFinanceService(
             DiscountReason = request.DiscountReason?.Trim() ?? string.Empty,
             NetAmount = net,
             DownPayment = downPayment,
+            // Peşinatı yoksa (0) "beklemede" kavramı anlamsız → paid=true. Varsa,
+            // kayıt anında tahsil edilip edilmediği isteğe bağlıdır.
+            DownPaymentPaid = downPayment <= 0 || request.DownPaymentPaid,
             InstallmentCount = installmentCount,
             Currency = currency,
             Status = "Active",
@@ -99,11 +102,13 @@ public sealed class StudentFinanceService(
             await dbContext.FinanceInstallments.AddRangeAsync(installments, cancellationToken);
         }
 
-        // Peşinat varsa makbuzlu tahsilat olarak kaydedilir (cari bakiyeye yansır)
-        // ve manuel tahsilatla parite olması için muhasebe bildirim + audit kaydı düşülür;
-        // böylece kayıt peşinatı tahsilat listesinde, makbuzda, özet toplamlarında ve
-        // muhasebe aktivite akışında eksiksiz görünür.
-        if (downPayment > 0)
+        // Peşinat varsa VE kayıt anında tahsil edildiyse makbuzlu tahsilat olarak
+        // kaydedilir (cari bakiyeye yansır) ve manuel tahsilatla parite olması için
+        // muhasebe bildirim + audit kaydı düşülür; böylece kayıt peşinatı tahsilat
+        // listesinde, makbuzda, özet toplamlarında ve muhasebe aktivite akışında
+        // eksiksiz görünür. Tahsil edilmediyse HİÇBİR ödeme kaydı yazılmaz —
+        // peşinat "bekliyor" olarak sözleşmede durur ve "Peşinat Bekleyenler"de görünür.
+        if (downPayment > 0 && request.DownPaymentPaid)
         {
             // Peşinatın gerçek ödeme kanalı (Nakit/Kart/Havale) — kasa/nakit-kart
             // dağılımına doğru düşmesi için. Boşsa "Nakit" varsayılır. Kaydın "kayıt
@@ -367,6 +372,91 @@ public sealed class StudentFinanceService(
             "FinancePayment",
             payment.Id.ToString(),
             $"{payment.StudentName} — {payment.Amount:0.##} {payment.Currency} ({payment.Method}), makbuz: {payment.ReceiptNo}.",
+            cancellationToken);
+
+        return MapPayment(payment);
+    }
+
+    public async Task<IReadOnlyList<PendingDownPaymentDto>> GetPendingDownPaymentsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        // Aktif ve peşinatı beklenen (henüz tahsil edilmemiş) sözleşmeler.
+        // Global tenant/şube query filter'ı otomatik uygulanır.
+        var rows = await dbContext.EnrollmentContracts.AsNoTracking()
+            .Where(item => item.DownPayment > 0 && !item.DownPaymentPaid && item.Status == "Active")
+            .OrderBy(item => item.CreatedAtUtc)
+            .Select(item => new PendingDownPaymentDto(
+                item.Id,
+                item.StudentUserId,
+                item.StudentName,
+                item.ClassName,
+                item.DownPayment,
+                item.Currency,
+                null,
+                item.CreatedAtUtc))
+            .ToListAsync(cancellationToken);
+        return rows;
+    }
+
+    public async Task<FinancePaymentDto> CollectDownPaymentAsync(
+        Guid contractId,
+        string? method,
+        Guid? createdByUserId,
+        CancellationToken cancellationToken = default)
+    {
+        var contract = await dbContext.EnrollmentContracts
+            .FirstOrDefaultAsync(item => item.Id == contractId, cancellationToken)
+            ?? throw new InvalidOperationException("Sözleşme bulunamadı.");
+        if (contract.DownPayment <= 0)
+        {
+            throw new InvalidOperationException("Bu sözleşmede peşinat tanımlı değil.");
+        }
+        if (contract.DownPaymentPaid)
+        {
+            throw new InvalidOperationException("Peşinat zaten tahsil edilmiş.");
+        }
+
+        var downPaymentMethod = string.IsNullOrWhiteSpace(method) ? "Nakit" : method.Trim();
+        var receiptNo = await NextReceiptNoAsync(cancellationToken);
+        var payment = new FinancePayment
+        {
+            EnrollmentContractId = contract.Id,
+            StudentUserId = contract.StudentUserId,
+            StudentName = contract.StudentName,
+            Amount = contract.DownPayment,
+            Method = downPaymentMethod,
+            ReceiptNo = receiptNo,
+            Currency = contract.Currency,
+            Note = "Kayıt peşinatı",
+            CreatedByUserId = createdByUserId,
+            PaidAtUtc = DateTime.UtcNow,
+        };
+        await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
+
+        var amountLabel = $"₺{contract.DownPayment.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+        await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
+        {
+            Title = "Bekleyen peşinat tahsil edildi",
+            Message = $"{contract.StudentName} için {amountLabel} tutarında bekleyen kayıt peşinatı alındı ({downPaymentMethod} • Makbuz {receiptNo}).",
+            Time = "Bugün",
+            Unread = true,
+        }, cancellationToken);
+        await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
+        {
+            Title = "Bekleyen peşinat tahsilatı işlendi",
+            Detail = $"{contract.StudentName} için bekleyen {amountLabel} peşinat tahsilatı {downPaymentMethod} ile kaydedildi (Makbuz {receiptNo}).",
+            Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
+        }, cancellationToken);
+
+        contract.DownPaymentPaid = true;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        await auditLogService.LogAsync(
+            "Bekleyen peşinat tahsil edildi",
+            "Finance",
+            "FinancePayment",
+            payment.Id.ToString(),
+            $"{contract.StudentName} — {contract.DownPayment:0.##} {contract.Currency} ({downPaymentMethod}), makbuz: {receiptNo}.",
             cancellationToken);
 
         return MapPayment(payment);
@@ -638,10 +728,17 @@ public sealed class StudentFinanceService(
             .Take(10)
             .ToList();
 
+        // Peşinatı beklenen (tahsil edilmemiş) aktif sözleşmeler — dashboard kartı için.
+        var pendingDownPayments = contracts
+            .Where(item => item.DownPayment > 0 && !item.DownPaymentPaid && item.Status == "Active")
+            .ToList();
+        var pendingDownPaymentTotal = pendingDownPayments.Sum(item => item.DownPayment);
+
         var currency = contracts.FirstOrDefault()?.Currency ?? "TRY";
         return new FinanceDashboardDto(
             currency, net, collected, outstanding, overdueTotal, overdueStudents,
-            collectionRate, avgCollectionDays, aging, monthly, topDebtors);
+            collectionRate, avgCollectionDays, pendingDownPayments.Count, pendingDownPaymentTotal,
+            aging, monthly, topDebtors);
     }
 
     public async Task<ReminderResultDto> SendDueRemindersAsync(
@@ -761,6 +858,7 @@ public sealed class StudentFinanceService(
             contract.DiscountReason,
             contract.NetAmount,
             contract.DownPayment,
+            contract.DownPaymentPaid,
             contract.InstallmentCount,
             contract.Currency,
             contract.Status,

@@ -24,6 +24,7 @@ import { SheetHeader, SheetTitle, SheetDescription } from '../../components/ui/s
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { createAccountingNotification, createCollection, fetchAccountingDashboard, fetchStudentFinanceAccount, fetchStudents } from '../../lib/api/modules';
+import PendingDownPayments from '../../components/finance/PendingDownPayments';
 import {
   buildFinanceDocumentHtml,
   downloadFinanceHtml,
@@ -465,6 +466,8 @@ export default function StudentAccounts() {
       </div>
 
       {error ? <ErrorBanner title="Cari hesaplar alınamadı" message={error} onRetry={loadData} /> : null}
+
+      <PendingDownPayments onCollected={loadData} />
 
       <Card>
         <CardContent className="p-4">

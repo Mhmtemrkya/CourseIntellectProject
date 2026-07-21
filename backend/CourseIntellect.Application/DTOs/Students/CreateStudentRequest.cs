@@ -24,5 +24,7 @@ public sealed record CreateStudentRequest(
     int? EnrollmentInstallmentCount = null,
     string? AcademicYear = null,
     // Peşinatın tahsil edildiği ödeme yöntemi (Nakit/Kart/Havale) — kasa dağılımına doğru düşmesi için.
-    string? EnrollmentDownPaymentMethod = null
+    string? EnrollmentDownPaymentMethod = null,
+    // Peşinat kayıt anında tahsil edildi mi? false → makbuz kesilmez, peşinat "bekliyor" olur.
+    bool EnrollmentDownPaymentPaid = true
 );

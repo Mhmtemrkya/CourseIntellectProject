@@ -12,7 +12,7 @@ import {
   PremiumPanel,
   PremiumStatusPill,
 } from '../../components/ui/premium-dashboard';
-import { fetchDrivingSchoolDashboard } from '../../lib/api/modules';
+import { fetchDrivingSchoolDashboard, fetchPendingDownPayments } from '../../lib/api/modules';
 import {
   DrivingLoading,
   DrivingPage,
@@ -122,6 +122,22 @@ export default function DrivingSchoolDashboard() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Peşinatı beklenen sözleşmeler ayrı finans ucundan gelir (dashboard payload'ında yok).
+  const [pendingPesinat, setPendingPesinat] = useState({ count: 0, total: 0 });
+  useEffect(() => {
+    let active = true;
+    fetchPendingDownPayments()
+      .then((rows) => {
+        if (!active) return;
+        setPendingPesinat({
+          count: rows.length,
+          total: rows.reduce((sum, item) => sum + Number(item.downPayment || 0), 0),
+        });
+      })
+      .catch(() => { if (active) setPendingPesinat({ count: 0, total: 0 }); });
+    return () => { active = false; };
+  }, []);
+
   if (loading) return <DrivingLoading />;
 
   const series = data?.charts?.monthlyRegistrations || [];
@@ -185,6 +201,23 @@ export default function DrivingSchoolDashboard() {
               return <DrivingStatCard key={key} label={label} value={value} caption={cardCaption} icon={Icon} tone={tone} />;
             })}
           </div>
+
+          {pendingPesinat.count > 0 ? (
+            <button
+              type="button"
+              onClick={() => navigate('/driving/collection')}
+              className="flex w-full flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-400/40 bg-amber-500/[0.07] p-4 text-left transition hover:border-amber-500/60"
+            >
+              <div className="flex items-center gap-3">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-amber-500/15 text-amber-600"><AlertTriangle className="h-5 w-5" /></span>
+                <div>
+                  <p className="text-sm font-bold">Peşinat Bekleyenler · {pendingPesinat.count} kursiyer</p>
+                  <p className="text-xs text-muted-foreground">Kayıtta peşinatı tahsil edilmemiş sözleşmeler — tıklayıp tahsil edin.</p>
+                </div>
+              </div>
+              <span className="text-lg font-black text-amber-600">₺{Number(pendingPesinat.total).toLocaleString('tr-TR')}</span>
+            </button>
+          ) : null}
 
           <div className="grid grid-cols-1 gap-5 xl:grid-cols-3">
             <motion.div variants={itemVariants} className="xl:col-span-2">

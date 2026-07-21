@@ -18,6 +18,14 @@ public sealed class EnrollmentContract : IBranchScopedEntity
     public string DiscountReason { get; set; } = string.Empty;
     public decimal NetAmount { get; set; }
     public decimal DownPayment { get; set; }
+    /// <summary>
+    /// Peşinat tahsil edildi mi? true → kayıt anında (veya sonradan) makbuzlu
+    /// FinancePayment olarak alındı. false → peşinat sözleşmede beklenen tutar
+    /// olarak duruyor ama henüz tahsil edilmedi ("Peşinat Bekleyenler"de görünür).
+    /// Peşinatı olmayan (DownPayment=0) sözleşmelerde anlamsızdır; true tutulur.
+    /// Varsayılan true: eski kayıtlar geriye dönük "tahsil edilmiş" sayılır.
+    /// </summary>
+    public bool DownPaymentPaid { get; set; } = true;
     public int InstallmentCount { get; set; }
     public string Currency { get; set; } = "TRY";
     public string Status { get; set; } = "Active";

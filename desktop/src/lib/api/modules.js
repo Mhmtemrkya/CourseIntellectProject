@@ -583,6 +583,18 @@ export async function refundFinancePayment(payload) {
   return response;
 }
 
+// Peşinatı beklenen (tahsil edilmemiş) sözleşmeler.
+export async function fetchPendingDownPayments() {
+  const response = await api.get('/api/student-finance/pending-down-payments');
+  return Array.isArray(response) ? response : [];
+}
+
+// Bekleyen peşinatı makbuzlu tahsil eder ve sözleşmeyi "ödendi" işaretler.
+export async function collectDownPayment(contractId, method) {
+  const response = await api.post(`/api/student-finance/contracts/${contractId}/collect-down-payment`, { method });
+  return response;
+}
+
 export async function sendFinanceReminders(upcomingWindowDays = 7) {
   const response = await api.post('/api/student-finance/reminders', null, {
     params: { upcomingWindowDays },

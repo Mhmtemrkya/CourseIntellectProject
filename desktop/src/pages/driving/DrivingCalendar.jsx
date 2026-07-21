@@ -14,6 +14,7 @@ import {
   rescheduleDrivingAppointment,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { assetUrl } from '../../lib/assetUrl';
 
 // Takvim YEREL saatte çizilir; API UTC konuşur. Tarayıcının kendi saat dilimi
 // Türkiye ise Date nesnesi doğal olarak doğru saati verir.
@@ -539,7 +540,7 @@ function AppointmentDialog({ appointment, onClose, onOpenStudent }) {
           <div className="flex items-start justify-between gap-3">
             <div className="flex items-center gap-3">
               {appointment.studentPhotoUrl
-                ? <img src={appointment.studentPhotoUrl} alt={appointment.studentName} className="h-12 w-12 rounded-xl object-cover" />
+                ? <img src={assetUrl(appointment.studentPhotoUrl)} alt={appointment.studentName} className="h-12 w-12 rounded-xl object-cover" />
                 : <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-muted font-black">{appointment.studentName?.[0]}</div>}
               <div>
                 <b className="text-lg">{appointment.studentName}</b>

@@ -37,6 +37,18 @@ public interface IStudentFinanceService
         string? className,
         CancellationToken cancellationToken = default);
 
+    // Peşinatı beklenen (henüz tahsil edilmemiş) aktif sözleşmeleri döner.
+    Task<IReadOnlyList<PendingDownPaymentDto>> GetPendingDownPaymentsAsync(
+        CancellationToken cancellationToken = default);
+
+    // Beklenen peşinatı makbuzlu tahsilat olarak kaydeder ve sözleşmeyi "ödendi"
+    // işaretler. Zaten ödenmişse veya peşinatı yoksa hata döndürür (guard).
+    Task<FinancePaymentDto> CollectDownPaymentAsync(
+        Guid contractId,
+        string? method,
+        Guid? createdByUserId,
+        CancellationToken cancellationToken = default);
+
     Task<ReminderResultDto> SendDueRemindersAsync(
         int upcomingWindowDays,
         CancellationToken cancellationToken = default);

@@ -86,6 +86,8 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
   Object? _error;
   List<Map<String, dynamic>> _students = [];
   List<Map<String, dynamic>> _groups = [];
+  // Peşinatı beklenen kursiyer adları (liste profileId taşıdığından ada göre eşleşir).
+  Set<String> _pendingNames = {};
   int _ungroupedCount = 0;
   String _search = '';
   String _groupFilter = 'all'; // 'all' | 'ungrouped' | <groupId>
@@ -120,10 +122,19 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
       } catch (_) {
         groupData = null;
       }
+      List<Map<String, dynamic>> pending;
+      try {
+        pending = await _service.pendingDownPayments();
+      } catch (_) {
+        pending = <Map<String, dynamic>>[];
+      }
       if (!mounted) return;
       setState(() {
         _students = rows;
         _permissions = permissions;
+        _pendingNames = pending
+            .map((r) => '${r['studentName'] ?? ''}'.trim().toLowerCase())
+            .toSet();
         _groups = ((groupData?['groups'] as List?) ?? const [])
             .map((e) => Map<String, dynamic>.from(e as Map))
             .toList();
@@ -432,6 +443,8 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     final id = '${s['id']}';
     final checked = _selected.contains(id);
     final groupName = s['groupName'];
+    final isPending =
+        _pendingNames.contains('${s['fullName'] ?? ''}'.trim().toLowerCase());
     return DrivingListRow(
       icon: _selectMode
           ? (checked
@@ -443,9 +456,23 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
         '${s['licenseClass'] ?? ''} • ${_transmission(s['transmissionType'])} • ${s['remainingDrivingMinutes'] ?? 0} dk kaldı',
         if (groupName != null) 'Grup: $groupName',
       ].join('\n'),
-      trailing: DrivingStatusPill(
-        label: _statusLabel(s['status']),
-        tone: DrivingTone.accent,
+      trailing: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          DrivingStatusPill(
+            label: _statusLabel(s['status']),
+            tone: DrivingTone.accent,
+          ),
+          if (isPending) ...[
+            const SizedBox(height: 4),
+            DrivingStatusPill(
+              label: 'Peşinat bekliyor'.tr,
+              tone: DrivingTone.danger,
+            ),
+          ],
+        ],
       ),
       onTap: () => _selectMode ? _toggleSelect(id) : _openStudent(s),
     );
