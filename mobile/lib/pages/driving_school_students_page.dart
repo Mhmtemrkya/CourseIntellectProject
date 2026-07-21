@@ -6,6 +6,7 @@ import '../services/api_config.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
+import 'driving_student_registration_page.dart';
 
 const _statusLabels = {
   'PreRegistered': 'Ön kayıt',
@@ -100,6 +101,7 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
 
   bool get _canManageGroups =>
       _permissions.can(DrivingPermissions.studentUpdate);
+  bool get _canCreate => _permissions.can(DrivingPermissions.studentCreate);
 
   @override
   void initState() {
@@ -316,6 +318,20 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
               )
             : null,
         actions: [
+          if (_canCreate && !_selectMode)
+            IconButton(
+              tooltip: 'Yeni Kursiyer'.tr,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              onPressed: () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const DrivingStudentRegistrationPage(),
+                  ),
+                );
+                if (created == true) _load();
+              },
+            ),
           if (_canManageGroups && !_selectMode) ...[
             IconButton(
               tooltip: 'Grup Oluştur'.tr,

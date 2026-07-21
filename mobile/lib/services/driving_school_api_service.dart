@@ -361,6 +361,11 @@ class DrivingSchoolApiService {
     '/api/driving-school/vehicles',
   )).cast<Map<String, dynamic>>());
 
+  // Kursiyer kaydı (sihirbaz) — masaüstündeki /students/wizard ile aynı uç.
+  Future<Map<String, dynamic>> registerDrivingStudent(
+    Map<String, dynamic> body,
+  ) => _post('/api/driving-school/students/wizard', body);
+
   // Peşinatı beklenen (tahsil edilmemiş) sözleşmeler — student-finance ucundan.
   Future<List<Map<String, dynamic>>> pendingDownPayments() async =>
       (await _getList('/api/student-finance/pending-down-payments'))
