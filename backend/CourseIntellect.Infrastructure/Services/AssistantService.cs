@@ -342,7 +342,7 @@ public sealed class AssistantService(
             Text = rawMessage, ClientMessageId = request.ClientMessageId,
         });
 
-        var parsed = resolver.Resolve(rawMessage);
+        var parsed = await resolver.ResolveAsync(rawMessage, cancellationToken);
         AssistantResponseDto response;
         Guid? targetStudentId = explicitStudentId ?? conversation.SelectedStudentId;
         var authorized = true;

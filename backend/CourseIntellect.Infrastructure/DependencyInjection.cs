@@ -108,7 +108,20 @@ public static class DependencyInjection
         services.AddHttpClient<IEInvoiceService, HttpEInvoiceService>();
         services.AddSingleton<IPayrollService, PayrollService>();
         services.AddScoped<IReconciliationService, ReconciliationService>();
-        services.AddSingleton<IAssistantIntentResolver, RuleBasedAssistantIntentResolver>();
+        // Kural motoru her zaman kayıtlı: hem kendi başına hem hibrit'in temeli.
+        services.AddSingleton<RuleBasedAssistantIntentResolver>();
+        services.AddHttpClient<ILocalLlmClient, OllamaIntentClient>();
+
+        // Yerel LLM açıksa hibrit ayrıştırıcı (kural + Ollama), değilse yalnız kural.
+        // Varsayılan KAPALI: Ollama kurulup config'te açılana kadar davranış değişmez.
+        var llmEnabled = configuration.GetValue("Assistant:Llm:Enabled", false);
+        if (llmEnabled)
+            // Scoped: ILocalLlmClient typed HttpClient olduğu için singleton yapılmamalı
+            // (HttpClientFactory'nin handler rotasyonunu bozar).
+            services.AddScoped<IAssistantIntentResolver, HybridAssistantIntentResolver>();
+        else
+            services.AddSingleton<IAssistantIntentResolver>(sp => sp.GetRequiredService<RuleBasedAssistantIntentResolver>());
+
         services.AddScoped<IAssistantService, AssistantService>();
 
         return services;

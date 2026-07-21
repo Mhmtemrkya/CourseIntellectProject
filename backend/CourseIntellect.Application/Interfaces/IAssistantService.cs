@@ -4,7 +4,12 @@ namespace CourseIntellect.Application.Interfaces;
 
 public interface IAssistantIntentResolver
 {
-    ParsedAssistantQuery Resolve(string message);
+    /// <summary>
+    /// Kullanıcı mesajını niyet + varlıklara ayrıştırır. Uygulama yerel LLM ile
+    /// desteklenebildiği için async'tir; kural tabanlı gerçekleştirme senkron
+    /// çalışıp tamamlanmış görev döndürür.
+    /// </summary>
+    Task<ParsedAssistantQuery> ResolveAsync(string message, CancellationToken cancellationToken = default);
 }
 
 public interface IAssistantService

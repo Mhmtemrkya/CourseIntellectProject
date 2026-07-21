@@ -126,6 +126,52 @@ public static class AssistantIntentCatalog
 
     public static bool IsWriteAction(AssistantIntent intent) => WriteActions.Contains(intent);
 
+    /// <summary>
+    /// LLM'in seçebileceği niyetler ve kısa açıklamaları. Yerel modele yalnız bu
+    /// liste ve kullanıcının cümlesi verilir; model bir etiket seçer.
+    ///
+    /// YAZMA EYLEMLERİ BİLEREK YOK: veri değiştiren bir işlemin bulanık çıkarımla
+    /// değil, açık ifadeyle (kural anahtar kelimesi) tetiklenmesi gerekir. Ayrıca
+    /// Greeting/Help/Unknown de yok — onları kural motoru zaten yakalar ve LLM'in
+    /// "selam" için model çalıştırması gereksiz.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<AssistantIntent, string> ClassifiableIntents =
+        new Dictionary<AssistantIntent, string>
+        {
+            [AssistantIntent.SearchStudent] = "Bir öğrenciyi/kursiyeri adı, numarası veya TC'siyle bulmak",
+            [AssistantIntent.GetAttendance] = "Bir öğrencinin devamsızlık/yoklama durumu",
+            [AssistantIntent.GetExamResults] = "Bir öğrencinin sınav sonuçları veya notları",
+            [AssistantIntent.GetExamAverage] = "Bir öğrencinin sınav ortalaması",
+            [AssistantIntent.GetHomework] = "Bir öğrencinin ödevleri",
+            [AssistantIntent.GetSchedule] = "Ders programı",
+            [AssistantIntent.GetAnnouncements] = "Duyurular",
+            [AssistantIntent.GetUnreadMessages] = "Okunmamış mesajlar",
+            [AssistantIntent.GetPaymentSummary] = "Bir öğrencinin ödeme/borç durumu",
+            [AssistantIntent.GetTransportStatus] = "Servis/taşıma durumu",
+            [AssistantIntent.ListClassStudents] = "Bir sınıftaki öğrencilerin listesi",
+            [AssistantIntent.ListAbsentStudents] = "Bugün devamsız olanların listesi",
+            [AssistantIntent.ListLowScoreStudents] = "Belirli puanın altındakilerin listesi",
+            [AssistantIntent.ListStudentsWithDebt] = "Borcu olan öğrencilerin listesi",
+            [AssistantIntent.GetDrivingLessons] = "Direksiyon dersleri geçmişi",
+            [AssistantIntent.GetDrivingExamStatus] = "Direksiyon/e-sınav durumu",
+            [AssistantIntent.GetDrivingProgress] = "Kurs ilerlemesi, kalan ders hakkı",
+            [AssistantIntent.GetDrivingDocuments] = "Kursiyerin evrak/belge durumu",
+            [AssistantIntent.GetDrivingAppointments] = "Yaklaşan direksiyon randevuları",
+            [AssistantIntent.GetDrivingGraduation] = "Mezuniyet ve sertifika durumu",
+            [AssistantIntent.GetLibraryLoans] = "Öğrencinin üzerindeki kütüphane kitapları",
+            [AssistantIntent.GetFinanceOverview] = "Kurum geneli tahsilat/borç özeti (tek öğrenci değil)",
+            [AssistantIntent.GetInstitutionSummary] = "Kurum geneli sayım özeti (kaç öğrenci, kaç mezun)",
+        };
+
+    /// <summary>LLM'in döndürdüğü ham etiket geçerli bir sınıflanabilir niyet mi?</summary>
+    public static bool TryParseClassifiable(string? raw, out AssistantIntent intent)
+    {
+        intent = AssistantIntent.Unknown;
+        if (string.IsNullOrWhiteSpace(raw)) return false;
+        return Enum.TryParse(raw.Trim(), ignoreCase: true, out intent)
+               && ClassifiableIntents.ContainsKey(intent);
+    }
+
     /// <summary>Onay kartında gösterilecek, ne olacağını açıkça anlatan metin.</summary>
     public static string WriteActionDescription(AssistantIntent intent, string subjectName) => intent switch
     {

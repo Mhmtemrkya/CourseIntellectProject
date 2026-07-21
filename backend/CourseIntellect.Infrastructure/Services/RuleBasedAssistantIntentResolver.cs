@@ -9,6 +9,11 @@ namespace CourseIntellect.Infrastructure.Services;
 
 public sealed partial class RuleBasedAssistantIntentResolver : IAssistantIntentResolver
 {
+    // Kural motoru tamamen bellekte çalışır; async imza yalnız arayüz uyumu için.
+    public Task<ParsedAssistantQuery> ResolveAsync(string message, CancellationToken cancellationToken = default)
+        => Task.FromResult(Resolve(message));
+
+    /// <summary>Senkron kural ayrıştırması. Hibrit resolver ve testler doğrudan kullanır.</summary>
     public ParsedAssistantQuery Resolve(string message)
     {
         var normalized = Normalize(message);
