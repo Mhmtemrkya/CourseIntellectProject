@@ -250,7 +250,7 @@ export default function Parents() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading">Veliler</h1>
-          <p className="text-muted-foreground mt-1">{parents.length} kayıtlı veli</p>
+          <p className="text-muted-foreground mt-1">{parents.filter((p) => p.children.some((c) => !isUserPassive(c.status))).length} kayıtlı veli</p>
         </div>
         <FeatureGate module="parents" action="create">
           <Button
@@ -272,7 +272,7 @@ export default function Parents() {
               <Users className="h-5 w-5 text-brand-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Toplam Veli</p>
-                <p className="text-2xl font-bold">{parents.length}</p>
+                <p className="text-2xl font-bold">{parents.filter((p) => p.children.some((c) => !isUserPassive(c.status))).length}</p>
               </div>
             </div>
           </CardContent>
@@ -294,7 +294,7 @@ export default function Parents() {
               <MessageSquare className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm text-muted-foreground">Bağlı Öğrenci</p>
-                <p className="text-2xl font-bold">{parents.reduce((sum, item) => sum + item.children.length, 0)}</p>
+                <p className="text-2xl font-bold">{parents.reduce((sum, item) => sum + item.children.filter((c) => !isUserPassive(c.status)).length, 0)}</p>
               </div>
             </div>
           </CardContent>

@@ -374,8 +374,9 @@ export default function DrivingStudents() {
     });
   }, [students, search, groupFilter]);
 
-  const activeCount = useMemo(() => students.filter((s) => !['Graduated', 'Cancelled'].includes(s.status)).length, [students]);
+  const activeCount = useMemo(() => students.filter((s) => !['Graduated', 'Suspended', 'Cancelled'].includes(s.status)).length, [students]);
   const graduatedCount = useMemo(() => students.filter((s) => s.status === 'Graduated').length, [students]);
+  const inactiveCount = useMemo(() => students.filter((s) => ['Suspended', 'Cancelled'].includes(s.status)).length, [students]);
 
   const exitSelectMode = useCallback(() => { setSelectMode(false); setSelectedIds(new Set()); setAssignTarget(''); }, []);
 
@@ -454,9 +455,9 @@ export default function DrivingStudents() {
       />
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-        <DrivingStatCard label="Toplam Kursiyer" value={students.length} caption="Kayıtlı" icon={Users} tone="brand" />
-        <DrivingStatCard label="Aktif" value={activeCount} caption="Eğitimi süren" icon={GraduationCap} tone="emerald" />
+        <DrivingStatCard label="Aktif Kursiyer" value={activeCount} caption="Eğitimi süren" icon={GraduationCap} tone="emerald" />
         <DrivingStatCard label="Mezun" value={graduatedCount} caption="Tamamlayan" icon={CheckCircle2} tone="violet" />
+        <DrivingStatCard label="Askıda / İptal" value={inactiveCount} caption="Pasif kayıt" icon={Users} tone="brand" />
       </div>
 
       <div className="relative max-w-sm">

@@ -168,9 +168,12 @@ export default function AdminStaffRegistration() {
       [field]: value,
       ...(field === 'role'
         ? {
+            // Öğretmen dışındaki rollerde birim/branş elle sorulmaz; role göre
+            // otomatik atanır. Yalnız öğretmende '' bırakılıp branş seçtirilir.
             departmentOrBranch: value === 'Cafeteria' ? 'Yemekhane'
               : value === 'ServiceDriver' ? 'Servis Şoförü'
               : value === 'BranchManager' ? 'Şube Yönetimi'
+              : value === 'Administrative' ? 'İdari Personel'
               : String(value).startsWith('custom:')
                 ? (customRoles.find((r) => `custom:${r.id}` === value)?.name || 'Özel Rol')
                 : '',
@@ -184,8 +187,8 @@ export default function AdminStaffRegistration() {
       toast({ title: 'Ad soyad zorunludur.', variant: 'destructive' });
       return;
     }
-    if (!form.departmentOrBranch.trim()) {
-      toast({ title: 'Branş / bölüm seçimi zorunludur.', variant: 'destructive' });
+    if (form.role === 'Teacher' && !form.departmentOrBranch.trim()) {
+      toast({ title: 'Öğretmen için branş seçimi zorunludur.', variant: 'destructive' });
       return;
     }
     if (form.role === 'BranchManager' && !branchId) {
@@ -303,7 +306,7 @@ export default function AdminStaffRegistration() {
           role: roleLabel,
           username: response?.username,
           temporaryPassword: response?.password,
-          extra: serviceSummary || (departmentOrBranch ? `Brans: ${departmentOrBranch}` : undefined),
+          extra: serviceSummary || (form.role === 'Teacher' && departmentOrBranch ? `Branş: ${departmentOrBranch}` : undefined),
         });
       } catch (pdfErr) {
         console.warn('PDF üretimi başarısız', pdfErr);
@@ -434,6 +437,8 @@ export default function AdminStaffRegistration() {
                     </SelectContent>
                   </Select>
                 </div>
+                {/* Branş yalnız öğretmene sorulur; diğer roller (idari personel dâhil)
+                    birimi rolünden otomatik alır, ekstra seçim istenmez. */}
                 {form.role === 'Teacher' ? (
                   <BranchSelectWithCreate
                     value={form.departmentOrBranch}
@@ -441,15 +446,7 @@ export default function AdminStaffRegistration() {
                     options={branchList}
                     onCreate={createTeacherBranch}
                   />
-                ) : (
-                  <div>
-                    <Label>Birim *</Label>
-                    <Select value={form.departmentOrBranch} onValueChange={(value) => handleChange('departmentOrBranch', value)}>
-                      <SelectTrigger><SelectValue placeholder="Birim seçin..." /></SelectTrigger>
-                      <SelectContent>{branchList.map((item) => <SelectItem key={item} value={item}>{item}</SelectItem>)}</SelectContent>
-                    </Select>
-                  </div>
-                )}
+                ) : null}
                 {branches.length > 0 ? (
                   <div>
                     <Label>Şube</Label>
@@ -629,7 +626,7 @@ export default function AdminStaffRegistration() {
                   <>
                     <div className="rounded-xl border bg-muted/30 p-3">
                       <p className="text-xs text-muted-foreground">{selectedRole?.label} Sayısı</p>
-                      <p className="mt-1 text-2xl font-bold">{filtered.length}</p>
+                      <p className="mt-1 text-2xl font-bold">{filtered.filter((s) => !isUserPassive(s.status)).length}</p>
                     </div>
                     {loading ? (
                       <div className="flex justify-center py-4"><LoadingDots /></div>

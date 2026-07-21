@@ -3,6 +3,7 @@ import { Camera, Loader2, Upload, X } from 'lucide-react';
 import { Button } from './button';
 import { useToast } from '../../hooks/use-toast';
 import { uploadFile } from '../../lib/api/modules';
+import { assetUrl } from '../../lib/assetUrl';
 
 /**
  * Tek fotoğraf alanı: kullanıcı ister web kamerasından çeker ister var olan bir
@@ -109,7 +110,7 @@ export default function PhotoCapture({ value, onChange, folder = 'student-photos
   return (
     <div className="flex items-start gap-3">
       {value
-        ? <img src={value} alt="Öğrenci fotoğrafı" style={box} className="shrink-0 rounded-xl border object-cover" />
+        ? <img src={assetUrl(value)} alt="Öğrenci fotoğrafı" style={box} className="shrink-0 rounded-xl border object-cover" />
         : (
           <div style={box} className="flex shrink-0 items-center justify-center rounded-xl border border-dashed bg-muted/40 text-muted-foreground">
             <Camera className="h-6 w-6" />

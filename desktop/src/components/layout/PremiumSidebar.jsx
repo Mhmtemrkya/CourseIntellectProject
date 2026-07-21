@@ -144,8 +144,11 @@ export function PremiumSidebar() {
   const [disabledFeatures, setDisabledFeatures] = useState(null);
   const [entitlements, setEntitlements] = useState(null);
   // Kurum türü: sürücü kursunda okula özgü menüler (servis, yemekhane, nöbet,
-  // veliler, kurs yönetimi, okul sınavları) gizlenir.
-  const [institutionType, setInstitutionType] = useState(null);
+  // veliler, kurs yönetimi, okul sınavları) gizlenir. Oturum yükünde kurum türü
+  // zaten geliyor (user.institutionType); onu başlangıç değeri olarak kullanırız.
+  // Böylece async getInstitutionType() login anında geçici olarak başarısız olsa
+  // bile sürücü kursu 'PrivateSchool'a düşüp TÜM sürücü menülerini gizlemez.
+  const [institutionType, setInstitutionType] = useState(user?.institutionType || null);
   const [drivingPermissions, setDrivingPermissions] = useState(null);
   const [openGroups, setOpenGroups] = useState(() => new Set());
 
@@ -174,13 +177,19 @@ export function PremiumSidebar() {
       getEntitlements().then((value) => {
         if (active) setEntitlements(value);
       });
-      // Kurum türünü her oturum/kiracı değişiminde yeniden algıla; aksi halde
-      // önceki bir sekmedeki/oturumdaki sonuç saplanıp okul menüleri sürücü
-      // kursuna sızabiliyor.
-      resetInstitutionTypeCache();
-      getInstitutionType().then((value) => {
-        if (active) setInstitutionType(value);
-      });
+      // Kurum türü önce oturum yükünden (authoritative) alınır; bu değer login
+      // yanıtında backend tarafından kesin olarak geliyor. Async algılama yalnız
+      // oturumda değer yoksa devreye girer — böylece geçici bir API hatasında
+      // sürücü kursu yanlışlıkla 'PrivateSchool' sanılıp tüm sürücü menüleri
+      // gizlenmez. Kiracı değişiminde önce oturum değeri güncellenir.
+      if (user?.institutionType) {
+        setInstitutionType(user.institutionType);
+      } else {
+        resetInstitutionTypeCache();
+        getInstitutionType().then((value) => {
+          if (active) setInstitutionType(value);
+        });
+      }
     }
     return () => {
       active = false;

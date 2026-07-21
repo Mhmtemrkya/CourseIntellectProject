@@ -12,6 +12,7 @@ import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { IdentityCard } from '../../components/identity/IdentityCard';
 import { fetchStudents, fetchStaff } from '../../lib/api/modules';
+import { isUserPassive } from '../../lib/userStatus';
 
 function normalizeText(value = '') {
   return String(value).trim().toLowerCase();
@@ -128,6 +129,12 @@ export default function AdministrativeRecords() {
 
   const filteredRecords = useMemo(() => records.filter((item) => `${item.title} ${item.detail}`.toLowerCase().includes(search.toLowerCase())), [records, search]);
   const selectedPayload = selectedRecord?.payload || null;
+  // Sayı ifadeleri pasifleri düşer (liste görünümü değişmez); "Toplam/Toplam Dosya"
+  // ham record sayısıdır, dokunulmaz. Pasif öğrencisi kalmayan veli de düşer.
+  const activeStudents = students.filter((item) => !isUserPassive(item.status));
+  const activeStudentCount = activeStudents.length;
+  const activeParentCount = groupParents(activeStudents).length;
+  const activeStaffCount = staff.filter((item) => !isUserPassive(item.status)).length;
 
   if (loading) return <div className="min-h-[60vh] flex items-center justify-center"><LoadingDots /></div>;
 
@@ -144,9 +151,9 @@ export default function AdministrativeRecords() {
           </div>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {[
-              [students.length, 'Öğrenci'],
-              [groupParents(students).length, 'Veli'],
-              [staff.length, 'Personel'],
+              [activeStudentCount, 'Öğrenci'],
+              [activeParentCount, 'Veli'],
+              [activeStaffCount, 'Personel'],
               [records.length, 'Toplam'],
             ].map(([value, label]) => (
               <div key={label} className="rounded-2xl border border-foreground/10 bg-foreground/10 px-4 py-3 backdrop-blur">
@@ -160,9 +167,9 @@ export default function AdministrativeRecords() {
       {error ? <ErrorBanner title="İdari kayıtlar alınamadı" message={error} onRetry={loadRecords} /> : null}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
         {[
-          [students.length, 'Öğrenci Kayıtları', Users],
-          [groupParents(students).length, 'Veli Kayıtları', Users],
-          [staff.length, 'Personel Kayıtları', BriefcaseBusiness],
+          [activeStudentCount, 'Öğrenci Kayıtları', Users],
+          [activeParentCount, 'Veli Kayıtları', Users],
+          [activeStaffCount, 'Personel Kayıtları', BriefcaseBusiness],
           [records.length, 'Toplam Dosya', FolderKanban],
         ].map(([value, label, Icon]) => (
           <Card key={label}>

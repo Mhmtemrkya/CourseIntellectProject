@@ -58,6 +58,7 @@ import { LoadingDots } from '../components/animations/AnimatedIcon';
 import { useToast } from '../hooks/use-toast';
 import { createStudent, fetchAttendance, fetchClasses, fetchExamResults, fetchStudents, updateStudent, updateUserStatus } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
+import { assetUrl } from '../lib/assetUrl';
 import { isUserPassive, normalizeUserStatus, userStatusLabel } from '../lib/userStatus';
 import {
   isValidEmail, isValidTcKimlik, isValidTrPhone, maskEmail, maskTcKimlik, maskTrPhone,
@@ -662,7 +663,7 @@ export default function Students() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading">Öğrenciler</h1>
-          <p className="text-muted-foreground mt-1">{students.length} kayıtlı öğrenci</p>
+          <p className="text-muted-foreground mt-1">{students.filter((s) => !isUserPassive(s.status)).length} kayıtlı öğrenci</p>
         </div>
         <FeatureGate module="students" action="create">
           <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => navigate('/admin/student-registration')}>
@@ -723,7 +724,7 @@ export default function Students() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        {student.photoUrl && <AvatarImage src={student.photoUrl} alt={student.fullName} className="object-cover" />}
+                        {student.photoUrl && <AvatarImage src={assetUrl(student.photoUrl)} alt={student.fullName} className="object-cover" />}
                         <AvatarFallback className="bg-brand-primary text-white">
                           {student.fullName.split(' ').map((n) => n[0]).join('')}
                         </AvatarFallback>

@@ -28,6 +28,7 @@ import {
   fetchStudents,
   updateClassAssignments,
 } from '../lib/api/modules';
+import { isUserPassive } from '../lib/userStatus';
 
 const steps = [
   ['basic', 'Temel Bilgiler', 'Sınıf detaylarını girin'],
@@ -313,7 +314,7 @@ export default function Classes() {
     return {
       name: item.name,
       code: item.code,
-      studentCount: item.studentIds?.length || students.filter((student) => student.className === item.name).length,
+      studentCount: students.filter((student) => student.className === item.name && !isUserPassive(student.status)).length,
       teacherCount: item.teachers?.length || 0,
       courseCount: item.courses?.length || 0,
       color: item.themeColor || '#2563EB',

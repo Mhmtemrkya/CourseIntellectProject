@@ -60,6 +60,7 @@ import { useToast } from '../hooks/use-toast';
 import { createStaff, updateStaff, fetchStaff, fetchClasses, fetchPlatformConfigurations, updateUserStatus, upsertPlatformConfiguration } from '../lib/api/modules';
 import { downloadCredentialsPdf } from '../lib/credentialsPdf';
 import { isUserPassive } from '../lib/userStatus';
+import { assetUrl } from '../lib/assetUrl';
 import { mergeBranches, readSavedStaffBranches, staffBranchConfigurationPayload } from '../lib/staffBranches';
 import {
   isValidTcKimlik, isValidTrPhone, maskPositiveInteger, maskTcKimlik, maskTrPhone,
@@ -641,7 +642,7 @@ export default function Teachers() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-heading">Öğretmenler</h1>
-          <p className="text-muted-foreground mt-1">{staff.length} kayıtlı öğretmen</p>
+          <p className="text-muted-foreground mt-1">{staff.filter((t) => !isUserPassive(t.status)).length} kayıtlı öğretmen</p>
         </div>
         <FeatureGate module="teachers" action="create">
           <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={() => setDialogOpen(true)}>
@@ -700,7 +701,7 @@ export default function Teachers() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-10 w-10">
-                        {teacher.photoUrl ? <AvatarImage src={teacher.photoUrl} alt={teacher.fullName} className="object-cover" /> : null}
+                        {teacher.photoUrl ? <AvatarImage src={assetUrl(teacher.photoUrl)} alt={teacher.fullName} className="object-cover" /> : null}
                         <AvatarFallback className="bg-brand-primary text-white">
                           {teacher.fullName.split(' ').map((n) => n[0]).join('')}
                         </AvatarFallback>

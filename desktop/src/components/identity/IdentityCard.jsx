@@ -1,6 +1,7 @@
 import { BadgeCheck, Building2 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { Badge } from '../ui/badge';
+import { assetUrl } from '../../lib/assetUrl';
 
 function initials(name) {
   return String(name || 'SA').split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]).join('').toUpperCase();
@@ -21,7 +22,7 @@ export function IdentityCard({
       <div className="p-5">
         <div className="flex items-start gap-4">
           <Avatar className="h-24 w-24 shrink-0 border-4 border-background shadow-md">
-            {photoUrl ? <AvatarImage src={photoUrl} alt={name} className="object-cover" /> : null}
+            {photoUrl ? <AvatarImage src={assetUrl(photoUrl)} alt={name} className="object-cover" /> : null}
             <AvatarFallback className="bg-brand-primary text-xl font-bold text-white">{initials(name)}</AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">

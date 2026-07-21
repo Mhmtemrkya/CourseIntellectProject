@@ -1487,7 +1487,14 @@ export function getModuleAwareMenuItems(baseItems, enabledModules, primaryRole =
     const uniqueKey = item.path || item.id || item.label;
     if (!uniqueKey) continue;
 
-    const isAlwaysVisible = moduleKey === "profile" || moduleKey === "";
+    // Sürücü kursu sayfaları okul tipi modül-aboneliği (enabledModules) filtresine
+    // TABİ DEĞİLDİR: görünürlükleri kurum türü + backend'in hesapladığı driving.*
+    // izinleriyle (isDrivingPathAllowed) belirlenir. Aksi hâlde tenant modül
+    // listesinde bir driving-* anahtarı eksikse "Kursiyerler / Ödeme / Direksiyon"
+    // gibi en önemli sürücü sayfaları menüden sessizce düşüyordu. Okul kurumunda
+    // bu öğeler yine kurum-türü filtresiyle (isModuleAllowedForInstitution) gizlenir.
+    const isDrivingItem = moduleKey.startsWith("driving-");
+    const isAlwaysVisible = moduleKey === "profile" || moduleKey === "" || isDrivingItem;
     if (!isAlwaysVisible && !enabledModules.has(moduleKey)) continue;
 
     seenPaths.add(uniqueKey);

@@ -468,15 +468,19 @@ public sealed class DrivingSchoolController(
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var query = dbContext.DrivingStudentGroups.AsNoTracking().AsQueryable();
         if (!includeInactive) query = query.Where(x => x.IsActive);
+        // Sayımlar yalnız "açık" kursiyerleri kapsar: mezun/askıda/iptal edilenler
+        // gruptaki kişi sayısından ve gruplanmamış sayısından düşülür. Liste ve
+        // MEBBİS dökümü etkilenmez (onlar ayrı sorgular).
+        var openStatuses = DrivingStudentStatuses.Open.ToArray();
         var counts = await dbContext.StudentDrivingProfiles.AsNoTracking()
-            .Where(x => x.StudentGroupId != null)
+            .Where(x => x.StudentGroupId != null && openStatuses.Contains(x.Status))
             .GroupBy(x => x.StudentGroupId)
             .Select(g => new { GroupId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.GroupId!.Value, x => x.Count, ct);
         var groups = await query.OrderBy(x => x.Name)
             .Select(x => new { x.Id, x.Name, x.Description, x.IsActive, x.CreatedAtUtc, x.TermYear, x.TermNumber, x.MebbisTermCode, x.Quota, x.RegistrationDeadlineUtc })
             .ToListAsync(ct);
-        var ungroupedCount = await dbContext.StudentDrivingProfiles.AsNoTracking().CountAsync(x => x.StudentGroupId == null, ct);
+        var ungroupedCount = await dbContext.StudentDrivingProfiles.AsNoTracking().CountAsync(x => x.StudentGroupId == null && openStatuses.Contains(x.Status), ct);
         var now = DateTime.UtcNow;
         return Ok(new
         {
