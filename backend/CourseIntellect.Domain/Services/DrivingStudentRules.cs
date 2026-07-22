@@ -9,7 +9,11 @@ namespace CourseIntellect.Domain.Services;
 /// </summary>
 public static class DrivingStudentRules
 {
-    /// <summary>Her adayda aranan belgeler.</summary>
+    /// <summary>
+    /// Her adayda aranan belgeler. Kan grubu belgesi 2026-07-22'de listeden
+    /// çıkarıldı (kan grubu zaten kimlik/sağlık raporundan alınıyor); enum değeri
+    /// ve etiketi eski kayıtlar okunabilsin diye duruyor, yeni dosyalarda aranmaz.
+    /// </summary>
     public static readonly IReadOnlyList<StudentDocumentType> BaseRequiredDocuments =
     [
         StudentDocumentType.Identity,
@@ -17,7 +21,6 @@ public static class DrivingStudentRules
         StudentDocumentType.HealthReport,
         StudentDocumentType.BiometricPhoto,
         StudentDocumentType.CriminalRecord,
-        StudentDocumentType.BloodTypeCertificate,
         StudentDocumentType.Residence,
     ];
 

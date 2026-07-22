@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { Upload } from 'lucide-react';
+import { CheckCircle2, Upload } from 'lucide-react';
 import { Button } from './button';
 
 /**
@@ -13,8 +13,16 @@ import { Button } from './button';
  * disabled  — devre dışı
  * required  — form doğrulaması için (seçim yoksa submit engellenir)
  * onChange(event) — yerel input'un onChange'i
+ * uploaded  — dosya SUNUCUYA yüklenmiş mi. Bileşenin kendi `selected` durumu
+ *   yalnızca o oturumdaki seçimi bilir; adım değişince ya da taslak geri
+ *   yüklenince sıfırlanıp yüklü belgeyi "Dosya seçilmedi" gösteriyordu. Yükleme
+ *   gerçeğini bilen üst bileşen bunu geçince "Belge yüklendi" yazar.
+ * uploadedName — yüklenmiş dosyanın adı (varsa metnin yanında gösterilir)
  */
-export function FileButton({ label = 'Belge Yükle', accept, multiple = false, disabled = false, required = false, onChange, className = '' }) {
+export function FileButton({
+  label = 'Belge Yükle', accept, multiple = false, disabled = false, required = false,
+  onChange, className = '', uploaded = false, uploadedName = '',
+}) {
   const ref = useRef(null);
   const [selected, setSelected] = useState('');
 
@@ -25,6 +33,8 @@ export function FileButton({ label = 'Belge Yükle', accept, multiple = false, d
     else setSelected(`${files.length} dosya seçildi`);
     onChange?.(event);
   };
+
+  const status = uploaded ? (uploadedName ? `Belge yüklendi — ${uploadedName}` : 'Belge yüklendi') : selected;
 
   return (
     <div className={`flex items-center gap-2 ${className}`}>
@@ -39,10 +49,14 @@ export function FileButton({ label = 'Belge Yükle', accept, multiple = false, d
         onChange={handleChange}
       />
       <Button type="button" variant="outline" size="sm" disabled={disabled} onClick={() => ref.current?.click()}>
-        <Upload className="mr-2 h-4 w-4" />{label}
+        <Upload className="mr-2 h-4 w-4" />{uploaded ? 'Değiştir' : label}
       </Button>
-      <span className="min-w-0 flex-1 truncate text-sm text-muted-foreground" title={selected}>
-        {selected || 'Dosya seçilmedi'}
+      <span
+        className={`flex min-w-0 flex-1 items-center gap-1 truncate text-sm ${uploaded ? 'font-semibold text-emerald-600' : 'text-muted-foreground'}`}
+        title={status}
+      >
+        {uploaded && <CheckCircle2 className="h-4 w-4 shrink-0" />}
+        <span className="truncate">{status || 'Dosya seçilmedi'}</span>
       </span>
     </div>
   );

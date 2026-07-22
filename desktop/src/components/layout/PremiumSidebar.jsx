@@ -38,15 +38,27 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 
-function pathIsActive(pathname, path) {
-  return pathname === path || pathname.startsWith(`${path}/`);
+/**
+ * Bir menü girişi, adresin EN UZUN eşleşen ön eki olduğunda aktiftir. Düz
+ * `startsWith` kullanmak iç içe yolları olan menülerde iki girişi birden
+ * seçili gösteriyordu: /driving/students/new adresinde hem "Yeni Kursiyer"
+ * hem "Kursiyerler" yanıyordu. `allPaths` verilmezse eski davranış sürer.
+ */
+function pathIsActive(pathname, path, allPaths) {
+  if (pathname === path) return true;
+  if (!pathname.startsWith(`${path}/`)) return false;
+  return !allPaths?.some(
+    (other) =>
+      other.length > path.length &&
+      (pathname === other || pathname.startsWith(`${other}/`)),
+  );
 }
 
-function SidebarLink({ item, compact, mobile, onNavigate }) {
+function SidebarLink({ item, compact, mobile, onNavigate, allPaths }) {
   const location = useLocation();
   const { resolvedTheme } = useTheme();
   const light = resolvedTheme === "light";
-  const active = pathIsActive(location.pathname, item.path);
+  const active = pathIsActive(location.pathname, item.path, allPaths);
   const Icon = item.icon;
 
   const link = (
@@ -305,6 +317,9 @@ export function PremiumSidebar() {
   const mainGroup = groups.find((group) => group.id === "main");
   const moduleGroups = groups.filter((group) => group.id !== "main");
   const allItems = groups.flatMap((group) => group.items);
+  // Aktif menü girişi "en uzun eşleşen yol" ile bulunur; karar için tüm
+  // görünür yollar gerekir (bkz. pathIsActive).
+  const allPaths = allItems.map((item) => item.path);
   const compact = sidebarCollapsed && !mobile;
   const displayEmail =
     user?.username?.includes("@") &&
@@ -506,6 +521,7 @@ export function PremiumSidebar() {
                   item={item}
                   compact
                   mobile={mobile}
+                  allPaths={allPaths}
                   onNavigate={() => setSidebarCollapsed(true)}
                 />
               ))}
@@ -523,6 +539,7 @@ export function PremiumSidebar() {
                         key={item.path}
                         item={item}
                         mobile={mobile}
+                        allPaths={allPaths}
                         onNavigate={() => setSidebarCollapsed(true)}
                       />
                     ))}
@@ -608,6 +625,7 @@ export function PremiumSidebar() {
                                     key={item.path}
                                     item={item}
                                     mobile={mobile}
+                                    allPaths={allPaths}
                                     onNavigate={() => setSidebarCollapsed(true)}
                                   />
                                 ))}

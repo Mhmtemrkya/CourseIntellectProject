@@ -893,8 +893,14 @@ export default function DrivingStudentDetail() {
                       <div>
                         <b>{item.label}</b>
                         {item.required && <Badge className="ml-2 border-0 bg-red-500/15 text-red-600">Zorunlu</Badge>}
+                        {item.fileUrl && (
+                          <Badge className="ml-2 border-0 bg-emerald-500/15 text-emerald-600">
+                            <CheckCircle2 className="mr-1 h-3 w-3" />Belge yüklendi
+                          </Badge>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           {item.uploadedAtUtc ? `Yüklendi: ${dateTime(item.uploadedAtUtc)}` : 'Henüz yüklenmedi'}
+                          {item.fileName ? ` • ${item.fileName}` : ''}
                           {item.expiresAtUtc ? ` • Geçerlilik: ${dateOnly(item.expiresAtUtc)}` : ''}
                         </p>
                         {item.rejectionReason && <p className="mt-1 text-xs text-red-600">Ret nedeni: {item.rejectionReason}</p>}
@@ -909,7 +915,7 @@ export default function DrivingStudentDetail() {
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <Button size="sm" disabled={busy} className="bg-emerald-600 text-white hover:bg-emerald-700"
                           onClick={() => run(() => reviewDrivingStudentDocument(item.id, { action: 'Approve', expectedVersion: item.reviewVersion }), 'Belge onaylandı')}>
-                          <CheckCircle2 className="mr-1 h-4 w-4" />Onayla
+                          <CheckCircle2 className="mr-1 h-4 w-4" />Onaylıyorum
                         </Button>
                         <Input
                           className="w-64"
@@ -923,7 +929,7 @@ export default function DrivingStudentDetail() {
                             () => reviewDrivingStudentDocument(item.id, { action: 'Reject', rejectionReason: rejectReasons[item.id], expectedVersion: item.reviewVersion }),
                             'Belge reddedildi',
                           )}>
-                          <XCircle className="mr-1 h-4 w-4" />Reddet
+                          <XCircle className="mr-1 h-4 w-4" />Onaylamıyorum
                         </Button>
                       </div>
                     )}
@@ -934,6 +940,8 @@ export default function DrivingStudentDetail() {
                           className="w-72"
                           accept=".pdf,.jpg,.jpeg,.png"
                           disabled={busy}
+                          uploaded={Boolean(item.fileUrl)}
+                          uploadedName={item.fileName}
                           onChange={(e) => uploadDocument(item.documentType, e.target.files?.[0], item.expiresAtUtc)}
                         />
                         <span className="text-xs text-muted-foreground">

@@ -52,6 +52,25 @@ async function apiFetch(url, options = {}) {
   return fetchFn(url, options);
 }
 
+/**
+ * Hata gövdesinden okunabilir bir mesaj çıkarır. Uçlarımız `{ message }` döner,
+ * ama ASP.NET'in kendi model doğrulaması ValidationProblemDetails üretir
+ * (`{ title, errors: { Alan: ["..."] } }`) — orada `message` olmadığı için
+ * kullanıcı "Request failed (400)" görüyordu. Alan adlarıyla birlikte
+ * özetliyoruz ki hatanın nerede olduğu belli olsun.
+ */
+function describeApiError(body, status) {
+  if (!body) return `Sunucu hatası (${status})`;
+  if (body.message) return body.message;
+  if (body.errors && typeof body.errors === 'object') {
+    const parts = Object.entries(body.errors)
+      .map(([field, messages]) => `${field}: ${[].concat(messages).join(' ')}`)
+      .filter(Boolean);
+    if (parts.length) return parts.join(' • ');
+  }
+  return body.detail || body.title || `Sunucu hatası (${status})`;
+}
+
 async function request(method, url, data, config = {}) {
   const session = loadDesktopSession();
   const fullUrl = new URL(url, desktopApiBaseUrl);
@@ -115,7 +134,7 @@ async function request(method, url, data, config = {}) {
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
-    const error = new Error(errorBody?.message || `Request failed (${response.status})`);
+    const error = new Error(describeApiError(errorBody, response.status));
     // Gövdeyi taşı: bazı uçlar hatanın yanında makine-okunur ipucu döner
     // (ör. randevu kuralını hangi override koduyla ezebileceğin).
     error.status = response.status;

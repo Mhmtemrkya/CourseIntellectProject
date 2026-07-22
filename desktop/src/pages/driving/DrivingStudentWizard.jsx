@@ -36,7 +36,7 @@ const DOCUMENT_TYPES = [
   { value: 'HealthReport', label: 'Sağlık raporu', required: true, expires: true },
   { value: 'BiometricPhoto', label: 'Biyometrik fotoğraf', required: true },
   { value: 'CriminalRecord', label: 'Adli sicil kaydı', required: true, expires: true },
-  { value: 'BloodTypeCertificate', label: 'Kan grubu belgesi', required: true },
+  // Kan grubu belgesi kaldırıldı (bilgi kimlik/sağlık raporunda zaten var).
   { value: 'Residence', label: 'İkametgâh', required: true },
   { value: 'ParentalConsent', label: 'Veli izin belgesi (18 yaş altı)' },
   { value: 'ExistingLicense', label: 'Mevcut ehliyet', expires: true },
@@ -209,6 +209,9 @@ export default function DrivingStudentWizard() {
   const [draftId, setDraftId] = useState(null);
   const [draftSavedAt, setDraftSavedAt] = useState(null);
   const [result, setResult] = useState(null);
+  // Son kayıt denemesinin hatası: sunucudan gelen adım/alan ayrıntılarıyla birlikte
+  // ekranda kalıcı gösterilir (bkz. submit).
+  const [submitError, setSubmitError] = useState(null);
 
   const canCreate = can(DRIVING.studentCreate);
   const canSeeFinance = can(DRIVING.financeView);
@@ -474,8 +477,17 @@ export default function DrivingStudentWizard() {
       // Lead'den gelindiyse aday adayını kursiyer dosyasına bağla (başarısızsa kayıt bozulmaz).
       if (leadId) await convertDrivingLead(leadId, { studentDrivingProfileId: response.studentDrivingProfileId }).catch(() => {});
       setResult(response);
+      setSubmitError(null);
       toast({ title: 'Kayıt tamamlandı', description: `${form.fullName} kursiyer olarak kaydedildi.` });
     } catch (error) {
+      // Sunucu hangi adımda ne eksik olduğunu döner (problems). Panelde kalıcı
+      // gösteririz; kaybolan bir toast'ta "kayıt tamamlanamadı" tek başına
+      // personele hiçbir şey söylemiyordu.
+      setSubmitError({
+        message: error.message,
+        problems: Array.isArray(error.body?.problems) ? error.body.problems : [],
+        status: error.status,
+      });
       toast({ title: 'Kayıt tamamlanamadı', description: error.message, variant: 'destructive' });
     } finally {
       setSaving(false);
@@ -838,12 +850,17 @@ export default function DrivingStudentWizard() {
                   documents: current.documents.map((x) => (x.documentType === type.value ? { ...x, ...patch } : x)),
                 }));
                 return (
-                  <div key={type.value} className="space-y-2 rounded-xl border p-3">
+                  <div key={type.value} className={`space-y-2 rounded-xl border p-3 ${attached ? 'border-emerald-500/40 bg-emerald-500/5' : ''}`}>
                     <div className="flex flex-wrap items-center gap-3">
                       <div className="min-w-[220px] flex-1">
                         <b className="text-sm">{type.label}</b>
-                        {required && <Badge className="ml-2 border-0 bg-red-500/15 text-red-600">Zorunlu</Badge>}
-                        {attached && <p className="text-xs text-emerald-600">{attached.fileName} eklendi</p>}
+                        {required && !attached && <Badge className="ml-2 border-0 bg-red-500/15 text-red-600">Zorunlu</Badge>}
+                        {attached && (
+                          <Badge className="ml-2 border-0 bg-emerald-500/15 text-emerald-600">
+                            <CheckCircle2 className="mr-1 h-3 w-3" />Belge yüklendi
+                          </Badge>
+                        )}
+                        {attached && <p className="text-xs text-muted-foreground">{attached.fileName}</p>}
                       </div>
                       {type.expires && (
                         <Input
@@ -858,6 +875,7 @@ export default function DrivingStudentWizard() {
                         className="w-72"
                         accept=".pdf,.jpg,.jpeg,.png"
                         disabled={uploading}
+                        uploaded={Boolean(attached)}
                         onChange={(e) => attachDocument(type.value, e.target.files?.[0], null)}
                       />
                     </div>
@@ -979,6 +997,39 @@ export default function DrivingStudentWizard() {
 
           {step === 6 && (
             <div className="space-y-5">
+              {submitError && (
+                <div className="rounded-2xl border border-red-500/40 bg-red-500/5 p-4">
+                  <b className="flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-4 w-4" />Kayıt tamamlanamadı
+                  </b>
+                  <p className="mt-1 text-sm text-muted-foreground">{submitError.message}</p>
+                  {submitError.problems.length > 0 ? (
+                    <ul className="mt-3 space-y-1.5">
+                      {submitError.problems.map((problem, index) => (
+                        <li key={`${problem.field}-${index}`} className="flex flex-wrap items-center gap-2 text-sm">
+                          <Badge variant="outline" className="shrink-0">{problem.step}. adım · {problem.section}</Badge>
+                          <b>{problem.field}:</b>
+                          <span className="text-muted-foreground">{problem.message}</span>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-6 px-2 text-xs"
+                            onClick={() => setStep(problem.step)}
+                          >
+                            Git
+                          </Button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-3 text-xs text-muted-foreground">
+                      {submitError.status >= 500
+                        ? 'Sunucu tarafında beklenmeyen bir hata oluştu. Bilgiler kaydedilmedi; tekrar deneyin, sürerse bu mesajı yöneticinize iletin.'
+                        : 'Ayrıntı sunucudan gelmedi. Alanları kontrol edip tekrar deneyin.'}
+                    </p>
+                  )}
+                </div>
+              )}
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border p-4">
                   <b className="text-sm text-muted-foreground">Kursiyer</b>

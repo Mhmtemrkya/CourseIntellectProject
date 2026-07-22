@@ -55,18 +55,37 @@ public sealed class DrivingStudentsController(
         var actorId = CurrentUserId();
         if (actorId is null) return Unauthorized();
 
-        var error = Validate(request);
-        if (error is not null) return BadRequest(new { message = error });
+        var problems = Validate(request);
+        if (problems.Count > 0)
+            return BadRequest(new
+            {
+                // Mesaj TEK BAŞINA yeterli olmalı: masaüstü ayrıntı panelini
+                // çizer ama mobil yalnızca bu metni gösterir, kayıtlara da bu düşer.
+                message = problems.Count == 1
+                    ? $"{problems[0].Step}. adım ({problems[0].Section}) — {problems[0].Field}: {problems[0].Message}"
+                    : $"{problems.Count} alan eksik veya hatalı: "
+                      + string.Join(" | ", problems.Select(x => $"{x.Step}. adım ({x.Section}) {x.Field} — {x.Message}")),
+                problems,
+            });
 
         var package = await dbContext.DrivingPackages.AsNoTracking()
             .SingleOrDefaultAsync(x => x.Id == request.PackageId && x.IsActive, ct);
-        if (package is null) return BadRequest(new { message = "Aktif paket bulunamadı." });
+        if (package is null)
+            return BadRequest(new
+            {
+                message = "Aktif paket bulunamadı.",
+                problems = new[] { new DrivingWizardProblem(3, "Eğitim", "Paket", "Seçilen paket bulunamadı veya pasife alınmış. Eğitim adımından tekrar seçin.") },
+            });
 
         var identityNumber = request.IdentityNumber.Trim();
         // Kurum içinde aynı kimlik numarasıyla ikinci bir dosya açılamaz.
         var duplicate = await FindDuplicateAsync(identityNumber, ct);
         if (duplicate is not null)
-            return Conflict(new { message = $"Bu kimlik numarasıyla kayıtlı bir kursiyer var: {duplicate}." });
+            return Conflict(new
+            {
+                message = $"Bu kimlik numarasıyla kayıtlı bir kursiyer var: {duplicate}.",
+                problems = new[] { new DrivingWizardProblem(1, "Kimlik", "TC kimlik no", $"Bu numarayla açılmış dosya var: {duplicate}. Mükerrer kayıt açılamaz.") },
+            });
 
         // Aynı telefon numarasıyla da ikinci kayıt açılamaz.
         var phone = NormalizePhone(request.Phone);
@@ -74,7 +93,11 @@ public sealed class DrivingStudentsController(
         {
             var phoneOwner = await FindDuplicateByPhoneAsync(phone, ct);
             if (phoneOwner is not null)
-                return Conflict(new { message = $"Bu telefon numarasıyla kayıtlı bir kursiyer var: {phoneOwner}." });
+                return Conflict(new
+                {
+                    message = $"Bu telefon numarasıyla kayıtlı bir kursiyer var: {phoneOwner}.",
+                    problems = new[] { new DrivingWizardProblem(2, "İletişim", "Telefon", $"Bu numara {phoneOwner} adına kayıtlı. Mükerrer kayıt açılamaz.") },
+                });
         }
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
@@ -1692,48 +1715,62 @@ public sealed class DrivingStudentsController(
             .Join(dbContext.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (_, student) => student.FullName)
             .FirstOrDefaultAsync(ct);
 
-    private static string? Validate(DrivingStudentWizardRequest request)
+    /// <summary>
+    /// Sihirbazın TEK bir sorunu değil, tüm sorunlarını adım/alan bilgisiyle döner.
+    /// Personel "kayıt tamamlanamadı" yazısıyla baş başa kalmasın; hangi adımda ne
+    /// eksik olduğunu görüp doğrudan oraya gidebilsin diye Step + Section taşınır.
+    /// Adımlar sihirbazla aynı: 1 Kimlik, 2 İletişim, 3 Eğitim, 4 Evraklar, 5 Finans, 6 Onay.
+    /// </summary>
+    private static List<DrivingWizardProblem> Validate(DrivingStudentWizardRequest request)
     {
-        if (request.FullName.Trim().Length is < 3 or > 150) return "Ad soyad 3-150 karakter olmalıdır.";
-        if (!Enum.IsDefined(request.IdentityKind)) return "Kimlik türü geçersiz.";
-        if (!Enum.IsDefined(request.DrivingExperience)) return "Sürüş deneyimi geçersiz.";
+        var problems = new List<DrivingWizardProblem>();
+        void Add(int step, string section, string field, string message) =>
+            problems.Add(new DrivingWizardProblem(step, section, field, message));
+
+        if (request.FullName.Trim().Length is < 3 or > 150) Add(1, "Kimlik", "Ad soyad", "Ad soyad 3-150 karakter olmalıdır.");
+        if (!Enum.IsDefined(request.IdentityKind)) Add(1, "Kimlik", "Kimlik türü", "Kimlik türü geçersiz.");
+        if (!Enum.IsDefined(request.DrivingExperience)) Add(3, "Eğitim", "Sürüş deneyimi", "Sürüş deneyimi geçersiz.");
 
         var identity = request.IdentityNumber.Trim();
         if (request.IdentityKind == IdentityKind.TurkishId)
         {
-            if (!DrivingStudentRules.IsValidTurkishId(identity)) return "TC kimlik numarası geçersiz.";
+            if (!DrivingStudentRules.IsValidTurkishId(identity))
+                Add(1, "Kimlik", "TC kimlik no", "TC kimlik numarası geçersiz (kontrol basamağı tutmuyor).");
         }
         else if (identity.Length is < 5 or > 40)
         {
-            return "Kimlik/pasaport numarası 5-40 karakter olmalıdır.";
+            Add(1, "Kimlik", "Kimlik/pasaport no", "Kimlik/pasaport numarası 5-40 karakter olmalıdır.");
         }
 
         if (!DateTime.TryParse(request.BirthDate, out var birth) || birth > DateTime.UtcNow.AddYears(-16) || birth < DateTime.UtcNow.AddYears(-100))
-            return "Doğum tarihi geçersiz (aday en az 16 yaşında olmalıdır).";
-        if (!request.KvkkConsent) return "KVKK aydınlatma onayı olmadan kayıt tamamlanamaz.";
-        if ((request.AccessibilityNotes?.Length ?? 0) > 1000) return "Erişilebilirlik notu en fazla 1000 karakter olabilir.";
-        if ((request.ResidenceAddress?.Length ?? 0) > 500) return "İkametgâh adresi en fazla 500 karakter olabilir.";
-        if (!string.IsNullOrWhiteSpace(request.PhotoUrl) && !IsSafeUploadUrl(request.PhotoUrl)) return "Fotoğraf güvenli yükleme alanından seçilmelidir.";
-        if (!string.IsNullOrWhiteSpace(request.LivePhotoUrl) && !IsSafeUploadUrl(request.LivePhotoUrl)) return "Anlık fotoğraf güvenli yükleme alanından seçilmelidir.";
+            Add(1, "Kimlik", "Doğum tarihi", "Doğum tarihi geçersiz (aday en az 16 yaşında olmalıdır).");
+        if (!request.KvkkConsent) Add(6, "Onay", "KVKK onayı", "KVKK aydınlatma onayı olmadan kayıt tamamlanamaz.");
+        if ((request.AccessibilityNotes?.Length ?? 0) > 1000) Add(2, "İletişim", "Erişilebilirlik notu", "Erişilebilirlik notu en fazla 1000 karakter olabilir.");
+        if ((request.ResidenceAddress?.Length ?? 0) > 500) Add(2, "İletişim", "İkametgâh adresi", "İkametgâh adresi en fazla 500 karakter olabilir.");
+        if (!string.IsNullOrWhiteSpace(request.PhotoUrl) && !IsSafeUploadUrl(request.PhotoUrl))
+            Add(1, "Kimlik", "Fotoğraf", "Fotoğraf güvenli yükleme alanından seçilmelidir.");
+        if (!string.IsNullOrWhiteSpace(request.LivePhotoUrl) && !IsSafeUploadUrl(request.LivePhotoUrl))
+            Add(1, "Kimlik", "Anlık fotoğraf", "Anlık fotoğraf güvenli yükleme alanından seçilmelidir.");
         if (request.HasExistingLicense)
         {
-            if ((request.ExistingLicenseNumber?.Length ?? 0) > 40) return "Sürücü belgesi numarası en fazla 40 karakter olabilir.";
-            if ((request.ExistingLicenseClasses?.Length ?? 0) > 60) return "Ehliyet sınıfı en fazla 60 karakter olabilir.";
-            if ((request.LicenseIssuePlace?.Length ?? 0) > 120) return "Veren makam en fazla 120 karakter olabilir.";
+            if ((request.ExistingLicenseNumber?.Length ?? 0) > 40) Add(3, "Eğitim", "Sürücü belgesi no", "Sürücü belgesi numarası en fazla 40 karakter olabilir.");
+            if ((request.ExistingLicenseClasses?.Length ?? 0) > 60) Add(3, "Eğitim", "Ehliyet sınıfı", "Ehliyet sınıfı en fazla 60 karakter olabilir.");
+            if ((request.LicenseIssuePlace?.Length ?? 0) > 120) Add(3, "Eğitim", "Veren makam", "Veren makam en fazla 120 karakter olabilir.");
             if (request.LicenseIssueDate is { } issued && request.LicenseExpiryDate is { } expiry && expiry < issued)
-                return "Ehliyet son geçerlilik tarihi, veriliş tarihinden önce olamaz.";
+                Add(3, "Eğitim", "Ehliyet tarihleri", "Ehliyet son geçerlilik tarihi, veriliş tarihinden önce olamaz.");
         }
-        if (!request.AvailableWeekdays && !request.AvailableWeekend) return "En az bir zaman uygunluğu (hafta içi / hafta sonu) seçilmelidir.";
+        if (!request.AvailableWeekdays && !request.AvailableWeekend)
+            Add(3, "Eğitim", "Zaman uygunluğu", "En az bir zaman uygunluğu (hafta içi / hafta sonu) seçilmelidir.");
 
         if (request.Finance is { } finance)
         {
-            if (finance.GrossAmount < 0 || finance.DiscountAmount < 0 || finance.DownPayment < 0) return "Finans tutarları negatif olamaz.";
-            if (finance.DiscountAmount > finance.GrossAmount) return "İndirim, brüt tutardan büyük olamaz.";
-            if (finance.DownPayment > finance.GrossAmount - finance.DiscountAmount) return "Peşinat, net tutardan büyük olamaz.";
-            if (finance.InstallmentCount is < 0 or > 36) return "Taksit sayısı 0-36 arasında olmalıdır.";
+            if (finance.GrossAmount < 0 || finance.DiscountAmount < 0 || finance.DownPayment < 0) Add(5, "Finans", "Tutarlar", "Finans tutarları negatif olamaz.");
+            if (finance.DiscountAmount > finance.GrossAmount) Add(5, "Finans", "İndirim", "İndirim, brüt tutardan büyük olamaz.");
+            if (finance.DownPayment > finance.GrossAmount - finance.DiscountAmount) Add(5, "Finans", "Peşinat", "Peşinat, net tutardan büyük olamaz.");
+            if (finance.InstallmentCount is < 0 or > 36) Add(5, "Finans", "Taksit sayısı", "Taksit sayısı 0-36 arasında olmalıdır.");
         }
 
-        return null;
+        return problems;
     }
 
     private static bool IsValidJson(string payload)
@@ -1805,6 +1842,12 @@ public sealed class DrivingStudentsController(
             && string.Equals(tenant.Status, "active", StringComparison.OrdinalIgnoreCase);
     }
 }
+
+/// <summary>
+/// Kayıt sihirbazındaki tek bir sorun. <paramref name="Step"/> sihirbaz adımıdır
+/// (1 Kimlik … 6 Onay); istemci bu sayıyla doğrudan ilgili adıma atlar.
+/// </summary>
+public sealed record DrivingWizardProblem(int Step, string Section, string Field, string Message);
 
 public sealed record DrivingStudentWizardRequest(
     string FullName,
