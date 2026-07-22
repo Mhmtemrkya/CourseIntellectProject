@@ -6,7 +6,6 @@ import {
   Filter,
   Users,
   GraduationCap,
-  ClipboardCheck,
   BarChart3,
   TrendingUp,
   TrendingDown,
@@ -24,7 +23,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Progress } from '../components/ui/progress';
 import {
   Select,
   SelectContent,
@@ -61,7 +59,6 @@ const containerVariants = {
 };
 
 const reportTypes = [
-  { id: 'attendance', name: 'Devamsızlık Raporu', icon: ClipboardCheck, description: 'Öğrenci devamsızlık özeti' },
   { id: 'performance', name: 'Performans Raporu', icon: BarChart3, description: 'Sınav ve ödev performansı' },
   { id: 'students', name: 'Öğrenci Listesi', icon: Users, description: 'Detaylı öğrenci bilgileri' },
   { id: 'teachers', name: 'Öğretmen Raporu', icon: GraduationCap, description: 'Öğretmen aktivite özeti' },
@@ -261,22 +258,6 @@ function AdministrativeReportOverview() {
   const filteredExams = useMemo(() => (
     classFilter === 'all' ? exams : exams.filter((exam) => exam.className === classFilter || exam.title?.includes(classFilter))
   ), [exams, classFilter]);
-
-  const attendanceRows = useMemo(() => (
-    displayClasses.map((cls) => {
-      const classStudents = filteredStudents.filter((student) => student.className === cls);
-      const classRecords = attendance.filter((item) => item.className === cls);
-      const presentRecords = classRecords.filter((item) => normalizeLookup(item.status).includes('katildi'));
-      const value = classRecords.length > 0
-        ? Math.round((presentRecords.length / classRecords.length) * 100)
-        : 0;
-      return {
-        name: cls,
-        value,
-        count: classStudents.length,
-      };
-    })
-  ), [attendance, displayClasses, filteredStudents]);
 
   const subjectPerformance = useMemo(() => {
     const subjects = [...new Set(filteredExams.map((item) => item.subject).filter(Boolean))];
@@ -492,14 +473,6 @@ function AdministrativeReportOverview() {
   }, [selectedStudentDetail, studentNotes, toast]);
 
   const handleDownload = () => {
-    if (selectedReport?.id === 'attendance') {
-      downloadCsv('devamsizlik-raporu.csv', [
-        ['Sınıf', 'Öğrenci Sayısı', 'Devam Oranı'],
-        ...attendanceRows.map((row) => [row.name, row.count, `${row.value}%`]),
-      ]);
-      return;
-    }
-
     if (selectedReport?.id === 'performance') {
       downloadCsv('performans-raporu.csv', [
         ['Ders', 'Ortalama'],
@@ -624,10 +597,9 @@ function AdministrativeReportOverview() {
             </CardContent>
           </Card>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
               [stats.totalStudents, 'Toplam Öğrenci', TrendingUp, 'text-green-500'],
-              [`${stats.attendanceRate}%`, 'Devam Oranı', TrendingUp, 'text-green-500'],
               [stats.averageScore, 'Ortalama Puan', TrendingDown, 'text-red-500'],
               [stats.activeExams, 'Aktif Sınav', BarChart3, 'text-brand-primary'],
             ].map(([value, label, Icon, color]) => (
@@ -651,36 +623,12 @@ function AdministrativeReportOverview() {
               <CardDescription>{selectedReport?.description}</CardDescription>
             </CardHeader>
             <CardContent>
-              {selectedReport?.id === 'attendance' ? (
-                <div className="space-y-4">
-                  {attendanceRows.map((cls) => (
-                    <div key={cls.name} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
-                      <div className="flex items-center gap-3">
-                        <Badge variant="outline">{cls.name}</Badge>
-                        <span className="text-sm">{cls.count} öğrenci</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="w-32">
-                          <Progress value={cls.value} className="h-2" />
-                        </div>
-                        <span className="text-sm font-bold w-12 text-right">{cls.value}%</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-
               {selectedReport?.id === 'performance' ? (
                 <div className="space-y-4">
                   {subjectPerformance.map((item) => (
                     <div key={item.subject} className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
                       <span className="font-medium">{item.subject}</span>
-                      <div className="flex items-center gap-4">
-                        <div className="w-32">
-                          <Progress value={item.average} className="h-2" />
-                        </div>
-                        <span className="text-sm font-bold w-12 text-right">{item.average}%</span>
-                      </div>
+                      <span className="text-lg font-bold">{item.average}%</span>
                     </div>
                   ))}
                 </div>
@@ -729,14 +677,10 @@ function AdministrativeReportOverview() {
                           <span>{student.programType}</span>
                         </div>
                       </div>
-                      <div className="grid grid-cols-3 gap-6 text-right">
+                      <div className="grid grid-cols-2 gap-6 text-right">
                         <div>
                           <p className="text-sm text-muted-foreground">Ortalama</p>
                           <p className="font-semibold">{student.averageScore}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-muted-foreground">Devam</p>
-                          <p className="font-semibold">%{student.attendanceRate}</p>
                         </div>
                         <div>
                           <p className="text-sm text-muted-foreground">Kalan Borç</p>
@@ -785,12 +729,11 @@ function AdministrativeReportOverview() {
                 </div>
               </DialogHeader>
 
-              <div className="grid gap-4 md:grid-cols-4">
+              <div className="grid gap-4 md:grid-cols-3">
                 {[
                   [formatCurrency(selectedStudentDetail.remainingBalance), 'Kalan ödeme', Wallet, 'text-amber-600'],
                   [selectedStudentDetail.installments.length, 'Taksit kaydı', ReceiptText, 'text-brand-primary'],
                   [formatCurrency(selectedStudentDetail.collectionTotal), 'Tahsil edilen', CheckCircle2, 'text-green-600'],
-                  [`%${selectedStudentDetail.attendanceRate}`, 'Devam oranı', ClipboardCheck, 'text-blue-600'],
                 ].map(([value, label, Icon, color]) => (
                   <div key={label} className="rounded-2xl border bg-muted/30 p-4">
                     <div className="flex items-center justify-between gap-3">
@@ -843,10 +786,10 @@ function AdministrativeReportOverview() {
                       <BarChart3 className="h-5 w-5 text-brand-primary" />
                       Akademik Durum
                     </CardTitle>
-                    <CardDescription>Sınav, not ve devam özeti</CardDescription>
+                    <CardDescription>Sınav ve not özeti</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-2xl bg-muted/40 p-4">
                         <p className="text-sm text-muted-foreground">Ortalama</p>
                         <p className="mt-1 text-2xl font-bold">{selectedStudentDetail.averageScore}</p>
@@ -854,10 +797,6 @@ function AdministrativeReportOverview() {
                       <div className="rounded-2xl bg-muted/40 p-4">
                         <p className="text-sm text-muted-foreground">Sınav Kaydı</p>
                         <p className="mt-1 text-2xl font-bold">{selectedStudentDetail.studentExams.length}</p>
-                      </div>
-                      <div className="rounded-2xl bg-muted/40 p-4">
-                        <p className="text-sm text-muted-foreground">Devamsızlık Kaydı</p>
-                        <p className="mt-1 text-2xl font-bold">{selectedStudentDetail.studentAttendance.length}</p>
                       </div>
                     </div>
                     <div className="space-y-2">

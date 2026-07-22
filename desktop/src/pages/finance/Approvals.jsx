@@ -283,20 +283,25 @@ export default function Approvals() {
                     <TableCell>{approval.reason}</TableCell>
                     <TableCell>{getStatusBadge(approval.status)}</TableCell>
                     <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleApprove(approval)} disabled={!pending || !canApprove}>
-                          <ThumbsUp className="h-4 w-4 text-green-600" />
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          className="bg-green-600 text-white hover:bg-green-700"
+                          onClick={() => handleApprove(approval)}
+                          disabled={!pending || !canApprove}
+                        >
+                          <ThumbsUp className="mr-1.5 h-4 w-4" />Onaylıyorum
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon"
+                          size="sm"
+                          variant="destructive"
                           disabled={!pending || !canApprove}
                           onClick={() => {
                             setSelectedApproval(approval);
                             setDialogOpen(true);
                           }}
                         >
-                          <ThumbsDown className="h-4 w-4 text-red-600" />
+                          <ThumbsDown className="mr-1.5 h-4 w-4" />Onaylamıyorum
                         </Button>
                       </div>
                     </TableCell>

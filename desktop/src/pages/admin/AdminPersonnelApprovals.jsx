@@ -192,8 +192,8 @@ export default function AdminPersonnelApprovals() {
             </div>
           ) : null}
           <DialogFooter>
-            <Button variant="outline" disabled={!selected || busyId === selected?.id} className="border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => selected && decide(selected, 'Rejected')}>Reddet</Button>
-            <FeatureGate module="approvals" action="approve"><Button disabled={!selected || busyId === selected?.id} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => selected && decide(selected, 'Approved')}>Onayla</Button></FeatureGate>
+            <Button variant="outline" disabled={!selected || busyId === selected?.id} className="border-rose-200 text-rose-600 hover:bg-rose-50" onClick={() => selected && decide(selected, 'Rejected')}>Onaylamıyorum</Button>
+            <FeatureGate module="approvals" action="approve"><Button disabled={!selected || busyId === selected?.id} className="bg-emerald-600 hover:bg-emerald-700" onClick={() => selected && decide(selected, 'Approved')}>Onaylıyorum</Button></FeatureGate>
           </DialogFooter>
         </DialogContent>
       </Dialog>

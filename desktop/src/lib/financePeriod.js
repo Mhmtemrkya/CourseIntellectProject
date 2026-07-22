@@ -13,13 +13,21 @@ export function parseTrDateTime(value) {
   const raw = String(value).replace(' • ', ' ').trim();
   if (!raw) return null;
 
+  // ISO: yyyy-MM-dd [HH:mm] — fatura subtitle'ı "2026-07-22 • PDF" gibi gelir; sondaki
+  // ekstra metin (PDF vb.) yüzünden ham new Date() çözemez, bu yüzden baştaki tarihi
+  // ayıklarız. Aksi halde fatura dönem filtresinden düşüp "faturada gözükmüyor" olurdu.
+  const isoMatch = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if (isoMatch) {
+    const [, y, mo, d, h, mi] = isoMatch;
+    return new Date(Number(y), Number(mo) - 1, Number(d), Number(h || 0), Number(mi || 0));
+  }
   // dd.MM.yyyy [HH:mm]
   const m = raw.match(/^(\d{1,2})[.\/](\d{1,2})[.\/](\d{4})(?:[ T](\d{1,2}):(\d{2}))?/);
   if (m) {
     const [, d, mo, y, h, mi] = m;
     return new Date(Number(y), Number(mo) - 1, Number(d), Number(h || 0), Number(mi || 0));
   }
-  // ISO veya tarayıcının çözebildiği diğer biçimler
+  // Tarayıcının çözebildiği diğer biçimler
   const iso = new Date(raw);
   return Number.isNaN(iso.getTime()) ? null : iso;
 }
