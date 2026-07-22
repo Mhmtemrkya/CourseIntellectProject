@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  Wallet, Plus, Search, DollarSign, Users, Calendar, CheckCircle, Clock,
-  Download, Edit, Trash2,
+  Wallet, Plus, Search, DollarSign, Users, Calendar, Trash2,
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Card, CardContent } from '../../components/ui/card';
 import { Badge } from '../../components/ui/badge';
 import { FeatureGate } from '../../components/FeatureGate';
 import { Button } from '../../components/ui/button';
@@ -22,7 +21,6 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
-import { useApp } from '../../context/AppContext';
 import { fetchStaff, createSalary, fetchAccountingDashboard, calculatePayroll } from '../../lib/api/modules';
 import { parseFinanceMoney } from '../../lib/financeDocuments';
 
@@ -49,6 +47,15 @@ function parseMoney(value) {
   return parseFinanceMoney(value);
 }
 
+const deductionFields = [
+  ['sgkEmployee', 'SGK İşçi'],
+  ['unemploymentEmployee', 'İşsizlik İşçi'],
+  ['incomeTax', 'Gelir Vergisi'],
+  ['stampTax', 'Damga Vergisi'],
+];
+
+const numericPayroll = (payroll, key) => Math.max(0, Number(payroll?.[key]) || 0);
+
 function normalizeSalaryStatus(status = '') {
   const normalized = String(status).toLowerCase();
   if (normalized.includes('öd') || normalized.includes('oden') || normalized.includes('paid')) return 'Ödendi';
@@ -68,6 +75,7 @@ export default function Salary() {
   const [saving, setSaving] = useState(false);
   const [filterMonth, setFilterMonth] = useState(String(new Date().getMonth()));
   const [payroll, setPayroll] = useState(null);
+  const [customItems, setCustomItems] = useState([]);
   const [calculating, setCalculating] = useState(false);
 
   const [form, setForm] = useState({
@@ -130,6 +138,7 @@ export default function Salary() {
       setCalculating(true);
       const result = await calculatePayroll({ grossSalary: gross, employee: form.staffName || null, year: Number(form.year) || null });
       setPayroll(result);
+      setCustomItems([]);
     } catch (err) {
       toast({ title: 'Bordro hesaplanamadı', description: err.message, variant: 'destructive' });
     } finally {
@@ -137,9 +146,63 @@ export default function Salary() {
     }
   };
 
+  const startManualPayroll = () => {
+    const gross = Number(form.amount);
+    if (!gross || gross <= 0) {
+      toast({ title: 'Önce geçerli bir brüt maaş girin.', variant: 'destructive' });
+      return;
+    }
+    setPayroll({
+      gross,
+      sgkEmployee: 0,
+      unemploymentEmployee: 0,
+      incomeTax: 0,
+      stampTax: 0,
+      sgkEmployer: 0,
+      totalEmployerCost: gross,
+    });
+    setCustomItems([]);
+  };
+
+  const updatePayrollField = (key, value) => {
+    setPayroll((current) => ({ ...current, [key]: value }));
+  };
+
+  const addCustomItem = () => {
+    setCustomItems((items) => [...items, {
+      id: `${Date.now()}-${items.length}`,
+      label: '',
+      type: 'deduction',
+      amount: '',
+    }]);
+  };
+
+  const updateCustomItem = (id, patch) => {
+    setCustomItems((items) => items.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  };
+
+  const payrollTotals = useMemo(() => {
+    if (!payroll) return null;
+    const gross = numericPayroll(payroll, 'gross');
+    const legalDeductions = deductionFields.reduce((sum, [key]) => sum + numericPayroll(payroll, key), 0);
+    const additions = customItems
+      .filter((item) => item.type === 'addition')
+      .reduce((sum, item) => sum + Math.max(0, Number(item.amount) || 0), 0);
+    const deductions = customItems
+      .filter((item) => item.type === 'deduction')
+      .reduce((sum, item) => sum + Math.max(0, Number(item.amount) || 0), 0);
+    return {
+      gross,
+      additions,
+      deductions,
+      net: Math.max(0, gross + additions - legalDeductions - deductions),
+    };
+  }, [customItems, payroll]);
+
   const resetForm = () => {
     setForm({ staffName: '', amount: '', month: String(new Date().getMonth()), year: String(new Date().getFullYear()), notes: '' });
     setPayroll(null);
+    setCustomItems([]);
   };
 
   const handleCreate = async () => {
@@ -147,19 +210,28 @@ export default function Salary() {
       toast({ title: 'Personel ve brüt maaş zorunludur.', variant: 'destructive' });
       return;
     }
+    if (customItems.some((item) => Number(item.amount) > 0 && !item.label.trim())) {
+      toast({ title: 'Tutar girilen özel bordro kalemlerine ad verin.', variant: 'destructive' });
+      return;
+    }
     try {
       setSaving(true);
       const selectedStaff = staff.find((item) => item.fullName === form.staffName);
       const payDate = `${form.year}-${String(Number(form.month) + 1).padStart(2, '0')}-01`;
-      const breakdownNote = payroll
-        ? `Brüt ${formatCurrency(payroll.gross)} → Net ${formatCurrency(payroll.net)} (SGK ${formatCurrency(payroll.sgkEmployee)}, Gelir V. ${formatCurrency(payroll.incomeTax)}, Damga ${formatCurrency(payroll.stampTax)})`
+      const customSummary = customItems
+        .filter((item) => item.label.trim() && Number(item.amount) > 0)
+        .map((item) => `${item.label.trim()}: ${item.type === 'addition' ? '+' : '-'}${formatCurrency(Number(item.amount))}`)
+        .join(', ');
+      const breakdownNote = payroll && payrollTotals
+        ? `Brüt ${formatCurrency(payrollTotals.gross)} → Net ${formatCurrency(payrollTotals.net)} (SGK ${formatCurrency(numericPayroll(payroll, 'sgkEmployee'))}, İşsizlik ${formatCurrency(numericPayroll(payroll, 'unemploymentEmployee'))}, Gelir V. ${formatCurrency(numericPayroll(payroll, 'incomeTax'))}, Damga ${formatCurrency(numericPayroll(payroll, 'stampTax'))}${customSummary ? `; Özel kalemler: ${customSummary}` : ''})`
         : '';
       await createSalary({
         employee: form.staffName,
         role: selectedStaff?.primaryRole || 'Personel',
         amount: form.amount,
         payDate,
-        reason: form.notes || breakdownNote || `${months[Number(form.month)]} ${form.year} bordrosu`,
+        reason: [form.notes.trim(), breakdownNote].filter(Boolean).join(' — ')
+          || `${months[Number(form.month)]} ${form.year} bordrosu`,
       });
       toast({ title: 'Maaş/bordro kaydı oluşturuldu.' });
       setOpen(false);
@@ -244,20 +316,96 @@ export default function Salary() {
                     {calculating ? 'Hesaplanıyor...' : 'Bordro Hesapla'}
                   </Button>
                 </div>
+                <Button type="button" variant="ghost" size="sm" className="mt-1 px-0" onClick={startManualPayroll}>
+                  Manuel bordro kırılımı oluştur
+                </Button>
               </div>
 
-              {payroll ? (
-                <div className="rounded-xl border bg-muted/30 p-4 text-sm">
-                  <p className="mb-2 font-semibold">Bordro Kırılımı (TR 2025 yaklaşık)</p>
-                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5">
-                    <span className="text-muted-foreground">Brüt Maaş</span><span className="text-right tabular-nums">{formatCurrency(payroll.gross)}</span>
-                    <span className="text-muted-foreground">SGK İşçi (%14)</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.sgkEmployee)}</span>
-                    <span className="text-muted-foreground">İşsizlik İşçi (%1)</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.unemploymentEmployee)}</span>
-                    <span className="text-muted-foreground">Gelir Vergisi</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.incomeTax)}</span>
-                    <span className="text-muted-foreground">Damga Vergisi</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payroll.stampTax)}</span>
-                    <span className="font-bold border-t pt-1.5">Net Maaş (Ele Geçen)</span><span className="text-right font-bold tabular-nums text-emerald-600 border-t pt-1.5">{formatCurrency(payroll.net)}</span>
-                    <span className="text-muted-foreground">SGK İşveren</span><span className="text-right tabular-nums">{formatCurrency(payroll.sgkEmployer)}</span>
-                    <span className="font-semibold">Toplam İşveren Maliyeti</span><span className="text-right font-semibold tabular-nums">{formatCurrency(payroll.totalEmployerCost)}</span>
+              {payroll && payrollTotals ? (
+                <div className="space-y-4 rounded-xl border bg-muted/30 p-4 text-sm">
+                  <div>
+                    <p className="font-semibold">Düzenlenebilir Bordro Kırılımı</p>
+                    <p className="text-xs text-muted-foreground">Otomatik değerleri değiştirebilir, yeni ek ödeme veya kesinti kalemi ekleyebilirsiniz.</p>
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {deductionFields.map(([key, label]) => (
+                      <div key={key}>
+                        <Label htmlFor={`payroll-${key}`}>{label} (TL)</Label>
+                        <Input
+                          id={`payroll-${key}`}
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={payroll[key] ?? ''}
+                          onChange={(event) => updatePayrollField(key, event.target.value)}
+                        />
+                      </div>
+                    ))}
+                    <div>
+                      <Label htmlFor="payroll-sgk-employer">SGK İşveren (TL)</Label>
+                      <Input
+                        id="payroll-sgk-employer"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={payroll.sgkEmployer ?? ''}
+                        onChange={(event) => updatePayrollField('sgkEmployer', event.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="payroll-employer-cost">Toplam İşveren Maliyeti (TL)</Label>
+                      <Input
+                        id="payroll-employer-cost"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={payroll.totalEmployerCost ?? ''}
+                        onChange={(event) => updatePayrollField('totalEmployerCost', event.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    {customItems.map((item) => (
+                      <div key={item.id} className="grid gap-2 rounded-lg border bg-background/70 p-2 sm:grid-cols-[1fr_130px_120px_auto]">
+                        <Input
+                          aria-label="Özel bordro kalemi adı"
+                          placeholder="Kalem adı (prim, avans...)"
+                          value={item.label}
+                          onChange={(event) => updateCustomItem(item.id, { label: event.target.value })}
+                        />
+                        <Select value={item.type} onValueChange={(value) => updateCustomItem(item.id, { type: value })}>
+                          <SelectTrigger aria-label="Kalem türü"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="addition">Ek ödeme</SelectItem>
+                            <SelectItem value="deduction">Kesinti</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Input
+                          aria-label="Özel bordro kalemi tutarı"
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          placeholder="Tutar"
+                          value={item.amount}
+                          onChange={(event) => updateCustomItem(item.id, { amount: event.target.value })}
+                        />
+                        <Button type="button" variant="ghost" size="icon" aria-label="Kalemi kaldır" onClick={() => setCustomItems((items) => items.filter((entry) => entry.id !== item.id))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={addCustomItem}>
+                      <Plus className="mr-1.5 h-4 w-4" />Özel Kalem Ekle
+                    </Button>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t pt-3">
+                    <span className="text-muted-foreground">Brüt Maaş</span><span className="text-right tabular-nums">{formatCurrency(payrollTotals.gross)}</span>
+                    <span className="text-muted-foreground">Ek Ödemeler</span><span className="text-right tabular-nums text-blue-600">+{formatCurrency(payrollTotals.additions)}</span>
+                    <span className="text-muted-foreground">Özel Kesintiler</span><span className="text-right tabular-nums text-red-600">-{formatCurrency(payrollTotals.deductions)}</span>
+                    <span className="font-bold">Net Maaş (Ele Geçen)</span><span className="text-right font-bold tabular-nums text-emerald-600">{formatCurrency(payrollTotals.net)}</span>
+                    <span className="text-muted-foreground">Toplam İşveren Maliyeti</span><span className="text-right tabular-nums">{formatCurrency(numericPayroll(payroll, 'totalEmployerCost'))}</span>
                   </div>
                 </div>
               ) : null}

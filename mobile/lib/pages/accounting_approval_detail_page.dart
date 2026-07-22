@@ -35,11 +35,10 @@ class AccountingApprovalDetailPage extends StatelessWidget {
             eyebrow: current.category,
             title: current.title,
             description:
-                'Onay gerekçesi, kaynak kaydı ve güncel karar akışı burada yer alır.',
+                'Onay gerekçesi ve güncel karar akışı burada yer alır.',
             colors: [const Color(0xFF08111F), const Color(0xFFFF7A1A)],
             metrics: [
               AccountingHeroMetric(label: 'Durum', value: current.status),
-              AccountingHeroMetric(label: 'Kaynak', value: current.sourceType),
             ],
           ),
           const SizedBox(height: 16),
@@ -68,8 +67,6 @@ class AccountingApprovalDetailPage extends StatelessWidget {
                 AccountingSectionTitle(title: 'Onay Çerçevesi'.tr),
                 const SizedBox(height: 14),
                 _line(context, 'Kategori', current.category),
-                _line(context, 'Kaynak Tipi', current.sourceType),
-                _line(context, 'Kaynak Anahtar', current.sourceKey),
                 _line(context, 'Durum', current.status),
               ],
             ),

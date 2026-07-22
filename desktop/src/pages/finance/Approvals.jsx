@@ -265,7 +265,6 @@ export default function Approvals() {
               <TableRow>
                 <TableHead>Tür</TableHead>
                 <TableHead>Başlık</TableHead>
-                <TableHead>Kaynak</TableHead>
                 <TableHead>Sebep</TableHead>
                 <TableHead>Durum</TableHead>
                 <TableHead className="w-32">İşlem</TableHead>
@@ -279,7 +278,6 @@ export default function Approvals() {
                   <TableRow key={approval.id}>
                     <TableCell><Badge className={type.className}>{type.label}</Badge></TableCell>
                     <TableCell className="font-medium">{approval.title}</TableCell>
-                    <TableCell>{approval.sourceType}</TableCell>
                     <TableCell>{approval.reason}</TableCell>
                     <TableCell>{getStatusBadge(approval.status)}</TableCell>
                     <TableCell>

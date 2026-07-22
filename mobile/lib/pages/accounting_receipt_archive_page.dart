@@ -26,19 +26,21 @@ class AccountingReceiptArchivePage extends StatelessWidget {
           AccountingHeroCard(
             eyebrow: 'Belge arşivi',
             title:
-                'Canlı tahsilat kayıtlarından üretilen makbuzlar burada listelenir.'.tr,
+                'Canlı tahsilat kayıtlarından üretilen makbuzlar burada listelenir.'
+                    .tr,
             description:
                 'Her satır son tahsilat zamanı, öğrenci ve ödeme yöntemiyle birlikte tutulur.',
             colors: const [Color(0xFF0F172A), Color(0xFF7C3AED)],
             metrics: [
               AccountingHeroMetric(label: 'Makbuz', value: '${items.length}'),
-              AccountingHeroMetric(label: 'Kaynak', value: 'Canlı tahsilat'),
             ],
           ),
           const SizedBox(height: 16),
           if (items.isEmpty)
             AccountingPanel(
-              child: Text('Henüz makbuz arşivine düşen tahsilat bulunmuyor.'.tr),
+              child: Text(
+                'Henüz makbuz arşivine düşen tahsilat bulunmuyor.'.tr,
+              ),
             )
           else
             ...items.map(

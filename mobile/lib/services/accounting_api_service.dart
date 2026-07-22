@@ -140,6 +140,19 @@ class AccountingApiService {
     );
   }
 
+  Future<Map<String, dynamic>> calculatePayroll({
+    required double grossSalary,
+    String? employee,
+    int? year,
+  }) async {
+    final response = await _authorizedJson(
+      'POST',
+      '/api/student-finance/payroll/calculate',
+      {'grossSalary': grossSalary, 'employee': employee, 'year': year},
+    );
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
   Future<SalaryRecord> updateSalary({
     required String salaryId,
     required String employee,
@@ -170,7 +183,10 @@ class AccountingApiService {
     }
     final response = await http.delete(
       Uri.parse('${ApiConfig.baseUrl}/api/accounting/salaries/$salaryId'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
@@ -237,7 +253,10 @@ class AccountingApiService {
       Uri.parse(
         '${ApiConfig.baseUrl}/api/accounting/collections/$collectionId',
       ),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
@@ -354,7 +373,10 @@ class AccountingApiService {
     }
     final response = await http.get(
       Uri.parse('${ApiConfig.baseUrl}$path'),
-      headers: {'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged},
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AccountingApiException(
@@ -379,7 +401,8 @@ class AccountingApiService {
     final uri = Uri.parse('${ApiConfig.baseUrl}$path');
     final headers = {
       'Content-Type': 'application/json',
-      'Authorization': 'Bearer ${session.accessToken}', ...ScopeHeaders.merged,
+      'Authorization': 'Bearer ${session.accessToken}',
+      ...ScopeHeaders.merged,
     };
     final encoded = jsonEncode(body);
     switch (method) {

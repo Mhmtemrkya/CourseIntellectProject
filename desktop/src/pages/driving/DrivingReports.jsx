@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
-  BarChart3, CarFront, Download, FileText, GraduationCap, Lock, ShieldCheck, Users, XCircle,
+  BarChart3, CarFront, Download, FileText, GraduationCap, Lock, ShieldCheck, Users,
 } from 'lucide-react';
-import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
@@ -18,19 +17,9 @@ import { DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard, itemVar
 const REPORTS = [
   ['instructors', 'Eğitmen', Users, 'brand'],
   ['vehicles', 'Araç & Filo', CarFront, 'cyan'],
-  ['cancellations', 'İptal & Devamsızlık', XCircle, 'rose'],
   ['students', 'Kursiyer & Sınav', GraduationCap, 'violet'],
   ['audit-package', 'Denetim Paketi', ShieldCheck, 'emerald'],
 ];
-
-// Her raporda grafiğe taşınacak sütun: [etiket sütunu, değer sütunu].
-const CHART_COLUMN = {
-  instructors: [0, 5],
-  vehicles: [0, 3],
-  cancellations: null,
-  students: [0, 3],
-  'audit-package': null,
-};
 
 const today = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (days) => {
@@ -102,23 +91,11 @@ export default function DrivingReports() {
     );
   }
 
-  const chartSpec = CHART_COLUMN[active];
-  const chartData = chartSpec && report?.rows?.length
-    ? report.rows
-      .map((row) => ({
-        name: row[chartSpec[0]],
-        value: Number(String(row[chartSpec[1]]).replace(/\./g, '').replace(',', '.')) || 0,
-      }))
-      .filter((item) => item.value > 0)
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 12)
-    : [];
-
   return (
     <DrivingPage testId="driving-reports-page">
       <DrivingPageHeader
         title="Raporlar"
-        description="Eğitmen, filo, iptal ve kursiyer raporları — CSV veya PDF olarak dışa aktarın."
+        description="Eğitmen, filo, kursiyer ve denetim raporlarını CSV veya PDF olarak dışa aktarın."
         icon={BarChart3}
         onRefresh={load}
         refreshing={loading}
@@ -182,31 +159,6 @@ export default function DrivingReports() {
                     <Lock className="h-3.5 w-3.5 shrink-0" />
                     Parasal sütunlar gizli — finans raporu yetkiniz yok.
                   </motion.p>
-                ) : null}
-
-                {chartData.length ? (
-                  <motion.div variants={itemVariants}>
-                    <PremiumPanel title={report.title} description={report.description}>
-                      <div className="h-72">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={chartData} margin={{ left: 8, right: 12 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--foreground) / 0.08)" />
-                            <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }} interval={0} angle={-18} textAnchor="end" height={56} />
-                            <YAxis tick={{ fill: 'hsl(var(--muted-foreground))' }} />
-                            <Tooltip
-                              contentStyle={{
-                                background: 'hsl(var(--card))',
-                                border: '1px solid hsl(var(--border))',
-                                borderRadius: 12,
-                                color: 'hsl(var(--foreground))',
-                              }}
-                            />
-                            <Bar dataKey="value" fill="hsl(var(--brand-accent))" radius={[8, 8, 0, 0]} />
-                          </BarChart>
-                        </ResponsiveContainer>
-                      </div>
-                    </PremiumPanel>
-                  </motion.div>
                 ) : null}
 
                 <motion.div variants={itemVariants}>
