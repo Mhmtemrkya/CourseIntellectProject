@@ -25,18 +25,18 @@ import {
 // Aralığa bağlı KPI'lar (ders, tahsilat) seçilen döneme göre değişir; yapısal
 // olanlar (aktif kursiyer, filo) her zaman "şu an"ın fotoğrafıdır.
 const KPI_META = [
-  ['activeStudents', 'Aktif Kursiyer', Users, 'brand', 'Eğitimi süren adaylar'],
-  ['todayDrivingLessons', 'Direksiyon Dersi', CarFront, 'amber', null],
-  ['todayTheoryLessons', 'Teorik Ders', GraduationCap, 'violet', null],
-  ['activeInstructors', 'Aktif Eğitmen', Users, 'emerald', 'Derse çıkabilen eğitmen'],
-  ['activeVehicles', 'Aktif Araç', CarFront, 'cyan', 'Kullanıma hazır filo'],
-  ['vehiclesInMaintenance', 'Bakımdaki Araç', Wrench, 'rose', 'Servisteki araç'],
-  ['missingDocuments', 'Eksik Evrak', AlertTriangle, 'amber', 'Dosyası tamamlanmamış'],
-  ['expiringDocuments', 'Süresi Dolan Evrak', ShieldCheck, 'amber', 'Yakında geçersiz olacak'],
-  ['upcomingExams', 'Yaklaşan Sınav', CalendarClock, 'blue', 'Planlanmış sınav'],
-  ['termCriticalAlerts', 'Kritik Dönem Uyarısı', AlertTriangle, 'rose', 'Hemen müdahale edilmeli'],
-  ['mebbisReadyNotEntered', 'MEBBİS Girişi Bekleyen', ShieldCheck, 'amber', 'Hazır fakat girilmemiş'],
-  ['todayCollections', 'Tahsilat', Banknote, 'emerald', null],
+  ['activeStudents', 'Aktif Kursiyer', Users, 'brand', 'Eğitimi süren adaylar', '/driving/students'],
+  ['todayDrivingLessons', 'Direksiyon Dersi', CarFront, 'amber', null, '/driving/lessons'],
+  ['todayTheoryLessons', 'Teorik Ders', GraduationCap, 'violet', null, '/driving/education'],
+  ['activeInstructors', 'Aktif Eğitmen', Users, 'emerald', 'Derse çıkabilen eğitmen', '/driving/assignments'],
+  ['activeVehicles', 'Aktif Araç', CarFront, 'cyan', 'Kullanıma hazır filo', '/driving/vehicles'],
+  ['vehiclesInMaintenance', 'Bakımdaki Araç', Wrench, 'rose', 'Servisteki araç', '/driving/fleet-compliance'],
+  ['missingDocuments', 'Eksik Evrak', AlertTriangle, 'amber', 'Dosyası tamamlanmamış', '/driving/mebbis/documents'],
+  ['expiringDocuments', 'Süresi Dolan Evrak', ShieldCheck, 'amber', 'Yakında geçersiz olacak', '/driving/mebbis/documents'],
+  ['upcomingExams', 'Yaklaşan Sınav', CalendarClock, 'blue', 'Planlanmış sınav', '/driving/education'],
+  ['termCriticalAlerts', 'Kritik Dönem Uyarısı', AlertTriangle, 'rose', 'Hemen müdahale edilmeli', '/driving/mebbis/term-opening'],
+  ['mebbisReadyNotEntered', 'MEBBİS Girişi Bekleyen', ShieldCheck, 'amber', 'Hazır fakat girilmemiş', '/driving/mebbis'],
+  ['todayCollections', 'Tahsilat', Banknote, 'emerald', null, '/driving/collection'],
 ];
 
 // Aralıkla değişen KPI'lar — açıklamalarına seçili dönem yazılır.
@@ -192,13 +192,23 @@ export default function DrivingSchoolDashboard() {
       {data ? (
         <>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
-            {KPI_META.map(([key, label, Icon, tone, caption]) => {
+            {KPI_META.map(([key, label, Icon, tone, caption, path]) => {
               const raw = data.kpis?.[key] ?? 0;
               const value = key === 'todayCollections'
                 ? `₺${Number(raw).toLocaleString('tr-TR')}`
                 : raw;
               const cardCaption = RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
-              return <DrivingStatCard key={key} label={label} value={value} caption={cardCaption} icon={Icon} tone={tone} />;
+              return (
+                <DrivingStatCard
+                  key={key}
+                  label={label}
+                  value={value}
+                  caption={cardCaption}
+                  icon={Icon}
+                  tone={tone}
+                  onClick={() => navigate(path)}
+                />
+              );
             })}
           </div>
 

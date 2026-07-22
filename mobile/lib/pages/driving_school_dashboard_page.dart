@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import '../i18n/app_locale.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
+import 'driving_collection_page.dart';
 import 'driving_document_review_queue_page.dart';
+import 'driving_education_page.dart';
+import 'driving_mobile_planning_page.dart';
 import 'driving_mebbis_work_center_page.dart';
 import 'driving_mebbis_error_library_page.dart';
 import 'driving_mebbis_exam_results_page.dart';
 import 'driving_mebbis_certificate_numbers_page.dart';
 import 'driving_term_opening_wizard_page.dart';
 import 'driving_school_students_page.dart';
+import 'driving_school_vehicles_page.dart';
 
 class DrivingSchoolDashboardPage extends StatefulWidget {
   const DrivingSchoolDashboardPage({super.key});
@@ -115,50 +119,60 @@ class _DrivingSchoolDashboardPageState
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.amber.withValues(alpha: 0.10),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: Colors.amber.withValues(alpha: 0.45),
+                  child: InkWell(
+                    onTap: () => _openDashboardMetric(context, 'collections'),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.amber.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: Colors.amber.withValues(alpha: 0.45),
+                        ),
                       ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.orange,
-                        ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${'Peşinat Bekleyenler'.tr} · ${_pending.length}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                              Text(
-                                'Kayıtta peşinatı tahsil edilmemiş kursiyerler.'.tr,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(
-                          _pesinatTotal(),
-                          style: const TextStyle(
-                            fontWeight: FontWeight.w900,
+                      child: Row(
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
                             color: Colors.orange,
                           ),
-                        ),
-                      ],
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${'Peşinat Bekleyenler'.tr} · ${_pending.length}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  'Kayıtta peşinatı tahsil edilmemiş kursiyerler.'
+                                      .tr,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Text(
+                            _pesinatTotal(),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w900,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.chevron_right_rounded,
+                            color: Colors.orange,
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -176,60 +190,70 @@ class _DrivingSchoolDashboardPageState
                     value: '${kpis['activeStudents'] ?? 0}',
                     icon: Icons.groups_rounded,
                     color: accent,
+                    onTap: () => _openDashboardMetric(context, 'students'),
                   ),
                   DrivingKpiCard(
                     label: 'Direksiyon Dersi',
                     value: '${kpis['todayDrivingLessons'] ?? 0}',
                     icon: Icons.route_rounded,
                     color: const Color(0xFFF97316),
+                    onTap: () => _openDashboardMetric(context, 'planning'),
                   ),
                   DrivingKpiCard(
                     label: 'Aktif Eğitmen',
                     value: '${kpis['activeInstructors'] ?? 0}',
                     icon: Icons.school_rounded,
                     color: const Color(0xFF10B981),
+                    onTap: () => _openDashboardMetric(context, 'planning'),
                   ),
                   DrivingKpiCard(
                     label: 'Aktif Araç',
                     value: '${kpis['activeVehicles'] ?? 0}',
                     icon: Icons.directions_car_rounded,
                     color: const Color(0xFF06B6D4),
+                    onTap: () => _openDashboardMetric(context, 'vehicles'),
                   ),
                   DrivingKpiCard(
                     label: 'Eksik Evrak',
                     value: '${kpis['missingDocuments'] ?? 0}',
                     icon: Icons.warning_amber_rounded,
                     color: const Color(0xFFF59E0B),
+                    onTap: () => _openDashboardMetric(context, 'documents'),
                   ),
                   DrivingKpiCard(
                     label: 'Yaklaşan Evrak',
                     value: '${kpis['expiringDocuments'] ?? 0}',
                     icon: Icons.event_busy_rounded,
                     color: const Color(0xFFEAB308),
+                    onTap: () => _openDashboardMetric(context, 'documents'),
                   ),
                   DrivingKpiCard(
                     label: 'Bugünkü Tahsilat',
                     value: '₺${kpis['todayCollections'] ?? 0}',
                     icon: Icons.payments_rounded,
                     color: const Color(0xFF16A34A),
+                    onTap: () => _openDashboardMetric(context, 'collections'),
                   ),
                   DrivingKpiCard(
                     label: 'Bakımdaki Araç',
                     value: '${kpis['vehiclesInMaintenance'] ?? 0}',
                     icon: Icons.build_rounded,
                     color: const Color(0xFFEF4444),
+                    onTap: () => _openDashboardMetric(context, 'vehicles'),
                   ),
                   DrivingKpiCard(
                     label: 'Kritik Dönem',
                     value: '${kpis['termCriticalAlerts'] ?? 0}',
                     icon: Icons.crisis_alert_rounded,
                     color: const Color(0xFFDC2626),
+                    onTap: () => _openDashboardMetric(context, 'terms'),
                   ),
                   DrivingKpiCard(
                     label: 'MEBBİS Girişi Bekleyen',
                     value: '${kpis['mebbisReadyNotEntered'] ?? 0}',
                     icon: Icons.pending_actions_rounded,
                     color: const Color(0xFFF59E0B),
+                    onTap: () => _openDashboardMetric(context, 'mebbis'),
                   ),
                 ],
               ),
@@ -544,6 +568,20 @@ class _DrivingSchoolDashboardPageState
       'exams' => const DrivingMebbisExamResultsPage(),
       'certificates' => const DrivingMebbisCertificateNumbersPage(),
       'errors' => const DrivingMebbisErrorLibraryPage(),
+      _ => const DrivingMebbisWorkCenterPage(),
+    };
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  static void _openDashboardMetric(BuildContext context, String destination) {
+    final Widget page = switch (destination) {
+      'students' => const DrivingSchoolStudentsPage(),
+      'planning' => const DrivingMobilePlanningPage(),
+      'vehicles' => const DrivingSchoolVehiclesPage(),
+      'documents' => const DrivingDocumentReviewQueuePage(),
+      'collections' => const DrivingCollectionPage(),
+      'terms' => const DrivingTermOpeningWizardPage(),
+      'education' => const DrivingEducationPage(),
       _ => const DrivingMebbisWorkCenterPage(),
     };
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));

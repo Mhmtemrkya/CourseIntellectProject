@@ -71,7 +71,9 @@ function SidebarLink({ item, compact, mobile, onNavigate, allPaths }) {
         compact ? "mx-auto h-10 w-10 justify-center" : "gap-2.5 px-2.5 py-2",
         active
           ? "border-[hsl(var(--brand-accent)/0.34)] text-white shadow-[0_8px_24px_hsl(var(--brand-accent)/0.12)]"
-          : "border-transparent text-foreground/60 hover:border-foreground/10 hover:bg-foreground/[0.055] hover:text-foreground",
+          : light
+            ? "border-transparent text-slate-700 hover:border-slate-200 hover:bg-slate-900/[0.055] hover:text-slate-950"
+            : "border-transparent text-foreground/70 hover:border-foreground/10 hover:bg-foreground/[0.055] hover:text-foreground",
       )}
       style={
         active
