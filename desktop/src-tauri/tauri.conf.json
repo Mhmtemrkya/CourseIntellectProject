@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "SchoolAsist",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "identifier": "com.courseintellect.desktop",
   "build": {
     "devUrl": "http://127.0.0.1:3001",
@@ -10,6 +10,15 @@
     "beforeBuildCommand": "npm run build"
   },
   "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDk5MUVGNEI5QjlCMTU4NDUKUldSRldMRzV1ZlFlbWJzbFF3bkY2UUZzQTlqSmtLdjV0aWFxay9SL0NIQVQxUTZsa3dQZUFDa0cK",
+      "endpoints": [
+        "https://github.com/Mhmtemrkya/CourseIntellectProject/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
+    },
     "deep-link": {
       "desktop": [
         {
@@ -39,6 +48,7 @@
   },
   "bundle": {
     "active": true,
+    "createUpdaterArtifacts": true,
     "targets": "nsis",
     "publisher": "SchoolAsist",
     "shortDescription": "SchoolAsist masaüstü uygulaması",

@@ -459,14 +459,39 @@ class _DrivingSchoolStudentsPageState extends State<DrivingSchoolStudentsPage> {
     final id = '${s['id']}';
     final checked = _selected.contains(id);
     final groupName = s['groupName'];
-    final isPending =
-        _pendingNames.contains('${s['fullName'] ?? ''}'.trim().toLowerCase());
+    final isPending = _pendingNames.contains(
+      '${s['fullName'] ?? ''}'.trim().toLowerCase(),
+    );
+    final rawPhoto =
+        '${s['displayPhotoUrl'] ?? s['livePhotoUrl'] ?? s['photoUrl'] ?? ''}';
+    final photoUrl = rawPhoto.isEmpty
+        ? ''
+        : rawPhoto.startsWith('http')
+        ? rawPhoto
+        : '${ApiConfig.baseUrl}$rawPhoto';
     return DrivingListRow(
       icon: _selectMode
           ? (checked
                 ? Icons.check_circle_rounded
                 : Icons.radio_button_unchecked_rounded)
           : Icons.person_rounded,
+      leading: !_selectMode && photoUrl.isNotEmpty
+          ? ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                photoUrl,
+                width: 42,
+                height: 42,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => Container(
+                  width: 42,
+                  height: 42,
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  child: const Icon(Icons.person_rounded),
+                ),
+              ),
+            )
+          : null,
       title: '${s['fullName'] ?? '—'}',
       subtitle: [
         '${s['licenseClass'] ?? ''} • ${_transmission(s['transmissionType'])} • ${s['remainingDrivingMinutes'] ?? 0} dk kaldı',

@@ -235,6 +235,7 @@ export default function DrivingStudentDetail() {
   const [chargeForm, setChargeForm] = useState({ chargeType: 'ExtraLesson', grossAmount: '', minutes: '', description: '' });
   const [examFeeDraft, setExamFeeDraft] = useState(null); // null = görüntüleme, obje = düzenleme
   const [savingFees, setSavingFees] = useState(false);
+  const [docPreview, setDocPreview] = useState(null); // { item, url, kind, loading }
 
   const canReview = can(DRIVING.studentDocumentReview);
   const canUpload = can(DRIVING.studentDocumentUpload);
@@ -407,11 +408,34 @@ export default function DrivingStudentDetail() {
     }
   }
 
+  // Tauri webview'inde window.open(blob) çalışmıyor; belgeyi doğrudan ekrandaki modalda gösteriyoruz.
   async function openDocument(item) {
+    setDocPreview({ item, url: null, kind: null, loading: true });
     try {
-      const blob = await downloadDrivingStudentDocument(item.id); const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer'); setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) { toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' }); }
+      const blob = await downloadDrivingStudentDocument(item.id);
+      const url = URL.createObjectURL(blob);
+      const type = blob.type || '';
+      const name = (item.fileName || '').toLowerCase();
+      const kind = type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/.test(name) ? 'image'
+        : type === 'application/pdf' || name.endsWith('.pdf') ? 'pdf'
+        : 'other';
+      setDocPreview({ item, url, kind, loading: false });
+    } catch (error) {
+      setDocPreview(null);
+      toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' });
+    }
+  }
+
+  function closeDocPreview() {
+    setDocPreview((current) => { if (current?.url) URL.revokeObjectURL(current.url); return null; });
+  }
+
+  function downloadDocPreview() {
+    if (!docPreview?.url) return;
+    const anchor = document.createElement('a');
+    anchor.href = docPreview.url;
+    anchor.download = docPreview.item.fileName || `${docPreview.item.label || 'belge'}.dat`;
+    anchor.click();
   }
 
   if (permissionsLoading || loading) return <div className="flex min-h-[55vh] items-center justify-center"><LoadingDots /></div>;
@@ -1189,6 +1213,35 @@ export default function DrivingStudentDetail() {
           onCreated={() => { setApptOpen(false); load(); }}
         />
       )}
+
+      <Dialog open={Boolean(docPreview)} onOpenChange={(open) => { if (!open) closeDocPreview(); }}>
+        <DialogContent className="max-h-[92vh] w-[95vw] max-w-5xl overflow-hidden p-0">
+          <DialogHeader className="border-b px-5 py-3">
+            <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
+              <FileCheck2 className="h-4 w-4" />{docPreview?.item?.label || 'Belge'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="flex min-h-[60vh] items-center justify-center overflow-auto bg-muted/40 p-3">
+            {docPreview?.loading && <p className="text-sm text-muted-foreground">Belge güvenli şekilde açılıyor…</p>}
+            {!docPreview?.loading && docPreview?.kind === 'image' && (
+              <img src={docPreview.url} alt={docPreview.item?.label || 'Belge'} className="max-h-[78vh] max-w-full rounded-md object-contain" />
+            )}
+            {!docPreview?.loading && docPreview?.kind === 'pdf' && (
+              <iframe src={docPreview.url} title={docPreview.item?.label || 'Belge'} className="h-[78vh] w-full rounded-md border-0 bg-white" />
+            )}
+            {!docPreview?.loading && docPreview?.kind === 'other' && (
+              <div className="flex flex-col items-center gap-3 text-center">
+                <p className="text-sm text-muted-foreground">Bu belge türü ekranda önizlenemiyor. İndirerek açabilirsiniz.</p>
+                <Button onClick={downloadDocPreview}><Download className="mr-2 h-4 w-4" />Belgeyi indir</Button>
+              </div>
+            )}
+          </div>
+          <DialogFooter className="border-t px-5 py-3">
+            <Button variant="outline" onClick={downloadDocPreview} disabled={!docPreview?.url}><Download className="mr-2 h-4 w-4" />İndir</Button>
+            <Button variant="outline" onClick={closeDocPreview}>Kapat</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

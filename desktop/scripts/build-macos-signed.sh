@@ -43,13 +43,35 @@ if [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
   fi
 fi
 
-# ── Notarization kimlik bilgisi kontrolü (uyarı; zorunlu değil) ──────────────
+# ── Notarization kimlik bilgisi kontrolü (dağıtımda zorunlu) ────────────────
 HAS_APPLEID=0; HAS_APIKEY=0
 [ -n "${APPLE_ID:-}" ] && [ -n "${APPLE_PASSWORD:-}" ] && [ -n "${APPLE_TEAM_ID:-}" ] && HAS_APPLEID=1
 [ -n "${APPLE_API_ISSUER:-}" ] && [ -n "${APPLE_API_KEY:-}" ] && [ -n "${APPLE_API_KEY_PATH:-}" ] && HAS_APIKEY=1
 if [ "$HAS_APPLEID" -eq 0 ] && [ "$HAS_APIKEY" -eq 0 ]; then
-  echo "UYARI: Notarization kimlik bilgisi yok — DMG imzalanır ama notarize EDİLMEZ."
+  echo "HATA: Notarization kimlik bilgisi yok; dağıtılabilir DMG üretilmedi."
   echo "  (APPLE_ID+APPLE_PASSWORD+APPLE_TEAM_ID veya API key üçlüsünü set edin.)"
+  echo "  Notarize edilmemiş paket diğer Mac'lerde Gatekeeper tarafından engellenir."
+  exit 1
+fi
+
+if [ "$HAS_APIKEY" -eq 1 ] && [ ! -f "$APPLE_API_KEY_PATH" ]; then
+  echo "HATA: APPLE_API_KEY_PATH dosyası bulunamadı: $APPLE_API_KEY_PATH"
+  exit 1
+fi
+
+case "$APPLE_SIGNING_IDENTITY" in
+  "Developer ID Application:"*) ;;
+  *)
+    echo "HATA: App Store dışı DMG için 'Developer ID Application' sertifikası gerekir."
+    echo "  Bulunan/seçilen kimlik: $APPLE_SIGNING_IDENTITY"
+    exit 1
+    ;;
+esac
+
+if ! security find-identity -v -p codesigning 2>/dev/null | grep -Fq "\"$APPLE_SIGNING_IDENTITY\""; then
+  echo "HATA: İmza kimliği private key ile birlikte Keychain'de bulunamadı."
+  echo "  $APPLE_SIGNING_IDENTITY"
+  exit 1
 fi
 
 # ── Build ───────────────────────────────────────────────────────────────────
@@ -68,8 +90,25 @@ bash scripts/macos-build-preflight.sh
 
 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg
 
+# Yanlışlıkla imzasız/notarize edilmemiş bir dosyanın müşteriye gönderilmesini
+# engellemek için build başarılı olsa bile Apple güven zincirini ayrıca doğrula.
+APP_PATH="src-tauri/target/release/bundle/macos/SchoolAsist.app"
+DMG_PATH="$(find src-tauri/target/release/bundle/dmg -maxdepth 1 -type f -name '*.dmg' -print0 \
+  | xargs -0 ls -1t | head -1)"
+
+if [ ! -d "$APP_PATH" ] || [ -z "$DMG_PATH" ] || [ ! -f "$DMG_PATH" ]; then
+  echo "HATA: Doğrulanacak uygulama veya DMG bulunamadı."
+  exit 1
+fi
+
+codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+codesign -dv --verbose=4 "$APP_PATH" 2>&1 | grep -Fq "Authority=Developer ID Application:"
+spctl --assess --type execute --verbose=4 "$APP_PATH"
+xcrun stapler validate "$APP_PATH"
+spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG_PATH"
+xcrun stapler validate "$DMG_PATH"
+
 echo ""
-echo "✓ İmzalı DMG hazır: src-tauri/target/release/bundle/dmg/"
-echo "  Doğrulama:"
-echo "    spctl -a -t open --context context:primary-signature -v <dmg-yolu>"
-echo "    xcrun stapler validate <dmg-yolu>"
+echo "✓ Developer ID ile imzalanmış ve Apple tarafından notarize edilmiş DMG hazır:"
+echo "  $DMG_PATH"
+echo "  Bu dosya diğer Mac'lerde xattr veya Terminal komutu gerektirmez."

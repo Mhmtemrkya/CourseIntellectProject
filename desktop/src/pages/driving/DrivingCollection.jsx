@@ -10,6 +10,7 @@ import {
   fetchDrivingStudentGroups, recordDrivingPayment,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { useApp } from '../../context/AppContext';
 import PendingDownPayments from '../../components/finance/PendingDownPayments';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
@@ -46,6 +47,8 @@ function SummaryTile({ label, value, tone = 'default' }) {
 
 function CollectModal({ row, branches, onClose, onDone }) {
   const { toast } = useToast();
+  const { user } = useApp();
+  const collectorName = user?.name || user?.username || 'Ben';
   const [ctx, setCtx] = useState(null);
   const [loading, setLoading] = useState(true);
   const [amount, setAmount] = useState('');
@@ -237,8 +240,38 @@ function CollectModal({ row, branches, onClose, onDone }) {
                 <label className="text-xs font-bold text-muted-foreground">Not (opsiyonel)</label>
                 <Input maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} className="mt-1" placeholder="Makbuza düşülecek açıklama" />
               </div>
-              <p className="mt-2 text-[11px] text-muted-foreground">Kayıt şubesi: {row.registrationBranchName || '—'}</p>
+              {/* Tahsilatı yapan personel otomatik: makbuz bu kişinin adına düşer. */}
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <Wallet className="h-3.5 w-3.5 text-brand-primary" />
+                Tahsilatı alan: <b className="text-foreground">{collectorName}</b>
+              </div>
+              <p className="mt-1 text-[11px] text-muted-foreground">Kayıt şubesi: {row.registrationBranchName || '—'}</p>
             </div>
+
+            {/* Tahsilat geçmişi: kim, hangi şubeden tahsil etmiş. */}
+            {(ctx?.recentPayments?.length > 0) && (
+              <div className="rounded-2xl border border-foreground/10 p-3">
+                <label className="text-xs font-bold text-muted-foreground">Tahsilat geçmişi</label>
+                <div className="mt-2 max-h-40 space-y-1.5 overflow-y-auto pr-0.5">
+                  {ctx.recentPayments.map((p) => (
+                    <div key={p.id} className="flex items-center justify-between gap-2 rounded-xl border border-foreground/10 bg-foreground/[0.02] p-2 text-xs">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <b>{money(p.amount)}</b>
+                          <span className="rounded bg-foreground/10 px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">{p.method}</span>
+                          {p.receiptNo ? <span className="text-[10px] text-muted-foreground">#{p.receiptNo}</span> : null}
+                        </div>
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          {new Date(p.paidAtUtc).toLocaleString('tr-TR')}
+                          {p.collectedByName ? ` • Alan: ${p.collectedByName}` : ''}
+                          {p.branchName ? ` • Şube: ${p.branchName}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

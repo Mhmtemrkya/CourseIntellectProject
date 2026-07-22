@@ -118,45 +118,7 @@ class _DrivingTransferPackagesPageState
     }
   }
 
-  Future<String?> _failureReason() async {
-    final controller = TextEditingController();
-    final result = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Aktarım hata sonucu'),
-        content: TextField(
-          controller: controller,
-          maxLength: 2000,
-          minLines: 3,
-          maxLines: 7,
-          decoration: const InputDecoration(hintText: 'En az 10 karakter'),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Vazgeç'),
-          ),
-          FilledButton(
-            onPressed: () {
-              final value = controller.text.trim();
-              if (value.length >= 10) Navigator.pop(context, value);
-            },
-            child: const Text('Kaydet'),
-          ),
-        ],
-      ),
-    );
-    controller.dispose();
-    return result;
-  }
-
   Future<void> _status(Map<String, dynamic> item, String status) async {
-    var reason = '';
-    if (status == 'Failed') {
-      final value = await _failureReason();
-      if (value == null) return;
-      reason = value;
-    }
     final id = '${item['id']}';
     setState(() => _saving = id);
     try {
@@ -164,7 +126,7 @@ class _DrivingTransferPackagesPageState
         id,
         status,
         (item['statusVersion'] as num?)?.toInt() ?? 0,
-        errorResult: reason,
+        errorResult: '',
       );
       await _load();
       _message('Aktarım durumu güncellendi.');
@@ -360,17 +322,6 @@ class _DrivingTransferPackagesPageState
                         ? null
                         : () => _status(item, 'Transferred'),
                     child: const Text('Aktarıldı'),
-                  ),
-                if (status == 'Generated' &&
-                    _permissions.can(DrivingPermissions.mebbisManage))
-                  TextButton(
-                    onPressed: _saving == '${item['id']}'
-                        ? null
-                        : () => _status(item, 'Failed'),
-                    child: const Text(
-                      'Hata bildir',
-                      style: TextStyle(color: Colors.red),
-                    ),
                   ),
               ],
             ),

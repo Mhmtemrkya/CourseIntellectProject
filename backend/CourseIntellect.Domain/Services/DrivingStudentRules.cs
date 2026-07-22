@@ -130,8 +130,6 @@ public static class DrivingStudentRules
         Require(!string.IsNullOrWhiteSpace(candidate.Phone), "Telefon");
         Require(candidate.HasPhoto, "Biyometrik fotoğraf");
         Require(candidate.HealthReportApproved, "Onaylı sağlık raporu");
-        if (candidate.HealthReportApproved)
-            Require(candidate.HealthReportDetailsComplete, "Sağlık raporu no / veren kurum / tarih");
         Require(candidate.DiplomaApproved, "Onaylı öğrenim belgesi");
         Require(candidate.CriminalRecordApproved, "Onaylı adli sicil kaydı");
         return missing;

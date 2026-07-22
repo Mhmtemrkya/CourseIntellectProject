@@ -7,7 +7,6 @@ import 'driving_document_review_queue_page.dart';
 import 'driving_education_page.dart';
 import 'driving_mobile_planning_page.dart';
 import 'driving_mebbis_work_center_page.dart';
-import 'driving_mebbis_error_library_page.dart';
 import 'driving_mebbis_exam_results_page.dart';
 import 'driving_mebbis_certificate_numbers_page.dart';
 import 'driving_term_opening_wizard_page.dart';
@@ -340,14 +339,6 @@ class _DrivingSchoolDashboardPageState
                                 Colors.teal,
                                 'certificates',
                               ),
-                              _managerCard(
-                                context,
-                                'Son 7 gün hata',
-                                managerSummary['errorsLast7Days'],
-                                Icons.error_outline_rounded,
-                                Colors.red,
-                                'errors',
-                              ),
                             ],
                           ),
                           const SizedBox(height: 16),
@@ -567,7 +558,6 @@ class _DrivingSchoolDashboardPageState
       'documents' => const DrivingDocumentReviewQueuePage(),
       'exams' => const DrivingMebbisExamResultsPage(),
       'certificates' => const DrivingMebbisCertificateNumbersPage(),
-      'errors' => const DrivingMebbisErrorLibraryPage(),
       _ => const DrivingMebbisWorkCenterPage(),
     };
     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));

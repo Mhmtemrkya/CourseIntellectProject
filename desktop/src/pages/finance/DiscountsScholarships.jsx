@@ -86,7 +86,8 @@ export default function DiscountsScholarships() {
     rate: Number(String(item.rate || '0').replace('%', '').replace(',', '.')) || 0,
     totalAmount: parseMoney(item.totalAmount),
     netAmount: parseMoney(item.netAmount),
-    status: item.status || 'Onay Bekliyor',
+    discountAmount: Math.max(0, parseMoney(item.totalAmount) - parseMoney(item.netAmount)),
+    status: ['Onay Bekliyor', 'Bekliyor'].includes(item.status) ? 'Aktif' : (item.status || 'Aktif'),
     note: item.note || '',
     createdAtLabel: item.createdAtLabel || '',
   })), [dashboard]);
@@ -107,7 +108,7 @@ export default function DiscountsScholarships() {
     totalDiscounts: discounts.length,
     totalScholarships: scholarships.length,
     studentsWithDiscount: benefits.length,
-    totalDiscountAmount: discounts.reduce((sum, item) => sum + item.totalAmount, 0),
+    totalDiscountAmount: discounts.reduce((sum, item) => sum + item.discountAmount, 0),
   };
 
   const handleCreateProfile = async () => {
@@ -224,7 +225,7 @@ export default function DiscountsScholarships() {
                     <TableHead>Tür</TableHead>
                     <TableHead>Değer</TableHead>
                     <TableHead>Öğrenci</TableHead>
-                    <TableHead>Toplam</TableHead>
+                    <TableHead>İndirim Tutarı</TableHead>
                     <TableHead>Durum</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -235,8 +236,8 @@ export default function DiscountsScholarships() {
                       <TableCell><Badge variant="outline">{discount.className || '-'}</Badge></TableCell>
                       <TableCell>%{discount.rate}</TableCell>
                       <TableCell>{discount.name}</TableCell>
-                      <TableCell>₺{discount.totalAmount.toLocaleString('tr-TR')}</TableCell>
-                      <TableCell><Badge className="bg-amber-100 text-amber-700">{discount.status}</Badge></TableCell>
+                      <TableCell>₺{discount.discountAmount.toLocaleString('tr-TR')}</TableCell>
+                      <TableCell><Badge className={discount.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>{discount.status}</Badge></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -267,7 +268,7 @@ export default function DiscountsScholarships() {
                       <TableCell>%{scholarship.rate}</TableCell>
                       <TableCell>{scholarship.note || '-'}</TableCell>
                       <TableCell>{scholarship.name}</TableCell>
-                      <TableCell><Badge className="bg-amber-100 text-amber-700">{scholarship.status}</Badge></TableCell>
+                      <TableCell><Badge className={scholarship.status === 'Aktif' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}>{scholarship.status}</Badge></TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -307,7 +308,7 @@ export default function DiscountsScholarships() {
                         {student.type === 'İndirim' ? <Badge variant="outline">{student.title}</Badge> : <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
-                        {student.type === 'İndirim' ? <span className="text-green-600">₺{student.netAmount.toLocaleString('tr-TR')}</span> : <span className="text-muted-foreground">-</span>}
+                        {student.type === 'İndirim' ? <span className="text-green-600">₺{student.discountAmount.toLocaleString('tr-TR')}</span> : <span className="text-muted-foreground">-</span>}
                       </TableCell>
                       <TableCell>
                         {student.type === 'Burs' ? <Badge className="bg-brand-accent/10 text-brand-accent">{student.title}</Badge> : <span className="text-muted-foreground">-</span>}

@@ -339,9 +339,24 @@ public sealed class DrivingFinanceController(
             })
             .ToListAsync(ct);
 
-        var paidTotal = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
+        // Şubeler-arası tahsilat geçmişi: bu sözleşmeye ait ödemeler + kim, hangi şubeden aldı.
+        var rawPayments = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
             .Where(x => x.EnrollmentContractId == contractId && x.TenantId == tenantId)
-            .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+            .OrderByDescending(x => x.PaidAtUtc)
+            .Select(x => new { x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc, x.BranchId, x.CreatedByUserId })
+            .ToListAsync(ct);
+        var paidTotal = rawPayments.Sum(x => x.Amount);
+
+        var payBranchIds = rawPayments.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
+        var payCollectorIds = rawPayments.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value).Distinct().ToList();
+        var payBranchNames = await dbContext.OrgUnits.AsNoTracking().Where(x => payBranchIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+        var payCollectorNames = await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => payCollectorIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
+        var recentPayments = rawPayments.Select(x => new
+        {
+            x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc,
+            branchName = x.BranchId is Guid b && payBranchNames.TryGetValue(b, out var bn) ? bn : null,
+            collectedByName = x.CreatedByUserId is Guid c && payCollectorNames.TryGetValue(c, out var cn) ? cn : null,
+        }).ToList();
 
         var overdueRows = installments.Where(x => x.overdue).ToList();
 
@@ -364,6 +379,7 @@ public sealed class DrivingFinanceController(
             overdueTotal = overdueRows.Sum(x => x.remaining),
             overdueCount = overdueRows.Count,
             installments,
+            recentPayments,
         });
     }
 

@@ -1,5 +1,10 @@
-import 'package:flutter/material.dart';
+import 'dart:io';
 
+import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
+
+import '../services/api_config.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
@@ -11,7 +16,6 @@ import 'driving_mebbis_imports_page.dart';
 import 'driving_mebbis_reconciliations_page.dart';
 import 'driving_mebbis_exam_results_page.dart';
 import 'driving_mebbis_certificate_numbers_page.dart';
-import 'driving_mebbis_error_library_page.dart';
 
 class DrivingMebbisWorkCenterPage extends StatefulWidget {
   const DrivingMebbisWorkCenterPage({super.key});
@@ -42,13 +46,13 @@ class _DrivingMebbisWorkCenterPageState
     'Reconciliation': 'Mutabakat',
   };
   static const _next = <String, List<String>>{
-    'Preparing': ['Ready', 'Error'],
-    'Ready': ['EntryPending', 'Error'],
-    'EntryPending': ['Entered', 'Error'],
-    'Entered': ['Verified', 'Error'],
-    'Verified': ['Error'],
+    'Preparing': ['Ready'],
+    'Ready': ['EntryPending'],
+    'EntryPending': ['Entered'],
+    'Entered': ['Verified'],
+    'Verified': [],
     'Error': ['CorrectionPending'],
-    'CorrectionPending': ['Ready', 'Error'],
+    'CorrectionPending': ['Ready'],
   };
 
   final _search = TextEditingController();
@@ -59,6 +63,7 @@ class _DrivingMebbisWorkCenterPageState
   String _status = '';
   String _type = '';
   String _saving = '';
+  int _page = 1;
 
   @override
   void initState() {
@@ -93,6 +98,7 @@ class _DrivingMebbisWorkCenterPageState
         status: _status,
         type: _type,
         search: _search.text,
+        page: _page,
       );
       if (mounted) {
         setState(() {
@@ -106,6 +112,36 @@ class _DrivingMebbisWorkCenterPageState
       }
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _export() async {
+    setState(() => _saving = 'export');
+    try {
+      final bytes = await DrivingSchoolApiService.instance
+          .downloadMebbisWorkCenter(
+            status: _status,
+            type: _type,
+            search: _search.text,
+          );
+      final date = DateTime.now().toIso8601String().substring(0, 10);
+      final name = 'mebbis-is-merkezi-$date.csv';
+      final file = File('${(await getTemporaryDirectory()).path}/$name');
+      await file.writeAsBytes(bytes, flush: true);
+      await SharePlus.instance.share(
+        ShareParams(
+          files: [XFile(file.path, mimeType: 'text/csv')],
+          title: 'MEBBİS İş Merkezi',
+        ),
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('$e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _saving = '');
     }
   }
 
@@ -201,10 +237,28 @@ class _DrivingMebbisWorkCenterPageState
     final deadlines = (_data?['deadlines'] as List? ?? const [])
         .map((e) => Map<String, dynamic>.from(e as Map))
         .toList();
+    final pagination = Map<String, dynamic>.from(
+      _data?['pagination'] as Map? ?? const {},
+    );
+    final totalPages = (pagination['totalPages'] as num?)?.toInt() ?? 1;
     return DrivingScaffold(
       appBar: AppBar(
         title: const Text('MEBBİS İş Merkezi'),
         actions: [
+          IconButton(
+            tooltip: 'Filtrelenen listeyi indir',
+            onPressed:
+                _permissions.can(DrivingPermissions.reportExport) &&
+                    _saving != 'export'
+                ? _export
+                : null,
+            icon: _saving == 'export'
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_rounded),
+          ),
           IconButton(
             onPressed: _loading ? null : _load,
             icon: const Icon(Icons.refresh_rounded),
@@ -257,26 +311,6 @@ class _DrivingMebbisWorkCenterPageState
                               ),
                             )
                           : null,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.menu_book_rounded),
-                      title: const Text(
-                        'MEBBİS Hata Kütüphanesi',
-                        style: TextStyle(fontWeight: FontWeight.w800),
-                      ),
-                      subtitle: const Text(
-                        'Yaygın hataları, nedenlerini, çözüm adımlarını ve ilgili kursiyer kayıtlarını izleyin.',
-                      ),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => const DrivingMebbisErrorLibraryPage(),
-                        ),
-                      ),
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -433,13 +467,19 @@ class _DrivingMebbisWorkCenterPageState
                     controller: _search,
                     maxLength: 100,
                     textInputAction: TextInputAction.search,
-                    onSubmitted: (_) => _load(),
+                    onSubmitted: (_) {
+                      setState(() => _page = 1);
+                      _load();
+                    },
                     decoration: InputDecoration(
                       counterText: '',
                       prefixIcon: const Icon(Icons.search),
                       hintText: 'Kursiyer veya referans ara',
                       suffixIcon: IconButton(
-                        onPressed: _load,
+                        onPressed: () {
+                          setState(() => _page = 1);
+                          _load();
+                        },
                         icon: const Icon(Icons.arrow_forward_rounded),
                       ),
                     ),
@@ -464,7 +504,10 @@ class _DrivingMebbisWorkCenterPageState
                             ),
                           ],
                           onChanged: (v) {
-                            setState(() => _status = v ?? '');
+                            setState(() {
+                              _status = v ?? '';
+                              _page = 1;
+                            });
                             _load();
                           },
                         ),
@@ -489,7 +532,10 @@ class _DrivingMebbisWorkCenterPageState
                             ),
                           ],
                           onChanged: (v) {
-                            setState(() => _type = v ?? '');
+                            setState(() {
+                              _type = v ?? '';
+                              _page = 1;
+                            });
                             _load();
                           },
                         ),
@@ -519,9 +565,64 @@ class _DrivingMebbisWorkCenterPageState
                     )
                   else
                     ...items.map(_itemCard),
+                  if (totalPages > 1) ...[
+                    const SizedBox(height: 8),
+                    _pagination(),
+                  ],
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _pagination() {
+    final pagination = Map<String, dynamic>.from(
+      _data?['pagination'] as Map? ?? const {},
+    );
+    final total = (pagination['total'] as num?)?.toInt() ?? 0;
+    final totalPages = (pagination['totalPages'] as num?)?.toInt() ?? 1;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          children: [
+            Text(
+              'Toplam $total kayıt · Sayfa $_page/$totalPages',
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _loading || _page <= 1
+                        ? null
+                        : () {
+                            setState(() => _page--);
+                            _load();
+                          },
+                    icon: const Icon(Icons.chevron_left_rounded),
+                    label: const Text('Önceki'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: _loading || _page >= totalPages
+                        ? null
+                        : () {
+                            setState(() => _page++);
+                            _load();
+                          },
+                    icon: const Icon(Icons.chevron_right_rounded),
+                    label: const Text('Sonraki'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -608,6 +709,12 @@ class _DrivingMebbisWorkCenterPageState
     final missing = (item['missing'] as List? ?? const [])
         .map((x) => '$x')
         .toList();
+    final rawPhoto = '${item['photoUrl'] ?? ''}';
+    final photoUrl = rawPhoto.isEmpty
+        ? ''
+        : rawPhoto.startsWith('http')
+        ? rawPhoto
+        : '${ApiConfig.baseUrl}$rawPhoto';
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -618,6 +725,24 @@ class _DrivingMebbisWorkCenterPageState
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                if (photoUrl.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      photoUrl,
+                      width: 48,
+                      height: 48,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => Container(
+                        width: 48,
+                        height: 48,
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        child: const Icon(Icons.person_rounded),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

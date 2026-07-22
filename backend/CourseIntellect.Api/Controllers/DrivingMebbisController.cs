@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using System.Data;
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json;
 
@@ -82,18 +83,7 @@ public sealed class DrivingMebbisController(
             return BadRequest(new { message = "Durum veya iş türü geçersiz." });
 
         var all = await BuildItemsAsync(ct);
-        var filtered = all.AsEnumerable();
-        if (parsedStatus.HasValue) filtered = filtered.Where(x => x.Status == parsedStatus.Value);
-        if (parsedType.HasValue) filtered = filtered.Where(x => x.WorkType == parsedType.Value);
-        if (groupId.HasValue) filtered = filtered.Where(x => x.StudentGroupId == groupId);
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            var term = search.Trim();
-            filtered = filtered.Where(x => x.Title.Contains(term, StringComparison.CurrentCultureIgnoreCase)
-                || x.Reference.Contains(term, StringComparison.OrdinalIgnoreCase));
-        }
-
-        var ordered = filtered.OrderBy(x => StatusOrder(x.Status)).ThenBy(x => x.DueAtUtc ?? DateTime.MaxValue).ThenBy(x => x.Title).ToList();
+        var ordered = FilterAndOrder(all, parsedStatus, parsedType, search, groupId);
         var now = DateTime.UtcNow;
         var deadlines = all.Where(x => x.WorkType == DrivingMebbisWorkType.TermDeadline && x.DueAtUtc.HasValue)
             .OrderBy(x => x.DueAtUtc).Take(10).Select(x => new
@@ -126,6 +116,47 @@ public sealed class DrivingMebbisController(
             pagination = new { page, pageSize, total = ordered.Count, totalPages = (int)Math.Ceiling(ordered.Count / (double)pageSize) },
             items = ordered.Skip((page - 1) * pageSize).Take(pageSize),
         });
+    }
+
+    [HttpGet("work-center/export")]
+    [RequireDrivingPermission(DrivingPermissions.MebbisView)]
+    public async Task<IActionResult> ExportWorkCenter(
+        [FromQuery] string? status, [FromQuery] string? type, [FromQuery] string? search,
+        [FromQuery] Guid? groupId, CancellationToken ct = default)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        if (!await permissionService.HasAsync(User, DrivingPermissions.ReportExport, ct)) return Forbid();
+        if ((search?.Length ?? 0) > 100) return BadRequest(new { message = "Arama en fazla 100 karakter olabilir." });
+        if (!TryOptionalEnum(status, out DrivingMebbisWorkStatus? parsedStatus)
+            || !TryOptionalEnum(type, out DrivingMebbisWorkType? parsedType))
+            return BadRequest(new { message = "Durum veya iş türü geçersiz." });
+
+        var items = FilterAndOrder(await BuildItemsAsync(ct), parsedStatus, parsedType, search, groupId);
+        var rows = items.Select(x => new[]
+        {
+            WorkTypeLabel(x.WorkType),
+            StatusLabel(x.Status),
+            x.Title,
+            x.Reference,
+            string.Join(" | ", x.Missing),
+            x.ErrorReason,
+            x.Note,
+            ExportDate(x.DueAtUtc),
+            ExportDate(x.EnteredAtUtc),
+            ExportDate(x.VerifiedAtUtc),
+            ExportDate(x.UpdatedAtUtc),
+            x.SubjectId.ToString("D", CultureInfo.InvariantCulture),
+            x.StudentDrivingProfileId?.ToString("D", CultureInfo.InvariantCulture) ?? string.Empty,
+            x.StudentGroupId?.ToString("D", CultureInfo.InvariantCulture) ?? string.Empty,
+        }).ToList();
+        var bytes = DrivingTransferCsv.Build(
+            ["İş Türü", "Durum", "Kursiyer / Kayıt", "Referans", "Eksik Bilgiler", "Hata Gerekçesi", "Not", "Son Tarih (UTC)", "MEBBİS Giriş (UTC)", "Doğrulama (UTC)", "Son Güncelleme (UTC)", "Kayıt Kimliği", "Kursiyer Profil Kimliği", "Dönem Kimliği"],
+            rows);
+        DisableSensitiveResponseCaching();
+        await audit.LogChangeAsync("MEBBİS iş merkezi dışa aktarıldı", AuditCategory, nameof(DrivingMebbisWorkItem), "export",
+            $"{rows.Count} satır güvenli CSV olarak dışa aktarıldı.", null,
+            new { rowCount = rows.Count, status = parsedStatus?.ToString(), type = parsedType?.ToString(), groupId, filtered = !string.IsNullOrWhiteSpace(search) }, ct);
+        return File(bytes, "text/csv; charset=utf-8", $"mebbis-is-merkezi-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
     }
 
     [HttpPut("work-center/items/{workType}/{subjectId:guid}/status")]
@@ -528,7 +559,7 @@ public sealed class DrivingMebbisController(
         var now = DateTime.UtcNow;
         var profiles = await db.StudentDrivingProfiles.AsNoTracking()
             .Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p, s.FullName, s.TcNo, s.BirthDate })
-            .OrderByDescending(x => x.p.RegisteredAtUtc).Take(2000).ToListAsync(ct);
+            .OrderByDescending(x => x.p.RegisteredAtUtc).ToListAsync(ct);
         var profileIds = profiles.Select(x => x.p.Id).ToList();
         var docs = await db.StudentDrivingDocuments.AsNoTracking().Where(x => profileIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent).ToListAsync(ct);
         var groups = await db.DrivingStudentGroups.AsNoTracking().Where(x => x.IsActive).ToListAsync(ct);
@@ -547,64 +578,117 @@ public sealed class DrivingMebbisController(
             var initial = missing.Count > 0 ? DrivingMebbisWorkStatus.Preparing
                 : row.p.MebbisEnteredAtUtc.HasValue ? DrivingMebbisWorkStatus.Entered : DrivingMebbisWorkStatus.Ready;
             items.Add(ToDto(DrivingMebbisWorkType.CandidateRegistration, row.p.Id, row.p.Id, row.p.StudentGroupId,
-                row.FullName, $"Kursiyer #{row.p.StudentNumber}", "Aday kaydı", initial, missing,
+                row.FullName, $"Kursiyer #{row.p.StudentNumber}", "Aday kaydı", DisplayPhoto(row.p.LivePhotoUrl, row.p.PhotoUrl), initial, missing,
                 row.p.StudentGroupId is Guid gid && groupMap.TryGetValue(gid, out var group) ? group.RegistrationDeadlineUtc : null, stateMap));
 
             var pendingDocs = profileDocs.Where(x => x.Status == StudentDocumentStatus.PendingApproval).ToList();
             if (pendingDocs.Count > 0)
                 items.Add(ToDto(DrivingMebbisWorkType.DocumentApproval, row.p.Id, row.p.Id, row.p.StudentGroupId,
-                    row.FullName, $"{pendingDocs.Count} evrak onay bekliyor", "Evrak onayı", DrivingMebbisWorkStatus.Preparing,
+                    row.FullName, $"{pendingDocs.Count} evrak onay bekliyor", "Evrak onayı", DisplayPhoto(row.p.LivePhotoUrl, row.p.PhotoUrl), DrivingMebbisWorkStatus.Preparing,
                     pendingDocs.Select(x => DrivingStudentRules.DocumentLabel(x.DocumentType)).ToList(), null, stateMap));
             if (!row.p.StudentGroupId.HasValue)
                 items.Add(ToDto(DrivingMebbisWorkType.TermAssignment, row.p.Id, row.p.Id, null,
-                    row.FullName, $"Kursiyer #{row.p.StudentNumber}", "Dönem ataması", DrivingMebbisWorkStatus.EntryPending,
+                    row.FullName, $"Kursiyer #{row.p.StudentNumber}", "Dönem ataması", DisplayPhoto(row.p.LivePhotoUrl, row.p.PhotoUrl), DrivingMebbisWorkStatus.EntryPending,
                     ["Kursiyer henüz bir döneme atanmamış"], null, stateMap));
         }
 
         var examRows = await db.DrivingExamCandidates.AsNoTracking()
             .Where(x => x.Status == DrivingExamCandidateStatus.Planned)
             .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.EndsAtUtc <= now), c => c.ExamSessionId, e => e.Id, (c, e) => new { c, e })
-            .Join(db.StudentDrivingProfiles.AsNoTracking(), x => x.c.StudentDrivingProfileId, p => p.Id, (x, p) => new { x.c, x.e, p.StudentId, p.StudentGroupId })
-            .Join(db.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (x, s) => new { x.c, x.e, x.StudentGroupId, s.FullName }).Take(1000).ToListAsync(ct);
+            .Join(db.StudentDrivingProfiles.AsNoTracking(), x => x.c.StudentDrivingProfileId, p => p.Id, (x, p) => new { x.c, x.e, p.StudentId, p.StudentGroupId, p.PhotoUrl, p.LivePhotoUrl })
+            .Join(db.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (x, s) => new { x.c, x.e, x.StudentGroupId, x.PhotoUrl, x.LivePhotoUrl, s.FullName }).ToListAsync(ct);
         foreach (var row in examRows)
             items.Add(ToDto(DrivingMebbisWorkType.ExamResult, row.c.Id, row.c.StudentDrivingProfileId, row.StudentGroupId,
-                row.FullName, row.e.Title, "Sınav sonucu", DrivingMebbisWorkStatus.EntryPending, [], row.e.EndsAtUtc, stateMap));
+                row.FullName, row.e.Title, "Sınav sonucu", DisplayPhoto(row.LivePhotoUrl, row.PhotoUrl), DrivingMebbisWorkStatus.EntryPending, [], row.e.EndsAtUtc, stateMap));
 
         var certificateRows = await db.DrivingCertificates.AsNoTracking()
             .Where(x => x.Status == DrivingCertificateStatus.Active && x.MebbisCertificateNo == "")
-            .Join(db.StudentDrivingProfiles.AsNoTracking(), c => c.StudentDrivingProfileId, p => p.Id, (c, p) => new { c, p.StudentId, p.StudentGroupId })
-            .Join(db.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (x, s) => new { x.c, x.StudentGroupId, s.FullName }).Take(1000).ToListAsync(ct);
+            .Join(db.StudentDrivingProfiles.AsNoTracking(), c => c.StudentDrivingProfileId, p => p.Id, (c, p) => new { c, p.StudentId, p.StudentGroupId, p.PhotoUrl, p.LivePhotoUrl })
+            .Join(db.Students.AsNoTracking(), x => x.StudentId, s => s.Id, (x, s) => new { x.c, x.StudentGroupId, x.PhotoUrl, x.LivePhotoUrl, s.FullName }).ToListAsync(ct);
         foreach (var row in certificateRows)
             items.Add(ToDto(DrivingMebbisWorkType.CertificateNumber, row.c.Id, row.c.StudentDrivingProfileId, row.StudentGroupId,
-                row.FullName, row.c.DocumentNumber, "Sertifika numarası", DrivingMebbisWorkStatus.EntryPending, [], null, stateMap));
+                row.FullName, row.c.DocumentNumber, "Sertifika numarası", DisplayPhoto(row.LivePhotoUrl, row.PhotoUrl), DrivingMebbisWorkStatus.EntryPending, [], null, stateMap));
 
         foreach (var group in groups.Where(x => x.RegistrationDeadlineUtc.HasValue && x.RegistrationDeadlineUtc <= now.AddDays(14)))
             items.Add(ToDto(DrivingMebbisWorkType.TermDeadline, group.Id, null, group.Id, group.Name,
-                $"{group.TermYear}/{group.TermNumber} • {group.MebbisTermCode}", "Dönem son tarihi", DrivingMebbisWorkStatus.Ready,
+                $"{group.TermYear}/{group.TermNumber} • {group.MebbisTermCode}", "Dönem son tarihi", string.Empty, DrivingMebbisWorkStatus.Ready,
                 [], group.RegistrationDeadlineUtc, stateMap));
 
         var profileNames = profiles.ToDictionary(x => x.p.Id, x => x.FullName);
+        var profilePhotos = profiles.ToDictionary(x => x.p.Id, x => DisplayPhoto(x.p.LivePhotoUrl, x.p.PhotoUrl));
         foreach (var orphan in persisted.Where(x => !items.Any(i => i.WorkType == x.WorkType && i.SubjectId == x.SubjectId)))
             items.Add(ToDto(orphan.WorkType, orphan.SubjectId, orphan.StudentDrivingProfileId, orphan.StudentGroupId,
                 orphan.StudentDrivingProfileId is Guid profileId && profileNames.TryGetValue(profileId, out var name) ? name : "MEBBİS iş kaydı",
                 orphan.ErrorReason.Length > 0 ? orphan.ErrorReason : orphan.WorkType.ToString(),
                 orphan.WorkType == DrivingMebbisWorkType.Reconciliation ? "Mutabakat" : orphan.WorkType.ToString(),
+                orphan.StudentDrivingProfileId is Guid photoProfileId && profilePhotos.TryGetValue(photoProfileId, out var photo) ? photo : string.Empty,
                 orphan.Status, [], orphan.DueAtUtc, stateMap));
         return items;
     }
 
     private static MebbisItemDto ToDto(DrivingMebbisWorkType type, Guid subjectId, Guid? profileId, Guid? groupId,
-        string title, string reference, string category, DrivingMebbisWorkStatus initial, List<string> missing, DateTime? dueAt,
+        string title, string reference, string category, string photoUrl, DrivingMebbisWorkStatus initial, List<string> missing, DateTime? dueAt,
         IReadOnlyDictionary<(DrivingMebbisWorkType, Guid), DrivingMebbisWorkItem> stateMap)
     {
         stateMap.TryGetValue((type, subjectId), out var saved);
         var status = saved?.Status ?? initial;
-        if (saved is not null && status == DrivingMebbisWorkStatus.Preparing && initial == DrivingMebbisWorkStatus.Ready)
-            status = DrivingMebbisWorkStatus.Ready;
-        return new(type, subjectId, profileId, groupId, title, reference, category, status, missing,
+        return new(type, subjectId, profileId, groupId, title, reference, category, photoUrl, status, missing,
             saved?.ErrorReason ?? string.Empty, saved?.Note ?? string.Empty, dueAt ?? saved?.DueAtUtc,
             saved?.AssignedToUserId, saved?.EnteredAtUtc, saved?.VerifiedAtUtc, saved?.Version ?? 0, saved?.UpdatedAtUtc);
     }
+
+    private static string DisplayPhoto(string? livePhotoUrl, string? photoUrl)
+        => !string.IsNullOrWhiteSpace(livePhotoUrl) ? livePhotoUrl : photoUrl ?? string.Empty;
+
+    private static List<MebbisItemDto> FilterAndOrder(
+        IEnumerable<MebbisItemDto> source,
+        DrivingMebbisWorkStatus? status,
+        DrivingMebbisWorkType? type,
+        string? search,
+        Guid? groupId)
+    {
+        var filtered = source;
+        if (status.HasValue) filtered = filtered.Where(x => x.Status == status.Value);
+        if (type.HasValue) filtered = filtered.Where(x => x.WorkType == type.Value);
+        if (groupId.HasValue) filtered = filtered.Where(x => x.StudentGroupId == groupId);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim();
+            filtered = filtered.Where(x => x.Title.Contains(term, StringComparison.CurrentCultureIgnoreCase)
+                || x.Reference.Contains(term, StringComparison.CurrentCultureIgnoreCase));
+        }
+        return filtered.OrderBy(x => StatusOrder(x.Status))
+            .ThenBy(x => x.DueAtUtc ?? DateTime.MaxValue)
+            .ThenBy(x => x.Title, StringComparer.CurrentCultureIgnoreCase)
+            .ToList();
+    }
+
+    private static string ExportDate(DateTime? value)
+        => value.HasValue ? value.Value.ToUniversalTime().ToString("yyyy-MM-dd HH:mm:ss", CultureInfo.InvariantCulture) : string.Empty;
+
+    private static string WorkTypeLabel(DrivingMebbisWorkType value) => value switch
+    {
+        DrivingMebbisWorkType.CandidateRegistration => "Aday kaydı",
+        DrivingMebbisWorkType.DocumentApproval => "Evrak onayı",
+        DrivingMebbisWorkType.TermAssignment => "Dönem ataması",
+        DrivingMebbisWorkType.ExamResult => "Sınav sonucu",
+        DrivingMebbisWorkType.CertificateNumber => "Sertifika numarası",
+        DrivingMebbisWorkType.TermDeadline => "Dönem son tarihi",
+        DrivingMebbisWorkType.Reconciliation => "Mutabakat",
+        _ => value.ToString(),
+    };
+
+    private static string StatusLabel(DrivingMebbisWorkStatus value) => value switch
+    {
+        DrivingMebbisWorkStatus.Preparing => "Hazırlanıyor",
+        DrivingMebbisWorkStatus.Ready => "MEBBİS'e hazır",
+        DrivingMebbisWorkStatus.EntryPending => "Giriş bekliyor",
+        DrivingMebbisWorkStatus.Entered => "MEBBİS'e girildi",
+        DrivingMebbisWorkStatus.Verified => "Doğrulandı",
+        DrivingMebbisWorkStatus.Error => "Hatalı",
+        DrivingMebbisWorkStatus.CorrectionPending => "Düzeltme bekliyor",
+        _ => value.ToString(),
+    };
 
     private async Task<List<string>> CandidateMissingAsync(Guid profileId, CancellationToken ct)
     {
@@ -1006,6 +1090,6 @@ public sealed record MebbisQualityReport(
     IReadOnlyList<MebbisQualityCheck> Checks);
 public sealed record MebbisItemDto(
     DrivingMebbisWorkType WorkType, Guid SubjectId, Guid? StudentDrivingProfileId, Guid? StudentGroupId,
-    string Title, string Reference, string Category, DrivingMebbisWorkStatus Status, List<string> Missing,
+    string Title, string Reference, string Category, string PhotoUrl, DrivingMebbisWorkStatus Status, List<string> Missing,
     string ErrorReason, string Note, DateTime? DueAtUtc, Guid? AssignedToUserId, DateTime? EnteredAtUtc,
     DateTime? VerifiedAtUtc, int Version, DateTime? UpdatedAtUtc);

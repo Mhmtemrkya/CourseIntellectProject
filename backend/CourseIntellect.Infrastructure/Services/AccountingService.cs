@@ -37,6 +37,17 @@ public sealed class AccountingService(
         var payments = await dbContext.FinancePayments.AsNoTracking()
             .OrderByDescending(x => x.PaidAtUtc)
             .ToListAsync(cancellationToken);
+
+        // "Kim, hangi şubeden tahsil etti" — şube ve tahsil eden personel adlarını çöz.
+        var collectionBranchIds = payments.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
+        var collectorIds = payments.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value).Distinct().ToList();
+        var collectionBranchNames = await dbContext.OrgUnits.AsNoTracking()
+            .Where(x => collectionBranchIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.Name, cancellationToken);
+        var collectorNames = await dbContext.Users.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => collectorIds.Contains(x.Id))
+            .ToDictionaryAsync(x => x.Id, x => x.FullName, cancellationToken);
+
         var collections = payments.Select(payment => new AccountingCollectionDto(
             payment.Id.ToString(),
             payment.StudentName,
@@ -44,7 +55,9 @@ public sealed class AccountingService(
             FormatAmount(payment.Amount),
             payment.Method,
             payment.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),
-            string.IsNullOrWhiteSpace(payment.ReceiptNo) ? payment.Note : $"{payment.ReceiptNo} • {payment.Note}".Trim(' ', '•'))).ToList();
+            string.IsNullOrWhiteSpace(payment.ReceiptNo) ? payment.Note : $"{payment.ReceiptNo} • {payment.Note}".Trim(' ', '•'),
+            payment.BranchId is Guid pb && collectionBranchNames.TryGetValue(pb, out var pbn) ? pbn : null,
+            payment.CreatedByUserId is Guid pc && collectorNames.TryGetValue(pc, out var pcn) ? pcn : null)).ToList();
 
         var now = DateTime.UtcNow;
         var financeInstallments = await dbContext.FinanceInstallments.AsNoTracking()
@@ -117,7 +130,7 @@ public sealed class AccountingService(
 
     // Manuel tahsilat artık normalize finans modeline yazılır ve öğrencinin
     // taksitlerine (FIFO) mahsup edilir.
-    public async Task<AccountingCollectionDto> CreateCollectionAsync(CreateCollectionRequest request, CancellationToken cancellationToken = default)
+    public async Task<AccountingCollectionDto> CreateCollectionAsync(CreateCollectionRequest request, Guid? createdByUserId = null, CancellationToken cancellationToken = default)
     {
         var amount = ParseAmount(request.Amount);
         var payment = await studentFinanceService.RecordPaymentAsync(
@@ -129,12 +142,25 @@ public sealed class AccountingService(
                 amount,
                 string.IsNullOrWhiteSpace(request.Method) ? "Nakit" : request.Method.Trim(),
                 request.Note?.Trim()),
-            null,
+            // Tahsil eden personel kaydedilsin ("kim tahsil etti"). Şube RecordPaymentAsync
+            // içinde ApplyTenantContext ile aktörün şubesine damgalanır.
+            createdByUserId,
             cancellationToken);
 
         await AddNotificationAsync("Tahsilat tamamlandı", $"{request.Name} için {FormatAmount(amount)} tutarında {request.Method} tahsilatı alındı.", cancellationToken);
         await AddAuditAsync("Tahsilat işlendi", $"{request.Name} için {request.Method} ile {FormatAmount(amount)} tutarında ödeme kaydedildi.", cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Liste anında "kim, hangi şubeden" gösterebilsin diye dönen kayda da ekle
+        // (istemci yeni satırı iyimser ekliyor; yenilemeyi beklemesin).
+        var savedBranchId = await dbContext.FinancePayments.AsNoTracking()
+            .Where(x => x.Id == payment.Id).Select(x => x.BranchId).FirstOrDefaultAsync(cancellationToken);
+        var branchName = savedBranchId is Guid bid
+            ? await dbContext.OrgUnits.AsNoTracking().Where(x => x.Id == bid).Select(x => x.Name).FirstOrDefaultAsync(cancellationToken)
+            : null;
+        var collectedByName = createdByUserId is Guid uid
+            ? await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => x.Id == uid).Select(x => x.FullName).FirstOrDefaultAsync(cancellationToken)
+            : null;
 
         return new AccountingCollectionDto(
             payment.Id.ToString(),
@@ -143,7 +169,9 @@ public sealed class AccountingService(
             FormatAmount(amount),
             request.Method.Trim(),
             DateTime.Now.ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),
-            payment.ReceiptNo);
+            payment.ReceiptNo,
+            branchName,
+            collectedByName);
     }
 
     // Manuel taksit (standalone) normalize taksit tablosuna yazılır.

@@ -702,6 +702,7 @@ export const TR_EN_EXT = {
   // ── Sürücü kursu: finans ──
   'Bugünkü Tahsilat': "Today's Collections", 'Kasaya giren tutar': 'Amount received',
   'Tahsilat al': 'Collect payment', 'Tahsilatı Kaydet': 'Save Payment', 'Tahsilat yok.': 'No collections.',
+  'Tahsilat geçmişi': 'Payment history', 'Tahsilatı alan:': 'Collected by:',
   'Ücret kalemleri': 'Fee items', 'Ücret kalemi ekle': 'Add fee item', 'Tahsilat ve ücret kalemi': 'Collection and fee item',
   'Taksit planı': 'Installment plan', 'Taksit tutarı': 'Installment amount', 'Ödemelerim': 'My Payments',
   'gecikmiş taksit': 'overdue installment', 'Gecikmiş taksit': 'Overdue installment', 'Ücretsiz': 'Free',

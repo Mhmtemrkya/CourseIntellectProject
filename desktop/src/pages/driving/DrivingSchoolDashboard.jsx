@@ -89,7 +89,7 @@ const PERIOD_CAPTION = {
 
 const SHORTCUTS = [
   ['Konu Anlatımı', 'Video, PDF ve ders içeriklerini yönet', BookOpen, 'violet', '/content'],
-  ['Soru Bankası', 'Soru stüdyosu ve sınav altyapısı', Brain, 'blue', '/questions'],
+  ['Soru Bankası', 'Soru stüdyosu ve sınav altyapısı', Brain, 'blue', '/t/question-bank'],
 ];
 
 export default function DrivingSchoolDashboard() {
@@ -279,7 +279,6 @@ export default function DrivingSchoolDashboard() {
                 <ManagerMetric label="Son tarihi yaklaşan" value={managerSummary.approachingDeadlineTerms} icon={AlertTriangle} path="/driving/mebbis/term-opening" navigate={navigate} danger={managerSummary.approachingDeadlineTerms > 0} />
                 <ManagerMetric label="Sınav sonucu bekleyen" value={managerSummary.pendingExamResults} icon={ClipboardCheck} path="/driving/mebbis/exam-results" navigate={navigate} />
                 <ManagerMetric label="Sertifika no bekleyen" value={managerSummary.certificatesWaiting} icon={Award} path="/driving/mebbis/certificate-numbers" navigate={navigate} />
-                <ManagerMetric label="Son 7 gün hata" value={managerSummary.errorsLast7Days} icon={AlertTriangle} path="/driving/mebbis/errors" navigate={navigate} danger={managerSummary.errorsLast7Days > 0} />
               </div>
               <div className="mt-5 rounded-2xl border bg-foreground/[0.025] p-4">
                 <div className="flex items-center gap-2"><UserCheck className="h-4 w-4 text-emerald-600" /><b className="text-sm">Bugün personel bazlı tamamlanan işlemler</b></div>

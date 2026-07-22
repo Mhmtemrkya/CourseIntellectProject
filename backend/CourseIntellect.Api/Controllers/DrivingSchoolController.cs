@@ -444,6 +444,9 @@ public sealed class DrivingSchoolController(
                 x.p.StudentId,
                 x.p.StudentNumber,
                 x.FullName,
+                x.p.PhotoUrl,
+                x.p.LivePhotoUrl,
+                displayPhotoUrl = x.p.LivePhotoUrl != "" ? x.p.LivePhotoUrl : x.p.PhotoUrl,
                 x.p.PackageId,
                 x.p.LicenseClass,
                 transmissionType = x.p.TransmissionType.ToString(),
@@ -617,10 +620,9 @@ public sealed class DrivingSchoolController(
                 Phone: x.Profile.Phone,
                 HasPhoto: Approved(StudentDocumentType.BiometricPhoto) || !string.IsNullOrWhiteSpace(x.Profile.PhotoUrl),
                 HealthReportApproved: Approved(StudentDocumentType.HealthReport),
-                HealthReportDetailsComplete: health is not null
-                    && !string.IsNullOrWhiteSpace(health.DocumentNumber)
-                    && !string.IsNullOrWhiteSpace(health.IssuedBy)
-                    && health.IssuedAtUtc is not null,
+                // Yeni kayıtta sağlık raporu dosyasının bulunması yeterlidir;
+                // rapor no, kurum ve tarih alanları kullanıcıdan istenmez.
+                HealthReportDetailsComplete: health is not null,
                 DiplomaApproved: Approved(StudentDocumentType.Diploma),
                 CriminalRecordApproved: Approved(StudentDocumentType.CriminalRecord)));
 
@@ -721,7 +723,7 @@ public sealed class DrivingSchoolController(
         var attempts = await dbContext.DrivingExamCandidates.AsNoTracking()
             .Where(x => profileIds.Contains(x.StudentDrivingProfileId) && x.Status != DrivingExamCandidateStatus.Cancelled)
             .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id,
-                (c, s) => new { c.StudentDrivingProfileId, s.ExamType, c.Status })
+                (c, s) => new { c.StudentDrivingProfileId, s.ExamType, c.Status, c.AttemptNo, c.ResultNote })
             .ToListAsync(ct);
         var attemptsByStudent = attempts.ToLookup(x => x.StudentDrivingProfileId);
 
@@ -737,7 +739,16 @@ public sealed class DrivingSchoolController(
         var rows = students.Select(student =>
         {
             var own = attemptsByStudent[student.Id].ToList();
-            int Used(DrivingExamType type) => own.Count(x => x.ExamType == type);
+            int Used(DrivingExamType type)
+            {
+                var typed = own.Where(x => x.ExamType == type).ToList();
+                var manualAttempt = typed
+                    .Where(x => x.ResultNote == "Sınav Hakları sayfasından manuel giriş")
+                    .Select(x => x.AttemptNo)
+                    .DefaultIfEmpty(0)
+                    .Max();
+                return Math.Max(typed.Count, manualAttempt);
+            }
             bool Passed(DrivingExamType type) => own.Any(x => x.ExamType == type && x.Status == DrivingExamCandidateStatus.Passed);
             var theoryUsed = Used(DrivingExamType.TheoryEExam);
             var practiceUsed = Used(DrivingExamType.DrivingPractice);
@@ -927,7 +938,7 @@ public sealed class DrivingSchoolController(
                 x.a.Id,
                 x.a.StudentDrivingProfileId,
                 x.StudentName,
-                studentPhotoUrl = x.p.PhotoUrl,
+                studentPhotoUrl = x.p.LivePhotoUrl != "" ? x.p.LivePhotoUrl : x.p.PhotoUrl,
                 x.p.LicenseClass,
                 transmissionType = x.p.TransmissionType.ToString(),
                 x.a.InstructorProfileId,

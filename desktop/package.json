@@ -36,7 +36,9 @@
     "@radix-ui/react-tooltip": "^1.2.4",
     "@tauri-apps/plugin-deep-link": "^2.4.7",
     "@tauri-apps/plugin-http": "^2.5.7",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "^2.3.5",
+    "@tauri-apps/plugin-updater": "^2.10.1",
     "ajv": "^8.17.1",
     "ajv-keywords": "^5.1.0",
     "axios": "^1.8.4",
@@ -83,9 +85,10 @@
     "desktop:build": "swift scripts/generate-dmg-background.swift && PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg",
     "predesktop:build:app:prod": "bash scripts/macos-build-preflight.sh",
     "desktop:build:app:prod": "REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles app",
-    "predesktop:build:prod": "bash scripts/macos-build-preflight.sh",
-    "desktop:build:prod": "swift scripts/generate-dmg-background.swift && REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg",
-    "desktop:build:signed": "bash scripts/build-macos-signed.sh"
+    "desktop:build:prod": "bash scripts/build-macos-signed.sh",
+    "desktop:build:unsigned": "bash scripts/macos-build-preflight.sh && swift scripts/generate-dmg-background.swift && REACT_APP_COURSE_INTELLECT_ENV=production PATH=\"/opt/homebrew/opt/rustup/bin:$HOME/.cargo/bin:$PATH\" CARGO_REGISTRIES_CRATES_IO_PROTOCOL=sparse CARGO_HTTP_TIMEOUT=600 CARGO_NET_RETRY=10 node ./node_modules/@tauri-apps/cli/tauri.js build --bundles dmg",
+    "desktop:build:signed": "bash scripts/build-macos-signed.sh",
+    "desktop:version": "node scripts/set-desktop-version.mjs"
   },
   "browserslist": {
     "production": [

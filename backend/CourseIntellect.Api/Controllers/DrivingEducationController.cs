@@ -25,6 +25,7 @@ public sealed class DrivingEducationController(
     IAuditLogService audit) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
+    private const string ManualExamRightNote = "Sınav Hakları sayfasından manuel giriş";
 
     [HttpGet("education/overview")]
     [RequireDrivingPermission(DrivingPermissions.TheoryView, DrivingPermissions.ExamView)]
@@ -476,6 +477,188 @@ public sealed class DrivingEducationController(
         return Ok(new { entity.Id });
     }
 
+    /// <summary>
+    /// Kursiyerlerin teorik ve direksiyon sınav haklarını, puanlarını ve tarihlerini
+    /// tek ekranda gösterir. İptal edilen kayıtlar hak kullanımına dahil edilmez.
+    /// </summary>
+    [HttpGet("exams/rights")]
+    [RequireDrivingPermission(DrivingPermissions.ExamView)]
+    public async Task<IActionResult> GetExamRights(CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+
+        var students = await db.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Status != DrivingStudentStatus.Cancelled)
+            .Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (profile, student) => new
+            {
+                profileId = profile.Id,
+                profile.StudentNumber,
+                student.FullName,
+                profile.LicenseClass,
+                photoUrl = profile.LivePhotoUrl != "" ? profile.LivePhotoUrl : profile.PhotoUrl,
+                status = profile.Status.ToString(),
+            })
+            .OrderBy(x => x.FullName)
+            .ToListAsync(ct);
+
+        var profileIds = students.Select(x => x.profileId).ToList();
+        var attempts = await db.DrivingExamCandidates.AsNoTracking()
+            .Where(x => profileIds.Contains(x.StudentDrivingProfileId) && x.Status != DrivingExamCandidateStatus.Cancelled)
+            .Join(db.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id, (candidate, session) => new
+            {
+                id = candidate.Id,
+                candidate.StudentDrivingProfileId,
+                examType = session.ExamType.ToString(),
+                candidate.AttemptNo,
+                candidate.Score,
+                candidate.ResultNote,
+                status = candidate.Status.ToString(),
+                examDateUtc = session.StartsAtUtc,
+                session.Title,
+            })
+            .OrderByDescending(x => x.examDateUtc)
+            .ToListAsync(ct);
+
+        var byStudent = attempts.ToLookup(x => x.StudentDrivingProfileId);
+        object Rights(Guid profileId, DrivingExamType type)
+        {
+            var typeName = type.ToString();
+            var own = byStudent[profileId].Where(x => x.examType == typeName).OrderByDescending(x => x.examDateUtc).ToList();
+            var manualAttempt = own
+                .Where(x => x.ResultNote == ManualExamRightNote)
+                .Select(x => x.AttemptNo)
+                .DefaultIfEmpty(0)
+                .Max();
+            var used = Math.Max(own.Count, manualAttempt);
+            return new
+            {
+                used,
+                max = DrivingExamRules.MaxAttempts,
+                remaining = DrivingExamRules.RemainingAttempts(used),
+                lastScore = own.FirstOrDefault()?.Score,
+                lastExamDateUtc = own.FirstOrDefault()?.examDateUtc,
+            };
+        }
+
+        return Ok(new
+        {
+            students = students.Select(x => new
+            {
+                x.profileId,
+                x.StudentNumber,
+                x.FullName,
+                x.photoUrl,
+                x.LicenseClass,
+                x.status,
+                theory = Rights(x.profileId, DrivingExamType.TheoryEExam),
+                practice = Rights(x.profileId, DrivingExamType.DrivingPractice),
+            }),
+            attempts,
+        });
+    }
+
+    /// <summary>
+    /// Sınav hakkı ekranından doğrudan sonuç girer veya mevcut kaydı düzenler.
+    /// Tarih her kursiyer kaydına özel tutulabilsin diye paylaşılan bir oturum
+    /// düzenleniyorsa aday, tek kişilik manuel oturuma güvenle ayrılır.
+    /// </summary>
+    [HttpPut("exams/rights")]
+    [RequireDrivingPermission(DrivingPermissions.ExamResultEnter)]
+    public async Task<IActionResult> SaveExamRight([FromBody] SaveExamRightRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        if (request.ParsedType is null || request.AttemptNo is < 1 or > DrivingExamRules.MaxAttempts)
+            return BadRequest(new { message = $"Sınav türü ve giriş sırası geçerli olmalıdır (1-{DrivingExamRules.MaxAttempts})." });
+        if (request.Score is < 0 or > 100)
+            return BadRequest(new { message = "Sınav puanı 0-100 arasında olmalıdır." });
+        if (request.ExamDateUtc < DateTime.UtcNow.AddYears(-10) || request.ExamDateUtc > DateTime.UtcNow.AddYears(2))
+            return BadRequest(new { message = "Sınav tarihi geçersiz." });
+
+        var student = await db.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == request.StudentProfileId, ct);
+        if (student is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+
+        var type = request.ParsedType.Value;
+        DrivingExamCandidate candidate;
+        DrivingExamSession session;
+        if (request.CandidateId is Guid candidateId)
+        {
+            var existingCandidate = await db.DrivingExamCandidates.SingleOrDefaultAsync(x => x.Id == candidateId, ct);
+            if (existingCandidate is null) return NotFound(new { message = "Sınav kaydı bulunamadı." });
+            candidate = existingCandidate;
+            if (candidate.StudentDrivingProfileId != student.Id)
+                return BadRequest(new { message = "Sınav kaydı kursiyerle eşleşmiyor." });
+            session = await db.DrivingExamSessions.SingleAsync(x => x.Id == candidate.ExamSessionId, ct);
+
+            var duplicate = await db.DrivingExamCandidates.AsNoTracking()
+                .Where(x => x.Id != candidate.Id && x.StudentDrivingProfileId == student.Id && x.AttemptNo == request.AttemptNo && x.Status != DrivingExamCandidateStatus.Cancelled)
+                .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == type), x => x.ExamSessionId, x => x.Id, (_, _) => true)
+                .AnyAsync(ct);
+            if (duplicate) return Conflict(new { message = "Bu sınav türü ve giriş sırası için zaten kayıt var." });
+
+            var sharedSession = await db.DrivingExamCandidates.CountAsync(x => x.ExamSessionId == session.Id, ct) > 1;
+            if (sharedSession && (session.ExamType != type || session.StartsAtUtc != request.ExamDateUtc))
+            {
+                session = CreateManualExamSession(type, request.ExamDateUtc, await StudentNameAsync(student.StudentId, ct));
+                db.DrivingExamSessions.Add(session);
+                candidate.ExamSessionId = session.Id;
+            }
+            else
+            {
+                session.ExamType = type;
+                session.StartsAtUtc = request.ExamDateUtc;
+                session.EndsAtUtc = request.ExamDateUtc.AddHours(1);
+            }
+        }
+        else
+        {
+            var duplicate = await db.DrivingExamCandidates.AsNoTracking()
+                .Where(x => x.StudentDrivingProfileId == student.Id && x.AttemptNo == request.AttemptNo && x.Status != DrivingExamCandidateStatus.Cancelled)
+                .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == type), x => x.ExamSessionId, x => x.Id, (_, _) => true)
+                .AnyAsync(ct);
+            if (duplicate) return Conflict(new { message = "Bu sınav türü ve giriş sırası için zaten kayıt var." });
+
+            session = CreateManualExamSession(type, request.ExamDateUtc, await StudentNameAsync(student.StudentId, ct));
+            candidate = new DrivingExamCandidate
+            {
+                ExamSessionId = session.Id,
+                StudentDrivingProfileId = student.Id,
+            };
+            db.DrivingExamSessions.Add(session);
+            db.DrivingExamCandidates.Add(candidate);
+        }
+
+        var passed = request.Passed;
+        candidate.AttemptNo = request.AttemptNo;
+        candidate.Score = request.Score;
+        candidate.Status = passed ? DrivingExamCandidateStatus.Passed : DrivingExamCandidateStatus.Failed;
+        candidate.FailureReason = passed ? string.Empty : "Sınav puanı geçme sınırının altında";
+        candidate.ResultNote = ManualExamRightNote;
+        candidate.ResultEnteredAtUtc = DateTime.UtcNow;
+        candidate.ResultEnteredByUserId = CurrentUserId();
+        student.Status = DrivingExamRules.StudentStatusAfterResult(type, passed);
+        await db.SaveChangesAsync(ct);
+
+        await audit.LogChangeAsync(
+            request.CandidateId.HasValue ? "Sınav hakkı kaydı güncellendi" : "Sınav hakkı kaydı eklendi",
+            AuditCategory, nameof(DrivingExamCandidate), candidate.Id.ToString(),
+            $"{session.Title}: {candidate.AttemptNo}. giriş, {candidate.Score} puan, {session.StartsAtUtc:dd.MM.yyyy}.",
+            null, new { candidate.Id, candidate.StudentDrivingProfileId, examType = type.ToString(), candidate.AttemptNo, candidate.Score, session.StartsAtUtc }, ct);
+
+        return Ok(new { candidate.Id, examType = type.ToString(), candidate.AttemptNo, candidate.Score, examDateUtc = session.StartsAtUtc, status = candidate.Status.ToString() });
+    }
+
+    private static DrivingExamSession CreateManualExamSession(DrivingExamType type, DateTime examDateUtc, string studentName)
+        => new()
+        {
+            ExamType = type,
+            Title = $"{(type == DrivingExamType.TheoryEExam ? "Teorik" : "Direksiyon")} Sınavı — {studentName}",
+            StartsAtUtc = examDateUtc,
+            EndsAtUtc = examDateUtc.AddHours(1),
+            Location = "Manuel kayıt",
+            Capacity = 1,
+            Status = DrivingExamSessionStatus.Completed,
+        };
+
     [HttpPost("exams/sessions/{id:guid}/candidates")]
     [RequireDrivingPermission(DrivingPermissions.ExamManage)]
     public async Task<IActionResult> AddExamCandidates(Guid id, [FromBody] AddExamCandidatesRequest request, CancellationToken ct)
@@ -700,10 +883,19 @@ public sealed class DrivingEducationController(
 
     /// <summary>Adayın bu sınav türünde tükettiği hak sayısı (iptal edilen deneme hak yakmaz).</summary>
     private async Task<int> UsedAttemptsAsync(Guid profileId, DrivingExamType examType, CancellationToken ct)
-        => await db.DrivingExamCandidates.AsNoTracking()
+    {
+        var attempts = await db.DrivingExamCandidates.AsNoTracking()
             .Where(x => x.StudentDrivingProfileId == profileId && x.Status != DrivingExamCandidateStatus.Cancelled)
-            .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == examType), x => x.ExamSessionId, x => x.Id, (candidate, _) => candidate)
-            .CountAsync(ct);
+            .Join(db.DrivingExamSessions.AsNoTracking().Where(x => x.ExamType == examType), x => x.ExamSessionId, x => x.Id,
+                (candidate, _) => new { candidate.AttemptNo, candidate.ResultNote })
+            .ToListAsync(ct);
+        var manualAttempt = attempts
+            .Where(x => x.ResultNote == ManualExamRightNote)
+            .Select(x => x.AttemptNo)
+            .DefaultIfEmpty(0)
+            .Max();
+        return Math.Max(attempts.Count, manualAttempt);
+    }
 
     private async Task<string> StudentNameAsync(Guid studentId, CancellationToken ct)
         => await db.Students.AsNoTracking().Where(x => x.Id == studentId).Select(x => x.FullName).SingleOrDefaultAsync(ct) ?? "Kursiyer";
@@ -919,4 +1111,8 @@ public sealed record GenerateScheduleRequest(DateTime StartDate, IReadOnlyList<i
 public sealed record ExamResultImportRow(string IdentityNumber, string? Result, decimal? Score);
 public sealed record ImportExamResultsRequest(IReadOnlyList<ExamResultImportRow> Rows);
 public sealed record EnterExamResultRequest(bool Passed, decimal? Score, string? FailureReason, string? Note);
+public sealed record SaveExamRightRequest(Guid? CandidateId, Guid StudentProfileId, string ExamType, int AttemptNo, decimal Score, bool Passed, DateTime ExamDateUtc)
+{
+    public DrivingExamType? ParsedType => Enum.TryParse<DrivingExamType>(ExamType, true, out var value) && Enum.IsDefined(value) ? value : null;
+}
 public sealed record ScheduleExamRetryRequest(Guid ExamSessionId, decimal FeeAmount);

@@ -153,7 +153,7 @@ public sealed class DrivingStudentRulesTests
     }
 
     [Fact]
-    public void MebbisMissingFields_HealthReportDetails_OnlyAskedWhenReportApproved()
+    public void MebbisMissingFields_HealthReportFileIsEnough()
     {
         // Rapor hiç yoksa detay istenmez — önce raporun kendisi eksiktir.
         var withoutReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
@@ -164,12 +164,12 @@ public sealed class DrivingStudentRulesTests
         Assert.Contains("Onaylı sağlık raporu", withoutReport);
         Assert.DoesNotContain("Sağlık raporu no / veren kurum / tarih", withoutReport);
 
-        // Rapor onaylı ama no/kurum/tarih girilmemişse detay eksiği çıkar.
+        // Rapor onaylıysa rapor no/kurum/tarih artık ayrı zorunlu alan değildir.
         var withReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
         {
             HealthReportDetailsComplete = false,
         });
-        Assert.Equal(["Sağlık raporu no / veren kurum / tarih"], withReport);
+        Assert.Empty(withReport);
     }
 
     // ─── Resmî teorik müfredat ───────────────────────────────────────────────

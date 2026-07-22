@@ -10,6 +10,8 @@
     "core:window:allow-close",
     "deep-link:default",
     "shell:allow-open",
+    "updater:default",
+    "process:allow-restart",
     {
       "identifier": "http:default",
       "allow": [

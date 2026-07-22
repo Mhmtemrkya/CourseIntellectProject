@@ -97,8 +97,9 @@ class DrivingSchoolApiService {
     String? status,
     String? type,
     String? search,
+    int page = 1,
   }) {
-    final query = <String, String>{'pageSize': '100'};
+    final query = <String, String>{'page': '$page', 'pageSize': '100'};
     if (status != null && status.isNotEmpty) query['status'] = status;
     if (type != null && type.isNotEmpty) query['type'] = type;
     if (search != null && search.trim().isNotEmpty) {
@@ -111,32 +112,26 @@ class DrivingSchoolApiService {
     return _get(uri.toString());
   }
 
+  Future<Uint8List> downloadMebbisWorkCenter({
+    String? status,
+    String? type,
+    String? search,
+  }) {
+    final query = <String, String>{};
+    if (status != null && status.isNotEmpty) query['status'] = status;
+    if (type != null && type.isNotEmpty) query['type'] = type;
+    if (search != null && search.trim().isNotEmpty) {
+      query['search'] = search.trim();
+    }
+    final uri = Uri(
+      path: '/api/driving-school/mebbis/work-center/export',
+      queryParameters: query.isEmpty ? null : query,
+    );
+    return downloadAuthenticated(uri.toString());
+  }
+
   Future<Map<String, dynamic>> syncMebbisWorkCenter() =>
       _post('/api/driving-school/mebbis/work-center/sync', const {});
-
-  Future<Map<String, dynamic>> mebbisErrorLibrary({String search = ''}) => _get(
-    Uri(
-      path: '/api/driving-school/mebbis/errors',
-      queryParameters: search.trim().isEmpty ? null : {'search': search.trim()},
-    ).toString(),
-  );
-  Future<Map<String, dynamic>> mebbisErrorDetail(String id) =>
-      _get('/api/driving-school/mebbis/errors/$id');
-  Future<Map<String, dynamic>> syncMebbisErrorDefaults() =>
-      _post('/api/driving-school/mebbis/errors/sync-defaults', const {});
-  Future<Map<String, dynamic>> reportMebbisError(String id, String note) =>
-      _post('/api/driving-school/mebbis/errors/$id/occurrences', {
-        'note': note,
-        'sourceType': 'MobileManual',
-      });
-  Future<Map<String, dynamic>> resolveMebbisError(
-    String id,
-    String note,
-    int version,
-  ) => _put('/api/driving-school/mebbis/errors/occurrences/$id/resolve', {
-    'resolutionNote': note,
-    'expectedVersion': version,
-  });
 
   Future<Map<String, dynamic>> termOpeningWizardOptions() =>
       _get('/api/driving-school/term-opening-wizard/options');
@@ -368,8 +363,9 @@ class DrivingSchoolApiService {
 
   // Peşinatı beklenen (tahsil edilmemiş) sözleşmeler — student-finance ucundan.
   Future<List<Map<String, dynamic>>> pendingDownPayments() async =>
-      (await _getList('/api/student-finance/pending-down-payments'))
-          .cast<Map<String, dynamic>>();
+      (await _getList(
+        '/api/student-finance/pending-down-payments',
+      )).cast<Map<String, dynamic>>();
 
   // Bekleyen peşinatı makbuzlu tahsil eder ve sözleşmeyi "ödendi" işaretler.
   Future<Map<String, dynamic>> collectDownPayment(
@@ -506,6 +502,12 @@ class DrivingSchoolApiService {
     'status': 'Delivered',
     'deliveredTo': deliveredTo,
     'note': note,
+  });
+  Future<Map<String, dynamic>> updateCertificateMebbisNo(
+    String id,
+    String mebbisCertificateNo,
+  ) => _put('/api/driving-school/graduation/certificates/$id/mebbis-no', {
+    'mebbisCertificateNo': mebbisCertificateNo,
   });
   Future<Uint8List> downloadCertificate(String id) => _downloadBytes(
     '/api/driving-school/graduation/certificates/$id/download',
@@ -696,10 +698,9 @@ class DrivingSchoolApiService {
   Future<Map<String, dynamic>> collectStudentDownPayment(
     String profileId,
     String method,
-  ) => _post(
-    '/api/driving-school/students/$profileId/collect-down-payment',
-    {'method': method},
-  );
+  ) => _post('/api/driving-school/students/$profileId/collect-down-payment', {
+    'method': method,
+  });
 
   Future<Map<String, dynamic>> recordPayment(
     String profileId, {

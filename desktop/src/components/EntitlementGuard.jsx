@@ -26,6 +26,17 @@ function moduleKeyForPath(pathname) {
   return '';
 }
 
+// Sürücü kursunda genel "Sorular" menüsü, öğretmen soru bankası arayüzüne
+// yönlendirilir. Menü bu ortak özelliği `questions` paket hakkıyla gösterdiği
+// için route koruması da aynı anahtarı kullanmalıdır; aksi halde görünür menü
+// tıklandığında kurum-türü filtresi sayfayı yeniden kilitler.
+function moduleKeyForInstitution(routeModuleKey, institutionType) {
+  if (institutionType === 'DrivingSchool' && routeModuleKey === 'question-bank') {
+    return 'questions';
+  }
+  return routeModuleKey;
+}
+
 function LockedScreen({ onBack }) {
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center px-6">
@@ -86,12 +97,13 @@ export function EntitlementGuard({ children }) {
   }
 
   const routeModuleKey = moduleKeyForPath(location.pathname);
-  if (!user?.isPlatformAdmin && !isModuleAllowedForInstitution(routeModuleKey, institutionType, location.pathname)) {
+  const accessModuleKey = moduleKeyForInstitution(routeModuleKey, institutionType);
+  if (!user?.isPlatformAdmin && !isModuleAllowedForInstitution(accessModuleKey, institutionType, location.pathname)) {
     return <LockedScreen onBack={() => navigate(getUserHomePath(user))} />;
   }
 
   if (!entitlements.unrestricted) {
-    const moduleKey = routeModuleKey;
+    const moduleKey = accessModuleKey;
     if (!ALWAYS_ALLOWED.has(moduleKey)) {
       const primaryRole = getUserRoles(user)[0] || 'student';
       if (!isModuleAllowed(entitlements, primaryRole, moduleKey)) {

@@ -7,6 +7,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { LanguageProvider } from "./lib/i18n/LanguageContext";
 import { DashboardLayout } from "./components/layout/DashboardLayout";
 import { Toaster } from "./components/ui/toaster";
+import { DesktopUpdater } from "./components/system/DesktopUpdater";
 
 // Auth Pages
 import Login from "./pages/Login";
@@ -124,6 +125,7 @@ const DrivingAssignments = lazyWithReload(() => import("./pages/driving/DrivingA
 const DrivingCalendar = lazyWithReload(() => import("./pages/driving/DrivingCalendar"));
 const DrivingStudentDetail = lazyWithReload(() => import("./pages/driving/DrivingStudentDetail"));
 const DrivingEducation = lazyWithReload(() => import("./pages/driving/DrivingEducation"));
+const DrivingExamRights = lazyWithReload(() => import("./pages/driving/DrivingExamRights"));
 const DrivingGraduation = lazyWithReload(() => import("./pages/driving/DrivingGraduation"));
 const DrivingContractForms = lazyWithReload(() => import("./pages/driving/DrivingContractForms"));
 const DrivingReports = lazyWithReload(() => import("./pages/driving/DrivingReports"));
@@ -136,7 +138,6 @@ const DrivingMebbisReconciliations = lazyWithReload(() => import("./pages/drivin
 const DrivingMebbisExamResults = lazyWithReload(() => import("./pages/driving/DrivingMebbisExamResults"));
 const DrivingMebbisCertificateNumbers = lazyWithReload(() => import("./pages/driving/DrivingMebbisCertificateNumbers"));
 const DrivingDocumentReviewQueue = lazyWithReload(() => import("./pages/driving/DrivingDocumentReviewQueue"));
-const DrivingMebbisErrorLibrary = lazyWithReload(() => import("./pages/driving/DrivingMebbisErrorLibrary"));
 
 // Parent Pages
 import ParentDashboard from "./pages/parent/ParentDashboard";
@@ -364,6 +365,7 @@ function App() {
               <Route path="/driving/students/new" element={<DrivingStudentWizard />} />
               <Route path="/driving/students/:profileId" element={<DrivingStudentDetail />} />
               <Route path="/driving/education" element={<DrivingEducation />} />
+              <Route path="/driving/exam-rights" element={<DrivingExamRights />} />
               <Route path="/driving/graduation" element={<DrivingGraduation />} />
               <Route path="/driving/forms" element={<DrivingContractForms />} />
               <Route path="/driving/reports" element={<DrivingReports />} />
@@ -376,7 +378,7 @@ function App() {
               <Route path="/driving/mebbis/exam-results" element={<DrivingMebbisExamResults />} />
               <Route path="/driving/mebbis/certificate-numbers" element={<DrivingMebbisCertificateNumbers />} />
               <Route path="/driving/mebbis/documents" element={<DrivingDocumentReviewQueue />} />
-              <Route path="/driving/mebbis/errors" element={<DrivingMebbisErrorLibrary />} />
+              <Route path="/driving/mebbis/errors" element={<Navigate to="/driving/mebbis" replace />} />
               <Route path="/admin/password-reset-requests" element={<PasswordResetRequests />} />
               <Route path="/cafeteria/menu" element={<CafeteriaWeeklyMenu editable />} />
               <Route path="/admin/destek" element={<Destek />} />
@@ -519,6 +521,7 @@ function App() {
         </RouterComponent>
         </LegalConsentGate>
         <Toaster />
+        <DesktopUpdater />
         </MaintenanceGate>
       </AppProvider>
     </ThemeProvider>

@@ -134,6 +134,7 @@ const PATH_PERMISSIONS = {
   '/driving/lessons': [DRIVING.lessonViewAll],
   '/driving/fleet-compliance': [DRIVING.vehicleDocumentView, DRIVING.vehicleServiceView],
   '/driving/education': [DRIVING.theoryView, DRIVING.examView],
+  '/driving/exam-rights': [DRIVING.examView, DRIVING.examResultEnter],
   '/driving/graduation': [DRIVING.graduationView],
   '/driving/reports': [DRIVING.reportView],
   '/driving/forms': [DRIVING.studentView],

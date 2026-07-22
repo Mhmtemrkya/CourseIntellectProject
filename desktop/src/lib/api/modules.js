@@ -122,13 +122,9 @@ export const setDrivingMebbisEntered = (profileId, entered) =>
   api.put(`/api/driving-school/students/${profileId}/mebbis-entered`, { entered });
 export const fetchDrivingMebbisWorkCenter = (params = {}) =>
   api.get('/api/driving-school/mebbis/work-center', { params });
+export const downloadDrivingMebbisWorkCenter = (params = {}) =>
+  api.get('/api/driving-school/mebbis/work-center/export', { params, responseType: 'blob' });
 export const syncDrivingMebbisWorkCenter = () => api.post('/api/driving-school/mebbis/work-center/sync', {});
-export const fetchDrivingMebbisErrors = (params = {}) => api.get('/api/driving-school/mebbis/errors', { params });
-export const fetchDrivingMebbisError = (id) => api.get(`/api/driving-school/mebbis/errors/${id}`);
-export const syncDrivingMebbisErrorDefaults = () => api.post('/api/driving-school/mebbis/errors/sync-defaults', {});
-export const createDrivingMebbisError = (payload) => api.post('/api/driving-school/mebbis/errors', payload);
-export const reportDrivingMebbisError = (id, payload) => api.post(`/api/driving-school/mebbis/errors/${id}/occurrences`, payload);
-export const resolveDrivingMebbisError = (id, payload) => api.put(`/api/driving-school/mebbis/errors/occurrences/${id}/resolve`, payload);
 export const changeDrivingMebbisWorkStatus = (workType, subjectId, payload) =>
   api.put(`/api/driving-school/mebbis/work-center/items/${encodeURIComponent(workType)}/${subjectId}/status`, payload);
 export const fetchDrivingMebbisEntryAssistant = (profileId) =>
@@ -210,6 +206,8 @@ export const saveDrivingTheoryAttendance = (id, items) => api.put(`/api/driving-
 export const createDrivingExamSession = (payload) => api.post('/api/driving-school/exams/sessions', payload);
 export const addDrivingExamCandidates = (id, payload) => api.post(`/api/driving-school/exams/sessions/${id}/candidates`, payload);
 export const enterDrivingExamResult = (id, payload) => api.post(`/api/driving-school/exams/candidates/${id}/result`, payload);
+export const fetchDrivingExamRights = () => api.get('/api/driving-school/exams/rights');
+export const saveDrivingExamRight = (payload) => api.put('/api/driving-school/exams/rights', payload);
 export const scheduleDrivingExamRetry = (id, payload) => api.post(`/api/driving-school/exams/candidates/${id}/retry`, payload);
 export const fetchDrivingGraduationOverview = () => api.get('/api/driving-school/graduation/overview');
 export const fetchDrivingGraduationChecklist = (profileId) => api.get(`/api/driving-school/graduation/students/${profileId}/checklist`);

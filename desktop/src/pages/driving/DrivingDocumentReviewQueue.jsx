@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, CheckCircle2, Eye, FileClock, RefreshCw, RotateCcw, Search, XCircle } from 'lucide-react';
+import { AlertTriangle, CheckCircle2, Download, Eye, FileClock, RefreshCw, RotateCcw, Search, XCircle } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../hooks/use-toast';
 import { downloadDrivingStudentDocument, fetchDrivingDocumentReviewQueue, reviewDrivingStudentDocument } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import { assetUrl } from '../../lib/assetUrl';
 
 const STATUS = {
   PendingApproval: { label: 'Onay bekliyor', tone: 'bg-amber-500/15 text-amber-700' },
@@ -26,6 +28,7 @@ export default function DrivingDocumentReviewQueue() {
   const [saving, setSaving] = useState('');
   const [drafts, setDrafts] = useState({});
   const [filters, setFilters] = useState({ status: 'ActionRequired', documentType: '', search: '' });
+  const [preview, setPreview] = useState(null); // { item, url, kind, loading }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -60,11 +63,34 @@ export default function DrivingDocumentReviewQueue() {
     finally { setSaving(''); }
   };
 
-  const preview = async (item) => {
+  // Tauri webview'inde window.open(blob) çalışmıyor; belgeyi doğrudan ekrandaki modalda gösteriyoruz.
+  const openPreview = async (item) => {
+    setPreview({ item, url: null, kind: null, loading: true });
     try {
-      const blob = await downloadDrivingStudentDocument(item.id); const url = URL.createObjectURL(blob);
-      window.open(url, '_blank', 'noopener,noreferrer'); setTimeout(() => URL.revokeObjectURL(url), 60000);
-    } catch (error) { toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' }); }
+      const blob = await downloadDrivingStudentDocument(item.id);
+      const url = URL.createObjectURL(blob);
+      const type = blob.type || '';
+      const name = (item.fileName || '').toLowerCase();
+      const kind = type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/.test(name) ? 'image'
+        : type === 'application/pdf' || name.endsWith('.pdf') ? 'pdf'
+        : 'other';
+      setPreview({ item, url, kind, loading: false });
+    } catch (error) {
+      setPreview(null);
+      toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' });
+    }
+  };
+
+  const closePreview = () => {
+    setPreview((current) => { if (current?.url) URL.revokeObjectURL(current.url); return null; });
+  };
+
+  const downloadPreview = () => {
+    if (!preview?.url) return;
+    const anchor = document.createElement('a');
+    anchor.href = preview.url;
+    anchor.download = preview.item.fileName || `${preview.item.label || 'belge'}.dat`;
+    anchor.click();
   };
 
   if (loading && !data) return <DrivingLoading />;
@@ -87,12 +113,41 @@ export default function DrivingDocumentReviewQueue() {
     {items.length === 0 ? <DrivingNotice icon={CheckCircle2} title="Bu filtrede belge yok." message="Evrak kuyruğu güncel." /> : <div className="space-y-3">{items.map((item) => {
       const values = draft(item); const tone = STATUS[item.status] || STATUS.PendingApproval; const busy = saving === item.id;
       return <section key={item.id} className="rounded-2xl border p-4">
-        <div className="flex flex-wrap items-start justify-between gap-3"><div><div className="flex flex-wrap items-center gap-2"><b>{item.studentName}</b><Badge variant="outline">#{item.studentNumber}</Badge><Badge className={`border-0 ${tone.tone}`}>{tone.label}</Badge></div><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">Yüklendi: {new Date(item.uploadedAtUtc).toLocaleString('tr-TR')} • {item.fileName || 'Dosya'}{item.identityKind !== 'TurkishId' ? ' • Yabancı kursiyer' : ''}</p></div><Button variant="outline" onClick={() => preview(item)}><Eye className="mr-2 h-4 w-4" />Belgeyi güvenli aç</Button></div>
+        <div className="flex flex-wrap items-start justify-between gap-3"><div className="flex items-center gap-3">{item.studentPhotoUrl ? <img src={assetUrl(item.studentPhotoUrl)} alt={item.studentName} className="h-12 w-12 shrink-0 rounded-xl border object-cover" /> : null}<div><div className="flex flex-wrap items-center gap-2"><b>{item.studentName}</b><Badge variant="outline">#{item.studentNumber}</Badge><Badge className={`border-0 ${tone.tone}`}>{tone.label}</Badge></div><p className="mt-1 text-sm font-semibold">{item.label}</p><p className="text-xs text-muted-foreground">Yüklendi: {new Date(item.uploadedAtUtc).toLocaleString('tr-TR')} • {item.fileName || 'Dosya'}{item.identityKind !== 'TurkishId' ? ' • Yabancı kursiyer' : ''}</p></div></div><Button variant="outline" onClick={() => openPreview(item)}><Eye className="mr-2 h-4 w-4" />Belgeyi güvenli aç</Button></div>
         {item.rejectionReason && <p className="mt-3 rounded-xl bg-red-500/10 p-3 text-xs text-red-700">Son gerekçe: {item.rejectionReason}</p>}
         <div className="mt-4 grid gap-3 lg:grid-cols-3"><label className="text-xs font-medium">Son geçerlilik tarihi<Input type="date" className="mt-1" value={values.expiresAtUtc} onChange={(e) => setDraft(item, { expiresAtUtc: e.target.value })} /></label><label className="text-xs font-medium lg:col-span-2">Personel iç notu<Input className="mt-1" maxLength={1000} placeholder="Kursiyere gösterilmez" value={values.note} onChange={(e) => setDraft(item, { note: e.target.value })} /></label></div>
         <label className="mt-3 block text-xs font-medium">Ret / yeniden yükleme gerekçesi<Input className="mt-1" maxLength={500} placeholder="Kursiyere bildirim olarak gönderilir" value={values.reason} onChange={(e) => setDraft(item, { reason: e.target.value })} /></label>
         {canReview && <div className="mt-4 flex flex-wrap gap-2"><Button disabled={busy} className="bg-emerald-600 text-white hover:bg-emerald-700" onClick={() => act(item, 'Approve')}><CheckCircle2 className="mr-2 h-4 w-4" />Onaylıyorum</Button><Button disabled={busy || values.reason.trim().length < 5} variant="destructive" onClick={() => act(item, 'Reject')}><XCircle className="mr-2 h-4 w-4" />Onaylamıyorum</Button><Button disabled={busy || values.reason.trim().length < 5} variant="outline" onClick={() => act(item, 'RequestReupload')}><RotateCcw className="mr-2 h-4 w-4" />Yeniden yükleme iste</Button><Button disabled={busy} variant="outline" onClick={() => act(item, 'UpdateDetails')}>Tarih/notu kaydet</Button></div>}
       </section>;
     })}</div>}
+    <Dialog open={Boolean(preview)} onOpenChange={(open) => { if (!open) closePreview(); }}>
+      <DialogContent className="max-h-[92vh] w-[95vw] max-w-5xl overflow-hidden p-0">
+        <DialogHeader className="border-b px-5 py-3">
+          <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
+            <Eye className="h-4 w-4" />{preview?.item?.label || 'Belge'}
+            {preview?.item?.studentName && <span className="text-sm font-normal text-muted-foreground">— {preview.item.studentName}</span>}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="flex min-h-[60vh] items-center justify-center overflow-auto bg-muted/40 p-3">
+          {preview?.loading && <p className="text-sm text-muted-foreground">Belge güvenli şekilde açılıyor…</p>}
+          {!preview?.loading && preview?.kind === 'image' && (
+            <img src={preview.url} alt={preview.item?.label || 'Belge'} className="max-h-[78vh] max-w-full rounded-md object-contain" />
+          )}
+          {!preview?.loading && preview?.kind === 'pdf' && (
+            <iframe src={preview.url} title={preview.item?.label || 'Belge'} className="h-[78vh] w-full rounded-md border-0 bg-white" />
+          )}
+          {!preview?.loading && preview?.kind === 'other' && (
+            <div className="flex flex-col items-center gap-3 text-center">
+              <p className="text-sm text-muted-foreground">Bu belge türü ekranda önizlenemiyor. İndirerek açabilirsiniz.</p>
+              <Button onClick={downloadPreview}><Download className="mr-2 h-4 w-4" />Belgeyi indir</Button>
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 border-t px-5 py-3">
+          <Button variant="outline" onClick={downloadPreview} disabled={!preview?.url}><Download className="mr-2 h-4 w-4" />İndir</Button>
+          <Button variant="outline" onClick={closePreview}>Kapat</Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   </DrivingPage>;
 }

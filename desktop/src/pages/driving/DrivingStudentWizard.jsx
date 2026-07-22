@@ -33,13 +33,13 @@ const STEPS = [
 const DOCUMENT_TYPES = [
   { value: 'Identity', label: 'Kimlik fotokopisi', required: true },
   { value: 'Diploma', label: 'Diploma / öğrenim belgesi', required: true },
-  { value: 'HealthReport', label: 'Sağlık raporu', required: true, expires: true },
+  { value: 'HealthReport', label: 'Sağlık raporu', required: true },
   { value: 'BiometricPhoto', label: 'Biyometrik fotoğraf', required: true },
-  { value: 'CriminalRecord', label: 'Adli sicil kaydı', required: true, expires: true },
+  { value: 'CriminalRecord', label: 'Adli sicil kaydı', required: true },
   // Kan grubu belgesi kaldırıldı (bilgi kimlik/sağlık raporunda zaten var).
   { value: 'Residence', label: 'İkametgâh', required: true },
   { value: 'ParentalConsent', label: 'Veli izin belgesi (18 yaş altı)' },
-  { value: 'ExistingLicense', label: 'Mevcut ehliyet', expires: true },
+  { value: 'ExistingLicense', label: 'Mevcut ehliyet' },
   { value: 'Other', label: 'Diğer belge' },
 ];
 
@@ -323,7 +323,6 @@ export default function DrivingStudentWizard() {
     if (!has(form.phone)) missing.push('Telefon');
     if (!has(form.photoUrl) && !doc('BiometricPhoto')) missing.push('Biyometrik fotoğraf');
     if (!health) missing.push('Sağlık raporu');
-    else if (!has(health.documentNumber) || !has(health.issuedBy) || !health.issuedAtUtc) missing.push('Sağlık raporu no / veren kurum / tarih');
     if (!doc('Diploma')) missing.push('Öğrenim belgesi');
     if (!doc('CriminalRecord')) missing.push('Adli sicil kaydı');
     return missing;
@@ -845,10 +844,6 @@ export default function DrivingStudentWizard() {
               {DOCUMENT_TYPES.filter((x) => x.value !== 'ParentalConsent' || isMinor).map((type) => {
                 const attached = form.documents.find((x) => x.documentType === type.value);
                 const required = type.required || (isMinor && type.value === 'ParentalConsent');
-                const patchDocument = (patch) => setForm((current) => ({
-                  ...current,
-                  documents: current.documents.map((x) => (x.documentType === type.value ? { ...x, ...patch } : x)),
-                }));
                 return (
                   <div key={type.value} className={`space-y-2 rounded-xl border p-3 ${attached ? 'border-emerald-500/40 bg-emerald-500/5' : ''}`}>
                     <div className="flex flex-wrap items-center gap-3">
@@ -862,15 +857,6 @@ export default function DrivingStudentWizard() {
                         )}
                         {attached && <p className="text-xs text-muted-foreground">{attached.fileName}</p>}
                       </div>
-                      {type.expires && (
-                        <Input
-                          type="date"
-                          className="w-40"
-                          title="Son geçerlilik tarihi"
-                          value={attached?.expiresAtUtc ? attached.expiresAtUtc.slice(0, 10) : ''}
-                          onChange={(e) => patchDocument({ expiresAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                        />
-                      )}
                       <FileButton
                         className="w-72"
                         accept=".pdf,.jpg,.jpeg,.png"
@@ -879,29 +865,6 @@ export default function DrivingStudentWizard() {
                         onChange={(e) => attachDocument(type.value, e.target.files?.[0], null)}
                       />
                     </div>
-                    {/* MEBBİS sağlık raporunu no + veren kurum + rapor tarihiyle ister. */}
-                    {type.value === 'HealthReport' && attached && (
-                      <div className="grid gap-2 sm:grid-cols-3">
-                        <Input
-                          placeholder="Rapor no (MEBBİS)"
-                          maxLength={100}
-                          value={attached.documentNumber || ''}
-                          onChange={(e) => patchDocument({ documentNumber: e.target.value })}
-                        />
-                        <Input
-                          placeholder="Veren kurum (MEBBİS)"
-                          maxLength={150}
-                          value={attached.issuedBy || ''}
-                          onChange={(e) => patchDocument({ issuedBy: e.target.value })}
-                        />
-                        <Input
-                          type="date"
-                          title="Rapor tarihi"
-                          value={attached.issuedAtUtc ? attached.issuedAtUtc.slice(0, 10) : ''}
-                          onChange={(e) => patchDocument({ issuedAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null })}
-                        />
-                      </div>
-                    )}
                   </div>
                 );
               })}

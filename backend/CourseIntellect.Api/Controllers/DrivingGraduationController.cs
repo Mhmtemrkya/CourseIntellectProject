@@ -44,7 +44,8 @@ public sealed class DrivingGraduationController(
         }
 
         var students = await profiles.Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new
-            { p.Id, s.FullName, p.LicenseClass, transmissionType = p.TransmissionType.ToString(), status = p.Status.ToString(), p.RegisteredAtUtc })
+            { p.Id, s.FullName, p.LicenseClass, transmissionType = p.TransmissionType.ToString(), status = p.Status.ToString(), p.RegisteredAtUtc,
+                photoUrl = p.LivePhotoUrl != "" ? p.LivePhotoUrl : p.PhotoUrl })
             .OrderBy(x => x.FullName).ToListAsync(ct);
         var ids = students.Select(x => x.Id).ToList();
         var graduations = await db.DrivingGraduationRecords.AsNoTracking().Where(x => ids.Contains(x.StudentDrivingProfileId))

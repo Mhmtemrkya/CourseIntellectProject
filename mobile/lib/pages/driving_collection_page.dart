@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../i18n/app_locale.dart';
+import '../services/auth_session_store.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
@@ -409,12 +410,29 @@ class _PaymentSheetState extends State<_PaymentSheet> {
   String? _installmentId;
   bool _saving = false;
   bool _collectingDp = false;
+  String _collectorName = '';
 
   @override
   void initState() {
     super.initState();
     _load();
+    _loadCollector();
   }
+
+  Future<void> _loadCollector() async {
+    try {
+      final session = await AuthSessionStore.instance.load();
+      if (!mounted || session == null) return;
+      setState(() => _collectorName = session.fullName);
+    } catch (_) {
+      // Oturum adı çözülemezse tahsilat yine çalışır; ad boş kalır.
+    }
+  }
+
+  List<Map<String, dynamic>> get _recentPayments =>
+      ((_ctx?['recentPayments'] as List?) ?? const [])
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
 
   @override
   void dispose() {
@@ -677,8 +695,32 @@ class _PaymentSheetState extends State<_PaymentSheet> {
                         border: const OutlineInputBorder()),
                   ),
                   const SizedBox(height: 6),
+                  // Tahsilatı yapan personel otomatik: makbuz bu kişinin adına düşer.
+                  Row(
+                    children: [
+                      const Icon(Icons.account_balance_wallet_outlined,
+                          size: 14, color: Colors.grey),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          '${'Tahsilatı alan'.tr}: ${_collectorName.isEmpty ? 'Ben'.tr : _collectorName}',
+                          style: const TextStyle(
+                              fontSize: 11, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
                   Text('${'Kayıt şubesi'.tr}: ${widget.registrationBranchName}',
                       style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                  if (_recentPayments.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Text('Tahsilat geçmişi'.tr,
+                        style: const TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 6),
+                    ..._recentPayments.map(_recentPaymentTile),
+                  ],
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
@@ -697,6 +739,46 @@ class _PaymentSheetState extends State<_PaymentSheet> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _recentPaymentTile(Map<String, dynamic> p) {
+    final amount = _num(p['amount']);
+    final method = '${p['method'] ?? ''}';
+    final collectedBy = '${p['collectedByName'] ?? ''}';
+    final branch = '${p['branchName'] ?? ''}';
+    final parts = <String>[
+      if (collectedBy.isNotEmpty) '${'Alan'.tr}: $collectedBy',
+      if (branch.isNotEmpty) '${'Şube'.tr}: $branch',
+    ];
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('₺${amount.toStringAsFixed(0)}',
+                  style: const TextStyle(fontWeight: FontWeight.w900)),
+              const SizedBox(width: 6),
+              if (method.isNotEmpty)
+                Text(method,
+                    style:
+                        const TextStyle(fontSize: 11, color: Colors.grey)),
+            ],
+          ),
+          if (parts.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(parts.join(' • '),
+                style: const TextStyle(fontSize: 11, color: Colors.grey)),
+          ],
+        ],
+      ),
     );
   }
 

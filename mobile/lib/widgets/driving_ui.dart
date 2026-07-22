@@ -322,6 +322,7 @@ class DrivingStatusPill extends StatelessWidget {
 /// Liste satırı: ikon + başlık/alt başlık + sağda durum ya da değer.
 class DrivingListRow extends StatelessWidget {
   final IconData icon;
+  final Widget? leading;
   final String title;
   final String? subtitle;
   final Widget? trailing;
@@ -331,6 +332,7 @@ class DrivingListRow extends StatelessWidget {
   const DrivingListRow({
     super.key,
     required this.icon,
+    this.leading,
     required this.title,
     this.subtitle,
     this.trailing,
@@ -358,14 +360,15 @@ class DrivingListRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(9),
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, size: 18, color: color),
-            ),
+            leading ??
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(icon, size: 18, color: color),
+                ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -535,10 +538,7 @@ class DrivingBarChart extends StatelessWidget {
                       gradient: LinearGradient(
                         begin: Alignment.bottomCenter,
                         end: Alignment.topCenter,
-                        colors: [
-                          accent.withValues(alpha: 0.35),
-                          accent,
-                        ],
+                        colors: [accent.withValues(alpha: 0.35), accent],
                       ),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(9),

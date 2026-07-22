@@ -573,9 +573,9 @@ export default function DrivingStudents() {
               >
                 <div className="flex min-w-0 items-center gap-3">
                   {selectMode && <Checkbox checked={checked} className="pointer-events-none" />}
-                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-lg font-black text-brand-primary">
-                    {student.fullName?.[0] || '?'}
-                  </div>
+                  {student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl
+                    ? <img src={assetUrl(student.displayPhotoUrl || student.livePhotoUrl || student.photoUrl)} alt={student.fullName} className="h-11 w-11 shrink-0 rounded-2xl border object-cover" />
+                    : <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary"><Users className="h-5 w-5" /></div>}
                   <div className="min-w-0">
                     <p className="truncate font-bold">
                       {student.studentNumber != null && <span className="mr-1 text-xs font-black text-muted-foreground">#{student.studentNumber}</span>}

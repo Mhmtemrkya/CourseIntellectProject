@@ -38,6 +38,7 @@ public sealed class DrivingStudentsController(
     IFileStorageService files) : ControllerBase
 {
     private const string AuditCategory = "DrivingSchool";
+    private const string AccountingBenefitSectionKey = "accounting-benefits";
     private const long MaxStudentDocumentBytes = 20L * 1024 * 1024;
 
     // ─── Kayıt sihirbazı ──────────────────────────────────────────────────────
@@ -250,6 +251,34 @@ public sealed class DrivingStudentsController(
 
             profile.EnrollmentContractId = contract.Id;
             await dbContext.SaveChangesAsync(ct);
+
+            // Kayıt masasında uygulanan indirim yalnız sözleşmede kalmasın;
+            // finansın İndirim & Burs ekranında da aynı anda görünür olsun.
+            if (finance.DiscountAmount > 0)
+            {
+                var benefits = await CompatibilitySnapshotStore.LoadListAsync<AccountingBenefitSnapshot>(
+                    dbContext, AccountingBenefitSectionKey, ct);
+                var rate = finance.GrossAmount <= 0
+                    ? 0m
+                    : Math.Round(finance.DiscountAmount * 100m / finance.GrossAmount, 2, MidpointRounding.AwayFromZero);
+                benefits.Add(new AccountingBenefitSnapshot
+                {
+                    Id = Guid.NewGuid(),
+                    StudentName = student.FullName,
+                    StudentUsername = credentials.Username,
+                    ClassName = $"{package.LicenseClass}-{package.TransmissionType}",
+                    BenefitType = "İndirim",
+                    Title = string.IsNullOrWhiteSpace(finance.DiscountReason) ? "Kayıt İndirimi" : finance.DiscountReason.Trim(),
+                    Rate = rate.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture),
+                    TotalAmount = $"₺{finance.GrossAmount:0.##}",
+                    NetAmount = $"₺{finance.GrossAmount - finance.DiscountAmount:0.##}",
+                    Status = "Aktif",
+                    Note = $"Yeni kursiyer kaydı sırasında uygulandı. İndirim tutarı: ₺{finance.DiscountAmount:0.##}",
+                    CreatedAtUtc = DateTime.UtcNow,
+                });
+                await CompatibilitySnapshotStore.SaveListAsync(
+                    dbContext, AccountingBenefitSectionKey, benefits, credentials.Username, ct);
+            }
         }
 
         await transaction.CommitAsync(ct);
@@ -464,13 +493,14 @@ public sealed class DrivingStudentsController(
             .Select(x => new
             {
                 x.d.Id, x.d.StudentDrivingProfileId, studentName = x.s.FullName, x.p.StudentNumber,
+                studentPhotoUrl = x.p.LivePhotoUrl != "" ? x.p.LivePhotoUrl : x.p.PhotoUrl,
                 identityKind = x.p.IdentityKind.ToString(), documentType = x.d.DocumentType.ToString(), label = DrivingStudentRules.DocumentLabel(x.d.DocumentType),
                 storedStatus = x.d.Status, x.d.FileName, x.d.DocumentNumber, x.d.IssuedBy, x.d.IssuedAtUtc,
                 x.d.ExpiresAtUtc, x.d.UploadedAtUtc, x.d.ReviewedAtUtc, x.d.RejectionReason, x.d.ReviewNote, x.d.ReviewVersion,
             }).ToListAsync(ct);
         var items = rows.Select(x => new
         {
-            x.Id, x.StudentDrivingProfileId, x.studentName, x.StudentNumber, x.identityKind, x.documentType, x.label,
+            x.Id, x.StudentDrivingProfileId, x.studentName, x.StudentNumber, x.studentPhotoUrl, x.identityKind, x.documentType, x.label,
             status = DrivingStudentRules.EffectiveStatus(x.storedStatus, x.ExpiresAtUtc, now).ToString(),
             x.FileName, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc, x.ExpiresAtUtc, x.UploadedAtUtc,
             x.ReviewedAtUtc, x.RejectionReason, x.ReviewNote, x.ReviewVersion,
@@ -806,13 +836,20 @@ public sealed class DrivingStudentsController(
         var mebbisMissing = await BuildMebbisMissingAsync(profile, row.student.TcNo, row.student.BirthDate, ct);
 
         // Sınav hak sayacı: her türde en fazla 4 hak; iptal edilen deneme hak yakmaz.
-        var attemptTypes = await dbContext.DrivingExamCandidates.AsNoTracking()
+        var attemptRecords = await dbContext.DrivingExamCandidates.AsNoTracking()
             .Where(x => x.StudentDrivingProfileId == profileId && x.Status != DrivingExamCandidateStatus.Cancelled)
-            .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id, (_, s) => s.ExamType)
+            .Join(dbContext.DrivingExamSessions.AsNoTracking(), c => c.ExamSessionId, s => s.Id,
+                (candidate, session) => new { session.ExamType, candidate.AttemptNo, candidate.ResultNote })
             .ToListAsync(ct);
         object ExamRight(DrivingExamType type)
         {
-            var used = attemptTypes.Count(x => x == type);
+            var own = attemptRecords.Where(x => x.ExamType == type).ToList();
+            var manualAttempt = own
+                .Where(x => x.ResultNote == "Sınav Hakları sayfasından manuel giriş")
+                .Select(x => x.AttemptNo)
+                .DefaultIfEmpty(0)
+                .Max();
+            var used = Math.Max(own.Count, manualAttempt);
             return new
             {
                 used,
@@ -1501,7 +1538,8 @@ public sealed class DrivingStudentsController(
         var current = stored.Where(x => x.IsCurrent).ToList();
 
         var rows = required
-            .Concat(current.Select(x => x.DocumentType).Where(x => !required.Contains(x)))
+            // Kan grubu belgesi listeden kaldırıldı; eski dosyalarda kalmış olsa bile hiçbir yerde gösterilmez.
+            .Concat(current.Select(x => x.DocumentType).Where(x => !required.Contains(x) && x != StudentDocumentType.BloodTypeCertificate))
             .Distinct()
             .Select(type =>
             {
@@ -1540,7 +1578,7 @@ public sealed class DrivingStudentsController(
             missingCount = rows.Count(x => x.required && x.status is nameof(StudentDocumentStatus.Missing) or nameof(StudentDocumentStatus.Rejected) or nameof(StudentDocumentStatus.ReuploadRequested) or nameof(StudentDocumentStatus.Expired)),
             pendingCount = rows.Count(x => x.status == nameof(StudentDocumentStatus.PendingApproval)),
             complete = rows.Where(x => x.required).All(x => x.status == nameof(StudentDocumentStatus.Approved)),
-            history = stored.Where(x => !x.IsCurrent).Select(x => new
+            history = stored.Where(x => !x.IsCurrent && x.DocumentType != StudentDocumentType.BloodTypeCertificate).Select(x => new
             {
                 x.Id,
                 documentType = x.DocumentType.ToString(),
@@ -1684,10 +1722,9 @@ public sealed class DrivingStudentsController(
             x.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now));
 
         var health = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.HealthReport);
-        var healthDetailsComplete = health is not null
-            && !string.IsNullOrWhiteSpace(health.DocumentNumber)
-            && !string.IsNullOrWhiteSpace(health.IssuedBy)
-            && health.IssuedAtUtc is not null;
+        // Kayıt sırasında yalnız sağlık raporu dosyası zorunludur. Rapor no,
+        // düzenleyen kurum ve tarih artık ayrı alan olarak istenmez.
+        var healthDetailsComplete = health is not null;
 
         var identityNumber = profile.IdentityKind == IdentityKind.TurkishId
             ? (string.IsNullOrWhiteSpace(profile.IdentityNumber) ? tcNo : profile.IdentityNumber)

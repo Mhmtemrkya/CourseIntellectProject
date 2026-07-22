@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../services/api_config.dart';
 import '../services/driving_permissions_store.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
@@ -407,6 +408,12 @@ class _DrivingDocumentReviewQueuePageState
     final status = '${item['status']}';
     final color = _color(status);
     final busy = _saving == '${item['id']}';
+    final rawPhoto = '${item['studentPhotoUrl'] ?? ''}';
+    final photoUrl = rawPhoto.isEmpty
+        ? ''
+        : rawPhoto.startsWith('http')
+        ? rawPhoto
+        : '${ApiConfig.baseUrl}$rawPhoto';
     return Card(
       margin: const EdgeInsets.only(bottom: 10),
       child: Padding(
@@ -416,6 +423,19 @@ class _DrivingDocumentReviewQueuePageState
           children: [
             Row(
               children: [
+                if (photoUrl.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      photoUrl,
+                      width: 46,
+                      height: 46,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,

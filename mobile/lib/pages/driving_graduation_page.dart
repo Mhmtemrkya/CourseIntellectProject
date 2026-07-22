@@ -11,6 +11,25 @@ import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
 import '../services/uploads_api_service.dart';
 
+// Ham enum yerine Türkçe etiket: kartlarda "Graduated/Active/Pending" kodları görünmesin.
+const _statusLabels = {
+  'PreRegistered': 'Ön kayıt', 'DocumentsPending': 'Evrak bekliyor', 'Active': 'Aktif',
+  'TheoryOngoing': 'Teorik eğitim', 'PracticeOngoing': 'Direksiyon', 'ExamPending': 'Sınav bekliyor',
+  'GraduationPending': 'Mezuniyet onayı', 'Graduated': 'Mezun', 'Suspended': 'Askıda',
+  'Cancelled': 'İptal', 'Revoked': 'Geri alındı', 'Pending': 'Bekliyor',
+};
+const _certTypeLabels = {'Completion': 'Tamamlama Belgesi', 'Achievement': 'Başarı Belgesi'};
+const _certStatusLabels = {'Active': 'Aktif', 'Superseded': 'Yenilendi', 'Revoked': 'İptal edildi'};
+const _deliveryLabels = {
+  'NotDelivered': 'Teslim edilmedi', 'Ready': 'Teslime hazır', 'Delivered': 'Teslim edildi', 'Returned': 'İade edildi',
+};
+const _actionTypeLabels = {'EligibilityOverride': 'Uygunluk istisnası', 'GraduationRevocation': 'Mezuniyet geri alma'};
+const _actionStatusLabels = {
+  'Pending': 'Onay bekliyor', 'FirstApproved': 'İlk onay verildi', 'Approved': 'Onaylandı',
+  'Rejected': 'Reddedildi', 'Applied': 'Uygulandı', 'Cancelled': 'İptal edildi',
+};
+String _lbl(Map<String, String> map, dynamic value) => map['$value'] ?? '${value ?? '—'}';
+
 class DrivingGraduationPage extends StatefulWidget {
   const DrivingGraduationPage({super.key});
   @override
@@ -234,6 +253,19 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                   final items = (checklist?['items'] as List? ?? const [])
                       .map((e) => Map<String, dynamic>.from(e as Map))
                       .toList();
+                  // İki onaylı istisna varsa kontrol listesi tamamlanmasa da mezun edilebilir.
+                  final hasApprovedOverride = requests.any(
+                    (x) =>
+                        x['actionType'] == 'EligibilityOverride' &&
+                        x['status'] == 'Approved',
+                  );
+                  final canGraduateNow =
+                      checklist != null &&
+                      graduation?['graduatedAtUtc'] == null &&
+                      (checklist['eligible'] == true || hasApprovedOverride);
+                  bool hasActiveType(String type) => certificates.any(
+                    (c) => c['type'] == type && c['status'] == 'Active',
+                  );
                   return Card(
                     margin: const EdgeInsets.only(bottom: 12),
                     child: Padding(
@@ -258,14 +290,17 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                       ),
                                     ),
                                     Text(
-                                      '${student['licenseClass']} • ${student['status']}',
+                                      '${student['licenseClass']} • ${_lbl(_statusLabels, student['status'])}',
                                     ),
                                   ],
                                 ),
                               ),
                               Chip(
                                 label: Text(
-                                  '${graduation?['status'] ?? 'Kontrol Bekliyor'}',
+                                  _lbl(
+                                    _statusLabels,
+                                    graduation?['status'] ?? student['status'],
+                                  ),
                                 ),
                               ),
                             ],
@@ -303,8 +338,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                           if (_permissions.can(
                                 DrivingPermissions.graduationManage,
                               ) &&
-                              checklist?['eligible'] == true &&
-                              graduation?['graduatedAtUtc'] == null)
+                              canGraduateNow)
                             SizedBox(
                               width: double.infinity,
                               child: FilledButton.icon(
@@ -359,26 +393,41 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                 DrivingPermissions.certificateIssue,
                               ) &&
                               graduation?['graduatedAtUtc'] != null &&
-                              certificates.isEmpty)
+                              (!hasActiveType('Completion') ||
+                                  !hasActiveType('Achievement')))
                             Wrap(
                               spacing: 8,
                               children: [
-                                FilledButton.tonal(
-                                  onPressed: () => _run(
-                                    () => DrivingSchoolApiService.instance
-                                        .issueCertificate(id, 'Completion'),
-                                    'Tamamlama belgesi oluşturuldu.',
+                                if (!hasActiveType('Completion'))
+                                  FilledButton.tonal(
+                                    onPressed: _saving
+                                        ? null
+                                        : () => _run(
+                                            () => DrivingSchoolApiService
+                                                .instance
+                                                .issueCertificate(
+                                                  id,
+                                                  'Completion',
+                                                ),
+                                            'Tamamlama belgesi oluşturuldu.',
+                                          ),
+                                    child: Text('Tamamlama Belgesi'.tr),
                                   ),
-                                  child: Text('Tamamlama Belgesi'.tr),
-                                ),
-                                OutlinedButton(
-                                  onPressed: () => _run(
-                                    () => DrivingSchoolApiService.instance
-                                        .issueCertificate(id, 'Achievement'),
-                                    'Başarı belgesi oluşturuldu.',
+                                if (!hasActiveType('Achievement'))
+                                  OutlinedButton(
+                                    onPressed: _saving
+                                        ? null
+                                        : () => _run(
+                                            () => DrivingSchoolApiService
+                                                .instance
+                                                .issueCertificate(
+                                                  id,
+                                                  'Achievement',
+                                                ),
+                                            'Başarı belgesi oluşturuldu.',
+                                          ),
+                                    child: Text('Başarı Belgesi'.tr),
                                   ),
-                                  child: Text('Başarı Belgesi'.tr),
-                                ),
                               ],
                             ),
                           ...requests.map(
@@ -389,7 +438,7 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                   .withValues(alpha: .35),
                               child: ListTile(
                                 title: Text(
-                                  '${request['actionType']} • ${request['status']}',
+                                  '${_lbl(_actionTypeLabels, request['actionType'])} • ${_lbl(_actionStatusLabels, request['status'])}',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -427,15 +476,35 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                           ...certificates.map(
                             (certificate) => ListTile(
                               contentPadding: EdgeInsets.zero,
+                              isThreeLine: true,
                               leading: const Icon(Icons.file_present_rounded),
                               title: Text('${certificate['documentNumber']}'),
-                              subtitle: Text(
-                                '${certificate['type']} • v${certificate['version'] ?? 1} • ${certificate['status'] ?? 'Active'} • ${certificate['deliveryStatus']}',
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    '${_lbl(_certTypeLabels, certificate['type'])} • v${certificate['version'] ?? 1} • ${_lbl(_certStatusLabels, certificate['status'] ?? 'Active')} • ${_lbl(_deliveryLabels, certificate['deliveryStatus'])}',
+                                  ),
+                                  Text(
+                                    'MEBBİS no: ${('${certificate['mebbisCertificateNo'] ?? ''}').isEmpty ? 'girilmedi'.tr : certificate['mebbisCertificateNo']}',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          ('${certificate['mebbisCertificateNo'] ?? ''}')
+                                              .isEmpty
+                                          ? Colors.orange
+                                          : Colors.green,
+                                    ),
+                                  ),
+                                ],
                               ),
                               trailing: PopupMenuButton<String>(
                                 onSelected: (value) {
                                   if (value == 'share') {
                                     _shareCertificate(certificate);
+                                  }
+                                  if (value == 'mebbis') {
+                                    _editMebbisNo(certificate);
                                   }
                                   if (value == 'deliver') {
                                     _deliver(certificate);
@@ -452,6 +521,13 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
                                     value: 'share',
                                     child: Text('PDF indir / paylaş'.tr),
                                   ),
+                                  if (_permissions.can(
+                                    DrivingPermissions.certificateIssue,
+                                  ))
+                                    PopupMenuItem(
+                                      value: 'mebbis',
+                                      child: Text('MEBBİS No'.tr),
+                                    ),
                                   if (_permissions.can(
                                         DrivingPermissions.certificateDeliver,
                                       ) &&
@@ -490,6 +566,44 @@ class _DrivingGraduationPageState extends State<DrivingGraduationPage> {
             ),
           ),
   );
+
+  Future<void> _editMebbisNo(Map<String, dynamic> certificate) async {
+    final controller = TextEditingController(
+      text: '${certificate['mebbisCertificateNo'] ?? ''}',
+    );
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (dialog) => AlertDialog(
+        title: Text('MEBBİS sertifika numarası'.tr),
+        content: TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.characters,
+          decoration: const InputDecoration(
+            labelText: 'MEBBİS sertifika no',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialog, false),
+            child: Text('Vazgeç'.tr),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialog, true),
+            child: Text('Kaydet'.tr),
+          ),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await _run(
+        () => DrivingSchoolApiService.instance.updateCertificateMebbisNo(
+          '${certificate['id']}',
+          controller.text.trim(),
+        ),
+        'MEBBİS sertifika no işlendi.',
+      );
+    }
+  }
 
   Future<void> _deliver(Map<String, dynamic> certificate) async {
     final controller = TextEditingController();

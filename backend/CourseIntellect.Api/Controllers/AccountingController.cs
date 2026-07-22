@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using CourseIntellect.Application.DTOs.Accounting;
 using CourseIntellect.Application.Interfaces;
 using CourseIntellect.Domain.Entities;
@@ -26,7 +27,9 @@ public sealed class AccountingController(IAccountingService accountingService, C
         {
             invoices = data.Invoices,
             salaries = data.Salaries,
-            approvals = data.Approvals,
+            // Eski sürümlerde indirim tanımları için açılmış onay satırlarını
+            // göstermeyiz; indirim/burs artık doğrudan aktiftir.
+            approvals = data.Approvals.Where(x => !string.Equals(x.SourceType, "benefit", StringComparison.OrdinalIgnoreCase)).ToList(),
             collections = data.Collections,
             installments = data.Installments,
             benefits = benefits.Select(MapBenefit).ToList(),
@@ -112,7 +115,9 @@ public sealed class AccountingController(IAccountingService accountingService, C
             Rate = request.Rate.Trim(),
             TotalAmount = NormalizeMoney(request.TotalAmount),
             NetAmount = CalculateNetAmount(request.TotalAmount, request.Rate),
-            Status = "Onay Bekliyor",
+            // İndirim/burs tanımı artık ayrı bir onay akışına girmez; kaydedildiği
+            // anda aktiftir. Rol ve paket yetkisi endpoint seviyesinde korunur.
+            Status = "Aktif",
             Note = request.Note?.Trim() ?? string.Empty,
             CreatedAtUtc = DateTime.UtcNow,
         };
@@ -120,15 +125,11 @@ public sealed class AccountingController(IAccountingService accountingService, C
         benefits.Add(item);
         await CompatibilitySnapshotStore.SaveListAsync(dbContext, BenefitSectionKey, benefits, item.StudentUsername, cancellationToken);
 
-        await dbContext.AccountingApprovals.AddAsync(new AccountingApproval
+        await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
         {
-            Id = Guid.NewGuid(),
-            Title = $"{item.BenefitType}: {item.StudentName}",
-            Reason = string.IsNullOrWhiteSpace(item.Note) ? item.Title : item.Note,
-            Category = item.BenefitType,
-            Status = "Bekliyor",
-            SourceType = "benefit",
-            SourceKey = item.Id.ToString(),
+            Title = $"{item.BenefitType} doğrudan uygulandı",
+            Detail = $"{item.StudentName} için {item.Title} onay beklemeden aktif edildi.",
+            Time = DateTime.UtcNow.ToString("dd.MM.yyyy • HH:mm"),
         }, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -197,8 +198,16 @@ public sealed class AccountingController(IAccountingService accountingService, C
     [RequireEntitlement("collections", "collect")]
     public async Task<IActionResult> CreateCollection([FromBody] CreateCollectionRequest request, CancellationToken cancellationToken)
     {
-        var item = await accountingService.CreateCollectionAsync(request, cancellationToken);
+        var item = await accountingService.CreateCollectionAsync(request, CurrentUserId(), cancellationToken);
         return Ok(item);
+    }
+
+    // Tahsilatı alan personeli kaydetmek için oturumdaki kullanıcı. Inbound claim map
+    // kapalı olduğundan user_id/nameid/sub sırasıyla denenir (bkz. jwt-claim-names).
+    private Guid? CurrentUserId()
+    {
+        var raw = User.FindFirstValue("user_id") ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? User.FindFirstValue("sub");
+        return Guid.TryParse(raw, out var id) ? id : null;
     }
 
     [HttpPut("collections/{id:guid}")]
@@ -486,7 +495,7 @@ public sealed class AccountingController(IAccountingService accountingService, C
             rate = item.Rate,
             totalAmount = item.TotalAmount,
             netAmount = item.NetAmount,
-            status = item.Status,
+            status = item.Status is "Onay Bekliyor" or "Bekliyor" ? "Aktif" : item.Status,
             note = item.Note,
             createdAtLabel = item.CreatedAtUtc.ToString("dd.MM.yyyy"),
         };
@@ -516,7 +525,7 @@ public sealed class AccountingBenefitSnapshot
     public string Rate { get; set; } = string.Empty;
     public string TotalAmount { get; set; } = string.Empty;
     public string NetAmount { get; set; } = string.Empty;
-    public string Status { get; set; } = "Onay Bekliyor";
+    public string Status { get; set; } = "Aktif";
     public string Note { get; set; } = string.Empty;
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }

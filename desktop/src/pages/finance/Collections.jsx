@@ -23,6 +23,7 @@ import {
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
+import { useApp } from '../../context/AppContext';
 import { createCollection, deleteCollection, fetchAccountingDashboard, fetchStudents, updateCollection } from '../../lib/api/modules';
 import {
   buildFinanceDocumentHtml,
@@ -111,6 +112,8 @@ function NewCollectionDialog({
   open, onOpenChange, students, onCreated, initialCollection = null, mode = 'create',
 }) {
   const { toast } = useToast();
+  const { user } = useApp();
+  const collectorName = user?.name || user?.username || 'Ben';
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
     studentKey: '',
@@ -225,6 +228,11 @@ function NewCollectionDialog({
             <Label>Açıklama</Label>
             <Input value={form.note} onChange={(e) => setForm((prev) => ({ ...prev, note: e.target.value }))} placeholder="Örn: Mart taksiti" />
           </div>
+
+          {/* Tahsilatı yapan personel otomatik gösterilir; makbuz bu kişinin adına düşer. */}
+          {mode !== 'edit' ? (
+            <p className="text-xs text-muted-foreground">Tahsilatı alan: <b className="text-foreground">{collectorName}</b> • Şube kaydınıza göre işlenir.</p>
+          ) : null}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>İptal</Button>
@@ -549,6 +557,13 @@ export default function Collections() {
                     <div>
                       <p className="font-medium">{collection.name || collection.student}</p>
                       <p className="text-xs text-muted-foreground">{collection.className || collection.status || 'Plan'} • {collection.note}</p>
+                      {(collection.collectedByName || collection.branchName) ? (
+                        <p className="text-xs text-muted-foreground">
+                          {collection.collectedByName ? `Alan: ${collection.collectedByName}` : ''}
+                          {collection.collectedByName && collection.branchName ? ' • ' : ''}
+                          {collection.branchName ? `Şube: ${collection.branchName}` : ''}
+                        </p>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell className="font-bold text-green-600">

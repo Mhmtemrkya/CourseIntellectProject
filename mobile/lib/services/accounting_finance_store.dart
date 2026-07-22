@@ -238,6 +238,9 @@ class CollectionRecord {
   final String method;
   final String time;
   final String note;
+  // "Kim, hangi şubeden tahsil etti" — backend AccountingCollectionDto'dan gelir.
+  final String branchName;
+  final String collectedByName;
 
   CollectionRecord({
     this.id = '',
@@ -247,6 +250,8 @@ class CollectionRecord {
     required this.method,
     required this.time,
     required this.note,
+    this.branchName = '',
+    this.collectedByName = '',
   });
 
   factory CollectionRecord.fromMap(Map<String, dynamic> map) {
@@ -258,6 +263,8 @@ class CollectionRecord {
       method: _normalizeFinanceText(map['method']),
       time: _normalizeFinanceText(map['time']),
       note: _normalizeFinanceText(map['note']),
+      branchName: _normalizeFinanceText(map['branchName']),
+      collectedByName: _normalizeFinanceText(map['collectedByName']),
     );
   }
 
@@ -269,6 +276,8 @@ class CollectionRecord {
     'method': method,
     'time': time,
     'note': note,
+    'branchName': branchName,
+    'collectedByName': collectedByName,
   };
 }
 

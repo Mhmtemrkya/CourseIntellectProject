@@ -3,6 +3,7 @@ import 'package:student/i18n/app_locale.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/accounting_finance_store.dart';
+import '../services/auth_session_store.dart';
 import '../services/student_registry_store.dart';
 import '../widgets/accounting_ui.dart';
 import '../widgets/responsive_overlays.dart';
@@ -66,6 +67,7 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
   final StudentRegistryStore _studentStore = StudentRegistryStore.instance;
   String _viewMode = 'received';
   String _monthFilter = 'all';
+  String _collectorName = '';
 
   @override
   void initState() {
@@ -76,6 +78,17 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
       _store.loadDashboard();
     }
     _studentStore.ensureLoaded();
+    _loadCollector();
+  }
+
+  Future<void> _loadCollector() async {
+    try {
+      final session = await AuthSessionStore.instance.load();
+      if (!mounted || session == null) return;
+      setState(() => _collectorName = session.fullName);
+    } catch (_) {
+      // Oturum adı çözülemezse tahsilat yine çalışır.
+    }
   }
 
   @override
@@ -272,6 +285,19 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                     '${item.className} • ${item.method} • ${item.time}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  if (item.collectedByName.isNotEmpty ||
+                      item.branchName.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      [
+                        if (item.collectedByName.isNotEmpty)
+                          '${'Alan'.tr}: ${item.collectedByName}',
+                        if (item.branchName.isNotEmpty)
+                          '${'Şube'.tr}: ${item.branchName}',
+                      ].join(' • '),
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -675,6 +701,25 @@ class _AccountingReceiptsPageState extends State<AccountingReceiptsPage> {
                                 labelText: 'Not',
                                 border: OutlineInputBorder(),
                               ),
+                            ),
+                            const SizedBox(height: 10),
+                            // Tahsilatı yapan personel otomatik: makbuz bu kişinin adına düşer.
+                            Row(
+                              children: [
+                                const Icon(
+                                    Icons.account_balance_wallet_outlined,
+                                    size: 15,
+                                    color: Colors.grey),
+                                const SizedBox(width: 5),
+                                Flexible(
+                                  child: Text(
+                                    '${'Tahsilatı alan'.tr}: ${_collectorName.isEmpty ? 'Ben'.tr : _collectorName}',
+                                    style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 16),
                             SizedBox(
