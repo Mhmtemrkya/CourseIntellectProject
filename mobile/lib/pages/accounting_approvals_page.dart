@@ -141,7 +141,7 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
                       'Onaylandı',
                       'Talep onaylandı ve gerekli kişilere bildirim gitti.',
                     ),
-                    child: const Text('Onay Ver'),
+                    child: const Text('Onaylıyorum'),
                   ),
                   OutlinedButton(
                     onPressed: () => _updateStatus(
@@ -149,7 +149,7 @@ class _AccountingApprovalsPageState extends State<AccountingApprovalsPage> {
                       'Reddedildi',
                       'Talep reddedildi ve ilgili kişilere bildirim gitti.',
                     ),
-                    child: const Text('Reddet'),
+                    child: const Text('Onaylamıyorum'),
                   ),
                 ],
               ),

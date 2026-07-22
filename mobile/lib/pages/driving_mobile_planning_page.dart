@@ -19,6 +19,21 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
   String? _error;
   Map<String, dynamic> _reference = const {};
   List<Map<String, dynamic>> _calendar = const [], _requests = const [];
+
+  /// Takvim sekmesinde gösterilen gün.
+  DateTime _day = DateTime.now();
+  static const _slotStartHour = 7, _slotEndHour = 20;
+
+  /// Takvimde yer tutan randevu durumları — backend'deki
+  /// DrivingAppointmentStatuses.Blocking kümesiyle aynı.
+  static const _blockingStatuses = {
+    'Requested',
+    'WaitingApproval',
+    'Planned',
+    'Approved',
+    'CheckedIn',
+    'InProgress',
+  };
   List<Map<String, dynamic>> _list(String key) =>
       (_reference[key] as List? ?? const [])
           .map((e) => Map<String, dynamic>.from(e as Map))
@@ -123,30 +138,165 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
           ),
   );
 
-  Widget _calendarTab() => RefreshIndicator(
-    onRefresh: _load,
-    child: ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _calendar.length,
-      itemBuilder: (_, i) {
-        final x = _calendar[i];
-        return Card(
-          child: ListTile(
-            leading: const CircleAvatar(child: Icon(Icons.route_rounded)),
-            title: Text(
-              '${x['studentName']}',
-              style: const TextStyle(fontWeight: FontWeight.w800),
+  /// Seçili günün saat ızgarası. Boş bir saate dokunulunca tarih/saat önceden
+  /// dolu ders planlama formu açılır (masaüstündeki takvim tıklamasının
+  /// mobil karşılığı); o saatte dersi olan öğretmen formda seçilemez.
+  Widget _calendarTab() {
+    final dayStart = DateTime(_day.year, _day.month, _day.day);
+    final ofDay = _calendar.where((x) {
+      final s = DateTime.tryParse('${x['startsAtUtc']}')?.toLocal();
+      return s != null &&
+          s.year == dayStart.year &&
+          s.month == dayStart.month &&
+          s.day == dayStart.day;
+    }).toList();
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chevron_left_rounded),
+                    onPressed: () => setState(
+                      () => _day = dayStart.subtract(const Duration(days: 1)),
+                    ),
+                  ),
+                  Expanded(
+                    child: Center(
+                      child: Text(
+                        _dayLabel(dayStart),
+                        style: const TextStyle(fontWeight: FontWeight.w900),
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.chevron_right_rounded),
+                    onPressed: () => setState(
+                      () => _day = dayStart.add(const Duration(days: 1)),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            subtitle: Text(
-              '${_date(x['startsAtUtc'])}\n${x['instructorName']} • ${x['vehiclePlate']}',
-            ),
-            isThreeLine: true,
-            trailing: Chip(label: Text('${x['status']}')),
           ),
-        );
-      },
-    ),
-  );
+          const SizedBox(height: 8),
+          Text(
+            '${ofDay.length} randevu • Boş saate dokunarak randevu oluşturun'
+                .tr,
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(_slotEndHour - _slotStartHour, (i) {
+            final hour = _slotStartHour + i;
+            final slotStart = dayStart.add(Duration(hours: hour));
+            final slotEnd = slotStart.add(const Duration(hours: 1));
+            final inSlot = ofDay.where((x) {
+              final s = DateTime.tryParse('${x['startsAtUtc']}')?.toLocal();
+              final e = DateTime.tryParse('${x['endsAtUtc']}')?.toLocal();
+              return s != null &&
+                  e != null &&
+                  s.isBefore(slotEnd) &&
+                  e.isAfter(slotStart);
+            }).toList();
+
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: 52,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 14),
+                      child: Text(
+                        '${hour.toString().padLeft(2, '0')}:00',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: inSlot.isEmpty
+                        ? InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: _saving
+                                ? null
+                                : () => _planLesson(initialStart: slotStart),
+                            child: Container(
+                              height: 46,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: Theme.of(
+                                    context,
+                                  ).dividerColor.withValues(alpha: .6),
+                                ),
+                              ),
+                              child: Text(
+                                'Boş — randevu oluştur'.tr,
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          )
+                        : Column(
+                            children: inSlot
+                                .map(
+                                  (x) => Card(
+                                    margin: const EdgeInsets.only(bottom: 6),
+                                    child: ListTile(
+                                      dense: true,
+                                      leading: const CircleAvatar(
+                                        child: Icon(Icons.route_rounded),
+                                      ),
+                                      title: Text(
+                                        '${x['studentName']}',
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                      ),
+                                      subtitle: Text(
+                                        '${_date(x['startsAtUtc'])}\n${x['instructorName']} • ${x['vehiclePlate']}',
+                                      ),
+                                      isThreeLine: true,
+                                      trailing: Chip(
+                                        label: Text('${x['status']}'),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                          ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  String _dayLabel(DateTime d) {
+    const days = [
+      'Pazartesi',
+      'Salı',
+      'Çarşamba',
+      'Perşembe',
+      'Cuma',
+      'Cumartesi',
+      'Pazar',
+    ];
+    return '${d.day.toString().padLeft(2, '0')}.${d.month.toString().padLeft(2, '0')}.${d.year} • ${days[d.weekday - 1]}';
+  }
 
   Widget _requestsTab() {
     final pending = _requests.where((x) => x['status'] == 'Pending').toList();
@@ -476,112 +626,175 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
     }
   }
 
-  Future<void> _planLesson() async {
+  /// O aralıkta dersi olan öğretmenlerin id'leri — çakışan öğretmen formda
+  /// seçilemez. Nihai kural yine backend'de zorunlu uygulanır; bu yalnızca
+  /// kullanıcıyı baştan doğru seçime yönlendirir.
+  Set<String> _busyInstructorIds(DateTime start, DateTime end) {
+    final busy = <String>{};
+    for (final x in _calendar) {
+      if (!_blockingStatuses.contains('${x['status']}')) continue;
+      final s = DateTime.tryParse('${x['startsAtUtc']}')?.toLocal();
+      final e = DateTime.tryParse('${x['endsAtUtc']}')?.toLocal();
+      final id = '${x['instructorProfileId'] ?? ''}';
+      if (s == null || e == null || id.isEmpty) continue;
+      if (s.isBefore(end) && e.isAfter(start)) busy.add(id);
+    }
+    return busy;
+  }
+
+  Future<void> _planLesson({DateTime? initialStart}) async {
     final students = _list('students'),
         instructors = _list('instructors'),
         vehicles = _list('vehicles');
     String? studentId, instructorId, vehicleId;
-    var start = DateTime.now().add(const Duration(days: 1));
-    var end = DateTime.now().add(const Duration(days: 1, hours: 1));
+    var start = initialStart ?? DateTime.now().add(const Duration(days: 1));
+    var end = start.add(const Duration(hours: 1));
     final meeting = TextEditingController(), note = TextEditingController();
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => StatefulBuilder(
-        builder: (_, setLocal) => AlertDialog(
-          title: Text('Ayrıntılı ders planlama'.tr),
-          content: SizedBox(
-            width: 520,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Kursiyer'),
-                    items: students
-                        .map(
-                          (x) => DropdownMenuItem(
-                            value: '${x['id']}',
-                            child: Text('${x['fullName']}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setLocal(() => studentId = v),
-                  ),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Öğretmen'),
-                    items: instructors
-                        .where((x) => x['isActive'] == true)
-                        .map(
-                          (x) => DropdownMenuItem(
-                            value: '${x['id']}',
-                            child: Text('${x['fullName']}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setLocal(() => instructorId = v),
-                  ),
-                  DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Araç'),
-                    items: vehicles
-                        .where((x) => x['isInMaintenance'] != true)
-                        .map(
-                          (x) => DropdownMenuItem(
-                            value: '${x['id']}',
-                            child: Text('${x['plateNumber']}'),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (v) => setLocal(() => vehicleId = v),
-                  ),
-                  ListTile(
-                    title: Text('Başlangıç'.tr),
-                    subtitle: Text(_date(start)),
-                    onTap: () async {
-                      final v = await _pickDateTime(start);
-                      if (v != null) {
-                        setLocal(() {
-                          start = v;
-                          end = v.add(const Duration(hours: 1));
-                        });
-                      }
-                    },
-                  ),
-                  ListTile(
-                    title: Text('Bitiş'.tr),
-                    subtitle: Text(_date(end)),
-                    onTap: () async {
-                      final v = await _pickDateTime(end);
-                      if (v != null) setLocal(() => end = v);
-                    },
-                  ),
-                  TextField(
-                    controller: meeting,
-                    decoration: const InputDecoration(
-                      labelText: 'Buluşma noktası',
+        builder: (_, setLocal) {
+          final busy = _busyInstructorIds(start, end);
+          final freeInstructors = instructors
+              .where(
+                (x) => x['isActive'] == true && !busy.contains('${x['id']}'),
+              )
+              .toList();
+          final busyNames = instructors
+              .where((x) => busy.contains('${x['id']}'))
+              .map((x) => '${x['fullName']}')
+              .toList();
+          // Saat değişince seçili öğretmen dolmuş olabilir; geçersiz seçimi düşür.
+          if (instructorId != null && busy.contains(instructorId)) {
+            instructorId = null;
+          }
+          // Bu uçta hem kursiyer hem araç vites türünü METİN olarak döndürür
+          // ("Manual"/"Automatic"), bu yüzden doğrudan karşılaştırılabilir.
+          final student = students
+              .where((x) => '${x['id']}' == studentId)
+              .firstOrNull;
+          final fitVehicles = vehicles.where((x) {
+            if (x['isInMaintenance'] == true) return false;
+            if (student == null) return true;
+            return '${x['licenseClass']}'.toUpperCase() ==
+                    '${student['licenseClass']}'.toUpperCase() &&
+                '${x['transmissionType']}' == '${student['transmissionType']}';
+          }).toList();
+          if (vehicleId != null &&
+              !fitVehicles.any((x) => '${x['id']}' == vehicleId)) {
+            vehicleId = null;
+          }
+
+          return AlertDialog(
+            title: Text('Ayrıntılı ders planlama'.tr),
+            content: SizedBox(
+              width: 520,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    DropdownButtonFormField<String>(
+                      initialValue: studentId,
+                      decoration: const InputDecoration(labelText: 'Kursiyer'),
+                      items: students
+                          .map(
+                            (x) => DropdownMenuItem(
+                              value: '${x['id']}',
+                              child: Text('${x['fullName']}'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setLocal(() => studentId = v),
                     ),
-                  ),
-                  TextField(
-                    controller: note,
-                    decoration: const InputDecoration(labelText: 'Ders notu'),
-                  ),
-                ],
+                    DropdownButtonFormField<String>(
+                      initialValue: instructorId,
+                      decoration: InputDecoration(
+                        labelText: 'Öğretmen',
+                        helperMaxLines: 3,
+                        helperText: busyNames.isEmpty
+                            ? '${freeInstructors.length} öğretmen müsait'
+                            : 'Bu saatte dersi olduğu için seçilemez: ${busyNames.join(', ')}',
+                      ),
+                      items: freeInstructors
+                          .map(
+                            (x) => DropdownMenuItem(
+                              value: '${x['id']}',
+                              child: Text('${x['fullName']}'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setLocal(() => instructorId = v),
+                    ),
+                    DropdownButtonFormField<String>(
+                      initialValue: vehicleId,
+                      decoration: InputDecoration(
+                        labelText: 'Araç',
+                        helperText: student != null && fitVehicles.isEmpty
+                            ? 'Kursiyerin sınıf/vitesine uygun araç yok.'
+                            : null,
+                      ),
+                      items: fitVehicles
+                          .map(
+                            (x) => DropdownMenuItem(
+                              value: '${x['id']}',
+                              child: Text('${x['plateNumber']}'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setLocal(() => vehicleId = v),
+                    ),
+                    ListTile(
+                      title: Text('Başlangıç'.tr),
+                      subtitle: Text(_date(start)),
+                      onTap: () async {
+                        final v = await _pickDateTime(start);
+                        if (v != null) {
+                          setLocal(() {
+                            start = v;
+                            end = v.add(const Duration(hours: 1));
+                          });
+                        }
+                      },
+                    ),
+                    ListTile(
+                      title: Text('Bitiş'.tr),
+                      subtitle: Text(_date(end)),
+                      onTap: () async {
+                        final v = await _pickDateTime(end);
+                        if (v != null) setLocal(() => end = v);
+                      },
+                    ),
+                    TextField(
+                      controller: meeting,
+                      decoration: const InputDecoration(
+                        labelText: 'Buluşma noktası',
+                      ),
+                    ),
+                    TextField(
+                      controller: note,
+                      decoration: const InputDecoration(labelText: 'Ders notu'),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(d, false),
-              child: Text('Vazgeç'.tr),
-            ),
-            FilledButton(
-              onPressed:
-                  studentId == null || instructorId == null || vehicleId == null
-                  ? null
-                  : () => Navigator.pop(d, true),
-              child: Text('Planla'.tr),
-            ),
-          ],
-        ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(d, false),
+                child: Text('Vazgeç'.tr),
+              ),
+              FilledButton(
+                onPressed:
+                    studentId == null ||
+                        instructorId == null ||
+                        vehicleId == null
+                    ? null
+                    : () => Navigator.pop(d, true),
+                child: Text('Planla'.tr),
+              ),
+            ],
+          );
+        },
       ),
     );
     if (ok == true) {

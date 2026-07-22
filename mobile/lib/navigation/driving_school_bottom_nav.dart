@@ -27,8 +27,8 @@ class DrivingSchoolBottomNav extends StatelessWidget {
         sidebarColor: const Color(0xFFF97316),
       ),
       AdaptiveDestination(
-        icon: Icons.route_rounded,
-        label: 'Operasyon',
+        icon: Icons.inventory_2_rounded,
+        label: 'Paketler',
         pageBuilder: (_) => const DrivingSchoolOperationsPage(),
         sidebarColor: const Color(0xFF14B8A6),
       ),
@@ -46,7 +46,7 @@ class DrivingSchoolBottomNav extends StatelessWidget {
       ),
       AdaptiveDestination(
         icon: Icons.directions_car_filled_rounded,
-        label: 'Araçlarım',
+        label: 'Araçlar',
         pageBuilder: (_) => const DrivingSchoolVehiclesPage(),
         sidebarColor: const Color(0xFFEA580C),
       ),

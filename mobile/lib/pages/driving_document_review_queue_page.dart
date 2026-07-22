@@ -474,12 +474,12 @@ class _DrivingDocumentReviewQueuePageState
                     FilledButton.icon(
                       onPressed: busy ? null : () => _review(item, 'Approve'),
                       icon: const Icon(Icons.check),
-                      label: const Text('Onayla'),
+                      label: const Text('Onaylıyorum'),
                     ),
                     OutlinedButton.icon(
                       onPressed: busy ? null : () => _review(item, 'Reject'),
                       icon: const Icon(Icons.close),
-                      label: const Text('Reddet'),
+                      label: const Text('Onaylamıyorum'),
                     ),
                     OutlinedButton.icon(
                       onPressed: busy

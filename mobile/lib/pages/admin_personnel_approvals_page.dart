@@ -157,14 +157,14 @@ class _AdminPersonnelApprovalsPageState
                         Expanded(
                           child: FilledButton(
                             onPressed: () => _updateStatus(item, 'Onaylandı'),
-                            child: const Text('Onayla'),
+                            child: const Text('Onaylıyorum'),
                           ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () => _updateStatus(item, 'Reddedildi'),
-                            child: const Text('Reddet'),
+                            child: const Text('Onaylamıyorum'),
                           ),
                         ),
                       ],

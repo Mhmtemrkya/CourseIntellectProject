@@ -241,10 +241,15 @@ class _InvoiceListPageState extends State<_InvoiceListPage> {
     '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık',
   };
 
+  // Fatura subtitle'ı iki biçimde gelebilir: "22.07.2026" (görüntüleme) ve
+  // "2026-07-22 • PDF" (yeni oluşturulan fatura, ISO + ek metin). Yalnız TR
+  // biçimi aranırsa yeni fatura filtreden düşer ve "faturada gözükmüyor" olur.
   bool _matchesMonth(String subtitle) {
     if (_monthFilter == 'all') return true;
-    final match = RegExp(r'\d{1,2}\.(\d{2})\.\d{4}').firstMatch(subtitle);
-    return match != null && match.group(1) == _monthFilter;
+    final iso = RegExp(r'\d{4}-(\d{2})-\d{1,2}').firstMatch(subtitle);
+    if (iso != null) return iso.group(1) == _monthFilter;
+    final tr = RegExp(r'\d{1,2}\.(\d{2})\.\d{4}').firstMatch(subtitle);
+    return tr != null && tr.group(1) == _monthFilter;
   }
 
   @override

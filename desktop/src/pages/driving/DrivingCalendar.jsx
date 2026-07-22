@@ -1,16 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  AlertTriangle, CalendarDays, CalendarRange, ChevronLeft, ChevronRight,
-  Columns3, Loader2, MapPin, RefreshCw, X,
+  AlertTriangle, CalendarDays, CalendarRange, CheckCircle2, ChevronLeft, ChevronRight,
+  Columns3, Loader2, MapPin, Plus, RefreshCw, X, XCircle,
 } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent } from '../../components/ui/card';
+import { Input } from '../../components/ui/input';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  fetchDrivingCalendar, fetchDrivingInstructors, fetchDrivingVehicles,
+  createDrivingAppointment, fetchDrivingCalendar, fetchDrivingInstructors, fetchDrivingStudents, fetchDrivingVehicles,
   rescheduleDrivingAppointment,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
@@ -42,6 +44,10 @@ const STATUS_LABEL = {
 
 // Sürüklenerek taşınabilecek durumlar: kapanmış veya başlamış ders taşınmaz.
 const MOVABLE = ['Planned', 'Approved', 'Requested', 'WaitingApproval'];
+// Takvimde yer tutan randevu durumları — backend DrivingAppointmentStatuses.Blocking.
+const BLOCKING_STATUSES = ['Requested', 'WaitingApproval', 'Planned', 'Approved', 'CheckedIn', 'InProgress'];
+// Ders planlanabilecek kursiyer durumları (mezun/askıda/iptal hariç).
+const BOOKABLE_STATUSES = ['PreRegistered', 'DocumentsPending', 'Active', 'TheoryOngoing', 'PracticeOngoing', 'ExamPending'];
 
 const startOfDay = (date) => { const d = new Date(date); d.setHours(0, 0, 0, 0); return d; };
 const startOfWeek = (date) => {
@@ -65,13 +71,22 @@ export default function DrivingCalendar({ embedded = false }) {
   const [filters, setFilters] = useState({ instructorProfileId: '', vehicleId: '', licenseClass: '', transmissionType: '', status: 'open' });
 
   const [appointments, setAppointments] = useState([]);
-  const [reference, setReference] = useState({ instructors: [], vehicles: [] });
+  const [reference, setReference] = useState({ instructors: [], vehicles: [], students: [] });
   const [loading, setLoading] = useState(true);
   const [moving, setMoving] = useState(false);
   const [selected, setSelected] = useState(null);
+  // Takvim slotuna tıklayınca açılan yeni-randevu modalının başlangıç saati.
+  const [createStart, setCreateStart] = useState(null);
 
   const canReschedule = can(DRIVING.appointmentReschedule);
+  const canCreate = can(DRIVING.appointmentCreate);
   const dragged = useRef(null);
+
+  const openCreate = useCallback((day, hour, minute = 0) => {
+    const start = new Date(day);
+    start.setHours(hour, minute, 0, 0);
+    setCreateStart(start);
+  }, []);
 
   // Görünüme göre çekilecek tarih aralığı.
   const range = useMemo(() => {
@@ -85,7 +100,7 @@ export default function DrivingCalendar({ embedded = false }) {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [rows, instructors, vehicles] = await Promise.all([
+      const [rows, instructors, vehicles, students] = await Promise.all([
         fetchDrivingCalendar({
           from: range.start.toISOString(),
           to: range.end.toISOString(),
@@ -97,9 +112,10 @@ export default function DrivingCalendar({ embedded = false }) {
         }),
         can(DRIVING.instructorView) ? fetchDrivingInstructors() : Promise.resolve([]),
         can(DRIVING.vehicleView) ? fetchDrivingVehicles() : Promise.resolve([]),
+        can(DRIVING.appointmentCreate) ? fetchDrivingStudents().catch(() => []) : Promise.resolve([]),
       ]);
       setAppointments(rows || []);
-      setReference({ instructors: instructors || [], vehicles: vehicles || [] });
+      setReference({ instructors: instructors || [], vehicles: vehicles || [], students: students || [] });
     } catch (error) {
       toast({ title: 'Takvim yüklenemedi', description: error.message, variant: 'destructive' });
     } finally {
@@ -275,6 +291,7 @@ export default function DrivingCalendar({ embedded = false }) {
           dragged={dragged}
           onDropSlot={onDropSlot}
           onSelect={setSelected}
+          onSlotClick={canCreate ? openCreate : null}
         />
       ) : (
         <ResourceGrid
@@ -295,7 +312,190 @@ export default function DrivingCalendar({ embedded = false }) {
           onOpenStudent={() => navigate(`/driving/students/${selected.studentDrivingProfileId}`)}
         />
       )}
+
+      {createStart && (
+        <CreateAppointmentDialog
+          start={createStart}
+          students={reference.students}
+          instructors={reference.instructors}
+          vehicles={reference.vehicles}
+          appointments={appointments}
+          onClose={() => setCreateStart(null)}
+          onCreated={() => { setCreateStart(null); load(); }}
+        />
+      )}
     </div>
+  );
+}
+
+// Vites türü iki uçtan İKİ FARKLI biçimde gelir: /students onu string olarak
+// ("Manual"/"Automatic") döndürür, /vehicles ham entity döndürdüğü için int'tir
+// (Manual = 1). Doğrudan karşılaştırma daima false olur ve araç listesi boş
+// kalırdı; bu yüzden ikisini de tek biçime indiriyoruz.
+function transmissionKey(value) {
+  if (value === 1 || value === '1') return 'Manual';
+  if (value === 2 || value === '2') return 'Automatic';
+  return String(value ?? '').trim() || null;
+}
+
+// Randevu bir zaman aralığında öğretmenle çakışıyor mu? Yalnızca takvimde YER
+// TUTAN durumlar sayılır — backend'deki DrivingAppointmentStatuses.Blocking ile
+// aynı küme (iptal, devamsızlık, tamamlanan ve ertelenen yer bırakır).
+function overlaps(appointment, start, end) {
+  if (!BLOCKING_STATUSES.includes(String(appointment.status))) return false;
+  const s = new Date(appointment.startsAtUtc).getTime();
+  const e = new Date(appointment.endsAtUtc).getTime();
+  return s < end.getTime() && e > start.getTime();
+}
+
+/**
+ * Takvim slotuna tıklayınca açılan "yeni randevu" modalı. Tarih/saat otomatik gelir;
+ * o saatte DERSİ OLAN öğretmen listede seçilemez (çakışma önleyici). Backend kuralları
+ * (çalışma saati, araç ataması, limit) ayrıca zorunlu uygular.
+ */
+function CreateAppointmentDialog({ start, students, instructors, vehicles, appointments, onClose, onCreated }) {
+  const { toast } = useToast();
+  const [duration, setDuration] = useState(60);
+  const [studentDrivingProfileId, setStudent] = useState('');
+  const [instructorProfileId, setInstructor] = useState('');
+  const [vehicleId, setVehicle] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  const end = useMemo(() => new Date(start.getTime() + duration * 60000), [start, duration]);
+
+  // O saatte dersi olan öğretmenlerin id'leri (çakışma önleme).
+  const busyInstructorIds = useMemo(() => {
+    const set = new Set();
+    for (const a of appointments) {
+      if (a.instructorProfileId && overlaps(a, start, end)) set.add(a.instructorProfileId);
+    }
+    return set;
+  }, [appointments, start, end]);
+
+  // Mezun / askıya alınmış / iptal edilmiş kursiyere ders planlanmaz; listeyi
+  // eğitimi süren adaylarla sınırlıyoruz.
+  const bookableStudents = useMemo(
+    () => students.filter((s) => BOOKABLE_STATUSES.includes(String(s.status))),
+    [students],
+  );
+
+  const student = useMemo(
+    () => bookableStudents.find((s) => s.id === studentDrivingProfileId) || null,
+    [bookableStudents, studentDrivingProfileId],
+  );
+
+  const availableInstructors = useMemo(
+    () => instructors.filter((i) => i.isActive !== false && !busyInstructorIds.has(i.id)),
+    [instructors, busyInstructorIds],
+  );
+  const busyInstructors = useMemo(
+    () => instructors.filter((i) => busyInstructorIds.has(i.id)),
+    [instructors, busyInstructorIds],
+  );
+
+  // Araçları seçili kursiyerin ehliyet sınıfı + vites türüne göre süz (uyumsuz
+  // seçim backend'de 400 döndürürdü); ayrıca bakımdakiler gizlenir.
+  const availableVehicles = useMemo(
+    () => vehicles.filter((v) => !v.isInMaintenance && (!student
+      || (String(v.licenseClass).toUpperCase() === String(student.licenseClass).toUpperCase()
+        && transmissionKey(v.transmissionType) === transmissionKey(student.transmissionType)))),
+    [vehicles, student],
+  );
+
+  // Seçili öğretmen bu saatte doluysa (ör. süre değişince) seçimi düşür.
+  useEffect(() => {
+    if (instructorProfileId && busyInstructorIds.has(instructorProfileId)) setInstructor('');
+  }, [busyInstructorIds, instructorProfileId]);
+  // Kursiyer değişince uyumsuz kalan aracı düşür.
+  useEffect(() => {
+    if (vehicleId && !availableVehicles.some((v) => v.id === vehicleId)) setVehicle('');
+  }, [availableVehicles, vehicleId]);
+
+  const submit = async () => {
+    if (!studentDrivingProfileId) { toast({ title: 'Kursiyer seçin', variant: 'destructive' }); return; }
+    if (!instructorProfileId) { toast({ title: 'Öğretmen seçin', variant: 'destructive' }); return; }
+    if (!vehicleId) { toast({ title: 'Araç seçin', variant: 'destructive' }); return; }
+    setSaving(true);
+    try {
+      await createDrivingAppointment({
+        studentDrivingProfileId,
+        instructorProfileId,
+        vehicleId,
+        startsAtUtc: start.toISOString(),
+        endsAtUtc: end.toISOString(),
+        notes: notes.trim(),
+      });
+      toast({ title: 'Randevu oluşturuldu', description: `${start.toLocaleString('tr-TR')} — öğrenci ve öğretmen bilgilendirildi.` });
+      onCreated();
+    } catch (e) {
+      toast({ title: 'Randevu oluşturulamadı', description: e.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Plus className="h-5 w-5 text-brand-primary" />Yeni Randevu</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-xl border bg-muted/40 p-3 text-sm">
+            <b>{start.toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}</b>
+            {' • '}{hhmm(start)}–{hhmm(end)}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground">Süre</label>
+            <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={duration} onChange={(e) => setDuration(Number(e.target.value))}>
+              {[30, 45, 60, 90, 120].map((m) => <option key={m} value={m}>{m} dk</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground">Kursiyer *</label>
+            <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={studentDrivingProfileId} onChange={(e) => setStudent(e.target.value)}>
+              <option value="">Seçin…</option>
+              {bookableStudents.map((s) => <option key={s.id} value={s.id}>{s.studentNumber != null ? `#${s.studentNumber} ` : ''}{s.fullName}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground">Öğretmen * <span className="font-normal text-muted-foreground/70">(o saatte müsait olanlar)</span></label>
+            <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={instructorProfileId} onChange={(e) => setInstructor(e.target.value)}>
+              <option value="">Seçin…</option>
+              {availableInstructors.map((i) => <option key={i.id} value={i.id}>{i.fullName}</option>)}
+            </select>
+            {busyInstructors.length > 0 && (
+              <p className="mt-1 flex items-start gap-1 text-[11px] text-muted-foreground">
+                <XCircle className="mt-0.5 h-3 w-3 shrink-0 text-red-500" />
+                <span>Bu saatte dersi olduğu için seçilemez: {busyInstructors.map((i) => i.fullName).join(', ')}</span>
+              </p>
+            )}
+            {availableInstructors.length > 0 && (
+              <p className="mt-1 flex items-center gap-1 text-[11px] text-emerald-600"><CheckCircle2 className="h-3 w-3" />{availableInstructors.length} öğretmen müsait</p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground">Araç *{student ? <span className="font-normal text-muted-foreground/70"> ({student.licenseClass} • {transmissionKey(student.transmissionType) === 'Manual' ? 'Manuel' : 'Otomatik'})</span> : ''}</label>
+            <select className="mt-1 h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={vehicleId} onChange={(e) => setVehicle(e.target.value)}>
+              <option value="">Seçin…</option>
+              {availableVehicles.map((v) => <option key={v.id} value={v.id}>{v.plateNumber} • {v.brand} {v.model}</option>)}
+            </select>
+            {student && availableVehicles.length === 0 && (
+              <p className="mt-1 text-[11px] text-red-500">Kursiyerin sınıf/vitesine uygun, müsait araç yok.</p>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-bold text-muted-foreground">Not</label>
+            <Input maxLength={500} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Buluşma noktası vb." />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose} disabled={saving}>Vazgeç</Button>
+          <Button onClick={submit} disabled={saving}>{saving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Oluşturuluyor…</> : <><Plus className="mr-2 h-4 w-4" />Randevu Oluştur</>}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -338,7 +538,7 @@ function AppointmentCard({ appointment, canReschedule, dragged, onSelect, compac
 }
 
 /** Saat çizelgesi: dikey eksen saat, yatay eksen gün. */
-function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSelect }) {
+function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSelect, onSlotClick }) {
   const now = new Date();
 
   return (
@@ -374,9 +574,12 @@ function TimeGrid({ days, appointments, canReschedule, dragged, onDropSlot, onSe
                       {[0, 30].map((minute) => (
                         <div
                           key={minute}
-                          className="h-1/2 transition hover:bg-violet-500/10"
+                          role={onSlotClick ? 'button' : undefined}
+                          title={onSlotClick ? 'Randevu oluşturmak için tıklayın' : undefined}
+                          className={`h-1/2 transition hover:bg-violet-500/10 ${onSlotClick ? 'cursor-pointer' : ''}`}
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={() => onDropSlot(day, hour, minute)}
+                          onClick={onSlotClick ? () => onSlotClick(day, hour, minute) : undefined}
                         />
                       ))}
                     </div>

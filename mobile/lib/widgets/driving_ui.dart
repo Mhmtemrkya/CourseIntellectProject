@@ -573,3 +573,79 @@ class DrivingBarChart extends StatelessWidget {
 /// kırılma noktası.
 int drivingGridColumns(BuildContext context) =>
     ResponsiveLayout.isTablet(context) ? 4 : 2;
+
+/// Alt sayfada açılan ortak kayıt formu (paket / araç / evrak / bakım).
+/// Kaydet sırasında butonu kilitler ve hata mesajını SnackBar ile gösterir —
+/// böylece doğrulama hataları (ör. "araç ve bitiş tarihi zorunlu") sessizce
+/// kaybolmaz.
+class DrivingFormSheet extends StatefulWidget {
+  final String title;
+  final List<Widget> fields;
+  final Future<void> Function() onSave;
+  final String saveLabel;
+
+  const DrivingFormSheet({
+    super.key,
+    required this.title,
+    required this.fields,
+    required this.onSave,
+    this.saveLabel = 'Kaydet',
+  });
+
+  @override
+  State<DrivingFormSheet> createState() => _DrivingFormSheetState();
+}
+
+class _DrivingFormSheetState extends State<DrivingFormSheet> {
+  bool _saving = false;
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await widget.onSave();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('$e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: EdgeInsets.fromLTRB(
+      20,
+      20,
+      20,
+      MediaQuery.viewInsetsOf(context).bottom + 24,
+    ),
+    child: SingleChildScrollView(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            widget.title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900),
+          ),
+          const SizedBox(height: 16),
+          ...widget.fields.expand((w) => [w, const SizedBox(height: 12)]),
+          FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: _saving
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_rounded),
+            label: Text(_saving ? 'Kaydediliyor…' : widget.saveLabel),
+          ),
+        ],
+      ),
+    ),
+  );
+}
