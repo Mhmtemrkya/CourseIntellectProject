@@ -17,6 +17,7 @@ import {
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { FileButton } from '../../components/ui/file-button';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 
@@ -853,9 +854,8 @@ export default function DrivingStudentWizard() {
                           onChange={(e) => patchDocument({ expiresAtUtc: e.target.value ? new Date(e.target.value).toISOString() : null })}
                         />
                       )}
-                      <Input
-                        type="file"
-                        className="w-56"
+                      <FileButton
+                        className="w-72"
                         accept=".pdf,.jpg,.jpeg,.png"
                         disabled={uploading}
                         onChange={(e) => attachDocument(type.value, e.target.files?.[0], null)}
@@ -1038,7 +1038,7 @@ export default function DrivingStudentWizard() {
               </div>
 
               <Field label="Kursiyer imzası (sözleşme)" hint={form.signatureUrl ? 'İmzalı sözleşme yüklendi.' : 'İmzalı sözleşmeyi tarayıp yükleyin; sonra da eklenebilir.'}>
-                <Input type="file" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={async (e) => {
+                <FileButton label="Sözleşme Yükle" accept=".pdf,.jpg,.jpeg,.png" disabled={uploading} onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
                   setUploading(true);

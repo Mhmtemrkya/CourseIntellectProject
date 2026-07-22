@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { AlertTriangle, CarFront, CheckCircle2, FileCheck2, Plus, ShieldAlert, Upload, Wrench } from 'lucide-react';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
+import { FileButton } from '../../components/ui/file-button';
 import { PremiumPanel, PremiumStatusPill } from '../../components/ui/premium-dashboard';
 import { useToast } from '../../hooks/use-toast';
 import {
@@ -194,7 +195,7 @@ export default function DrivingFleetCompliance() {
                 <Field label="Hatırlatma (gün)"><Input required type="number" min="1" max="365" value={documentForm.reminderDays} onChange={(e) => setDocumentForm({ ...documentForm, reminderDays: e.target.value })} /></Field>
                 <Field label="Başlangıç"><Input type="date" value={documentForm.startsAtUtc} onChange={(e) => setDocumentForm({ ...documentForm, startsAtUtc: e.target.value })} /></Field>
                 <Field label="Bitiş"><Input required type="date" value={documentForm.expiresAtUtc} onChange={(e) => setDocumentForm({ ...documentForm, expiresAtUtc: e.target.value })} /></Field>
-                <Field label="Belge dosyası"><Input required type="file" accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDocumentForm({ ...documentForm, file: e.target.files?.[0] || null })} /></Field>
+                <Field label="Belge dosyası"><FileButton required accept=".pdf,.jpg,.jpeg,.png" onChange={(e) => setDocumentForm({ ...documentForm, file: e.target.files?.[0] || null })} /></Field>
                 <Field label="Açıklama"><Input maxLength={1000} value={documentForm.description} onChange={(e) => setDocumentForm({ ...documentForm, description: e.target.value })} /></Field>
                 <Button disabled={saving} className="bg-brand-primary text-white hover:bg-brand-primary/90 sm:col-span-2">
                   <Upload className="mr-2 h-4 w-4" />Yükle ve Onayla

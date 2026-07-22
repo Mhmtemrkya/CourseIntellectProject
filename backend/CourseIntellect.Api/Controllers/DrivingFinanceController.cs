@@ -223,6 +223,28 @@ public sealed class DrivingFinanceController(
         return Ok(payment);
     }
 
+    /// <summary>Kursiyerin bekleyen kayıt peşinatını makbuzlu tahsil eder ("Ödeme Al"
+    /// modalındaki peşinat kutusu). Sürücü finans-tahsil izniyle çalışır.</summary>
+    [HttpPost("students/{profileId:guid}/collect-down-payment")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceCollect)]
+    public async Task<IActionResult> CollectDownPayment(Guid profileId, [FromBody] CollectDownPaymentBody? body, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var contractId = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId).Select(x => x.EnrollmentContractId).SingleOrDefaultAsync(ct);
+        if (contractId is null) return BadRequest(new { message = "Kursiyerin sözleşmesi yok." });
+
+        try
+        {
+            var payment = await financeService.CollectDownPaymentAsync(contractId.Value, body?.Method, CurrentUserId(), ct);
+            return Ok(payment);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
     /// <summary>Kurumun şubeleri (tahsilat şubesi seçmek için). Şube yoksa liste boştur.</summary>
     [HttpGet("branches")]
     [RequireDrivingPermission(DrivingPermissions.FinanceView)]
@@ -259,6 +281,90 @@ public sealed class DrivingFinanceController(
             })
             .ToListAsync(ct);
         return Ok(rows);
+    }
+
+    /// <summary>
+    /// "Ödeme Al" modalı için tam finans bağlamı: sözleşme özeti (net/ödenen/kalan),
+    /// peşinat durumu (ödendi/bekliyor + tutar), tüm taksit planı (durumlarıyla) ve
+    /// son makbuzlar. Sözleşmesiz kursiyerde hasContract=false döner (açık tahsilat).
+    /// </summary>
+    [HttpGet("students/{profileId:guid}/payment-context")]
+    [RequireDrivingPermission(DrivingPermissions.FinanceView)]
+    public async Task<IActionResult> GetPaymentContext(Guid profileId, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var tenantId = dbContext.CurrentTenantId;
+        var head = await dbContext.StudentDrivingProfiles.AsNoTracking()
+            .Where(x => x.Id == profileId)
+            .Join(dbContext.Students.IgnoreQueryFilters().Where(s => s.TenantId == tenantId),
+                p => p.StudentId, s => s.Id,
+                (p, s) => new { p.EnrollmentContractId, p.StudentNumber, p.Status, s.FullName, s.UserId })
+            .SingleOrDefaultAsync(ct);
+        if (head is null) return NotFound(new { message = "Kursiyer bulunamadı." });
+
+        var now = DateTime.UtcNow;
+
+        if (head.EnrollmentContractId is not Guid contractId)
+        {
+            // Sözleşmesiz: açık tahsilat (öğrenciye atfen alınan makbuzlar) toplamı.
+            var openPaid = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.StudentUserId == head.UserId && x.EnrollmentContractId == null && x.TenantId == tenantId)
+                .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+            return Ok(new
+            {
+                hasContract = false,
+                studentName = head.FullName,
+                studentNumber = head.StudentNumber,
+                status = head.Status.ToString(),
+                grossAmount = 0m, discountAmount = 0m, netAmount = 0m,
+                downPayment = 0m, downPaymentPaid = true, downPaymentPending = false,
+                paidTotal = openPaid, remaining = 0m, overdueTotal = 0m, overdueCount = 0,
+                installments = Array.Empty<object>(),
+            });
+        }
+
+        var contract = await dbContext.EnrollmentContracts.IgnoreQueryFilters().AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == contractId && x.TenantId == tenantId, ct);
+        if (contract is null) return NotFound(new { message = "Sözleşme bulunamadı." });
+
+        var installments = await dbContext.FinanceInstallments.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.EnrollmentContractId == contractId && x.TenantId == tenantId)
+            .OrderBy(x => x.SeqNo)
+            .Select(x => new
+            {
+                x.Id, x.SeqNo, x.Label, x.DueDateUtc, x.Amount, x.PaidAmount,
+                remaining = x.Amount - x.PaidAmount,
+                overdue = x.Amount - x.PaidAmount > 0 && x.DueDateUtc < now,
+                status = x.PaidAmount >= x.Amount ? "Paid" : x.PaidAmount > 0 ? "Partial" : "Pending",
+            })
+            .ToListAsync(ct);
+
+        var paidTotal = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
+            .Where(x => x.EnrollmentContractId == contractId && x.TenantId == tenantId)
+            .SumAsync(x => (decimal?)x.Amount, ct) ?? 0m;
+
+        var overdueRows = installments.Where(x => x.overdue).ToList();
+
+        return Ok(new
+        {
+            hasContract = true,
+            contractId,
+            studentName = head.FullName,
+            studentNumber = head.StudentNumber,
+            status = head.Status.ToString(),
+            contract.GrossAmount,
+            contract.DiscountAmount,
+            contract.NetAmount,
+            contract.DownPayment,
+            contract.DownPaymentPaid,
+            // Peşinat tanımlı ama tahsil edilmemişse modalda ayrıca tahsil edilebilir.
+            downPaymentPending = contract.DownPayment > 0 && !contract.DownPaymentPaid,
+            paidTotal,
+            remaining = Math.Max(0, contract.NetAmount - paidTotal),
+            overdueTotal = overdueRows.Sum(x => x.remaining),
+            overdueCount = overdueRows.Count,
+            installments,
+        });
     }
 
     /// <summary>
@@ -600,5 +706,6 @@ public sealed record CreateDrivingChargeRequest(
 }
 
 public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid? FinanceInstallmentId, string? Note, Guid? BranchId = null);
+public sealed record CollectDownPaymentBody(string? Method = null);
 
 public sealed record RefundChargeRequest(decimal? Amount, string? Reason);

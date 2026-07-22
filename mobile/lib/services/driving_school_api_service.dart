@@ -688,6 +688,19 @@ class DrivingSchoolApiService {
         '/api/driving-school/students/$profileId/installments',
       )).cast<Map<String, dynamic>>();
 
+  // "Ödeme Al" modalı için tam finans bağlamı (özet + peşinat + taksitler).
+  Future<Map<String, dynamic>> paymentContext(String profileId) =>
+      _get('/api/driving-school/students/$profileId/payment-context');
+
+  // Modaldaki peşinat kutusundan bekleyen peşinatı tahsil eder.
+  Future<Map<String, dynamic>> collectStudentDownPayment(
+    String profileId,
+    String method,
+  ) => _post(
+    '/api/driving-school/students/$profileId/collect-down-payment',
+    {'method': method},
+  );
+
   Future<Map<String, dynamic>> recordPayment(
     String profileId, {
     required num amount,

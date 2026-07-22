@@ -270,6 +270,10 @@ export const updateDrivingSettings = (payload) => api.put('/api/driving-school/s
 export const checkDrivingIdentity = (identityNumber) => api.get('/api/driving-school/students/check-identity', { params: { identityNumber } });
 export const checkDrivingPhone = (phone) => api.get('/api/driving-school/students/check-phone', { params: { phone } });
 export const fetchDrivingInstallments = (profileId) => api.get(`/api/driving-school/students/${profileId}/installments`);
+// "Ödeme Al" modalı için tam finans bağlamı (sözleşme özeti + peşinat + taksitler).
+export const fetchDrivingPaymentContext = (profileId) => api.get(`/api/driving-school/students/${profileId}/payment-context`);
+// Modaldaki peşinat kutusundan bekleyen peşinatı tahsil eder.
+export const collectDrivingDownPayment = (profileId, method) => api.post(`/api/driving-school/students/${profileId}/collect-down-payment`, { method });
 export const registerDrivingStudent = (payload) => api.post('/api/driving-school/students/wizard', payload);
 export const fetchDrivingStudentDetail = (profileId) => api.get(`/api/driving-school/students/${profileId}/detail`);
 export const updateDrivingStudentStatus = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/status`, payload);

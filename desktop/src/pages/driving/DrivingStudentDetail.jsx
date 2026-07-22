@@ -22,6 +22,7 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { FileButton } from '../../components/ui/file-button';
 import {
   DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
   evaluationScores, lessonAverage,
@@ -929,9 +930,8 @@ export default function DrivingStudentDetail() {
 
                     {canUpload && item.status !== 'Approved' && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <Input
-                          type="file"
-                          className="w-64"
+                        <FileButton
+                          className="w-72"
                           accept=".pdf,.jpg,.jpeg,.png"
                           disabled={busy}
                           onChange={(e) => uploadDocument(item.documentType, e.target.files?.[0], item.expiresAtUtc)}
