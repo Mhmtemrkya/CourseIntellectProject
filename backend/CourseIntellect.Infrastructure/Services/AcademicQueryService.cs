@@ -205,10 +205,18 @@ public sealed class AcademicQueryService(
         }
         await EnsureTcNoAvailableAsync(tenantId, tcNo, null, cancellationToken);
 
-        await using var transaction = dbContext.Database.IsRelational()
+        // Zaten açık bir DIŞ transaction varsa (ör. sürücü kayıt sihirbazı kendi
+        // Serializable transaction'ını açar) ONA katıl — EF/Npgsql iç içe transaction'a
+        // izin vermez; yeni bir tane açmak "already in a transaction" hatasıyla kaydı
+        // 500'e düşürürdü. Dış transaction'ı sahibi commit'ler; biz yalnız sahibiysek
+        // (kendi açtıysak) commit ederiz.
+        var ownsTransaction = dbContext.Database.CurrentTransaction is null;
+        await using var transaction = ownsTransaction && dbContext.Database.IsRelational()
             ? await dbContext.Database.BeginTransactionAsync(cancellationToken)
             : null;
-        if (transaction is not null && dbContext.Database.IsNpgsql())
+        // Okul numarası üretimini seri hale getiren advisory kilit; aktif (yeni ya da
+        // devralınan) transaction içinde alınır — xact-scoped, commit'te otomatik düşer.
+        if (dbContext.Database.IsNpgsql() && dbContext.Database.CurrentTransaction is not null)
         {
             await dbContext.Database.ExecuteSqlInterpolatedAsync(
                 $"SELECT pg_advisory_xact_lock(hashtext({tenantId.ToString()}))",
