@@ -1214,7 +1214,7 @@ class _AccountingHomePageState extends State<AccountingHomePage> {
 
   List<_ModuleCard> _modules() => [
         _ModuleCard(
-          'Öğrenci Cari Hesapları',
+          'Cari Hesaplar',
           'Sınıf, toplam ücret, ödenen, kalan',
           Icons.groups_2_outlined,
           const Color(0xFF2563EB),

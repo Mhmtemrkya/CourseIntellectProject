@@ -2148,7 +2148,7 @@ const Map<String, String> kTrEn = {
   'Finans Kontrolü': 'Finance Control',
   'Finans Onayları': 'Finance Approvals',
   'Finans Detay Merkezi': 'Finance Detail Hub',
-  'Öğrenci Hesapları': 'Student Accounts',
+  'Cari Hesaplar': 'Current Accounts',
   'Tahsilatlar': 'Collections',
   'Taksitler': 'Installments',
   'Tahsilat Takvimi': 'Collection Calendar',

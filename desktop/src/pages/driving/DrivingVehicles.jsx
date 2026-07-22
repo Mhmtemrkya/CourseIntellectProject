@@ -4,6 +4,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
@@ -11,6 +12,7 @@ import {
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+import DrivingFleetCompliance from './DrivingFleetCompliance';
 
 const initialVehicle = { plateNumber: '', brand: '', model: '', modelYear: new Date().getFullYear(), licenseClass: 'B', transmissionType: 1, currentKilometer: 0, inspectionExpiresAtUtc: '', insuranceExpiresAtUtc: '' };
 
@@ -198,6 +200,9 @@ export default function DrivingVehicles() {
   const [saving, setSaving] = useState(false);
 
   const canCreate = can(DRIVING.vehicleCreate);
+  // Evrak & Bakım sekmesi, eskiden ayrı sayfa olan ekranın izinlerini taşır;
+  // ikisinden birini göremeyen kullanıcıya sekme hiç açılmaz.
+  const canSeeCompliance = can(DRIVING.vehicleDocumentView) || can(DRIVING.vehicleServiceView);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -250,12 +255,21 @@ export default function DrivingVehicles() {
     <DrivingPage testId="driving-vehicles-page">
       <DrivingPageHeader
         title="Araçlar"
-        description="Filoya araç ekleyin, araçları görüntüleyin; bir araca tıklayarak bakım, evrak ve atama bilgilerini inceleyin."
+        description="Araçla ilgili her şey burada: filo, araç ekleme, evrak arşivi ve bakım/arıza kayıtları."
         icon={CarFront}
         onRefresh={() => load(true)}
         refreshing={refreshing}
       />
 
+      <Tabs defaultValue="fleet">
+        <TabsList>
+          <TabsTrigger value="fleet"><CarFront className="mr-2 h-4 w-4" />Filo</TabsTrigger>
+          {canSeeCompliance && (
+            <TabsTrigger value="compliance"><FileCheck2 className="mr-2 h-4 w-4" />Evrak & Bakım</TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="fleet" className="mt-5 space-y-5">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
         <DrivingStatCard label="Toplam Araç" value={vehicles.length} caption="Filoda kayıtlı" icon={CarFront} tone="brand" />
         <DrivingStatCard label="Kullanımda" value={activeCount} caption="Uygun araç" icon={ShieldCheck} tone="emerald" />
@@ -328,6 +342,16 @@ export default function DrivingVehicles() {
           ))}
         </div>
       )}
+
+        </TabsContent>
+
+        {canSeeCompliance && (
+          <TabsContent value="compliance" className="mt-5">
+            {/* Ayrı sayfa olarak da erişilebilir; burada gömülü çalışır. */}
+            <DrivingFleetCompliance embedded />
+          </TabsContent>
+        )}
+      </Tabs>
 
       {selected && <VehicleDetailModal vehicle={selected} onClose={() => setSelected(null)} />}
     </DrivingPage>

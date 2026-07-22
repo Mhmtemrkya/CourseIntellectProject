@@ -15,7 +15,7 @@ export default function DrivingHub() {
   return (
     <DrivingPage testId="driving-hub-page">
       <DrivingPageHeader
-        title="Direksiyon"
+        title="Direksiyon Dersleri"
         description="Takvim, randevu ve dersler — tüm direksiyon işlemleri tek yerde."
         icon={CalendarClock}
       />

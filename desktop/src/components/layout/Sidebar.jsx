@@ -77,7 +77,7 @@ const menuConfigs = {
   ],
   finance: [
     { path: '/finance/dashboard', icon: LayoutDashboard, label: 'Muhasebe Özet' },
-    { path: '/finance/student-accounts', icon: Users, label: 'Öğrenci Hesapları' },
+    { path: '/finance/student-accounts', icon: Users, label: 'Cari Hesaplar' },
     { path: '/finance/collections', icon: CreditCard, label: 'Tahsilatlar' },
     { path: '/finance/installments', icon: Receipt, label: 'Taksitler' },
     { path: '/finance/invoices-receipts', icon: FileText, label: 'Fatura & Makbuz' },

@@ -95,7 +95,7 @@ const MODULE_GROUPS = [
     title: 'Finans',
     items: [
       { key: 'finance', label: 'Finans / Muhasebe Özeti' },
-      { key: 'student-accounts', label: 'Öğrenci Hesapları' },
+      { key: 'student-accounts', label: 'Cari Hesaplar' },
       { key: 'collections', label: 'Tahsilatlar' },
       { key: 'installments', label: 'Taksitler' },
       { key: 'late-payments', label: 'Gecikenler' },

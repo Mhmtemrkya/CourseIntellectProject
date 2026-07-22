@@ -96,10 +96,15 @@ public sealed class DrivingEducationController(
         object? reference = null;
         if (canManage)
         {
+            // IReadOnlySet.Contains doğrudan EF ifadesinde bırakıldığında Npgsql
+            // sağlayıcısı bazı sürümlerde sorguyu SQL'e çeviremiyor ve yönetici
+            // overview isteği 500 ile sonuçlanıyor. Sabit diziyi parametre olarak
+            // geçirerek PostgreSQL'in çevirebildiği IN/ANY sorgusunu üretiriz.
+            var openStudentStatuses = DrivingStudentStatuses.Open.ToArray();
             reference = new
             {
                 instructors = await db.Staff.AsNoTracking().OrderBy(x => x.FullName).Select(x => new { x.Id, x.FullName }).ToListAsync(ct),
-                students = await db.StudentDrivingProfiles.AsNoTracking().Where(x => DrivingStudentStatuses.Open.Contains(x.Status))
+                students = await db.StudentDrivingProfiles.AsNoTracking().Where(x => openStudentStatuses.Contains(x.Status))
                     .Join(db.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (profile, student) => new { id = profile.Id, student.FullName, profile.LicenseClass, status = profile.Status.ToString() })
                     .OrderBy(x => x.FullName).ToListAsync(ct),
             };

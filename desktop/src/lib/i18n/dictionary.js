@@ -98,7 +98,7 @@ export const TR_EN = {
   'Muhasebe': 'Accounting', 'Muhasebe Özet': 'Accounting Summary', 'Muhasebe Kaydı': 'Accounting Record',
   'Finans': 'Finance', 'Finans Paneli': 'Finance Panel', 'Finans Kontrolü': 'Finance Control',
   'Finans Onayları': 'Finance Approvals', 'Finans Detay Merkezi': 'Finance Detail Hub',
-  'Öğrenci Hesapları': 'Student Accounts', 'Tahsilatlar': 'Collections', 'Taksitler': 'Installments',
+  'Cari Hesaplar': 'Current Accounts', 'Tahsilatlar': 'Collections', 'Taksitler': 'Installments',
   'Tahsilat Takvimi': 'Collection Calendar', 'Gecikenler': 'Overdue', 'Fatura & Makbuz': 'Invoices & Receipts',
   'Fatura & Tahsilat': 'Invoices & Collections', 'İndirim & Burs': 'Discounts & Scholarships',
   'Toplu İşlemler': 'Bulk Actions', 'Mutabakat': 'Reconciliation', 'Maaş Yönetimi': 'Payroll',

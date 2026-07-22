@@ -67,7 +67,7 @@ const pathLabels = {
   "parent-registration": "Veli Kaydı",
   "role-management": "Rol Yönetimi",
   finance: "Muhasebe",
-  "student-accounts": "Öğrenci Hesapları",
+  "student-accounts": "Cari Hesaplar",
   collections: "Tahsilatlar",
   installments: "Taksitler",
   "late-payments": "Gecikenler",

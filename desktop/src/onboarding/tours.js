@@ -150,7 +150,7 @@ export const WELCOME_TOURS = {
       },
       {
         target: nav('/finance/student-accounts'),
-        title: 'Öğrenci Cari Hesapları',
+        title: 'Cari Hesaplar',
         body: 'Her öğrencinin sözleşmesi, taksit planı ve ödeme geçmişi. Tahsilat almak için öğrenciyi seçip "Ödeme Al" deyin — makbuz otomatik oluşur.',
       },
       {
@@ -618,7 +618,7 @@ export const PAGE_TOURS = {
   },
   '/finance/student-accounts': {
     steps: [
-      { title: 'Öğrenci Cari Hesapları', body: 'Her öğrencinin sözleşme, taksit ve ödeme geçmişi.\n\n• Tahsilat: öğrenciyi seçin → "Ödeme Al" → tutar ve yöntem girin. Ödeme en eski vadeli taksitten başlayarak otomatik mahsup edilir.\n• Makbuz numarası otomatik verilir.' },
+      { title: 'Cari Hesaplar', body: 'Her öğrencinin sözleşme, taksit ve ödeme geçmişi.\n\n• Tahsilat: öğrenciyi seçin → "Ödeme Al" → tutar ve yöntem girin. Ödeme en eski vadeli taksitten başlayarak otomatik mahsup edilir.\n• Makbuz numarası otomatik verilir.' },
     ],
   },
   '/finance/collections': {

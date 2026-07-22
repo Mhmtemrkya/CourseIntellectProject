@@ -456,7 +456,7 @@ export default function StudentAccounts() {
     >
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-heading">Öğrenci Cari Hesapları</h1>
+          <h1 className="text-3xl font-bold font-heading">Cari Hesaplar</h1>
           <p className="text-muted-foreground mt-1">{accounts.length} öğrenci hesabı</p>
         </div>
         <Button className="bg-brand-primary hover:bg-brand-primary/90" onClick={handleBulkCollection} disabled={bulkProcessing}>

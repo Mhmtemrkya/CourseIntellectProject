@@ -117,7 +117,7 @@ const navigationByRole = {
   ],
   finance: [
     { path: '/finance/dashboard', icon: LayoutDashboard, label: 'Muhasebe Özet', keywords: ['finance', 'muhasebe'] },
-    { path: '/finance/student-accounts', icon: Users, label: 'Öğrenci Hesapları', keywords: ['accounts', 'hesap'] },
+    { path: '/finance/student-accounts', icon: Users, label: 'Cari Hesaplar', keywords: ['accounts', 'hesap', 'cari'] },
     { path: '/finance/collections', icon: CreditCard, label: 'Tahsilatlar', keywords: ['collections', 'tahsilat'] },
     { path: '/finance/installments', icon: FileText, label: 'Taksitler', keywords: ['installment', 'taksit'] },
     { path: '/finance/invoices-receipts', icon: FileQuestion, label: 'Fatura ve Makbuz', keywords: ['invoice', 'receipt'] },

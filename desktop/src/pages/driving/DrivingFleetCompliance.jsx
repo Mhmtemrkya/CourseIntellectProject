@@ -27,7 +27,13 @@ const DOCUMENT_STATUS = {
   Expired: ['danger', 'Süresi Doldu'],
 };
 
-export default function DrivingFleetCompliance() {
+/**
+ * Filo evrak ve bakım ekranı. `embedded` verildiğinde kendi sayfa sarmalayıcısını
+ * ve başlığını çizmez; "Araçlar" ekranında sekme olarak gömülür (araçla ilgili
+ * her şey tek yerde). Kendi rotası (/driving/fleet-compliance) çalışmaya devam
+ * eder — eski yer imleri kırılmasın.
+ */
+export default function DrivingFleetCompliance({ embedded = false }) {
   const { toast } = useToast();
   const { can, loading: permissionsLoading } = useDrivingPermissions();
   const [data, setData] = useState({ vehicles: [], documents: [], records: [] });
@@ -144,15 +150,20 @@ export default function DrivingFleetCompliance() {
 
   if (loading) return <DrivingLoading />;
 
+  const Wrapper = embedded ? 'div' : DrivingPage;
+  const wrapperProps = embedded ? { className: 'space-y-5' } : { testId: 'driving-fleet-page' };
+
   return (
-    <DrivingPage testId="driving-fleet-page">
-      <DrivingPageHeader
-        title="Filo Evrak ve Bakım"
-        description="Zorunlu evrakı veya güvenlik kaydı uygun olmayan araçlar randevuya otomatik kapanır."
-        icon={ShieldAlert}
-        onRefresh={() => load(true)}
-        refreshing={refreshing}
-      />
+    <Wrapper {...wrapperProps}>
+      {!embedded && (
+        <DrivingPageHeader
+          title="Filo Evrak ve Bakım"
+          description="Zorunlu evrakı veya güvenlik kaydı uygun olmayan araçlar randevuya otomatik kapanır."
+          icon={ShieldAlert}
+          onRefresh={() => load(true)}
+          refreshing={refreshing}
+        />
+      )}
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <DrivingStatCard label="Filodaki Araç" value={data.vehicles.length} caption="Kayıtlı araç" icon={CarFront} tone="brand" />
@@ -312,6 +323,6 @@ export default function DrivingFleetCompliance() {
           </PremiumPanel>
         </motion.div>
       </div>
-    </DrivingPage>
+    </Wrapper>
   );
 }

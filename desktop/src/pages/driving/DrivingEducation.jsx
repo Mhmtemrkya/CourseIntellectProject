@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
 import { useToast } from '../../hooks/use-toast';
+import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { DrivingLoading, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import {
   addDrivingExamCandidates, assignDrivingExamCandidate, createDrivingExamSession, createDrivingTheoryClass,
@@ -60,6 +61,7 @@ export default function DrivingEducation() {
   const { toast } = useToast();
   const { can, loading: permissionLoading } = useDrivingPermissions();
   const [data, setData] = useState(null);
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [classForm, setClassForm] = useState(initialClass);
@@ -85,8 +87,13 @@ export default function DrivingEducation() {
   const canResult = can(DRIVING.examResultEnter);
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try { setData(await fetchDrivingEducationOverview()); }
-    catch (error) { toast({ title: 'Eğitim ve sınav verileri alınamadı', description: error.message, variant: 'destructive' }); }
+    catch (loadError) {
+      const message = loadError.message || 'Eğitim ve sınav verileri alınamadı.';
+      setError(message);
+      toast({ title: 'Eğitim ve sınav verileri alınamadı', description: message, variant: 'destructive' });
+    }
     finally { setLoading(false); }
   }, [toast]);
   useEffect(() => { if (!permissionLoading) load(); }, [load, permissionLoading]);
@@ -230,7 +237,23 @@ export default function DrivingEducation() {
   }
 
   if (permissionLoading || loading) return <DrivingLoading />;
-  if (!data) return null;
+  if (!data) {
+    return (
+      <DrivingPage testId="driving-education-page">
+        <DrivingPageHeader
+          title="Teorik Eğitim ve Sınav Yönetimi"
+          description="Sınıftan yoklamaya, komisyondan tekrar sınavı ve ücrete kadar tek akış."
+          icon={GraduationCap}
+          onRefresh={load}
+        />
+        <ErrorBanner
+          title="Eğitim ve sınav verileri alınamadı"
+          message={error || 'Sunucuya ulaşılamadı.'}
+          onRetry={load}
+        />
+      </DrivingPage>
+    );
+  }
   return <DrivingPage testId="driving-education-page">
     <DrivingPageHeader
       title="Teorik Eğitim ve Sınav Yönetimi"

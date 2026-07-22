@@ -76,7 +76,7 @@ export const MODULE_LIBRARY = {
   'branch-comparison': { label: 'Şube Karşılaştırma', actions: {} },
   guidance: { label: 'Rehberlik', actions: { sessions: 'Görüşme kaydı', inventories: 'Envanter uygula', planner: 'Planlayıcı', library: 'Kütüphane' } },
   finance: { label: 'Finans Paneli', actions: {} },
-  'student-accounts': { label: 'Öğrenci Hesapları', actions: { 'account-view': 'Hesap görüntüle', 'account-edit': 'Hesap düzenle' } },
+  'student-accounts': { label: 'Cari Hesaplar', actions: { 'account-view': 'Hesap görüntüle', 'account-edit': 'Hesap düzenle' } },
   collections: { label: 'Tahsilatlar', actions: { collect: 'Tahsilat al', refund: 'İade yap', 'receipt-print': 'Makbuz yazdır' } },
   installments: { label: 'Taksitler', actions: { 'plan-create': 'Taksit planı oluştur', edit: 'Taksit düzenle', delete: 'Taksit sil' } },
   'late-payments': { label: 'Geciken Ödemeler', actions: { notify: 'Hatırlatma gönder' } },

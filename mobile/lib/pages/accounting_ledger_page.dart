@@ -64,7 +64,7 @@ class _AccountingLedgerPageState extends State<AccountingLedgerPage> {
     }).toList();
 
     return AccountingScaffold(
-      appBar: AppHeader(title: 'Öğrenci Cari Hesapları'.tr),
+      appBar: AppHeader(title: 'Cari Hesaplar'.tr),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(

@@ -80,7 +80,7 @@ import { getUserRoles, mergeMenuItemsForRoles } from "../../lib/permissions";
 // sayfaların tamamına "Finans" grubu altında erişebilsin diye paylaşılır.
 const FINANCE_MENU_ITEMS = [
   { path: "/finance/dashboard", icon: LayoutDashboard, label: "Muhasebe Özet", color: "#3b82f6" },
-  { path: "/finance/student-accounts", icon: Users, label: "Öğrenci Hesapları", color: "#8b5cf6" },
+  { path: "/finance/student-accounts", icon: Users, label: "Cari Hesaplar", color: "#8b5cf6" },
   { path: "/finance/collections", icon: CreditCard, label: "Tahsilatlar", color: "#10b981" },
   { path: "/finance/installments", icon: Receipt, label: "Taksitler", color: "#f59e0b" },
   { path: "/finance/invoices-receipts", icon: FileText, label: "Fatura & Makbuz", color: "#06b6d4" },
@@ -108,12 +108,13 @@ const DRIVING_MENU_ITEMS = [
   { path: "/driving/collection", icon: Wallet, label: "Ödeme Al", color: "#059669", special: true },
   { path: "/driving/operations", icon: Package, label: "Paketler", color: "#7c3aed", special: true },
   { path: "/driving/vehicles", icon: CarFront, label: "Araçlar", color: "#ea580c", special: true },
-  { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true },
+  { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon Dersleri", color: "#f59e0b", special: true },
   { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
   { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
   { path: "/driving/mebbis", icon: ClipboardCheck, label: "MEBBİS İş Merkezi", color: "#0284c7", special: true },
   { path: "/driving/mebbis/documents", icon: FileCheck2, label: "Evrak Onay Kuyruğu", color: "#7c3aed", special: true },
-  { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true },
+  // "Evrak & Bakım" artık "Araçlar" ekranının sekmesi (araçla ilgili her şey tek
+  // yerde). Rotası çalışmaya devam eder, menüde ayrı giriş yok.
   { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true },
   { path: "/driving/forms", icon: FileSignature, label: "Sözleşme & Formlar", color: "#9333ea", special: true },
   { path: "/driving/reports", icon: BarChart3, label: "Raporlar", color: "#0891b2", special: true },
@@ -488,7 +489,7 @@ export const menuConfigs = {
     {
       path: "/finance/student-accounts",
       icon: Users,
-      label: "Öğrenci Hesapları",
+      label: "Cari Hesaplar",
       color: "#8b5cf6",
     },
     {
@@ -1162,8 +1163,10 @@ const MODULE_MENU_REGISTRY = {
   "driving-operations": { default: { path: "/driving/operations", icon: Package, label: "Paketler", color: "#7c3aed", special: true } },
   // Takvim + Randevu + Dersler tek "Direksiyon" sayfasında (DrivingHub) birleşti;
   // rol-tabanlı menü yeniden-eklemesi ayrı girişler üretmesin diye tek anahtar.
-  "driving-scheduling": { default: { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true } },
-  "driving-fleet-compliance": { default: { path: "/driving/fleet-compliance", icon: ShieldCheck, label: "Evrak & Bakım", color: "#2563eb", special: true } },
+  "driving-scheduling": { default: { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon Dersleri", color: "#f59e0b", special: true } },
+  // Evrak & Bakım "Araçlar" ekranının sekmesi oldu; modül açıksa menüde ayrı bir
+  // giriş üretmek yerine Araçlar'a işaret eder (yol zaten menüde varsa eklenmez).
+  "driving-fleet-compliance": { default: { path: "/driving/vehicles", icon: CarFront, label: "Araçlar", color: "#ea580c", special: true } },
   "driving-assignments": { default: { path: "/driving/assignments", icon: UserRoundCheck, label: "Atama & Kurallar", color: "#0ea5e9", special: true } },
   dashboard: {
     default: { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "#3b82f6" },
@@ -1263,7 +1266,7 @@ const MODULE_MENU_REGISTRY = {
     parent: { path: "/p/chat", icon: MessageSquare, label: "Mesajlar", color: "#0ea5e9" },
   },
   finance: { default: { path: "/finance/dashboard", icon: Wallet, label: "Finans Paneli", color: "#16a34a" } },
-  "student-accounts": { default: { path: "/finance/student-accounts", icon: Users, label: "Öğrenci Hesapları", color: "#8b5cf6" } },
+  "student-accounts": { default: { path: "/finance/student-accounts", icon: Users, label: "Cari Hesaplar", color: "#8b5cf6" } },
   collections: { default: { path: "/finance/collections", icon: CreditCard, label: "Tahsilatlar", color: "#10b981" } },
   installments: { default: { path: "/finance/installments", icon: Receipt, label: "Taksitler", color: "#f59e0b" } },
   "late-payments": { default: { path: "/finance/late-payments", icon: AlertCircle, label: "Gecikenler", color: "#ef4444" } },
