@@ -735,6 +735,42 @@ public sealed class DrivingStudentsController(
                 payments,
             };
         }
+        else if (canSeeFinance)
+        {
+            // Sözleşmesi olmayan kursiyerden alınan açık tahsilatlar (makbuzlar) da
+            // geçmişte görünsün: ödeme öğrenciye StudentUserId ile atfedilir.
+            var rawPayments = await dbContext.FinancePayments.IgnoreQueryFilters().AsNoTracking()
+                .Where(x => x.StudentUserId == row.student.UserId && x.EnrollmentContractId == null && x.TenantId == dbContext.CurrentTenantId)
+                .OrderByDescending(x => x.PaidAtUtc)
+                .Select(x => new { x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc, x.BranchId, x.CreatedByUserId })
+                .ToListAsync(ct);
+            if (rawPayments.Count > 0)
+            {
+                var branchIds = rawPayments.Where(x => x.BranchId != null).Select(x => x.BranchId!.Value).Distinct().ToList();
+                var collectorIds = rawPayments.Where(x => x.CreatedByUserId != null).Select(x => x.CreatedByUserId!.Value).Distinct().ToList();
+                var branchNames = await dbContext.OrgUnits.AsNoTracking().Where(x => branchIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.Name, ct);
+                var collectorNames = await dbContext.Users.IgnoreQueryFilters().AsNoTracking().Where(x => collectorIds.Contains(x.Id)).ToDictionaryAsync(x => x.Id, x => x.FullName, ct);
+                var payments = rawPayments.Select(x => new
+                {
+                    x.Id, x.Amount, x.Method, x.ReceiptNo, x.Note, x.PaidAtUtc,
+                    branchId = x.BranchId,
+                    branchName = x.BranchId is Guid b && branchNames.TryGetValue(b, out var bn) ? bn : null,
+                    collectedByName = x.CreatedByUserId is Guid c && collectorNames.TryGetValue(c, out var cn) ? cn : null,
+                }).ToList();
+                finance = new
+                {
+                    GrossAmount = 0m,
+                    DiscountAmount = 0m,
+                    NetAmount = 0m,
+                    DownPayment = 0m,
+                    paidTotal = payments.Sum(x => x.Amount),
+                    remaining = 0m,
+                    overdueCount = 0,
+                    installments = Array.Empty<object>(),
+                    payments,
+                };
+            }
+        }
 
         // Kayıt provenance: hangi şubeden, kim kaydetti (finansta "kim, nereden" için).
         var registrationBranchName = row.student.BranchId is Guid regBranchId

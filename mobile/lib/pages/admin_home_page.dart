@@ -15,6 +15,7 @@ import 'admin_role_management_page.dart';
 import 'admin_students_page.dart';
 import 'admin_task_center_page.dart';
 import 'service_routes_page.dart';
+import 'admin_passive_records_page.dart';
 import 'support_page.dart';
 import 'attendance_overview_page.dart';
 import 'teacher_exam_results_page.dart';
@@ -275,6 +276,26 @@ class _AdminHomePageState extends State<AdminHomePage> {
                         context,
                         MaterialPageRoute(
                           builder: (_) => const ServiceRoutesPage(),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: _quickCard(
+                      context,
+                      title: 'Pasif Kayıtlar'.tr,
+                      subtitle: 'Pasif kişiler; buradan aktifleştir'.tr,
+                      color: const Color(0xFF64748B),
+                      icon: Icons.person_off_outlined,
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const AdminPassiveRecordsPage(),
                         ),
                       ),
                     ),

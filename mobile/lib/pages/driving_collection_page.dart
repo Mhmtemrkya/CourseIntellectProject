@@ -425,7 +425,6 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
 
   Widget _row(Map<String, dynamic> r) {
     final overdue = (r['overdueAmount'] as num?)?.toDouble() ?? 0;
-    final hasContract = r['hasContract'] == true;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
@@ -465,7 +464,7 @@ class _DrivingCollectionPageState extends State<DrivingCollectionPage> {
                 ],
               ),
             ),
-            if (_canCollect && hasContract)
+            if (_canCollect)
               FilledButton.icon(
                 onPressed: () => _collect(r),
                 icon: const Icon(Icons.payments_rounded, size: 16),

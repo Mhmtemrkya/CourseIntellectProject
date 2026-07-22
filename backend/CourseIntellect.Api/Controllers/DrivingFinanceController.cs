@@ -184,7 +184,8 @@ public sealed class DrivingFinanceController(
             .Join(dbContext.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (profile, student) => new { profile.EnrollmentContractId, student.FullName, student.UserId })
             .SingleOrDefaultAsync(ct);
         if (row is null) return NotFound(new { message = "Kursiyer bulunamadı." });
-        if (row.EnrollmentContractId is null) return BadRequest(new { message = "Kursiyerin sözleşmesi yok." });
+        // Sözleşmesi olmayan kursiyerden de doğrudan tahsilat (açık makbuz) alınabilir:
+        // ödeme öğrenciye atfedilir, makbuz kesilir. Sözleşme varsa taksitlere mahsup edilir.
 
         // Şube seçildiyse kuruma ait ve aktif olmalı — yanlış şubeye tahsilat yazılmasın.
         if (request.BranchId is Guid branchId)

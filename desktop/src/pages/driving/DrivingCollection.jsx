@@ -78,21 +78,29 @@ function CollectModal({ row, branches, onClose, onDone }) {
         <DialogHeader><DialogTitle>Ödeme Al — {row.fullName}</DialogTitle></DialogHeader>
         <div className="space-y-3">
           <div className="rounded-xl border bg-muted/40 p-3 text-sm">
-            <div className="flex justify-between"><span className="text-muted-foreground">Kalan borç</span><b>{money(row.remaining)}</b></div>
-            {row.overdueAmount > 0 && <div className="flex justify-between text-red-600"><span>Gecikmiş</span><b>{money(row.overdueAmount)}</b></div>}
+            {row.hasContract ? (
+              <>
+                <div className="flex justify-between"><span className="text-muted-foreground">Kalan borç</span><b>{money(row.remaining)}</b></div>
+                {row.overdueAmount > 0 && <div className="flex justify-between text-red-600"><span>Gecikmiş</span><b>{money(row.overdueAmount)}</b></div>}
+              </>
+            ) : (
+              <p className="text-muted-foreground">Bu kursiyerin finans sözleşmesi yok — <b className="text-foreground">açık tahsilat (makbuz)</b> alınıyor.</p>
+            )}
             <div className="flex justify-between"><span className="text-muted-foreground">Kayıt şubesi</span><b>{row.registrationBranchName || '—'}</b></div>
           </div>
-          <div>
-            <label className="text-xs font-bold text-muted-foreground">Taksit</label>
-            <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={installmentId} onChange={(e) => pickInstallment(e.target.value)}>
-              <option value="">Otomatik (en eski vadeden mahsup)</option>
-              {installments.map((i) => (
-                <option key={i.id} value={i.id}>
-                  {i.label || `${i.seqNo}. taksit`} • {new Date(i.dueDateUtc).toLocaleDateString('tr-TR')} • {money(i.remaining)}{i.overdue ? ' (gecikmiş)' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          {row.hasContract && (
+            <div>
+              <label className="text-xs font-bold text-muted-foreground">Taksit</label>
+              <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={installmentId} onChange={(e) => pickInstallment(e.target.value)}>
+                <option value="">Otomatik (en eski vadeden mahsup)</option>
+                {installments.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.label || `${i.seqNo}. taksit`} • {new Date(i.dueDateUtc).toLocaleDateString('tr-TR')} • {money(i.remaining)}{i.overdue ? ' (gecikmiş)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
           <div>
             <label className="text-xs font-bold text-muted-foreground">Tutar (₺)</label>
             <Input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} autoFocus />
@@ -244,7 +252,7 @@ export default function DrivingCollection() {
                   <p className="text-sm font-black">{money(r.remaining)}</p>
                   {r.overdueAmount > 0 && <p className="text-xs font-bold text-red-600">{money(r.overdueAmount)} gecikmiş</p>}
                 </div>
-                {canCollect && r.hasContract && (
+                {canCollect && (
                   <Button size="sm" className="bg-brand-primary text-white hover:bg-brand-primary/90" onClick={() => setCollectRow(r)}>
                     <Banknote className="mr-2 h-4 w-4" />Ödeme Al
                   </Button>

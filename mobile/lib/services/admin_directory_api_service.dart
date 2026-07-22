@@ -196,6 +196,13 @@ class AdminDirectoryApiService {
         .toList();
   }
 
+  // Pasif (deaktive) hesaplar — "Pasif Kayıtlar" ekranı.
+  Future<List<Map<String, dynamic>>> fetchPassiveAccounts() async {
+    final response = await _authorizedGet('/api/users/passive');
+    final list = jsonDecode(response.body) as List<dynamic>;
+    return list.map((item) => Map<String, dynamic>.from(item as Map)).toList();
+  }
+
   Future<List<String>> fetchClasses() async {
     final response = await _authorizedGet('/api/classes');
     final list = jsonDecode(response.body) as List<dynamic>;
