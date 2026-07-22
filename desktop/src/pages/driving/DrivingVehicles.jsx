@@ -1,14 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, CarFront, CheckCircle2, FileCheck2, Gauge, Search, ShieldCheck, UserRoundCheck, Wrench } from 'lucide-react';
+import { AlertTriangle, CarFront, CheckCircle2, FileCheck2, Gauge, Lock, Plus, Search, ShieldCheck, UserRoundCheck, Wrench, X } from 'lucide-react';
 import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
-  fetchDrivingAssignments, fetchDrivingVehicleDocuments, fetchDrivingVehicleServiceRecords, fetchDrivingVehicles,
+  createDrivingVehicle, fetchDrivingAssignments, fetchDrivingVehicleDocuments, fetchDrivingVehicleServiceRecords, fetchDrivingVehicles,
 } from '../../lib/api/modules';
+import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
+
+const initialVehicle = { plateNumber: '', brand: '', model: '', modelYear: new Date().getFullYear(), licenseClass: 'B', transmissionType: 1, currentKilometer: 0, inspectionExpiresAtUtc: '', insuranceExpiresAtUtc: '' };
+
+function Field({ label, children }) {
+  return <label className="space-y-1.5 text-sm font-semibold"><span>{label}</span>{children}</label>;
+}
+
+function TransmissionSelect({ value, onChange }) {
+  return (
+    <select className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm" value={value} onChange={(e) => onChange(Number(e.target.value))}>
+      <option value={1}>Manuel</option>
+      <option value={2}>Otomatik</option>
+    </select>
+  );
+}
 
 const RECORD_TYPE = { Maintenance: 'Bakım', Fault: 'Arıza', Damage: 'Hasar' };
 const PRIORITY = { Low: 'Düşük', Normal: 'Normal', High: 'Yüksek', Critical: 'Kritik' };
@@ -170,11 +187,17 @@ function VehicleDetailModal({ vehicle, onClose }) {
 
 export default function DrivingVehicles() {
   const { toast } = useToast();
+  const { can } = useDrivingPermissions();
   const [vehicles, setVehicles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [vehicleForm, setVehicleForm] = useState(initialVehicle);
+  const [saving, setSaving] = useState(false);
+
+  const canCreate = can(DRIVING.vehicleCreate);
 
   const load = useCallback(async (isRefresh = false) => {
     if (isRefresh) setRefreshing(true); else setLoading(true);
@@ -187,6 +210,28 @@ export default function DrivingVehicles() {
       setRefreshing(false);
     }
   }, [toast]);
+
+  const saveVehicle = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await createDrivingVehicle({
+        ...vehicleForm,
+        modelYear: Number(vehicleForm.modelYear),
+        currentKilometer: Number(vehicleForm.currentKilometer),
+        inspectionExpiresAtUtc: vehicleForm.inspectionExpiresAtUtc ? new Date(vehicleForm.inspectionExpiresAtUtc).toISOString() : null,
+        insuranceExpiresAtUtc: vehicleForm.insuranceExpiresAtUtc ? new Date(vehicleForm.insuranceExpiresAtUtc).toISOString() : null,
+      });
+      setVehicleForm(initialVehicle);
+      setShowAdd(false);
+      toast({ title: 'Araç kaydedildi' });
+      load(true);
+    } catch (err) {
+      toast({ title: 'Araç kaydedilemedi', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   useEffect(() => { load(); }, [load]);
 
@@ -204,8 +249,8 @@ export default function DrivingVehicles() {
   return (
     <DrivingPage testId="driving-vehicles-page">
       <DrivingPageHeader
-        title="Araçlarım"
-        description="Filodaki araçları görüntüleyin; bir araca tıklayarak bakım, evrak ve atama bilgilerini inceleyin."
+        title="Araçlar"
+        description="Filoya araç ekleyin, araçları görüntüleyin; bir araca tıklayarak bakım, evrak ve atama bilgilerini inceleyin."
         icon={CarFront}
         onRefresh={() => load(true)}
         refreshing={refreshing}
@@ -217,16 +262,39 @@ export default function DrivingVehicles() {
         <DrivingStatCard label="Bakımda" value={inMaintenance} caption="Kullanım dışı" icon={Wrench} tone={inMaintenance ? 'rose' : 'emerald'} />
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input className="pl-9" placeholder="Plaka veya marka ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="relative max-w-sm flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Plaka veya marka ara..." value={search} onChange={(e) => setSearch(e.target.value)} />
+        </div>
+        {canCreate && (
+          <Button className="bg-brand-primary text-white hover:bg-brand-primary/90" onClick={() => setShowAdd((v) => !v)}>
+            {showAdd ? <><X className="mr-2 h-4 w-4" />Vazgeç</> : <><Plus className="mr-2 h-4 w-4" />Araç Ekle</>}
+          </Button>
+        )}
       </div>
+
+      {showAdd && canCreate && (
+        <form onSubmit={saveVehicle} className="grid gap-3 rounded-2xl border border-foreground/10 bg-foreground/[0.035] p-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Field label="Plaka"><Input required placeholder="34 ABC 123" value={vehicleForm.plateNumber} onChange={(e) => setVehicleForm({ ...vehicleForm, plateNumber: e.target.value.toUpperCase() })} /></Field>
+          <Field label="Marka"><Input required value={vehicleForm.brand} onChange={(e) => setVehicleForm({ ...vehicleForm, brand: e.target.value })} /></Field>
+          <Field label="Model"><Input required value={vehicleForm.model} onChange={(e) => setVehicleForm({ ...vehicleForm, model: e.target.value })} /></Field>
+          <Field label="Model yılı"><Input required type="number" value={vehicleForm.modelYear} onChange={(e) => setVehicleForm({ ...vehicleForm, modelYear: e.target.value })} /></Field>
+          <Field label="Ehliyet sınıfı"><Input required value={vehicleForm.licenseClass} onChange={(e) => setVehicleForm({ ...vehicleForm, licenseClass: e.target.value.toUpperCase() })} /></Field>
+          <Field label="Vites"><TransmissionSelect value={vehicleForm.transmissionType} onChange={(v) => setVehicleForm({ ...vehicleForm, transmissionType: v })} /></Field>
+          <Field label="Muayene bitiş"><Input required type="date" value={vehicleForm.inspectionExpiresAtUtc} onChange={(e) => setVehicleForm({ ...vehicleForm, inspectionExpiresAtUtc: e.target.value })} /></Field>
+          <Field label="Sigorta bitiş"><Input required type="date" value={vehicleForm.insuranceExpiresAtUtc} onChange={(e) => setVehicleForm({ ...vehicleForm, insuranceExpiresAtUtc: e.target.value })} /></Field>
+          <Button disabled={saving} className="bg-brand-primary text-white hover:bg-brand-primary/90 sm:col-span-2 lg:col-span-1 lg:self-end">
+            <Plus className="mr-2 h-4 w-4" />{saving ? 'Kaydediliyor…' : 'Araç Ekle'}
+          </Button>
+        </form>
+      )}
 
       {filtered.length === 0 ? (
         <DrivingNotice
           icon={CarFront}
           title={search ? 'Eşleşen araç yok.' : 'Filoda araç yok.'}
-          message={search ? 'Aramanızı değiştirin.' : 'Araçları "Paket & Filo" ekranından ekleyebilirsiniz.'}
+          message={search ? 'Aramanızı değiştirin.' : (canCreate ? 'Yukarıdaki “Araç Ekle” ile filoya araç ekleyin.' : 'Filoya araç eklemek filo sorumlusunun yetkisindedir.')}
         />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">

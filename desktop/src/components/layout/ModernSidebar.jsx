@@ -106,8 +106,8 @@ const DRIVING_MENU_ITEMS = [
   { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true },
   { path: "/driving/students", icon: Users, label: "Kursiyerler", color: "#8b5cf6", special: true },
   { path: "/driving/collection", icon: Wallet, label: "Ödeme Al", color: "#059669", special: true },
-  { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true },
-  { path: "/driving/vehicles", icon: CarFront, label: "Araçlarım", color: "#ea580c", special: true },
+  { path: "/driving/operations", icon: Package, label: "Paketler", color: "#7c3aed", special: true },
+  { path: "/driving/vehicles", icon: CarFront, label: "Araçlar", color: "#ea580c", special: true },
   { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true },
   { path: "/driving/education", icon: GraduationCap, label: "Teorik Eğitim & Sınav", color: "#7c3aed", special: true },
   { path: "/driving/graduation", icon: Award, label: "Mezuniyet & Sertifika", color: "#16a34a", special: true },
@@ -1159,7 +1159,7 @@ const ROLE_MENU_GROUPS = {
 const MODULE_MENU_REGISTRY = {
   "driving-school": { default: { path: "/driving/dashboard", icon: CarFront, label: "Sürücü Kursu", color: "#f97316", special: true } },
   "driving-registration": { default: { path: "/driving/students/new", icon: UserPlus, label: "Yeni Kursiyer", color: "#8b5cf6", special: true } },
-  "driving-operations": { default: { path: "/driving/operations", icon: CarFront, label: "Paket & Filo", color: "#ea580c", special: true } },
+  "driving-operations": { default: { path: "/driving/operations", icon: Package, label: "Paketler", color: "#7c3aed", special: true } },
   // Takvim + Randevu + Dersler tek "Direksiyon" sayfasında (DrivingHub) birleşti;
   // rol-tabanlı menü yeniden-eklemesi ayrı girişler üretmesin diye tek anahtar.
   "driving-scheduling": { default: { path: "/driving/hub", icon: CalendarClock, label: "Direksiyon", color: "#f59e0b", special: true } },
