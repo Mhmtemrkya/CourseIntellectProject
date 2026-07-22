@@ -512,6 +512,7 @@ public sealed class DrivingReportsController(
 
         var rows = new List<IReadOnlyList<string>>();
         var graduatedCount = 0;
+        var notSatExamCount = 0;
         var now = DateTime.UtcNow;
 
         foreach (var profile in profiles.OrderBy(x => x.FullName, StringComparer.CurrentCulture))
@@ -544,6 +545,15 @@ public sealed class DrivingReportsController(
                     || profile.Status == DrivingStudentStatus.Graduated);
             if (isGraduated) graduatedCount++;
 
+            // "Sınava girmemiş" = hiçbir sınava FİİLEN girmemiş. Yalnızca sonucu
+            // olan denemeler (geçti/kaldı) sınava girmiş sayılır; Planned henüz
+            // girilmemiş bir randevu, Cancelled ise hiç yapılmamış demektir —
+            // ikisini de girmiş saymak listeyi olduğundan küçük gösterirdi.
+            var satAnyExam = theory.Concat(practice).Any(x =>
+                x.Status == DrivingExamCandidateStatus.Passed
+                || x.Status == DrivingExamCandidateStatus.Failed);
+            if (!satAnyExam) notSatExamCount++;
+
             rows.Add([
                 profile.FullName,
                 profile.LicenseClass,
@@ -572,6 +582,7 @@ public sealed class DrivingReportsController(
             [
                 ("Kursiyer", rows.Count.ToString(Tr)),
                 ("Mezun", graduatedCount.ToString(Tr)),
+                ("Sınava girmemiş", notSatExamCount.ToString(Tr)),
             ],
             ct);
     }

@@ -875,7 +875,7 @@ class _VehicleDetailSheetState extends State<_VehicleDetailSheet> {
                     trailing: DrivingStatusPill(
                       label: open ? 'Açık' : 'Kapandı',
                       tone: open ? DrivingTone.warning : DrivingTone.success,
-                    ),
+                    ), 
                   );
                 }),
 
