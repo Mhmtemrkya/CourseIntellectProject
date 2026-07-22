@@ -45,12 +45,30 @@ public sealed class DrivingLeadsController(
         return Ok(rows);
     }
 
+    [HttpGet("package-options")]
+    [RequireDrivingPermission(DrivingPermissions.LeadManage)]
+    public async Task<IActionResult> GetPackageOptions(CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var packages = await dbContext.DrivingPackages.AsNoTracking()
+            .Where(x => x.IsActive)
+            .OrderBy(x => x.LicenseClass)
+            .ThenBy(x => x.Name)
+            .Select(x => new { x.Id, x.Name, x.LicenseClass, x.TransmissionType })
+            .ToListAsync(ct);
+        return Ok(packages);
+    }
+
     [HttpPost]
     [RequireDrivingPermission(DrivingPermissions.LeadManage)]
     public async Task<IActionResult> Create([FromBody] SaveDrivingLeadRequest request, CancellationToken ct)
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
         if (Validate(request) is { } error) return BadRequest(new { message = error });
+
+        var package = await dbContext.DrivingPackages.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == request.PackageId && x.IsActive, ct);
+        if (package is null) return BadRequest(new { message = "Seçilen aktif eğitim paketi bulunamadı." });
 
         var phone = NormalizePhone(request.Phone);
         // Aynı telefonla açık (dönüşmemiş/kaybedilmemiş) lead varsa mükerrer açılmaz.
@@ -68,7 +86,7 @@ public sealed class DrivingLeadsController(
         {
             FullName = request.FullName.Trim(),
             Phone = phone,
-            LicenseClass = request.LicenseClass?.Trim().ToUpperInvariant() ?? "B",
+            LicenseClass = package.LicenseClass,
             Source = request.Source?.Trim() ?? string.Empty,
             Note = request.Note?.Trim() ?? string.Empty,
             CreatedByUserId = CurrentUserId(),
@@ -76,9 +94,9 @@ public sealed class DrivingLeadsController(
         dbContext.DrivingLeads.Add(entity);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Aday adayı eklendi", AuditCategory, nameof(DrivingLead), entity.Id.ToString(),
-            $"{entity.FullName} ({entity.LicenseClass}) — kaynak: {(entity.Source.Length == 0 ? "—" : entity.Source)}.",
-            null, new { entity.FullName, entity.Phone, entity.LicenseClass, entity.Source }, ct);
-        return Ok(new { entity.Id, entity.FullName, entity.Phone, entity.LicenseClass, entity.Source, entity.Note, entity.Status, entity.CreatedAtUtc });
+            $"{entity.FullName} — {package.Name} ({entity.LicenseClass}) — kaynak: {(entity.Source.Length == 0 ? "—" : entity.Source)}.",
+            null, new { entity.FullName, entity.Phone, packageId = package.Id, packageName = package.Name, entity.LicenseClass, entity.Source }, ct);
+        return Ok(new { entity.Id, entity.FullName, entity.Phone, packageId = package.Id, packageName = package.Name, entity.LicenseClass, entity.Source, entity.Note, entity.Status, entity.CreatedAtUtc });
     }
 
     [HttpPut("{id:guid}")]
@@ -132,6 +150,7 @@ public sealed class DrivingLeadsController(
     private static string? Validate(SaveDrivingLeadRequest request)
     {
         if ((request.FullName?.Trim().Length ?? 0) is < 3 or > 150) return "Ad soyad 3-150 karakter olmalıdır.";
+        if (request.PackageId is null || request.PackageId == Guid.Empty) return "Eğitim paketi seçilmelidir.";
         if ((request.Source?.Length ?? 0) > 80) return "Kaynak en fazla 80 karakter olabilir.";
         if ((request.Note?.Length ?? 0) > 1000) return "Not en fazla 1000 karakter olabilir.";
         return null;
@@ -158,6 +177,6 @@ public sealed class DrivingLeadsController(
     }
 }
 
-public sealed record SaveDrivingLeadRequest(string FullName, string? Phone, string? LicenseClass, string? Source, string? Note);
+public sealed record SaveDrivingLeadRequest(string FullName, string? Phone, Guid? PackageId, string? Source, string? Note);
 public sealed record UpdateDrivingLeadRequest(string? Status, string? Note);
 public sealed record ConvertDrivingLeadRequest(Guid? StudentDrivingProfileId);

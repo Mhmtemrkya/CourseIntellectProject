@@ -123,7 +123,7 @@ public sealed class DrivingReportsController(
         var studentIds = students.Select(x => x.Id).ToList();
         var documents = await db.StudentDrivingDocuments.AsNoTracking()
             .Where(x => studentIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
-            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status, x.ExpiresAtUtc })
+            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status })
             .ToListAsync(ct);
         var documentsByStudent = documents.ToLookup(x => x.StudentDrivingProfileId);
 
@@ -132,7 +132,7 @@ public sealed class DrivingReportsController(
         {
             var required = DrivingStudentRules.RequiredDocumentsFor(student.BirthDate, now);
             var satisfied = documentsByStudent[student.Id]
-                .Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now))
+                .Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status))
                 .Select(x => x.DocumentType)
                 .ToHashSet();
             var missing = DrivingStudentRules.MissingDocuments(required, satisfied);
@@ -491,7 +491,7 @@ public sealed class DrivingReportsController(
 
         var documents = await db.StudentDrivingDocuments.AsNoTracking()
             .Where(x => x.IsCurrent)
-            .Select(x => new { x.StudentDrivingProfileId, x.Status, x.ExpiresAtUtc })
+            .Select(x => new { x.StudentDrivingProfileId, x.Status })
             .ToListAsync(ct);
 
         var attendance = await db.DrivingTheoryAttendances.AsNoTracking()
@@ -525,7 +525,7 @@ public sealed class DrivingReportsController(
             var ownDocuments = documents.Where(x => x.StudentDrivingProfileId == profile.Id).ToList();
             // Süresi dolan onaylı belge dosyayı eksiğe düşürür — naif "Approved" sayımı
             // kursiyeri hazır gösterirdi. Kural tek yerde: DrivingStudentRules.
-            var approvedDocuments = ownDocuments.Count(x => DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now));
+            var approvedDocuments = ownDocuments.Count(x => DrivingStudentRules.CountsAsSatisfied(x.Status));
 
             var ownAttendance = attendance.Where(x => x.StudentDrivingProfileId == profile.Id).ToList();
             var present = ownAttendance.Count(x => x.Status == DrivingTheoryAttendanceStatus.Present

@@ -27,13 +27,6 @@ class _DrivingStudentDocumentsPageState
   String? _error;
   Map<String, dynamic> _file = const {};
 
-  /// Son geçerlilik tarihi zorunlu olan belgeler (backend de aynısını zorlar).
-  static const _expiringTypes = {
-    'HealthReport',
-    'CriminalRecord',
-    'ExistingLicense',
-  };
-
   @override
   void initState() {
     super.initState();
@@ -60,14 +53,13 @@ class _DrivingStudentDocumentsPageState
           .map((e) => Map<String, dynamic>.from(e as Map))
           .toList();
 
-  /// Eksik → reddedilen → süresi dolmuş → onay bekleyen → onaylı sırasıyla.
+  /// Eksik → reddedilen → onay bekleyen → onaylı sırasıyla.
   int _priority(String status) => switch (status) {
     'Missing' => 0,
     'Rejected' => 1,
     'ReuploadRequested' => 1,
-    'Expired' => 2,
-    'PendingApproval' => 3,
-    _ => 4,
+    'PendingApproval' => 2,
+    _ => 3,
   };
 
   (Color, IconData, String) _tone(String status) => switch (status) {
@@ -83,24 +75,11 @@ class _DrivingStudentDocumentsPageState
       Icons.replay_circle_filled_rounded,
       'Yeniden yükleme istendi',
     ),
-    'Expired' => (Colors.orange, Icons.event_busy_rounded, 'Süresi doldu'),
     _ => (Colors.red, Icons.upload_file_rounded, 'Eksik'),
   };
 
   Future<void> _upload(Map<String, dynamic> item) async {
     final type = '${item['documentType']}';
-    DateTime? expires;
-
-    if (_expiringTypes.contains(type)) {
-      expires = await showDatePicker(
-        context: context,
-        firstDate: DateTime.now(),
-        lastDate: DateTime.now().add(const Duration(days: 365 * 10)),
-        initialDate: DateTime.now().add(const Duration(days: 180)),
-        helpText: '${item['label']} son geçerlilik tarihi',
-      );
-      if (expires == null) return; // tarih girilmeden bu belge yüklenemez
-    }
 
     final picked = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -120,7 +99,6 @@ class _DrivingStudentDocumentsPageState
         'documentType': type,
         'fileUrl': url,
         'fileName': file.name,
-        'expiresAtUtc': expires?.toUtc().toIso8601String(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -217,9 +195,8 @@ class _DrivingStudentDocumentsPageState
                   ...items.map((item) {
                     final status = '${item['status']}';
                     final (color, icon, label) = _tone(status);
-                    final canUpload = status != 'Approved';
+                    const canUpload = true;
                     final reason = '${item['rejectionReason'] ?? ''}';
-                    final expiresAt = item['expiresAtUtc'];
 
                     return Card(
                       margin: const EdgeInsets.only(bottom: 10),
@@ -264,14 +241,6 @@ class _DrivingStudentDocumentsPageState
                                   ),
                               ],
                             ),
-                            if (expiresAt != null)
-                              Padding(
-                                padding: const EdgeInsets.only(top: 6),
-                                child: Text(
-                                  'Geçerlilik: ${DateTime.parse('$expiresAt').toLocal().toString().split(' ').first}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                              ),
                             if (reason.isNotEmpty)
                               Padding(
                                 padding: const EdgeInsets.only(top: 8),

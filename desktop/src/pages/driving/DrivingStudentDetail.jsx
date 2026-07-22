@@ -22,6 +22,7 @@ import {
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { assetUrl } from '../../lib/assetUrl';
+import { createTypedDocumentUrl } from '../../lib/fileMime';
 import { FileButton } from '../../components/ui/file-button';
 import {
   DRIVING_EVALUATION_CATEGORIES, DRIVING_EVALUATION_CRITERIA, downloadDrivingEvaluationCsv,
@@ -386,7 +387,7 @@ export default function DrivingStudentDetail() {
     }
   }
 
-  async function uploadDocument(documentType, file, expiresAtUtc) {
+  async function uploadDocument(documentType, file) {
     if (!file) return;
     setBusy(true);
     try {
@@ -397,7 +398,6 @@ export default function DrivingStudentDetail() {
         documentType,
         fileUrl: upload.fileUrl,
         fileName: file.name,
-        expiresAtUtc: expiresAtUtc || null,
       });
       toast({ title: 'Belge yüklendi, onay bekliyor' });
       await load();
@@ -413,12 +413,8 @@ export default function DrivingStudentDetail() {
     setDocPreview({ item, url: null, kind: null, loading: true });
     try {
       const blob = await downloadDrivingStudentDocument(item.id);
-      const url = URL.createObjectURL(blob);
-      const type = blob.type || '';
-      const name = (item.fileName || '').toLowerCase();
-      const kind = type.startsWith('image/') || /\.(png|jpe?g|webp|gif|bmp)$/.test(name) ? 'image'
-        : type === 'application/pdf' || name.endsWith('.pdf') ? 'pdf'
-        : 'other';
+      // MIME'i dosya adından zorla: Tauri blob'u türsüz gelirse iframe/img boş çıkar.
+      const { url, kind } = await createTypedDocumentUrl(blob, item.fileName);
       setDocPreview({ item, url, kind, loading: false });
     } catch (error) {
       setDocPreview(null);
@@ -601,8 +597,6 @@ export default function DrivingStudentDetail() {
                 <Row label="Geçmek istediği sınıf" value={overview.targetLicenseClass || overview.licenseClass} />
                 <Row label="Önceki belge no" value={overview.existingLicenseNumber} />
                 <Row label="Önceki sınıf(lar)" value={overview.existingLicenseClasses} />
-                <Row label="Veriliş" value={dateOnly(overview.licenseIssueDate)} />
-                <Row label="Son geçerlilik" value={dateOnly(overview.licenseExpiryDate)} />
                 <Row label="Veren makam" value={overview.licenseIssuePlace} />
               </CardContent>
             </Card>
@@ -925,7 +919,6 @@ export default function DrivingStudentDetail() {
                         <p className="text-xs text-muted-foreground">
                           {item.uploadedAtUtc ? `Yüklendi: ${dateTime(item.uploadedAtUtc)}` : 'Henüz yüklenmedi'}
                           {item.fileName ? ` • ${item.fileName}` : ''}
-                          {item.expiresAtUtc ? ` • Geçerlilik: ${dateOnly(item.expiresAtUtc)}` : ''}
                         </p>
                         {item.rejectionReason && <p className="mt-1 text-xs text-red-600">Ret nedeni: {item.rejectionReason}</p>}
                       </div>
@@ -958,7 +951,7 @@ export default function DrivingStudentDetail() {
                       </div>
                     )}
 
-                    {canUpload && item.status !== 'Approved' && (
+                    {canUpload && (
                       <div className="mt-3 flex flex-wrap items-center gap-2">
                         <FileButton
                           className="w-72"
@@ -966,7 +959,7 @@ export default function DrivingStudentDetail() {
                           disabled={busy}
                           uploaded={Boolean(item.fileUrl)}
                           uploadedName={item.fileName}
-                          onChange={(e) => uploadDocument(item.documentType, e.target.files?.[0], item.expiresAtUtc)}
+                          onChange={(e) => uploadDocument(item.documentType, e.target.files?.[0])}
                         />
                         <span className="text-xs text-muted-foreground">
                           <Upload className="mr-1 inline h-3 w-3" />

@@ -455,7 +455,7 @@ public sealed class DrivingGraduationController(
         var settings = await ResolveSettingsAsync(ct); var now = DateTime.UtcNow;
         var required = DrivingStudentRules.RequiredDocumentsFor(student.BirthDate, now);
         var documents = await db.StudentDrivingDocuments.AsNoTracking().Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent).ToListAsync(ct);
-        var satisfied = documents.Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now)).Select(x => x.DocumentType).ToHashSet();
+        var satisfied = documents.Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status)).Select(x => x.DocumentType).ToHashSet();
         var missing = DrivingStudentRules.MissingDocuments(required, satisfied);
         var attendance = await db.DrivingTheoryAttendances.AsNoTracking().Where(x => x.StudentDrivingProfileId == profileId)
             .Join(db.DrivingTheorySessions.AsNoTracking().Where(x => x.Status != DrivingTheorySessionStatus.Cancelled), a => a.TheorySessionId, s => s.Id,

@@ -202,7 +202,7 @@ public sealed class DrivingSchoolController(
             {
                 var required = DrivingStudentRules.RequiredDocumentsFor(profile.BirthDate, now);
                 return required.Any(type => !documentsByProfile[profile.Id].Any(document =>
-                    document.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(document.Status, document.ExpiresAtUtc, now)));
+                    document.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(document.Status)));
             });
 
             var entryPending = await dbContext.DrivingMebbisWorkItems.AsNoTracking()
@@ -591,10 +591,9 @@ public sealed class DrivingSchoolController(
             .ToListAsync(ct);
 
         var profileIds = profiles.Select(x => x.Profile.Id).ToList();
-        var now = DateTime.UtcNow;
         var docs = await dbContext.StudentDrivingDocuments.AsNoTracking()
             .Where(x => profileIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
-            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status, x.ExpiresAtUtc, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc })
+            .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status })
             .ToListAsync(ct);
         var docsByProfile = docs.ToLookup(x => x.StudentDrivingProfileId);
 
@@ -602,9 +601,7 @@ public sealed class DrivingSchoolController(
         {
             var profileDocs = docsByProfile[x.Profile.Id].ToList();
             bool Approved(StudentDocumentType type) => profileDocs.Any(d =>
-                d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status, d.ExpiresAtUtc, now));
-            var health = profileDocs.FirstOrDefault(d => d.DocumentType == StudentDocumentType.HealthReport);
-
+                d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status));
             var identityNumber = x.Profile.IdentityKind == IdentityKind.TurkishId
                 ? (string.IsNullOrWhiteSpace(x.Profile.IdentityNumber) ? x.TcNo : x.Profile.IdentityNumber)
                 : x.Profile.IdentityNumber;
@@ -620,9 +617,6 @@ public sealed class DrivingSchoolController(
                 Phone: x.Profile.Phone,
                 HasPhoto: Approved(StudentDocumentType.BiometricPhoto) || !string.IsNullOrWhiteSpace(x.Profile.PhotoUrl),
                 HealthReportApproved: Approved(StudentDocumentType.HealthReport),
-                // Yeni kayıtta sağlık raporu dosyasının bulunması yeterlidir;
-                // rapor no, kurum ve tarih alanları kullanıcıdan istenmez.
-                HealthReportDetailsComplete: health is not null,
                 DiplomaApproved: Approved(StudentDocumentType.Diploma),
                 CriminalRecordApproved: Approved(StudentDocumentType.CriminalRecord)));
 
@@ -647,9 +641,6 @@ public sealed class DrivingSchoolController(
                 identitySerialNo = x.Profile.IdentitySerialNo,
                 phone = x.Profile.Phone,
                 bloodType = x.Profile.BloodType,
-                healthReportNumber = health?.DocumentNumber,
-                healthReportIssuedBy = health?.IssuedBy,
-                healthReportIssuedAt = health?.IssuedAtUtc,
                 profileId = x.Profile.Id,
                 mebbisEnteredAtUtc = x.Profile.MebbisEnteredAtUtc,
                 missing,
@@ -664,8 +655,7 @@ public sealed class DrivingSchoolController(
             csv.AppendLine(string.Join(';', new[]
             {
                 "Kursiyer No", "TC Kimlik No", "Adı", "Soyadı", "Baba Adı", "Anne Adı", "Doğum Yeri", "Doğum Tarihi",
-                "Öğrenim Durumu", "Sertifika Sınıfı", "Kimlik Seri No", "Telefon", "Kan Grubu",
-                "Sağlık Raporu No", "Sağlık Raporu Tarihi", "Sağlık Raporunu Veren Kurum", "MEBBİS Eksikleri",
+                "Öğrenim Durumu", "Sertifika Sınıfı", "Kimlik Seri No", "Telefon", "Kan Grubu", "MEBBİS Eksikleri",
             }.Select(Cell)));
             foreach (var row in rows)
             {
@@ -673,9 +663,7 @@ public sealed class DrivingSchoolController(
                 {
                     row.studentNumber, row.tcNo, row.firstName, row.lastName, row.fatherName, row.motherName,
                     row.birthPlace, row.birthDate, row.educationLevel, row.licenseClass, row.identitySerialNo,
-                    row.phone, row.bloodType, row.healthReportNumber,
-                    row.healthReportIssuedAt?.ToString("dd.MM.yyyy"), row.healthReportIssuedBy,
-                    string.Join(", ", row.missing),
+                    row.phone, row.bloodType, string.Join(", ", row.missing),
                 }.Select(Cell)));
             }
             var bytes = Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray();
@@ -683,6 +671,7 @@ public sealed class DrivingSchoolController(
             return File(bytes, "text/csv; charset=utf-8", $"mebbis-{safeName}.csv");
         }
 
+        var now = DateTime.UtcNow;
         return Ok(new
         {
             group = new

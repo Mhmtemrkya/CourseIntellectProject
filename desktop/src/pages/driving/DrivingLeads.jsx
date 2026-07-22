@@ -5,7 +5,7 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { useToast } from '../../hooks/use-toast';
-import { createDrivingLead, fetchDrivingLeads, updateDrivingLead } from '../../lib/api/modules';
+import { createDrivingLead, fetchDrivingLeadPackageOptions, fetchDrivingLeads, updateDrivingLead } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 
@@ -24,22 +24,34 @@ export default function DrivingLeads() {
   const canManage = can(DRIVING.leadManage);
   const canConvert = can(DRIVING.leadConvert);
   const [leads, setLeads] = useState([]);
+  const [packages, setPackages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [form, setForm] = useState({ fullName: '', phone: '', licenseClass: 'B', source: '', note: '' });
+  const [form, setForm] = useState({ fullName: '', phone: '', packageId: '', source: '', note: '' });
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      setLeads(await fetchDrivingLeads(filter === 'all' ? {} : { status: filter }) || []);
+      const [leadRows, packageRows] = await Promise.all([
+        fetchDrivingLeads(filter === 'all' ? {} : { status: filter }),
+        canManage ? fetchDrivingLeadPackageOptions() : Promise.resolve([]),
+      ]);
+      setLeads(leadRows || []);
+      setPackages(packageRows || []);
+      setForm((current) => ({
+        ...current,
+        packageId: (packageRows || []).some((item) => item.id === current.packageId)
+          ? current.packageId
+          : '',
+      }));
     } catch (error) {
       toast({ title: 'Aday adayları alınamadı', description: error.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
-  }, [filter, toast]);
+  }, [canManage, filter, toast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -55,7 +67,7 @@ export default function DrivingLeads() {
     try {
       await createDrivingLead(form);
       toast({ title: 'Aday adayı eklendi' });
-      setForm({ fullName: '', phone: '', licenseClass: 'B', source: '', note: '' });
+      setForm({ fullName: '', phone: '', packageId: '', source: '', note: '' });
       await load();
     } catch (error) {
       toast({ title: 'Eklenemedi', description: error.message, variant: 'destructive' });
@@ -102,10 +114,26 @@ export default function DrivingLeads() {
         <form onSubmit={submit} className="grid gap-3 rounded-2xl border p-4 sm:grid-cols-2 lg:grid-cols-6">
           <Input required className="lg:col-span-2" placeholder="Ad soyad" value={form.fullName} onChange={(e) => setForm({ ...form, fullName: e.target.value })} />
           <Input placeholder="Telefon" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
-          <Input placeholder="Sınıf (B)" maxLength={5} value={form.licenseClass} onChange={(e) => setForm({ ...form, licenseClass: e.target.value })} />
+          <select
+            required
+            aria-label="Eğitim paketi"
+            className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm disabled:cursor-not-allowed disabled:opacity-60"
+            value={form.packageId}
+            disabled={packages.length === 0}
+            onChange={(e) => setForm({ ...form, packageId: e.target.value })}
+          >
+            <option value="">{packages.length === 0 ? 'Önce paket tanımlayın' : 'Paket seçin'}</option>
+            {packages.map((item) => (
+              <option key={item.id} value={item.id}>{item.name} • {item.licenseClass} • {Number(item.transmissionType) === 1 ? 'Manuel' : 'Otomatik'}</option>
+            ))}
+          </select>
           <Input placeholder="Kaynak (tabela, sosyal medya…)" value={form.source} onChange={(e) => setForm({ ...form, source: e.target.value })} />
-          <Button disabled={saving}><Plus className="mr-2 h-4 w-4" />Ekle</Button>
+          <Button disabled={saving || packages.length === 0}><Plus className="mr-2 h-4 w-4" />Ekle</Button>
         </form>
+      )}
+
+      {canManage && packages.length === 0 && !loading && (
+        <DrivingNotice icon={Users} title="Aktif paket bulunamadı." message="Aday adayı eklemek için önce Paketler sayfasından eğitim paketi tanımlayın." />
       )}
 
       <div className="flex flex-wrap items-center gap-2">

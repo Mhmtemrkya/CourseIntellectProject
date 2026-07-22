@@ -43,8 +43,7 @@ public sealed class DrivingTermAlertService(CourseIntellectDbContext db) : IDriv
             {
                 var currentDocs = documentsByProfile[member.Profile.Id].ToList();
                 bool Approved(StudentDocumentType type) => currentDocs.Any(x => x.DocumentType == type
-                    && DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now));
-                var health = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.HealthReport);
+                    && DrivingStudentRules.CountsAsSatisfied(x.Status));
                 if (!Approved(StudentDocumentType.HealthReport)) healthPending++;
                 var identity = member.Profile.IdentityKind == IdentityKind.TurkishId && string.IsNullOrWhiteSpace(member.Profile.IdentityNumber)
                     ? member.TcNo : member.Profile.IdentityNumber;
@@ -53,8 +52,7 @@ public sealed class DrivingTermAlertService(CourseIntellectDbContext db) : IDriv
                     member.Profile.FatherName, member.Profile.MotherName, member.Profile.BirthPlace, member.Profile.EducationLevel,
                     member.Profile.IdentitySerialNo, member.Profile.Phone,
                     Approved(StudentDocumentType.BiometricPhoto) || !string.IsNullOrWhiteSpace(member.Profile.PhotoUrl),
-                    Approved(StudentDocumentType.HealthReport), health is not null && !string.IsNullOrWhiteSpace(health.DocumentNumber)
-                        && !string.IsNullOrWhiteSpace(health.IssuedBy) && health.IssuedAtUtc.HasValue,
+                    Approved(StudentDocumentType.HealthReport),
                     Approved(StudentDocumentType.Diploma), Approved(StudentDocumentType.CriminalRecord)));
                 var requiredMissing = DrivingStudentRules.RequiredDocumentsFor(member.BirthDate, now).Any(x => !Approved(x));
                 var isReady = missingFields.Count == 0 && !requiredMissing;

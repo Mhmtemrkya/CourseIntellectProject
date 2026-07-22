@@ -215,10 +215,6 @@ public sealed class DrivingStudentsController(
                 Status = StudentDocumentStatus.PendingApproval,
                 FileUrl = document.FileUrl.Trim(),
                 FileName = document.FileName?.Trim() ?? string.Empty,
-                DocumentNumber = document.DocumentNumber?.Trim() ?? string.Empty,
-                IssuedBy = document.IssuedBy?.Trim() ?? string.Empty,
-                IssuedAtUtc = document.IssuedAtUtc,
-                ExpiresAtUtc = document.ExpiresAtUtc,
                 UploadedByUserId = actorId,
             });
         }
@@ -432,7 +428,7 @@ public sealed class DrivingStudentsController(
 
     /// <summary>
     /// Bir adayın kurs dosyası: zorunlu her belge türü için tek satır döner —
-    /// yüklenmemişse <c>Missing</c>, süresi geçmişse <c>Expired</c>.
+    /// yüklenmemişse <c>Missing</c> durumundadır.
     /// </summary>
     [HttpGet("students/{profileId:guid}/documents")]
     [RequireDrivingPermission(DrivingPermissions.StudentDocumentView)]
@@ -468,7 +464,6 @@ public sealed class DrivingStudentsController(
             parsedType = value;
         }
 
-        var now = DateTime.UtcNow;
         var relevantTypes = new[] { StudentDocumentType.HealthReport, StudentDocumentType.Diploma, StudentDocumentType.CriminalRecord,
             StudentDocumentType.BiometricPhoto, StudentDocumentType.Identity, StudentDocumentType.ExistingLicense, StudentDocumentType.ForeignStudentDocument };
         var query = dbContext.StudentDrivingDocuments.AsNoTracking()
@@ -476,10 +471,9 @@ public sealed class DrivingStudentsController(
             .Join(dbContext.StudentDrivingProfiles.AsNoTracking(), d => d.StudentDrivingProfileId, p => p.Id, (d, p) => new { d, p })
             .Join(dbContext.Students.AsNoTracking(), x => x.p.StudentId, s => s.Id, (x, s) => new { x.d, x.p, s });
         if (parsedType.HasValue) query = query.Where(x => x.d.DocumentType == parsedType.Value);
-        if (parsedStatus == StudentDocumentStatus.Expired) query = query.Where(x => x.d.ExpiresAtUtc <= now);
-        else if (parsedStatus.HasValue) query = query.Where(x => x.d.Status == parsedStatus.Value && (x.d.ExpiresAtUtc == null || x.d.ExpiresAtUtc > now));
+        if (parsedStatus.HasValue) query = query.Where(x => x.d.Status == parsedStatus.Value);
         else query = query.Where(x => x.d.Status == StudentDocumentStatus.PendingApproval || x.d.Status == StudentDocumentStatus.ReuploadRequested
-            || x.d.Status == StudentDocumentStatus.Rejected || x.d.ExpiresAtUtc <= now);
+            || x.d.Status == StudentDocumentStatus.Rejected);
         if (!string.IsNullOrWhiteSpace(search))
         {
             var term = search.Trim();
@@ -495,28 +489,26 @@ public sealed class DrivingStudentsController(
                 x.d.Id, x.d.StudentDrivingProfileId, studentName = x.s.FullName, x.p.StudentNumber,
                 studentPhotoUrl = x.p.LivePhotoUrl != "" ? x.p.LivePhotoUrl : x.p.PhotoUrl,
                 identityKind = x.p.IdentityKind.ToString(), documentType = x.d.DocumentType.ToString(), label = DrivingStudentRules.DocumentLabel(x.d.DocumentType),
-                storedStatus = x.d.Status, x.d.FileName, x.d.DocumentNumber, x.d.IssuedBy, x.d.IssuedAtUtc,
-                x.d.ExpiresAtUtc, x.d.UploadedAtUtc, x.d.ReviewedAtUtc, x.d.RejectionReason, x.d.ReviewNote, x.d.ReviewVersion,
+                storedStatus = x.d.Status, x.d.FileName,
+                x.d.UploadedAtUtc, x.d.ReviewedAtUtc, x.d.RejectionReason, x.d.ReviewNote, x.d.ReviewVersion,
             }).ToListAsync(ct);
         var items = rows.Select(x => new
         {
             x.Id, x.StudentDrivingProfileId, x.studentName, x.StudentNumber, x.studentPhotoUrl, x.identityKind, x.documentType, x.label,
-            status = DrivingStudentRules.EffectiveStatus(x.storedStatus, x.ExpiresAtUtc, now).ToString(),
-            x.FileName, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc, x.ExpiresAtUtc, x.UploadedAtUtc,
+            status = DrivingStudentRules.EffectiveStatus(x.storedStatus).ToString(),
+            x.FileName, x.UploadedAtUtc,
             x.ReviewedAtUtc, x.RejectionReason, x.ReviewNote, x.ReviewVersion,
             fileUrl = $"/api/driving-school/student-documents/{x.Id}/file",
         }).ToList();
         var allCurrent = dbContext.StudentDrivingDocuments.AsNoTracking().Where(x => x.IsCurrent && relevantTypes.Contains(x.DocumentType));
         return Ok(new
         {
-            generatedAtUtc = now, page, pageSize, total, items,
+            generatedAtUtc = DateTime.UtcNow, page, pageSize, total, items,
             summary = new
             {
                 pending = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.PendingApproval, ct),
                 reuploadRequested = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.ReuploadRequested, ct),
                 rejected = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.Rejected, ct),
-                expiringSoon = await allCurrent.CountAsync(x => x.Status == StudentDocumentStatus.Approved && x.ExpiresAtUtc > now && x.ExpiresAtUtc <= now.AddDays(30), ct),
-                expired = await allCurrent.CountAsync(x => x.ExpiresAtUtc <= now, ct),
             },
             documentTypes = relevantTypes.Select(x => new { value = x.ToString(), label = DrivingStudentRules.DocumentLabel(x) }),
         });
@@ -560,13 +552,6 @@ public sealed class DrivingStudentsController(
         if (action is "Reject" or "RequestReupload" && (reason.Length is < 5 or > 500))
             return BadRequest(new { message = "Ret/yeniden yükleme gerekçesi 5-500 karakter olmalıdır." });
         if (note.Length > 1000) return BadRequest(new { message = "Personel notu en fazla 1000 karakter olabilir." });
-        if (request.ExpiresAtUtc is { } requestedExpiry && (requestedExpiry <= DateTime.UtcNow || requestedExpiry > DateTime.UtcNow.AddYears(20)))
-            return BadRequest(new { message = "Son geçerlilik tarihi gelecekte ve makul bir aralıkta olmalıdır." });
-        if (request.ExpiresAtUtc.HasValue) document.ExpiresAtUtc = request.ExpiresAtUtc;
-        if (action == "Approve" && DrivingStudentRules.ExpiringDocuments.Contains(document.DocumentType) && document.ExpiresAtUtc is null)
-            return BadRequest(new { message = "Süreli belge, son geçerlilik tarihi olmadan onaylanamaz." });
-        if (action == "Approve" && document.ExpiresAtUtc is { } expires && expires <= DateTime.UtcNow)
-            return BadRequest(new { message = "Süresi dolmuş belge onaylanamaz." });
 
         var before = document.Status;
         document.Status = action switch
@@ -601,7 +586,7 @@ public sealed class DrivingStudentsController(
             AuditCategory, "StudentDrivingDocument", document.Id.ToString(),
             $"{DocumentLabel(document.DocumentType)} — {action}{(reason.Length == 0 ? string.Empty : $" — gerekçe: {reason}")}",
             new { status = before.ToString(), request.ExpectedVersion },
-            new { status = document.Status.ToString(), document.RejectionReason, document.ReviewNote, document.ExpiresAtUtc, document.ReviewVersion },
+            new { status = document.Status.ToString(), document.RejectionReason, document.ReviewNote, document.ReviewVersion },
             ct);
 
         if (action != "UpdateDetails")
@@ -613,7 +598,7 @@ public sealed class DrivingStudentsController(
                 dedupeKey: $"document-review:{document.Id}:{document.Status}:{document.ReviewVersion}",
                 relatedEntityType: "StudentDrivingDocument", relatedEntityId: document.Id.ToString(), cancellationToken: ct);
 
-        return Ok(new { document.Id, status = document.Status.ToString(), document.RejectionReason, document.ReviewNote, document.ExpiresAtUtc, document.ReviewedAtUtc, document.ReviewVersion });
+        return Ok(new { document.Id, status = document.Status.ToString(), document.RejectionReason, document.ReviewNote, document.ReviewedAtUtc, document.ReviewVersion });
     }
 
     [HttpGet("student-documents/{id:guid}/file")]
@@ -1383,11 +1368,10 @@ public sealed class DrivingStudentsController(
                 var document = stored.FirstOrDefault(x => x.DocumentType == type);
                 var status = document is null
                     ? "EKSİK"
-                    : DrivingStudentRules.EffectiveStatus(document.Status, document.ExpiresAtUtc, now) switch
+                    : DrivingStudentRules.EffectiveStatus(document.Status) switch
                     {
                         StudentDocumentStatus.Approved => "ONAYLI",
                         StudentDocumentStatus.PendingApproval => "ONAY BEKLİYOR",
-                        StudentDocumentStatus.Expired => "SÜRESİ GEÇTİ",
                         StudentDocumentStatus.Rejected => "REDDEDİLDİ",
                         _ => "EKSİK",
                     };
@@ -1395,10 +1379,6 @@ public sealed class DrivingStudentsController(
                 [
                     DocumentLabel(type),
                     required.Contains(type) ? "Zorunlu" : "Ek",
-                    document?.DocumentNumber ?? "—",
-                    document?.IssuedBy ?? "—",
-                    document?.IssuedAtUtc?.AddHours(3).ToString("dd.MM.yyyy") ?? "—",
-                    document?.ExpiresAtUtc?.AddHours(3).ToString("dd.MM.yyyy") ?? "—",
                     status,
                 ];
             })
@@ -1410,9 +1390,7 @@ public sealed class DrivingStudentsController(
             $"MTSK kursiyer dosyası — düzenlenme: {now.AddHours(3):dd.MM.yyyy}",
             profile.RegisteredAtUtc, now,
             [
-                new DrivingReportColumn("Belge"), new DrivingReportColumn("Nitelik"), new DrivingReportColumn("Belge No"),
-                new DrivingReportColumn("Veren"), new DrivingReportColumn("Tarih"), new DrivingReportColumn("Geçerlilik"),
-                new DrivingReportColumn("Durum"),
+                new DrivingReportColumn("Belge"), new DrivingReportColumn("Nitelik"), new DrivingReportColumn("Durum"),
             ],
             rows,
             [
@@ -1534,7 +1512,6 @@ public sealed class DrivingStudentsController(
             .OrderByDescending(x => x.UploadedAtUtc)
             .ToListAsync(ct);
 
-        var now = DateTime.UtcNow;
         var current = stored.Where(x => x.IsCurrent).ToList();
 
         var rows = required
@@ -1544,12 +1521,9 @@ public sealed class DrivingStudentsController(
             .Select(type =>
             {
                 var document = current.FirstOrDefault(x => x.DocumentType == type);
-                // Süresi dolmuş belge onaylı sayılmaz — dosya yeniden eksiğe düşer.
                 var status = document is null
                     ? StudentDocumentStatus.Missing
-                    : document.ExpiresAtUtc is { } expires && expires <= now
-                        ? StudentDocumentStatus.Expired
-                        : document.Status;
+                    : document.Status;
                 return new
                 {
                     documentType = type.ToString(),
@@ -1559,10 +1533,6 @@ public sealed class DrivingStudentsController(
                     id = document?.Id,
                     fileUrl = document is null ? null : $"/api/driving-school/student-documents/{document.Id}/file",
                     fileName = document?.FileName,
-                    documentNumber = document?.DocumentNumber,
-                    issuedBy = document?.IssuedBy,
-                    issuedAtUtc = document?.IssuedAtUtc,
-                    expiresAtUtc = document?.ExpiresAtUtc,
                     uploadedAtUtc = document?.UploadedAtUtc,
                     reviewedAtUtc = document?.ReviewedAtUtc,
                     rejectionReason = document?.RejectionReason,
@@ -1575,7 +1545,7 @@ public sealed class DrivingStudentsController(
         return new
         {
             items = rows,
-            missingCount = rows.Count(x => x.required && x.status is nameof(StudentDocumentStatus.Missing) or nameof(StudentDocumentStatus.Rejected) or nameof(StudentDocumentStatus.ReuploadRequested) or nameof(StudentDocumentStatus.Expired)),
+            missingCount = rows.Count(x => x.required && x.status is nameof(StudentDocumentStatus.Missing) or nameof(StudentDocumentStatus.Rejected) or nameof(StudentDocumentStatus.ReuploadRequested)),
             pendingCount = rows.Count(x => x.status == nameof(StudentDocumentStatus.PendingApproval)),
             complete = rows.Where(x => x.required).All(x => x.status == nameof(StudentDocumentStatus.Approved)),
             history = stored.Where(x => !x.IsCurrent && x.DocumentType != StudentDocumentType.BloodTypeCertificate).Select(x => new
@@ -1604,13 +1574,6 @@ public sealed class DrivingStudentsController(
         var storedFile = IsSafeStudentDocumentUrl(request.FileUrl) ? await files.ReadPrefixAsync(request.FileUrl, 32, ct) : null;
         if (storedFile is null || storedFile.Length > MaxStudentDocumentBytes || !IsAllowedStudentDocumentContent(request.FileName, storedFile.Bytes))
             return BadRequest(new { message = "Belge dosyası güvenli öğrenci evrak alanından seçilmelidir." });
-        if ((request.DocumentNumber?.Length ?? 0) > 100 || (request.Description?.Length ?? 0) > 1000)
-            return BadRequest(new { message = "Belge numarası veya açıklama çok uzun." });
-        if (request.ExpiresAtUtc is { } expires && (expires <= DateTime.UtcNow || expires > DateTime.UtcNow.AddYears(20)))
-            return BadRequest(new { message = "Belge geçerlilik tarihi gelecekte ve makul bir aralıkta olmalıdır." });
-        if (DrivingStudentRules.ExpiringDocuments.Contains(documentType) && request.ExpiresAtUtc is null)
-            return BadRequest(new { message = $"{DocumentLabel(documentType)} için son geçerlilik tarihi zorunludur." });
-
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
         var previous = await dbContext.StudentDrivingDocuments
             .Where(x => x.StudentDrivingProfileId == profile.Id && x.DocumentType == documentType && x.IsCurrent)
@@ -1624,11 +1587,6 @@ public sealed class DrivingStudentsController(
             Status = StudentDocumentStatus.PendingApproval,
             FileUrl = request.FileUrl.Trim(),
             FileName = request.FileName?.Trim() ?? string.Empty,
-            DocumentNumber = request.DocumentNumber?.Trim() ?? string.Empty,
-            IssuedBy = request.IssuedBy?.Trim() ?? string.Empty,
-            IssuedAtUtc = request.IssuedAtUtc,
-            ExpiresAtUtc = request.ExpiresAtUtc,
-            Description = request.Description?.Trim() ?? string.Empty,
             UploadedByUserId = actorId,
         };
         dbContext.StudentDrivingDocuments.Add(document);
@@ -1639,7 +1597,7 @@ public sealed class DrivingStudentsController(
             $"{DocumentLabel(document.DocumentType)} yüklendi, onay bekliyor."
                 + (previous.Count > 0 ? " Önceki sürüm geçmişe alındı." : string.Empty),
             previous.Count == 0 ? null : new { previousStatus = previous[0].Status.ToString(), previousFileUrl = previous[0].FileUrl },
-            new { document.DocumentType, document.FileUrl, document.ExpiresAtUtc, status = document.Status.ToString() },
+            new { document.DocumentType, document.FileUrl, status = document.Status.ToString() },
             ct);
 
         await notifier.NotifyManagersAsync(
@@ -1655,22 +1613,19 @@ public sealed class DrivingStudentsController(
             document.Id,
             documentType = document.DocumentType.ToString(),
             status = document.Status.ToString(),
-            document.ExpiresAtUtc,
         });
     }
 
-    /// <summary>Onaylanmamış veya süresi geçmiş zorunlu belgeler.</summary>
+    /// <summary>Onaylanmamış zorunlu belgeler.</summary>
     private async Task<List<StudentDocumentType>> MissingRequiredDocumentsAsync(StudentDrivingProfile profile, CancellationToken ct)
     {
         var birthDate = await dbContext.Students.AsNoTracking()
             .Where(x => x.Id == profile.StudentId).Select(x => x.BirthDate).SingleOrDefaultAsync(ct);
         var required = RequiredDocumentsFor(birthDate);
-        var now = DateTime.UtcNow;
         var approved = await dbContext.StudentDrivingDocuments.AsNoTracking()
             .Where(x => x.StudentDrivingProfileId == profile.Id
                 && x.IsCurrent
-                && x.Status == StudentDocumentStatus.Approved
-                && (x.ExpiresAtUtc == null || x.ExpiresAtUtc > now))
+                && x.Status == StudentDocumentStatus.Approved)
             .Select(x => x.DocumentType)
             .ToListAsync(ct);
         return MissingDocumentTypes(required, approved.ToHashSet());
@@ -1712,19 +1667,13 @@ public sealed class DrivingStudentsController(
     private async Task<List<string>> BuildMebbisMissingAsync(
         StudentDrivingProfile profile, string? tcNo, string? birthDate, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
         var currentDocs = await dbContext.StudentDrivingDocuments.AsNoTracking()
             .Where(x => x.StudentDrivingProfileId == profile.Id && x.IsCurrent)
-            .Select(x => new { x.DocumentType, x.Status, x.ExpiresAtUtc, x.DocumentNumber, x.IssuedBy, x.IssuedAtUtc })
+            .Select(x => new { x.DocumentType, x.Status })
             .ToListAsync(ct);
 
         bool Approved(StudentDocumentType type) => currentDocs.Any(x =>
-            x.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now));
-
-        var health = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.HealthReport);
-        // Kayıt sırasında yalnız sağlık raporu dosyası zorunludur. Rapor no,
-        // düzenleyen kurum ve tarih artık ayrı alan olarak istenmez.
-        var healthDetailsComplete = health is not null;
+            x.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(x.Status));
 
         var identityNumber = profile.IdentityKind == IdentityKind.TurkishId
             ? (string.IsNullOrWhiteSpace(profile.IdentityNumber) ? tcNo : profile.IdentityNumber)
@@ -1741,7 +1690,6 @@ public sealed class DrivingStudentsController(
             Phone: profile.Phone,
             HasPhoto: Approved(StudentDocumentType.BiometricPhoto) || !string.IsNullOrWhiteSpace(profile.PhotoUrl),
             HealthReportApproved: Approved(StudentDocumentType.HealthReport),
-            HealthReportDetailsComplete: healthDetailsComplete,
             DiplomaApproved: Approved(StudentDocumentType.Diploma),
             CriminalRecordApproved: Approved(StudentDocumentType.CriminalRecord)));
     }
@@ -1793,8 +1741,6 @@ public sealed class DrivingStudentsController(
             if ((request.ExistingLicenseNumber?.Length ?? 0) > 40) Add(3, "Eğitim", "Sürücü belgesi no", "Sürücü belgesi numarası en fazla 40 karakter olabilir.");
             if ((request.ExistingLicenseClasses?.Length ?? 0) > 60) Add(3, "Eğitim", "Ehliyet sınıfı", "Ehliyet sınıfı en fazla 60 karakter olabilir.");
             if ((request.LicenseIssuePlace?.Length ?? 0) > 120) Add(3, "Eğitim", "Veren makam", "Veren makam en fazla 120 karakter olabilir.");
-            if (request.LicenseIssueDate is { } issued && request.LicenseExpiryDate is { } expiry && expiry < issued)
-                Add(3, "Eğitim", "Ehliyet tarihleri", "Ehliyet son geçerlilik tarihi, veriliş tarihinden önce olamaz.");
         }
         if (!request.AvailableWeekdays && !request.AvailableWeekend)
             Add(3, "Eğitim", "Zaman uygunluğu", "En az bir zaman uygunluğu (hafta içi / hafta sonu) seçilmelidir.");
@@ -1967,12 +1913,7 @@ public sealed record DrivingWizardFinance(
 public sealed record UploadStudentDocumentRequest(
     string DocumentType,
     string FileUrl,
-    string? FileName,
-    string? DocumentNumber,
-    DateTime? ExpiresAtUtc,
-    string? Description,
-    string? IssuedBy = null,
-    DateTime? IssuedAtUtc = null)
+    string? FileName)
 {
     public StudentDocumentType? ParsedType =>
         Enum.TryParse<StudentDocumentType>(DocumentType, ignoreCase: true, out var parsed) && Enum.IsDefined(parsed)
@@ -1985,7 +1926,6 @@ public sealed record ReviewStudentDocumentRequest(
     bool? Approved,
     string? RejectionReason,
     string? Note,
-    DateTime? ExpiresAtUtc,
     int ExpectedVersion = 0);
 
 public sealed record VerifyIdentityRequest(string? IdentityNumber, string? FullName, string? BirthDate);

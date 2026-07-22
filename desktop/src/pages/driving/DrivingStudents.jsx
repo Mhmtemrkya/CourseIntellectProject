@@ -10,12 +10,13 @@ import { LoadingDots } from '../../components/animations/AnimatedIcon';
 import { useToast } from '../../hooks/use-toast';
 import {
   assignDrivingStudentGroup, createDrivingStudentGroup, downloadDrivingMebbisRoster, downloadDrivingTermReport,
-  fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
-  fetchPendingDownPayments, setDrivingMebbisEntered,
+  downloadDrivingStudentDocument, fetchDrivingMebbisRoster, fetchDrivingStudentDetail, fetchDrivingStudentGroups, fetchDrivingStudents,
+  fetchPendingDownPayments, setDrivingMebbisEntered, uploadDrivingStudentDocument, uploadFile,
 } from '../../lib/api/modules';
 import { DRIVING, useDrivingPermissions } from '../../lib/drivingPermissions';
 import { DrivingLoading, DrivingNotice, DrivingPage, DrivingPageHeader, DrivingStatCard } from './_shared';
 import { assetUrl } from '../../lib/assetUrl';
+import { FileButton } from '../../components/ui/file-button';
 
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif',
@@ -29,7 +30,6 @@ const DOCUMENT_STATUS = {
   PendingApproval: { label: 'Onay bekliyor', className: 'bg-amber-500/15 text-amber-600' },
   Approved: { label: 'Onaylı', className: 'bg-emerald-500/15 text-emerald-600' },
   Rejected: { label: 'Reddedildi', className: 'bg-red-500/15 text-red-600' },
-  Expired: { label: 'Süresi doldu', className: 'bg-[hsl(var(--brand-accent)/0.15)] text-[hsl(var(--brand-accent))]' },
 };
 
 const transmissionLabel = (value) => (value === 'Manual' ? 'Manuel' : 'Otomatik');
@@ -65,21 +65,55 @@ function Info({ label, value }) {
 function StudentDocumentsModal({ profileId, onClose }) {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const { can } = useDrivingPermissions();
+  const canUpload = can(DRIVING.studentDocumentUpload);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [busyType, setBusyType] = useState('');
 
-  useEffect(() => {
-    let active = true;
+  const loadDetail = useCallback(async () => {
     setLoading(true);
-    fetchDrivingStudentDetail(profileId)
-      .then((detail) => { if (active) setData(detail); })
-      .catch((error) => {
-        toast({ title: 'Kursiyer dosyası açılamadı', description: error.message, variant: 'destructive' });
-        if (active) onClose();
-      })
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    try { setData(await fetchDrivingStudentDetail(profileId)); }
+    catch (error) {
+      toast({ title: 'Kursiyer dosyası açılamadı', description: error.message, variant: 'destructive' });
+      onClose();
+    } finally { setLoading(false); }
   }, [profileId, toast, onClose]);
+
+  useEffect(() => { loadDetail(); }, [loadDetail]);
+
+  const uploadDocument = async (item, file) => {
+    if (!file) return;
+    setBusyType(item.documentType);
+    try {
+      const body = new FormData();
+      body.set('file', file);
+      const uploaded = await uploadFile(body, 'driving-student-documents');
+      await uploadDrivingStudentDocument(profileId, {
+        documentType: item.documentType,
+        fileUrl: uploaded.fileUrl,
+        fileName: file.name,
+      });
+      toast({ title: item.fileUrl ? 'Belge güvenli şekilde değiştirildi' : 'Belge güvenli şekilde yüklendi', description: 'Yeni sürüm onay kuyruğuna gönderildi.' });
+      await loadDetail();
+    } catch (error) {
+      toast({ title: 'Belge yüklenemedi', description: error.message, variant: 'destructive' });
+    } finally { setBusyType(''); }
+  };
+
+  const downloadDocument = async (item) => {
+    try {
+      const blob = await downloadDrivingStudentDocument(item.id);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = item.fileName || `${item.label || 'belge'}.dat`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      toast({ title: 'Belge açılamadı', description: error.message, variant: 'destructive' });
+    }
+  };
 
   const overview = data?.overview;
   const documents = data?.documents;
@@ -150,15 +184,29 @@ function StudentDocumentsModal({ profileId, onClose }) {
                         {item.required && <Badge className="ml-2 border-0 bg-red-500/15 text-red-600">Zorunlu</Badge>}
                         <p className="text-xs text-muted-foreground">
                           {item.uploadedAtUtc ? `Yüklendi: ${dateTime(item.uploadedAtUtc)}` : 'Henüz yüklenmedi'}
-                          {item.expiresAtUtc ? ` • Geçerlilik: ${dateOnly(item.expiresAtUtc)}` : ''}
                         </p>
                         {item.rejectionReason && <p className="mt-1 text-xs text-red-600">Ret nedeni: {item.rejectionReason}</p>}
                       </div>
                       <div className="flex shrink-0 items-center gap-2">
-                        {item.fileUrl && <a className="text-xs font-bold text-blue-600 hover:underline" href={item.fileUrl} target="_blank" rel="noreferrer">Dosya</a>}
+                        {item.fileUrl && <button type="button" className="text-xs font-bold text-blue-600 hover:underline" onClick={() => downloadDocument(item)}>Güvenli indir</button>}
                         <Badge className={`border-0 ${tone.className}`}>{tone.label}</Badge>
                       </div>
                     </div>
+                    {canUpload && (
+                      <div className="mt-3 flex flex-wrap items-center gap-2 border-t pt-3">
+                        <FileButton
+                          className="w-full sm:w-72"
+                          accept=".pdf,.jpg,.jpeg,.png"
+                          disabled={Boolean(busyType)}
+                          uploaded={Boolean(item.fileUrl)}
+                          uploadedName={item.fileName}
+                          onChange={(event) => uploadDocument(item, event.target.files?.[0])}
+                        />
+                        <span className="text-xs text-muted-foreground">
+                          {busyType === item.documentType ? 'Güvenli depoya yükleniyor…' : item.fileUrl ? 'Yeni dosya önceki sürümün yerine geçer; geçmiş korunur.' : 'PDF, JPG veya PNG yükleyin.'}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -671,7 +719,6 @@ export default function DrivingStudents() {
                   ['Baba adı', row.fatherName], ['Anne adı', row.motherName], ['Doğum yeri', row.birthPlace],
                   ['Doğum tarihi', row.birthDate], ['Öğrenim', row.educationLevel], ['Sınıf', row.licenseClass],
                   ['Seri no', row.identitySerialNo], ['Telefon', row.phone],
-                  ['Rapor no', row.healthReportNumber], ['Rapor kurumu', row.healthReportIssuedBy],
                 ].filter(([, value]) => value);
                 return (
                   <div key={row.profileId} className={`rounded-2xl border p-3 ${entered ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-foreground/10'}`}>

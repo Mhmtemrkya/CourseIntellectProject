@@ -55,7 +55,7 @@ public sealed class DrivingReminderJobService(
     }
 
     /// <summary>
-    /// Muayene, sigorta ve yüklenen evrakların son geçerlilik tarihi. Uyarı, kurumun
+    /// Muayene, sigorta ve araç evraklarının son geçerlilik tarihi. Uyarı, kurumun
     /// belge bazında girdiği <c>ReminderDays</c> ve sabit basamaklar (30/15/7/1) üzerinden
     /// yapılır; her basamak için yalnız BİR kez bildirim gider.
     /// </summary>
@@ -293,8 +293,7 @@ public sealed class DrivingReminderJobService(
             var required = DrivingStudentRules.RequiredDocumentsFor(student.BirthDate, now);
             var satisfied = await dbContext.StudentDrivingDocuments.AsNoTracking()
                 .Where(x => x.StudentDrivingProfileId == student.Id && x.IsCurrent
-                    && x.Status == StudentDocumentStatus.Approved
-                    && (x.ExpiresAtUtc == null || x.ExpiresAtUtc > now))
+                    && x.Status == StudentDocumentStatus.Approved)
                 .Select(x => x.DocumentType)
                 .ToListAsync(cancellationToken);
 
@@ -473,7 +472,7 @@ public sealed class DrivingReminderJobService(
             var studentIds = students.Select(x => x.Id).ToList();
             var documents = await dbContext.StudentDrivingDocuments.AsNoTracking()
                 .Where(x => studentIds.Contains(x.StudentDrivingProfileId) && x.IsCurrent)
-                .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status, x.ExpiresAtUtc })
+                .Select(x => new { x.StudentDrivingProfileId, x.DocumentType, x.Status })
                 .ToListAsync(cancellationToken);
             var documentsByStudent = documents.ToLookup(x => x.StudentDrivingProfileId);
 
@@ -487,7 +486,7 @@ public sealed class DrivingReminderJobService(
                 if (identityMissing) return true;
                 var required = DrivingStudentRules.RequiredDocumentsFor(student.BirthDate, now);
                 var satisfied = documentsByStudent[student.Id]
-                    .Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status, x.ExpiresAtUtc, now))
+                    .Where(x => DrivingStudentRules.CountsAsSatisfied(x.Status))
                     .Select(x => x.DocumentType).ToHashSet();
                 return DrivingStudentRules.MissingDocuments(required, satisfied).Count > 0;
             });

@@ -161,6 +161,7 @@ export const fetchDrivingMebbisExamResults = () => api.get('/api/driving-school/
 export const fetchDrivingMebbisExamResult = (id, params = {}) => api.get(`/api/driving-school/mebbis/exam-results/${id}`, { params });
 // Aday adayları (lead)
 export const fetchDrivingLeads = (params = {}) => api.get('/api/driving-school/leads', { params });
+export const fetchDrivingLeadPackageOptions = () => api.get('/api/driving-school/leads/package-options');
 export const createDrivingLead = (payload) => api.post('/api/driving-school/leads', payload);
 export const updateDrivingLead = (id, payload) => api.put(`/api/driving-school/leads/${id}`, payload);
 export const convertDrivingLead = (id, payload = {}) => api.post(`/api/driving-school/leads/${id}/convert`, payload);

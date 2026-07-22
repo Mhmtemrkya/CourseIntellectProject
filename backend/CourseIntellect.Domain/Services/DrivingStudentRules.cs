@@ -4,7 +4,7 @@ namespace CourseIntellect.Domain.Services;
 
 /// <summary>
 /// Sürücü adayının kayıt ve kurs dosyası kuralları. Controller'dan bağımsızdır ki
-/// "hangi belge zorunlu", "belge hâlâ geçerli mi", "TC doğru mu" soruları tek yerde
+/// "hangi belge zorunlu", "belge onaylı mı", "TC doğru mu" soruları tek yerde
 /// yanıtlansın ve testlenebilsin.
 /// </summary>
 public static class DrivingStudentRules
@@ -24,15 +24,6 @@ public static class DrivingStudentRules
         StudentDocumentType.Residence,
     ];
 
-    /// <summary>Süreli belgeler: son geçerlilik tarihi olmadan yüklenemez/onaylanamaz.</summary>
-    public static readonly IReadOnlySet<StudentDocumentType> ExpiringDocuments =
-        new HashSet<StudentDocumentType>
-        {
-            StudentDocumentType.HealthReport,
-            StudentDocumentType.CriminalRecord,
-            StudentDocumentType.ExistingLicense,
-        };
-
     /// <summary>18 yaşından küçük adayda veli izin belgesi de zorunludur.</summary>
     public static IReadOnlyList<StudentDocumentType> RequiredDocumentsFor(string? birthDate, DateTime nowUtc)
     {
@@ -49,21 +40,12 @@ public static class DrivingStudentRules
         IReadOnlySet<StudentDocumentType> satisfied)
         => required.Where(x => !satisfied.Contains(x)).ToList();
 
-    /// <summary>
-    /// Belgenin görünen durumu. Süresi dolmuş bir belge onaylı olsa bile geçerli
-    /// sayılmaz — dosya yeniden eksiğe düşer.
-    /// </summary>
-    public static StudentDocumentStatus EffectiveStatus(
-        StudentDocumentStatus stored,
-        DateTime? expiresAtUtc,
-        DateTime nowUtc)
-        => expiresAtUtc is { } expires && expires <= nowUtc
-            ? StudentDocumentStatus.Expired
-            : stored;
+    /// <summary>Belgenin görünen durumu yalnız inceleme durumudur; tarih metadata'sı kullanılmaz.</summary>
+    public static StudentDocumentStatus EffectiveStatus(StudentDocumentStatus stored) => stored;
 
-    /// <summary>Dosyayı "tamam" sayabilmek için belge onaylı VE süresi geçerli olmalı.</summary>
-    public static bool CountsAsSatisfied(StudentDocumentStatus stored, DateTime? expiresAtUtc, DateTime nowUtc)
-        => EffectiveStatus(stored, expiresAtUtc, nowUtc) == StudentDocumentStatus.Approved;
+    /// <summary>Dosyayı "tamam" sayabilmek için güncel belge onaylı olmalıdır.</summary>
+    public static bool CountsAsSatisfied(StudentDocumentStatus stored)
+        => stored == StudentDocumentStatus.Approved;
 
     /// <summary>TC kimlik numarasının resmî kontrol basamağı doğrulaması.</summary>
     public static bool IsValidTurkishId(string? value)
@@ -107,7 +89,6 @@ public static class DrivingStudentRules
         string? Phone,
         bool HasPhoto,
         bool HealthReportApproved,
-        bool HealthReportDetailsComplete,
         bool DiplomaApproved,
         bool CriminalRecordApproved);
 

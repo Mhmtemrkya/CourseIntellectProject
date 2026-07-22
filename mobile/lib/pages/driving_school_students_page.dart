@@ -1023,14 +1023,6 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                   'Önceki sınıf(lar)'.tr,
                   overview['existingLicenseClasses'],
                 ),
-                _licenseLine(
-                  'Veriliş'.tr,
-                  _dateOnly(overview['licenseIssueDate']),
-                ),
-                _licenseLine(
-                  'Son geçerlilik'.tr,
-                  _dateOnly(overview['licenseExpiryDate']),
-                ),
                 _licenseLine('Veren makam'.tr, overview['licenseIssuePlace']),
               ],
               // Sınav ücretleri
@@ -1155,8 +1147,6 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                       item['uploadedAtUtc'] != null
                           ? 'Yüklendi: ${_dateOnly(item['uploadedAtUtc'])}'
                           : 'Yüklenmedi',
-                      if (item['expiresAtUtc'] != null)
-                        'Geçerlilik: ${_dateOnly(item['expiresAtUtc'])}',
                       if (item['rejectionReason'] != null)
                         'Ret: ${item['rejectionReason']}',
                     ].join(' • '),

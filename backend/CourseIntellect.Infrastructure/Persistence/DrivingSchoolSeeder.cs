@@ -432,7 +432,6 @@ public sealed class DrivingSchoolSeeder(
                 Status = complete ? StudentDocumentStatus.Approved : StudentDocumentStatus.PendingApproval,
                 FileUrl = $"/uploads/driving-student-documents/{type}.pdf",
                 FileName = $"{type}.pdf",
-                ExpiresAtUtc = DrivingStudentRules.ExpiringDocuments.Contains(type) ? now.AddMonths(5) : null,
                 UploadedAtUtc = now.AddDays(-38),
                 ReviewedAtUtc = complete ? now.AddDays(-37) : null,
             });

@@ -101,106 +101,76 @@ class _DrivingDocumentReviewQueuePageState
       text: '${item['rejectionReason'] ?? ''}',
     );
     final note = TextEditingController(text: '${item['reviewNote'] ?? ''}');
-    DateTime? expires = DateTime.tryParse('${item['expiresAtUtc'] ?? ''}');
     final payload = await showDialog<Map<String, dynamic>>(
       context: context,
-      builder: (dialogContext) => StatefulBuilder(
-        builder: (context, setDialogState) {
-          final needsReason = action == 'Reject' || action == 'RequestReupload';
-          return AlertDialog(
-            title: Text(
-              action == 'Approve'
-                  ? 'Belgeyi onayla'
-                  : action == 'Reject'
-                  ? 'Belgeyi reddet'
-                  : action == 'RequestReupload'
-                  ? 'Yeniden yükleme iste'
-                  : 'Belge bilgilerini güncelle',
-            ),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Son geçerlilik tarihi'),
-                    subtitle: Text(
-                      expires == null
-                          ? 'Belirlenmedi'
-                          : '${expires!.day.toString().padLeft(2, '0')}.${expires!.month.toString().padLeft(2, '0')}.${expires!.year}',
-                    ),
-                    trailing: const Icon(Icons.event),
-                    onTap: () async {
-                      final picked = await showDatePicker(
-                        context: dialogContext,
-                        firstDate: DateTime.now().add(const Duration(days: 1)),
-                        lastDate: DateTime.now().add(
-                          const Duration(days: 365 * 20),
-                        ),
-                        initialDate: expires?.isAfter(DateTime.now()) == true
-                            ? expires!
-                            : DateTime.now().add(const Duration(days: 180)),
-                      );
-                      if (picked != null) {
-                        setDialogState(() => expires = picked);
-                      }
-                    },
+      builder: (dialogContext) {
+        final needsReason = action == 'Reject' || action == 'RequestReupload';
+        return AlertDialog(
+          title: Text(
+            action == 'Approve'
+                ? 'Belgeyi onayla'
+                : action == 'Reject'
+                ? 'Belgeyi reddet'
+                : action == 'RequestReupload'
+                ? 'Yeniden yükleme iste'
+                : 'Belge bilgilerini güncelle',
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: note,
+                  maxLength: 1000,
+                  minLines: 2,
+                  maxLines: 4,
+                  decoration: const InputDecoration(
+                    labelText: 'Personel iç notu',
+                    helperText: 'Kursiyere gösterilmez',
                   ),
+                ),
+                if (needsReason)
                   TextField(
-                    controller: note,
-                    maxLength: 1000,
+                    controller: reason,
+                    maxLength: 500,
                     minLines: 2,
                     maxLines: 4,
                     decoration: const InputDecoration(
-                      labelText: 'Personel iç notu',
-                      helperText: 'Kursiyere gösterilmez',
+                      labelText: 'Gerekçe',
+                      helperText: 'Kursiyere mobil bildirim olarak gönderilir',
                     ),
                   ),
-                  if (needsReason)
-                    TextField(
-                      controller: reason,
-                      maxLength: 500,
-                      minLines: 2,
-                      maxLines: 4,
-                      decoration: const InputDecoration(
-                        labelText: 'Gerekçe',
-                        helperText:
-                            'Kursiyere mobil bildirim olarak gönderilir',
-                      ),
-                    ),
-                ],
-              ),
+              ],
             ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: const Text('Vazgeç'),
-              ),
-              FilledButton(
-                onPressed: () {
-                  if (needsReason && reason.text.trim().length < 5) {
-                    ScaffoldMessenger.of(dialogContext).showSnackBar(
-                      const SnackBar(
-                        content: Text('Gerekçe en az 5 karakter olmalıdır.'),
-                      ),
-                    );
-                    return;
-                  }
-                  Navigator.pop(dialogContext, {
-                    'action': action,
-                    'rejectionReason': reason.text.trim(),
-                    'note': note.text.trim(),
-                    'expiresAtUtc': expires?.toUtc().toIso8601String(),
-                    'expectedVersion':
-                        (item['reviewVersion'] as num?)?.toInt() ?? 0,
-                  });
-                },
-                child: const Text('Kaydet'),
-              ),
-            ],
-          );
-        },
-      ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Vazgeç'),
+            ),
+            FilledButton(
+              onPressed: () {
+                if (needsReason && reason.text.trim().length < 5) {
+                  ScaffoldMessenger.of(dialogContext).showSnackBar(
+                    const SnackBar(
+                      content: Text('Gerekçe en az 5 karakter olmalıdır.'),
+                    ),
+                  );
+                  return;
+                }
+                Navigator.pop(dialogContext, {
+                  'action': action,
+                  'rejectionReason': reason.text.trim(),
+                  'note': note.text.trim(),
+                  'expectedVersion':
+                      (item['reviewVersion'] as num?)?.toInt() ?? 0,
+                });
+              },
+              child: const Text('Kaydet'),
+            ),
+          ],
+        );
+      },
     );
     reason.dispose();
     note.dispose();

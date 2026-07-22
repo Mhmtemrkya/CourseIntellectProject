@@ -574,7 +574,7 @@ public sealed class DrivingMebbisController(
         foreach (var row in profiles)
         {
             var profileDocs = docsByProfile[row.p.Id].ToList();
-            var missing = CandidateMissing(row.p, row.TcNo, row.BirthDate, profileDocs, now);
+            var missing = CandidateMissing(row.p, row.TcNo, row.BirthDate, profileDocs);
             var initial = missing.Count > 0 ? DrivingMebbisWorkStatus.Preparing
                 : row.p.MebbisEnteredAtUtc.HasValue ? DrivingMebbisWorkStatus.Entered : DrivingMebbisWorkStatus.Ready;
             items.Add(ToDto(DrivingMebbisWorkType.CandidateRegistration, row.p.Id, row.p.Id, row.p.StudentGroupId,
@@ -695,18 +695,17 @@ public sealed class DrivingMebbisController(
         var row = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.Id == profileId)
             .Join(db.Students.AsNoTracking(), p => p.StudentId, s => s.Id, (p, s) => new { p, s.TcNo, s.BirthDate }).SingleAsync(ct);
         var docs = await db.StudentDrivingDocuments.AsNoTracking().Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent).ToListAsync(ct);
-        return CandidateMissing(row.p, row.TcNo, row.BirthDate, docs, DateTime.UtcNow);
+        return CandidateMissing(row.p, row.TcNo, row.BirthDate, docs);
     }
 
-    private static List<string> CandidateMissing(StudentDrivingProfile p, string? tcNo, string? birthDate, List<StudentDrivingDocument> docs, DateTime now)
+    private static List<string> CandidateMissing(StudentDrivingProfile p, string? tcNo, string? birthDate, List<StudentDrivingDocument> docs)
     {
-        bool Approved(StudentDocumentType type) => docs.Any(d => d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status, d.ExpiresAtUtc, now));
-        var health = docs.FirstOrDefault(d => d.DocumentType == StudentDocumentType.HealthReport && d.IsCurrent);
+        bool Approved(StudentDocumentType type) => docs.Any(d => d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status));
         var identity = p.IdentityKind == IdentityKind.TurkishId && string.IsNullOrWhiteSpace(p.IdentityNumber) ? tcNo : p.IdentityNumber;
         return DrivingStudentRules.MebbisMissingFields(new DrivingStudentRules.MebbisCandidate(
             p.IdentityKind != IdentityKind.TurkishId || DrivingStudentRules.IsValidTurkishId(identity), birthDate, p.FatherName, p.MotherName,
             p.BirthPlace, p.EducationLevel, p.IdentitySerialNo, p.Phone, Approved(StudentDocumentType.BiometricPhoto) || p.PhotoUrl != "",
-            Approved(StudentDocumentType.HealthReport), health is not null && health.DocumentNumber != "" && health.IssuedBy != "" && health.IssuedAtUtc.HasValue,
+            Approved(StudentDocumentType.HealthReport),
             Approved(StudentDocumentType.Diploma), Approved(StudentDocumentType.CriminalRecord)));
     }
 
@@ -854,18 +853,17 @@ public sealed class DrivingMebbisController(
             DrivingMebbisQualityRules.IsPlausibleIdentitySerial(profile.IdentitySerialNo) ? "Kimlik seri numarası biçimi uygun." : "Kimlik seri numarası yeni veya eski kart formatıyla eşleşmiyor; personel kontrolü gerekir.");
 
         var health = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.HealthReport);
-        var healthSeverity = health is null || health.Status != StudentDocumentStatus.Approved || health.ExpiresAtUtc is null || health.ExpiresAtUtc <= now
-            || health.IssuedAtUtc is null || health.IssuedAtUtc > now ? MebbisQualitySeverity.Red
-            : health.ExpiresAtUtc <= now.AddDays(30) ? MebbisQualitySeverity.Yellow : MebbisQualitySeverity.Green;
-        Add("healthReport", "Sağlık raporu geçerliliği", "Belgeler", healthSeverity,
-            health is null ? "Sağlık raporu bulunmuyor." : health.Status != StudentDocumentStatus.Approved ? "Sağlık raporu onaylı değil."
-            : health.IssuedAtUtc is null ? "Sağlık raporu düzenlenme tarihi eksik." : health.IssuedAtUtc > now ? "Sağlık raporu tarihi gelecekte olamaz."
-            : health.ExpiresAtUtc is null ? "Sağlık raporu geçerlilik tarihi eksik." : health.ExpiresAtUtc <= now ? "Sağlık raporunun süresi geçmiş."
-            : health.ExpiresAtUtc <= now.AddDays(30) ? $"Sağlık raporunun süresi {Math.Ceiling((health.ExpiresAtUtc.Value - now).TotalDays)} gün içinde dolacak." : "Sağlık raporu onaylı ve geçerli.");
+        var healthSeverity = health?.Status == StudentDocumentStatus.Approved
+            ? MebbisQualitySeverity.Green
+            : MebbisQualitySeverity.Red;
+        Add("healthReport", "Sağlık raporu onayı", "Belgeler", healthSeverity,
+            health is null ? "Sağlık raporu bulunmuyor."
+            : health.Status == StudentDocumentStatus.Approved ? "Sağlık raporu kurum tarafından onaylanmış."
+            : "Sağlık raporu onaylı değil.");
 
         var diploma = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.Diploma);
         Add("educationDocument", "Öğrenim belgesi onayı", "Belgeler", diploma?.Status == StudentDocumentStatus.Approved ? MebbisQualitySeverity.Green : MebbisQualitySeverity.Red,
-            diploma is null ? "Diploma/öğrenim belgesi bulunmuyor." : diploma.Status == StudentDocumentStatus.Approved ? "Öğrenim belgesi kurum tarafından onaylanmış." : $"Öğrenim belgesi {DrivingStudentRules.EffectiveStatus(diploma.Status, diploma.ExpiresAtUtc, now)} durumunda.");
+            diploma is null ? "Diploma/öğrenim belgesi bulunmuyor." : diploma.Status == StudentDocumentStatus.Approved ? "Öğrenim belgesi kurum tarafından onaylanmış." : $"Öğrenim belgesi {DrivingStudentRules.EffectiveStatus(diploma.Status)} durumunda.");
 
         var photoDoc = currentDocs.FirstOrDefault(x => x.DocumentType == StudentDocumentType.BiometricPhoto);
         var photoUrl = !string.IsNullOrWhiteSpace(photoDoc?.FileUrl) ? photoDoc.FileUrl : profile.PhotoUrl;
@@ -979,9 +977,6 @@ public sealed class DrivingMebbisController(
             ["educationLevel"] = source.Profile.EducationLevel.Trim(),
             ["phone"] = source.Profile.Phone.Trim(),
             ["licenseClass"] = source.Profile.LicenseClass.Trim(),
-            ["healthReportNumber"] = source.HealthReport?.DocumentNumber.Trim() ?? string.Empty,
-            ["healthReportIssuedAt"] = source.HealthReport?.IssuedAtUtc?.ToString("dd.MM.yyyy") ?? string.Empty,
-            ["healthReportIssuedBy"] = source.HealthReport?.IssuedBy.Trim() ?? string.Empty,
         };
     }
 

@@ -54,7 +54,7 @@ const emptyForm = {
   identityIssueDate: '', identityIssuePlace: '',
   emergencyContactName: '', emergencyContactPhone: '', photoUrl: '', livePhotoUrl: '',
   hasExistingLicense: false, existingLicenseNumber: '', existingLicenseClasses: '',
-  licenseIssueDate: '', licenseExpiryDate: '', licenseIssuePlace: '',
+  licenseIssuePlace: '',
   packageId: '', courseStartsAtUtc: '', preferredInstructorProfileId: '', preferredVehicleId: '',
   drivingExperience: 1, availableWeekdays: true, availableWeekend: false,
   prefersMorning: false, prefersMidday: false, prefersEvening: false, accessibilityNotes: '',
@@ -389,7 +389,7 @@ export default function DrivingStudentWizard() {
     }
   }
 
-  async function attachDocument(documentType, file, expiresAt) {
+  async function attachDocument(documentType, file) {
     if (!file) return;
     setUploading(true);
     try {
@@ -404,7 +404,6 @@ export default function DrivingStudentWizard() {
             documentType,
             fileUrl: upload.fileUrl,
             fileName: file.name,
-            expiresAtUtc: expiresAt ? new Date(expiresAt).toISOString() : null,
           },
         ],
       }));
@@ -450,8 +449,8 @@ export default function DrivingStudentWizard() {
         identityKind: Number(form.identityKind),
         drivingExperience: Number(form.drivingExperience),
         courseStartsAtUtc: form.courseStartsAtUtc ? new Date(form.courseStartsAtUtc).toISOString() : null,
-        licenseIssueDate: form.hasExistingLicense && form.licenseIssueDate ? new Date(form.licenseIssueDate).toISOString() : null,
-        licenseExpiryDate: form.hasExistingLicense && form.licenseExpiryDate ? new Date(form.licenseExpiryDate).toISOString() : null,
+        licenseIssueDate: null,
+        licenseExpiryDate: null,
         identityIssueDate: form.identityIssueDate ? new Date(form.identityIssueDate).toISOString() : null,
         theoryExamFee: Number(form.theoryExamFee) || 0,
         drivingExamFee: Number(form.drivingExamFee) || 0,
@@ -824,8 +823,6 @@ export default function DrivingStudentWizard() {
                   <div className="mt-3 grid gap-4 sm:grid-cols-2">
                     <Field label="Sürücü belgesi no"><Input maxLength={40} value={form.existingLicenseNumber} onChange={(e) => set({ existingLicenseNumber: e.target.value })} /></Field>
                     <Field label="Mevcut sınıf(lar)" hint="Örn. B veya B, A2"><Input maxLength={60} value={form.existingLicenseClasses} onChange={(e) => set({ existingLicenseClasses: e.target.value })} /></Field>
-                    <Field label="Veriliş tarihi (4a)"><Input type="date" value={form.licenseIssueDate} onChange={(e) => set({ licenseIssueDate: e.target.value })} /></Field>
-                    <Field label="Son geçerlilik (4b)"><Input type="date" value={form.licenseExpiryDate} onChange={(e) => set({ licenseExpiryDate: e.target.value })} /></Field>
                     <Field label="Veren makam / yer (4c)"><Input maxLength={120} value={form.licenseIssuePlace} onChange={(e) => set({ licenseIssuePlace: e.target.value })} /></Field>
                   </div>
                 )}

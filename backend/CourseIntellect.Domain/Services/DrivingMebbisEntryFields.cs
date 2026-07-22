@@ -16,9 +16,6 @@ public static class DrivingMebbisEntryFields
         new("educationLevel", "Öğrenim durumu"),
         new("phone", "Telefon"),
         new("licenseClass", "Sertifika sınıfı"),
-        new("healthReportNumber", "Sağlık raporu numarası"),
-        new("healthReportIssuedAt", "Sağlık raporu tarihi"),
-        new("healthReportIssuedBy", "Sağlık raporunu düzenleyen kurum"),
     ];
 
     private static readonly HashSet<string> KeySet = Ordered.Select(x => x.Key).ToHashSet(StringComparer.Ordinal);

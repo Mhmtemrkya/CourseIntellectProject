@@ -113,8 +113,7 @@ const Map<String, Map<String, String>> tabDetails = {
         'belgeler.\n\n'
         '• Eksik ve reddedilen belgeler en üstte listelenir.\n'
         '• Bir belge reddedildiyse nedeni burada yazar; doğrusunu yükleyin.\n'
-        '• Sağlık raporu ve adli sicil gibi süreli belgelerde geçerlilik '
-        'tarihi sorulur.\n'
+        '• Yeni dosya yüklediğinizde eski sürüm güvenli geçmişte korunur.\n'
         '• Dosyanız tamamlanmadan direksiyon eğitimine başlayamazsınız.',
     'Randevu Talebi':
         'Yeni direksiyon dersi ister veya mevcut randevunuzu erteletmek '

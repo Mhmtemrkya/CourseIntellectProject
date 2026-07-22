@@ -184,14 +184,13 @@ public sealed class DrivingTermOpeningController(
         return rows.Select(x =>
         {
             var current = lookup[x.Profile.Id].ToList();
-            bool Approved(StudentDocumentType type) => current.Any(d => d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status, d.ExpiresAtUtc, now));
-            var health = current.FirstOrDefault(d => d.DocumentType == StudentDocumentType.HealthReport);
+            bool Approved(StudentDocumentType type) => current.Any(d => d.DocumentType == type && DrivingStudentRules.CountsAsSatisfied(d.Status));
             var identity = x.Profile.IdentityKind == IdentityKind.TurkishId && string.IsNullOrWhiteSpace(x.Profile.IdentityNumber) ? x.TcNo : x.Profile.IdentityNumber;
             var missing = DrivingStudentRules.MebbisMissingFields(new(
                 x.Profile.IdentityKind != IdentityKind.TurkishId || DrivingStudentRules.IsValidTurkishId(identity), x.BirthDate,
                 x.Profile.FatherName, x.Profile.MotherName, x.Profile.BirthPlace, x.Profile.EducationLevel,
                 x.Profile.IdentitySerialNo, x.Profile.Phone, Approved(StudentDocumentType.BiometricPhoto) || x.Profile.PhotoUrl != "",
-                Approved(StudentDocumentType.HealthReport), health is not null && health.DocumentNumber != "" && health.IssuedBy != "" && health.IssuedAtUtc.HasValue,
+                Approved(StudentDocumentType.HealthReport),
                 Approved(StudentDocumentType.Diploma), Approved(StudentDocumentType.CriminalRecord)));
             var required = DrivingStudentRules.RequiredDocumentsFor(x.BirthDate, now);
             missing.AddRange(required.Where(type => !Approved(type)).Select(DrivingStudentRules.DocumentLabel));

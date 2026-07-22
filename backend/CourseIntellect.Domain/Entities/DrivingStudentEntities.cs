@@ -51,12 +51,11 @@ public sealed class StudentDrivingDocument : ITenantScopedEntity
 
     public string FileUrl { get; set; } = string.Empty;
     public string FileName { get; set; } = string.Empty;
+    // Aşağıdaki metadata alanları eski kayıtlarla şema uyumluluğu için tutulur;
+    // yeni yükleme/onay akışı bunları istemez, yazmaz veya kullanıcıya göstermez.
     public string DocumentNumber { get; set; } = string.Empty;
-    /// <summary>Belgeyi veren kurum (sağlık raporunda MEBBİS zorunlu ister).</summary>
     public string IssuedBy { get; set; } = string.Empty;
-    /// <summary>Belgenin düzenlenme tarihi (rapor tarihi).</summary>
     public DateTime? IssuedAtUtc { get; set; }
-    /// <summary>Sağlık raporu, adli sicil gibi süreli belgelerde son geçerlilik.</summary>
     public DateTime? ExpiresAtUtc { get; set; }
     public string Description { get; set; } = string.Empty;
 

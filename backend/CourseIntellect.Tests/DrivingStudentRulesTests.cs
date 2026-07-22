@@ -39,27 +39,20 @@ public sealed class DrivingStudentRulesTests
     }
 
     [Fact]
-    public void ExpiredDocument_IsNotApproved_EvenIfItWasApprovedBefore()
+    public void ApprovedDocument_CountsAsSatisfiedWithoutDateMetadata()
     {
-        var expired = Now.AddDays(-1);
-
         Assert.Equal(
-            StudentDocumentStatus.Expired,
-            DrivingStudentRules.EffectiveStatus(StudentDocumentStatus.Approved, expired, Now));
-        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Approved, expired, Now));
-
-        // Geçerlilik sürerken onaylı belge sayılır.
-        Assert.True(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Approved, Now.AddDays(30), Now));
-        // Süresiz belgeler (kimlik, diploma) de sayılır.
-        Assert.True(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Approved, null, Now));
+            StudentDocumentStatus.Approved,
+            DrivingStudentRules.EffectiveStatus(StudentDocumentStatus.Approved));
+        Assert.True(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Approved));
     }
 
     [Fact]
     public void PendingOrRejectedDocument_NeverCountsAsSatisfied()
     {
-        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.PendingApproval, null, Now));
-        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Rejected, null, Now));
-        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.ReuploadRequested, null, Now));
+        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.PendingApproval));
+        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.Rejected));
+        Assert.False(DrivingStudentRules.CountsAsSatisfied(StudentDocumentStatus.ReuploadRequested));
     }
 
     [Fact]
@@ -83,16 +76,6 @@ public sealed class DrivingStudentRulesTests
         Assert.Contains(StudentDocumentType.CriminalRecord, missing);
         Assert.Contains(StudentDocumentType.Residence, missing);
         Assert.DoesNotContain(StudentDocumentType.Identity, missing);
-    }
-
-    [Fact]
-    public void HealthReportAndCriminalRecord_AreTreatedAsExpiringDocuments()
-    {
-        Assert.Contains(StudentDocumentType.HealthReport, DrivingStudentRules.ExpiringDocuments);
-        Assert.Contains(StudentDocumentType.CriminalRecord, DrivingStudentRules.ExpiringDocuments);
-        // Kimlik ve diploma süresizdir; tarih zorunluluğu aranmaz.
-        Assert.DoesNotContain(StudentDocumentType.Identity, DrivingStudentRules.ExpiringDocuments);
-        Assert.DoesNotContain(StudentDocumentType.Diploma, DrivingStudentRules.ExpiringDocuments);
     }
 
     [Fact]
@@ -131,7 +114,6 @@ public sealed class DrivingStudentRulesTests
         Phone: "05321112233",
         HasPhoto: true,
         HealthReportApproved: true,
-        HealthReportDetailsComplete: true,
         DiplomaApproved: true,
         CriminalRecordApproved: true);
 
@@ -159,16 +141,12 @@ public sealed class DrivingStudentRulesTests
         var withoutReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
         {
             HealthReportApproved = false,
-            HealthReportDetailsComplete = false,
         });
         Assert.Contains("Onaylı sağlık raporu", withoutReport);
         Assert.DoesNotContain("Sağlık raporu no / veren kurum / tarih", withoutReport);
 
         // Rapor onaylıysa rapor no/kurum/tarih artık ayrı zorunlu alan değildir.
-        var withReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate() with
-        {
-            HealthReportDetailsComplete = false,
-        });
+        var withReport = DrivingStudentRules.MebbisMissingFields(CompleteCandidate());
         Assert.Empty(withReport);
     }
 

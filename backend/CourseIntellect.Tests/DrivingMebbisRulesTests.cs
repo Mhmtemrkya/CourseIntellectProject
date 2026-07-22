@@ -35,10 +35,10 @@ public sealed class DrivingMebbisRulesTests
     public void EntryAssistantFields_AreOrderedUniqueAndWhitelisted()
     {
         var keys = DrivingMebbisEntryFields.Ordered.Select(x => x.Key).ToList();
-        Assert.Equal(13, keys.Count);
+        Assert.Equal(10, keys.Count);
         Assert.Equal(keys.Count, keys.Distinct(StringComparer.Ordinal).Count());
         Assert.Equal("nationalId", keys[0]);
-        Assert.Equal("healthReportIssuedBy", keys[^1]);
+        Assert.Equal("licenseClass", keys[^1]);
         Assert.All(keys, key => Assert.True(DrivingMebbisEntryFields.IsKnown(key)));
         Assert.False(DrivingMebbisEntryFields.IsKnown("password"));
         Assert.False(DrivingMebbisEntryFields.IsKnown("../nationalId"));

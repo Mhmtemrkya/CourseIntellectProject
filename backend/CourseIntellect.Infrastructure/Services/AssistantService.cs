@@ -765,24 +765,21 @@ public sealed class AssistantService(
     }
 
     /// <summary>
-    /// Kursiyerin evrak dosyası. Durum <see cref="DrivingStudentRules.EffectiveStatus"/>
-    /// ile hesaplanır — süresi dolmuş bir belge veritabanında hâlâ "Approved"
-    /// görünür, ham durumu okumak yanıltıcı olurdu.
+    /// Kursiyerin güncel evrak dosyası ve onay durumu.
     /// </summary>
     private async Task<AssistantResponseDto> DrivingDocumentsAsync(Guid conversationId, StudentCandidate student, CancellationToken ct)
     {
         var profileId = await db.StudentDrivingProfiles.AsNoTracking().Where(x => x.StudentId == student.Id).Select(x => (Guid?)x.Id).FirstOrDefaultAsync(ct);
         if (!profileId.HasValue) return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.GetDrivingDocuments);
 
-        var now = DateTime.UtcNow;
         var stored = await db.StudentDrivingDocuments.AsNoTracking()
             .Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent)
-            .Select(x => new { x.DocumentType, x.Status, x.ExpiresAtUtc })
+            .Select(x => new { x.DocumentType, x.Status })
             .ToListAsync(ct);
 
         var items = stored.Select(x =>
         {
-            var effective = DrivingStudentRules.EffectiveStatus(x.Status, x.ExpiresAtUtc, now);
+            var effective = DrivingStudentRules.EffectiveStatus(x.Status);
             return new
             {
                 title = DrivingStudentRules.DocumentLabel(x.DocumentType),
@@ -790,15 +787,13 @@ public sealed class AssistantService(
                 {
                     StudentDocumentStatus.Approved => "Onaylı",
                     StudentDocumentStatus.PendingApproval => "Onay bekliyor",
-                    StudentDocumentStatus.Expired => "Süresi geçti",
                     StudentDocumentStatus.Rejected => "Reddedildi",
                     _ => "Eksik",
                 },
-                deadline = x.ExpiresAtUtc.HasValue ? x.ExpiresAtUtc.Value.AddHours(3).ToString("dd.MM.yyyy") : null,
             };
         }).ToList();
 
-        var problem = items.Count(x => x.status is "Süresi geçti" or "Reddedildi" or "Onay bekliyor");
+        var problem = items.Count(x => x.status is "Reddedildi" or "Onay bekliyor");
         var summary = items.Count == 0
             ? $"{student.FullName} için yüklenmiş evrak bulunamadı."
             : problem == 0
@@ -962,23 +957,23 @@ public sealed class AssistantService(
         if (!profileId.HasValue)
             return Build(conversationId, "error", "Bu öğrenci için sürücü kursu kaydı bulunamadı.", null, AssistantIntent.SendDocumentReminder);
 
-        var now = DateTime.UtcNow;
         var stored = await db.StudentDrivingDocuments.AsNoTracking()
             .Where(x => x.StudentDrivingProfileId == profileId && x.IsCurrent)
-            .Select(x => new { x.DocumentType, x.Status, x.ExpiresAtUtc })
+            .Select(x => new { x.DocumentType, x.Status })
             .ToListAsync(ct);
 
         var problems = stored
-            .Select(x => new { x.DocumentType, Effective = DrivingStudentRules.EffectiveStatus(x.Status, x.ExpiresAtUtc, now) })
-            .Where(x => x.Effective is StudentDocumentStatus.Expired or StudentDocumentStatus.Rejected or StudentDocumentStatus.PendingApproval)
+            .Select(x => new { x.DocumentType, Effective = DrivingStudentRules.EffectiveStatus(x.Status) })
+            .Where(x => x.Effective is StudentDocumentStatus.Rejected or StudentDocumentStatus.PendingApproval)
             .Select(x => DrivingStudentRules.DocumentLabel(x.DocumentType))
             .ToList();
 
         if (problems.Count == 0)
             return Build(conversationId, "text",
-                $"{student.FullName} için eksik veya süresi geçmiş evrak yok — hatırlatma gönderilmedi.",
+                $"{student.FullName} için ilgi bekleyen evrak yok — hatırlatma gönderilmedi.",
                 null, AssistantIntent.SendDocumentReminder);
 
+        var now = DateTime.UtcNow;
         await drivingNotifier.NotifyStudentAsync(
             profileId.Value,
             "Evrak hatırlatması",
@@ -991,7 +986,7 @@ public sealed class AssistantService(
             cancellationToken: ct);
 
         return Build(conversationId, "action_result",
-            $"{student.FullName} adlı kursiyere {problems.Count} eksik evrak için hatırlatma gönderildi.",
+            $"{student.FullName} adlı kursiyere {problems.Count} evrak için hatırlatma gönderildi.",
             new { studentId = student.Id, student.FullName, items = problems.Select(x => new { title = x }) },
             AssistantIntent.SendDocumentReminder);
     }
