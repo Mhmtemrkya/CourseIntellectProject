@@ -2,17 +2,23 @@ import 'package:flutter/material.dart';
 import '../i18n/app_locale.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
+import 'admin_finance_page.dart';
+import 'admin_profile_page.dart';
 import 'driving_collection_page.dart';
 import 'driving_expenses_page.dart';
 import 'driving_document_review_queue_page.dart';
 import 'driving_education_page.dart';
+import 'driving_graduation_page.dart';
 import 'driving_mobile_planning_page.dart';
 import 'driving_mebbis_work_center_page.dart';
 import 'driving_mebbis_exam_results_page.dart';
 import 'driving_mebbis_certificate_numbers_page.dart';
+import 'driving_school_operations_page.dart';
 import 'driving_term_opening_wizard_page.dart';
 import 'driving_school_students_page.dart';
 import 'driving_school_vehicles_page.dart';
+import 'teacher_content_page.dart';
+import 'teacher_question_bank_page.dart';
 
 class DrivingSchoolDashboardPage extends StatefulWidget {
   const DrivingSchoolDashboardPage({super.key});
@@ -177,6 +183,7 @@ class _DrivingSchoolDashboardPageState
                   ),
                 ),
               ),
+            SliverToBoxAdapter(child: _quickActions(context)),
             SliverPadding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
               sliver: SliverGrid.count(
@@ -535,6 +542,91 @@ class _DrivingSchoolDashboardPageState
         ),
       );
     },
+  );
+
+  // Alt menüde olmayan tüm ekranlara buradan tek dokunuşla gidilir. Alt menü
+  // yalnız 4 günlük işlemi taşır; gerisi bu hızlı geçiş kartlarındadır.
+  static Widget _quickActions(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final cols = width > 700 ? 5 : width > 480 ? 4 : 3;
+    final actions = <Widget>[
+      _quickAction(context, Icons.inventory_2_rounded, 'Paketler',
+          const Color(0xFF14B8A6), const DrivingSchoolOperationsPage()),
+      _quickAction(context, Icons.directions_car_filled_rounded, 'Araçlar',
+          const Color(0xFFEA580C), const DrivingSchoolVehiclesPage()),
+      _quickAction(context, Icons.school_rounded, 'Eğitim & Sınav',
+          const Color(0xFF7C3AED), const DrivingEducationPage()),
+      _quickAction(context, Icons.workspace_premium_rounded, 'Mezuniyet',
+          const Color(0xFF16A34A), const DrivingGraduationPage()),
+      _quickAction(context, Icons.fact_check_rounded, 'MEBBİS',
+          const Color(0xFF0284C7), const DrivingMebbisWorkCenterPage()),
+      _quickAction(context, Icons.receipt_long_rounded, 'Giderler',
+          const Color(0xFFE11D48), const DrivingExpensesPage()),
+      _quickAction(context, Icons.account_balance_wallet_rounded, 'Finans',
+          const Color(0xFF10B981), const AdminFinancePage()),
+      _quickAction(context, Icons.menu_book_rounded, 'Konu Anlatımı',
+          const Color(0xFF8B5CF6), const TeacherContentPage()),
+      _quickAction(context, Icons.quiz_rounded, 'Soru Bankası',
+          const Color(0xFF2563EB), const TeacherQuestionBankPage()),
+      _quickAction(context, Icons.person_outline_rounded, 'Profil',
+          const Color(0xFF64748B), const AdminProfilePage()),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const DrivingSectionTitle(title: 'Hızlı İşlemler'),
+          const SizedBox(height: 10),
+          GridView.count(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisCount: cols,
+            childAspectRatio: 0.92,
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            children: actions,
+          ),
+        ],
+      ),
+    );
+  }
+
+  static Widget _quickAction(
+    BuildContext context,
+    IconData icon,
+    String label,
+    Color color,
+    Widget page,
+  ) => InkWell(
+    onTap: () => Navigator.of(
+      context,
+    ).push(MaterialPageRoute<void>(builder: (_) => page)),
+    borderRadius: BorderRadius.circular(18),
+    child: DrivingPanel(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(11),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+          ),
+        ],
+      ),
+    ),
   );
 
   static Widget _summaryChip(String label, dynamic raw, Color color) => Chip(
