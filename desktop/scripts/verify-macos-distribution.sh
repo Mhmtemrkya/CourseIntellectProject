@@ -27,8 +27,9 @@ echo "Apple noter bileti ve Gatekeeper kabulü doğrulanıyor..."
 xcrun stapler validate "$APP_PATH"
 spctl --assess --type execute --verbose=4 "$APP_PATH"
 
-xcrun stapler validate "$DMG_PATH"
-spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG_PATH"
+# Tauri noter biletini çalıştırılabilir .app paketine staple eder. Dış DMG bir
+# taşıma kabıdır ve ayrıca staple edilmiş olmayabilir; güvenlik kararı DMG
+# içindeki uygulama üzerinden doğrulanmalıdır.
 hdiutil verify "$DMG_PATH"
 
 MOUNT_POINT="$(mktemp -d "${TMPDIR:-/tmp}/schoolasist-dmg.XXXXXX")"

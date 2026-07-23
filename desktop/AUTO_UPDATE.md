@@ -24,7 +24,7 @@ git push origin desktop-v1.1.0
 
 GitHub Actions macOS universal ve Windows NSIS paketlerini, imzaları ve `latest.json` dosyasını aynı release altında üretir. Uygulamayı kullanan kişiler bir sonraki açılışta güncellemeyi görür.
 
-macOS işi, release yayınlanmadan önce hem oluşturulan `.app` dosyasını hem de DMG içindeki gerçek son kullanıcı uygulamasını denetler. Developer ID imzası, Apple notarization bileti, stapling, Gatekeeper kabulü veya DMG bütünlüğünden biri başarısızsa release taslak olarak kalır ve kullanıcılara yayınlanmaz.
+macOS işi, release yayınlanmadan önce hem oluşturulan `.app` dosyasını hem de DMG içindeki gerçek son kullanıcı uygulamasını denetler. Uygulamanın Developer ID imzası, Apple notarization bileti, stapling ve Gatekeeper kabulüyle DMG disk bütünlüğünden biri başarısızsa release taslak olarak kalır ve kullanıcılara yayınlanmaz. Dış DMG yalnızca taşıma kabıdır; Tauri'nin uygulamaya eklediği noter bileti DMG içindeki `.app` üzerinde doğrulanır.
 
 Yerelde sürüm dosyalarını birlikte güncellemek için:
 

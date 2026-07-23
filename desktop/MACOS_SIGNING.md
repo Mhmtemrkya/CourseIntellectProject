@@ -53,9 +53,11 @@ Apple'a gönderip notarize eder ve bileti pakete "staple" eder. Çıktı:
 bash scripts/verify-macos-distribution.sh src-tauri/target
 ```
 
-Bu denetim oluşturulan `.app`, DMG, DMG içindeki son kullanıcı `.app` dosyası,
-Developer ID kimliği, Apple noter bileti, Gatekeeper kabulü ve disk bütünlüğünü
-birlikte doğrular. Kontrollerden biri başarısızsa paket dağıtılmamalıdır.
+Bu denetim oluşturulan `.app` ile DMG içindeki son kullanıcı `.app` dosyasının
+Developer ID kimliğini, Apple noter biletini ve Gatekeeper kabulünü; ayrıca
+DMG'nin disk bütünlüğünü doğrular. Dış DMG bir taşıma kabıdır ve Tauri sürümüne
+göre ayrıca staple edilmeyebilir. Güvenlik kararı çalıştırılacak `.app` üzerinde
+verilir. Kontrollerden biri başarısızsa paket dağıtılmamalıdır.
 
 ## Sık karşılaşılanlar
 
