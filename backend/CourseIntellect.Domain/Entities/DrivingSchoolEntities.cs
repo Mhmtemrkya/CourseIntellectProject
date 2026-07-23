@@ -34,6 +34,32 @@ public sealed class DrivingVehicle : ITenantScopedEntity
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
+/// <summary>
+/// Kurumun bir işletme gideri (gider faturası): mazot, bakım, kira, sigorta vb.
+/// Personel maaş/primi BURADA tutulmaz. Şube bazlı (IBranchScopedEntity) — hangi
+/// şubenin gideri olduğu otomatik damgalanır; isteğe bağlı olarak bir araca bağlanır.
+/// </summary>
+public sealed class DrivingExpense : IBranchScopedEntity
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
+    public DrivingExpenseCategory Category { get; set; } = DrivingExpenseCategory.Other;
+    public string Title { get; set; } = string.Empty;
+    public string VendorName { get; set; } = string.Empty;
+    public string InvoiceNo { get; set; } = string.Empty;
+    public decimal Amount { get; set; }
+    public string Currency { get; set; } = "TRY";
+    public DateTime ExpenseDateUtc { get; set; } = DateTime.UtcNow;
+    /// <summary>Yakıt/bakım gibi araca bağlı giderlerde ilgili araç (opsiyonel).</summary>
+    public Guid? VehicleId { get; set; }
+    public string Note { get; set; } = string.Empty;
+    /// <summary>Gider faturasını kim oluşturdu (detayda "oluşturan" olarak gösterilir).</summary>
+    public Guid? CreatedByUserId { get; set; }
+    public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public DateTime? UpdatedAtUtc { get; set; }
+}
+
 public sealed class DrivingInstructorProfile : ITenantScopedEntity
 {
     public Guid Id { get; set; } = Guid.NewGuid();
@@ -49,6 +75,17 @@ public sealed class DrivingInstructorProfile : ITenantScopedEntity
     public DateTime? WorkingPermitExpiresAtUtc { get; set; }
 
     public bool IsActive { get; set; } = true;
+    /// <summary>Çalışma izni değişince aktiflik sistem tarafından yeniden değerlendirilsin mi?</summary>
+    public bool AutomaticStatusEnabled { get; set; } = true;
+    /// <summary>Eksik/geçersiz çalışma iznine rağmen yetkili personelin verdiği açık istisna.</summary>
+    public bool ComplianceOverrideActive { get; set; }
+    public string ComplianceOverrideReason { get; set; } = string.Empty;
+    public Guid? ComplianceOverrideByUserId { get; set; }
+    public DateTime? ComplianceOverrideAtUtc { get; set; }
+    public string StatusChangeSource { get; set; } = "Automatic";
+    public string StatusChangeReason { get; set; } = string.Empty;
+    public Guid? StatusChangedByUserId { get; set; }
+    public DateTime? StatusChangedAtUtc { get; set; }
     public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 }
 
@@ -72,6 +109,19 @@ public sealed class StudentDrivingProfile : ITenantScopedEntity
     public int PurchasedDrivingMinutes { get; set; }
     public int UsedDrivingMinutes { get; set; }
     public DrivingStudentStatus Status { get; set; } = DrivingStudentStatus.Active;
+    /// <summary>Zorunlu evraklar değişince başlangıç durumunu sistem yönetsin mi?</summary>
+    public bool AutomaticStatusEnabled { get; set; } = true;
+    /// <summary>Evrakları tamamlanmadan eğitim/randevu verilmesine dair yetkili istisna.</summary>
+    public bool TrainingOverrideActive { get; set; }
+    public string TrainingOverrideReason { get; set; } = string.Empty;
+    public Guid? TrainingOverrideByUserId { get; set; }
+    public DateTime? TrainingOverrideAtUtc { get; set; }
+    /// <summary>Askıya alınan aday yeniden açılırken geri dönülecek operasyon durumu.</summary>
+    public DrivingStudentStatus? StatusBeforeSuspension { get; set; }
+    public string StatusChangeSource { get; set; } = "Automatic";
+    public string StatusChangeReason { get; set; } = string.Empty;
+    public Guid? StatusChangedByUserId { get; set; }
+    public DateTime? StatusChangedAtUtc { get; set; }
     public DateTime RegisteredAtUtc { get; set; } = DateTime.UtcNow;
 
     // ─── Kimlik ve kişisel bilgiler ───────────────────────────────────────────

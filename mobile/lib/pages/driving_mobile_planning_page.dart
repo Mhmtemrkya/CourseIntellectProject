@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:student/i18n/app_locale.dart';
 
 import '../services/driving_school_api_service.dart';
+import '../services/driving_permissions_store.dart';
 import '../widgets/driving_ui.dart';
 
 class DrivingMobilePlanningPage extends StatefulWidget {
@@ -19,6 +20,7 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
   String? _error;
   Map<String, dynamic> _reference = const {};
   List<Map<String, dynamic>> _calendar = const [], _requests = const [];
+  DrivingPermissionSnapshot _permissions = DrivingPermissionSnapshot.empty;
 
   /// Takvim sekmesinde gösterilen gün.
   DateTime _day = DateTime.now();
@@ -62,11 +64,13 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
         DrivingSchoolApiService.instance.drivingCalendar(),
         DrivingSchoolApiService.instance.appointmentRequests(),
       ]);
+      final permissions = await DrivingPermissionsStore.instance.load();
       if (mounted) {
         setState(() {
           _reference = result[0] as Map<String, dynamic>;
           _calendar = result[1] as List<Map<String, dynamic>>;
           _requests = result[2] as List<Map<String, dynamic>>;
+          _permissions = permissions;
         });
       }
     } catch (e) {
@@ -427,12 +431,138 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                 x['isActive'] == true ? Icons.check_circle : Icons.pause_circle,
                 color: x['isActive'] == true ? Colors.green : Colors.orange,
               ),
+              onTap: _permissions.can(DrivingPermissions.instructorUpdate)
+                  ? () => _manageInstructor(x)
+                  : null,
             ),
           ),
         ),
       ],
     ),
   );
+
+  Future<void> _manageInstructor(Map<String, dynamic> instructor) async {
+    var automatic = instructor['automaticStatusEnabled'] != false;
+    var active = instructor['isActive'] == true;
+    final ready = instructor['complianceReady'] == true;
+    final canDeactivate = _permissions.can(
+      DrivingPermissions.instructorDeactivate,
+    );
+    final canOverride = _permissions.can(
+      DrivingPermissions.overrideDocumentExpiry,
+    );
+    final reasonCtrl = TextEditingController();
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setLocal) {
+          final sensitive = !active || (active && !ready);
+          return AlertDialog(
+            title: Text('${instructor['fullName']}'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      ready ? Icons.verified_rounded : Icons.warning_rounded,
+                      color: ready ? Colors.green : Colors.orange,
+                    ),
+                    title: Text(
+                      ready
+                          ? 'Çalışma izni geçerli'
+                          : 'Çalışma izni eksik veya geçersiz',
+                    ),
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Otomatik yönetim'),
+                    subtitle: const Text(
+                      'İzin uygunsa aktif, değilse pasif tutulur.',
+                    ),
+                    value: automatic,
+                    onChanged: (v) => setLocal(() => automatic = v),
+                  ),
+                  if (!automatic) ...[
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Direksiyon öğretmeni aktif'),
+                      value: active,
+                      onChanged: active && !canDeactivate
+                          ? null
+                          : (v) => setLocal(() => active = v),
+                    ),
+                    if (active && !ready)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.gpp_maybe_rounded),
+                        title: const Text('Yetkili istisna gerekir'),
+                        subtitle: Text(
+                          canOverride
+                              ? 'Gerekçe ile aktif edilebilir.'
+                              : 'Bu işlem için yetkiniz yok.',
+                        ),
+                      ),
+                    TextField(
+                      controller: reasonCtrl,
+                      onChanged: (_) => setLocal(() {}),
+                      maxLength: 500,
+                      decoration: InputDecoration(
+                        labelText: sensitive
+                            ? 'Gerekçe (en az 10 karakter)'
+                            : 'Gerekçe',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text('Vazgeç'.tr),
+              ),
+              FilledButton(
+                onPressed:
+                    (!automatic && active && !ready && !canOverride) ||
+                        (!automatic &&
+                            sensitive &&
+                            reasonCtrl.text.trim().length < 10)
+                    ? null
+                    : () async {
+                        try {
+                          await DrivingSchoolApiService.instance
+                              .updateInstructorLifecycle(
+                                '${instructor['id']}',
+                                {
+                                  'isActive': active,
+                                  'automaticStatusEnabled': automatic,
+                                  'allowComplianceOverride': active && !ready,
+                                  'reason': reasonCtrl.text.trim(),
+                                },
+                              );
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext, true);
+                          }
+                        } catch (e) {
+                          if (dialogContext.mounted) {
+                            ScaffoldMessenger.of(
+                              dialogContext,
+                            ).showSnackBar(SnackBar(content: Text('$e')));
+                          }
+                        }
+                      },
+                child: Text('Kaydet'.tr),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    reasonCtrl.dispose();
+    if (saved == true) await _load();
+  }
 
   Widget _planningTab() => ListView(
     padding: const EdgeInsets.all(16),
@@ -557,6 +687,8 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
     final staff = _list('staff');
     String? staffId;
     final classes = TextEditingController(text: 'B');
+    final permitNo = TextEditingController();
+    DateTime? permitExpires;
     var manual = true, automatic = false;
     final ok = await showDialog<bool>(
       context: context,
@@ -583,6 +715,34 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
                 decoration: const InputDecoration(
                   labelText: 'Ehliyet sınıfları (B,C)',
                 ),
+              ),
+              TextField(
+                controller: permitNo,
+                maxLength: 60,
+                decoration: const InputDecoration(
+                  labelText: 'MEB çalışma izni no',
+                ),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Çalışma izni bitiş tarihi'),
+                subtitle: Text(
+                  permitExpires == null
+                      ? 'Girilmezse öğretmen pasif başlar'
+                      : '${permitExpires!.day}.${permitExpires!.month}.${permitExpires!.year}',
+                ),
+                trailing: const Icon(Icons.event_rounded),
+                onTap: () async {
+                  final picked = await showDatePicker(
+                    context: d,
+                    initialDate:
+                        permitExpires ??
+                        DateTime.now().add(const Duration(days: 365)),
+                    firstDate: DateTime.now(),
+                    lastDate: DateTime.now().add(const Duration(days: 3650)),
+                  );
+                  if (picked != null) setLocal(() => permitExpires = picked);
+                },
               ),
               CheckboxListTile(
                 value: manual,
@@ -620,10 +780,14 @@ class _DrivingMobilePlanningPageState extends State<DrivingMobilePlanningPage>
               .toList(),
           'canTeachManual': manual,
           'canTeachAutomatic': automatic,
+          'workingPermitNo': permitNo.text.trim(),
+          'workingPermitExpiresAtUtc': permitExpires?.toUtc().toIso8601String(),
         }),
         'Öğretmen yetkinliği tanımlandı.',
       );
     }
+    classes.dispose();
+    permitNo.dispose();
   }
 
   /// O aralıkta dersi olan öğretmenlerin id'leri — çakışan öğretmen formda

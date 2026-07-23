@@ -110,15 +110,15 @@ public sealed class DrivingAvailabilityService(CourseIntellectDbContext dbContex
         }
 
         // MEB çalışma izni: süresi dolmuş usta öğretici ders veremez.
-        var permitExpiresAtUtc = await dbContext.DrivingInstructorProfiles.AsNoTracking()
+        var permit = await dbContext.DrivingInstructorProfiles.AsNoTracking()
             .Where(x => x.Id == candidate.InstructorProfileId)
-            .Select(x => x.WorkingPermitExpiresAtUtc)
+            .Select(x => new { x.WorkingPermitExpiresAtUtc, x.ComplianceOverrideActive })
             .SingleOrDefaultAsync(cancellationToken);
-        if (!DrivingAvailability.IsWorkingPermitValid(permitExpiresAtUtc, candidate.StartsAtUtc))
+        if (permit is not null && !permit.ComplianceOverrideActive && !DrivingAvailability.IsWorkingPermitValid(permit.WorkingPermitExpiresAtUtc, candidate.StartsAtUtc))
         {
             violations.Add(new AvailabilityViolation(
                 DrivingAvailability.Codes.InstructorPermitExpired,
-                $"Usta öğreticinin MEB çalışma izni {permitExpiresAtUtc:dd.MM.yyyy} tarihinde dolmuş; ders tarihinde geçerli değil.",
+                $"Usta öğreticinin MEB çalışma izni {permit.WorkingPermitExpiresAtUtc:dd.MM.yyyy} tarihinde dolmuş; ders tarihinde geçerli değil.",
                 DrivingPermissions.OverrideDocumentExpiry));
         }
 

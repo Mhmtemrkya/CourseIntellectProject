@@ -102,7 +102,22 @@ public sealed class StudentFinanceController(
             return BadRequest(new { message = "İade tutarı sıfırdan büyük olmalı." });
         }
 
-        return Ok(await studentFinanceService.RefundPaymentAsync(request, CurrentUserId(), cancellationToken));
+        if (request.PaymentId == Guid.Empty)
+        {
+            return BadRequest(new { message = "İade edilecek tahsilat seçilmelidir." });
+        }
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            return BadRequest(new { message = "İade gerekçesi zorunludur." });
+        }
+        try
+        {
+            return Ok(await studentFinanceService.RefundPaymentAsync(request, CurrentUserId(), cancellationToken));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { message = ex.Message });
+        }
     }
 
     [HttpPost("reminders")]

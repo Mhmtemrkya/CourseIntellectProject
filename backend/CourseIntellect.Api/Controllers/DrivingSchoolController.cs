@@ -164,6 +164,13 @@ public sealed class DrivingSchoolController(
                 .Where(x => x.PaidAtUtc >= today && x.PaidAtUtc < tomorrow)
                 .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0
             : null;
+        // İşletme giderleri aynı aralıkta panoya yansısın (tahsilat - gider = net).
+        decimal? todayExpenses = canSeeFinance
+            ? await dbContext.DrivingExpenses.AsNoTracking()
+                .Where(x => x.ExpenseDateUtc >= today && x.ExpenseDateUtc < tomorrow)
+                .SumAsync(x => (decimal?)x.Amount, cancellationToken) ?? 0
+            : null;
+        decimal? todayNet = canSeeFinance ? (todayCollections ?? 0) - (todayExpenses ?? 0) : null;
 
         var monthlyRegistrations = await dbContext.Students.AsNoTracking()
             .Where(x => x.CreatedAtUtc >= today.AddMonths(-5))
@@ -262,6 +269,8 @@ public sealed class DrivingSchoolController(
                 termCriticalAlerts = termAlerts?.CriticalCount,
                 mebbisReadyNotEntered = termAlerts?.ReadyNotEnteredCount,
                 todayCollections,
+                todayExpenses,
+                todayNet,
             },
             charts = new { monthlyRegistrations = registrationSeries },
             alerts = operationAlerts,
@@ -365,7 +374,7 @@ public sealed class DrivingSchoolController(
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var rows = await dbContext.DrivingInstructorProfiles.AsNoTracking()
-            .Join(dbContext.Staff.AsNoTracking(), p => p.StaffId, s => s.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, p.IsActive })
+            .Join(dbContext.Staff.AsNoTracking(), p => p.StaffId, s => s.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, p.IsActive, p.AutomaticStatusEnabled, p.ComplianceOverrideActive, p.ComplianceOverrideReason, p.ComplianceOverrideAtUtc, p.StatusChangeSource, p.StatusChangeReason, p.StatusChangedAtUtc })
             .OrderBy(x => x.FullName).ToListAsync(ct);
         var now = DateTime.UtcNow;
         return Ok(rows.Select(x => new
@@ -373,6 +382,9 @@ public sealed class DrivingSchoolController(
             x.Id, x.StaffId, x.FullName, x.LicenseClasses, x.CanTeachManual, x.CanTeachAutomatic,
             x.WorkingPermitNo, x.WorkingPermitExpiresAtUtc, x.IsActive,
             workingPermitExpired = x.WorkingPermitExpiresAtUtc is DateTime expires && expires <= now,
+            complianceReady = !string.IsNullOrWhiteSpace(x.WorkingPermitNo) && x.WorkingPermitExpiresAtUtc > now,
+            x.AutomaticStatusEnabled, x.ComplianceOverrideActive, x.ComplianceOverrideReason,
+            x.ComplianceOverrideAtUtc, x.StatusChangeSource, x.StatusChangeReason, x.StatusChangedAtUtc,
         }));
     }
 
@@ -395,7 +407,12 @@ public sealed class DrivingSchoolController(
             CanTeachAutomatic = request.CanTeachAutomatic,
             WorkingPermitNo = request.WorkingPermitNo?.Trim() ?? string.Empty,
             WorkingPermitExpiresAtUtc = request.WorkingPermitExpiresAtUtc,
+            AutomaticStatusEnabled = true,
         };
+        entity.IsActive = IsInstructorComplianceReady(entity, DateTime.UtcNow);
+        entity.StatusChangeSource = "Automatic";
+        entity.StatusChangeReason = entity.IsActive ? "Çalışma izni geçerli." : "Çalışma izni eksik veya geçersiz.";
+        entity.StatusChangedAtUtc = DateTime.UtcNow;
         dbContext.DrivingInstructorProfiles.Add(entity);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Direksiyon öğretmeni tanımlandı", AuditCategory, "DrivingInstructorProfile", entity.Id.ToString(),
@@ -418,11 +435,80 @@ public sealed class DrivingSchoolController(
         var before = new { profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc };
         profile.WorkingPermitNo = request.WorkingPermitNo?.Trim() ?? string.Empty;
         profile.WorkingPermitExpiresAtUtc = request.WorkingPermitExpiresAtUtc;
+        if (IsInstructorComplianceReady(profile, DateTime.UtcNow))
+        {
+            profile.ComplianceOverrideActive = false;
+            profile.ComplianceOverrideReason = string.Empty;
+            profile.ComplianceOverrideByUserId = null;
+            profile.ComplianceOverrideAtUtc = null;
+        }
+        if (profile.AutomaticStatusEnabled)
+        {
+            profile.IsActive = IsInstructorComplianceReady(profile, DateTime.UtcNow);
+            profile.ComplianceOverrideActive = false;
+            profile.ComplianceOverrideReason = string.Empty;
+            profile.StatusChangeSource = "Automatic";
+            profile.StatusChangeReason = profile.IsActive ? "Çalışma izni geçerli." : "Çalışma izni eksik veya geçersiz.";
+            profile.StatusChangedByUserId = null;
+            profile.StatusChangedAtUtc = DateTime.UtcNow;
+        }
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Çalışma izni güncellendi", AuditCategory, "DrivingInstructorProfile", profile.Id.ToString(),
             $"İzin no: {(string.IsNullOrWhiteSpace(profile.WorkingPermitNo) ? "—" : profile.WorkingPermitNo)}, bitiş: {profile.WorkingPermitExpiresAtUtc:dd.MM.yyyy}.",
             before, new { profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc }, ct);
-        return Ok(new { profile.Id, profile.WorkingPermitNo, profile.WorkingPermitExpiresAtUtc });
+        return Ok(InstructorLifecycleResponse(profile));
+    }
+
+    [HttpPut("instructors/{id:guid}/lifecycle")]
+    [RequireDrivingPermission(DrivingPermissions.InstructorUpdate)]
+    public async Task<IActionResult> UpdateInstructorLifecycle(Guid id, [FromBody] UpdateInstructorLifecycleRequest request, CancellationToken ct)
+    {
+        if (!await CanUseModuleAsync(ct)) return Forbid();
+        var profile = await dbContext.DrivingInstructorProfiles.SingleOrDefaultAsync(x => x.Id == id, ct);
+        if (profile is null) return NotFound(new { message = "Öğretmen bulunamadı." });
+        var reason = request.Reason?.Trim() ?? string.Empty;
+        if (reason.Length > 500) return BadRequest(new { message = "Gerekçe en fazla 500 karakter olabilir." });
+
+        var before = InstructorLifecycleResponse(profile);
+        if (request.AutomaticStatusEnabled)
+        {
+            profile.AutomaticStatusEnabled = true;
+            profile.ComplianceOverrideActive = false;
+            profile.ComplianceOverrideReason = string.Empty;
+            profile.IsActive = IsInstructorComplianceReady(profile, DateTime.UtcNow);
+            profile.StatusChangeSource = "Automatic";
+            profile.StatusChangeReason = profile.IsActive ? "Çalışma izni geçerli." : "Çalışma izni eksik veya geçersiz.";
+            profile.StatusChangedByUserId = null;
+        }
+        else
+        {
+            if (!request.IsActive && !await permissionService.HasAsync(User, DrivingPermissions.InstructorDeactivate, ct)) return Forbid();
+            var ready = IsInstructorComplianceReady(profile, DateTime.UtcNow);
+            if (request.IsActive && !ready)
+            {
+                if (!request.AllowComplianceOverride)
+                    return BadRequest(new { message = "Çalışma izni eksik veya geçersiz. Yetkili istisna gerekir.", overridableWith = DrivingPermissions.OverrideDocumentExpiry });
+                if (!await permissionService.HasAsync(User, DrivingPermissions.OverrideDocumentExpiry, ct)) return Forbid();
+            }
+            if ((!request.IsActive || request.IsActive && !ready) && reason.Length < MinOverrideReasonLength)
+                return BadRequest(new { message = $"Pasife alma veya istisna gerekçesi en az {MinOverrideReasonLength} karakter olmalıdır." });
+
+            profile.AutomaticStatusEnabled = false;
+            profile.IsActive = request.IsActive;
+            profile.ComplianceOverrideActive = request.IsActive && !ready;
+            profile.ComplianceOverrideReason = profile.ComplianceOverrideActive ? reason : string.Empty;
+            profile.ComplianceOverrideByUserId = profile.ComplianceOverrideActive ? CurrentUserId() : null;
+            profile.ComplianceOverrideAtUtc = profile.ComplianceOverrideActive ? DateTime.UtcNow : null;
+            profile.StatusChangeSource = "Manual";
+            profile.StatusChangeReason = reason;
+            profile.StatusChangedByUserId = CurrentUserId();
+        }
+        profile.StatusChangedAtUtc = DateTime.UtcNow;
+        await dbContext.SaveChangesAsync(ct);
+        await auditLogService.LogChangeAsync("Direksiyon öğretmeni durumu değiştirildi", AuditCategory,
+            "DrivingInstructorProfile", profile.Id.ToString(), $"Aktif: {profile.IsActive}. {profile.StatusChangeReason}",
+            before, InstructorLifecycleResponse(profile), ct);
+        return Ok(InstructorLifecycleResponse(profile));
     }
 
     [HttpGet("students")]
@@ -454,6 +540,11 @@ public sealed class DrivingSchoolController(
                 x.p.UsedDrivingMinutes,
                 remainingDrivingMinutes = x.p.PurchasedDrivingMinutes - x.p.UsedDrivingMinutes,
                 status = x.p.Status.ToString(),
+                x.p.AutomaticStatusEnabled,
+                x.p.TrainingOverrideActive,
+                x.p.StatusChangeSource,
+                x.p.StatusChangeReason,
+                x.p.StatusChangedAtUtc,
                 groupId = x.p.StudentGroupId,
                 groupName = g != null ? g.Name : null,
             })
@@ -865,7 +956,20 @@ public sealed class DrivingSchoolController(
         if (!string.Equals(package.LicenseClass, license, StringComparison.OrdinalIgnoreCase) || package.TransmissionType != request.TransmissionType)
             return BadRequest(new { message = "Öğrencinin ehliyet sınıfı ve vites türü paketle uyumlu olmalıdır." });
         var nextStudentNumber = (await dbContext.StudentDrivingProfiles.MaxAsync(x => (int?)x.StudentNumber, ct) ?? 0) + 1;
-        var entity = new CourseIntellect.Domain.Entities.StudentDrivingProfile { StudentId = request.StudentId, PackageId = package.Id, StudentNumber = nextStudentNumber, LicenseClass = license, TransmissionType = request.TransmissionType, PurchasedDrivingMinutes = package.DrivingLessonMinutes };
+        var entity = new CourseIntellect.Domain.Entities.StudentDrivingProfile
+        {
+            StudentId = request.StudentId,
+            PackageId = package.Id,
+            StudentNumber = nextStudentNumber,
+            LicenseClass = license,
+            TransmissionType = request.TransmissionType,
+            PurchasedDrivingMinutes = package.DrivingLessonMinutes,
+            Status = DrivingStudentStatus.DocumentsPending,
+            AutomaticStatusEnabled = true,
+            StatusChangeSource = "Automatic",
+            StatusChangeReason = "Yeni kayıt; zorunlu evraklar bekleniyor.",
+            StatusChangedAtUtc = DateTime.UtcNow,
+        };
         dbContext.StudentDrivingProfiles.Add(entity);
         await dbContext.SaveChangesAsync(ct);
         await auditLogService.LogChangeAsync("Sürücü adayı kaydı oluşturuldu", AuditCategory, "StudentDrivingProfile", entity.Id.ToString(),
@@ -1009,12 +1113,23 @@ public sealed class DrivingSchoolController(
         if (overrides.Error is not null) return BadRequest(new { message = overrides.Error });
 
         await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
-        // Dosyası eksik, askıdaki veya kurstan ayrılmış aday randevuya alınamaz.
-        var schedulableStatuses = DrivingStudentStatuses.Schedulable.ToArray();
-        var student = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == request.StudentDrivingProfileId && schedulableStatuses.Contains(x.Status), ct);
+        var student = await dbContext.StudentDrivingProfiles.SingleOrDefaultAsync(x => x.Id == request.StudentDrivingProfileId, ct);
         var vehicle = await dbContext.DrivingVehicles.SingleOrDefaultAsync(x => x.Id == request.VehicleId && x.IsActive, ct);
         var instructor = await dbContext.DrivingInstructorProfiles.SingleOrDefaultAsync(x => x.Id == request.InstructorProfileId && x.IsActive, ct);
         if (student is null || vehicle is null || instructor is null) return BadRequest(new { message = "Aktif öğrenci, araç veya öğretmen bulunamadı." });
+
+        var statusSchedulable = DrivingStudentStatuses.Schedulable.Contains(student.Status);
+        var documentsComplete = await HasCompleteStudentDocumentsAsync(student, ct);
+        var oneTimeDocumentOverride = overrides.Has(DrivingPermissions.OverrideStudentDocuments);
+        // Askı/iptal/mezuniyet sert engeldir; yalnız evrak bekleyen aday için açık, gerekçeli tek-randevu istisnası verilebilir.
+        if (!statusSchedulable && !(student.Status is DrivingStudentStatus.PreRegistered or DrivingStudentStatus.DocumentsPending && oneTimeDocumentOverride))
+            return BadRequest(new { message = "Kursiyer pasif veya eğitim aşamasına uygun değil." });
+        if (!documentsComplete && !student.TrainingOverrideActive && !oneTimeDocumentOverride)
+            return BadRequest(new
+            {
+                message = "Kursiyerin zorunlu evrakları tamamlanmamış. Yaşam döngüsünden yetkili istisna verin veya bu randevu için gerekçeli istisna kullanın.",
+                overridableWith = DrivingPermissions.OverrideStudentDocuments,
+            });
 
         var vehicleUnfit = vehicle.IsInMaintenance || !vehicle.InspectionExpiresAtUtc.HasValue || !vehicle.InsuranceExpiresAtUtc.HasValue
             || vehicle.InspectionExpiresAtUtc <= request.EndsAtUtc || vehicle.InsuranceExpiresAtUtc <= request.EndsAtUtc;
@@ -1089,6 +1204,8 @@ public sealed class DrivingSchoolController(
         await transaction.CommitAsync(ct);
 
         var usedOverrides = overrides.Applied(vehicleUnfit, transmissionMismatch, conflict);
+        if (!documentsComplete && !student.TrainingOverrideActive && oneTimeDocumentOverride)
+            usedOverrides.Add(DrivingPermissions.OverrideStudentDocuments);
         // Uygunluk kurallarından bilerek ezilenler de aynı gerekçeyle audit'e düşer.
         var overriddenRules = violations
             .Where(x => x.OverridableWith is not null && overrides.Has(x.OverridableWith))
@@ -1592,6 +1709,35 @@ public sealed class DrivingSchoolController(
     private static object VehicleSnapshot(CourseIntellect.Domain.Entities.DrivingVehicle vehicle)
         => new { vehicle.PlateNumber, vehicle.Brand, vehicle.Model, vehicle.ModelYear, vehicle.LicenseClass, transmissionType = vehicle.TransmissionType.ToString(), vehicle.CurrentKilometer, vehicle.InspectionExpiresAtUtc, vehicle.InsuranceExpiresAtUtc, vehicle.IsActive, vehicle.IsInMaintenance };
 
+    private static bool IsInstructorComplianceReady(CourseIntellect.Domain.Entities.DrivingInstructorProfile profile, DateTime atUtc)
+        => !string.IsNullOrWhiteSpace(profile.WorkingPermitNo) && profile.WorkingPermitExpiresAtUtc > atUtc;
+
+    private static object InstructorLifecycleResponse(CourseIntellect.Domain.Entities.DrivingInstructorProfile profile)
+        => new
+        {
+            profile.Id,
+            profile.IsActive,
+            profile.AutomaticStatusEnabled,
+            complianceReady = IsInstructorComplianceReady(profile, DateTime.UtcNow),
+            profile.ComplianceOverrideActive,
+            profile.ComplianceOverrideReason,
+            profile.ComplianceOverrideAtUtc,
+            profile.StatusChangeSource,
+            profile.StatusChangeReason,
+            profile.StatusChangedAtUtc,
+        };
+
+    private async Task<bool> HasCompleteStudentDocumentsAsync(CourseIntellect.Domain.Entities.StudentDrivingProfile profile, CancellationToken ct)
+    {
+        var birthDate = await dbContext.Students.AsNoTracking()
+            .Where(x => x.Id == profile.StudentId).Select(x => x.BirthDate).SingleOrDefaultAsync(ct);
+        var required = DrivingStudentRules.RequiredDocumentsFor(birthDate, DateTime.UtcNow);
+        var approved = await dbContext.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id && x.IsCurrent && x.Status == StudentDocumentStatus.Approved)
+            .Select(x => x.DocumentType).ToListAsync(ct);
+        return DrivingStudentRules.MissingDocuments(required, approved.ToHashSet()).Count == 0;
+    }
+
     private static bool IsSafeUploadUrl(string? value)
     {
         if (string.IsNullOrWhiteSpace(value) || !Uri.TryCreate(value, UriKind.RelativeOrAbsolute, out var uri)) return false;
@@ -1663,6 +1809,11 @@ public sealed record SaveDrivingPackageRequest(string Name, string LicenseClass,
 public sealed record SaveDrivingVehicleRequest(string PlateNumber, string Brand, string Model, int ModelYear, string LicenseClass, TransmissionType TransmissionType, int CurrentKilometer, DateTime? InspectionExpiresAtUtc, DateTime? InsuranceExpiresAtUtc);
 public sealed record SaveDrivingInstructorRequest(Guid StaffId, IReadOnlyList<string> LicenseClasses, bool CanTeachManual, bool CanTeachAutomatic, string? WorkingPermitNo = null, DateTime? WorkingPermitExpiresAtUtc = null);
 public sealed record UpdateWorkingPermitRequest(string? WorkingPermitNo, DateTime? WorkingPermitExpiresAtUtc);
+public sealed record UpdateInstructorLifecycleRequest(
+    bool IsActive,
+    bool AutomaticStatusEnabled = false,
+    bool AllowComplianceOverride = false,
+    string? Reason = null);
 public sealed record SaveStudentDrivingProfileRequest(Guid StudentId, Guid PackageId, string LicenseClass, TransmissionType TransmissionType);
 public sealed record SaveDrivingStudentGroupRequest(
     string Name,

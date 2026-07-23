@@ -3,6 +3,7 @@ using System;
 using CourseIntellect.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CourseIntellect.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CourseIntellectDbContext))]
-    partial class CourseIntellectDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260722185942_AddDrivingExpenses")]
+    partial class AddDrivingExpenses
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2280,28 +2283,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("AutomaticStatusEnabled")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("CanTeachAutomatic")
                         .HasColumnType("boolean");
 
                     b.Property<bool>("CanTeachManual")
                         .HasColumnType("boolean");
-
-                    b.Property<bool>("ComplianceOverrideActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("ComplianceOverrideAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("ComplianceOverrideByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("ComplianceOverrideReason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -2315,22 +2301,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)");
 
                     b.Property<Guid>("StaffId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("StatusChangeReason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("StatusChangeSource")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("StatusChangedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("StatusChangedByUserId")
                         .HasColumnType("uuid");
 
                     b.Property<Guid?>("TenantId")
@@ -4304,10 +4274,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<bool>("DownPaymentPaid")
                         .HasColumnType("boolean");
 
-                    b.Property<decimal>("DownPaymentPaidAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
                     b.Property<decimal>("GrossAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
@@ -4625,16 +4591,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("EnrollmentContractId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("EntryType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<string>("ExternalReference")
-                        .IsRequired()
-                        .HasMaxLength(120)
-                        .HasColumnType("character varying(120)");
-
                     b.Property<Guid?>("FinanceInstallmentId")
                         .HasColumnType("uuid");
 
@@ -4648,33 +4604,10 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<Guid?>("OriginalPaymentId")
-                        .HasColumnType("uuid");
-
                     b.Property<DateTime>("PaidAtUtc")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("ReceiptNo")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("RefundChannel")
-                        .IsRequired()
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("RefundReason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("RefundStatus")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)");
-
-                    b.Property<string>("RefundType")
                         .IsRequired()
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
@@ -4697,60 +4630,11 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("FinanceInstallmentId");
 
-                    b.HasIndex("OriginalPaymentId");
-
                     b.HasIndex("StudentUserId");
 
                     b.HasIndex("TenantId");
 
                     b.ToTable("finance_payments", (string)null);
-                });
-
-            modelBuilder.Entity("CourseIntellect.Domain.Entities.FinancePaymentAllocation", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("Amount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<Guid?>("BranchId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("branch_id");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid>("FinanceInstallmentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<Guid>("FinancePaymentId")
-                        .HasColumnType("uuid");
-
-                    b.Property<decimal>("RefundedAmount")
-                        .HasPrecision(18, 2)
-                        .HasColumnType("numeric(18,2)");
-
-                    b.Property<int>("Sequence")
-                        .HasColumnType("integer");
-
-                    b.Property<Guid?>("TenantId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("tenant_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("BranchId");
-
-                    b.HasIndex("FinanceInstallmentId");
-
-                    b.HasIndex("FinancePaymentId");
-
-                    b.HasIndex("TenantId");
-
-                    b.ToTable("finance_payment_allocations", (string)null);
                 });
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.GuidanceAppointment", b =>
@@ -7363,9 +7247,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                     b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uuid");
 
-                    b.Property<bool>("AutomaticStatusEnabled")
-                        .HasColumnType("boolean");
-
                     b.Property<bool>("AvailableWeekdays")
                         .HasColumnType("boolean");
 
@@ -7608,26 +7489,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
                         .HasMaxLength(40)
                         .HasColumnType("character varying(40)");
 
-                    b.Property<string>("StatusBeforeSuspension")
-                        .HasMaxLength(40)
-                        .HasColumnType("character varying(40)");
-
-                    b.Property<string>("StatusChangeReason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("StatusChangeSource")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
-
-                    b.Property<DateTime?>("StatusChangedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("StatusChangedByUserId")
-                        .HasColumnType("uuid");
-
                     b.Property<Guid?>("StudentGroupId")
                         .HasColumnType("uuid");
 
@@ -7646,20 +7507,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
                     b.Property<bool>("TheoryExamFeePaid")
                         .HasColumnType("boolean");
-
-                    b.Property<bool>("TrainingOverrideActive")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime?>("TrainingOverrideAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<Guid?>("TrainingOverrideByUserId")
-                        .HasColumnType("uuid");
-
-                    b.Property<string>("TrainingOverrideReason")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
 
                     b.Property<string>("TransmissionType")
                         .IsRequired()
@@ -9448,26 +9295,6 @@ namespace CourseIntellect.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CourseIntellect.Domain.Entities.FinancePayment", b =>
                 {
-                    b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
-                        .WithMany()
-                        .HasForeignKey("TenantId")
-                        .OnDelete(DeleteBehavior.SetNull);
-                });
-
-            modelBuilder.Entity("CourseIntellect.Domain.Entities.FinancePaymentAllocation", b =>
-                {
-                    b.HasOne("CourseIntellect.Domain.Entities.FinanceInstallment", null)
-                        .WithMany()
-                        .HasForeignKey("FinanceInstallmentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("CourseIntellect.Domain.Entities.FinancePayment", null)
-                        .WithMany()
-                        .HasForeignKey("FinancePaymentId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
                     b.HasOne("CourseIntellect.Domain.Entities.TenantWorkspace", null)
                         .WithMany()
                         .HasForeignKey("TenantId")

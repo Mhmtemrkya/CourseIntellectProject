@@ -84,6 +84,29 @@ class DrivingSchoolApiService {
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
 
+  Future<Map<String, dynamic>> _delete(String path) async {
+    final session = await AuthSessionStore.instance.load();
+    if (session == null) throw StateError('Oturum bulunamadı.');
+    final response = await http.delete(
+      Uri.parse('${ApiConfig.baseUrl}$path'),
+      headers: {
+        'Authorization': 'Bearer ${session.accessToken}',
+        ...ScopeHeaders.merged,
+      },
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      var message = 'İşlem başarısız (${response.statusCode}).';
+      try {
+        message =
+            (jsonDecode(response.body) as Map)['message']?.toString() ??
+            message;
+      } catch (_) {}
+      throw StateError(message);
+    }
+    if (response.body.isEmpty) return const {};
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
   Future<bool> isAvailable() async =>
       (await _get('/api/driving-school/status'))['available'] == true;
   Future<Map<String, dynamic>> me() => _get('/api/driving-school/me');
@@ -602,6 +625,10 @@ class DrivingSchoolApiService {
   Future<Map<String, dynamic>> createInstructorProfile(
     Map<String, dynamic> body,
   ) => _post('/api/driving-school/instructors', body);
+  Future<Map<String, dynamic>> updateInstructorLifecycle(
+    String profileId,
+    Map<String, dynamic> body,
+  ) => _put('/api/driving-school/instructors/$profileId/lifecycle', body);
 
   Future<List<Map<String, dynamic>>> vehicleDocuments() async =>
       (await _getList(
@@ -617,6 +644,11 @@ class DrivingSchoolApiService {
   Future<List<Map<String, dynamic>>> students() async => (await _getList(
     '/api/driving-school/students',
   )).cast<Map<String, dynamic>>();
+
+  Future<Map<String, dynamic>> updateStudentLifecycle(
+    String profileId,
+    Map<String, dynamic> body,
+  ) => _post('/api/driving-school/students/$profileId/status', body);
 
   // Kursiyer grupları (dönemler): liste + kursiyer sayıları.
   Future<Map<String, dynamic>> studentGroups() =>
@@ -689,6 +721,35 @@ class DrivingSchoolApiService {
       (await _getList(
         '/api/driving-school/students/$profileId/installments',
       )).cast<Map<String, dynamic>>();
+
+  // ─── İşletme giderleri (mazot, bakım, kira, sigorta...) ─────────────────
+  // Kurumdan bağımsız genel finans modülü: hem okul hem sürücü kursu aynı uçları
+  // kullanır (/api/finance/expenses). Sürücü kursunda araç bağı da döner.
+  Future<Map<String, dynamic>> expenses({
+    DateTime? from,
+    DateTime? to,
+    String? category,
+    String? vehicleId,
+  }) {
+    final q = <String, String>{};
+    if (from != null) q['from'] = from.toUtc().toIso8601String();
+    if (to != null) q['to'] = to.toUtc().toIso8601String();
+    if (category != null && category.isNotEmpty) q['category'] = category;
+    if (vehicleId != null && vehicleId.isNotEmpty) q['vehicleId'] = vehicleId;
+    final query = q.isEmpty
+        ? ''
+        : '?${q.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&')}';
+    return _get('/api/finance/expenses$query');
+  }
+
+  Future<Map<String, dynamic>> createExpense(Map<String, dynamic> body) =>
+      _post('/api/finance/expenses', body);
+  Future<Map<String, dynamic>> updateExpense(
+    String id,
+    Map<String, dynamic> body,
+  ) => _put('/api/finance/expenses/$id', body);
+  Future<Map<String, dynamic>> deleteExpense(String id) =>
+      _delete('/api/finance/expenses/$id');
 
   // "Ödeme Al" modalı için tam finans bağlamı (özet + peşinat + taksitler).
   Future<Map<String, dynamic>> paymentContext(String profileId) =>

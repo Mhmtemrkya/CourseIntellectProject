@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   AlertTriangle, ArrowLeft, CalendarClock, CheckCircle2, ClipboardList, CreditCard, Download,
-  FileCheck2, FileSignature, Gauge, History, Plus, Receipt, RefreshCw, StickyNote, TrendingUp, Undo2, Upload, Wrench, XCircle,
+  FileCheck2, FileSignature, Gauge, History, Plus, Receipt, RefreshCw, StickyNote, TrendingUp, Undo2, Upload, UserRoundCheck, Wrench, XCircle,
 } from 'lucide-react';
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { Badge } from '../../components/ui/badge';
@@ -53,7 +53,7 @@ const LEDGER_LABELS = {
 const STATUS_LABELS = {
   PreRegistered: 'Ön kayıt', DocumentsPending: 'Evrak bekliyor', Active: 'Aktif',
   TheoryOngoing: 'Teorik eğitimde', PracticeOngoing: 'Direksiyonda', ExamPending: 'Sınav bekliyor',
-  Graduated: 'Mezun', Suspended: 'Askıda', Cancelled: 'İptal',
+  GraduationPending: 'Mezuniyet onayında', Graduated: 'Mezun', Suspended: 'Askıda', Cancelled: 'İptal',
 };
 
 const DOCUMENT_STATUS = {
@@ -237,10 +237,14 @@ export default function DrivingStudentDetail() {
   const [examFeeDraft, setExamFeeDraft] = useState(null); // null = görüntüleme, obje = düzenleme
   const [savingFees, setSavingFees] = useState(false);
   const [docPreview, setDocPreview] = useState(null); // { item, url, kind, loading }
+  const [lifecycleOpen, setLifecycleOpen] = useState(false);
+  const [lifecycleForm, setLifecycleForm] = useState({ status: 'Active', automaticStatusEnabled: true, allowIncompleteDocuments: false, reason: '' });
 
   const canReview = can(DRIVING.studentDocumentReview);
   const canUpload = can(DRIVING.studentDocumentUpload);
   const canUpdate = can(DRIVING.studentUpdate);
+  const canDeactivate = can(DRIVING.studentDeactivate);
+  const canOverrideDocuments = can(DRIVING.overrideStudentDocuments);
   const canAdjustBalance = can(DRIVING.lessonBalanceAdjust);
   const canCollect = can(DRIVING.financeCollect);
   const canRefund = can(DRIVING.financeRefund);
@@ -387,6 +391,17 @@ export default function DrivingStudentDetail() {
     }
   }
 
+  async function saveLifecycle() {
+    const sensitive = ['Suspended', 'Cancelled'].includes(lifecycleForm.status)
+      || (!overview.documentsComplete && lifecycleForm.allowIncompleteDocuments);
+    if (sensitive && lifecycleForm.reason.trim().length < 10) {
+      toast({ title: 'Gerekçe zorunlu', description: 'Bu işlem için en az 10 karakterlik gerekçe yazın.', variant: 'destructive' });
+      return;
+    }
+    await run(() => updateDrivingStudentStatus(profileId, lifecycleForm), 'Kursiyer yaşam döngüsü güncellendi');
+    setLifecycleOpen(false);
+  }
+
   async function uploadDocument(documentType, file) {
     if (!file) return;
     setBusy(true);
@@ -486,23 +501,47 @@ export default function DrivingStudentDetail() {
           </div>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canUpdate && (
-            <select
-              className="h-10 rounded-md border border-input bg-background px-3 text-sm font-semibold"
-              value={overview.status}
-              disabled={busy}
-              onChange={(e) => run(
-                () => updateDrivingStudentStatus(profileId, { status: e.target.value, reason: 'Detay ekranından değiştirildi' }),
-                'Kursiyer durumu güncellendi',
-              )}
-            >
-              {Object.entries(STATUS_LABELS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-            </select>
-          )}
+          {canUpdate && <Button variant="outline" onClick={() => {
+            setLifecycleForm({ status: overview.status, automaticStatusEnabled: overview.automaticStatusEnabled !== false, allowIncompleteDocuments: false, reason: '' });
+            setLifecycleOpen(true);
+          }}><UserRoundCheck className="mr-2 h-4 w-4" />Durum ve uygunluk</Button>}
           <Button variant="outline" onClick={load}><RefreshCw className="mr-2 h-4 w-4" />Yenile</Button>
           <Button variant="outline" disabled={!lessons.length} onClick={exportEvaluations}><Download className="mr-2 h-4 w-4" />Gelişim Raporu</Button>
         </div>
       </div>
+
+      <Dialog open={lifecycleOpen} onOpenChange={setLifecycleOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Kursiyer yaşam döngüsü</DialogTitle></DialogHeader>
+          <div className="space-y-4">
+            <div className={`rounded-xl border p-3 text-sm ${overview.documentsComplete ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}>
+              <b>{overview.documentsComplete ? 'Zorunlu evraklar tamam' : 'Evrak dosyası tamamlanmamış'}</b>
+              {!overview.documentsComplete && <p className="mt-1 text-muted-foreground">{(overview.missingDocuments || []).join(', ')}</p>}
+            </div>
+            <label className="flex items-start gap-3 rounded-xl border p-3">
+              <input type="checkbox" className="mt-1" checked={lifecycleForm.automaticStatusEnabled} onChange={(e) => setLifecycleForm({ ...lifecycleForm, automaticStatusEnabled: e.target.checked, allowIncompleteDocuments: false })} />
+              <span><b>Otomatik yönetim</b><small className="block text-muted-foreground">Evraklar tamamlanınca aktif, yeniden eksilirse evrak bekliyor durumuna geçer.</small></span>
+            </label>
+            {!lifecycleForm.automaticStatusEnabled && <>
+              <label className="space-y-1 text-sm font-semibold">Manuel durum
+                <select className={apptSelectClass} value={lifecycleForm.status} onChange={(e) => setLifecycleForm({ ...lifecycleForm, status: e.target.value, allowIncompleteDocuments: false })}>
+                  {Object.entries(STATUS_LABELS).filter(([value]) => value !== 'Graduated' && (canDeactivate || !['Suspended', 'Cancelled'].includes(value))).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                </select>
+              </label>
+              {!overview.documentsComplete && ['Active', 'TheoryOngoing', 'PracticeOngoing', 'ExamPending'].includes(lifecycleForm.status) && (
+                <label className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+                  <input type="checkbox" className="mt-1" disabled={!canOverrideDocuments} checked={lifecycleForm.allowIncompleteDocuments} onChange={(e) => setLifecycleForm({ ...lifecycleForm, allowIncompleteDocuments: e.target.checked })} />
+                  <span><b>Eksik evraka rağmen eğitime izin ver</b><small className="block text-muted-foreground">Yetkili istisna olarak kaydedilir; gerekçe ve kullanıcı denetim geçmişine yazılır.</small></span>
+                </label>
+              )}
+              <label className="space-y-1 text-sm font-semibold">Gerekçe
+                <Input maxLength={500} value={lifecycleForm.reason} onChange={(e) => setLifecycleForm({ ...lifecycleForm, reason: e.target.value })} placeholder="Pasife alma veya istisna nedeni" />
+              </label>
+            </>}
+          </div>
+          <DialogFooter><Button variant="outline" onClick={() => setLifecycleOpen(false)}>Vazgeç</Button><Button disabled={busy} onClick={saveLifecycle}>Kaydet</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Tabs defaultValue="overview">
         <TabsList className="flex flex-wrap">

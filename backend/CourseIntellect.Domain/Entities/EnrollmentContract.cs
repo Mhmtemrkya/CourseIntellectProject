@@ -26,6 +26,8 @@ public sealed class EnrollmentContract : IBranchScopedEntity
     /// Varsayılan true: eski kayıtlar geriye dönük "tahsil edilmiş" sayılır.
     /// </summary>
     public bool DownPaymentPaid { get; set; } = true;
+    /// <summary>Peşinatın fiilen tahsil edilmiş net tutarı; kısmi iadeyi de taşır.</summary>
+    public decimal DownPaymentPaidAmount { get; set; }
     public int InstallmentCount { get; set; }
     public string Currency { get; set; } = "TRY";
     public string Status { get; set; } = "Active";

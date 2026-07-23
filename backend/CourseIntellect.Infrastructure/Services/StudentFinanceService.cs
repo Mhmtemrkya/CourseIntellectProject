@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Data;
 using CourseIntellect.Application.DTOs.Notifications;
 using CourseIntellect.Application.DTOs.StudentFinance;
 using CourseIntellect.Application.Interfaces;
@@ -40,6 +41,7 @@ public sealed class StudentFinanceService(
             // Peşinatı yoksa (0) "beklemede" kavramı anlamsız → paid=true. Varsa,
             // kayıt anında tahsil edilip edilmediği isteğe bağlıdır.
             DownPaymentPaid = downPayment <= 0 || request.DownPaymentPaid,
+            DownPaymentPaidAmount = request.DownPaymentPaid ? downPayment : 0,
             InstallmentCount = installmentCount,
             Currency = currency,
             Status = "Active",
@@ -259,6 +261,19 @@ public sealed class StudentFinanceService(
         var now = DateTime.UtcNow;
         var net = contracts.Sum(item => item.NetAmount);
         var paid = payments.Sum(item => item.Amount);
+        var grossCollected = payments.Where(item => item.Amount > 0).Sum(item => item.Amount);
+        var refundedTotal = payments.Where(item => item.Amount < 0).Sum(item => -item.Amount);
+        var refundedByPayment = payments
+            .Where(item => item.OriginalPaymentId != null && item.Amount < 0 && item.RefundStatus != "Failed")
+            .GroupBy(item => item.OriginalPaymentId!.Value)
+            .ToDictionary(group => group.Key, group => group.Sum(item => -item.Amount));
+        var paymentIds = payments.Where(item => item.Amount > 0).Select(item => item.Id).ToHashSet();
+        var paymentAllocations = await dbContext.FinancePaymentAllocations.AsNoTracking()
+            .Where(item => paymentIds.Contains(item.FinancePaymentId))
+            .ToListAsync(cancellationToken);
+        var allocatedRefundableByPayment = paymentAllocations
+            .GroupBy(item => item.FinancePaymentId)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount - item.RefundedAmount));
         var currency = contracts.FirstOrDefault()?.Currency
             ?? installments.FirstOrDefault()?.Currency
             ?? "TRY";
@@ -284,7 +299,13 @@ public sealed class StudentFinanceService(
             nextDue,
             contracts.Select(item => MapContract(item, installmentsByContract.GetValueOrDefault(item.Id) ?? [])).ToList(),
             installments.Select(item => MapInstallment(item, now)).ToList(),
-            payments.Select(MapPayment).ToList());
+            payments.Select(item => MapPayment(
+                item,
+                refundedByPayment.GetValueOrDefault(item.Id),
+                item.Amount > 0 ? Math.Max(0, item.Amount - refundedByPayment.GetValueOrDefault(item.Id)) : 0,
+                allocatedRefundableByPayment.GetValueOrDefault(item.Id))).ToList(),
+            grossCollected,
+            refundedTotal);
     }
 
     public async Task<FinancePaymentDto> RecordPaymentAsync(
@@ -303,6 +324,7 @@ public sealed class StudentFinanceService(
         // Ödemeyi belirli bir taksite ya da en eski ödenmemiş taksitlere (FIFO) mahsup et.
         var remainingToAllocate = amount;
         var targetInstallments = new List<FinanceInstallment>();
+        var newAllocations = new List<(FinanceInstallment Installment, decimal Amount)>();
         if (request.FinanceInstallmentId is Guid installmentId)
         {
             var installment = await dbContext.FinanceInstallments
@@ -335,6 +357,7 @@ public sealed class StudentFinanceService(
             var applied = Math.Min(due, remainingToAllocate);
             installment.PaidAmount += applied;
             remainingToAllocate -= applied;
+            newAllocations.Add((installment, applied));
             installment.Status = installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
             currency = installment.Currency;
             contractId ??= installment.EnrollmentContractId;
@@ -364,6 +387,21 @@ public sealed class StudentFinanceService(
             PaidAtUtc = DateTime.UtcNow,
         };
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
+        if (newAllocations.Count > 0)
+        {
+            for (var allocationIndex = 0; allocationIndex < newAllocations.Count; allocationIndex++)
+            {
+                var allocation = newAllocations[allocationIndex];
+                await dbContext.FinancePaymentAllocations.AddAsync(new FinancePaymentAllocation
+                {
+                    FinancePaymentId = payment.Id,
+                    FinanceInstallmentId = allocation.Installment.Id,
+                    Amount = allocation.Amount,
+                    Sequence = allocationIndex + 1,
+                    BranchId = request.BranchId,
+                }, cancellationToken);
+            }
+        }
         await dbContext.SaveChangesAsync(cancellationToken);
 
         await auditLogService.LogAsync(
@@ -383,14 +421,14 @@ public sealed class StudentFinanceService(
         // Aktif ve peşinatı beklenen (henüz tahsil edilmemiş) sözleşmeler.
         // Global tenant/şube query filter'ı otomatik uygulanır.
         var rows = await dbContext.EnrollmentContracts.AsNoTracking()
-            .Where(item => item.DownPayment > 0 && !item.DownPaymentPaid && item.Status == "Active")
+            .Where(item => item.DownPayment > item.DownPaymentPaidAmount && item.Status == "Active")
             .OrderBy(item => item.CreatedAtUtc)
             .Select(item => new PendingDownPaymentDto(
                 item.Id,
                 item.StudentUserId,
                 item.StudentName,
                 item.ClassName,
-                item.DownPayment,
+                item.DownPayment - item.DownPaymentPaidAmount,
                 item.Currency,
                 null,
                 item.CreatedAtUtc))
@@ -411,19 +449,20 @@ public sealed class StudentFinanceService(
         {
             throw new InvalidOperationException("Bu sözleşmede peşinat tanımlı değil.");
         }
-        if (contract.DownPaymentPaid)
+        if (contract.DownPaymentPaidAmount >= contract.DownPayment)
         {
             throw new InvalidOperationException("Peşinat zaten tahsil edilmiş.");
         }
 
         var downPaymentMethod = string.IsNullOrWhiteSpace(method) ? "Nakit" : method.Trim();
+        var remainingDownPayment = contract.DownPayment - contract.DownPaymentPaidAmount;
         var receiptNo = await NextReceiptNoAsync(cancellationToken);
         var payment = new FinancePayment
         {
             EnrollmentContractId = contract.Id,
             StudentUserId = contract.StudentUserId,
             StudentName = contract.StudentName,
-            Amount = contract.DownPayment,
+            Amount = remainingDownPayment,
             Method = downPaymentMethod,
             ReceiptNo = receiptNo,
             Currency = contract.Currency,
@@ -433,7 +472,7 @@ public sealed class StudentFinanceService(
         };
         await dbContext.FinancePayments.AddAsync(payment, cancellationToken);
 
-        var amountLabel = $"₺{contract.DownPayment.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
+        var amountLabel = $"₺{remainingDownPayment.ToString("N2", CultureInfo.GetCultureInfo("tr-TR"))}";
         await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
         {
             Title = "Bekleyen peşinat tahsil edildi",
@@ -448,6 +487,7 @@ public sealed class StudentFinanceService(
             Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
         }, cancellationToken);
 
+        contract.DownPaymentPaidAmount = contract.DownPayment;
         contract.DownPaymentPaid = true;
         await dbContext.SaveChangesAsync(cancellationToken);
 
@@ -456,7 +496,7 @@ public sealed class StudentFinanceService(
             "Finance",
             "FinancePayment",
             payment.Id.ToString(),
-            $"{contract.StudentName} — {contract.DownPayment:0.##} {contract.Currency} ({downPaymentMethod}), makbuz: {receiptNo}.",
+            $"{contract.StudentName} — {remainingDownPayment:0.##} {contract.Currency} ({downPaymentMethod}), makbuz: {receiptNo}.",
             cancellationToken);
 
         return MapPayment(payment);
@@ -563,59 +603,163 @@ public sealed class StudentFinanceService(
         CancellationToken cancellationToken = default)
     {
         var amount = Math.Abs(request.Amount);
-        var name = request.StudentName.Trim();
-        var nameLower = name.ToLowerInvariant();
-
-        // İade tutarını öğrencinin ödenmiş taksitlerine TERS dağıt: en son ödenen
-        // (vadesi en geç) taksitten başlayarak PaidAmount'u düş, durumu geri al.
-        // Böylece "Bekleyen" ile taksit-detayı tutarlı kalır ve aging borcu tekrar görür.
-        var query = dbContext.FinanceInstallments.AsQueryable();
-        query = request.EnrollmentContractId is Guid rcid
-            ? query.Where(item => item.EnrollmentContractId == rcid)
-            : request.StudentUserId is Guid rsid
-                ? query.Where(item => item.StudentUserId == rsid)
-                : query.Where(item => item.StudentName.Trim().ToLower() == nameLower);
-        var paidInstallments = await query
-            .Where(item => item.PaidAmount > 0)
-            .OrderByDescending(item => item.DueDateUtc)
-            .ToListAsync(cancellationToken);
-
-        var remainingToReverse = amount;
-        foreach (var installment in paidInstallments)
+        if (amount <= 0) throw new InvalidOperationException("İade tutarı sıfırdan büyük olmalı.");
+        if (string.IsNullOrWhiteSpace(request.Reason)) throw new InvalidOperationException("İade gerekçesi zorunludur.");
+        if (string.IsNullOrWhiteSpace(request.RefundChannel)) throw new InvalidOperationException("İade kanalı zorunludur.");
+        if (!string.Equals(request.RefundChannel.Trim(), "Nakit", StringComparison.OrdinalIgnoreCase)
+            && string.IsNullOrWhiteSpace(request.ExternalReference))
         {
-            if (remainingToReverse <= 0) break;
-            var reversible = Math.Min(installment.PaidAmount, remainingToReverse);
-            installment.PaidAmount -= reversible;
-            remainingToReverse -= reversible;
-            installment.Status = installment.PaidAmount <= 0
-                ? "Pending"
-                : (installment.PaidAmount >= installment.Amount ? "Paid" : "Partial");
+            throw new InvalidOperationException("Kart ve banka iadelerinde işlem referansı zorunludur.");
         }
 
-        // İade, negatif tutarlı bir tahsilat kaydı olarak işlenir (cari bakiyeyi artırır).
+        var refundType = request.RefundType?.Trim() ?? string.Empty;
+        if (refundType is not ("PaymentReversal" or "AdvanceReturn" or "ContractReduction"))
+        {
+            throw new InvalidOperationException("Geçerli bir iade türü seçilmelidir.");
+        }
+
+        // Aynı makbuza eşzamanlı iki iadenin kalan tutarı birlikte aşmasını önler.
+        await using var transaction = await dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        var source = await dbContext.FinancePayments
+            .FirstOrDefaultAsync(item => item.Id == request.PaymentId, cancellationToken)
+            ?? throw new InvalidOperationException("İade edilecek tahsilat bulunamadı.");
+        if (source.Amount <= 0 || source.EntryType == "Refund")
+        {
+            throw new InvalidOperationException("Yalnızca pozitif bir tahsilat iade edilebilir.");
+        }
+        var isDownPayment = source.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase);
+        if (isDownPayment && refundType != "PaymentReversal")
+        {
+            throw new InvalidOperationException("Peşinat yalnızca tahsilat iptali/düzeltmesi olarak iade edilebilir.");
+        }
+        if (refundType == "ContractReduction" && source.EnrollmentContractId is null)
+        {
+            throw new InvalidOperationException("Sözleşmeye bağlı olmayan tahsilatta ücret indirimi iadesi yapılamaz.");
+        }
+
+        var previousRefundAmounts = await dbContext.FinancePayments
+            .Where(item => item.OriginalPaymentId == source.Id && item.EntryType == "Refund" && item.RefundStatus == "Completed")
+            .Select(item => item.Amount)
+            .ToListAsync(cancellationToken);
+        var previousRefunds = previousRefundAmounts.Sum(item => -item);
+        var refundable = source.Amount - previousRefunds;
+        if (amount > refundable)
+        {
+            throw new InvalidOperationException($"Bu makbuz için en fazla {refundable:0.##} {source.Currency} iade edilebilir.");
+        }
+
+        var allocations = await dbContext.FinancePaymentAllocations
+            .Where(item => item.FinancePaymentId == source.Id)
+            .OrderByDescending(item => item.Sequence)
+            .ToListAsync(cancellationToken);
+        if (allocations.Count == 0)
+        {
+            allocations = await CreateLegacyAllocationsAsync(source, cancellationToken);
+        }
+
+        var allocationRefundedBefore = allocations.Sum(item => item.RefundedAmount);
+        var nonDebtPart = Math.Max(0, source.Amount - allocations.Sum(item => item.Amount));
+        var nonDebtRefundedBefore = Math.Max(0, previousRefunds - allocationRefundedBefore);
+        var refundableNonDebt = Math.Max(0, nonDebtPart - nonDebtRefundedBefore);
+
+        if (refundType == "AdvanceReturn" && amount > refundableNonDebt)
+        {
+            throw new InvalidOperationException($"Bu tahsilatta iade edilebilir avans/fazla ödeme en fazla {refundableNonDebt:0.##} {source.Currency}.");
+        }
+
+        var remainingToReverse = refundType == "AdvanceReturn" ? 0 : amount;
+        if (refundType == "PaymentReversal")
+        {
+            remainingToReverse = Math.Max(0, amount - refundableNonDebt);
+        }
+        var allocationCapacity = allocations.Sum(item => item.Amount - item.RefundedAmount);
+        if (remainingToReverse > allocationCapacity)
+        {
+            throw new InvalidOperationException("Seçilen iade türü için yeterli taksit mahsup kaydı bulunamadı.");
+        }
+
+        foreach (var allocation in allocations)
+        {
+            if (remainingToReverse <= 0) break;
+            var reversible = Math.Min(allocation.Amount - allocation.RefundedAmount, remainingToReverse);
+            if (reversible <= 0) continue;
+            var installment = await dbContext.FinanceInstallments
+                .FirstAsync(item => item.Id == allocation.FinanceInstallmentId, cancellationToken);
+            installment.PaidAmount = Math.Max(0, installment.PaidAmount - reversible);
+            allocation.RefundedAmount += reversible;
+            remainingToReverse -= reversible;
+
+            if (refundType == "ContractReduction")
+            {
+                installment.Amount = Math.Max(installment.PaidAmount, installment.Amount - reversible);
+            }
+            installment.Status = installment.PaidAmount <= 0
+                ? "Pending"
+                : installment.PaidAmount >= installment.Amount ? "Paid" : "Partial";
+        }
+
+        if (refundType == "ContractReduction" && source.EnrollmentContractId is Guid contractId)
+        {
+            var contract = await dbContext.EnrollmentContracts.FirstAsync(item => item.Id == contractId, cancellationToken);
+            contract.NetAmount = Math.Max(0, contract.NetAmount - amount);
+            contract.DiscountAmount = Math.Min(contract.GrossAmount, contract.DiscountAmount + amount);
+            contract.DiscountReason = $"{contract.DiscountReason} | İade kaynaklı fiyat düzeltmesi: {request.Reason.Trim()}".Trim(' ', '|');
+        }
+
+        // Peşinat taksitlere dağıtılmadığı için ayrıca izlenir. Kısmi iadede boolean
+        // yerine tutar alanı gerçek durumu taşır; eski alan geriye uyum için güncellenir.
+        if (source.EnrollmentContractId is Guid downContractId && isDownPayment)
+        {
+            var contract = await dbContext.EnrollmentContracts.FirstAsync(item => item.Id == downContractId, cancellationToken);
+            contract.DownPaymentPaidAmount = Math.Max(0, contract.DownPaymentPaidAmount - amount);
+            contract.DownPaymentPaid = contract.DownPaymentPaidAmount >= contract.DownPayment;
+        }
+
         var refund = new FinancePayment
         {
-            EnrollmentContractId = request.EnrollmentContractId,
-            StudentUserId = request.StudentUserId,
-            StudentName = name,
+            EnrollmentContractId = source.EnrollmentContractId,
+            StudentUserId = source.StudentUserId,
+            StudentName = source.StudentName,
             Amount = -amount,
             Method = "İade",
             ReceiptNo = await NextReceiptNoAsync(cancellationToken),
-            Currency = "TRY",
-            Note = string.IsNullOrWhiteSpace(request.Reason) ? "İade" : $"İade: {request.Reason.Trim()}",
+            Currency = source.Currency,
+            Note = $"İade: {request.Reason.Trim()}",
             CreatedByUserId = createdByUserId,
+            BranchId = source.BranchId,
             PaidAtUtc = DateTime.UtcNow,
+            EntryType = "Refund",
+            OriginalPaymentId = source.Id,
+            RefundType = refundType,
+            RefundStatus = "Completed",
+            RefundReason = request.Reason.Trim(),
+            RefundChannel = request.RefundChannel.Trim(),
+            ExternalReference = request.ExternalReference?.Trim() ?? string.Empty,
         };
         await dbContext.FinancePayments.AddAsync(refund, cancellationToken);
+        await dbContext.AccountingNotifications.AddAsync(new AccountingNotification
+        {
+            Title = "Öğrenci iadesi tamamlandı",
+            Message = $"{refund.StudentName} için {amount:0.##} {refund.Currency} iade edildi ({refund.RefundChannel} • Kaynak {source.ReceiptNo}).",
+            Time = "Bugün",
+            Unread = true,
+        }, cancellationToken);
+        await dbContext.AccountingAuditLogs.AddAsync(new AccountingAuditLog
+        {
+            Title = "Makbuzdan iade işlendi",
+            Detail = $"{refund.StudentName} — {amount:0.##} {refund.Currency}; kaynak {source.ReceiptNo}; tür {refundType}; gerekçe: {refund.RefundReason}.",
+            Time = $"{DateTime.Now:dd MMMM yyyy} • {DateTime.Now:HH:mm}",
+        }, cancellationToken);
         await dbContext.SaveChangesAsync(cancellationToken);
         await auditLogService.LogAsync(
             "İade yapıldı",
             "Finance",
             "FinancePayment",
             refund.Id.ToString(),
-            $"{refund.StudentName} — {amount:0.##} TRY iade edildi. Gerekçe: {(string.IsNullOrWhiteSpace(request.Reason) ? "belirtilmedi" : request.Reason.Trim())}.",
+            $"{refund.StudentName} — {amount:0.##} {refund.Currency} iade edildi. Kaynak makbuz: {source.ReceiptNo}. Tür: {refundType}. Gerekçe: {request.Reason.Trim()}.",
             cancellationToken);
-        return MapPayment(refund);
+        await transaction.CommitAsync(cancellationToken);
+        return MapPayment(refund, 0, 0);
     }
 
     public async Task<FinanceDashboardDto> GetDashboardAsync(
@@ -730,15 +874,16 @@ public sealed class StudentFinanceService(
 
         // Peşinatı beklenen (tahsil edilmemiş) aktif sözleşmeler — dashboard kartı için.
         var pendingDownPayments = contracts
-            .Where(item => item.DownPayment > 0 && !item.DownPaymentPaid && item.Status == "Active")
+            .Where(item => item.DownPayment > item.DownPaymentPaidAmount && item.Status == "Active")
             .ToList();
-        var pendingDownPaymentTotal = pendingDownPayments.Sum(item => item.DownPayment);
+        var pendingDownPaymentTotal = pendingDownPayments.Sum(item => item.DownPayment - item.DownPaymentPaidAmount);
+        var refundedTotal = payments.Where(item => item.Amount < 0).Sum(item => -item.Amount);
 
         var currency = contracts.FirstOrDefault()?.Currency ?? "TRY";
         return new FinanceDashboardDto(
             currency, net, collected, outstanding, overdueTotal, overdueStudents,
             collectionRate, avgCollectionDays, pendingDownPayments.Count, pendingDownPaymentTotal,
-            aging, monthly, topDebtors);
+            aging, monthly, topDebtors, refundedTotal);
     }
 
     public async Task<ReminderResultDto> SendDueRemindersAsync(
@@ -778,6 +923,79 @@ public sealed class StudentFinanceService(
     {
         var count = await dbContext.FinancePayments.CountAsync(cancellationToken);
         return $"MKB-{DateTime.UtcNow:yyyyMM}-{count + 1:D5}";
+    }
+
+    /// <summary>
+    /// Dağılım tablosundan önce oluşturulmuş tahsilatları, bugün taksitlerde görünen
+    /// PaidAmount toplamını aşmadan kronolojik FIFO ile bir kez izlenebilir hale getirir.
+    /// Tarihsel veriden bilinmeyen ayrıntı uydurmak yerine mevcut cari gerçeğini korur.
+    /// </summary>
+    private async Task<List<FinancePaymentAllocation>> CreateLegacyAllocationsAsync(
+        FinancePayment source,
+        CancellationToken cancellationToken)
+    {
+        var paymentQuery = dbContext.FinancePayments.Where(item => item.Amount > 0 && item.EntryType != "Refund");
+        var installmentQuery = dbContext.FinanceInstallments.AsQueryable();
+        if (source.EnrollmentContractId is Guid contractId)
+        {
+            paymentQuery = paymentQuery.Where(item => item.EnrollmentContractId == contractId);
+            installmentQuery = installmentQuery.Where(item => item.EnrollmentContractId == contractId);
+        }
+        else if (source.StudentUserId is Guid studentUserId)
+        {
+            paymentQuery = paymentQuery.Where(item => item.StudentUserId == studentUserId);
+            installmentQuery = installmentQuery.Where(item => item.StudentUserId == studentUserId);
+        }
+        else
+        {
+            var normalizedName = source.StudentName.Trim().ToLower();
+            paymentQuery = paymentQuery.Where(item => item.StudentName.Trim().ToLower() == normalizedName);
+            installmentQuery = installmentQuery.Where(item => item.StudentName.Trim().ToLower() == normalizedName);
+        }
+
+        var payments = await paymentQuery.OrderBy(item => item.PaidAtUtc).ThenBy(item => item.Id).ToListAsync(cancellationToken);
+        var installments = await installmentQuery.OrderBy(item => item.DueDateUtc).ThenBy(item => item.Id).ToListAsync(cancellationToken);
+        var paymentIds = payments.Select(item => item.Id).ToHashSet();
+        var existing = await dbContext.FinancePaymentAllocations
+            .Where(item => paymentIds.Contains(item.FinancePaymentId))
+            .ToListAsync(cancellationToken);
+        var allocatedByInstallment = existing
+            .GroupBy(item => item.FinanceInstallmentId)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount - item.RefundedAmount));
+
+        foreach (var payment in payments.Where(item => existing.All(allocation => allocation.FinancePaymentId != item.Id)))
+        {
+            // Kayıt peşinatı taksit planının dışındadır; yanlışlıkla taksite bağlanmaz.
+            if (payment.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase)) continue;
+            var remaining = payment.Amount;
+            var sequence = 0;
+            foreach (var installment in installments)
+            {
+                if (remaining <= 0) break;
+                var availablePaid = Math.Max(0, installment.PaidAmount - allocatedByInstallment.GetValueOrDefault(installment.Id));
+                var applied = Math.Min(availablePaid, remaining);
+                if (applied <= 0) continue;
+                var allocation = new FinancePaymentAllocation
+                {
+                    FinancePaymentId = payment.Id,
+                    FinanceInstallmentId = installment.Id,
+                    Amount = applied,
+                    Sequence = ++sequence,
+                    BranchId = payment.BranchId,
+                    TenantId = payment.TenantId,
+                    CreatedAtUtc = payment.PaidAtUtc,
+                };
+                await dbContext.FinancePaymentAllocations.AddAsync(allocation, cancellationToken);
+                existing.Add(allocation);
+                allocatedByInstallment[installment.Id] = allocatedByInstallment.GetValueOrDefault(installment.Id) + applied;
+                remaining -= applied;
+            }
+        }
+
+        return existing
+            .Where(item => item.FinancePaymentId == source.Id)
+            .OrderByDescending(item => item.Sequence)
+            .ToList();
     }
 
     private static DateTime FirstDayOfNextMonth(DateTime reference)
@@ -863,7 +1081,11 @@ public sealed class StudentFinanceService(
             contract.Currency,
             contract.Status,
             contract.CreatedAtUtc,
-            installments.OrderBy(item => item.SeqNo).Select(item => MapInstallment(item, now)).ToList());
+            installments.OrderBy(item => item.SeqNo).Select(item => MapInstallment(item, now)).ToList(),
+            contract.DownPaymentPaidAmount,
+            contract.DownPayment <= 0 || contract.DownPaymentPaidAmount >= contract.DownPayment
+                ? "Ödendi"
+                : contract.DownPaymentPaidAmount > 0 ? "Kısmi" : "Bekliyor");
     }
 
     private static FinanceInstallmentDto MapInstallment(FinanceInstallment installment, DateTime nowUtc) =>
@@ -879,7 +1101,11 @@ public sealed class StudentFinanceService(
             InstallmentStatus(installment, nowUtc),
             installment.Currency);
 
-    private static FinancePaymentDto MapPayment(FinancePayment payment) =>
+    private static FinancePaymentDto MapPayment(
+        FinancePayment payment,
+        decimal refundedAmount = 0,
+        decimal refundableAmount = 0,
+        decimal allocatedRefundableAmount = 0) =>
         new(
             payment.Id,
             payment.EnrollmentContractId,
@@ -889,5 +1115,17 @@ public sealed class StudentFinanceService(
             payment.ReceiptNo,
             payment.PaidAtUtc,
             payment.Currency,
-            payment.Note);
+            payment.Note,
+            payment.Amount < 0 ? "Refund" : payment.EntryType,
+            payment.OriginalPaymentId,
+            refundedAmount,
+            refundableAmount,
+            payment.RefundType,
+            payment.RefundStatus,
+            payment.RefundReason,
+            payment.RefundChannel,
+            payment.ExternalReference,
+            allocatedRefundableAmount,
+            Math.Max(0, refundableAmount - allocatedRefundableAmount),
+            payment.Note.StartsWith("Kayıt peşinatı", StringComparison.OrdinalIgnoreCase));
 }

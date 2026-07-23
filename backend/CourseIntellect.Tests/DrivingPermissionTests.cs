@@ -39,6 +39,9 @@ public sealed class DrivingPermissionTests : IDisposable
         Assert.Equal(DrivingPermissions.All.Count, permissions.Count);
         Assert.Contains(DrivingPermissions.PermissionManage, permissions);
         Assert.Contains(DrivingPermissions.OverrideVehicleCompliance, permissions);
+        Assert.Contains(DrivingPermissions.OverrideStudentDocuments, permissions);
+        Assert.Contains(DrivingPermissions.StudentDeactivate, permissions);
+        Assert.Contains(DrivingPermissions.InstructorDeactivate, permissions);
     }
 
     [Fact]
@@ -64,6 +67,8 @@ public sealed class DrivingPermissionTests : IDisposable
         Assert.DoesNotContain(DrivingPermissions.FinanceReportView, permissions);
         Assert.DoesNotContain(DrivingPermissions.FinanceRefund, permissions);
         Assert.DoesNotContain(DrivingPermissions.FinanceDiscount, permissions);
+        Assert.DoesNotContain(DrivingPermissions.StudentDeactivate, permissions);
+        Assert.DoesNotContain(DrivingPermissions.InstructorDeactivate, permissions);
     }
 
     [Fact]

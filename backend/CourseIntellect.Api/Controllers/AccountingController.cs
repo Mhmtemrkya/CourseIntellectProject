@@ -217,6 +217,19 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
+        if (item.Amount < 0 || item.EntryType == "Refund")
+        {
+            return Conflict(new { message = "İade belgeleri değiştirilemez; yanlış işlem yeni bir düzeltme hareketiyle ele alınmalıdır." });
+        }
+        if (await dbContext.FinancePaymentAllocations.AnyAsync(x => x.FinancePaymentId == id, cancellationToken)
+            || await dbContext.FinancePayments.AnyAsync(x => x.OriginalPaymentId == id, cancellationToken))
+        {
+            return Conflict(new { message = "Taksitlere mahsup edilmiş veya iade görmüş tahsilat değiştirilemez." });
+        }
+        if (await HasStudentRefundAsync(item, cancellationToken))
+        {
+            return Conflict(new { message = "İade hareketi bulunan öğrenci tahsilatları değiştirilemez." });
+        }
 
         var previousStudentName = item.StudentName;
         var previousStudentUserId = item.StudentUserId;
@@ -257,6 +270,19 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         var item = await dbContext.FinancePayments.FirstOrDefaultAsync(x => x.Id == id, cancellationToken);
         if (item is null) return NotFound();
+        if (item.Amount < 0 || item.EntryType == "Refund")
+        {
+            return Conflict(new { message = "İade belgeleri silinemez." });
+        }
+        if (await dbContext.FinancePaymentAllocations.AnyAsync(x => x.FinancePaymentId == id, cancellationToken)
+            || await dbContext.FinancePayments.AnyAsync(x => x.OriginalPaymentId == id, cancellationToken))
+        {
+            return Conflict(new { message = "Taksitlere mahsup edilmiş veya iade görmüş tahsilat silinemez; makbuz üzerinden iade yapılmalıdır." });
+        }
+        if (await HasStudentRefundAsync(item, cancellationToken))
+        {
+            return Conflict(new { message = "İade hareketi bulunan öğrenci tahsilatları silinemez." });
+        }
 
         var studentName = item.StudentName;
         var studentUserId = item.StudentUserId;
@@ -347,6 +373,17 @@ public sealed class AccountingController(IAccountingService accountingService, C
     {
         await accountingService.MarkAllNotificationsReadAsync(cancellationToken);
         return NoContent();
+    }
+
+    private Task<bool> HasStudentRefundAsync(FinancePayment payment, CancellationToken cancellationToken)
+    {
+        var normalizedName = payment.StudentName.Trim().ToLower();
+        return dbContext.FinancePayments.AnyAsync(item =>
+            item.Amount < 0
+            && ((payment.EnrollmentContractId != null && item.EnrollmentContractId == payment.EnrollmentContractId)
+                || (payment.StudentUserId != null && item.StudentUserId == payment.StudentUserId)
+                || (normalizedName != string.Empty && item.StudentName.Trim().ToLower() == normalizedName)),
+            cancellationToken);
     }
 
     private static string NormalizeMoney(string? value)

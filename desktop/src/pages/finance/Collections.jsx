@@ -48,6 +48,7 @@ const paymentTypes = [
   { value: 'Nakit', label: 'Nakit', icon: Banknote },
   { value: 'Kredi Karti', label: 'Kredi Kartı', icon: CreditCard },
   { value: 'Havale/EFT', label: 'Havale/EFT', icon: Building2 },
+  { value: 'İade', label: 'İade', icon: Receipt },
 ];
 
 const monthOptions = [
@@ -105,6 +106,7 @@ function normalizePaymentMethod(value) {
   if (normalized.includes('nakit') || normalized.includes('cash')) return 'Nakit';
   if (normalized.includes('kart') || normalized.includes('card') || normalized.includes('pos')) return 'Kredi Karti';
   if (normalized.includes('havale') || normalized.includes('eft') || normalized.includes('banka') || normalized.includes('transfer')) return 'Havale/EFT';
+  if (normalized.includes('iade') || normalized.includes('refund')) return 'İade';
   return value || 'Nakit';
 }
 
@@ -212,7 +214,7 @@ function NewCollectionDialog({
                 <SelectValue placeholder="Ödeme yöntemi seçin" />
               </SelectTrigger>
               <SelectContent>
-                {paymentTypes.map((type) => (
+                {paymentTypes.filter((type) => type.value !== 'İade').map((type) => (
                   <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                 ))}
               </SelectContent>
@@ -302,7 +304,9 @@ export default function Collections() {
 
   const getTypeBadge = (type) => {
     const normalized = normalizePaymentMethod(type);
-    const config = normalized === 'Nakit'
+    const config = normalized === 'İade'
+      ? { label: 'İade', className: 'bg-red-100 text-red-700' }
+      : normalized === 'Nakit'
       ? { label: 'Nakit', className: 'bg-green-100 text-green-700' }
       : normalized === 'Kredi Karti'
         ? { label: 'Kredi Kartı', className: 'bg-blue-100 text-blue-700' }
@@ -566,7 +570,7 @@ export default function Collections() {
                       ) : null}
                     </div>
                   </TableCell>
-                  <TableCell className="font-bold text-green-600">
+                  <TableCell className={`font-bold ${collection.entryType === 'Refund' || parseMoney(collection.amount) < 0 ? 'text-red-600' : 'text-green-600'}`}>
                     ₺{(viewMode === 'planned' ? plannedCollectionAmount(collection) : parseMoney(collection.amount)).toLocaleString('tr-TR')}
                   </TableCell>
                   <TableCell>{viewMode === 'planned' ? <Badge variant="outline">{collection.status || 'Bekleyen'}</Badge> : getTypeBadge(collection.method)}</TableCell>
@@ -577,12 +581,16 @@ export default function Collections() {
                         <Button variant="ghost" size="icon" onClick={() => setSelectedCollection(collection)}>
                           <Receipt className="h-4 w-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection); setDialogOpen(true); }}>
-                          <Pencil className="h-4 w-4 text-blue-600" />
-                        </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(collection)}>
-                          <Trash2 className="h-4 w-4 text-red-600" />
-                        </Button>
+                        {collection.entryType !== 'Refund' && parseMoney(collection.amount) >= 0 ? (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => { setEditingCollection(collection); setDialogOpen(true); }}>
+                              <Pencil className="h-4 w-4 text-blue-600" />
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => handleDelete(collection)}>
+                              <Trash2 className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </>
+                        ) : null}
                       </div>
                     ) : (
                       <FeatureGate module="collections" action="collect">

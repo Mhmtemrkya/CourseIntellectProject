@@ -116,6 +116,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<EnrollmentContract> EnrollmentContracts => Set<EnrollmentContract>();
     public DbSet<FinanceInstallment> FinanceInstallments => Set<FinanceInstallment>();
     public DbSet<FinancePayment> FinancePayments => Set<FinancePayment>();
+    public DbSet<FinancePaymentAllocation> FinancePaymentAllocations => Set<FinancePaymentAllocation>();
     public DbSet<AttendanceEntry> AttendanceEntries => Set<AttendanceEntry>();
     public DbSet<HomeworkAssignment> HomeworkAssignments => Set<HomeworkAssignment>();
     public DbSet<HomeworkSubmission> HomeworkSubmissions => Set<HomeworkSubmission>();
@@ -163,6 +164,7 @@ public sealed class CourseIntellectDbContext : DbContext
     public DbSet<LiveExamState> LiveExamStates => Set<LiveExamState>();
     public DbSet<DrivingPackage> DrivingPackages => Set<DrivingPackage>();
     public DbSet<DrivingVehicle> DrivingVehicles => Set<DrivingVehicle>();
+    public DbSet<DrivingExpense> DrivingExpenses => Set<DrivingExpense>();
     public DbSet<DrivingInstructorProfile> DrivingInstructorProfiles => Set<DrivingInstructorProfile>();
     public DbSet<StudentDrivingProfile> StudentDrivingProfiles => Set<StudentDrivingProfile>();
     public DbSet<DrivingStudentGroup> DrivingStudentGroups => Set<DrivingStudentGroup>();
@@ -781,6 +783,7 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.DiscountReason).HasMaxLength(200);
             entity.Property(x => x.NetAmount).HasPrecision(18, 2);
             entity.Property(x => x.DownPayment).HasPrecision(18, 2);
+            entity.Property(x => x.DownPaymentPaidAmount).HasPrecision(18, 2);
             entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Status).HasMaxLength(40).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(500);
@@ -813,8 +816,44 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.ReceiptNo).HasMaxLength(40);
             entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
             entity.Property(x => x.Note).HasMaxLength(500);
+            entity.Property(x => x.EntryType).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.RefundType).HasMaxLength(40);
+            entity.Property(x => x.RefundStatus).HasMaxLength(30);
+            entity.Property(x => x.RefundReason).HasMaxLength(500);
+            entity.Property(x => x.RefundChannel).HasMaxLength(40);
+            entity.Property(x => x.ExternalReference).HasMaxLength(120);
             entity.HasIndex(x => x.StudentUserId);
             entity.HasIndex(x => x.FinanceInstallmentId);
+            entity.HasIndex(x => x.OriginalPaymentId);
+        });
+
+        modelBuilder.Entity<FinancePaymentAllocation>(entity =>
+        {
+            entity.ToTable("finance_payment_allocations");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.RefundedAmount).HasPrecision(18, 2);
+            entity.HasIndex(x => x.FinancePaymentId);
+            entity.HasIndex(x => x.FinanceInstallmentId);
+            entity.HasOne<FinancePayment>().WithMany().HasForeignKey(x => x.FinancePaymentId).OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne<FinanceInstallment>().WithMany().HasForeignKey(x => x.FinanceInstallmentId).OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<DrivingExpense>(entity =>
+        {
+            entity.ToTable("driving_expenses");
+            entity.HasKey(x => x.Id);
+            ConfigureBranchScope(entity);
+            entity.Property(x => x.Category).HasConversion<string>().HasMaxLength(30).IsRequired();
+            entity.Property(x => x.Title).HasMaxLength(200).IsRequired();
+            entity.Property(x => x.VendorName).HasMaxLength(200);
+            entity.Property(x => x.InvoiceNo).HasMaxLength(60);
+            entity.Property(x => x.Amount).HasPrecision(18, 2);
+            entity.Property(x => x.Currency).HasMaxLength(8).IsRequired();
+            entity.Property(x => x.Note).HasMaxLength(1000);
+            entity.HasIndex(x => x.ExpenseDateUtc);
+            entity.HasIndex(x => x.VehicleId);
         });
 
         modelBuilder.Entity<HomeworkAssignment>(entity =>
@@ -1649,6 +1688,9 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.ToTable("driving_instructor_profiles"); entity.HasKey(x => x.Id); ConfigureTenantScope(entity);
             entity.Property(x => x.LicenseClasses).HasMaxLength(200).IsRequired();
             entity.Property(x => x.WorkingPermitNo).HasMaxLength(60);
+            entity.Property(x => x.ComplianceOverrideReason).HasMaxLength(500);
+            entity.Property(x => x.StatusChangeSource).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.StatusChangeReason).HasMaxLength(500);
             entity.HasIndex(x => new { x.TenantId, x.StaffId }).IsUnique();
             entity.HasOne<StaffProfile>().WithMany().HasForeignKey(x => x.StaffId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -1680,6 +1722,10 @@ public sealed class CourseIntellectDbContext : DbContext
             entity.Property(x => x.TransmissionType).HasConversion<string>().HasMaxLength(20);
             // Durum string olarak saklanır: mevcut "Active" satırları enum'a sorunsuz eşlenir.
             entity.Property(x => x.Status).HasConversion<string>().HasMaxLength(40).IsRequired();
+            entity.Property(x => x.StatusBeforeSuspension).HasConversion<string>().HasMaxLength(40);
+            entity.Property(x => x.TrainingOverrideReason).HasMaxLength(500);
+            entity.Property(x => x.StatusChangeSource).HasMaxLength(20).IsRequired();
+            entity.Property(x => x.StatusChangeReason).HasMaxLength(500);
             entity.Property(x => x.IdentityKind).HasConversion<string>().HasMaxLength(20);
             entity.Property(x => x.DrivingExperience).HasConversion<string>().HasMaxLength(20);
             entity.Property(x => x.IdentityNumber).HasMaxLength(40);

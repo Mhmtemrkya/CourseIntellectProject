@@ -12,6 +12,7 @@ class DrivingPermissions {
   static const studentView = 'driving.student.view';
   static const studentCreate = 'driving.student.create';
   static const studentUpdate = 'driving.student.update';
+  static const studentDeactivate = 'driving.student.deactivate';
   static const studentDocumentView = 'driving.student.document.view';
   static const studentDocumentUpload = 'driving.student.document.upload';
   static const studentDocumentReview = 'driving.student.document.review';
@@ -29,6 +30,10 @@ class DrivingPermissions {
 
   static const instructorView = 'driving.instructor.view';
   static const instructorCreate = 'driving.instructor.create';
+  static const instructorUpdate = 'driving.instructor.update';
+  static const instructorDeactivate = 'driving.instructor.deactivate';
+  static const overrideDocumentExpiry = 'driving.override.document_expiry';
+  static const overrideStudentDocuments = 'driving.override.student_documents';
 
   static const appointmentView = 'driving.appointment.view';
   static const appointmentCreate = 'driving.appointment.create';

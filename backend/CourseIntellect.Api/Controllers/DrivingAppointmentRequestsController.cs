@@ -35,6 +35,8 @@ public sealed class DrivingAppointmentRequestsController(
         if (profileId is null) return Forbid();
         if (durationMinutes is < 30 or > 240 || durationMinutes % 30 != 0) return BadRequest(new { message = "Ders süresi 30-240 dakika ve 30 dakikanın katı olmalıdır." });
         var profile = await db.StudentDrivingProfiles.AsNoTracking().SingleAsync(x => x.Id == profileId, ct);
+        if (!await CanStudentScheduleAsync(profile, ct))
+            return Conflict(new { message = "Dosyanız eğitim/randevu için henüz uygun değil. Kurs personelinizle görüşün." });
         var instructors = await db.DrivingInstructorProfiles.AsNoTracking().Where(x => x.IsActive)
             .Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new { p, s.FullName })
             .Where(x => x.p.LicenseClasses.Contains(profile.LicenseClass) && (profile.TransmissionType == TransmissionType.Manual ? x.p.CanTeachManual : x.p.CanTeachAutomatic))
@@ -70,6 +72,9 @@ public sealed class DrivingAppointmentRequestsController(
     {
         var profileId = await CurrentStudentProfileIdAsync(ct);
         if (profileId is null) return Forbid();
+        var studentProfile = await db.StudentDrivingProfiles.AsNoTracking().SingleAsync(x => x.Id == profileId, ct);
+        if (!await CanStudentScheduleAsync(studentProfile, ct))
+            return Conflict(new { message = "Dosyanız eğitim/randevu için henüz uygun değil. Kurs personelinizle görüşün." });
         return Ok(await BuildRequestRowsAsync(db.DrivingAppointmentRequests.AsNoTracking().Where(x => x.StudentDrivingProfileId == profileId), ct));
     }
 
@@ -146,6 +151,10 @@ public sealed class DrivingAppointmentRequestsController(
             return Ok(new { status = entity.Status.ToString() });
         }
 
+        var studentProfile = await db.StudentDrivingProfiles.AsNoTracking().SingleAsync(x => x.Id == entity.StudentDrivingProfileId, ct);
+        if (!await CanStudentScheduleAsync(studentProfile, ct))
+            return Conflict(new { message = "Kursiyerin durumu veya evrak uygunluğu değişti; talep onaylanamaz." });
+
         var assignment = await ResolveAssignmentAsync(entity, request.InstructorProfileId, request.VehicleId, ct);
         if (assignment.Error is not null) return BadRequest(new { message = assignment.Error });
         var newMinutes = (int)(entity.RequestedEndsAtUtc - entity.RequestedStartsAtUtc).TotalMinutes;
@@ -191,7 +200,7 @@ public sealed class DrivingAppointmentRequestsController(
     {
         if (!await CanUseModuleAsync(ct)) return Forbid();
         var students = await db.StudentDrivingProfiles.AsNoTracking().Join(db.Students.AsNoTracking(), x => x.StudentId, x => x.Id, (p, s) => new { p.Id, p.StudentId, s.FullName, p.LicenseClass, transmissionType = p.TransmissionType.ToString(), status = p.Status.ToString() }).OrderBy(x => x.FullName).ToListAsync(ct);
-        var instructors = await db.DrivingInstructorProfiles.AsNoTracking().Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.IsActive }).OrderBy(x => x.FullName).ToListAsync(ct);
+        var instructors = await db.DrivingInstructorProfiles.AsNoTracking().Join(db.Staff.AsNoTracking(), x => x.StaffId, x => x.Id, (p, s) => new { p.Id, p.StaffId, s.FullName, p.LicenseClasses, p.CanTeachManual, p.CanTeachAutomatic, p.IsActive, p.WorkingPermitNo, p.WorkingPermitExpiresAtUtc, complianceReady = p.WorkingPermitNo != "" && p.WorkingPermitExpiresAtUtc > DateTime.UtcNow, p.AutomaticStatusEnabled, p.ComplianceOverrideActive, p.ComplianceOverrideReason, p.StatusChangeSource, p.StatusChangeReason }).OrderBy(x => x.FullName).ToListAsync(ct);
         var vehicles = await db.DrivingVehicles.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.PlateNumber, x.LicenseClass, transmissionType = x.TransmissionType.ToString(), x.IsInMaintenance }).OrderBy(x => x.PlateNumber).ToListAsync(ct);
         var packages = await db.DrivingPackages.AsNoTracking().Where(x => x.IsActive).Select(x => new { x.Id, x.Name, x.LicenseClass, transmissionType = x.TransmissionType.ToString() }).ToListAsync(ct);
         var baseStudents = await db.Students.AsNoTracking().Where(s => !db.StudentDrivingProfiles.Any(p => p.StudentId == s.Id)).Select(x => new { x.Id, x.FullName }).OrderBy(x => x.FullName).Take(500).ToListAsync(ct);
@@ -210,6 +219,18 @@ public sealed class DrivingAppointmentRequestsController(
                 x.r.RequestedStartsAtUtc, x.r.RequestedEndsAtUtc, x.r.MeetingPoint,
                 x.r.StudentNote, x.r.DecisionNote, x.r.DecidedAtUtc, x.r.ResultAppointmentId, x.r.CreatedAtUtc,
             }).OrderByDescending(x => x.CreatedAtUtc).Take(500).ToListAsync(ct);
+
+    private async Task<bool> CanStudentScheduleAsync(StudentDrivingProfile profile, CancellationToken ct)
+    {
+        if (!DrivingStudentStatuses.Schedulable.Contains(profile.Status)) return false;
+        if (profile.TrainingOverrideActive) return true;
+        var birthDate = await db.Students.AsNoTracking().Where(x => x.Id == profile.StudentId).Select(x => x.BirthDate).SingleOrDefaultAsync(ct);
+        var required = DrivingStudentRules.RequiredDocumentsFor(birthDate, DateTime.UtcNow);
+        var approved = await db.StudentDrivingDocuments.AsNoTracking()
+            .Where(x => x.StudentDrivingProfileId == profile.Id && x.IsCurrent && x.Status == StudentDocumentStatus.Approved)
+            .Select(x => x.DocumentType).ToListAsync(ct);
+        return DrivingStudentRules.MissingDocuments(required, approved.ToHashSet()).Count == 0;
+    }
 
     private async Task<(Guid? InstructorId, Guid? VehicleId, string? Error)> ResolveAssignmentAsync(DrivingAppointmentRequest request, Guid? decidedInstructor, Guid? decidedVehicle, CancellationToken ct)
     {

@@ -14,8 +14,10 @@ import {
   markDrivingAppointmentNoShow, rescheduleDrivingAppointment,
   suggestDrivingInstructors, suggestDrivingVehicles,
   fetchDrivingAppointmentRequests, decideDrivingAppointmentRequest,
+  updateDrivingInstructorLifecycle,
 } from '../../lib/api/modules';
 import { DRIVING, OVERRIDE_LABELS, useDrivingPermissions } from '../../lib/drivingPermissions';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '../../components/ui/dialog';
 
 const selectClass = 'h-10 w-full rounded-md border border-input bg-background px-3 text-sm';
 const emptyAppointment = { studentDrivingProfileId: '', instructorProfileId: '', vehicleId: '', startsAtUtc: '', endsAtUtc: '', notes: '', meetingPoint: '' };
@@ -68,13 +70,40 @@ export default function DrivingScheduling({ embedded = false }) {
   const [overrideReason, setOverrideReason] = useState('');
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [suggestions, setSuggestions] = useState(null);
+  const [instructorLifecycle, setInstructorLifecycle] = useState(null);
 
   const canViewStudents = can(DRIVING.studentView);
   const canCreateStudent = can(DRIVING.studentCreate);
   const canViewInstructors = can(DRIVING.instructorView);
   const canCreateInstructor = can(DRIVING.instructorCreate);
+  const canUpdateInstructor = can(DRIVING.instructorUpdate);
+  const canDeactivateInstructor = can(DRIVING.instructorDeactivate);
+  const canOverridePermit = can(DRIVING.overrideDocumentExpiry);
   const canViewAppointments = can(DRIVING.appointmentView);
   const canCreateAppointment = can(DRIVING.appointmentCreate);
+
+  async function saveInstructorLifecycle() {
+    if (!instructorLifecycle) return;
+    const sensitive = !instructorLifecycle.isActive || (instructorLifecycle.isActive && !instructorLifecycle.complianceReady);
+    if (sensitive && instructorLifecycle.reason.trim().length < 10) {
+      toast({ title: 'Gerekçe zorunlu', description: 'Bu işlem için en az 10 karakterlik gerekçe yazın.', variant: 'destructive' });
+      return;
+    }
+    setSaving(true);
+    try {
+      await updateDrivingInstructorLifecycle(instructorLifecycle.id, {
+        isActive: instructorLifecycle.isActive,
+        automaticStatusEnabled: instructorLifecycle.automaticStatusEnabled,
+        allowComplianceOverride: instructorLifecycle.isActive && !instructorLifecycle.complianceReady,
+        reason: instructorLifecycle.reason,
+      });
+      toast({ title: 'Öğretmen durumu güncellendi' });
+      setInstructorLifecycle(null);
+      await load();
+    } catch (error) {
+      toast({ title: 'İşlem tamamlanamadı', description: error.message, variant: 'destructive' });
+    } finally { setSaving(false); }
+  }
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -244,9 +273,11 @@ export default function DrivingScheduling({ embedded = false }) {
         {canCreateInstructor
           ? <form onSubmit={saveInstructor} className="grid gap-3 sm:grid-cols-2"><Field label="Öğretmen"><select required className={selectClass} value={instructorForm.staffId} onChange={(e) => setInstructorForm({ ...instructorForm, staffId: e.target.value })}><option value="">Seçin</option>{unregisteredStaff.map((s) => <option key={s.id} value={s.id}>{s.fullName}</option>)}</select></Field><Field label="Ehliyet sınıfları"><Input required placeholder="B, BE" value={instructorForm.licenseClasses} onChange={(e) => setInstructorForm({ ...instructorForm, licenseClasses: e.target.value })} /></Field><Field label="MEB çalışma izni no"><Input maxLength={60} placeholder="Opsiyonel" value={instructorForm.workingPermitNo} onChange={(e) => setInstructorForm({ ...instructorForm, workingPermitNo: e.target.value })} /></Field><Field label="Çalışma izni bitiş tarihi" hint="Süresi dolunca randevular ihlal üretir."><Input type="date" value={instructorForm.workingPermitExpiresAtUtc} onChange={(e) => setInstructorForm({ ...instructorForm, workingPermitExpiresAtUtc: e.target.value })} /></Field><label className="flex items-center gap-2"><input type="checkbox" checked={instructorForm.canTeachManual} onChange={(e) => setInstructorForm({ ...instructorForm, canTeachManual: e.target.checked })} />Manuel</label><label className="flex items-center gap-2"><input type="checkbox" checked={instructorForm.canTeachAutomatic} onChange={(e) => setInstructorForm({ ...instructorForm, canTeachAutomatic: e.target.checked })} />Otomatik</label><Button disabled={saving || !unregisteredStaff.length} className="sm:col-span-2"><Plus className="mr-2 h-4 w-4" />Yetkinlik Ekle</Button></form>
           : <ReadOnlyNotice message="Öğretmen yetkinliği tanımlamak için yetkiniz yok." />}
-        <div className="mt-5 space-y-2">{data.instructors.map((p) => <div key={p.id} className="rounded-xl border p-3"><div className="flex flex-wrap items-center gap-2"><b>{p.fullName}</b>{p.workingPermitExpired && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-600">Çalışma izni doldu</span>}</div><p className="text-xs text-muted-foreground">{p.licenseClasses} • {[p.canTeachManual && 'Manuel', p.canTeachAutomatic && 'Otomatik'].filter(Boolean).join(' / ')}{p.workingPermitExpiresAtUtc ? ` • İzin bitişi: ${new Date(p.workingPermitExpiresAtUtc).toLocaleDateString('tr-TR')}` : ' • Çalışma izni tarihi girilmemiş'}</p></div>)}</div>
+        <div className="mt-5 space-y-2">{data.instructors.map((p) => <div key={p.id} className="rounded-xl border p-3"><div className="flex flex-wrap items-center justify-between gap-2"><div><div className="flex flex-wrap items-center gap-2"><b>{p.fullName}</b><Badge className={p.isActive ? 'border-0 bg-emerald-500/15 text-emerald-600' : 'border-0 bg-slate-500/15 text-slate-600'}>{p.isActive ? 'Aktif' : 'Pasif'}</Badge>{p.complianceOverrideActive && <Badge className="border-0 bg-amber-500/15 text-amber-700">Yetkili istisna</Badge>}{p.workingPermitExpired && <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-bold text-red-600">Çalışma izni doldu</span>}</div><p className="text-xs text-muted-foreground">{p.licenseClasses} • {[p.canTeachManual && 'Manuel', p.canTeachAutomatic && 'Otomatik'].filter(Boolean).join(' / ')}{p.workingPermitExpiresAtUtc ? ` • İzin bitişi: ${new Date(p.workingPermitExpiresAtUtc).toLocaleDateString('tr-TR')}` : ' • Çalışma izni tarihi girilmemiş'} • {p.automaticStatusEnabled ? 'Otomatik yönetim' : 'Manuel yönetim'}</p></div>{canUpdateInstructor && <Button type="button" size="sm" variant="outline" onClick={() => setInstructorLifecycle({ ...p, automaticStatusEnabled: p.automaticStatusEnabled !== false, reason: '' })}>Durumu yönet</Button>}</div></div>)}</div>
       </CardContent></Card>}
     </div>
+
+    <Dialog open={!!instructorLifecycle} onOpenChange={(open) => !open && setInstructorLifecycle(null)}><DialogContent><DialogHeader><DialogTitle>Öğretmen yaşam döngüsü</DialogTitle></DialogHeader>{instructorLifecycle && <div className="space-y-4"><div className={`rounded-xl border p-3 text-sm ${instructorLifecycle.complianceReady ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-amber-500/30 bg-amber-500/5'}`}><b>{instructorLifecycle.complianceReady ? 'Çalışma izni geçerli' : 'Çalışma izni eksik veya geçersiz'}</b></div><label className="flex items-start gap-3 rounded-xl border p-3"><input type="checkbox" className="mt-1" checked={instructorLifecycle.automaticStatusEnabled} onChange={(e) => setInstructorLifecycle({ ...instructorLifecycle, automaticStatusEnabled: e.target.checked })} /><span><b>Otomatik yönetim</b><small className="block text-muted-foreground">Çalışma izni geçerliyse aktif, değilse pasif tutulur.</small></span></label>{!instructorLifecycle.automaticStatusEnabled && <><label className="flex items-center gap-2"><input type="checkbox" checked={instructorLifecycle.isActive} disabled={!instructorLifecycle.isActive && !canDeactivateInstructor && instructorLifecycle.isActive} onChange={(e) => setInstructorLifecycle({ ...instructorLifecycle, isActive: e.target.checked })} />Direksiyon öğretmeni aktif</label>{instructorLifecycle.isActive && !instructorLifecycle.complianceReady && <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3 text-sm"><b>Yetkili istisna gerekir</b><p className="text-muted-foreground">{canOverridePermit ? 'Gerekçe ile aktif edilebilir.' : 'Bu işlem için çalışma izni istisna yetkiniz yok.'}</p></div>}<Field label="Gerekçe"><Input maxLength={500} value={instructorLifecycle.reason} onChange={(e) => setInstructorLifecycle({ ...instructorLifecycle, reason: e.target.value })} /></Field></>}</div>}<DialogFooter><Button variant="outline" onClick={() => setInstructorLifecycle(null)}>Vazgeç</Button><Button disabled={saving || (!instructorLifecycle?.automaticStatusEnabled && instructorLifecycle?.isActive && !instructorLifecycle?.complianceReady && !canOverridePermit)} onClick={saveInstructorLifecycle}>Kaydet</Button></DialogFooter></DialogContent></Dialog>
 
     {canViewAppointments && <Card><CardHeader><CardTitle className="flex gap-2"><CalendarClock className="text-[hsl(var(--brand-accent))]" />Direksiyon Randevusu</CardTitle></CardHeader><CardContent>
       {canCreateAppointment

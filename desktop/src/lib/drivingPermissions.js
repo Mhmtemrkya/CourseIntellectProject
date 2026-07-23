@@ -16,6 +16,7 @@ export const DRIVING = {
   studentView: 'driving.student.view',
   studentCreate: 'driving.student.create',
   studentUpdate: 'driving.student.update',
+  studentDeactivate: 'driving.student.deactivate',
   studentDocumentView: 'driving.student.document.view',
   studentDocumentUpload: 'driving.student.document.upload',
   studentDocumentReview: 'driving.student.document.review',
@@ -38,6 +39,7 @@ export const DRIVING = {
   instructorView: 'driving.instructor.view',
   instructorCreate: 'driving.instructor.create',
   instructorUpdate: 'driving.instructor.update',
+  instructorDeactivate: 'driving.instructor.deactivate',
   instructorAssignmentManage: 'driving.instructor.assignment.manage',
 
   appointmentView: 'driving.appointment.view',
@@ -81,12 +83,16 @@ export const DRIVING = {
   overrideVehicleCompliance: 'driving.override.vehicle_compliance',
   overrideAppointmentRule: 'driving.override.appointment_rule',
   overrideTransmission: 'driving.override.transmission',
+  overrideDocumentExpiry: 'driving.override.document_expiry',
+  overrideStudentDocuments: 'driving.override.student_documents',
 };
 
 export const OVERRIDE_LABELS = {
   [DRIVING.overrideVehicleCompliance]: 'Uygunsuz araç (bakım/evrak)',
   [DRIVING.overrideAppointmentRule]: 'Randevu çakışması',
   [DRIVING.overrideTransmission]: 'Vites uyumsuzluğu',
+  [DRIVING.overrideDocumentExpiry]: 'Personel çalışma izni uygun değil',
+  [DRIVING.overrideStudentDocuments]: 'Öğrenci evrakları tamamlanmamış',
 };
 
 let cached = null;

@@ -3,6 +3,7 @@ import '../i18n/app_locale.dart';
 import '../services/driving_school_api_service.dart';
 import '../widgets/driving_ui.dart';
 import 'driving_collection_page.dart';
+import 'driving_expenses_page.dart';
 import 'driving_document_review_queue_page.dart';
 import 'driving_education_page.dart';
 import 'driving_mobile_planning_page.dart';
@@ -232,6 +233,20 @@ class _DrivingSchoolDashboardPageState
                     icon: Icons.payments_rounded,
                     color: const Color(0xFF16A34A),
                     onTap: () => _openDashboardMetric(context, 'collections'),
+                  ),
+                  DrivingKpiCard(
+                    label: 'Bugünkü Gider',
+                    value: '₺${kpis['todayExpenses'] ?? 0}',
+                    icon: Icons.trending_down_rounded,
+                    color: const Color(0xFFE11D48),
+                    onTap: () => _openDashboardMetric(context, 'expenses'),
+                  ),
+                  DrivingKpiCard(
+                    label: 'Net (Tahsilat − Gider)',
+                    value: '₺${kpis['todayNet'] ?? 0}',
+                    icon: Icons.account_balance_wallet_rounded,
+                    color: const Color(0xFF2563EB),
+                    onTap: () => _openDashboardMetric(context, 'expenses'),
                   ),
                   DrivingKpiCard(
                     label: 'Bakımdaki Araç',
@@ -570,6 +585,7 @@ class _DrivingSchoolDashboardPageState
       'vehicles' => const DrivingSchoolVehiclesPage(),
       'documents' => const DrivingDocumentReviewQueuePage(),
       'collections' => const DrivingCollectionPage(),
+      'expenses' => const DrivingExpensesPage(),
       'terms' => const DrivingTermOpeningWizardPage(),
       'education' => const DrivingEducationPage(),
       _ => const DrivingMebbisWorkCenterPage(),

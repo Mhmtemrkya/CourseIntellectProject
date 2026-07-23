@@ -725,3 +725,4 @@ public sealed record DrivingPaymentRequest(decimal Amount, string? Method, Guid?
 public sealed record CollectDownPaymentBody(string? Method = null);
 
 public sealed record RefundChargeRequest(decimal? Amount, string? Reason);
+

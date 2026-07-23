@@ -7,6 +7,7 @@ import '../pages/accounting_ledger_page.dart';
 import '../pages/accounting_messages_page.dart';
 import '../pages/accounting_profile_page.dart';
 import '../pages/accounting_receipts_page.dart';
+import '../pages/driving_expenses_page.dart';
 import '../widgets/adaptive_scaffold.dart';
 
 class AccountingBottomNav extends StatelessWidget {
@@ -40,6 +41,12 @@ class AccountingBottomNav extends StatelessWidget {
           label: 'Defter',
           pageBuilder: (_) => const AccountingLedgerPage(),
           sidebarColor: const Color(0xFF8B5CF6),
+        ),
+        AdaptiveDestination(
+          icon: Icons.receipt_long_outlined,
+          label: 'Giderler'.tr,
+          pageBuilder: (_) => const DrivingExpensesPage(),
+          sidebarColor: const Color(0xFFE11D48),
         ),
         AdaptiveDestination(
           icon: Icons.chat_bubble_outline_rounded,

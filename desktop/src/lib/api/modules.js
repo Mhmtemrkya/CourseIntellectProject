@@ -187,6 +187,8 @@ export const updateDrivingRegistrationIdentity = (profileId, payload) =>
   api.put(`/api/driving-school/students/${profileId}/registration-identity`, payload);
 export const updateDrivingWorkingPermit = (instructorProfileId, payload) =>
   api.put(`/api/driving-school/instructors/${instructorProfileId}/working-permit`, payload);
+export const updateDrivingInstructorLifecycle = (instructorProfileId, payload) =>
+  api.put(`/api/driving-school/instructors/${instructorProfileId}/lifecycle`, payload);
 export const fetchDrivingAppointments = (params = {}) => api.get('/api/driving-school/appointments', { params });
 export const createDrivingAppointment = (payload) => api.post('/api/driving-school/appointments', payload);
 export const fetchDrivingLessons = (params = {}) => api.get('/api/driving-school/lessons', { params });
@@ -238,6 +240,13 @@ export const createDrivingCharge = (profileId, payload) => api.post(`/api/drivin
 export const recordDrivingPayment = (profileId, payload) => api.post(`/api/driving-school/students/${profileId}/payments`, payload);
 export const refundDrivingCharge = (chargeId, payload) => api.post(`/api/driving-school/charges/${chargeId}/refund`, payload);
 export const fetchDrivingFinanceSummary = (params = {}) => api.get('/api/driving-school/finance/summary', { params });
+
+// ─── İşletme giderleri (mazot, bakım, kira, sigorta...) ───────────────────────
+// İşletme giderleri — kurumdan bağımsız genel finans modülü (okul + sürücü kursu).
+export const fetchExpenses = (params = {}) => api.get('/api/finance/expenses', { params });
+export const createExpense = (payload) => api.post('/api/finance/expenses', payload);
+export const updateExpense = (id, payload) => api.put(`/api/finance/expenses/${id}`, payload);
+export const deleteExpense = (id) => api.delete(`/api/finance/expenses/${id}`);
 
 // ─── Öğretmen-araç ataması, izinler ve uygunluk öneri motoru ──────────────────
 export const fetchDrivingAssignments = (params = {}) => api.get('/api/driving-school/instructor-vehicle-assignments', { params });

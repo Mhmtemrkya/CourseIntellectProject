@@ -51,7 +51,19 @@ public sealed record FinancePaymentDto(
     string ReceiptNo,
     DateTime PaidAtUtc,
     string Currency,
-    string Note);
+    string Note,
+    string EntryType = "Collection",
+    Guid? OriginalPaymentId = null,
+    decimal RefundedAmount = 0,
+    decimal RefundableAmount = 0,
+    string RefundType = "",
+    string RefundStatus = "",
+    string RefundReason = "",
+    string RefundChannel = "",
+    string ExternalReference = "",
+    decimal AllocatedRefundableAmount = 0,
+    decimal UnallocatedRefundableAmount = 0,
+    bool IsDownPayment = false);
 
 public sealed record EnrollmentContractDto(
     Guid Id,
@@ -69,7 +81,9 @@ public sealed record EnrollmentContractDto(
     string Currency,
     string Status,
     DateTime CreatedAtUtc,
-    IReadOnlyList<FinanceInstallmentDto> Installments);
+    IReadOnlyList<FinanceInstallmentDto> Installments,
+    decimal DownPaymentPaidAmount = 0,
+    string DownPaymentStatus = "Bekliyor");
 
 /// <summary>Bekleyen peşinatı tahsil etme isteği; yöntem boşsa "Nakit".</summary>
 public sealed record CollectDownPaymentRequest(string? Method = null);
@@ -96,7 +110,9 @@ public sealed record StudentFinanceAccountDto(
     DateTime? NextDueDateUtc,
     IReadOnlyList<EnrollmentContractDto> Contracts,
     IReadOnlyList<FinanceInstallmentDto> Installments,
-    IReadOnlyList<FinancePaymentDto> Payments);
+    IReadOnlyList<FinancePaymentDto> Payments,
+    decimal GrossCollectedTotal = 0,
+    decimal RefundedTotal = 0);
 
 public sealed record StudentFinanceSummaryDto(
     Guid? StudentUserId,
@@ -112,11 +128,12 @@ public sealed record StudentFinanceSummaryDto(
 
 // ---- Faz 2: iade, hatırlatma, dashboard ----
 public sealed record RefundRequest(
-    Guid? StudentUserId,
-    string StudentName,
-    Guid? EnrollmentContractId,
+    Guid PaymentId,
     decimal Amount,
-    string? Reason);
+    string RefundType,
+    string Reason,
+    string RefundChannel,
+    string? ExternalReference);
 
 public sealed record ReminderResultDto(int Notified, int UpcomingCount, int OverdueCount);
 
@@ -136,7 +153,8 @@ public sealed record FinanceDashboardDto(
     decimal PendingDownPaymentTotal,
     IReadOnlyList<AgingBucketDto> Aging,
     IReadOnlyList<MonthlyIncomeDto> MonthlyIncome,
-    IReadOnlyList<StudentFinanceSummaryDto> TopDebtors);
+    IReadOnlyList<StudentFinanceSummaryDto> TopDebtors,
+    decimal RefundedTotal = 0);
 
 public sealed record MonthlyIncomeDto(string Month, decimal Amount);
 

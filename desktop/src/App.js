@@ -114,6 +114,7 @@ const DrivingHomeRedirect = lazyWithReload(() => import("./pages/driving/Driving
 const DrivingOperations = lazyWithReload(() => import("./pages/driving/DrivingOperations"));
 const DrivingHub = lazyWithReload(() => import("./pages/driving/DrivingHub"));
 const DrivingCollection = lazyWithReload(() => import("./pages/driving/DrivingCollection"));
+const FinanceExpenses = lazyWithReload(() => import("./pages/finance/Expenses"));
 const DrivingLeads = lazyWithReload(() => import("./pages/driving/DrivingLeads"));
 const DrivingScheduling = lazyWithReload(() => import("./pages/driving/DrivingScheduling"));
 const DrivingLessons = lazyWithReload(() => import("./pages/driving/DrivingLessons"));
@@ -386,6 +387,7 @@ function App() {
               {/* Finance Routes */}
               <Route path="/finance" element={<FinanceDashboard />} />
               <Route path="/finance/dashboard" element={<FinanceDashboard />} />
+              <Route path="/finance/expenses" element={<FinanceExpenses />} />
               <Route path="/finance/student-accounts" element={<StudentAccounts />} />
               <Route path="/finance/collections" element={<Collections />} />
               <Route path="/finance/installments" element={<Installments />} />

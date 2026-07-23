@@ -57,7 +57,12 @@ public sealed class AccountingService(
             payment.PaidAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm", CultureInfo.GetCultureInfo("tr-TR")),
             string.IsNullOrWhiteSpace(payment.ReceiptNo) ? payment.Note : $"{payment.ReceiptNo} • {payment.Note}".Trim(' ', '•'),
             payment.BranchId is Guid pb && collectionBranchNames.TryGetValue(pb, out var pbn) ? pbn : null,
-            payment.CreatedByUserId is Guid pc && collectorNames.TryGetValue(pc, out var pcn) ? pcn : null)).ToList();
+            payment.CreatedByUserId is Guid pc && collectorNames.TryGetValue(pc, out var pcn) ? pcn : null,
+            payment.Amount < 0 ? "Refund" : payment.EntryType,
+            payment.OriginalPaymentId,
+            payment.RefundReason,
+            payment.RefundChannel,
+            payment.ExternalReference)).ToList();
 
         var now = DateTime.UtcNow;
         var financeInstallments = await dbContext.FinanceInstallments.AsNoTracking()

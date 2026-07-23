@@ -50,6 +50,7 @@ public static class DrivingPermissions
     public const string InstructorView = "driving.instructor.view";
     public const string InstructorCreate = "driving.instructor.create";
     public const string InstructorUpdate = "driving.instructor.update";
+    public const string InstructorDeactivate = "driving.instructor.deactivate";
     /// <summary>Öğretmen-araç ataması kurma/kaldırma.</summary>
     public const string InstructorAssignmentManage = "driving.instructor.assignment.manage";
 
@@ -111,6 +112,8 @@ public static class DrivingPermissions
     public const string OverrideTransmission = "driving.override.transmission";
     /// <summary>Borç/finansal bloke nedeniyle kapalı randevuyu açma.</summary>
     public const string OverrideFinancialHold = "driving.override.financial_hold";
+    /// <summary>Eksik öğrenci evrakına rağmen eğitim/randevu açma.</summary>
+    public const string OverrideStudentDocuments = "driving.override.student_documents";
 
     /// <summary>Gerekçe ve audit kaydı zorunlu olan kodlar.</summary>
     public static readonly IReadOnlySet<string> OverrideCodes = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
@@ -120,6 +123,7 @@ public static class DrivingPermissions
         OverrideDocumentExpiry,
         OverrideTransmission,
         OverrideFinancialHold,
+        OverrideStudentDocuments,
         GraduationOverrideApprove,
         CertificateRevoke,
     };
@@ -134,7 +138,7 @@ public static class DrivingPermissions
         VehicleView, VehicleCreate, VehicleUpdate, VehicleRetire,
         VehicleDocumentView, VehicleDocumentUpload, VehicleDocumentReview,
         VehicleServiceView, VehicleServiceManage, VehicleServiceReport,
-        InstructorView, InstructorCreate, InstructorUpdate, InstructorAssignmentManage,
+        InstructorView, InstructorCreate, InstructorUpdate, InstructorDeactivate, InstructorAssignmentManage,
         AppointmentView, AppointmentCreate, AppointmentUpdate, AppointmentCancel, AppointmentReschedule, AppointmentApprove,
         LessonViewAll, LessonStart, LessonComplete, LessonMarkNoShow,
         TheoryView, TheoryManage, TheoryAttendance,
@@ -145,6 +149,6 @@ public static class DrivingPermissions
         ReportView, ReportExport,
         SettingsManage, PermissionManage, AuditView,
         MebbisView, MebbisManage, MebbisVerify,
-        OverrideVehicleCompliance, OverrideAppointmentRule, OverrideDocumentExpiry, OverrideTransmission, OverrideFinancialHold,
+        OverrideVehicleCompliance, OverrideAppointmentRule, OverrideDocumentExpiry, OverrideTransmission, OverrideFinancialHold, OverrideStudentDocuments,
     };
 }

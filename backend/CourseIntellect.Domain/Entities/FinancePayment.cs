@@ -20,4 +20,17 @@ public sealed class FinancePayment : IBranchScopedEntity
     public string Note { get; set; } = string.Empty;
     public Guid? CreatedByUserId { get; set; }
     public DateTime PaidAtUtc { get; set; } = DateTime.UtcNow;
+
+    /// <summary>Collection veya Refund. Eski kayıtlar Collection kabul edilir.</summary>
+    public string EntryType { get; set; } = "Collection";
+
+    /// <summary>İade hareketinin bağlı olduğu özgün tahsilat.</summary>
+    public Guid? OriginalPaymentId { get; set; }
+
+    /// <summary>PaymentReversal, AdvanceReturn veya ContractReduction.</summary>
+    public string RefundType { get; set; } = string.Empty;
+    public string RefundStatus { get; set; } = string.Empty;
+    public string RefundReason { get; set; } = string.Empty;
+    public string RefundChannel { get; set; } = string.Empty;
+    public string ExternalReference { get; set; } = string.Empty;
 }

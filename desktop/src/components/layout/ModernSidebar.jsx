@@ -58,7 +58,7 @@ import {
   KeyRound,
   ChevronDown,
 } from "lucide-react";
-import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck, UserX } from "lucide-react";
+import { Activity, Layers, Shield, ShieldCheck, CalendarPlus, CalendarRange, ScrollText, UserRoundCheck, UserX, TrendingDown } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import {
   Tooltip,
@@ -92,6 +92,7 @@ const FINANCE_MENU_ITEMS = [
   { path: "/finance/late-payments", icon: AlertCircle, label: "Gecikenler", color: "#ef4444" },
   { path: "/finance/overdue-rules", icon: Bell, label: "Gecikme Kuralları", color: "#f43f5e" },
   { path: "/finance/salary", icon: Wallet, label: "Maaş Yönetimi", color: "#10b981" },
+  { path: "/finance/expenses", icon: TrendingDown, label: "Giderler", color: "#e11d48" },
   { path: "/finance/cash-report", icon: Receipt, label: "Kasa Raporu", color: "#a855f7" },
   { path: "/finance/ledger", icon: BookOpen, label: "Hesap Defteri", color: "#6366f1" },
   { path: "/finance/export", icon: Download, label: "Dışa Aktar", color: "#84cc16" },
@@ -558,6 +559,12 @@ export const menuConfigs = {
       icon: Wallet,
       label: "Maaş Yönetimi",
       color: "#10b981",
+    },
+    {
+      path: "/finance/expenses",
+      icon: TrendingDown,
+      label: "Giderler",
+      color: "#e11d48",
     },
     {
       path: "/finance/cash-report",

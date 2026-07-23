@@ -15,6 +15,7 @@ const _statusLabels = {
   'TheoryOngoing': 'Teorik eğitimde',
   'PracticeOngoing': 'Direksiyonda',
   'ExamPending': 'Sınav bekliyor',
+  'GraduationPending': 'Mezuniyet onayında',
   'Graduated': 'Mezun',
   'Suspended': 'Askıda',
   'Cancelled': 'İptal',
@@ -598,6 +599,9 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
   List<Map<String, dynamic>> _mebbisHistory = const [];
   bool _historyLoading = true;
   bool _canCollect = false;
+  bool _canUpdateLifecycle = false;
+  bool _canDeactivate = false;
+  bool _canOverrideDocuments = false;
 
   @override
   void initState() {
@@ -606,7 +610,14 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
     _loadMebbisHistory();
     DrivingPermissionsStore.instance.load().then((p) {
       if (mounted) {
-        setState(() => _canCollect = p.can(DrivingPermissions.financeCollect));
+        setState(() {
+          _canCollect = p.can(DrivingPermissions.financeCollect);
+          _canUpdateLifecycle = p.can(DrivingPermissions.studentUpdate);
+          _canDeactivate = p.can(DrivingPermissions.studentDeactivate);
+          _canOverrideDocuments = p.can(
+            DrivingPermissions.overrideStudentDocuments,
+          );
+        });
       }
     });
   }
@@ -756,6 +767,163 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
     );
     theoryCtrl.dispose();
     drivingCtrl.dispose();
+    if (saved == true) _reload();
+  }
+
+  Future<void> _editLifecycle(Map<String, dynamic> overview) async {
+    var automatic = overview['automaticStatusEnabled'] != false;
+    var status = '${overview['status'] ?? 'DocumentsPending'}';
+    var allowIncomplete = false;
+    final documentsComplete = overview['documentsComplete'] == true;
+    final reasonCtrl = TextEditingController();
+    final statuses = <String, String>{
+      'PreRegistered': 'Ön kayıt',
+      'DocumentsPending': 'Evrak bekliyor',
+      'Active': 'Aktif',
+      'TheoryOngoing': 'Teorik eğitimde',
+      'PracticeOngoing': 'Direksiyonda',
+      'ExamPending': 'Sınav bekliyor',
+      if (_canDeactivate) 'Suspended': 'Pasif / askıda',
+      if (_canDeactivate) 'Cancelled': 'İptal',
+    };
+    if (!statuses.containsKey(status)) status = 'DocumentsPending';
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (_, setLocal) {
+          final trainingStatus = const {
+            'Active',
+            'TheoryOngoing',
+            'PracticeOngoing',
+            'ExamPending',
+          }.contains(status);
+          final sensitive =
+              const {'Suspended', 'Cancelled'}.contains(status) ||
+              (!documentsComplete && allowIncomplete);
+          return AlertDialog(
+            title: Text('Durum ve uygunluk'.tr),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: Icon(
+                      documentsComplete
+                          ? Icons.verified_rounded
+                          : Icons.warning_amber_rounded,
+                      color: documentsComplete ? Colors.green : Colors.orange,
+                    ),
+                    title: Text(
+                      documentsComplete
+                          ? 'Zorunlu evraklar tamam'
+                          : 'Evrak dosyası tamamlanmamış',
+                    ),
+                    subtitle: !documentsComplete
+                        ? Text(
+                            ((overview['missingDocuments'] as List?) ??
+                                    const [])
+                                .join(', '),
+                          )
+                        : null,
+                  ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text('Otomatik yönetim'.tr),
+                    subtitle: const Text(
+                      'Evraklar tamamlanınca sistem otomatik aktif eder.',
+                    ),
+                    value: automatic,
+                    onChanged: (v) => setLocal(() {
+                      automatic = v;
+                      allowIncomplete = false;
+                    }),
+                  ),
+                  if (!automatic) ...[
+                    DropdownButtonFormField<String>(
+                      initialValue: status,
+                      decoration: const InputDecoration(
+                        labelText: 'Manuel durum',
+                      ),
+                      items: statuses.entries
+                          .map(
+                            (e) => DropdownMenuItem(
+                              value: e.key,
+                              child: Text(e.value),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (v) => setLocal(() {
+                        status = v ?? status;
+                        allowIncomplete = false;
+                      }),
+                    ),
+                    if (!documentsComplete && trainingStatus)
+                      CheckboxListTile(
+                        contentPadding: EdgeInsets.zero,
+                        value: allowIncomplete,
+                        onChanged: _canOverrideDocuments
+                            ? (v) => setLocal(() => allowIncomplete = v == true)
+                            : null,
+                        title: const Text(
+                          'Eksik evraka rağmen eğitime izin ver',
+                        ),
+                        subtitle: const Text(
+                          'Yetkili istisna ve denetim kaydı oluşturur.',
+                        ),
+                      ),
+                    TextField(
+                      controller: reasonCtrl,
+                      onChanged: (_) => setLocal(() {}),
+                      maxLength: 500,
+                      decoration: InputDecoration(
+                        labelText: sensitive
+                            ? 'Gerekçe (en az 10 karakter)'
+                            : 'Gerekçe',
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(dialogContext, false),
+                child: Text('Vazgeç'.tr),
+              ),
+              FilledButton(
+                onPressed: sensitive && reasonCtrl.text.trim().length < 10
+                    ? null
+                    : () async {
+                        try {
+                          await DrivingSchoolApiService.instance
+                              .updateStudentLifecycle(widget.profileId, {
+                                'status': status,
+                                'automaticStatusEnabled': automatic,
+                                'allowIncompleteDocuments': allowIncomplete,
+                                'reason': reasonCtrl.text.trim(),
+                              });
+                          if (dialogContext.mounted) {
+                            Navigator.pop(dialogContext, true);
+                          }
+                        } catch (e) {
+                          if (dialogContext.mounted) {
+                            ScaffoldMessenger.of(
+                              dialogContext,
+                            ).showSnackBar(SnackBar(content: Text('$e')));
+                          }
+                        }
+                      },
+                child: Text('Kaydet'.tr),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+    reasonCtrl.dispose();
     if (saved == true) _reload();
   }
 
@@ -915,6 +1083,30 @@ class _StudentDocumentsSheetState extends State<_StudentDocumentsSheet> {
                 Text(
                   '${overview['packageName'] != null ? '${overview['packageName']} • ' : ''}${overview['licenseClass'] ?? ''} • ${_transmission(overview['transmissionType'])} • ${_statusLabel(overview['status'])}',
                   style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    DrivingStatusPill(
+                      label: overview['automaticStatusEnabled'] == true
+                          ? 'Otomatik yönetim'
+                          : 'Manuel yönetim',
+                      tone: DrivingTone.neutral,
+                    ),
+                    if (overview['trainingOverrideActive'] == true)
+                      const DrivingStatusPill(
+                        label: 'Yetkili eğitim istisnası',
+                        tone: DrivingTone.warning,
+                      ),
+                    if (_canUpdateLifecycle)
+                      OutlinedButton.icon(
+                        onPressed: () => _editLifecycle(overview),
+                        icon: const Icon(Icons.manage_accounts_rounded),
+                        label: Text('Durumu yönet'.tr),
+                      ),
+                  ],
                 ),
                 if ('${overview['identitySerialNo'] ?? ''}'.isNotEmpty ||
                     '${overview['studentPhone'] ?? ''}'.isNotEmpty) ...[

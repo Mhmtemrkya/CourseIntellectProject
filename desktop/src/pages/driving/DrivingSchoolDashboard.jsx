@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   AlertTriangle, Banknote, BookOpen, Brain, CalendarClock, CarFront, GraduationCap,
   ShieldCheck, Users, Wrench, ChevronRight, Award, ClipboardCheck, FileWarning, UserCheck,
+  TrendingDown, Wallet,
 } from 'lucide-react';
 import { ErrorBanner } from '../../components/ui/AlertBanner';
 import { Input } from '../../components/ui/input';
@@ -37,10 +38,14 @@ const KPI_META = [
   ['termCriticalAlerts', 'Kritik Dönem Uyarısı', AlertTriangle, 'rose', 'Hemen müdahale edilmeli', '/driving/mebbis/term-opening'],
   ['mebbisReadyNotEntered', 'MEBBİS Girişi Bekleyen', ShieldCheck, 'amber', 'Hazır fakat girilmemiş', '/driving/mebbis'],
   ['todayCollections', 'Tahsilat', Banknote, 'emerald', null, '/driving/collection'],
+  ['todayExpenses', 'Gider', TrendingDown, 'rose', null, '/finance/expenses'],
+  ['todayNet', 'Net (Tahsilat − Gider)', Wallet, 'brand', null, '/finance/expenses'],
 ];
 
 // Aralıkla değişen KPI'lar — açıklamalarına seçili dönem yazılır.
-const RANGE_KPIS = new Set(['todayDrivingLessons', 'todayTheoryLessons', 'todayCollections']);
+const RANGE_KPIS = new Set(['todayDrivingLessons', 'todayTheoryLessons', 'todayCollections', 'todayExpenses', 'todayNet']);
+// Para birimi olarak biçimlendirilecek KPI'lar.
+const CURRENCY_KPIS = new Set(['todayCollections', 'todayExpenses', 'todayNet']);
 
 const PERIODS = [
   ['day', 'Günlük'],
@@ -194,7 +199,7 @@ export default function DrivingSchoolDashboard() {
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-5">
             {KPI_META.map(([key, label, Icon, tone, caption, path]) => {
               const raw = data.kpis?.[key] ?? 0;
-              const value = key === 'todayCollections'
+              const value = CURRENCY_KPIS.has(key)
                 ? `₺${Number(raw).toLocaleString('tr-TR')}`
                 : raw;
               const cardCaption = RANGE_KPIS.has(key) ? PERIOD_CAPTION[period] : caption;
